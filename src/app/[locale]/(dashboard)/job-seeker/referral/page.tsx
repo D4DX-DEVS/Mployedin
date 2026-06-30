@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import {
   Gift, Copy, Users, Share2, CheckCircle2, Link2,
@@ -70,8 +71,24 @@ export default function JobSeekerReferralPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      <div className="space-y-6">
+        <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+          <div className="flex items-start gap-4">
+            <Skeleton className="h-12 w-12 rounded-2xl" />
+            <div className="space-y-2">
+              <Skeleton className="h-7 w-48" />
+              <Skeleton className="h-4 w-64" />
+            </div>
+          </div>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="workspace-glass-panel rounded-2xl p-4 space-y-2">
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-7 w-16" />
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
     );
   }

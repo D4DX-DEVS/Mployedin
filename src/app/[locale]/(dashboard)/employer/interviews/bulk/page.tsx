@@ -5,6 +5,7 @@ import { Calendar, Search, Users, Clock, Send, CheckCircle, Loader2, X } from "l
 import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select";
@@ -120,9 +121,16 @@ export default function EmployerBulkInterviewPage() {
           </div>
 
           {loading ? (
-            <div className="flex items-center justify-center py-8 gap-2 text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="text-sm">{t("loading")}</span>
+            <div className="space-y-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-3 p-2.5 rounded-lg border border-border">
+                  <Skeleton className="h-4 w-4 rounded" />
+                  <div className="flex-1 space-y-1.5">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-48" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : filteredCandidates.length === 0 ? (
             <p className="text-center py-8 text-sm text-muted-foreground">

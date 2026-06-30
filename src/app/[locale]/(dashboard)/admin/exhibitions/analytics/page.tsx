@@ -7,7 +7,6 @@ import {
   BarChart3,
   CalendarDays,
   CheckCircle2,
-  Clock,
   DollarSign,
   Percent,
   Target,
@@ -29,6 +28,7 @@ import {
   YAxis,
 } from "recharts";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
@@ -216,8 +216,28 @@ export default function AdminExhibitionAnalyticsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-24 text-muted-foreground">
-        <Clock className="mr-2 h-5 w-5 animate-spin" /> Loading analytics...
+      <div className="page-container space-y-6">
+        <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-7 sm:p-8">
+          <div className="space-y-4">
+            <Skeleton className="h-6 w-40" />
+            <Skeleton className="h-8 w-2/3" />
+            <Skeleton className="h-4 w-1/2" />
+            <div className="grid gap-3 sm:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-20 rounded-2xl" />
+              ))}
+            </div>
+          </div>
+        </section>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-28 rounded-2xl" />
+          ))}
+        </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Skeleton className="h-72 rounded-[28px]" />
+          <Skeleton className="h-72 rounded-[28px]" />
+        </div>
       </div>
     );
   }

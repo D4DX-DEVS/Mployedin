@@ -121,7 +121,7 @@ export async function ensureIndexes() {
       key: { applicationId: 1, interviewRound: 1 },
       unique: true,
       name: "unique_active_interview_round_per_application",
-      partialFilterExpression: { status: { $nin: ["cancelled"] } },
+      partialFilterExpression: { status: { $in: ["scheduled", "confirmed", "completed", "rescheduled"] } },
     },
   ]);
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ChevronLeft, Circle, Hash, Loader2, Send, Sparkles, Users } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Message {
   _id: string;
@@ -158,9 +159,15 @@ export default function AgentChatPage() {
 
           <div className="flex-1 space-y-4 overflow-y-auto p-4">
             {loading ? (
-              <div className="flex justify-center py-8 text-muted-foreground">
-                <Loader2 className="h-5 w-5 animate-spin" />
-              </div>
+              Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <Skeleton className="h-3 w-32" />
+                    <Skeleton className={`h-4 ${i % 2 === 0 ? "w-2/3" : "w-1/2"}`} />
+                  </div>
+                </div>
+              ))
             ) : messages.length === 0 ? (
               <p className="workspace-empty-state rounded-2xl py-8 text-center text-sm text-muted-foreground">
                 No messages yet. Start the conversation!

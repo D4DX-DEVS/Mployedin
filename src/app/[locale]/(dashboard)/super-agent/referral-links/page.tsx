@@ -3,6 +3,7 @@
 import { useState, useCallback, Fragment } from "react";
 import { useParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { usePagination } from "@/hooks/usePagination";
@@ -379,7 +380,31 @@ export default function SuperAgentReferralLinksPage() {
 
       {/* Links table */}
       {isLoading ? (
-        <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-sky-600" /></div>
+        <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Code</TableHead>
+                <TableHead>Creator</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Label</TableHead>
+                <TableHead>Used</TableHead>
+                <TableHead>Expires</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i} className="hover:bg-transparent">
+                  {Array.from({ length: 8 }).map((_, j) => (
+                    <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       ) : links.length === 0 ? (
         <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
           <div className="flex flex-col items-center gap-3 py-16 text-center">

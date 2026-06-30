@@ -10,6 +10,7 @@ import { usePagination } from "@/hooks/usePagination";
 import { usePermissions } from "@/hooks/usePermissions";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ArrowRight, BriefcaseBusiness, Building2, Calendar, Check, ChevronDown, ChevronUp, Copy, Edit2, ExternalLink, Globe2, Link2, Loader2, MapPin, Power, PowerOff, Search, Sparkles, Tag, Trash2, UserPlus, Users, LogIn } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
@@ -467,9 +468,27 @@ export default function AgentEmployersPage() {
       </section>
 
       {loading ? (
-        <div className="flex justify-center py-16">
-          <Loader2 className="h-6 w-6 animate-spin text-sky-600" />
-        </div>
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="workspace-panel-surface space-y-4 overflow-hidden rounded-[28px] p-5">
+              <div className="flex items-start gap-2">
+                <Skeleton className="h-11 w-11 shrink-0 rounded-2xl" />
+                <div className="min-w-0 flex-1 space-y-2">
+                  <Skeleton className="h-4 w-2/3" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Skeleton className="h-3 w-3/4" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+              <div className="flex gap-2 pt-1">
+                <Skeleton className="h-9 flex-1 rounded-xl" />
+                <Skeleton className="h-9 w-12 rounded-xl" />
+              </div>
+            </div>
+          ))}
+        </section>
       ) : employers.length === 0 ? (
         <section className="workspace-empty-state rounded-[28px] p-10 text-center">
           <Building2 className="mx-auto mb-3 h-10 w-10 text-muted-foreground/55" />

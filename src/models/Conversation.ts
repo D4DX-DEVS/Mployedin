@@ -94,8 +94,8 @@ const ConversationSchema = new Schema<IConversation>(
   { timestamps: true }
 );
 
-// Unique compound index so there's only ever one conversation between two users
-ConversationSchema.index({ participants: 1 }, { unique: true });
+// Index for participant lookups; uniqueness enforced at application layer
+ConversationSchema.index({ participants: 1 });
 // Index for efficient customer care queries
 ConversationSchema.index({ type: 1, "customerCare.status": 1 });
 ConversationSchema.index({ "customerCare.assignedTo": 1 });

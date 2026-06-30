@@ -6,7 +6,6 @@ import {
   BarChart3,
   CalendarDays,
   CheckCircle2,
-  Clock,
   DollarSign,
   Percent,
   Target,
@@ -28,6 +27,7 @@ import {
   YAxis,
 } from "recharts";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
@@ -171,8 +171,28 @@ export default function SuperAgentExhibitionAnalyticsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-24 text-muted-foreground">
-        <Clock className="mr-2 h-5 w-5 animate-spin" /> Loading analytics...
+      <div className="space-y-6 p-4 md:p-6">
+        <div className="workspace-hero-surface overflow-hidden rounded-[28px] p-7 sm:p-8 space-y-4">
+          <Skeleton className="h-8 w-80" />
+          <Skeleton className="h-4 w-96" />
+          <div className="grid gap-3 sm:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-20 w-full rounded-2xl" />
+            ))}
+          </div>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="rounded-2xl border border-border/60 bg-card p-5 space-y-2">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-7 w-16" />
+            </div>
+          ))}
+        </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Skeleton className="h-72 w-full rounded-2xl" />
+          <Skeleton className="h-72 w-full rounded-2xl" />
+        </div>
       </div>
     );
   }

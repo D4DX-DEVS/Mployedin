@@ -197,7 +197,10 @@
       "passwordTooShort": "Password must be at least 8 characters.",
       "passwordMismatch": "Passwords do not match.",
       "termsRequired": "You must agree to the Terms of Service and Privacy Policy.",
-      "registrationFailed": "Registration failed. Please try again."
+      "registrationFailed": "Registration failed. Please try again.",
+      "serverError": "Server error. Please try again later.",
+      "tooManyRequests": "Too many requests. Please wait a few minutes and try again.",
+      "networkError": "Network error. Please check your connection and try again."
     },
     "industries": {
       "technology": "Technology & IT",

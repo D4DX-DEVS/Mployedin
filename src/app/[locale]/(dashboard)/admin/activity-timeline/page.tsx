@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { usePagination } from "@/hooks/usePagination";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import {
@@ -330,8 +331,16 @@ export default function AdminActivityTimelinePage() {
       {/* Timeline */}
       <section className="workspace-panel-surface rounded-[28px] p-5">
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <div className="relative ml-4 space-y-6 border-l-2 border-muted pl-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="relative">
+                <Skeleton className="absolute -left-[31px] h-6 w-6 rounded-full" />
+                <div className="workspace-glass-panel space-y-2 rounded-xl p-3">
+                  <Skeleton className="h-4 w-1/3" />
+                  <Skeleton className="h-3 w-2/3" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : events.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">

@@ -13,6 +13,7 @@ import {
   ChevronDown, Lightbulb,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -466,8 +467,26 @@ export default function CVBuilderPage() {
   /* ── Loading state ── */
   if (loading) {
     return (
-      <div className="page-container flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="page-container space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-7 w-48" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+          <Skeleton className="h-10 w-32 rounded-xl" />
+        </div>
+        <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+          <div className="space-y-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="rounded-2xl border border-border/60 bg-card p-5 space-y-3">
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+              </div>
+            ))}
+          </div>
+          <Skeleton className="h-[400px] w-full rounded-2xl" />
+        </div>
       </div>
     );
   }

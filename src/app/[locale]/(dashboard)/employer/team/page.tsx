@@ -8,6 +8,7 @@ import { Plus, UserX, Shield, Eye, Briefcase, Crown, Mail, Users, CheckCircle2, 
 import Link from "next/link";
 import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { PageHero } from "@/components/shared/PageHero";
@@ -248,9 +249,18 @@ export default function TeamManagementPage() {
 
       {/* Content */}
       {loading ? (
-        <div className="card-base p-12 flex flex-col items-center justify-center gap-3">
-          <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-          <p className="text-sm text-muted-foreground">{t("loading")}</p>
+        <div className="card-base overflow-hidden">
+          <div className="divide-y divide-border/60">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-4 px-4 py-3.5">
+                <Skeleton className="h-9 w-9 rounded-full" />
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="ml-auto h-6 w-16 rounded-full" />
+              </div>
+            ))}
+          </div>
         </div>
       ) : members.length === 0 ? (
         /* ── Empty State ── */

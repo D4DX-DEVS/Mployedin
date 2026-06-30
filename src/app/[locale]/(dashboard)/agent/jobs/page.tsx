@@ -8,6 +8,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import {
   ArrowRight,
@@ -488,9 +489,30 @@ export default function AgentJobsPage() {
             className="px-4 pt-4"
           />
           {loading ? (
-            <div className="flex justify-center py-16">
-              <Loader2 className="h-6 w-6 animate-spin text-sky-600" />
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-secondary/70 hover:bg-secondary/70">
+                  <TableHead>{t("table.title")}</TableHead>
+                  <TableHead>{t("table.employer")}</TableHead>
+                  <TableHead>{t("table.location")}</TableHead>
+                  <TableHead>{t("table.status")}</TableHead>
+                  <TableHead>{t("table.applicants")}</TableHead>
+                  <TableHead>{t("table.posted")}</TableHead>
+                  <TableHead className="text-right">{t("table.actions")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i} className="hover:bg-transparent">
+                    {Array.from({ length: 7 }).map((_, j) => (
+                      <TableCell key={j}>
+                        <Skeleton className="h-4 w-full" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           ) : jobs.length === 0 ? (
             <div className="py-12 text-center">
               <div className="flex flex-col items-center gap-2">

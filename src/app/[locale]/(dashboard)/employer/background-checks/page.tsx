@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { ShieldCheck, Plus, Trash2, UserCheck, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -222,9 +223,17 @@ export default function BackgroundChecksPage() {
       />
 
       {loading ? (
-        <div className="flex items-center justify-center py-16 text-muted-foreground">
-          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-          {t("loading")}
+        <div className="grid gap-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card px-4 py-4">
+              <Skeleton className="h-10 w-10 rounded-full" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-3 w-64" />
+              </div>
+              <Skeleton className="h-6 w-20 rounded-full" />
+            </div>
+          ))}
         </div>
       ) : checks.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border/60 py-16 text-center">

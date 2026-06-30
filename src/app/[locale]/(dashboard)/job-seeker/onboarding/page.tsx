@@ -9,6 +9,7 @@ import {
   Circle, Download, Building2, Calendar, ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -114,9 +115,22 @@ export default function JobSeekerOnboardingPage() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-16 text-muted-foreground">
-          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-          {t("loading")}
+        <div className="space-y-6">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className="rounded-2xl border border-border/60 bg-card p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="h-6 w-20 rounded-full" />
+              </div>
+              <Skeleton className="h-2 w-full rounded-full" />
+              {Array.from({ length: 3 }).map((_, j) => (
+                <div key={j} className="flex items-center gap-3 rounded-xl border border-border/50 px-3 py-2.5">
+                  <Skeleton className="h-4 w-4 rounded" />
+                  <Skeleton className="h-4 w-48" />
+                </div>
+              ))}
+            </div>
+          ))}
         </div>
       ) : error ? (
         <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-6 text-center text-sm text-destructive">

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { TrendingUp, Send, Loader2, BarChart3, DollarSign, Users, Briefcase, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import {
   SuperAgentPageIntro,
@@ -141,11 +142,15 @@ export default function MarketIntelligencePage() {
       ) : null}
 
       {loading ? (
-        <div className="rounded-[28px] border border-border/70 bg-card/95 p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)]">
-          <div className="flex items-center gap-3 text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin text-primary" />
-            <span className="text-sm">Analysing market data...</span>
-          </div>
+        <div className="space-y-6">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className="rounded-[28px] border border-border/70 bg-card/95 p-5 space-y-3">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-2/3" />
+            </div>
+          ))}
         </div>
       ) : null}
 

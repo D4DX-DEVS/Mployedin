@@ -8,6 +8,7 @@ import {
   Zap, Globe, TrendingUp, BarChart3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -120,9 +121,22 @@ export default function AdminSystemHealthPage() {
       </section>
 
       {loading && !health ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-        </div>
+        <section className="workspace-panel-surface rounded-[28px] p-5">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="workspace-glass-panel space-y-4 rounded-2xl p-5">
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-5 w-28" />
+                  <Skeleton className="h-5 w-5 rounded-full" />
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-2/3" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
       ) : health ? (
         <>
           {/* Core Services */}

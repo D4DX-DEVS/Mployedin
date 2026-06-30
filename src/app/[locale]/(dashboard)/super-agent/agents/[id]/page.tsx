@@ -15,6 +15,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
@@ -235,8 +236,30 @@ export default function AgentDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-32">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      <div className="page-container space-y-6">
+        <Skeleton className="h-5 w-24" />
+        <div className="rounded-2xl border border-border/60 bg-card p-6">
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-16 w-16 rounded-full" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-32" />
+            </div>
+          </div>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="rounded-2xl border border-border/60 bg-card p-5 space-y-2">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-7 w-16" />
+            </div>
+          ))}
+        </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <Skeleton key={i} className="h-64 w-full rounded-2xl" />
+          ))}
+        </div>
       </div>
     );
   }

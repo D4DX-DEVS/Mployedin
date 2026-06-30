@@ -8,6 +8,7 @@ import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { usePagination } from "@/hooks/usePagination";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -800,10 +801,16 @@ export default function AgentLeadsPage() {
 
       {/* ──── Content Area ──── */}
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          <span className="ml-2 text-sm text-muted-foreground">Loading pipeline...</span>
-        </div>
+        <section className="flex gap-4 overflow-x-auto pb-4">
+          {Array.from({ length: 4 }).map((_, c) => (
+            <div key={c} className="w-72 shrink-0 space-y-3">
+              <Skeleton className="h-8 w-full rounded-xl" />
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-24 w-full rounded-2xl" />
+              ))}
+            </div>
+          ))}
+        </section>
       ) : viewMode === "board" ? (
         /* ──── KANBAN BOARD with Drag & Drop ──── */
         <DndContext

@@ -7,6 +7,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { usePagination } from "@/hooks/usePagination";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -273,8 +274,30 @@ export default function AdminGdprPage() {
         {activeTab === "requests" && (
           <>
             {loading ? (
-              <div className="flex items-center justify-center py-20">
-                <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>User</TableHead>
+                      <TableHead>Request Type</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Submitted</TableHead>
+                      <TableHead>Completed</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <TableRow key={i}>
+                        {Array.from({ length: 6 }).map((_, j) => (
+                          <TableCell key={j}>
+                            <Skeleton className="h-4 w-full" />
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
             ) : requests.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">

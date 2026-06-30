@@ -266,12 +266,43 @@ export default function EmployerRegisterPage() {
       if (referralCode) form.append("referralCode", referralCode);
 
       const res = await fetch("/api/auth/employer-register", { method: "POST", body: form });
+
+      // Some failure paths (e.g. middleware-level rejections, reverse-proxy
+      // errors) return non-JSON bodies (HTML error pages, empty 204, etc.).
+      // Parsing those as JSON throws and would hide the real HTTP status.
+      const contentType = res.headers.get("content-type") ?? "";
       if (!res.ok) {
-        const data = await res.json();
-        setError(data.message ?? t("validation.registrationFailed"));
+        let serverMessage: string | undefined;
+        if (contentType.includes("application/json")) {
+          try {
+            const data = await res.json();
+            // Middleware (csrf.ts) uses { error }, route handler uses { message }.
+            // Accept either so we never mask the real reason again.
+            serverMessage = data?.message ?? data?.error;
+          } catch {
+            /* body wasn't valid JSON despite the header — fall through */
+          }
+        }
+        // Status-specific fallbacks so the user at least knows the category
+        // of failure even if the body was empty/unparseable.
+        setError(
+          serverMessage ??
+            (res.status >= 500
+              ? t("validation.serverError")
+              : res.status === 429
+                ? t("validation.tooManyRequests")
+                : t("validation.registrationFailed"))
+        );
         return;
       }
+
       router.push(`/${locale}/verify-email?email=${encodeURIComponent(step3.contactEmail)}`);
+    } catch (err) {
+      // Network-level failure: fetch rejected (offline, DNS, CORS, SW no-response,
+      // aborted). Previously this had no catch at all → silent failure with the
+      // button stuck on "Creating…". Now surface a meaningful message.
+      console.error("[employer-register] Network/request error:", err);
+      setError(t("validation.networkError"));
     } finally {
       setLoading(false);
     }
@@ -434,7 +465,10 @@ export default function EmployerRegisterPage() {
 
         {/* Step 3: Contact Person */}
         {step === 3 && (
-          <div className="space-y-3.5">
+          <form
+            className="space-y-3.5"
+            onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}
+          >
             <h2 className="text-sm font-semibold flex items-center gap-2 text-foreground">
               <UserCircle className="h-4 w-4 text-primary" /> {t("contactPerson")}
             </h2>
@@ -479,7 +513,7 @@ export default function EmployerRegisterPage() {
                 </Link>
               </label>
             </div>
-          </div>
+          </form>
         )}
 
         {/* Error Display */}

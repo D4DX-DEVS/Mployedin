@@ -5,10 +5,11 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import {
-  ArrowLeft, ClipboardList, Plus, Trash2, FileText, Loader2, CheckCircle2, Circle,
+  ArrowLeft, ClipboardList, Plus, Trash2, FileText, CheckCircle2, Circle,
   CalendarClock, ShieldCheck, PenLine, Send, BadgeCheck, StickyNote,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -324,9 +325,23 @@ export default function PlacementOnboardingPage() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-16 text-muted-foreground">
-          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-          {t("loading")}
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-border/60 bg-card p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-16" />
+            </div>
+            <Skeleton className="h-2 w-full rounded-full" />
+          </div>
+          <div className="rounded-2xl border border-border/60 bg-card p-5 space-y-3">
+            <Skeleton className="h-5 w-28" />
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 rounded-xl border border-border/50 px-3 py-2.5">
+                <Skeleton className="h-4 w-4 rounded" />
+                <Skeleton className="h-4 w-48" />
+              </div>
+            ))}
+          </div>
         </div>
       ) : (
         <>

@@ -90,6 +90,17 @@ const CSRF_EXEMPT_PREFIXES = [
   "/api/auth/callback/", // OAuth provider callbacks — provider can't send our CSRF cookie
   "/api/auth/signin",    // NextAuth sign-in forms handle their own CSRF internally
   "/api/auth/signout",   // NextAuth sign-out handles its own CSRF internally
+  // Public registration/verification endpoints: no authenticated session exists
+  // yet, so there is nothing to forge. Each route has its own guards (rate
+  // limiting, bcrypt, signed tokens) that make CSRF moot here.
+  "/api/auth/employer-register",
+  "/api/auth/job-seeker-register",
+  "/api/auth/agent-register",
+  "/api/auth/verify-email",
+  "/api/auth/resend-verification",
+  "/api/auth/forgot-password",
+  "/api/auth/reset-password",
+  "/api/auth/confirm-email-change",
   "/api/public/",
   "/api/contact",
   "/api/cron/",

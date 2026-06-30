@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
@@ -93,8 +94,20 @@ export default function CompaniesListPage() {
 
       <section className="workspace-panel-surface rounded-[28px] p-5">
         {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="workspace-glass-panel rounded-2xl p-5">
+                <div className="flex items-start gap-3">
+                  <Skeleton className="h-12 w-12 rounded-xl" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                </div>
+                <Skeleton className="mt-3 h-3 w-full" />
+                <Skeleton className="mt-2 h-3 w-2/3" />
+              </div>
+            ))}
           </div>
         ) : companies.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">

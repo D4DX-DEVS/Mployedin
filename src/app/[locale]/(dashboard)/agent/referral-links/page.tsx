@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { usePagination } from "@/hooks/usePagination";
@@ -271,7 +272,19 @@ export default function AgentReferralLinksPage() {
 
       {/* Links list */}
       {isLoading ? (
-        <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-sky-600" /></div>
+        <section className="space-y-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="workspace-panel-surface rounded-[28px] p-5">
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-11 w-11 rounded-2xl" />
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-3 w-20" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </section>
       ) : links.length === 0 ? (
         <section className="workspace-empty-state rounded-[28px] p-10 text-center">
           <Link2 className="mx-auto mb-3 h-10 w-10 text-muted-foreground/55" />

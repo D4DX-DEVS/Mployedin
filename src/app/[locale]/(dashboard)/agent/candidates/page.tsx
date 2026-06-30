@@ -8,6 +8,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -409,9 +410,29 @@ export default function AgentCandidatesPage() {
         />
         <div className="workspace-subtle-surface mt-5 overflow-hidden rounded-[24px]">
           {loading ? (
-            <div className="flex justify-center py-16">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow className="workspace-subtle-surface hover:bg-secondary/70">
+                  <TableHead>Candidate</TableHead>
+                  <TableHead>Job Applied To</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>AI Match</TableHead>
+                  <TableHead>Applied</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i} className="hover:bg-transparent">
+                    {Array.from({ length: 6 }).map((_, j) => (
+                      <TableCell key={j}>
+                        <Skeleton className="h-4 w-full" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           ) : applications.length === 0 ? (
             <div className="workspace-empty-state m-4 rounded-[20px] py-12 text-center">
               <div className="flex flex-col items-center gap-2">

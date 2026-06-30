@@ -7,6 +7,7 @@ import { useRouter, useParams } from "next/navigation";
 import { Trash2, Plus, Mail } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
@@ -208,7 +209,17 @@ export default function CommTemplatesPage() {
 
       {/* Templates Grid */}
       {loading ? (
-        <div className="text-center py-8 text-muted-foreground">{t("loadingTemplates")}</div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="border rounded-lg p-4 bg-card space-y-3">
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-5 w-20 rounded-full" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-9 w-full rounded" />
+            </div>
+          ))}
+        </div>
       ) : filteredTemplates.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground">
           {t("noTemplates")}

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -75,8 +76,17 @@ export default function EmployerTalentPoolsPage() {
       />
 
       {isLoading ? (
-        <div className="flex justify-center py-16">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-5">
+              <div className="flex items-start justify-between gap-3">
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-5 w-12 rounded-full" />
+              </div>
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-1/2" />
+            </div>
+          ))}
         </div>
       ) : isError ? (
         <div className="rounded-2xl border border-border bg-card p-10 text-center text-sm text-muted-foreground">

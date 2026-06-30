@@ -9,6 +9,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { usePagination } from "@/hooks/usePagination";
@@ -353,8 +354,32 @@ export default function AgentOffersPage() {
           />
         )}
         {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t("table.candidate")}</TableHead>
+                  <TableHead>{t("table.job")}</TableHead>
+                  <TableHead>{t("table.salary")}</TableHead>
+                  <TableHead>{t("table.status")}</TableHead>
+                  <TableHead>{t("table.startDate")}</TableHead>
+                  <TableHead>{t("table.expires")}</TableHead>
+                  <TableHead>{t("table.sent")}</TableHead>
+                  <TableHead className="text-right">{t("table.actions")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i} className="hover:bg-transparent">
+                    {Array.from({ length: 8 }).map((_, j) => (
+                      <TableCell key={j}>
+                        <Skeleton className="h-4 w-full" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         ) : offers.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">

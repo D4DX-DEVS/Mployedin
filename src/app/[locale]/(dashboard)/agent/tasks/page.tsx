@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
@@ -236,8 +237,18 @@ export default function AgentTasksPage() {
       {/* Task List */}
       <section className="workspace-panel-surface rounded-[28px] p-5">
         {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <div className="space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="workspace-glass-panel rounded-2xl p-4">
+                <div className="flex items-start gap-3">
+                  <Skeleton className="mt-0.5 h-5 w-5 rounded" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-1/3" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : tasks.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">

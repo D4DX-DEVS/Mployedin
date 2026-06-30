@@ -3,6 +3,7 @@
 import React, { useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -25,7 +26,6 @@ import {
   ChevronUp,
   Copy,
   Link2,
-  Loader2,
 } from "lucide-react";
 
 function formatDate(d: string | undefined): string {
@@ -151,7 +151,34 @@ export default function AdminReferralLinksPage() {
 
       {/* Table */}
       {isLoading ? (
-        <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+        <div className="rounded-xl border border-border overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Code</TableHead>
+                <TableHead>Creator</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Label</TableHead>
+                <TableHead>Used</TableHead>
+                <TableHead>Expires</TableHead>
+                <TableHead>Created</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}>
+                  {Array.from({ length: 9 }).map((_, j) => (
+                    <TableCell key={j}>
+                      <Skeleton className="h-4 w-full" />
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       ) : links.length === 0 ? (
         <div className="flex flex-col items-center gap-2 py-16 text-center">
           <Link2 className="h-10 w-10 text-muted-foreground/40" />

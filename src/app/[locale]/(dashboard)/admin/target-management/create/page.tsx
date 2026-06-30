@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -427,8 +428,16 @@ export default function CreateTargetProfilePage() {
       {/* Main Table */}
       <div className="workspace-glass-panel rounded-2xl overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <div className="divide-y divide-border/50">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-4 px-4 py-3">
+                <Skeleton className="h-4 w-48" />
+                <Skeleton className="ml-auto h-4 w-16" />
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-4 w-16" />
+              </div>
+            ))}
           </div>
         ) : supervisors.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
