@@ -10,6 +10,9 @@ import { Employer } from "@/models/Employer";
 import Agent from "@/models/Agent";
 import SuperAgent from "@/models/SuperAgent";
 import { CompanyUser } from "@/models/CompanyUser";
+import { autoAssignAgent } from "@/lib/agents/autoAssign";
+import { sanitizeHtml } from "@/lib/security/sanitize-html";
+import { ExtractionDraft } from "@/models/ExtractionDraft";
 
 // Force Mongoose model registration (prevents tree-shaking)
 void SuperAgent;
@@ -19,8 +22,6 @@ import { escapeRegex } from "@/lib/security/sanitize";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { validateBody } from "@/lib/validators";
 import { jobCreateSchema } from "@/lib/validators/jobs";
-import { autoAssignAgent } from "@/lib/agents/autoAssign";
-import { sanitizeHtml } from "@/lib/security/sanitize-html";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -348,7 +349,20 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
     if (body.agentId) agentId = body.agentId;
   }
 
-  // 8C.2: determine approval status based on role, agent involvement & verification
+  // 8C.2: determine approval status based on role, agent involvement & verification.
+  //
+  // Status resolution rules (matches model enum draft | pending_approval | active | paused | closed | expired):
+  //   - Admin                       → respects explicit status, defaults to "active"
+  //   - Agent (any status)          → always routed to moderation ("pending_approval")
+  //   - Employer + agent involvement → always routed to moderation ("pending_approval")
+  //   - Verified employer           → respects explicit status, defaults to "active"
+  //   - Unverified employer:
+  //       • explicit "draft"        → stays "draft" (drafts are never public, never need approval)
+  //       • anything else ("active"/publish) → routed to moderation ("pending_approval")
+  //
+  // This preserves the moderation gate for unverified employers attempting to publish,
+  // while no longer silently discarding an explicit "Save as Draft" — which previously
+  // stranded drafts in pending_approval and made them undeletable from the UI.
   let approvalStatus: "pending" | "approved";
   let resolvedStatus: string;
 
@@ -363,9 +377,15 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
     approvalStatus = "pending";
     resolvedStatus = "pending_approval";
   } else if (ctx.role === "employer" && !employerVerified) {
-    // C-3: unverified employer self-posting → route to moderation queue before going live
-    approvalStatus = "pending";
-    resolvedStatus = "pending_approval";
+    // C-3: unverified employer. Drafts are private and never need moderation;
+    // only a publish attempt is routed to the admin approval queue.
+    if (status === "draft") {
+      approvalStatus = "pending";
+      resolvedStatus = "draft";
+    } else {
+      approvalStatus = "pending";
+      resolvedStatus = "pending_approval";
+    }
   } else {
     // Verified employer self-posting without agent → auto-approved
     approvalStatus = "approved";
@@ -423,6 +443,45 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
         : null;
       const empName = (emp as { companyName?: string })?.companyName ?? "An employer";
       notifySuperAgentNewJob(saUserId, empName, title, String(job._id), ctx.locale).catch(() => {});
+    }
+  }
+
+  // ── Extraction draft write-back ─────────────────────────────────────────
+  // When this job was created from an AI extraction draft, stamp the matching
+  // draft entry as "posted" with the new jobId and auto-complete the draft if
+  // no pending jobs remain. Best-effort: a failure here MUST NOT invalidate
+  // the (already-saved) job; the draft simply stays in its previous state and
+  // the user can still discard/skip from the extractor UI.
+  const draftId = body.extractionDraftId;
+  const draftIndex = body.extractionDraftIndex;
+  if (draftId && typeof draftIndex === "number" && employerId) {
+    try {
+      // IDOR guard: scope the update by employerId so a forged draftId can
+      // never stamp or mutate another employer's extraction. employerId is the
+      // caller's employer (already used to create the job above).
+      const stamped = await ExtractionDraft.findOneAndUpdate(
+        { _id: draftId, employerId, "jobs.index": draftIndex },
+        {
+          $set: {
+            "jobs.$.status": "posted",
+            "jobs.$.postedJobId": job._id,
+          },
+        },
+        { new: true }
+      ).lean();
+
+      // Auto-complete the draft when nothing is left pending.
+      if (stamped && stamped.jobs.length > 0) {
+        const pendingLeft = stamped.jobs.filter((j: { status: string }) => j.status === "pending").length;
+        if (pendingLeft === 0) {
+          await ExtractionDraft.findByIdAndUpdate(stamped._id, {
+            status: "completed",
+            completedAt: new Date(),
+          });
+        }
+      }
+    } catch (err) {
+      console.error("[Jobs POST] ExtractionDraft write-back failed:", err);
     }
   }
 

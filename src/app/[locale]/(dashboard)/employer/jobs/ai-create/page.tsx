@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useState, useRef, useEffect, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Bot, Globe, Loader2, Mic, Send, Sparkles, Upload, WandSparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -239,6 +239,7 @@ function renderMarkdown(text: string) {
 export default function EmployerAIJobCreatePage() {
   const router = useRouter();
   const { locale } = useParams<{ locale: string }>();
+  const searchParams = useSearchParams();
   const t = useTranslations("ai");
   const currentLocale = useLocale();
   const isRtl = currentLocale === "ar";
@@ -256,6 +257,10 @@ export default function EmployerAIJobCreatePage() {
   const [voiceLanguage, setVoiceLanguage] = useState("auto");
   const [showLangPicker, setShowLangPicker] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  // Server-side ConversationThread id (resumable across tab close / logout /
+  // next day). null until the first assistant reply persists a thread.
+  const [threadId, setThreadId] = useState<string | null>(null);
+  const [restoringThread, setRestoringThread] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -310,6 +315,83 @@ export default function EmployerAIJobCreatePage() {
       /* quota / serialization — non-critical */
     }
   }, [messages, extractedJob, extractedBulkJobs]);
+
+  // ── Cross-session resume (Scenario: close tab / next day / logout) ──────
+  // ?resume=<threadId> on the URL → fetch the persisted ConversationThread
+  // and rehydrate messages + extracted job. Tier-3 persistence, mirrors the
+  // ai-extract ?draft=<id> pattern.
+  const resumeId = searchParams?.get("resume") ?? null;
+  useEffect(() => {
+    if (!resumeId) return;
+    let cancelled = false;
+    (async () => {
+      setRestoringThread(true);
+      try {
+        const res = await fetch(`/api/ai/chat/drafts/${resumeId}`, { cache: "no-store" });
+        if (!res.ok) {
+          if (!cancelled) toast.error(t("jobCreator.toastThreadUnavailable"));
+          return;
+        }
+        const { thread } = (await res.json()) as {
+          thread: {
+            messages: Array<{ role: "user" | "assistant" | "system"; content: string }>;
+            meta?: { extractedJob?: ExtractedJob | null; extractedBulkJobs?: ExtractedJob[] };
+          };
+        };
+        if (cancelled || !thread.messages?.length) return;
+        // Filter out "system" role messages — the chat UI Message type only
+        // supports "user" | "assistant"; system messages are transient and not
+        // rendered, so dropping them on restore is safe.
+        setMessages(thread.messages.filter((m) => m.role !== "system") as never);
+        setThreadId(resumeId);
+        if (thread.meta?.extractedJob) setExtractedJob(thread.meta.extractedJob);
+        if (thread.meta?.extractedBulkJobs) setExtractedBulkJobs(thread.meta.extractedBulkJobs);
+      } catch {
+        if (!cancelled) toast.error(t("jobCreator.toastThreadUnavailable"));
+      } finally {
+        if (!cancelled) setRestoringThread(false);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resumeId]);
+
+  // ── Server-persist after each completed assistant reply ────────────────
+  // Fires whenever messages change AND the last message is an assistant turn
+  // (i.e. the AI just finished responding). One upsert per completed reply —
+  // NOT per token, NOT on user keystroke. Mirrors ChatGPT's save cadence.
+  useEffect(() => {
+    if (restoringThread) return; // don't race with the resume fetch
+    if (messages.length <= 1) return; // skip the initial greeting
+    const last = messages[messages.length - 1];
+    if (last?.role !== "assistant") return;
+    // Skip the placeholder empty assistant bubble during streaming.
+    if (!last.content || !last.content.trim()) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/ai/chat/drafts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...(threadId ? { threadId } : {}),
+            messages: messages.map((m) => ({ role: m.role, content: m.content })),
+            ...(extractedJob ? { extractedJob } : {}),
+            ...(extractedBulkJobs.length > 0 ? { extractedBulkJobs } : {}),
+          }),
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as { threadId: string };
+        if (!cancelled && data.threadId && data.threadId !== threadId) {
+          setThreadId(data.threadId);
+        }
+      } catch {
+        // Best-effort — a failed persist must not interrupt the chat.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [messages, extractedJob, extractedBulkJobs, threadId, restoringThread]);
 
   const sendMessage = async () => {
     if (!input.trim() || isStreaming || isRecording || isVoiceProcessing) return;
@@ -390,6 +472,11 @@ export default function EmployerAIJobCreatePage() {
     try {
       sessionStorage.setItem(AI_PREFILL_STORAGE_KEY, JSON.stringify(buildPrefill(extractedJob)));
       sessionStorage.removeItem(AI_CHAT_STORAGE_KEY);
+      // Mark the server-side thread as inactive so the dashboard card stops
+      // surfacing it once the draft has been carried into the job form.
+      if (threadId) {
+        fetch(`/api/ai/chat/drafts/${threadId}`, { method: "DELETE" }).catch(() => {});
+      }
       router.push(`/${locale}/employer/jobs/new?mode=manual&prefill=ai`);
     } catch {
       toast.error(t("jobCreator.failedOpenForm"));

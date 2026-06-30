@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Plus, Edit2, Eye, Clock, CheckCircle, FileText, Trash2, Copy, Users, BriefcaseBusiness, ShieldCheck, BookTemplate, Search, Sparkles, ArrowRight, GitBranch, SlidersHorizontal, PauseCircle, PlayCircle, MoreHorizontal, Image as ImageIcon } from "lucide-react";
+import { Plus, Edit2, Eye, Clock, CheckCircle, FileText, Trash2, Copy, Users, BriefcaseBusiness, ShieldCheck, BookTemplate, Search, Sparkles, ArrowRight, GitBranch, SlidersHorizontal, PauseCircle, PlayCircle, MoreHorizontal, Image as ImageIcon, Send, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { TableToolbar } from "@/components/shared/TableToolbar";
+import { DraftExtractionsCard, DraftJobsCard } from "@/components/features/employer/dashboard";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useTableExport } from "@/hooks/useTableExport";
 import { useConfirm } from "@/hooks/useConfirm";
@@ -28,14 +29,29 @@ import type { ExportColumn } from "@/lib/export";
 const STATUS_COLORS: Record<string, string> = {
   active: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-500/30",
   draft: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-500/30",
+  pending_approval: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-500/30",
   paused: "bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-500/30",
   closed: "bg-muted text-muted-foreground",
   expired: "bg-red-100 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-500/30",
 };
 
+// Map job.status → human label key. Avoids rendering raw snake_case status strings.
+const STATUS_LABEL_KEYS: Record<string, string> = {
+  active: "statusLabelActive",
+  draft: "statusLabelDraft",
+  pending_approval: "statusLabelPendingApproval",
+  paused: "statusLabelPaused",
+  closed: "statusLabelClosed",
+  expired: "statusLabelExpired",
+};
+
+function getStatusLabelKey(status: string): string {
+  return STATUS_LABEL_KEYS[status] ?? "statusLabelDraft";
+}
+
 const JOB_SUMMARY_MAX_LENGTH = 180;
 
-type PendingJobAction = "activate" | "deactivate" | "pause" | "delete";
+type PendingJobAction = "activate" | "deactivate" | "pause" | "delete" | "submit" | "withdraw";
 
 export default function EmployerJobsPage() {
   const router = useRouter();
@@ -228,6 +244,41 @@ export default function EmployerJobsPage() {
       toast.success(t("toastJobResumed"));
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : t("toastFailedResume"));
+    } finally {
+      setPendingJobAction((current) => (current?.jobId === job._id ? null : current));
+    }
+  }
+
+  // Submit a draft for admin approval. PATCH reroutes unverified employers'
+  // status:"active" → "pending_approval" on the server (see api/jobs/[id]/route.ts).
+  async function handleSubmitForApproval(job: Job) {
+    const ok = await confirmDialog(t("confirmSubmitForApproval"));
+    if (!ok) return;
+
+    setPendingJobAction({ jobId: job._id, action: "submit" });
+
+    try {
+      await updateStatus.mutateAsync({ jobId: job._id, status: "active" });
+      toast.success(t("toastJobSubmitted"));
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : t("toastFailedSubmit"));
+    } finally {
+      setPendingJobAction((current) => (current?.jobId === job._id ? null : current));
+    }
+  }
+
+  // Withdraw a pending_approval job back to draft so the employer can keep editing.
+  async function handleWithdrawJob(job: Job) {
+    const ok = await confirmDialog(t("confirmWithdraw"));
+    if (!ok) return;
+
+    setPendingJobAction({ jobId: job._id, action: "withdraw" });
+
+    try {
+      await updateStatus.mutateAsync({ jobId: job._id, status: "draft" });
+      toast.success(t("toastJobWithdrawn"));
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : t("toastFailedWithdraw"));
     } finally {
       setPendingJobAction((current) => (current?.jobId === job._id ? null : current));
     }
@@ -433,6 +484,10 @@ export default function EmployerJobsPage() {
         </div>
       </section>
 
+      {/* ── Resume unfinished work (banners — self-hide when none) ── */}
+      <DraftJobsCard locale={locale} variant="banner" />
+      <DraftExtractionsCard locale={locale} variant="banner" />
+
       <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div>
@@ -620,7 +675,10 @@ export default function EmployerJobsPage() {
             const isDeactivating = pendingJobAction?.jobId === job._id && pendingJobAction.action === "deactivate";
             const isPausing = pendingJobAction?.jobId === job._id && pendingJobAction.action === "pause";
             const isDeleting = pendingJobAction?.jobId === job._id && pendingJobAction.action === "delete";
+            const isSubmitting = pendingJobAction?.jobId === job._id && pendingJobAction.action === "submit";
+            const isWithdrawing = pendingJobAction?.jobId === job._id && pendingJobAction.action === "withdraw";
             const jobSummary = getJobSummary(job);
+            const isUnpublished = job.status === "draft" || job.status === "pending_approval";
 
             return (
               <article
@@ -631,9 +689,17 @@ export default function EmployerJobsPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="text-base font-semibold tracking-tight text-foreground">{job.title}</h3>
-                      <Badge className={`${STATUS_COLORS[job.status] ?? ""} border px-2 py-0.5 text-[11px] font-medium capitalize`}>{job.status}</Badge>
+                      <Badge className={`${STATUS_COLORS[job.status] ?? ""} border px-2 py-0.5 text-[11px] font-medium`}>
+                        {t(getStatusLabelKey(job.status))}
+                      </Badge>
                       {job.clonedFrom ? <Badge variant="outline" className="border-blue-200 bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300"><Copy className="mr-1 h-3 w-3" />{t("clonedBadge")}</Badge> : null}
                     </div>
+                    {job.status === "draft" ? (
+                      <p className="mt-1 text-[11px] font-medium text-amber-700 dark:text-amber-300">{t("draftHint")}</p>
+                    ) : null}
+                    {job.status === "pending_approval" ? (
+                      <p className="mt-1 text-[11px] font-medium text-blue-700 dark:text-blue-300">{t("inReviewHint")}</p>
+                    ) : null}
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
                       <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">{formatLocation(job)}</span>
                       {job.category ? (
@@ -694,8 +760,13 @@ export default function EmployerJobsPage() {
 
                       {/* Contextual status action stays visible — it is the primary lifecycle control */}
                       {can("jobs", "update") && job.status === "draft" && (
-                        <Button size="sm" variant="outline" className="col-span-2 h-9 gap-1.5 rounded-xl border-emerald-200 px-3 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-500/30 dark:text-emerald-300 dark:hover:bg-emerald-950/40" onClick={() => { void handleActivateJob(job); }} disabled={isActivating}>
-                        <CheckCircle className="h-3.5 w-3.5" /> {isActivating ? t("activatingButton") : t("activateButton")}
+                        <Button size="sm" variant="outline" className="col-span-2 h-9 gap-1.5 rounded-xl border-emerald-200 px-3 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-500/30 dark:text-emerald-300 dark:hover:bg-emerald-950/40" onClick={() => { void handleSubmitForApproval(job); }} disabled={isSubmitting}>
+                        <Send className="h-3.5 w-3.5" /> {isSubmitting ? t("submittingForApprovalButton") : t("submitForApprovalButton")}
+                        </Button>
+                      )}
+                      {can("jobs", "update") && job.status === "pending_approval" && (
+                        <Button size="sm" variant="outline" className="col-span-2 h-9 gap-1.5 rounded-xl border-amber-200 px-3 text-amber-700 hover:bg-amber-50 dark:border-amber-500/30 dark:text-amber-300 dark:hover:bg-amber-950/40" onClick={() => { void handleWithdrawJob(job); }} disabled={isWithdrawing}>
+                          <Undo2 className="h-3.5 w-3.5" /> {isWithdrawing ? t("withdrawingButton") : t("withdrawButton")}
                         </Button>
                       )}
                       {can("jobs", "update") && job.status === "active" && (
@@ -727,12 +798,12 @@ export default function EmployerJobsPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-52">
-                          {can("jobs", "update") && (
+                          {can("jobs", "update") && !isUnpublished && (
                             <DropdownMenuItem onClick={() => router.push(`/${locale}/employer/jobs/${job._id}?tab=workflow`)}>
                               <GitBranch className="h-4 w-4" /> {t("workflowButton")}
                             </DropdownMenuItem>
                           )}
-                          {can("jobs", "update") && (
+                          {can("jobs", "update") && !isUnpublished && (
                             <DropdownMenuItem onClick={() => router.push(`/${locale}/employer/jobs/${job._id}?tab=matching-weights`)}>
                               <SlidersHorizontal className="h-4 w-4" /> {t("weightsButton")}
                             </DropdownMenuItem>
@@ -761,7 +832,7 @@ export default function EmployerJobsPage() {
                               )}
                             </DropdownMenuItem>
                           )}
-                          {can("jobs", "delete") && (job.status === "draft" || job.status === "paused" || job.status === "closed" || job.status === "expired") && (
+                          {can("jobs", "delete") && (job.status === "draft" || job.status === "pending_approval" || job.status === "paused" || job.status === "closed" || job.status === "expired") && (
                             <>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem

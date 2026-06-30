@@ -9,6 +9,7 @@ import { scanForMalware } from "@/lib/security/malware-scan";
 import { AI_TOKEN_LIMITS } from "@/lib/ai/sanitize";
 import { generateMultimodal, generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
 import type { UserRole } from "@/models/User";
+import { ExtractionDraft, type ExtractedJobPayload } from "@/models/ExtractionDraft";
 import mammoth from "mammoth";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
@@ -203,14 +204,48 @@ export async function POST(req: NextRequest) {
 
     // Get employer info to attach company name
     await connectDB();
-    const employer = await Employer.findOne({ userId: session.user.id }).select("companyName").lean();
+    const employer = await Employer.findOne({ userId: session.user.id }).select("_id companyName").lean();
+    const companyName =
+      extracted.companyName ?? (employer as { companyName?: string })?.companyName ?? "";
+
+    // ── Persist the extraction as a resumable draft ──────────────────────────
+    // Prevents loss of paid AI work on Back/refresh/tab-close. See repo memory
+    // `ai-extract-back-navigation-state-loss`. The draft carries the full job
+    // list + per-job status; POST /api/jobs updates it as the employer posts,
+    // and a daily Inngest cron expires drafts older than 7 days.
+    let draftId: string | null = null;
+    try {
+      const draftJobs = (extracted.jobs as ExtractedJobPayload[]).map((job, index) => ({
+        index,
+        status: "pending" as const,
+        data: job,
+      }));
+      const draft = await ExtractionDraft.create({
+        employerId: (employer as { _id: import("mongoose").Types.ObjectId })._id,
+        companyName,
+        fileName: file.name,
+        sourceMimeType: mimeType,
+        sourceLanguage: extracted.sourceLanguage ?? "en",
+        jobs: draftJobs,
+        selectedIndices: draftJobs.map((_, i) => i),
+        status: "active",
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      });
+      draftId = String(draft._id);
+    } catch (err) {
+      // Draft persistence is best-effort: the extraction itself succeeded, so
+      // we must NOT fail the request if the DB write breaks. The jobs are still
+      // returned to the client; only resume-on-back is unavailable.
+      console.error("[Job Extract] Draft persistence failed:", err);
+    }
 
     return NextResponse.json({
       success: true,
       jobs: extracted.jobs,
-      companyName: extracted.companyName ?? (employer as { companyName?: string })?.companyName ?? "",
+      companyName,
       sourceLanguage: extracted.sourceLanguage ?? "en",
       totalJobs: extracted.jobs.length,
+      draftId,
     });
   } catch (err) {
     console.error("[Job Extract] Error:", err);

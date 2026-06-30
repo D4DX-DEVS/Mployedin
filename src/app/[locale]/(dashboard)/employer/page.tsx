@@ -11,6 +11,9 @@ import {
   TimeToHire,
   JobStatusQuickFilters,
   AIRecommendedCandidatesCard,
+  DraftExtractionsCard,
+  DraftJobsCard,
+  AIChatDraftsCard,
 } from "@/components/features/employer/dashboard";
 import { CandidateQualityChartLazy as CandidateQualityChart } from "@/components/features/employer/dashboard/CandidateQualityChartLazy";
 
@@ -55,6 +58,17 @@ export default async function EmployerDashboard({ params }: { params: Promise<{ 
         lastActivityMinutes={lastActivityMinutes}
         locale={locale}
       />
+
+      {/* ── Continue Your Work (resume surfaces, all self-hide when empty) ── */}
+      {/* Three distinct resume states, stacked by recency / urgency:
+          1. Draft Jobs        — manual form autosave (Job{status:"draft"})
+          2. AI Chat Drafts    — conversational AI creator transcripts
+          3. AI Extractions    — batch-extracted unposted jobs
+          Each renders only when the employer has work-in-progress of that type;
+          on a clean dashboard they collapse to nothing. */}
+      <DraftJobsCard locale={locale} />
+      <AIChatDraftsCard locale={locale} />
+      <DraftExtractionsCard locale={locale} />
 
       {/* ── Job Status Quick Filters (Active / Draft / Paused) ── */}
       <JobStatusQuickFilters

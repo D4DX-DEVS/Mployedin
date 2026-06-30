@@ -9,6 +9,8 @@ import { jobExpiryAlertsCron } from "@/lib/inngest/jobExpiryAlerts";
 import { similarJobsAfterApply } from "@/lib/inngest/similarJobsEmail";
 import { aiScreenApplication } from "@/lib/inngest/aiScreenApplication";
 import { emailSequenceSenderCron } from "@/lib/inngest/emailSequenceSender";
+import { extractionDraftExpiryCron } from "@/lib/inngest/extractionDraftExpiry";
+import { aiChatDraftExpiryCron } from "@/lib/inngest/aiChatDraftExpiry";
 import { scheduledCronFunctions } from "@/lib/inngest/scheduledCrons";
 // TODO: Re-add autoApplyFunction & autoApplyDailyReset when auto-apply feature is ready
 // import { autoApplyFunction, autoApplyDailyReset } from "@/lib/inngest/autoApply";
@@ -26,6 +28,10 @@ export const { GET, POST, PUT } = serve({
     similarJobsAfterApply,
     aiScreenApplication,
     emailSequenceSenderCron,
+    // Expires abandoned AI extraction drafts after their 7-day window.
+    extractionDraftExpiryCron,
+    // Expires abandoned AI job-creator chat drafts after their 7-day window.
+    aiChatDraftExpiryCron,
     // Scheduled crons migrated off GitHub Actions (replaces scheduled-crons.yml)
     ...scheduledCronFunctions,
   ],

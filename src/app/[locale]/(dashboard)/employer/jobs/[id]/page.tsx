@@ -6,6 +6,7 @@ import {
   ArrowLeft, Edit2, Copy, CheckCircle, XCircle, Clock, MapPin,
   Briefcase, DollarSign, Users, Eye, Calendar, Tag, Trash2,
   GitBranch, SlidersHorizontal, PauseCircle, PlayCircle, Image as ImageIcon,
+  Send, Undo2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -49,10 +50,20 @@ interface Job {
 const STATUS_COLORS: Record<string, string> = {
   active: "bg-emerald-100 text-emerald-700 border-emerald-200",
   draft: "bg-amber-100 text-amber-700 border-amber-200",
+  pending_approval: "bg-blue-100 text-blue-700 border-blue-200",
   paused: "bg-sky-100 text-sky-700 border-sky-200",
   closed: "bg-muted text-muted-foreground",
   expired: "bg-red-100 text-red-700 border-red-200",
-  pending_approval: "bg-blue-100 text-blue-700 border-blue-200",
+};
+
+// Map job.status → translated status label key (no raw snake_case in UI).
+const STATUS_LABEL_KEYS: Record<string, string> = {
+  active: "statusActive",
+  draft: "statusDraft",
+  pending_approval: "statusPendingApproval",
+  paused: "statusPaused",
+  closed: "statusClosed",
+  expired: "statusExpired",
 };
 
 export default function JobDetailPage() {
@@ -68,6 +79,8 @@ export default function JobDetailPage() {
   const deleteMutation = useDeleteJob();
   const [cloning, setCloning] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
   const [posterOpen, setPosterOpen] = useState(false);
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
 
@@ -80,6 +93,31 @@ export default function JobDetailPage() {
 
   async function updateStatus(status: string) {
     updateStatusMutation.mutate({ jobId: id, status });
+  }
+
+  async function handleSubmitForApproval() {
+    const ok = await confirmDialog(t("confirmSubmitForApproval"));
+    if (!ok) return;
+    setSubmitting(true);
+    try {
+      // PATCH reroutes status:"active" → "pending_approval" for unverified
+      // employers (see api/jobs/[id]/route.ts) so this succeeds for everyone.
+      await updateStatusMutation.mutateAsync({ jobId: id, status: "active" });
+    } catch {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleWithdraw() {
+    const ok = await confirmDialog(t("confirmWithdraw"));
+    if (!ok) return;
+    setWithdrawing(true);
+    try {
+      await updateStatusMutation.mutateAsync({ jobId: id, status: "draft" });
+      setWithdrawing(false);
+    } catch {
+      setWithdrawing(false);
+    }
   }
 
   async function handleDelete() {
@@ -169,11 +207,16 @@ export default function JobDetailPage() {
             </Button>
           )}
           {can("jobs", "update") && job.status === "draft" && (
-            <Button size="sm" className="gap-1.5 h-9 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => updateStatus("active")}>
-              <CheckCircle className="w-3.5 h-3.5" /> {t("activate")}
+            <Button size="sm" className="gap-1.5 h-9 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => { void handleSubmitForApproval(); }} disabled={submitting}>
+              <Send className="w-3.5 h-3.5" /> {submitting ? t("submittingForApproval") : t("submitForApproval")}
             </Button>
           )}
-          {can("jobs", "delete") && job.status === "draft" && (
+          {can("jobs", "update") && job.status === "pending_approval" && (
+            <Button size="sm" variant="outline" className="gap-1.5 h-9 border-amber-200 text-amber-700 hover:bg-amber-50" onClick={() => { void handleWithdraw(); }} disabled={withdrawing}>
+              <Undo2 className="w-3.5 h-3.5" /> {withdrawing ? t("withdrawing") : t("withdraw")}
+            </Button>
+          )}
+          {can("jobs", "delete") && (job.status === "draft" || job.status === "pending_approval") && (
             <Button size="sm" variant="outline" className="gap-1.5 h-9 border-destructive/20 text-destructive hover:bg-destructive/5"
               onClick={() => { void handleDelete(); }} disabled={deleting}>
               <Trash2 className="w-3.5 h-3.5" /> {deleting ? t("deleting") : t("deleteDraft")}
@@ -230,9 +273,21 @@ export default function JobDetailPage() {
             </div>
           </div>
           <Badge className={`${STATUS_COLORS[job.status] ?? ""} border text-xs font-semibold px-2.5 py-1 shrink-0`}>
-            {job.status.replace("_", " ")}
+            {t(STATUS_LABEL_KEYS[job.status] ?? "statusDraft")}
           </Badge>
         </div>
+
+        {/* Draft / In-review state hint — makes the unpublished status unambiguous */}
+        {job.status === "draft" ? (
+          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 dark:border-amber-500/30 dark:bg-amber-950/40 dark:text-amber-200">
+            {t("statusDraftHint")}
+          </div>
+        ) : null}
+        {job.status === "pending_approval" ? (
+          <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-800 dark:border-blue-500/30 dark:bg-blue-950/40 dark:text-blue-200">
+            {t("statusPendingApprovalHint")}
+          </div>
+        ) : null}
 
         {/* Stats row */}
         <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-border/60 rounded-xl border border-border/60 bg-muted/30 overflow-hidden">

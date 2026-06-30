@@ -78,6 +78,11 @@ export const jobCreateSchema = z.object({
   visibility: z.enum(["public", "private", "invite_only"]).optional(),
   status: z.enum(["draft", "active"]).optional(),
   screeningQuestions: z.array(screeningQuestionSchema).max(20).optional(),
+  // Extraction draft write-back: when this job is created from an active AI
+  // extraction draft, the client passes both fields so we can stamp the draft
+  // entry as "posted" + record the new jobId. Optional — manual creation omits.
+  extractionDraftId: commonSchemas.objectId.optional(),
+  extractionDraftIndex: z.number().int().min(0).max(199).optional(),
 });
 
 export const jobUpdateSchema = z.object({

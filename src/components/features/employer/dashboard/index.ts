@@ -12,5 +12,8 @@ export { CandidateQualityChart } from "./CandidateQualityChart";
 export { CurrentOpeningsList, OpeningsStats, TimeToHire } from "./StatsCards";
 export { JobStatusQuickFilters } from "./JobStatusQuickFilters";
 export { AIRecommendedCandidatesCard } from "./AIRecommendedCandidatesCard";
+export { DraftExtractionsCard } from "./DraftExtractionsCard";
+export { DraftJobsCard } from "./DraftJobsCard";
+export { AIChatDraftsCard } from "./AIChatDraftsCard";
 export type { ActiveJob } from "./ActiveJobsList";
 export type { EnhancedJob } from "./EnhancedJobsList";

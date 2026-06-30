@@ -146,6 +146,13 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
 
   // Track whether AI prefill has been applied to prevent localStorage draft from overwriting it
   const aiPrefillApplied = useRef(false);
+  // Carries extractionDraftId + extractionDraftIndex when this form session is
+  // editing a job from a persisted AI extraction (Edit & Post path). Forwarded
+  // as-is to POST /api/jobs so the draft entry gets stamped as "posted".
+  const aiExtractionDraftRef = useRef<{
+    extractionDraftId: string;
+    extractionDraftIndex: number;
+  } | null>(null);
 
   // Restore draft from localStorage on mount
   useEffect(() => {
@@ -156,8 +163,22 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
       const rawPrefill = sessionStorage.getItem(AI_PREFILL_STORAGE_KEY);
       if (rawPrefill) {
         try {
-          const parsed = JSON.parse(rawPrefill) as Partial<JobFormValues>;
-          reset(mergeJobFormValues(DEFAULT_JOB_FORM_VALUES, parsed));
+          const parsed = JSON.parse(rawPrefill) as Partial<JobFormValues> & {
+            extractionDraftId?: string;
+            extractionDraftIndex?: number;
+          };
+          // Pull the draft write-back ref BEFORE merging into form state
+          // (those keys aren't JobFormValues so reset() must not see them).
+          if (parsed.extractionDraftId && typeof parsed.extractionDraftIndex === "number") {
+            aiExtractionDraftRef.current = {
+              extractionDraftId: parsed.extractionDraftId,
+              extractionDraftIndex: parsed.extractionDraftIndex,
+            };
+          } else {
+            aiExtractionDraftRef.current = null;
+          }
+          const { extractionDraftId: _omit, extractionDraftIndex: _omit2, ...formValues } = parsed;
+          reset(mergeJobFormValues(DEFAULT_JOB_FORM_VALUES, formValues));
           sessionStorage.removeItem(AI_PREFILL_STORAGE_KEY);
           aiPrefillApplied.current = true;
           return;
@@ -283,6 +304,9 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
         expiresAt: values.expiresAt
           ? new Date(values.expiresAt).toISOString()
           : undefined,
+        // Forward the extraction draft write-back ref when present (Edit & Post
+        // path) so /api/jobs stamps the draft entry as posted.
+        ...(aiExtractionDraftRef.current ?? {}),
       };
 
       const url = draftId ? `/api/jobs/${draftId}` : "/api/jobs";

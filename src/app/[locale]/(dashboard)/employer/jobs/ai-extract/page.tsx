@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
@@ -34,6 +34,42 @@ interface ExtractedJob {
 type PostingStatus = "idle" | "posting" | "posted" | "error";
 
 const AI_PREFILL_STORAGE_KEY = "job-ai-prefill";
+const AI_EXTRACT_SNAPSHOT_KEY = "job-ai-extract-snapshot";
+
+/**
+ * Tier-1 within-tab restore: read whatever we persisted to sessionStorage on
+ * the last extraction. Survives Back / F5 in the same tab only — NOT tab
+ * close (that's the dashboard "Continue extraction" card path via ?draft=ID).
+ *
+ * Mirrors `ai-create`'s `readChatSession()`. Includes a 24h staleness gate so
+ * a stale extract from a previous session doesn't surprise the user.
+ */
+interface SessionSnapshot {
+  draftId: string | null;
+  fileName: string | null;
+  jobs: ExtractedJob[];
+  companyName: string;
+  selectedIndices: number[];
+  postingStatuses: Record<string, PostingStatus>;
+  savedAt: number;
+}
+
+function readSessionSnapshot(): SessionSnapshot | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(AI_EXTRACT_SNAPSHOT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as SessionSnapshot;
+    // Staleness gate: ignore snapshots older than 24h.
+    if (!parsed.savedAt || Date.now() - parsed.savedAt > 24 * 60 * 60 * 1000) {
+      sessionStorage.removeItem(AI_EXTRACT_SNAPSHOT_KEY);
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
 
 function buildPrefill(job: ExtractedJob): Partial<JobFormValues> {
   return {
@@ -74,16 +110,128 @@ export default function AIJobExtractPage() {
   const router = useRouter();
   const { locale } = useParams<{ locale: string }>();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const searchParams = useSearchParams();
+
+  // ── Hydration sources (ordered by priority) ─────────────────────────────
+  // 1. ?draft=<id> query — coming from the dashboard "Continue extraction"
+  //    card; needs an async fetch from /api/ai/job-extract/drafts/[id].
+  // 2. sessionStorage snapshot — survives Back / F5 within the same tab,
+  //    mirroring the working `ai-create` page pattern (see repo memory).
+  // 3. Empty — fresh upload.
+  const draftIdFromUrl = searchParams?.get("draft") ?? null;
+  const sessionSnapshot = readSessionSnapshot();
 
   const [dragActive, setDragActive] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [extracting, setExtracting] = useState(false);
-  const [extractedJobs, setExtractedJobs] = useState<ExtractedJob[]>([]);
-  const [companyName, setCompanyName] = useState("");
-  const [selectedJobs, setSelectedJobs] = useState<Set<number>>(new Set());
-  const [postingStatuses, setPostingStatuses] = useState<Map<number, PostingStatus>>(new Map());
+  const [restoringDraft, setRestoringDraft] = useState(Boolean(draftIdFromUrl));
+  const [draftId, setDraftId] = useState<string | null>(
+    draftIdFromUrl ?? sessionSnapshot?.draftId ?? null
+  );
+  const [fileName, setFileName] = useState<string | null>(
+    sessionSnapshot?.fileName ?? null
+  );
+  const [extractedJobs, setExtractedJobs] = useState<ExtractedJob[]>(
+    sessionSnapshot?.jobs ?? []
+  );
+  const [companyName, setCompanyName] = useState<string>(
+    sessionSnapshot?.companyName ?? ""
+  );
+  const [selectedJobs, setSelectedJobs] = useState<Set<number>>(
+    new Set(sessionSnapshot?.selectedIndices ?? [])
+  );
+  const [postingStatuses, setPostingStatuses] = useState<Map<number, PostingStatus>>(
+    new Map(Object.entries(sessionSnapshot?.postingStatuses ?? {}).map(
+      ([k, v]) => [Number(k), v as PostingStatus]
+    ))
+  );
   const [bulkPosting, setBulkPosting] = useState(false);
+
+  // ── Cross-session resume: fetch the draft when arriving via ?draft=<id> ──
+  // Covers Scenario 1 & 2 (closed tab / new day). The sessionSnapshot only
+  // handles within-tab Back/refresh; the API fetch handles across-session.
+  useEffect(() => {
+    if (!draftIdFromUrl) return;
+    let cancelled = false;
+    (async () => {
+      setRestoringDraft(true);
+      try {
+        const res = await fetch(`/api/ai/job-extract/drafts/${draftIdFromUrl}`, {
+          cache: "no-store",
+        });
+        if (!res.ok) {
+          if (!cancelled) toast.error(t("toastDraftUnavailable"));
+          return;
+        }
+        const { draft } = (await res.json()) as {
+          draft: {
+            jobs: Array<{ index: number; status: PostingStatus; data: ExtractedJob }>;
+            companyName?: string;
+            fileName: string;
+            selectedIndices?: number[];
+          };
+        };
+        if (cancelled) return;
+
+        const jobs = draft.jobs
+          .slice()
+          .sort((a, b) => a.index - b.index)
+          .map((j) => j.data);
+        const statuses = new Map<number, PostingStatus>();
+        for (const j of draft.jobs) {
+          // Map draft job status → client posting status. ("posted" → posted,
+          //  "skipped" → error-ish? no — keep idle so the user can still re-post.
+          //  Only "posted" is terminal.)
+          if (j.status === "posted") statuses.set(j.index, "posted");
+        }
+        setExtractedJobs(jobs);
+        setCompanyName(draft.companyName ?? "");
+        setFileName(draft.fileName);
+        setDraftId(draftIdFromUrl);
+        setPostingStatuses(statuses);
+        setSelectedJobs(new Set(draft.selectedIndices ?? jobs.map((_, i) => i)));
+      } catch {
+        if (!cancelled) toast.error(t("toastDraftUnavailable"));
+      } finally {
+        if (!cancelled) setRestoringDraft(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftIdFromUrl]);
+
+  // ── Persist snapshot to sessionStorage on every change (Tier 1) ──────────
+  // Same shape + clear-on-consume contract as `ai-create`'s chat session.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (extractedJobs.length === 0) return; // never clobber with the empty state
+    try {
+      sessionStorage.setItem(
+        AI_EXTRACT_SNAPSHOT_KEY,
+        JSON.stringify({
+          draftId,
+          fileName,
+          jobs: extractedJobs,
+          companyName,
+          selectedIndices: Array.from(selectedJobs),
+          postingStatuses: Object.fromEntries(postingStatuses),
+          savedAt: Date.now(),
+        })
+      );
+    } catch {
+      /* quota / serialization — non-critical */
+    }
+    // Celar the snapshot once every job is posted so a future Back doesn't
+    // resurrect a fully-completed extraction.
+    if (postingStatuses.size > 0 &&
+        Array.from(postingStatuses.values()).every((s) => s === "posted") &&
+        postingStatuses.size === extractedJobs.length) {
+      try { sessionStorage.removeItem(AI_EXTRACT_SNAPSHOT_KEY); } catch { /* noop */ }
+    }
+  }, [extractedJobs, companyName, selectedJobs, postingStatuses, draftId, fileName]);
 
   const handleFile = useCallback((f: File) => {
     const allowedTypes = [
@@ -105,6 +253,10 @@ export default function AIJobExtractPage() {
     setExtractedJobs([]);
     setSelectedJobs(new Set());
     setPostingStatuses(new Map());
+    // New upload → new extraction: forget any prior draft so we don't
+    // accidentally stamp a stale draft's entries with the new jobs.
+    setDraftId(null);
+    setFileName(null);
 
     // Generate preview for images
     if (f.type.startsWith("image/")) {
@@ -145,6 +297,8 @@ export default function AIJobExtractPage() {
       const data = await res.json();
       setExtractedJobs(data.jobs);
       setCompanyName(data.companyName ?? "");
+      setFileName(file.name);
+      if (data.draftId) setDraftId(data.draftId);
       // Select all jobs by default
       setSelectedJobs(new Set(data.jobs.map((_: ExtractedJob, i: number) => i)));
       toast.success(t("toastExtracted", { count: data.totalJobs }));
@@ -164,9 +318,15 @@ export default function AIJobExtractPage() {
     });
   };
 
-  const editInForm = (job: ExtractedJob) => {
+  const editInForm = (job: ExtractedJob, index: number) => {
     try {
-      sessionStorage.setItem(AI_PREFILL_STORAGE_KEY, JSON.stringify(buildPrefill(job)));
+      // Carry the ExtractionDraft id + index in the same payload so JobFormWizard
+      // can forward them to POST /api/jobs and the draft entry gets stamped.
+      const prefill = {
+        ...buildPrefill(job),
+        ...(draftId ? { extractionDraftId: draftId, extractionDraftIndex: index } : {}),
+      };
+      sessionStorage.setItem(AI_PREFILL_STORAGE_KEY, JSON.stringify(prefill));
       router.push(`/${locale}/employer/jobs/new?mode=manual&prefill=ai`);
     } catch {
       toast.error(t("toastFormFailed"));
@@ -181,6 +341,9 @@ export default function AIJobExtractPage() {
       const payload = {
         ...buildPrefill(job),
         status: "active",
+        // Write-back hooks: tell /api/jobs which extraction draft entry to
+        // stamp as "posted" + record the new jobId.
+        ...(draftId ? { extractionDraftId: draftId, extractionDraftIndex: index } : {}),
       };
 
       const res = await fetch("/api/jobs", {
@@ -222,6 +385,7 @@ export default function AIJobExtractPage() {
         const payload = {
           ...buildPrefill(job),
           status: "active",
+          ...(draftId ? { extractionDraftId: draftId, extractionDraftIndex: index } : {}),
         };
 
         const res = await fetch("/api/jobs", {
@@ -580,7 +744,7 @@ export default function AIJobExtractPage() {
                           variant="ghost"
                           size="sm"
                           className="h-7 text-xs gap-1"
-                          onClick={() => editInForm(job)}
+                          onClick={() => editInForm(job, index)}
                         >
                           <Edit className="h-3 w-3" />
                           {t("editAndPost")}

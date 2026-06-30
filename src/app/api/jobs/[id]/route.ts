@@ -45,13 +45,14 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     if (!emp || String(job.employerId) !== String(emp._id)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-    // Domain gate: only verified employers can publish (set status to 'active')
+    // Domain gate: unverified employers cannot self-publish. Reroute a publish
+    // attempt (status === "active") to the moderation queue ("pending_approval")
+    // instead of hard-rejecting — this makes an explicit "Submit for Approval"
+    // CTA succeed for unverified employers and matches the POST createHandler
+    // behavior. Admins approve via /api/admin/jobs/[id]/approve.
     const bodyRecord2 = body as Record<string, unknown>;
     if (bodyRecord2.status === "active" && !emp.domainVerified) {
-      return NextResponse.json(
-        { error: "Domain not verified. Please verify your company domain before publishing jobs." },
-        { status: 403 }
-      );
+      bodyRecord2.status = "pending_approval";
     }
   } else if (ctx.role === "agent") {
     // Scope agent writes to jobs they own or jobs of their assigned employers.
@@ -63,12 +64,10 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
       )
     );
     if (!ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    // Agents cannot directly publish jobs; admin approval is required.
-    if ((body as Record<string, unknown>).status === "active") {
-      return NextResponse.json(
-        { error: "Jobs must be approved by an admin before publishing." },
-        { status: 403 }
-      );
+    // Agents cannot directly publish jobs; reroute to moderation queue.
+    const bodyRecord3 = body as Record<string, unknown>;
+    if (bodyRecord3.status === "active") {
+      bodyRecord3.status = "pending_approval";
     }
   } else if (ctx.role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
