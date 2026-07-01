@@ -116,7 +116,7 @@ InterviewSchema.index({ status: 1 });
 // Prevent duplicate active interviews for same application + round (race condition guard)
 InterviewSchema.index(
   { applicationId: 1, interviewRound: 1 },
-  { unique: true, partialFilterExpression: { status: { $in: ["scheduled", "confirmed"] } } }
+  {   name: "unique_active_interview_round_per_application", unique: true, partialFilterExpression: { status: { $in: ["scheduled", "confirmed"] } } }
 );
 
 export const Interview =

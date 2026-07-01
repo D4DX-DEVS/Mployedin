@@ -181,7 +181,10 @@ export function DraftExtractionsCard({ locale, variant = "card" }: DraftExtracti
               <p className="truncate text-sm font-medium text-foreground">{d.fileName}</p>
               <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
                 <span>
-                  {t("jobsRemaining", { count: d.remainingCount, total: d.totalJobs })}
+                {t("jobsRemaining", {
+  remaining: d.remainingCount,
+  total: d.totalJobs,
+})}
                 </span>
                 <span className="inline-flex items-center gap-1">
                   <Clock className="h-3 w-3" />
