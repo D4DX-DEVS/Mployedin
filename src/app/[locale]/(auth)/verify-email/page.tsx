@@ -25,6 +25,7 @@ export default function VerifyEmailPage() {
   const [otp, setOtp] = useState("");
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [otpError, setOtpError] = useState("");
+  const [linkError, setLinkError] = useState("");
 
   const handleResend = useCallback(async () => {
     if (!emailParam || resending) return;
@@ -100,8 +101,17 @@ export default function VerifyEmailPage() {
           await updateSession({ isEmailVerified: true });
           setStatus("success");
         } else {
-          setStatus("error");
-          setMessage(data.error ?? "Verification failed. The link may have expired.");
+          // Link failed (expired/already used). If we know the email — link
+          // URLs carry &email= — drop the user into the code-entry view so they
+          // can still verify via OTP or resend, rather than hitting a dead-end
+          // error screen with no recovery path.
+          if (emailParam) {
+            setLinkError(data.error ?? "That link is invalid or has expired. Enter the code from your email below, or resend it.");
+            setStatus("no-token");
+          } else {
+            setStatus("error");
+            setMessage(data.error ?? "Verification failed. The link may have expired.");
+          }
         }
       } catch {
         setStatus("error");
@@ -110,7 +120,7 @@ export default function VerifyEmailPage() {
     };
 
     verify();
-  }, [token, updateSession]);
+  }, [token, emailParam, updateSession]);
 
   return (
     <div className="w-full flex flex-col gap-8">
@@ -197,6 +207,12 @@ export default function VerifyEmailPage() {
               . Enter the code below to activate your account — or click the link in the email.
             </p>
           </div>
+
+          {linkError && (
+            <div role="alert" className="w-full max-w-xs p-3 rounded-xl bg-destructive/10 border border-destructive/30 text-left">
+              <p className="text-xs text-destructive">{linkError}</p>
+            </div>
+          )}
 
           {emailFailed && (
             <div className="w-full max-w-xs p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-left">

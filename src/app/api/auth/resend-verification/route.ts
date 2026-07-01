@@ -4,6 +4,7 @@ import { User } from "@/models/User";
 import crypto from "crypto";
 import { checkRateLimit } from "@/lib/security/rateLimit";
 import { sendEmail, EmailTemplates } from "@/lib/communications/email";
+import { hashOtp } from "@/lib/auth/emailVerification";
 import { z } from "zod";
 
 const schema = z.object({
@@ -47,8 +48,8 @@ export async function POST(req: NextRequest) {
 
   // Generate a 6-digit OTP alongside the link. Both methods share the same
   // expiry window so users can pick whichever is more convenient.
-  const otp = String(Math.floor(100000 + Math.random() * 900000));
-  const hashedOtp = crypto.createHash("sha256").update(otp).digest("hex");
+  const otp = crypto.randomInt(100000, 1000000).toString();
+  const hashedOtp = hashOtp(otp);
 
   user.emailVerificationToken = hashedToken;
   user.emailVerificationOtp = hashedOtp;

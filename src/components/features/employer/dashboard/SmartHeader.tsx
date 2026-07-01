@@ -7,7 +7,6 @@ import {
   ChevronRight,
   Clock,
   FileText,
-  Plus,
   Sparkles,
 } from "lucide-react";
 
@@ -104,7 +103,7 @@ export function SmartHeader({
             href={newJobHref}
             className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white transition hover:bg-sky-700"
           >
-            <Plus className="h-4 w-4" />
+            <Sparkles className="h-4 w-4" />
             {t("createJob")}
           </Link>
         </div>

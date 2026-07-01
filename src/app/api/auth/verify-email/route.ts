@@ -4,6 +4,7 @@ import { User } from "@/models/User";
 import crypto from "crypto";
 import { checkRateLimit } from "@/lib/security/rateLimit";
 import { logActivity } from "@/lib/audit/log";
+import { hashOtp } from "@/lib/auth/emailVerification";
 import { z } from "zod";
 
 const schema = z.object({
@@ -35,12 +36,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
+  // Per-account brute-force guard for OTP: the IP limit above doesn't stop a
+  // distributed attacker hammering one email from many IPs, and a 6-digit code
+  // has only 1M combinations. Bound attempts per email regardless of IP.
+  if (body.otp) {
+    const emailKey = (body.email as string).toLowerCase().trim();
+    const { allowed: otpAllowed } = await checkRateLimit(`verify-otp:${emailKey}`, { limit: 5, windowSec: 300, prefix: "votp" });
+    if (!otpAllowed) {
+      return NextResponse.json({ error: "Too many attempts. Please wait a few minutes." }, { status: 429 });
+    }
+  }
+
   await connectDB();
 
   let user: Awaited<ReturnType<typeof User.findOne>>;
 
   if (body.otp) {
-    const hashedOtp = crypto.createHash("sha256").update(body.otp).digest("hex");
+    const hashedOtp = hashOtp(body.otp);
     // Scope by email so a correctly-guessed OTP only ever matches the
     // account it was requested for, not whichever pending signup holds it.
     user = await User.findOne({

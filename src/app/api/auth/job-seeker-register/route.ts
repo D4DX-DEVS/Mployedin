@@ -10,6 +10,7 @@ import { autoAssignDefaultPlan } from "@/lib/subscription/autoAssign";
 import { sendEmail, EmailTemplates } from "@/lib/communications/email";
 import { validateBody } from "@/lib/validators";
 import { jobSeekerRegisterSchema } from "@/lib/validators/misc";
+import { hashOtp } from "@/lib/auth/emailVerification";
 
 export const runtime = "nodejs";
 
@@ -37,8 +38,8 @@ export async function POST(req: NextRequest) {
     // Generate email verification token
     const rawToken = crypto.randomBytes(32).toString("hex");
     const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
-    const otp = String(Math.floor(100000 + Math.random() * 900000));
-    const hashedOtp = crypto.createHash("sha256").update(otp).digest("hex");
+    const otp = crypto.randomInt(100000, 1000000).toString();
+    const hashedOtp = hashOtp(otp);
 
     const user = await User.create({
       name: name.trim(),

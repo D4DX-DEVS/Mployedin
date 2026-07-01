@@ -166,56 +166,58 @@ export function PriorityActions({
           const PriorityIcon = config.icon;
           const isUrgent = action.priority === "urgent";
 
+          // Compact, fully-clickable row: badge → task → CTA line. Content flows
+          // top-to-bottom so it never crams a horizontal button into the narrow
+          // 1/3-width dashboard column (the old xl:flex-row layout wrapped badly).
           return (
-            <div
+            <Link
               key={`${action.href}-${action.textKey}`}
+              href={action.href}
               className={cn(
-                "flex flex-col gap-3.5 rounded-[22px] border p-3.5 transition-all xl:flex-row xl:items-center xl:gap-3 xl:p-4",
+                "group flex items-start gap-3 rounded-[22px] border p-3.5 transition-all hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500",
                 isUrgent && idx === 0
                   ? "border-red-200 dark:border-red-500/30 bg-[linear-gradient(135deg,_rgba(254,242,242,0.96),_rgba(255,255,255,0.98))] dark:bg-[linear-gradient(135deg,_rgba(127,29,29,0.18),_rgba(30,30,30,0.95))]"
-                  : "border-border bg-background/80 hover:-translate-y-0.5 hover:border-sky-500/25"
+                  : "border-border bg-background/80 hover:border-sky-500/25"
               )}
             >
-              <div className="flex flex-1 items-start gap-3">
-                <div className={cn(
-                  "mt-0.5 flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] shrink-0",
-                  config.badgeBg,
-                  config.badgeText
-                )}>
-                  <PriorityIcon className="h-3 w-3" />
-                  {t(config.labelKey)}
-                </div>
-
-                <div className={cn(
-                  "rounded-2xl p-2.5 shrink-0",
-                  isUrgent ? "bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-300" : "bg-slate-100 text-slate-600 dark:bg-slate-800/80 dark:text-slate-300"
-                )}>
-                  <Icon className="h-4 w-4" />
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    {idx === 0 ? t("recommendedNext") : t("keepMomentum")}
-                  </p>
-                  <span className="mt-1.5 block text-sm leading-5 text-foreground/85">
-                    {t(action.textKey, action.textValues)}
-                  </span>
-                </div>
-              </div>
-
-              <Link
-                href={action.href}
+              <div
                 className={cn(
-                  "inline-flex items-center justify-center gap-1 rounded-xl px-3.5 py-2 text-xs font-semibold transition-colors whitespace-nowrap self-start xl:self-center xl:shrink-0",
+                  "rounded-2xl p-2.5 shrink-0",
                   isUrgent
-                    ? "bg-sky-600 text-white hover:bg-sky-700"
-                    : "border border-border bg-background/80 text-foreground/85 hover:border-sky-500/25 hover:text-sky-700 dark:hover:text-sky-300"
+                    ? "bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-300"
+                    : "bg-slate-100 text-slate-600 dark:bg-slate-800/80 dark:text-slate-300"
                 )}
               >
-                {t(action.actionLabelKey)}
-                <ChevronRight className="h-3 w-3" />
-              </Link>
-            </div>
+                <Icon className="h-4 w-4" />
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em]",
+                    config.badgeBg,
+                    config.badgeText
+                  )}
+                >
+                  <PriorityIcon className="h-3 w-3" />
+                  {t(config.labelKey)}
+                </span>
+                <p className="mt-2 text-sm font-medium leading-snug text-foreground/90">
+                  {t(action.textKey, action.textValues)}
+                </p>
+                <span
+                  className={cn(
+                    "mt-2 inline-flex items-center gap-1 text-xs font-semibold",
+                    isUrgent
+                      ? "text-sky-700 dark:text-sky-300"
+                      : "text-foreground/70 group-hover:text-sky-700 dark:group-hover:text-sky-300"
+                  )}
+                >
+                  {t(action.actionLabelKey)}
+                  <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                </span>
+              </div>
+            </Link>
           );
         })}
       </div>

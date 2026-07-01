@@ -13,6 +13,7 @@ import { logActivity } from "@/lib/audit/log";
 import { sendEmail, EmailTemplates } from "@/lib/communications/email";
 import { autoAssignDefaultPlan } from "@/lib/subscription/autoAssign";
 import { uploadBuffer } from "@/lib/storage/spaces";
+import { hashOtp } from "@/lib/auth/emailVerification";
 
 export const runtime = "nodejs";
 
@@ -122,8 +123,8 @@ export async function POST(req: NextRequest) {
     // Generate email verification token + 6-digit OTP (dual-method email)
     const rawToken = crypto.randomBytes(32).toString("hex");
     const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
-    const otp = String(Math.floor(100000 + Math.random() * 900000));
-    const hashedOtp = crypto.createHash("sha256").update(otp).digest("hex");
+    const otp = crypto.randomInt(100000, 1000000).toString();
+    const hashedOtp = hashOtp(otp);
 
     // Create user — catch duplicate key error for race condition safety
     let user;

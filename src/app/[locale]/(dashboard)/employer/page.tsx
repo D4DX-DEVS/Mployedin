@@ -7,7 +7,6 @@ import {
   InteractivePipeline,
   PriorityActions,
   CurrentOpeningsList,
-  OpeningsStats,
   TimeToHire,
   JobStatusQuickFilters,
   AIRecommendedCandidatesCard,
@@ -48,7 +47,7 @@ export default async function EmployerDashboard({ params }: { params: Promise<{ 
 
   return (
     <div className="page-container employer-legacy-surface space-y-5 sm:space-y-6">
-      {/* ── Smart Welcome Header ── */}
+      {/* ── Smart Welcome Header (hero + KPI strip) ── */}
       <SmartHeader
         userName={userName}
         newApplications={newApplications}
@@ -59,17 +58,6 @@ export default async function EmployerDashboard({ params }: { params: Promise<{ 
         locale={locale}
       />
 
-      {/* ── Continue Your Work (resume surfaces, all self-hide when empty) ── */}
-      {/* Three distinct resume states, stacked by recency / urgency:
-          1. Draft Jobs        — manual form autosave (Job{status:"draft"})
-          2. AI Chat Drafts    — conversational AI creator transcripts
-          3. AI Extractions    — batch-extracted unposted jobs
-          Each renders only when the employer has work-in-progress of that type;
-          on a clean dashboard they collapse to nothing. */}
-      <DraftJobsCard locale={locale} />
-      <AIChatDraftsCard locale={locale} />
-      <DraftExtractionsCard locale={locale} />
-
       {/* ── Job Status Quick Filters (Active / Draft / Paused) ── */}
       <JobStatusQuickFilters
         activeJobs={activeJobCount}
@@ -78,37 +66,42 @@ export default async function EmployerDashboard({ params }: { params: Promise<{ 
         locale={locale}
       />
 
-      {/* ── Priority Actions + Candidate Quality Chart (side by side) ── */}
-      <div className="grid gap-4 sm:gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.95fr)] xl:grid-cols-[minmax(0,1.45fr)_minmax(360px,0.95fr)]">
-        <div>
-          <PriorityActions
-            activeJobs={activeJobCount}
-            newApplications={newApplications}
-            scheduledInterviews={scheduledInterviews}
-            totalApplications={totalApplications}
-            placements={placements}
-            locale={locale}
-          />
-        </div>
-        <div>
-          <CandidateQualityChart
-            avgMatchScore={avgMatchScore}
-            highMatchCount={highMatchCount}
-            lowMatchCount={lowMatchCount}
-            totalApplications={totalApplications}
-          />
-        </div>
-      </div>
+      {/* ── Work band: Priority Actions | Continue Working | AI Recommended ──
+          Mirrors the command-center layout: three action columns side by side on
+          desktop, stacked on mobile. Each column self-hides its own content when
+          empty (PriorityActions and AIRecommended return null; the Continue
+          Working cards return null individually).
+          ponytail: on a brand-new account where all three columns are empty this
+          leaves grid gaps — acceptable; SetupGuide covers the cold-start state. */}
+      <div className="grid items-start gap-4 sm:gap-5 lg:grid-cols-3">
+        <PriorityActions
+          activeJobs={activeJobCount}
+          newApplications={newApplications}
+          scheduledInterviews={scheduledInterviews}
+          totalApplications={totalApplications}
+          placements={placements}
+          locale={locale}
+        />
 
-      {/* ── AI Recommended Candidates (high-match surfacing) ── */}
-      <AIRecommendedCandidatesCard
-        highMatchCount={highMatchCount}
-        band90PlusCount={band90PlusCount}
-        band80to89Count={band80to89Count}
-        needsReviewCount={needsReviewCount}
-        activeJobCount={activeJobCount}
-        locale={locale}
-      />
+        {/* Continue Working — resume surfaces, each self-hides when empty:
+            1. Draft Jobs     — manual form autosave (Job{status:"draft"})
+            2. AI Chat Drafts — conversational AI creator transcripts
+            3. AI Extractions — batch-extracted unposted jobs */}
+        <div className="space-y-4 sm:space-y-5">
+          <DraftJobsCard locale={locale} />
+          <AIChatDraftsCard locale={locale} />
+          <DraftExtractionsCard locale={locale} />
+        </div>
+
+        <AIRecommendedCandidatesCard
+          highMatchCount={highMatchCount}
+          band90PlusCount={band90PlusCount}
+          band80to89Count={band80to89Count}
+          needsReviewCount={needsReviewCount}
+          activeJobCount={activeJobCount}
+          locale={locale}
+        />
+      </div>
 
       {/* ── Hiring Pipeline (4-stage: Applied / Screening / Interviews / Offers) ── */}
       <InteractivePipeline
@@ -121,15 +114,17 @@ export default async function EmployerDashboard({ params }: { params: Promise<{ 
         locale={locale}
       />
 
-      {/* ── Stats Row: Current Openings list / stats + Time to Hire ── */}
-      <div className="grid gap-4 sm:gap-5 lg:grid-cols-3 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(280px,1fr)]">
+      {/* ── Analytics band: Job Management | Candidate Quality | Time to Hire ── */}
+      <div className="grid items-start gap-4 sm:gap-5 lg:grid-cols-3">
         <CurrentOpeningsList
           activeJobs={activeJobCount}
           totalApplications={totalApplications}
           locale={locale}
         />
-        <OpeningsStats
-          activeJobs={activeJobCount}
+        <CandidateQualityChart
+          avgMatchScore={avgMatchScore}
+          highMatchCount={highMatchCount}
+          lowMatchCount={lowMatchCount}
           totalApplications={totalApplications}
         />
         <TimeToHire avgDays={avgTimeToHire} />
