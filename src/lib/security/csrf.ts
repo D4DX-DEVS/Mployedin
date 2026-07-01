@@ -90,6 +90,11 @@ const CSRF_EXEMPT_PREFIXES = [
   "/api/auth/callback/", // OAuth provider callbacks — provider can't send our CSRF cookie
   "/api/auth/signin",    // NextAuth sign-in forms handle their own CSRF internally
   "/api/auth/signout",   // NextAuth sign-out handles its own CSRF internally
+  // useSession().update() POSTs here with no knowledge of our custom CSRF
+  // header — it's an internal NextAuth client call. Safe to exempt for the
+  // same reason as the AI routes below: the session cookie is sameSite=lax,
+  // so a cross-site forged POST can't carry it in the first place.
+  "/api/auth/session",
   // Public registration/verification endpoints: no authenticated session exists
   // yet, so there is nothing to forge. Each route has its own guards (rate
   // limiting, bcrypt, signed tokens) that make CSRF moot here.

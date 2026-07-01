@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams, useParams } from "next/navigation";
 import Link from "next/link";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CheckCircle, XCircle, Loader2, Mail, RefreshCw, ShieldCheck } from "lucide-react";
@@ -13,8 +13,10 @@ type Status = "idle" | "verifying" | "success" | "error" | "no-token";
 export default function VerifyEmailPage() {
   const searchParams = useSearchParams();
   const { locale } = useParams<{ locale: string }>();
+  const { update: updateSession } = useSession();
   const token = searchParams.get("token");
   const emailParam = searchParams.get("email");
+  const emailFailed = searchParams.get("emailFailed") === "1";
 
   const [status, setStatus] = useState<Status>(token ? "verifying" : "no-token");
   const [message, setMessage] = useState("");
@@ -53,16 +55,25 @@ export default function VerifyEmailPage() {
       setOtpError("Please enter the 6-digit code.");
       return;
     }
+    if (!emailParam) {
+      setOtpError("We couldn't tell which account this code belongs to. Please open the link from your verification email instead.");
+      return;
+    }
     setVerifyingOtp(true);
     setOtpError("");
     try {
       const res = await fetch("/api/auth/verify-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ otp: code }),
+        body: JSON.stringify({ otp: code, email: emailParam }),
       });
       const data = await res.json();
       if (res.ok) {
+        // Refresh the JWT in case the user already holds a session (e.g. they
+        // logged into an unverified account before completing verification) —
+        // without this the session stays stuck on isEmailVerified:false until
+        // next login, and middleware keeps bouncing them back to this page.
+        await updateSession({ isEmailVerified: true });
         setStatus("success");
       } else {
         setOtpError(data.error ?? "Invalid or expired code. Try resending.");
@@ -72,7 +83,7 @@ export default function VerifyEmailPage() {
     } finally {
       setVerifyingOtp(false);
     }
-  }, [otp]);
+  }, [otp, emailParam, updateSession]);
 
   useEffect(() => {
     if (!token) return;
@@ -86,6 +97,7 @@ export default function VerifyEmailPage() {
         });
         const data = await res.json();
         if (res.ok) {
+          await updateSession({ isEmailVerified: true });
           setStatus("success");
         } else {
           setStatus("error");
@@ -98,7 +110,7 @@ export default function VerifyEmailPage() {
     };
 
     verify();
-  }, [token]);
+  }, [token, updateSession]);
 
   return (
     <div className="w-full flex flex-col gap-8">
@@ -185,6 +197,14 @@ export default function VerifyEmailPage() {
               . Enter the code below to activate your account — or click the link in the email.
             </p>
           </div>
+
+          {emailFailed && (
+            <div className="w-full max-w-xs p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-left">
+              <p className="text-xs text-amber-800 dark:text-amber-300">
+                We had trouble sending that email. Tap <strong>Resend</strong> below to get your code.
+              </p>
+            </div>
+          )}
 
           {/* OTP entry — primary in-app verification path */}
           <div className="w-full max-w-xs space-y-3">

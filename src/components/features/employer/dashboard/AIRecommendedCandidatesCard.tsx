@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { Sparkles, ChevronRight, TrendingUp, AlertCircle, Star } from "lucide-react";
+import { Sparkles, ChevronRight, TrendingUp, AlertCircle, Star, Loader2, BellRing, Check } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 interface AIRecommendedCandidatesCardProps {
@@ -57,10 +59,35 @@ export function AIRecommendedCandidatesCard({
   locale,
 }: AIRecommendedCandidatesCardProps) {
   const t = useTranslations("employerDashboard.aiRecommended");
+  const [notifyingKey, setNotifyingKey] = useState<string | null>(null);
+  const [notifiedKeys, setNotifiedKeys] = useState<Set<string>>(new Set());
 
   // Deep-link base: Applications page filtered by AI match score.
   // (scoreMin/scoreMax are supported by the useApplications hook + applications API.)
   const applicationsBase = `/${locale}/employer/applications`;
+
+  async function handleNotify(labelKey: string, scoreMin: number, scoreMax: number) {
+    if (notifyingKey) return;
+    setNotifyingKey(labelKey);
+    try {
+      const res = await fetch("/api/employer/applications/notify-matches", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scoreMin, scoreMax }),
+      });
+      if (!res.ok) {
+        toast.error(t("notifyError"));
+        return;
+      }
+      const data = (await res.json()) as { notified: number };
+      setNotifiedKeys((prev) => new Set(prev).add(labelKey));
+      toast.success(data.notified > 0 ? t("notifySuccess", { count: data.notified }) : t("notifyNone"));
+    } catch {
+      toast.error(t("notifyError"));
+    } finally {
+      setNotifyingKey(null);
+    }
+  }
 
   const bands: Band[] = [
     {
@@ -128,32 +155,54 @@ export function AIRecommendedCandidatesCard({
         {bands.map((band) => {
           const Icon = band.icon;
           const bandHref = `${applicationsBase}?scoreMin=${band.scoreMin}&scoreMax=${band.scoreMax}`;
+          const isNotifying = notifyingKey === band.labelKey;
+          const isNotified = notifiedKeys.has(band.labelKey);
           return (
-            <Link
+            <div
               key={band.labelKey}
-              href={bandHref}
               className={cn(
-                "group flex items-center gap-3 rounded-[20px] border px-3.5 py-3 transition-all hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 sm:px-4 sm:py-3.5",
+                "group flex items-center gap-2 rounded-[20px] border transition-all hover:-translate-y-0.5",
                 band.accent
               )}
             >
-              <div className="shrink-0">
-                <Icon className="h-4 w-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold">{t(band.labelKey)}</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">{t(band.descKey)}</p>
-              </div>
-              <span
-                className={cn(
-                  "rounded-full bg-background/80 px-2.5 py-0.5 text-sm font-bold tabular-nums",
-                  band.emphasize && "text-emerald-600 dark:text-emerald-300"
-                )}
+              <Link
+                href={bandHref}
+                className="flex min-w-0 flex-1 items-center gap-3 px-3.5 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 sm:px-4 sm:py-3.5"
               >
-                {band.count}
-              </span>
-              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-            </Link>
+                <div className="shrink-0">
+                  <Icon className="h-4 w-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold">{t(band.labelKey)}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{t(band.descKey)}</p>
+                </div>
+                <span
+                  className={cn(
+                    "rounded-full bg-background/80 px-2.5 py-0.5 text-sm font-bold tabular-nums",
+                    band.emphasize && "text-emerald-600 dark:text-emerald-300"
+                  )}
+                >
+                  {band.count}
+                </span>
+                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+              </Link>
+              <button
+                type="button"
+                onClick={() => handleNotify(band.labelKey, band.scoreMin, band.scoreMax)}
+                disabled={isNotifying || isNotified || band.count === 0}
+                title={t("notifyHint")}
+                className="mr-3 flex shrink-0 items-center gap-1.5 rounded-full border border-current/25 bg-background/70 px-2.5 py-1 text-xs font-semibold transition-colors hover:bg-background disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isNotifying ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : isNotified ? (
+                  <Check className="h-3 w-3" />
+                ) : (
+                  <BellRing className="h-3 w-3" />
+                )}
+                {isNotifying ? t("notifying") : isNotified ? t("notified") : t("notify")}
+              </button>
+            </div>
           );
         })}
       </div>

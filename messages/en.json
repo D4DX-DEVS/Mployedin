@@ -3132,7 +3132,7 @@
       "viewJobs": "View Jobs",
       "viewAll": "View all",
       "newJobPosting": "New Job Posting",
-      "createJob": "Create Job",
+      "createJob": "Create Job with AI",
       "aiBadge": "AI",
       "activeRoles": "Active Jobs",
       "activeRolesDesc": "Open roles currently collecting candidates.",
@@ -3140,7 +3140,7 @@
       "needsReviewDesc": "Fresh applicants waiting for a recruiter decision.",
       "interviewsSet": "Today's Interviews",
       "interviewsSetDesc": "Interview conversations booked with candidates.",
-      "aiMatches": "AI Matches",
+      "aiMatches": "AI Recommended Candidates",
       "aiMatchesDesc": "High-match candidates surfaced by AI for your jobs.",
       "justNow": "just now",
       "minAgo": "{count} min ago",
@@ -3167,7 +3167,14 @@
       "band80to89Desc": "Strong fit — worth a quick look.",
       "needsReview": "Needs review",
       "needsReviewDesc": "Lower-scored candidates worth scanning.",
-      "reviewCandidates": "Review Candidates"
+      "reviewCandidates": "Review Candidates",
+      "notify": "Notify",
+      "notifying": "Notifying…",
+      "notified": "Notified",
+      "notifyHint": "Let these candidates know you're reviewing their application",
+      "notifySuccess": "Notified {count} candidate(s)",
+      "notifyNone": "No new candidates to notify in this band",
+      "notifyError": "Couldn't send notifications. Please try again."
     },
     "draftExtractions": {
       "cardTitle": "Resume AI extraction",

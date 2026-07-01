@@ -9,7 +9,9 @@ import { z } from "zod";
 const schema = z.object({
   token: z.string().min(1).max(128).optional(),
   otp: z.string().regex(/^\d{6}$/).optional(),
-}).refine((v) => v.token || v.otp, { message: "Either token or otp is required" });
+  email: z.string().email().max(254).optional(),
+}).refine((v) => v.token || v.otp, { message: "Either token or otp is required" })
+  .refine((v) => !v.otp || v.email, { message: "email is required with otp" });
 
 /**
  * POST /api/auth/verify-email
@@ -39,7 +41,10 @@ export async function POST(req: NextRequest) {
 
   if (body.otp) {
     const hashedOtp = crypto.createHash("sha256").update(body.otp).digest("hex");
+    // Scope by email so a correctly-guessed OTP only ever matches the
+    // account it was requested for, not whichever pending signup holds it.
     user = await User.findOne({
+      email: (body.email as string).toLowerCase().trim(),
       emailVerificationOtp: hashedOtp,
       isActive: true,
     }).select("+emailVerificationOtp +emailVerificationExpiry");
@@ -52,6 +57,22 @@ export async function POST(req: NextRequest) {
   }
 
   if (!user || (user.emailVerificationExpiry && user.emailVerificationExpiry < new Date())) {
+    // Distinguish "already verified" (e.g. the link was pre-fetched by an
+    // email-security scanner, or the user double-submitted) from a genuinely
+    // bad/expired code — same query shape either way, just without the OTP
+    // field, so this stays cheap and doesn't leak whether an email exists.
+    if (body.otp) {
+      const alreadyVerified = await User.exists({
+        email: (body.email as string).toLowerCase().trim(),
+        isEmailVerified: true,
+      });
+      if (alreadyVerified) {
+        return NextResponse.json(
+          { error: "This email is already verified. You can sign in now." },
+          { status: 400 }
+        );
+      }
+    }
     return NextResponse.json(
       { error: "Invalid or expired verification code" },
       { status: 400 }

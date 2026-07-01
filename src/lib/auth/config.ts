@@ -426,6 +426,7 @@ export const authConfig: NextAuthConfig = {
       if (trigger === "update" && updateData) {
         const data = updateData as Record<string, unknown>;
         if (data.isOnboarded !== undefined) token.isOnboarded = data.isOnboarded;
+        if (data.isEmailVerified !== undefined) token.isEmailVerified = data.isEmailVerified;
         if (data.role !== undefined) token.role = data.role;
         if (data.locale !== undefined) token.locale = data.locale;
         if (typeof data.name === "string") token.name = data.name;
@@ -714,6 +715,7 @@ export const authConfig: NextAuthConfig = {
         (session.user as unknown as { permissionMode: string }).permissionMode = (token.permissionMode as string) ?? "role_default";
         (session.user as unknown as { customPermissions?: Record<string, string[]> }).customPermissions = token.customPermissions as Record<string, string[]> | undefined;
         (session.user as unknown as { isOnboarded: boolean }).isOnboarded = (token.isOnboarded as boolean) ?? false;
+        (session.user as unknown as { isEmailVerified: boolean }).isEmailVerified = (token.isEmailVerified as boolean) ?? false;
         (session.user as unknown as { provider?: string }).provider = (token.provider as string) ?? undefined;
         if (token.companyUserRole) {
           (session.user as unknown as { companyUserRole: CompanyRole }).companyUserRole = token.companyUserRole as CompanyRole;

@@ -176,6 +176,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
 
     conversation = await Conversation.create({
       participants: sortedIds,
+      participantsKey: sortedIds.map((id) => id.toString()).join(":"),
       participantDetails: [
         {
           userId: userA._id,

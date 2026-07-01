@@ -26,6 +26,7 @@ export interface IConversation extends Document {
   _id: mongoose.Types.ObjectId;
   type: ConversationType;
   participants: mongoose.Types.ObjectId[]; // always exactly 2
+  participantsKey?: string; // sorted "userIdA:userIdB", unique per dm pair
   participantDetails: IParticipantDetail[];
   lastMessage?: string;
   lastMessageAt?: Date;
@@ -84,6 +85,7 @@ const ConversationSchema = new Schema<IConversation>(
       required: true,
       validate: { validator: (v: unknown[]) => v.length === 2, message: "Conversation must have exactly 2 participants" },
     },
+    participantsKey: { type: String },
     participantDetails: [ParticipantDetailSchema],
     lastMessage: String,
     lastMessageAt: Date,
@@ -94,8 +96,16 @@ const ConversationSchema = new Schema<IConversation>(
   { timestamps: true }
 );
 
-// Index for participant lookups; uniqueness enforced at application layer
+// Index for participant lookups (non-unique: participants is an array, a unique
+// index on it enforces per-element uniqueness collection-wide, not per-pair).
+// One-thread-per-dm-pair is enforced via the participantsKey unique index below.
+// Actual index creation happens in lib/db/indexes.ts (autoIndex is disabled);
+// declared here for documentation.
 ConversationSchema.index({ participants: 1 });
+ConversationSchema.index(
+  { participantsKey: 1 },
+  { unique: true, name: "unique_dm_pair", partialFilterExpression: { type: "dm" } }
+);
 // Index for efficient customer care queries
 ConversationSchema.index({ type: 1, "customerCare.status": 1 });
 ConversationSchema.index({ "customerCare.assignedTo": 1 });

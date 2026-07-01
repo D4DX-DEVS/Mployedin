@@ -106,10 +106,6 @@ export function SmartHeader({
           >
             <Plus className="h-4 w-4" />
             {t("createJob")}
-            <span className="inline-flex items-center gap-1 rounded-md bg-white/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide">
-              <Sparkles className="h-3 w-3" />
-              {t("aiBadge")}
-            </span>
           </Link>
         </div>
       </div>
@@ -154,25 +150,6 @@ export function SmartHeader({
         </Link>
 
         <Link
-          href={interviewsHref}
-          className="workspace-glass-panel group rounded-2xl p-4 transition-all hover:-translate-y-0.5 hover:border-sky-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("interviewsSet")}</p>
-              <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{scheduledInterviews}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{t("interviewsSetDesc")}</p>
-            </div>
-            <div className="rounded-2xl bg-sky-50 p-2.5 text-sky-600">
-              <CalendarDays className="h-5 w-5" />
-            </div>
-          </div>
-          <span className="mt-3 flex items-center gap-1 text-xs font-semibold text-sky-700 dark:text-sky-300">
-            {t("viewAll")}
-          </span>
-        </Link>
-
-        <Link
           href={aiMatchesHref}
           className="workspace-glass-panel group rounded-2xl p-4 transition-all hover:-translate-y-0.5 hover:border-sky-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
         >
@@ -184,6 +161,25 @@ export function SmartHeader({
             </div>
             <div className="rounded-2xl bg-gradient-to-r from-amber-50 to-sky-50 p-2.5 text-amber-600">
               <Sparkles className="h-5 w-5" />
+            </div>
+          </div>
+          <span className="mt-3 flex items-center gap-1 text-xs font-semibold text-sky-700 dark:text-sky-300">
+            {t("viewAll")}
+          </span>
+        </Link>
+
+        <Link
+          href={interviewsHref}
+          className="workspace-glass-panel group rounded-2xl p-4 transition-all hover:-translate-y-0.5 hover:border-sky-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("interviewsSet")}</p>
+              <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{scheduledInterviews}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{t("interviewsSetDesc")}</p>
+            </div>
+            <div className="rounded-2xl bg-sky-50 p-2.5 text-sky-600">
+              <CalendarDays className="h-5 w-5" />
             </div>
           </div>
           <span className="mt-3 flex items-center gap-1 text-xs font-semibold text-sky-700 dark:text-sky-300">

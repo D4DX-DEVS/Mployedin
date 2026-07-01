@@ -296,7 +296,18 @@ export default function EmployerRegisterPage() {
         return;
       }
 
-      router.push(`/${locale}/verify-email?email=${encodeURIComponent(step3.contactEmail)}`);
+      let emailSendFailed = false;
+      if (contentType.includes("application/json")) {
+        try {
+          const data = await res.json();
+          emailSendFailed = data?.emailSendFailed === true;
+        } catch {
+          /* non-JSON success body — treat as delivered */
+        }
+      }
+      const query = new URLSearchParams({ email: step3.contactEmail });
+      if (emailSendFailed) query.set("emailFailed", "1");
+      router.push(`/${locale}/verify-email?${query.toString()}`);
     } catch (err) {
       // Network-level failure: fetch rejected (offline, DNS, CORS, SW no-response,
       // aborted). Previously this had no catch at all → silent failure with the

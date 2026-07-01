@@ -309,7 +309,7 @@ export async function POST(req: NextRequest) {
 
     // Send emails — await to prevent Next.js from terminating before delivery
     const baseUrl = process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-    const verifyUrl = `${baseUrl}/en/verify-email?token=${rawToken}`;
+    const verifyUrl = `${baseUrl}/en/verify-email?token=${rawToken}&email=${encodeURIComponent(contactEmail)}`;
     const dashboardUrl = `${baseUrl}/en/employer/dashboard`;
 
     const [verifyResult, welcomeResult] = await Promise.allSettled([
@@ -328,6 +328,10 @@ export async function POST(req: NextRequest) {
       {
         success: true,
         message: "Registration successful. Please check your email to verify your account.",
+        // Tells the client the verification email may not have arrived, so the
+        // verify-email page can proactively surface the Resend action instead
+        // of the user staring at an empty inbox with no explanation.
+        emailSendFailed: verifyResult.status === "rejected",
         ...(allowE2eVerificationToken ? { verificationToken: rawToken } : {}),
       },
       { status: 201 }

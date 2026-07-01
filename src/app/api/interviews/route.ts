@@ -322,6 +322,21 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     }
   }
 
+  // Guard against duplicate active interviews for this application/round.
+  // The DB unique partial index (lib/db/indexes.ts) is the final backstop for
+  // races; this check exists to give a clean 409 instead of a raw E11000.
+  const existingActive = await Interview.findOne({
+    applicationId,
+    interviewRound: 1,
+    status: { $in: ["scheduled", "confirmed", "completed", "rescheduled"] },
+  }).lean();
+  if (existingActive) {
+    return NextResponse.json(
+      { error: "An active interview already exists for this application." },
+      { status: 409 }
+    );
+  }
+
   const job = app.jobId as unknown as { _id?: unknown; title?: string };
 
   // Auto-resolve agentId.

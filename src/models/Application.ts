@@ -51,6 +51,8 @@ export interface IApplication extends Document {
   status: ApplicationStatus;
   documents: { name: string; url: string; type: string }[];
   aiMatchScore?: number;
+  /** Set once the employer notifies this candidate via the AI-match "Notify" action. */
+  aiMatchNotifiedAt?: Date;
   matchBreakdown?: IAIMatchBreakdown;
   matchNotes?: string;
   matchStrengths?: string[];
@@ -111,6 +113,7 @@ const ApplicationSchema = new Schema<IApplication>(
     },
     documents: [ApplicationDocumentSchema],
     aiMatchScore: Number,
+    aiMatchNotifiedAt: Date,
     matchBreakdown: {
       skills: Number,
       experience: Number,

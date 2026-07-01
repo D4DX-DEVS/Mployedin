@@ -188,7 +188,17 @@ export async function ensureIndexes() {
 
   // ── Conversations (DM + customer care) ────────────────────────────────────
   await safeCreateIndexes(db, "conversations", [
-    { key: { participants: 1 }, unique: true },
+    // Non-unique: participants is an array — a unique index on it enforces
+    // per-element uniqueness collection-wide (no user could ever be in more
+    // than one conversation), not per-pair uniqueness. Use participantsKey
+    // below for one-thread-per-dm-pair.
+    { key: { participants: 1 } },
+    {
+      key: { participantsKey: 1 },
+      unique: true,
+      name: "unique_dm_pair",
+      partialFilterExpression: { type: "dm" },
+    },
     { key: { type: 1, "customerCare.status": 1 } },
     { key: { "customerCare.assignedTo": 1 } },
     { key: { lastMessageAt: -1 } },

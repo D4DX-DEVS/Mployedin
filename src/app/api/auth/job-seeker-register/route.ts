@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
 
     // Send emails — await to prevent Next.js from terminating before delivery
     const baseUrl = process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-    const verifyUrl = `${baseUrl}/en/verify-email?token=${rawToken}`;
+    const verifyUrl = `${baseUrl}/en/verify-email?token=${rawToken}&email=${encodeURIComponent(normalizedEmail)}`;
     const dashboardUrl = `${baseUrl}/en/job-seeker/dashboard`;
 
     // Send both emails in parallel, but await them before responding
@@ -99,7 +99,12 @@ export async function POST(req: NextRequest) {
       console.error("[Registration] Failed to send welcome email:", welcomeResult.reason);
     }
 
-    return NextResponse.json({ success: true, message: "Account created successfully. Please check your email to verify your account.", email: normalizedEmail }, { status: 201 });
+    return NextResponse.json({
+      success: true,
+      message: "Account created successfully. Please check your email to verify your account.",
+      email: normalizedEmail,
+      emailSendFailed: verifyResult.status === "rejected",
+    }, { status: 201 });
   } catch (err) {
     if (err instanceof NextResponse) return err;
     console.error("job-seeker-register error:", err);
