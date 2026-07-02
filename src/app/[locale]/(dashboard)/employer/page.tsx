@@ -106,7 +106,7 @@ export default async function EmployerDashboard({ params }: { params: Promise<{ 
       </div>
 
       {/* ── Analytics band: 5-stage Hiring Pipeline | Quick Insights ── */}
-      <div className="grid items-start gap-4 sm:gap-5 lg:grid-cols-3">
+      <div className="grid gap-4 sm:gap-5 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <InteractivePipeline
             totalApplications={totalApplications}
