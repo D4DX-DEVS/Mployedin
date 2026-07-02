@@ -77,7 +77,7 @@ export default async function EmployerDashboard({ params }: { params: Promise<{ 
           self-hides individually (PriorityActions + each draft card return null when
           empty). ponytail: on a brand-new account both columns can be empty — the
           SetupGuide below covers that cold-start state. */}
-      <div className="grid items-start gap-4 sm:gap-5 lg:grid-cols-3">
+      <div className="grid gap-4 sm:gap-5 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <AIRecommendedCandidatesCard
             highMatchCount={highMatchCount}
@@ -88,19 +88,21 @@ export default async function EmployerDashboard({ params }: { params: Promise<{ 
             locale={locale}
           />
         </div>
-        <div className="space-y-4 sm:space-y-5">
-          <PriorityActions
-            activeJobs={activeJobCount}
-            newApplications={newApplications}
-            scheduledInterviews={scheduledInterviews}
-            totalApplications={totalApplications}
-            placements={placements}
-            locale={locale}
-          />
-          <DraftJobsCard locale={locale} />
-          <AIChatDraftsCard locale={locale} />
-          <DraftExtractionsCard locale={locale} />
-        </div>
+        <PriorityActions
+          activeJobs={activeJobCount}
+          newApplications={newApplications}
+          scheduledInterviews={scheduledInterviews}
+          totalApplications={totalApplications}
+          placements={placements}
+          locale={locale}
+        />
+      </div>
+
+      {/* ── Continue working: resume drafts, side by side (each self-hides when empty) ── */}
+      <div className="grid gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <DraftJobsCard locale={locale} />
+        <AIChatDraftsCard locale={locale} />
+        <DraftExtractionsCard locale={locale} />
       </div>
 
       {/* ── Analytics band: 5-stage Hiring Pipeline | Quick Insights ── */}
