@@ -133,68 +133,61 @@ export function AIChatDraftsCard({ locale, variant = "card" }: AIChatDraftsCardP
 
   // ── Card variant (employer dashboard) ───────────────────────────────────
   return (
-    <section className="rounded-[28px] border border-sky-200 bg-gradient-to-br from-sky-50/80 via-background to-background p-5 shadow-sm dark:border-sky-500/30 dark:from-sky-500/10">
+    <section className="workspace-panel-surface flex flex-col rounded-[24px] p-5">
       {ConfirmDialogNode}
-      <div className="mb-4 flex items-center gap-2">
-        <Bot className="h-4 w-4 text-sky-600 dark:text-sky-400" />
-        <div>
+      <div className="mb-4 flex items-center gap-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-500/15 dark:text-sky-300">
+          <Bot className="h-4 w-4" />
+        </span>
+        <div className="min-w-0">
           <h3 className="text-sm font-semibold text-foreground">{t("cardTitle")}</h3>
-          <p className="text-xs text-muted-foreground">{t("cardSubtitle")}</p>
+          <p className="truncate text-xs text-muted-foreground">{t("cardSubtitle")}</p>
         </div>
       </div>
 
-      <ul className="space-y-2.5">
+      <ul className="space-y-2">
         {drafts.slice(0, 3).map((d) => (
           <li
             key={d._id}
-            className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/70 bg-background/80 p-3.5"
+            className="group flex items-center gap-2 rounded-2xl border border-border/60 bg-background/70 p-2.5 transition-all hover:-translate-y-px hover:border-sky-400/40 hover:shadow-sm"
           >
-            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-sky-100 text-sky-600 dark:bg-sky-500/20 dark:text-sky-300">
-              <Bot className="h-4 w-4" />
-            </div>
-
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-foreground">{d.title}</p>
-              <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-                <span>{t("messageCount", { count: d.messageCount })}</span>
-                {d.hasExtractedJob && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
-                    {t("draftReady")}
+            <Link href={continueHref(d._id)} className="flex min-w-0 flex-1 items-center gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-sky-600 dark:bg-sky-500/20 dark:text-sky-300">
+                <Bot className="h-4 w-4" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-foreground">{d.title}</p>
+                <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
+                  <span>{t("messageCount", { count: d.messageCount })}</span>
+                  {d.hasExtractedJob && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
+                      {t("draftReady")}
+                    </span>
+                  )}
+                  <span className="inline-flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    {relativeTime(d.updatedAt, locale)}
                   </span>
-                )}
-                <span className="inline-flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  {relativeTime(d.updatedAt, locale)}
-                </span>
+                </div>
               </div>
-            </div>
-
-            <div className="flex items-center gap-1.5">
-              <Button
-                size="sm"
-                className="h-8 gap-1.5 bg-sky-600 text-white hover:bg-sky-700"
-                asChild
-              >
-                <Link href={continueHref(d._id)}>
-                  <RotateCcw className="h-3.5 w-3.5" />
-                  {t("continueChat")}
-                </Link>
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-                disabled={discardingId === d._id}
-                onClick={() => handleDiscard(d)}
-                aria-label={t("discardAriaLabel")}
-              >
-                {discardingId === d._id ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Trash2 className="h-3.5 w-3.5" />
-                )}
-              </Button>
-            </div>
+              <span className="hidden shrink-0 items-center gap-1.5 rounded-lg bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700 transition-colors group-hover:bg-sky-100 dark:bg-sky-500/15 dark:text-sky-300 sm:inline-flex">
+                <RotateCcw className="h-3.5 w-3.5" />
+                {t("continueChat")}
+              </span>
+            </Link>
+            <button
+              type="button"
+              disabled={discardingId === d._id}
+              onClick={() => handleDiscard(d)}
+              aria-label={t("discardAriaLabel")}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+            >
+              {discardingId === d._id ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Trash2 className="h-3.5 w-3.5" />
+              )}
+            </button>
           </li>
         ))}
       </ul>
