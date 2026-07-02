@@ -66,10 +66,15 @@ async function patchHandler(req: NextRequest, ctx: { userId: string; role: strin
     return NextResponse.json({ pool, message: "Candidate added" });
   }
 
-  // Remove candidate
+  // Remove candidate — prefer the pool-candidate subdocument's own _id (always present,
+  // unlike jobSeekerId which can point to a deleted/orphaned JobSeeker).
   if (body.action === "remove_candidate") {
+    const candidateId = body.candidateId;
     const jobSeekerId = body.jobSeekerId;
-    pool.candidates = pool.candidates.filter((c: any) => c.jobSeekerId.toString() !== jobSeekerId);
+    pool.candidates = pool.candidates.filter((c: any) => {
+      if (candidateId) return c._id.toString() !== candidateId;
+      return c.jobSeekerId?.toString() !== jobSeekerId;
+    });
     await pool.save();
     return NextResponse.json({ pool, message: "Candidate removed" });
   }

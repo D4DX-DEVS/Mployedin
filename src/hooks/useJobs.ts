@@ -198,6 +198,118 @@ export function useJobTemplates() {
   });
 }
 
+export interface JobTemplateDetail {
+  _id: string;
+  sourceJobId?: string;
+  name: string;
+  title?: string;
+  description?: string;
+  category?: string;
+  requirements?: { skills?: string[]; experienceMin?: number; experienceMax?: number; education?: string; languages?: string[] };
+  salary?: { min?: number; max?: number; currency?: string; isNegotiable?: boolean };
+  location?: { country?: string; city?: string; isRemote?: boolean };
+  tags?: string[];
+  vacancies?: number;
+  applicationMode?: "auto" | "manual";
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface JobTemplateLibraryFilters {
+  search?: string;
+  page: number;
+  limit: number;
+}
+
+/** Fetch job templates for the Template Library page, paginated with optional name search */
+export function useJobTemplateLibrary(filters: JobTemplateLibraryFilters) {
+  return useQuery({
+    queryKey: ["job-templates", "library", filters],
+    queryFn: async () => {
+      const params = new URLSearchParams({ page: String(filters.page), limit: String(filters.limit) });
+      if (filters.search) params.set("search", filters.search);
+      const res = await fetch(`/api/employers/job-templates?${params}`);
+      if (!res.ok) throw new Error("Failed to fetch job templates");
+      const data = await res.json();
+      return {
+        templates: (data.templates ?? []) as JobTemplateDetail[],
+        total: (data.pagination?.total ?? data.templates?.length ?? 0) as number,
+      };
+    },
+    staleTime: 60 * 1000,
+    placeholderData: (prev) => prev,
+  });
+}
+
+/** Rename/edit a job template */
+export function useUpdateJobTemplate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ templateId, ...data }: { templateId: string } & Partial<Pick<JobTemplateDetail, "name" | "title" | "description" | "category">>) => {
+      const res = await fetch(`/api/employers/job-templates/${templateId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Failed to update template");
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["job-templates"] });
+    },
+  });
+}
+
+/** Delete a job template */
+export function useDeleteJobTemplate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (templateId: string) => {
+      const res = await fetch(`/api/employers/job-templates/${templateId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete template");
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["job-templates"] });
+    },
+  });
+}
+
+/** Duplicate an existing job template */
+export function useDuplicateJobTemplate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (template: JobTemplateDetail) => {
+      const { _id, createdAt, updatedAt, sourceJobId, ...rest } = template;
+      const res = await fetch("/api/employers/job-templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...rest, name: `${template.name} (copy)` }),
+      });
+      if (!res.ok) throw new Error("Failed to duplicate template");
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["job-templates"] });
+    },
+  });
+}
+
+/** Create a draft job from a template */
+export function useUseJobTemplate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (templateId: string) => {
+      const res = await fetch(`/api/employers/job-templates/${templateId}/use`, { method: "POST" });
+      if (!res.ok) throw new Error("Failed to use template");
+      return res.json() as Promise<{ job: { _id: string } }>;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: jobKeys.lists() });
+      qc.invalidateQueries({ queryKey: ["job-templates"] });
+    },
+  });
+}
+
 /** Delete a draft job */
 export function useDeleteJob() {
   const qc = useQueryClient();

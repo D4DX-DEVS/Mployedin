@@ -152,11 +152,11 @@ export function useAddCandidateToPool() {
 export function useRemoveCandidateFromPool() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ poolId, jobSeekerId }: { poolId: string; jobSeekerId: string }) => {
+    mutationFn: async ({ poolId, candidateId }: { poolId: string; candidateId: string }) => {
       const res = await csrfFetch(`/api/talent-pools/${poolId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "remove_candidate", jobSeekerId }),
+        body: JSON.stringify({ action: "remove_candidate", candidateId }),
       });
       if (!res.ok) throw new Error("Failed to remove candidate");
       return (await res.json()) as { pool: TalentPool };

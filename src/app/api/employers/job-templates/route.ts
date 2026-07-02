@@ -6,12 +6,13 @@ import { JobTemplate } from "@/models/JobTemplate";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
 import { jobTemplateCreateSchema } from "@/lib/validators/job-templates";
+import { escapeRegex } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
 // GET /api/employers/job-templates — list all templates for the authenticated employer
-async function getHandler(_req: NextRequest, ctx: AuthCtx) {
+async function getHandler(req: NextRequest, ctx: AuthCtx) {
   if (ctx.role !== "employer") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -23,11 +24,27 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ error: "Employer profile not found" }, { status: 404 });
   }
 
-  const templates = await JobTemplate.find({ employerId: employer._id })
-    .sort({ createdAt: -1 })
-    .lean();
+  const params = new URL(req.url).searchParams;
+  const search = params.get("search") ?? "";
+  const page = Math.max(1, Number(params.get("page")) || 1);
+  const limit = Math.min(100, Math.max(1, Number(params.get("limit")) || 10));
 
-  return NextResponse.json({ templates });
+  const filter: Record<string, unknown> = { employerId: employer._id };
+  if (search) filter.name = { $regex: escapeRegex(search), $options: "i" };
+
+  const [templates, total] = await Promise.all([
+    JobTemplate.find(filter)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean(),
+    JobTemplate.countDocuments(filter),
+  ]);
+
+  return NextResponse.json({
+    templates,
+    pagination: { total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)) },
+  });
 }
 
 // POST /api/employers/job-templates — create a new template

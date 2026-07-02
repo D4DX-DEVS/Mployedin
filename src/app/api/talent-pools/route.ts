@@ -14,6 +14,11 @@ async function getHandler(req: NextRequest, ctx: { userId: string; role: string 
 
   const pools = await TalentPool.find({ employerId: employer._id, isActive: true })
     .sort({ updatedAt: -1 })
+    .populate({
+      path: "candidates.jobSeekerId",
+      select: "fullName userId",
+      populate: { path: "userId", select: "avatar" },
+    })
     .lean();
 
   return NextResponse.json({ pools });

@@ -1285,14 +1285,6 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 descriptionAr: "تسلسلات بريد إلكتروني تلقائية للرعاية",
               },
               {
-                title: "Training",
-                titleAr: "التدريب",
-                href: p("/employer/training"),
-                icon: "BookOpen",
-                description: "Training programs & courses",
-                descriptionAr: "البرامج التدريبية والدورات",
-              },
-              {
                 title: "Job Templates",
                 titleAr: "قوالب الوظائف",
                 href: p("/employer/job-templates"),

@@ -1,241 +1,130 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { useRouter, useParams } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
-  Plus, Copy, Trash2, Search, FileText, Inbox, RotateCcw,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Copy, Trash2, Search, FileText, Inbox, Pencil, ArrowRight, Loader2,
 } from "lucide-react";
-import { csrfFetch } from "@/lib/security/csrf-client";
-
-/* ------------------------------------------------------------------ */
-/*  Types                                                              */
-/* ------------------------------------------------------------------ */
-
-interface JobTemplate {
-  _id: string;
-  name: string;
-  title: string;
-  description?: string;
-  requirements?: string;
-  jobType?: string;
-  experienceLevel?: string;
-  skills?: string[];
-  usageCount: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-/* ------------------------------------------------------------------ */
-/*  Component                                                          */
-/* ------------------------------------------------------------------ */
+import RelativeDate from "@/components/shared/RelativeDate";
+import { PaginationControls } from "@/components/shared/PaginationControls";
+import { useConfirm } from "@/hooks/useConfirm";
+import {
+  useJobTemplateLibrary,
+  useUpdateJobTemplate,
+  useDeleteJobTemplate,
+  useDuplicateJobTemplate,
+  useUseJobTemplate,
+  type JobTemplateDetail,
+} from "@/hooks/useJobs";
 
 export default function EmployerJobTemplatesPage() {
   const t = useTranslations("employerJobTemplates");
-  const [templates, setTemplates] = useState<JobTemplate[]>([]);
-  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const { locale } = useParams<{ locale: string }>();
+  const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
+
   const [search, setSearch] = useState("");
-  const [showForm, setShowForm] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
-    name: "", title: "", description: "", requirements: "",
-    jobType: "full_time", experienceLevel: "mid",
-    skills: "",
-  });
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const { data, isLoading: loading } = useJobTemplateLibrary({ search, page, limit });
+  const templates = data?.templates ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
 
-  const fetchTemplates = useCallback(async () => {
-    setLoading(true);
+  function handleSearchChange(value: string) {
+    setSearch(value);
+    setPage(1);
+  }
+
+  const updateTemplate = useUpdateJobTemplate();
+  const deleteTemplate = useDeleteJobTemplate();
+  const duplicateTemplate = useDuplicateJobTemplate();
+  const useTemplate = useUseJobTemplate();
+
+  const [editing, setEditing] = useState<JobTemplateDetail | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editTitle, setEditTitle] = useState("");
+
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  function openEdit(tmpl: JobTemplateDetail) {
+    setEditing(tmpl);
+    setEditName(tmpl.name);
+    setEditTitle(tmpl.title ?? "");
+  }
+
+  async function handleSaveEdit() {
+    if (!editing || !editName.trim()) return;
     try {
-      const params = new URLSearchParams();
-      if (search) params.set("search", search);
-      const res = await fetch(`/api/employer/job-templates?${params}`);
-      if (res.ok) {
-        const data = await res.json();
-        setTemplates(data.items ?? []);
-      }
+      await updateTemplate.mutateAsync({ templateId: editing._id, name: editName.trim(), title: editTitle.trim() });
+      toast.success(t("toastUpdated"));
+      setEditing(null);
     } catch {
-      toast.error(t("toastLoadFailed"));
-    } finally {
-      setLoading(false);
+      toast.error(t("toastUpdateFailed"));
     }
-  }, [search]);
+  }
 
-  useEffect(() => { fetchTemplates(); }, [fetchTemplates]);
-
-  const createTemplate = async () => {
-    if (!form.name.trim() || !form.title.trim()) {
-      toast.error(t("toastRequired"));
-      return;
-    }
-    setSaving(true);
+  async function handleDelete(tmpl: JobTemplateDetail) {
+    const ok = await confirmDialog(t("deleteConfirm", { name: tmpl.name }));
+    if (!ok) return;
     try {
-      const res = await csrfFetch("/api/employer/job-templates", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...form,
-          skills: form.skills.split(",").map((s) => s.trim()).filter(Boolean),
-        }),
-      });
-      if (res.ok) {
-        toast.success(t("toastCreated"));
-        setForm({ name: "", title: "", description: "", requirements: "", jobType: "full_time", experienceLevel: "mid", skills: "" });
-        setShowForm(false);
-        fetchTemplates();
-      }
-    } catch {
-      toast.error(t("toastCreateFailed"));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const deleteTemplate = async (id: string) => {
-    try {
-      const res = await csrfFetch(`/api/employer/job-templates/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        toast.success(t("toastDeleted"));
-        fetchTemplates();
-      }
+      await deleteTemplate.mutateAsync(tmpl._id);
+      toast.success(t("toastDeleted"));
     } catch {
       toast.error(t("toastDeleteFailed"));
     }
-  };
+  }
 
-  const useTemplate = (tmpl: JobTemplate) => {
-    // Navigate to job creation with template data pre-filled
-    const params = new URLSearchParams({ template: tmpl._id });
-    window.location.href = `/employer/jobs/new?${params}`;
-  };
+  async function handleDuplicate(tmpl: JobTemplateDetail) {
+    try {
+      await duplicateTemplate.mutateAsync(tmpl);
+      toast.success(t("toastDuplicated"));
+    } catch {
+      toast.error(t("toastDuplicateFailed"));
+    }
+  }
+
+  async function handleUse(tmpl: JobTemplateDetail) {
+    setBusyId(tmpl._id);
+    try {
+      const data = await useTemplate.mutateAsync(tmpl._id);
+      router.push(`/${locale}/employer/jobs/${data.job._id}/edit`);
+    } catch {
+      toast.error(t("toastUseFailed"));
+      setBusyId(null);
+    }
+  }
 
   return (
     <div className="page-container">
+      {ConfirmDialogNode}
+
       {/* Hero */}
       <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t("title")}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {t("description")}
-            </p>
-          </div>
-          <Button onClick={() => setShowForm(!showForm)}>
-            <Plus className="mr-1 h-4 w-4" /> {t("newTemplate")}
-          </Button>
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t("title")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("description")}</p>
         </div>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          <div className="workspace-glass-panel rounded-2xl p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("totalTemplates")}</p>
-            <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{templates.length}</p>
-          </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("timesUsed")}</p>
-            <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
-              {templates.reduce((sum, t) => sum + (t.usageCount || 0), 0)}
-            </p>
-          </div>
+        <div className="mt-5 workspace-glass-panel rounded-2xl p-4 sm:w-64">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("totalTemplates")}</p>
+          <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{total}</p>
         </div>
       </section>
 
-      {/* Create Form */}
-      {showForm && (
-        <section className="workspace-panel-surface rounded-[28px] p-6 space-y-5">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">{t("createTitle")}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{t("createSubtitle")}</p>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">
-                {t("fieldTemplateName")} <span className="text-red-500">*</span>
-              </label>
-              <Input
-                placeholder={t("placeholderTemplateName")}
-                value={form.name}
-                maxLength={100}
-                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">
-                {t("fieldJobTitle")} <span className="text-red-500">*</span>
-              </label>
-              <Input
-                placeholder={t("placeholderJobTitle")}
-                value={form.title}
-                maxLength={120}
-                onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
-              />
-            </div>
-
-            <div className="space-y-1.5 sm:col-span-2">
-              <label className="text-sm font-medium text-foreground">{t("fieldJobDescription")}</label>
-              <Textarea
-                placeholder={t("placeholderJobDescription")}
-                value={form.description}
-                onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-                className="min-h-[100px]"
-              />
-            </div>
-
-            <div className="space-y-1.5 sm:col-span-2">
-              <label className="text-sm font-medium text-foreground">{t("fieldRequirements")}</label>
-              <Textarea
-                placeholder={t("placeholderRequirements")}
-                value={form.requirements}
-                onChange={(e) => setForm((p) => ({ ...p, requirements: e.target.value }))}
-                className="min-h-[80px]"
-              />
-            </div>
-
-            <div className="space-y-1.5 sm:col-span-2">
-              <label className="text-sm font-medium text-foreground">{t("fieldSkills")}</label>
-              <Input
-                placeholder={t("placeholderSkills")}
-                value={form.skills}
-                onChange={(e) => setForm((p) => ({ ...p, skills: e.target.value }))}
-              />
-              <p className="text-xs text-muted-foreground">{t("skillsHint")}</p>
-            </div>
-          </div>
-
-          <div className="flex gap-2 pt-1">
-            <Button onClick={createTemplate} disabled={saving}>
-              {saving ? (
-                <>
-                  <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                  {t("creating")}
-                </>
-              ) : (
-                <>
-                  <Plus className="mr-1 h-4 w-4" /> {t("create")}
-                </>
-              )}
-            </Button>
-            <Button variant="ghost" onClick={() => setShowForm(false)} disabled={saving}>
-              {t("cancel")}
-            </Button>
-          </div>
-        </section>
-      )}
-
       {/* Search */}
       <section className="workspace-panel-surface rounded-[28px] p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder={t("search")} value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
-          </div>
-          <Button variant="ghost" size="sm" onClick={() => setSearch("")}>
-            <RotateCcw className="mr-1 h-4 w-4" /> {t("reset")}
-          </Button>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input placeholder={t("search")} value={search} onChange={(e) => handleSearchChange(e.target.value)} className="pl-9" />
         </div>
       </section>
 
@@ -253,10 +142,6 @@ export default function EmployerJobTemplatesPage() {
                   <Skeleton className="h-4 w-4" />
                 </div>
                 <Skeleton className="h-3 w-full" />
-                <div className="flex gap-1">
-                  <Skeleton className="h-4 w-12 rounded-full" />
-                  <Skeleton className="h-4 w-12 rounded-full" />
-                </div>
               </div>
             ))}
           </div>
@@ -282,25 +167,37 @@ export default function EmployerJobTemplatesPage() {
                   <p className="text-xs text-muted-foreground line-clamp-2">{tmpl.description}</p>
                 )}
 
-                {tmpl.skills && tmpl.skills.length > 0 && (
+                {tmpl.requirements?.skills && tmpl.requirements.skills.length > 0 && (
                   <div className="flex flex-wrap gap-1">
-                    {tmpl.skills.slice(0, 4).map((s) => (
+                    {tmpl.requirements.skills.slice(0, 4).map((s) => (
                       <span key={s} className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{s}</span>
                     ))}
-                    {tmpl.skills.length > 4 && (
-                      <span className="text-[10px] text-muted-foreground">+{tmpl.skills.length - 4}</span>
+                    {tmpl.requirements.skills.length > 4 && (
+                      <span className="text-[10px] text-muted-foreground">+{tmpl.requirements.skills.length - 4}</span>
                     )}
                   </div>
                 )}
 
                 <div className="flex items-center justify-between pt-2 border-t border-border/50">
-                  <span className="text-[10px] text-muted-foreground">{t("usedTimes", { count: tmpl.usageCount || 0 })}</span>
-                  <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="sm" onClick={() => useTemplate(tmpl)}>
-                      <Copy className="h-3.5 w-3.5 mr-1" /> {t("use")}
+                  <span className="text-[10px] text-muted-foreground">
+                    <RelativeDate date={tmpl.updatedAt} prefix={t("savedAgoPrefix")} />
+                  </span>
+                  <div className="flex items-center gap-0.5">
+                    <Button variant="ghost" size="sm" onClick={() => openEdit(tmpl)} aria-label={t("edit")}>
+                      <Pencil className="h-3.5 w-3.5" />
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => deleteTemplate(tmpl._id)}>
+                    <Button variant="ghost" size="sm" onClick={() => handleDuplicate(tmpl)} aria-label={t("duplicate")} disabled={duplicateTemplate.isPending}>
+                      <Copy className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleDelete(tmpl)} aria-label={t("deleteAction")}>
                       <Trash2 className="h-3.5 w-3.5 text-red-400" />
+                    </Button>
+                    <Button size="sm" onClick={() => handleUse(tmpl)} disabled={busyId === tmpl._id}>
+                      {busyId === tmpl._id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <>{t("use")} <ArrowRight className="h-3.5 w-3.5 ml-1" /></>
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -308,7 +205,44 @@ export default function EmployerJobTemplatesPage() {
             ))}
           </div>
         )}
+
+        {!loading && total > 0 && (
+          <PaginationControls
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            limit={limit}
+            onPageChange={setPage}
+            onLimitChange={(l) => { setLimit(l); setPage(1); }}
+            className="mt-5 pt-4 border-t border-border/50"
+          />
+        )}
       </section>
+
+      {/* Rename/Edit dialog */}
+      <Dialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("editTitle")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">{t("fieldTemplateName")}</label>
+              <Input value={editName} maxLength={100} onChange={(e) => setEditName(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">{t("fieldJobTitle")}</label>
+              <Input value={editTitle} maxLength={200} onChange={(e) => setEditTitle(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setEditing(null)}>{t("cancel")}</Button>
+            <Button onClick={handleSaveEdit} disabled={updateTemplate.isPending || !editName.trim()}>
+              {t("save")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
