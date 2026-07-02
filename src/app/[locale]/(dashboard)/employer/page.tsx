@@ -98,8 +98,8 @@ export default async function EmployerDashboard({ params }: { params: Promise<{ 
         />
       </div>
 
-      {/* ── Continue working: resume drafts, side by side (each self-hides when empty) ── */}
-      <div className="grid items-start gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-3">
+      {/* ── Continue working: resume drafts, side by side, equal height (each self-hides when empty) ── */}
+      <div className="grid gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-3">
         <DraftJobsCard locale={locale} />
         <AIChatDraftsCard locale={locale} />
         <DraftExtractionsCard locale={locale} />

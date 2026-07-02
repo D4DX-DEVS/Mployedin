@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { BarChart3, CalendarDays, Clock, Sparkles, Star, UserRoundCheck } from "lucide-react";
@@ -14,10 +15,9 @@ interface SmartHeaderProps {
 }
 
 /**
- * Dashboard hero — mirrors the "AI Hiring Summary" mockup: an eyebrow pill that
- * reflects the most pressing workspace signal, a welcome line, three inline
- * summary stats sourced from live data, a friendly robot mascot, and the single
- * "Create Job with AI" CTA. The four KPI tiles now live in DashboardStatCards.
+ * Dashboard hero — a clean two-zone layout: copy + AI hiring summary + the
+ * "Create Job with AI" CTA on the left, and a friendly AI mascot on the right.
+ * The four KPI tiles live in DashboardStatCards.
  */
 export function SmartHeader({
   userName,
@@ -52,9 +52,9 @@ export function SmartHeader({
   ];
 
   return (
-    <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-5 sm:p-6">
-      <div className="flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
-        {/* Copy + AI hiring summary */}
+    <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+        {/* Copy + AI hiring summary + CTA */}
         <div className="min-w-0 max-w-2xl">
           <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700 dark:text-sky-300">
             <Sparkles className="h-3.5 w-3.5" />
@@ -74,46 +74,49 @@ export function SmartHeader({
             ))}
           </div>
 
-          <div className="mt-3 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+          <div className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
             <Clock className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
             {activityLabel}
+          </div>
+
+          <div className="mt-5">
+            <Link
+              href={newJobHref}
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-sky-600 px-5 text-sm font-semibold text-white shadow-[0_10px_28px_-12px_rgba(2,132,199,0.7)] transition hover:bg-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 sm:w-auto"
+            >
+              <Sparkles className="h-4 w-4" />
+              {t("createJob")}
+            </Link>
           </div>
         </div>
 
         <RobotMascot />
-
-        <Link
-          href={newJobHref}
-          className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-sky-600 px-5 text-sm font-semibold text-white shadow-[0_10px_28px_-12px_rgba(2,132,199,0.7)] transition hover:bg-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
-        >
-          <Sparkles className="h-4 w-4" />
-          {t("createJob")}
-        </Link>
       </div>
     </section>
   );
 }
 
-/** Decorative AI mascot with two floating capability badges. */
+/** Friendly AI mascot — cropped rounded tile (masks the source image's grey
+ *  backdrop) with a soft glow and two floating capability badges. */
 function RobotMascot() {
   return (
-    <div className="relative mx-auto flex h-[120px] w-[150px] shrink-0 items-center justify-center" aria-hidden>
-      <div className="absolute h-24 w-24 rounded-full bg-sky-400/15 blur-xl dark:bg-sky-400/10" />
-      <svg width="72" height="72" viewBox="0 0 24 24" fill="none" className="relative">
-        <rect x="4" y="6" width="16" height="13" rx="5" fill="#2F6FED" />
-        <circle cx="9.3" cy="12.5" r="1.6" fill="white" />
-        <circle cx="14.7" cy="12.5" r="1.6" fill="white" />
-        <path d="M9.5 15.5a3 2 0 0 0 5 0" stroke="white" strokeWidth="1.2" strokeLinecap="round" />
-        <line x1="12" y1="6" x2="12" y2="3" stroke="#2F6FED" strokeWidth="1.8" />
-        <circle cx="12" cy="2.2" r="1.2" fill="#EA7A1A" />
-        <rect x="1" y="11" width="2.5" height="5" rx="1" fill="#9CBBF5" />
-        <rect x="20.5" y="9" width="2.5" height="7" rx="1" fill="#9CBBF5" />
-      </svg>
-      <div className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-lg bg-background shadow-md">
-        <Star className="h-3.5 w-3.5 text-violet-500" />
+    <div className="relative mx-auto shrink-0 md:mx-0" aria-hidden>
+      <div className="absolute inset-0 -z-10 rounded-[36px] bg-sky-400/25 blur-2xl dark:bg-sky-400/15" />
+      <div className="relative h-36 w-36 overflow-hidden rounded-[28px] shadow-[0_20px_50px_-18px_rgba(2,132,199,0.5)] ring-1 ring-white/60 dark:ring-white/10 sm:h-44 sm:w-44">
+        <Image
+          src="/ai-assistant.png"
+          alt="Mployedin AI assistant"
+          fill
+          sizes="176px"
+          priority
+          className="scale-[1.15] object-cover object-[52%_40%]"
+        />
       </div>
-      <div className="absolute bottom-0 left-0 flex h-7 w-7 items-center justify-center rounded-lg bg-background shadow-md">
-        <BarChart3 className="h-3.5 w-3.5 text-sky-500" />
+      <div className="absolute -right-2.5 -top-2.5 flex h-9 w-9 items-center justify-center rounded-xl bg-background shadow-md ring-1 ring-border/60">
+        <Star className="h-4 w-4 text-violet-500" />
+      </div>
+      <div className="absolute -bottom-2.5 -left-2.5 flex h-9 w-9 items-center justify-center rounded-xl bg-background shadow-md ring-1 ring-border/60">
+        <BarChart3 className="h-4 w-4 text-sky-500" />
       </div>
     </div>
   );
