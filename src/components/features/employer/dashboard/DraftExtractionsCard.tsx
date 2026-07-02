@@ -32,6 +32,8 @@ interface DraftExtractionsCardProps {
    * list page above filters.
    */
   variant?: "card" | "banner";
+  /** Reports draft count after each fetch/discard so a parent layout can react (e.g. hide or resize a shared grid). */
+  onCountChange?: (count: number) => void;
 }
 
 function relativeTime(iso: string, locale: string): string {
@@ -61,7 +63,7 @@ function relativeTime(iso: string, locale: string): string {
  * Both variants point the user at `?draft=<id>` on the ai-extract page, where
  * the page fetches the full draft and rehydrates the editable list.
  */
-export function DraftExtractionsCard({ locale, variant = "card" }: DraftExtractionsCardProps) {
+export function DraftExtractionsCard({ locale, variant = "card", onCountChange }: DraftExtractionsCardProps) {
   const t = useTranslations("employerDashboard.draftExtractions");
   const router = useRouter();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
@@ -83,6 +85,10 @@ export function DraftExtractionsCard({ locale, variant = "card" }: DraftExtracti
     })();
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    if (drafts !== null) onCountChange?.(drafts.length);
+  }, [drafts, onCountChange]);
 
   // Don't render while loading (prevents flashing an empty card), and hide
   // entirely when there's nothing pending — this card is a contextual nudge,
@@ -121,12 +127,14 @@ export function DraftExtractionsCard({ locale, variant = "card" }: DraftExtracti
   // ── Banner variant (jobs list page) ─────────────────────────────────────
   if (variant === "banner") {
     return (
-      <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4 dark:border-amber-500/30 dark:bg-amber-500/10">
+      <div className="workspace-glass-panel flex h-full flex-col gap-3 rounded-2xl border border-violet-200/60 p-4 dark:border-violet-500/30">
         {ConfirmDialogNode}
-        <div className="flex flex-wrap items-center gap-3">
-          <Wand2 className="h-5 w-5 flex-shrink-0 text-amber-600 dark:text-amber-400" />
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-600 dark:bg-violet-500/20 dark:text-violet-300">
+            <Wand2 className="h-4 w-4" />
+          </span>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-foreground">
+            <p className="truncate text-sm font-semibold text-foreground">
               {t("bannerTitle", { count: drafts.length })}
             </p>
             <p className="truncate text-xs text-muted-foreground">
@@ -135,16 +143,18 @@ export function DraftExtractionsCard({ locale, variant = "card" }: DraftExtracti
                 .join("  •  ")}
             </p>
           </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
           {drafts.slice(0, 3).map((d) => (
             <Button
               key={d._id}
               size="sm"
               variant="outline"
-              className="gap-1.5"
+              className="h-8 gap-1.5 rounded-lg border-violet-200 bg-background/70 text-xs text-violet-700 hover:bg-violet-50 dark:border-violet-500/30 dark:text-violet-300 dark:hover:bg-violet-950/40"
               onClick={() => router.push(continueHref(d._id))}
             >
               <RotateCcw className="h-3.5 w-3.5" />
-              {t("continue")}
+              {d.fileName.length > 16 ? `${d.fileName.slice(0, 16)}…` : d.fileName}
               <ChevronRight className="h-3.5 w-3.5" />
             </Button>
           ))}

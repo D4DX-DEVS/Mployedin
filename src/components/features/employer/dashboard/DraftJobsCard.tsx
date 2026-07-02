@@ -19,6 +19,8 @@ interface DraftJobSummary {
 interface DraftJobsCardProps {
   locale: string;
   variant?: "card" | "banner";
+  /** Reports draft count after each fetch/discard so a parent layout can react (e.g. hide or resize a shared grid). */
+  onCountChange?: (count: number) => void;
 }
 
 function relativeTime(iso: string, locale: string): string {
@@ -52,7 +54,7 @@ function relativeTime(iso: string, locale: string): string {
  *   - jobs list page     → variant="banner" (above filters)
  * Self-hides client-side when no drafts exist (zero DOM cost otherwise).
  */
-export function DraftJobsCard({ locale, variant = "card" }: DraftJobsCardProps) {
+export function DraftJobsCard({ locale, variant = "card", onCountChange }: DraftJobsCardProps) {
   const t = useTranslations("employerDashboard.draftJobs");
   const router = useRouter();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
@@ -78,6 +80,10 @@ export function DraftJobsCard({ locale, variant = "card" }: DraftJobsCardProps) 
     })();
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    if (drafts !== null) onCountChange?.(drafts.length);
+  }, [drafts, onCountChange]);
 
   if (!drafts || drafts.length === 0) return null;
 
@@ -108,28 +114,32 @@ export function DraftJobsCard({ locale, variant = "card" }: DraftJobsCardProps) 
   // ── Banner variant (jobs list page) ─────────────────────────────────────
   if (variant === "banner") {
     return (
-      <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4 dark:border-amber-500/30 dark:bg-amber-500/10">
+      <div className="workspace-glass-panel flex h-full flex-col gap-3 rounded-2xl border border-amber-200/60 p-4 dark:border-amber-500/30">
         {ConfirmDialogNode}
-        <div className="flex flex-wrap items-center gap-3">
-          <FilePenLine className="h-5 w-5 flex-shrink-0 text-amber-600 dark:text-amber-400" />
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300">
+            <FilePenLine className="h-4 w-4" />
+          </span>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-foreground">
+            <p className="truncate text-sm font-semibold text-foreground">
               {t("bannerTitle", { count: drafts.length })}
             </p>
             <p className="truncate text-xs text-muted-foreground">
               {drafts.map((d) => d.title).join("  •  ")}
             </p>
           </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
           {drafts.slice(0, 3).map((d) => (
             <Button
               key={d._id}
               size="sm"
               variant="outline"
-              className="gap-1.5"
+              className="h-8 gap-1.5 rounded-lg border-amber-200 bg-background/70 text-xs text-amber-700 hover:bg-amber-50 dark:border-amber-500/30 dark:text-amber-300 dark:hover:bg-amber-950/40"
               onClick={() => router.push(continueHref(d._id))}
             >
               <RotateCcw className="h-3.5 w-3.5" />
-              {t("continue")}
+              {d.title.length > 18 ? `${d.title.slice(0, 18)}…` : d.title}
               <ChevronRight className="h-3.5 w-3.5" />
             </Button>
           ))}

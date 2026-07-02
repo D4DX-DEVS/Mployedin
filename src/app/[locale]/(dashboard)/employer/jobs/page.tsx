@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Plus, Edit2, Eye, Clock, CheckCircle, FileText, Trash2, Copy, Users, BriefcaseBusiness, ShieldCheck, BookTemplate, Search, Sparkles, ArrowRight, GitBranch, SlidersHorizontal, PauseCircle, PlayCircle, MoreHorizontal, Image as ImageIcon, Send, Undo2 } from "lucide-react";
+import { Plus, Edit2, Eye, Clock, CheckCircle, FileText, Trash2, Copy, Users, BriefcaseBusiness, ShieldCheck, BookTemplate, Search, Sparkles, ArrowRight, GitBranch, SlidersHorizontal, PauseCircle, PlayCircle, MoreHorizontal, Image as ImageIcon, Send, Undo2, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -73,6 +73,9 @@ export default function EmployerJobsPage() {
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [isApplyingAiSearch, setIsApplyingAiSearch] = useState(false);
   const [cloningJobId, setCloningJobId] = useState<string | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [jobDraftsCount, setJobDraftsCount] = useState(0);
+  const [aiDraftsCount, setAiDraftsCount] = useState(0);
 
   const [pendingJobAction, setPendingJobAction] = useState<{ jobId: string; action: PendingJobAction } | null>(null);
   const debouncedSearch = useDebounce(search, 300);
@@ -482,12 +485,31 @@ export default function EmployerJobsPage() {
             </div>
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setFiltersOpen((v) => !v)}
+          aria-expanded={filtersOpen}
+          className="workspace-glass-panel mt-6 flex w-full items-center justify-between gap-3 rounded-2xl px-4 py-3 text-left transition-colors hover:bg-primary/5"
+        >
+          <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <SlidersHorizontal className="h-4 w-4 text-primary" />
+            {t("filterHeading")}
+            {hasActiveFilters && (
+              <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
+            )}
+          </span>
+          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${filtersOpen ? "rotate-180" : ""}`} />
+        </button>
       </section>
 
       {/* ── Resume unfinished work (banners — self-hide when none) ── */}
-      <DraftJobsCard locale={locale} variant="banner" />
-      <DraftExtractionsCard locale={locale} variant="banner" />
+      <div className={`grid gap-3 ${jobDraftsCount > 0 && aiDraftsCount > 0 ? "sm:grid-cols-2" : "grid-cols-1"}`}>
+        <DraftJobsCard locale={locale} variant="banner" onCountChange={setJobDraftsCount} />
+        <DraftExtractionsCard locale={locale} variant="banner" onCountChange={setAiDraftsCount} />
+      </div>
 
+      {filtersOpen && (
       <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div>
@@ -621,6 +643,7 @@ export default function EmployerJobsPage() {
           </div>
         </div>
       </section>
+      )}
 
       {isLoading ? (
         <div className="space-y-4">
