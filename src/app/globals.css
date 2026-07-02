@@ -638,14 +638,14 @@ body {
       radial-gradient(circle at top right, hsl(var(--brand-blue-light) / 0.08), transparent 18%),
       linear-gradient(180deg, hsl(var(--surface-2) / 0.96), hsl(var(--secondary) / 0.94));
     overscroll-behavior: contain;
-    /* Reserve clearance for the floating AI assistant button (fixed, bottom-24 + h-14)
-       so end-of-content (right-column action buttons, last cards, table rows) is never
-       hidden behind it. On short, non-scrolling pages this padding is clamped by the
-       scroll container and stays invisible, so it costs nothing there; on scrolling pages
-       it adds the trailing clearance the button needs. scroll-padding-bottom keeps
-       focus/keyboard scroll clear of the button too. */
-    scroll-padding-bottom: 7.5rem;
-    padding-bottom: max(env(safe-area-inset-bottom), 7.5rem);
+    /* Reserve clearance so the last card can scroll clear of the floating AI
+       assistant button (fixed, bottom-24 + h-14 = ~9.5rem tall). Sized to
+       ~half the button's footprint rather than the full height — enough that
+       nothing interactive ends up trapped under it, without leaving a big
+       empty band below the last card on short mobile pages. scroll-padding-bottom
+       keeps focus/keyboard scroll clear of the button too. */
+    scroll-padding-bottom: 5rem;
+    padding-bottom: max(env(safe-area-inset-bottom), 5rem);
   }
 
   @media (min-width: 1024px) {
@@ -798,6 +798,15 @@ body {
       radial-gradient(circle at top left, hsl(var(--brand-cyan) / 0.18), transparent 38%),
       linear-gradient(135deg, hsl(var(--card) / 0.98), hsl(var(--surface-3) / 0.92));
     box-shadow: var(--workspace-shadow-hero);
+  }
+
+  /* Dashboard cards sit in responsive grids. Grid items default to
+     min-width:auto (= min-content), so a long job title or a nowrap chip pins a
+     card to its content width and pushes the whole page past the viewport on
+     phones/tablets. Letting each grid item shrink to its track re-enables the
+     truncate/overflow already present on the inner content. */
+  :is(.agent-legacy-surface, .super-agent-legacy-surface, .employer-legacy-surface) [class*="grid-cols"] > * {
+    min-width: 0;
   }
 
   :is(.agent-legacy-surface, .super-agent-legacy-surface, .employer-legacy-surface) [class~="text-slate-950"] {

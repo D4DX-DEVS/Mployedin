@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { BarChart3, CalendarDays, Clock, Sparkles, Star, UserRoundCheck } from "lucide-react";
+import { CalendarDays, Clock, Sparkles, Star, UserRoundCheck } from "lucide-react";
 
 interface SmartHeaderProps {
   userName: string;
@@ -17,9 +17,10 @@ interface SmartHeaderProps {
 }
 
 /**
- * Dashboard hero — a clean two-zone layout: copy + AI hiring summary + the
- * "Create Job with AI" CTA on the left, and a friendly AI mascot on the right.
- * The four KPI tiles live in DashboardStatCards.
+ * Dashboard hero — a clean two-zone layout: copy + AI hiring summary on the
+ * left, and a friendly AI mascot with the "Create Job with AI" CTA stacked
+ * underneath it on the right. Keeping the CTA out of the left column keeps
+ * the hero shorter. The four KPI tiles live in DashboardStatCards.
  */
 export function SmartHeader({
   userName,
@@ -71,7 +72,7 @@ export function SmartHeader({
   return (
     <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
       <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-        {/* Copy + AI hiring summary + CTA */}
+        {/* Copy + AI hiring summary */}
         <div className="min-w-0 max-w-2xl">
           <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700 dark:text-sky-300">
             <Sparkles className="h-3.5 w-3.5" />
@@ -97,31 +98,37 @@ export function SmartHeader({
             <Clock className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
             {activityLabel}
           </div>
-
-          <div className="mt-5">
-            <Link
-              href={newJobHref}
-              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-sky-600 px-5 text-sm font-semibold text-white shadow-[0_10px_28px_-12px_rgba(2,132,199,0.7)] transition hover:bg-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 sm:w-auto"
-            >
-              <Sparkles className="h-4 w-4" />
-              {t("createJob")}
-            </Link>
-          </div>
         </div>
 
-        <RobotMascot />
+        {/* Mascot + CTA, stacked */}
+        <div className="flex shrink-0 flex-col items-center gap-3">
+          <RobotMascot />
+          <Link
+            href={newJobHref}
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-sky-600 px-5 text-sm font-semibold text-white shadow-[0_10px_28px_-12px_rgba(2,132,199,0.7)] transition hover:bg-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+          >
+            <Sparkles className="h-4 w-4" />
+            {t("createJob")}
+          </Link>
+        </div>
       </div>
     </section>
   );
 }
 
-/** Friendly AI mascot — cropped rounded tile (masks the source image's grey
- *  backdrop) with a soft glow and two floating capability badges. */
+/** Friendly AI mascot — floats directly inside the hero (no card/tile). The
+ *  source image ships with a grey backdrop, so a radial mask feathers its edges
+ *  to transparent, blending the robot into the hero surface. A soft blue glow
+ *  sits behind for ambiance. */
 function RobotMascot() {
+  // ponytail: masks the asset's grey backdrop in CSS instead of shipping a new
+  // transparent PNG — swap the asset and drop the mask if a cutout is added.
+  const maskImage =
+    "radial-gradient(62% 64% at 50% 46%, #000 50%, rgba(0,0,0,0.35) 68%, transparent 82%)";
   return (
-    <div className="relative mx-auto shrink-0 md:mx-0" aria-hidden>
-      <div className="absolute inset-0 -z-10 rounded-[36px] bg-sky-400/25 blur-2xl dark:bg-sky-400/15" />
-      <div className="relative h-36 w-36 overflow-hidden rounded-[28px] shadow-[0_20px_50px_-18px_rgba(2,132,199,0.5)] ring-1 ring-white/60 dark:ring-white/10 sm:h-44 sm:w-44">
+    <div className="relative shrink-0" aria-hidden>
+      <div className="absolute inset-0 -z-10 rounded-[36px] bg-sky-400/20 blur-2xl dark:bg-sky-400/15" />
+      <div className="relative h-32 w-32 sm:h-40 sm:w-40 md:h-44 md:w-44">
         <Image
           src="/ai-assistant.png"
           alt="Mployedin AI assistant"
@@ -129,13 +136,8 @@ function RobotMascot() {
           sizes="176px"
           priority
           className="scale-[1.15] object-cover object-[52%_40%]"
+          style={{ WebkitMaskImage: maskImage, maskImage }}
         />
-      </div>
-      <div className="absolute -right-2.5 -top-2.5 flex h-9 w-9 items-center justify-center rounded-xl bg-background shadow-md ring-1 ring-border/60">
-        <Star className="h-4 w-4 text-violet-500" />
-      </div>
-      <div className="absolute -bottom-2.5 -left-2.5 flex h-9 w-9 items-center justify-center rounded-xl bg-background shadow-md ring-1 ring-border/60">
-        <BarChart3 className="h-4 w-4 text-sky-500" />
       </div>
     </div>
   );
