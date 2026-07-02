@@ -6,7 +6,8 @@ interface DashboardStatCardsProps {
   activeJobCount: number;
   newApplications: number;
   highMatchCount: number;
-  scheduledInterviews: number;
+  /** Interviews scheduled for today — the "Today's Interviews" KPI. */
+  interviewsToday: number;
   locale: string;
 }
 
@@ -18,7 +19,7 @@ export function DashboardStatCards({
   activeJobCount,
   newApplications,
   highMatchCount,
-  scheduledInterviews,
+  interviewsToday,
   locale,
 }: DashboardStatCardsProps) {
   const t = useTranslations("employerDashboard.smartHeader");
@@ -51,7 +52,7 @@ export function DashboardStatCards({
     {
       labelKey: "interviewsSet",
       descKey: "interviewsSetDesc",
-      value: scheduledInterviews,
+      value: interviewsToday,
       href: `/${locale}/employer/interviews`,
       Icon: CalendarDays,
       chip: "bg-sky-50 text-sky-600 dark:bg-sky-500/15 dark:text-sky-300",

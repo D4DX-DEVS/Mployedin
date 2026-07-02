@@ -31,6 +31,7 @@ export default async function EmployerDashboard({ params }: { params: Promise<{ 
     newApplications,
     inReview,
     scheduledInterviews,
+    interviewsToday,
     placements,
     offerCount,
     offersSent,
@@ -49,6 +50,7 @@ export default async function EmployerDashboard({ params }: { params: Promise<{ 
         userName={userName}
         newApplications={newApplications}
         scheduledInterviews={scheduledInterviews}
+        interviewsToday={interviewsToday}
         activeJobCount={activeJobCount}
         highMatchCount={highMatchCount}
         lastActivityMinutes={lastActivityMinutes}
@@ -60,7 +62,7 @@ export default async function EmployerDashboard({ params }: { params: Promise<{ 
         activeJobCount={activeJobCount}
         newApplications={newApplications}
         highMatchCount={highMatchCount}
-        scheduledInterviews={scheduledInterviews}
+        interviewsToday={interviewsToday}
         locale={locale}
       />
 

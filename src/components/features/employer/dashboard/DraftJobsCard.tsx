@@ -64,10 +64,11 @@ export function DraftJobsCard({ locale, variant = "card" }: DraftJobsCardProps) 
     let cancelled = false;
     (async () => {
       try {
-        // ?myJobs=1 scopes to the employer; status=draft filters; limit=3 caps
+        // ?myJobs=true scopes to the employer; status=draft filters; limit=3 caps
         // the dashboard surface. The existing GET /api/jobs route already
-        // supports all three.
-        const res = await fetch("/api/jobs?myJobs=1&status=draft&limit=3", { cache: "no-store" });
+        // supports all three. (Route matches the literal "true" — "1" silently
+        // falls through to the public active-jobs listing.)
+        const res = await fetch("/api/jobs?myJobs=true&status=draft&limit=3", { cache: "no-store" });
         if (!res.ok) return;
         const data = (await res.json()) as { jobs?: DraftJobSummary[] };
         if (!cancelled) setDrafts(data.jobs ?? []);

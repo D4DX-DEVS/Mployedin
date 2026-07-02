@@ -15,6 +15,10 @@ export interface EmployerDashboardStats {
   newApplications: number;
   inReview: number;
   scheduledInterviews: number;
+  /** Interviews scheduled for today (server-local day) — powers the
+   *  "Today's Interviews" KPI card + hero chip. Distinct from
+   *  scheduledInterviews (all-time), which feeds the pipeline funnel. */
+  interviewsToday: number;
   placements: number;
   offerCount: number;
   offersSent: number;
@@ -69,6 +73,7 @@ const EMPTY_STATS: EmployerDashboardStats = {
   newApplications: 0,
   inReview: 0,
   scheduledInterviews: 0,
+  interviewsToday: 0,
   placements: 0,
   offerCount: 0,
   offersSent: 0,
@@ -99,6 +104,13 @@ export async function getEmployerDashboardStats(
     return empty;
   }
 
+  // "Today" = server-local calendar day. ponytail: single-timezone approximation;
+  // switch to per-employer TZ if the product ever spans regions where midnight matters.
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const startOfTomorrow = new Date(startOfToday);
+  startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+
   const [
     activeJobCount,
     draftJobCount,
@@ -107,6 +119,7 @@ export async function getEmployerDashboardStats(
     newApplications,
     inReview,
     scheduledInterviews,
+    interviewsToday,
     placements,
     offerCount,
     offersSent,
@@ -121,6 +134,12 @@ export async function getEmployerDashboardStats(
     Application.countDocuments({ employerId, status: "applied" }),
     Application.countDocuments({ employerId, status: "shortlisted" }),
     Interview.countDocuments({ employerId, status: "scheduled" }),
+    // Interviews scheduled for today only — backs the "Today's Interviews" card.
+    Interview.countDocuments({
+      employerId,
+      status: "scheduled",
+      scheduledAt: { $gte: startOfToday, $lt: startOfTomorrow },
+    }),
     Placement.countDocuments({ employerId }),
     // Total offers created
     Offer.countDocuments({ employerId }),
@@ -201,6 +220,7 @@ export async function getEmployerDashboardStats(
     newApplications,
     inReview,
     scheduledInterviews,
+    interviewsToday,
     placements,
     offerCount,
     offersSent,

@@ -7,6 +7,8 @@ interface SmartHeaderProps {
   userName: string;
   newApplications: number;
   scheduledInterviews: number;
+  /** Interviews scheduled for today — drives the "scheduled today" summary chip. */
+  interviewsToday: number;
   activeJobCount: number;
   /** High-match candidate count (aiMatchScore >= 80) for the AI Matches signal. */
   highMatchCount: number;
@@ -23,6 +25,7 @@ export function SmartHeader({
   userName,
   newApplications,
   scheduledInterviews,
+  interviewsToday,
   activeJobCount,
   highMatchCount,
   lastActivityMinutes,
@@ -31,13 +34,27 @@ export function SmartHeader({
   const t = useTranslations("employerDashboard.smartHeader");
 
   // AI matches take priority — the platform's key differentiator — then fall
-  // back through review / interview / active / cold-start states.
+  // back through review / interview / active / cold-start states. The eyebrow
+  // badge and the action-oriented subtitle share the same state so the hero
+  // reads coherently.
   let eyebrowKey: string;
-  if (highMatchCount > 0) eyebrowKey = "aiMatchesFound";
-  else if (newApplications > 0) eyebrowKey = "reviewQueueActive";
-  else if (scheduledInterviews > 0) eyebrowKey = "interviewMomentum";
-  else if (activeJobCount > 0) eyebrowKey = "employerWorkspace";
-  else eyebrowKey = "readyToLaunch";
+  let subtitleKey: string;
+  if (highMatchCount > 0) {
+    eyebrowKey = "aiMatchesFound";
+    subtitleKey = "subtitleAiMatches";
+  } else if (newApplications > 0) {
+    eyebrowKey = "reviewQueueActive";
+    subtitleKey = "subtitleReview";
+  } else if (scheduledInterviews > 0) {
+    eyebrowKey = "interviewMomentum";
+    subtitleKey = "subtitleInterviews";
+  } else if (activeJobCount > 0) {
+    eyebrowKey = "employerWorkspace";
+    subtitleKey = "subtitleActive";
+  } else {
+    eyebrowKey = "readyToLaunch";
+    subtitleKey = "subtitleEmpty";
+  }
 
   const newJobHref = `/${locale}/employer/jobs/ai-create`;
   const activityLabel =
@@ -48,7 +65,7 @@ export function SmartHeader({
   const summary = [
     { key: "summaryHighMatch", count: highMatchCount, Icon: UserRoundCheck, tone: "text-emerald-600 dark:text-emerald-400" },
     { key: "summaryReview", count: newApplications, Icon: Star, tone: "text-amber-600 dark:text-amber-400" },
-    { key: "summaryInterviews", count: scheduledInterviews, Icon: CalendarDays, tone: "text-violet-600 dark:text-violet-400" },
+    { key: "summaryInterviews", count: interviewsToday, Icon: CalendarDays, tone: "text-violet-600 dark:text-violet-400" },
   ];
 
   return (
@@ -63,7 +80,9 @@ export function SmartHeader({
           <h1 className="mt-3 flex items-center gap-2 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
             {t("welcomeBack", { userName })} <span aria-hidden>👋</span>
           </h1>
-          <p className="mt-2 text-sm font-medium text-muted-foreground">{t("aiHiringSummary")}</p>
+          <p className="mt-2 text-sm font-medium text-muted-foreground">
+            {t(subtitleKey, { count: highMatchCount })}
+          </p>
 
           <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2">
             {summary.map(({ key, count, Icon, tone }) => (
