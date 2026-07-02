@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import StaticPage from "@/models/StaticPage";
 import { checkRateLimit } from "@/lib/security/rateLimit";
+import logger from "@/lib/logger";
 
 /**
  * Public static page by slug (privacy-policy, cookie-policy, etc) — NO AUTH required.
@@ -26,7 +27,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
 
     return NextResponse.json({ page });
   } catch (error) {
-    console.error("[Public] Static page error:", error);
+    logger.error({ error }, "[Public] Static page error");
     return NextResponse.json({ error: "Failed to load page" }, { status: 500 });
   }
 }

@@ -11,6 +11,7 @@ import { notify, notifyInterviewSelected, notifyOfferMade, notifyRejected } from
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import type { UserRole } from "@/models/User";
+import logger from "@/lib/logger";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -199,7 +200,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
         titleKey: "stageChangedTitle",
         bodyKey: "stageChangedBody",
         params: { jobTitle, status: effectiveStatus },
-      }).catch(() => { /* non-blocking */ });
+      }).catch((err) => { logger.error({ err, applicationId: params?.id, employerId: emp?._id }, "Failed to notify employer about stage change"); });
     }
 
     const JobSeeker = (await import("@/models/JobSeeker")).default;
@@ -211,11 +212,11 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
       const companyName = emp?.companyName ?? "the employer";
 
       if (effectiveStatus === "interview_scheduled") {
-        notifyInterviewSelected(seekerUserId, jobTitle, companyName, appId).catch(() => { /* non-blocking */ });
+        notifyInterviewSelected(seekerUserId, jobTitle, companyName, appId).catch((err) => { logger.error({ err, applicationId: appId, userId: seekerUserId }, "failed to notify applicant of interview selection"); });
       } else if (effectiveStatus === "offer" || effectiveStatus === "hired") {
-        notifyOfferMade(seekerUserId, jobTitle, companyName, appId).catch(() => { /* non-blocking */ });
+        notifyOfferMade(seekerUserId, jobTitle, companyName, appId).catch((err) => { logger.error({ err, applicationId: appId, userId: seekerUserId }, "failed to notify applicant of offer"); });
       } else if (effectiveStatus === "rejected") {
-        notifyRejected(seekerUserId, jobTitle, appId).catch(() => { /* non-blocking */ });
+        notifyRejected(seekerUserId, jobTitle, appId).catch((err) => { logger.error({ err, applicationId: appId, userId: seekerUserId }, "failed to notify applicant of rejection"); });
       }
       // shortlisted, screening, interview, selected, withdrawn — silent
     }

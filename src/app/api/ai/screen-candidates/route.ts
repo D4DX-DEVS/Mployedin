@@ -12,6 +12,7 @@ import { JobSeeker } from "@/models/JobSeeker";
 import { validateBody } from "@/lib/validators";
 import { aiScreenCandidatesSchema } from "@/lib/validators/ai";
 import { logActivity } from "@/lib/audit/log";
+import logger from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   try {
@@ -190,7 +191,7 @@ Output ONLY a JSON array, no markdown code blocks, sorted by score descending.`;
     );
   } catch (err) {
     if (err instanceof NextResponse) return err;
-    console.error("[Screen Candidates Error]", err);
+    logger.error({ err }, "[Screen Candidates Error]");
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

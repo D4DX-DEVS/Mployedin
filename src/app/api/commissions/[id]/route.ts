@@ -11,6 +11,7 @@ import { notifyCommissionApproved, notifyCommissionPaid } from "@/lib/notificati
 import Agent from "@/models/Agent";
 import SuperAgent from "@/models/SuperAgent";
 import type { UserRole } from "@/models/User";
+import logger from "@/lib/logger";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -131,13 +132,13 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     if (commission.agentId) {
       const agent = await Agent.findById(commission.agentId).select("userId").lean();
       if (agent?.userId) {
-        notifyCommissionApproved(String(agent.userId), "agent", commission.amount, commission.currency).catch(() => {});
+        notifyCommissionApproved(String(agent.userId), "agent", commission.amount, commission.currency).catch((err) => { logger.error({ err, commissionId: params?.id, role: "agent" }, "failed to notify agent of commission approval"); });
       }
     }
     if (commission.superAgentId) {
       const sa = await SuperAgent.findById(commission.superAgentId).select("userId").lean();
       if (sa?.userId) {
-        notifyCommissionApproved(String(sa.userId), "super_agent", commission.amount, commission.currency).catch(() => {});
+        notifyCommissionApproved(String(sa.userId), "super_agent", commission.amount, commission.currency).catch((err) => { logger.error({ err, commissionId: params?.id, role: "super_agent" }, "failed to notify super-agent of commission approval"); });
       }
     }
   } else if (body.status === "paid") {
@@ -153,13 +154,13 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     if (commission.agentId) {
       const agent = await Agent.findById(commission.agentId).select("userId").lean();
       if (agent?.userId) {
-        notifyCommissionPaid(String(agent.userId), "agent", commission.amount, commission.currency, commission.paymentRef ?? "—").catch(() => {});
+        notifyCommissionPaid(String(agent.userId), "agent", commission.amount, commission.currency, commission.paymentRef ?? "—").catch((err) => { logger.error({ err, commissionId: params?.id, role: "agent" }, "failed to notify agent of commission payment"); });
       }
     }
     if (commission.superAgentId) {
       const sa = await SuperAgent.findById(commission.superAgentId).select("userId").lean();
       if (sa?.userId) {
-        notifyCommissionPaid(String(sa.userId), "super_agent", commission.amount, commission.currency, commission.paymentRef ?? "—").catch(() => {});
+        notifyCommissionPaid(String(sa.userId), "super_agent", commission.amount, commission.currency, commission.paymentRef ?? "—").catch((err) => { logger.error({ err, commissionId: params?.id, role: "super_agent" }, "failed to notify super-agent of commission payment"); });
       }
     }
   } else if (body.status === "disputed") {

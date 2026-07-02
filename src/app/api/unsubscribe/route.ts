@@ -3,8 +3,9 @@ import jwt from "jsonwebtoken";
 import { connectDB } from "@/lib/db/mongoose";
 import NotificationPreference from "@/models/NotificationPreference";
 import SavedSearch from "@/models/SavedSearch";
+import logger from "@/lib/logger";
 
-const JWT_SECRET = process.env.JWT_SECRET ?? process.env.NEXTAUTH_SECRET ?? "";
+const JWT_SECRET = process.env.JWT_SECRET ?? process.env.NEXTAUTH_SECRET;
 
 interface UnsubscribePayload {
   userId: string;
@@ -33,7 +34,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (!JWT_SECRET) {
-    console.error("[unsubscribe] JWT_SECRET not configured");
+    logger.error("[unsubscribe] JWT_SECRET not configured");
     return new NextResponse(
       buildUnsubscribePage(false, "Server configuration error."),
       { status: 500, headers: { "Content-Type": "text/html; charset=utf-8" } },
@@ -42,7 +43,7 @@ export async function GET(req: NextRequest) {
 
   let payload: UnsubscribePayload;
   try {
-    payload = jwt.verify(token, JWT_SECRET) as UnsubscribePayload;
+    payload = jwt.verify(token, JWT_SECRET, { algorithms: ["HS256"] }) as UnsubscribePayload;
   } catch {
     return new NextResponse(
       buildUnsubscribePage(false, "Invalid or expired unsubscribe link."),
@@ -117,7 +118,7 @@ export async function POST(req: NextRequest) {
 
   let payload: UnsubscribePayload;
   try {
-    payload = jwt.verify(token, JWT_SECRET) as UnsubscribePayload;
+    payload = jwt.verify(token, JWT_SECRET, { algorithms: ["HS256"] }) as UnsubscribePayload;
   } catch {
     return NextResponse.json({ error: "Invalid token" }, { status: 400 });
   }

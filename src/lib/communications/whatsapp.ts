@@ -7,6 +7,8 @@
  *   DXING_BASE_URL       https://app.dxing.in/api  (default)
  */
 
+import logger from "@/lib/logger";
+
 const BASE_URL = process.env.DXING_BASE_URL ?? "https://app.dxing.in/api";
 const SECRET   = process.env.DXING_API_KEY ?? process.env.DXING_secret ?? "";
 const ACCOUNT  = process.env.DXING_Account ?? "";
@@ -53,7 +55,7 @@ export interface DxingOtpResult {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function warn(label: string) {
-  console.warn(`[WhatsApp/Dxing] ${label} — check DXING_API_KEY and DXING_Account env vars.`);
+  logger.warn({ label }, "[WhatsApp/Dxing] check DXING_API_KEY and DXING_Account env vars");
 }
 
 function isMockMode(): boolean {

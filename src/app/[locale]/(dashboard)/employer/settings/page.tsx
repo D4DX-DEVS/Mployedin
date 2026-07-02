@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Suspense, useEffect, useState, useRef, useMemo } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
@@ -19,13 +19,14 @@ import { Progress } from "@/components/ui/progress";
 import { PageHero } from "@/components/shared/PageHero";
 import { LogoUpload } from "@/components/features/employer/LogoUpload";
 import { ChangeEmailCard } from "@/components/features/settings/ChangeEmailCard";
+import { CalendarFeedCard } from "@/components/features/settings/CalendarFeedCard";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useEmployerProfile, useUpdateEmployerProfile, useUploadDocument, useDeleteDocument } from "@/hooks/useEmployerProfile";
 import type { CompanyData } from "@/hooks/useEmployerProfile";
 import { useCountrySearch } from "@/hooks/useCountrySearch";
 import { useTranslations } from "next-intl";
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const INDUSTRIES = [
   "Technology", "Healthcare", "Finance", "Construction", "Hospitality",
@@ -60,7 +61,7 @@ const NAV_ITEMS: { key: TabKey; label: string; desc: string; icon: typeof Buildi
   { key: "account", label: "accountSecurity", desc: "accountSecurityDesc", icon: Shield },
 ];
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface FormData {
   companyName: string;
@@ -120,7 +121,7 @@ function buildInitialForm(emp?: CompanyData | null): FormData {
   };
 }
 
-// ─── Sub-Components ───────────────────────────────────────────────────────────
+// â”€â”€â”€ Sub-Components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function SectionCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
@@ -184,7 +185,7 @@ function NotificationRow({
   );
 }
 
-// ─── Page Component ───────────────────────────────────────────────────────────
+// â”€â”€â”€ Page Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export default function CompanySettingsPageWrapper() {
   return (
@@ -362,7 +363,7 @@ function CompanySettingsPage() {
     }
   }
 
-  // ── Loading Skeleton ────────────────────────────────────────────────────────
+  // â”€â”€ Loading Skeleton â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (loading) {
     return (
       <div className="page-container">
@@ -406,10 +407,10 @@ function CompanySettingsPage() {
   return (
     <div className={`page-container${hasChanges ? " pb-20" : ""}`}>
       {ConfirmDialogNode}
-      {/* ── Page Title ─────────────────────────────────────────────────── */}
+      {/* â”€â”€ Page Title â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <PageHero icon={Building2} title={t("title")} description={t("description")} />
 
-      {/* ── Hero Identity Card ─────────────────────────────────────────── */}
+      {/* â”€â”€ Hero Identity Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="rounded-xl border border-border/50 bg-gradient-to-br from-card via-card to-primary/[0.02] shadow-sm overflow-hidden">
         <div className="p-6">
           <div className="flex flex-col sm:flex-row sm:items-center gap-5">
@@ -490,7 +491,7 @@ function CompanySettingsPage() {
         </div>
       </div>
 
-      {/* ── Toast Messages ─────────────────────────────────────────────── */}
+      {/* â”€â”€ Toast Messages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {success && (
         <div className="flex items-center gap-3 p-3.5 rounded-lg bg-emerald-50 border border-emerald-200 animate-in slide-in-from-top-2 fade-in duration-300">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -510,11 +511,11 @@ function CompanySettingsPage() {
         </div>
       )}
 
-      {/* ── Sidebar + Content Layout ───────────────────────────────────── */}
+      {/* â”€â”€ Sidebar + Content Layout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6">
 
-          {/* ── Left Navigation ────────────────────────────────────────── */}
+          {/* â”€â”€ Left Navigation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
           <nav className="flex lg:flex-col gap-1.5 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 -mx-1.5 lg:mx-0 lg:sticky lg:top-4 lg:self-start">
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon;
@@ -552,10 +553,10 @@ function CompanySettingsPage() {
             })}
           </nav>
 
-          {/* ── Right Content ──────────────────────────────────────────── */}
+          {/* â”€â”€ Right Content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
           <div className="space-y-5 min-w-0">
 
-            {/* ── Profile Tab ──────────────────────────────────────────── */}
+            {/* â”€â”€ Profile Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             {activeTab === "profile" && (
               <>
                 {/* Logo Upload */}
@@ -699,7 +700,7 @@ function CompanySettingsPage() {
               </>
             )}
 
-            {/* ── Contact & Social Tab ─────────────────────────────────── */}
+            {/* â”€â”€ Contact & Social Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             {activeTab === "contact" && (
               <>
                 <SectionCard>
@@ -814,7 +815,7 @@ function CompanySettingsPage() {
               </>
             )}
 
-            {/* ── Hiring Preferences Tab ───────────────────────────────── */}
+            {/* â”€â”€ Hiring Preferences Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             {activeTab === "hiring" && (
               <SectionCard>
                 <SectionHeader icon={Briefcase} title={t("hiringPreferences")} description={t("hiringPrefsSectionDesc")} />
@@ -861,12 +862,12 @@ function CompanySettingsPage() {
               </SectionCard>
             )}
 
-            {/* ── Notifications Tab ────────────────────────────────────── */}
+            {/* â”€â”€ Notifications Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             {activeTab === "notifications" && (
               <EmployerNotificationsTab />
             )}
 
-            {/* ── Account Tab ──────────────────────────────────────────── */}
+            {/* â”€â”€ Account Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             {activeTab === "account" && (
               <>
                 <SectionCard>
@@ -987,6 +988,7 @@ function CompanySettingsPage() {
 
                 {/* Email change */}
                 <ChangeEmailCard />
+            <CalendarFeedCard />
 
                 {/* Danger Zone */}
                 <div className="rounded-xl border-2 border-dashed border-destructive/25 bg-destructive/[0.02] p-6 space-y-4">
@@ -1034,7 +1036,7 @@ function CompanySettingsPage() {
           </div>
         </div>
 
-        {/* ── Sticky Save Bar ──────────────────────────────────────────── */}
+        {/* â”€â”€ Sticky Save Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <div
           className={`
             fixed bottom-0 left-0 right-0 z-50 transition-all duration-300 ease-out
@@ -1063,7 +1065,7 @@ function CompanySettingsPage() {
                 </Button>
                 <Button type="submit" size="sm" disabled={saving} className="px-6 shadow-sm">
                   <Save className="w-4 h-4 me-2" />
-                  {saving ? "Saving…" : t("saveChanges")}
+                  {saving ? "Savingâ€¦" : t("saveChanges")}
                 </Button>
               </div>
             </div>
@@ -1074,7 +1076,7 @@ function CompanySettingsPage() {
   );
 }
 
-// ─── Employer Notifications Tab (API-connected) ──────────────────────────────
+// â”€â”€â”€ Employer Notifications Tab (API-connected) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 type Channel = "in_app" | "email";
 type CategoryKey = "applications" | "interviews" | "offers" | "jobs" | "system";
@@ -1282,7 +1284,7 @@ function EmployerNotificationsTab() {
   );
 }
 
-// ─── Employer SMTP Override (Premium Feature) ────────────────────────────────
+// â”€â”€â”€ Employer SMTP Override (Premium Feature) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function EmployerSmtpOverride({ isPremium }: { isPremium: boolean }) {
   const t = useTranslations("employerSettings");
@@ -1420,7 +1422,7 @@ function EmployerSmtpOverride({ isPremium }: { isPremium: boolean }) {
             <div className="relative">
               <Input
                 type={showPassword ? "text" : "password"}
-                placeholder="••••••••••••••••"
+                placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                 value={smtp.smtpAppPassword}
                 onChange={(e) => setSmtp((s) => ({ ...s, smtpAppPassword: e.target.value }))}
                 className="pr-10"
@@ -1479,7 +1481,7 @@ function EmployerSmtpOverride({ isPremium }: { isPremium: boolean }) {
             variant="outline"
             size="sm"
             onClick={handleTest}
-            disabled={testing || !smtp.smtpEmail || !smtp.smtpAppPassword || smtp.smtpAppPassword === "••••••••"}
+            disabled={testing || !smtp.smtpEmail || !smtp.smtpAppPassword || smtp.smtpAppPassword === "â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"}
           >
             <Send className="w-3.5 h-3.5 me-1.5" />
             {testing ? t("sending") : t("testEmail")}

@@ -11,6 +11,7 @@
 
 import { inngest } from "./client";
 import { connectDB } from "@/lib/db/mongoose";
+import logger from "@/lib/logger";
 import NotificationPreference, { getOrCreatePreferences } from "@/models/NotificationPreference";
 import User from "@/models/User";
 import Job from "@/models/Job";
@@ -186,7 +187,7 @@ export const weeklyDigestCron = inngest.createFunction(
 
             sent++;
           } catch (err) {
-            console.error(`[weekly-digest] failed for ${user.userId}:`, err);
+            logger.error({ err, userId: user.userId }, "[weekly-digest] failed");
           }
         }
 

@@ -16,6 +16,7 @@ import {
 import { sendEmail, EmailTemplates } from "@/lib/communications/email";
 import CommTemplate from "@/models/CommTemplate";
 import type { UserRole } from "@/models/User";
+import logger from "@/lib/logger";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -147,11 +148,14 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
         // Send notification + email based on new status
         if (seekerUserId) {
           if (action === "reject") {
-            notifyRejected(seekerUserId, jobTitle, String(app._id)).catch(console.error);
+            notifyRejected(seekerUserId, jobTitle, String(app._id)).catch((err) =>
+              logger.error({ err, applicationId: String(app._id) }, "failed to notify rejection (bulk)"));
           } else if (newStatus === "offer") {
-            notifyOfferMade(seekerUserId, jobTitle, companyName, String(app._id)).catch(console.error);
+            notifyOfferMade(seekerUserId, jobTitle, companyName, String(app._id)).catch((err) =>
+              logger.error({ err, applicationId: String(app._id) }, "failed to notify offer (bulk)"));
           } else {
-            notifyStatusChange(seekerUserId, jobTitle, newStatus, String(app._id)).catch(console.error);
+            notifyStatusChange(seekerUserId, jobTitle, newStatus, String(app._id)).catch((err) =>
+              logger.error({ err, applicationId: String(app._id) }, "failed to notify status change (bulk)"));
           }
         }
 
@@ -189,7 +193,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
             });
             emailsSent.push(String(app._id));
           } catch (emailErr) {
-            console.error("Bulk email failed for app:", app._id, emailErr);
+            logger.error({ appId: app._id, err: emailErr }, "Bulk email failed for app");
           }
         }
       } else if (action === "send_message") {
@@ -214,7 +218,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
             });
             emailsSent.push(String(app._id));
           } catch (emailErr) {
-            console.error("Bulk message failed for app:", app._id, emailErr);
+            logger.error({ appId: app._id, err: emailErr }, "Bulk message failed for app");
           }
         }
       }

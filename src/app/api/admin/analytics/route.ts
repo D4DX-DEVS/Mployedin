@@ -7,6 +7,7 @@ import Placement from "@/models/Placement";
 import Commission from "@/models/Commission";
 import Interview from "@/models/Interview";
 import Agent from "@/models/Agent";
+import logger from "@/lib/logger";
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 const FORTY_EIGHT_HOURS_MS = 48 * 60 * 60 * 1000;
@@ -482,7 +483,7 @@ export const GET = withAuth(async () => {
       },
     });
   } catch (error: unknown) {
-    console.error("[Admin Analytics Route] Failed to build analytics payload", error);
+    logger.error({ error }, "[Admin Analytics Route] Failed to build analytics payload");
 
     return NextResponse.json(
       { error: "Failed to load analytics data." },

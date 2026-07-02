@@ -15,6 +15,7 @@ import { notify, getSuperAgentUserId } from "@/lib/notifications/trigger";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import type { UserRole } from "@/models/User";
+import logger from "@/lib/logger";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string }
 
@@ -164,7 +165,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
   // Auto-assign default subscription plan (fire-and-forget)
   autoAssignDefaultPlan(user._id.toString(), "employer").catch((err) =>
-    console.error("[Lead Convert] Failed to auto-assign subscription:", err),
+    logger.error({ err }, "[Lead Convert] Failed to auto-assign subscription"),
   );
 
   // Send welcome email with temporary credentials
@@ -199,7 +200,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       link: `/${ctx.locale}/agent/employers`,
       sendEmail: true,
       metadata: { leadId: id, employerId: String(employer._id), companyName },
-    }).catch(() => {});
+    }).catch((err) => { logger.error({ err, leadId: id, employerId: String(employer._id) }, "Failed to send lead converted notification to agent"); });
   }
 
   // Notify super-agent
@@ -216,7 +217,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
         link: `/${ctx.locale}/super-agent/employers`,
         sendEmail: true,
         metadata: { leadId: id, employerId: String(employer._id), companyName },
-      }).catch(() => {});
+      }).catch((err) => { logger.error({ err, leadId: id, employerId: String(employer._id) }, "Failed to send lead converted notification to super-agent"); });
     }
   }
 

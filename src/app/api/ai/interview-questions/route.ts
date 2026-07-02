@@ -10,6 +10,7 @@ import { InterviewQuestion } from "@/models/InterviewQuestion";
 import { validateBody } from "@/lib/validators";
 import { aiInterviewQuestionsSchema } from "@/lib/validators/ai";
 import { logActivity } from "@/lib/audit/log";
+import logger from "@/lib/logger";
 
 const QUESTION_TYPES = ["technical", "behavioral", "culture_fit", "situational"] as const;
 type QuestionType = (typeof QUESTION_TYPES)[number];
@@ -128,7 +129,7 @@ Output ONLY the JSON array, no markdown code blocks.`;
         });
         savedId = doc._id.toString();
       } catch (saveErr) {
-        console.error("[Interview Questions Save Error]", saveErr);
+        logger.error({ err: saveErr }, "[Interview Questions Save Error]");
         // Don't fail the request – still return the generated questions
       }
     }
@@ -148,7 +149,7 @@ Output ONLY the JSON array, no markdown code blocks.`;
     );
   } catch (err) {
     if (err instanceof NextResponse) return err;
-    console.error("[Interview Questions Error]", err);
+    logger.error({ err }, "[Interview Questions Error]");
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
@@ -182,7 +183,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ history: byType });
   } catch (err) {
-    console.error("[Interview Questions GET Error]", err);
+    logger.error({ err }, "[Interview Questions GET Error]");
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

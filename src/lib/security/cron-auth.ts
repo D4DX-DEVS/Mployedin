@@ -16,7 +16,8 @@ import { createHmac, timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 
 /** Max age for a signed cron request before it's rejected as a replay. */
-const REPLAY_WINDOW_SEC = 5 * 60; // 5 minutes
+const REPLAY_WINDOW_SEC = 60; // 1 minute
+// ponytail: nonce-tracking is the upgrade path if replay within 60s matters
 
 /**
  * Verify a cron request.

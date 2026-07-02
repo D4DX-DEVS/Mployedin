@@ -15,7 +15,11 @@ import { connectDB } from "@/lib/db/mongoose";
 import { verifyCronRequest } from "@/lib/security/cron-auth";
 import { notify } from "@/lib/notifications/trigger";
 import { logActivity } from "@/lib/audit/log";
+import { forEachBounded } from "@/lib/cron/scale";
 import Subscription from "@/models/Subscription";
+import logger from "@/lib/logger";
+
+export const maxDuration = 300;
 
 const REMINDER_DAYS = [7, 3, 1] as const;
 
@@ -45,33 +49,31 @@ export async function GET(req: NextRequest) {
     const range = dayRange(days);
 
     // Only remind non-auto-renew users (auto-renew users are handled silently)
+    // Capped at 1000 per day window; same-day dedup via notification orchestrator.
     const subs = await Subscription.find({
       status: "active",
       autoRenew: false,
       endDate: range,
-    }).lean();
+    }).limit(1000).lean();
 
-    for (const sub of subs) {
-      try {
-        const rolePath = sub.targetRole === "employer" ? "employer" : "job-seeker";
-        const urgency = days === 1 ? "tomorrow" : `in ${days} days`;
+    const notifyTask = async (sub: typeof subs[0]) => {
+      const rolePath = sub.targetRole === "employer" ? "employer" : "job-seeker";
+      const urgency = days === 1 ? "tomorrow" : `in ${days} days`;
 
-        await notify({
-          userId: sub.userId.toString(),
-          type: "system",
-          title: `Subscription expiring ${urgency}`,
-          message: `Your ${sub.planSnapshot?.name ?? "subscription"} plan expires ${urgency}. Contact your administrator to renew and avoid losing access to premium features.`,
-          link: `/en/${rolePath}/subscription`,
-          sendEmail: days <= 3, // email only for 3-day and 1-day reminders
-        });
+      await notify({
+        userId: sub.userId.toString(),
+        type: "system",
+        title: `Subscription expiring ${urgency}`,
+        message: `Your ${sub.planSnapshot?.name ?? "subscription"} plan expires ${urgency}. Contact your administrator to renew and avoid losing access to premium features.`,
+        link: `/en/${rolePath}/subscription`,
+        sendEmail: days <= 3, // email only for 3-day and 1-day reminders
+      });
 
-        sentCount++;
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : "Unknown error";
-        errors.push(`Sub ${sub._id} (${days}d): ${msg}`);
-        console.error(`[cron/subscription-reminder] Error for ${sub._id}:`, err);
-      }
-    }
+      sentCount++;
+    };
+
+    const result = await forEachBounded(subs, 10, notifyTask, `subscription-reminder-${days}d`);
+    if (result.failed > 0) errors.push(`${days}d reminders: ${result.failed} failed (see logs)`);
   }
 
   // Also remind auto-renew users at 3 days (informational)
@@ -80,24 +82,22 @@ export async function GET(req: NextRequest) {
     status: "active",
     autoRenew: true,
     endDate: autoRenewRange,
-  }).lean();
+  }).limit(1000).lean();
 
-  for (const sub of autoRenewSubs) {
-    try {
-      const rolePath = sub.targetRole === "employer" ? "employer" : "job-seeker";
-      await notify({
-        userId: sub.userId.toString(),
-        type: "system",
-        title: "Subscription auto-renewal in 3 days",
-        message: `Your ${sub.planSnapshot?.name ?? "subscription"} plan will auto-renew in 3 days. No action is needed.`,
-        link: `/en/${rolePath}/subscription`,
-      });
-      sentCount++;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Unknown error";
-      errors.push(`AutoRenew ${sub._id}: ${msg}`);
-    }
-  }
+  const notifyAutoRenewTask = async (sub: typeof autoRenewSubs[0]) => {
+    const rolePath = sub.targetRole === "employer" ? "employer" : "job-seeker";
+    await notify({
+      userId: sub.userId.toString(),
+      type: "system",
+      title: "Subscription auto-renewal in 3 days",
+      message: `Your ${sub.planSnapshot?.name ?? "subscription"} plan will auto-renew in 3 days. No action is needed.`,
+      link: `/en/${rolePath}/subscription`,
+    });
+    sentCount++;
+  };
+
+  const autoRenewResult = await forEachBounded(autoRenewSubs, 10, notifyAutoRenewTask, "subscription-reminder-autorenew");
+  if (autoRenewResult.failed > 0) errors.push(`auto-renew reminders: ${autoRenewResult.failed} failed (see logs)`);
 
   await logActivity({
     action: "subscription.cron_reminder",

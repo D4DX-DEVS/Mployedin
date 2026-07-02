@@ -17,8 +17,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   await connectDB();
 
   const url = new URL(req.url);
-  const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1"));
-  const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get("limit") ?? "50")));
+  const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1", 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get("limit") ?? "50", 10) || 50));
   const status = url.searchParams.get("status");
   const source = url.searchParams.get("source");
   const userId = url.searchParams.get("userId");
@@ -67,7 +67,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   return NextResponse.json({
     success: true,
     logs,
-    pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    pagination: { page, limit, total, totalPages: limit > 0 ? Math.ceil(total / limit) : 1 },
     stats24h: statsSummary,
   });
 });

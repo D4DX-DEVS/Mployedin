@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import BlogPost from "@/models/BlogPost";
 import { checkRateLimit } from "@/lib/security/rateLimit";
+import logger from "@/lib/logger";
 
 /**
  * Public blog detail by slug — NO AUTH required.
@@ -27,7 +28,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
 
     return NextResponse.json({ post });
   } catch (error) {
-    console.error("[Public] Blog detail error:", error);
+    logger.error({ error }, "[Public] Blog detail error");
     return NextResponse.json({ error: "Failed to load blog post" }, { status: 500 });
   }
 }

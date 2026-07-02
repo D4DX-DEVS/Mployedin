@@ -45,11 +45,11 @@ const mockSeekers = [
   },
 ];
 
-const jobChainable = { select: jest.fn(), populate: jest.fn(), lean: jest.fn() };
+const jobChainable = { select: jest.fn(), populate: jest.fn(), limit: jest.fn(), lean: jest.fn() };
 Object.values(jobChainable).forEach(fn => (fn as jest.Mock).mockReturnThis());
 (jobChainable.lean as jest.Mock).mockResolvedValue(mockNewJobs);
 
-const seekerChainable = { select: jest.fn(), limit: jest.fn(), lean: jest.fn() };
+const seekerChainable = { select: jest.fn(), sort: jest.fn(), limit: jest.fn(), lean: jest.fn() };
 Object.values(seekerChainable).forEach(fn => (fn as jest.Mock).mockReturnThis());
 (seekerChainable.lean as jest.Mock).mockResolvedValue(mockSeekers);
 

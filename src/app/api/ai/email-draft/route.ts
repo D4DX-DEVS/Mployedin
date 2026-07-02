@@ -8,6 +8,7 @@ import { Application } from "@/models/Application";
 import Job from "@/models/Job";
 import { JobSeeker } from "@/models/JobSeeker";
 import { Employer } from "@/models/Employer";
+import logger from "@/lib/logger";
 
 const VALID_CONTEXTS = [
   "after_application",
@@ -173,7 +174,7 @@ Output ONLY valid JSON, no markdown code blocks.`;
       { headers: { "X-RateLimit-Remaining": String(remaining) } }
     );
   } catch (err) {
-    console.error("[Email Draft Error]", err);
+    logger.error({ err }, "[Email Draft Error]");
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

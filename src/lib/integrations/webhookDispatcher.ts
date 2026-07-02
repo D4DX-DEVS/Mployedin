@@ -10,6 +10,8 @@ import crypto from "crypto";
 import { connectDB } from "@/lib/db/mongoose";
 import Webhook from "@/models/Webhook";
 import type { WebhookEvent, IWebhook } from "@/models/Webhook";
+import logger from "@/lib/logger";
+import { safeFetch } from "@/lib/security/ssrf";
 
 interface WebhookPayload {
   event: WebhookEvent;
@@ -27,7 +29,7 @@ export function dispatchWebhook(
 ): void {
   // Fire-and-forget
   dispatchAsync(event, data).catch((err) => {
-    console.error(`[Webhook] Dispatch error for ${event}:`, err);
+    logger.error({ err, webhookEvent: event }, "Webhook dispatch failed");
   });
 }
 
@@ -129,7 +131,7 @@ async function attemptDelivery(
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10_000); // 10s timeout
 
-    const response = await fetch(webhook.url, {
+    const response = await safeFetch(webhook.url, {
       method: "POST",
       headers,
       body,

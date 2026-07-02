@@ -20,6 +20,10 @@ import Commission from "@/models/Commission";
 import Interview from "@/models/Interview";
 import { sendEmail } from "@/lib/communications/email";
 import { logActivity } from "@/lib/audit/log";
+import { forEachBounded } from "@/lib/cron/scale";
+import logger from "@/lib/logger";
+
+export const maxDuration = 300;
 
 export async function GET(req: NextRequest) {
   const authError = verifyCronRequest(req);
@@ -29,102 +33,141 @@ export async function GET(req: NextRequest) {
 
   const now = new Date();
   const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-
-  // Get all active agents
-  const agentUsers = await User.find({ role: "agent", isActive: true })
-    .select("_id name email")
-    .lean();
-
-  if (agentUsers.length === 0) {
-    return NextResponse.json({ sent: 0, message: "No active agents" });
-  }
+  const sixDaysAgo = new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000);
 
   let sentCount = 0;
-  const errors: string[] = [];
+  let lastAgentId: string | null = null;
 
-  for (const user of agentUsers) {
-    try {
-      const userId = user._id.toString();
+  // Cursor-based pagination to avoid unbounded find and enable large agent lists
+  // Batch size 200 to balance memory + latency
+  const BATCH_SIZE = 200;
 
-      // Get agent doc
-      const agentDoc = await Agent.findOne({ userId }).select("_id").lean();
-      if (!agentDoc) continue;
-      const agentId = agentDoc._id.toString();
-
-      // Parallel data fetch for this agent's week
-      const [
-        leadsCreated,
-        leadsConverted,
-        leadsContacted,
-        employersAdded,
-        placementsMade,
-        commissionsEarned,
-        interviewsScheduled,
-        upcomingFollowUps,
-      ] = await Promise.all([
-        Lead.countDocuments({ agentId: agentDoc._id, createdAt: { $gte: weekAgo } }),
-        Lead.countDocuments({ agentId: agentDoc._id, status: "converted", updatedAt: { $gte: weekAgo } }),
-        Lead.countDocuments({ agentId: agentDoc._id, status: "contacted", updatedAt: { $gte: weekAgo } }),
-        Employer.countDocuments({ agentId: agentDoc._id, createdAt: { $gte: weekAgo } }),
-        Placement.countDocuments({ agentId: agentDoc._id, createdAt: { $gte: weekAgo } }),
-        Commission.aggregate([
-          { $match: { agentId: agentId, status: { $in: ["approved", "paid"] }, createdAt: { $gte: weekAgo } } },
-          { $group: { _id: null, total: { $sum: "$amount" } } },
-        ]).then((r) => r[0]?.total ?? 0),
-        Interview.countDocuments({
-          $or: [{ "employer.agentId": agentId }, { agentId: userId }],
-          createdAt: { $gte: weekAgo },
-        }),
-        Lead.countDocuments({
-          agentId: agentDoc._id,
-          status: { $nin: ["converted", "lost"] },
-          followUpAt: { $lte: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000), $gte: now },
-        }),
-      ]);
-
-      // Skip if no activity at all
-      const totalActivity = leadsCreated + leadsConverted + employersAdded + placementsMade + interviewsScheduled;
-      if (totalActivity === 0 && commissionsEarned === 0 && upcomingFollowUps === 0) continue;
-
-      const html = buildAgentDigestEmail(user.name ?? "Agent", {
-        leadsCreated,
-        leadsConverted,
-        leadsContacted,
-        employersAdded,
-        placementsMade,
-        commissionsEarned,
-        interviewsScheduled,
-        upcomingFollowUps,
-      });
-
-      await sendEmail({
-        to: user.email,
-        subject: `📊 Your weekly performance — ${leadsCreated} leads, ${placementsMade} placements`,
-        html,
-        userId,
-        source: "cron-agent-weekly-digest",
-        category: "performance",
-      });
-
-      sentCount++;
-    } catch (err) {
-      errors.push(`${user.email}: ${err instanceof Error ? err.message : "Unknown"}`);
+  while (true) {
+    // Fetch agents paginated by _id cursor
+    const filter: Record<string, unknown> = { role: "agent", isActive: true };
+    if (lastAgentId) {
+      filter._id = { $gt: lastAgentId };
     }
+    const userBatch = await User.find(filter).select("_id name email").limit(BATCH_SIZE).lean();
+
+    if (userBatch.length === 0) break;
+
+    // Process this batch with bounded concurrency
+    const { ok: batchSent, failed } = await forEachBounded(
+      userBatch,
+      5,
+      async (user) => {
+        const userId = user._id.toString();
+
+        // Get agent doc
+        const agentDoc = await Agent.findOne({ userId }).select("_id lastDigestSentAt").lean();
+        if (!agentDoc) return;
+
+        // Check if digest was sent recently
+        if (agentDoc.lastDigestSentAt && agentDoc.lastDigestSentAt > sixDaysAgo) {
+          return; // Skip — already sent within 6 days
+        }
+
+        // Mark as sent BEFORE querying/sending (idempotency)
+        const updated = await Agent.findOneAndUpdate(
+          {
+            _id: agentDoc._id,
+            $or: [
+              { lastDigestSentAt: { $exists: false } },
+              { lastDigestSentAt: { $lt: sixDaysAgo } },
+            ],
+          },
+          { $set: { lastDigestSentAt: now } },
+          { new: false }
+        ).lean();
+
+        if (!updated) {
+          return; // Lost race to another instance of this cron
+        }
+
+        const agentId = agentDoc._id.toString();
+
+        // Parallel data fetch for this agent's week
+        const [
+          leadsCreated,
+          leadsConverted,
+          leadsContacted,
+          employersAdded,
+          placementsMade,
+          commissionsEarned,
+          interviewsScheduled,
+          upcomingFollowUps,
+        ] = await Promise.all([
+          Lead.countDocuments({ agentId: agentDoc._id, createdAt: { $gte: weekAgo } }),
+          Lead.countDocuments({ agentId: agentDoc._id, status: "converted", updatedAt: { $gte: weekAgo } }),
+          Lead.countDocuments({ agentId: agentDoc._id, status: "contacted", updatedAt: { $gte: weekAgo } }),
+          Employer.countDocuments({ agentId: agentDoc._id, createdAt: { $gte: weekAgo } }),
+          Placement.countDocuments({ agentId: agentDoc._id, createdAt: { $gte: weekAgo } }),
+          Commission.aggregate([
+            { $match: { agentId: agentId, status: { $in: ["approved", "paid"] }, createdAt: { $gte: weekAgo } } },
+            { $group: { _id: null, total: { $sum: "$amount" } } },
+          ]).then((r) => r[0]?.total ?? 0),
+          Interview.countDocuments({
+            $or: [{ "employer.agentId": agentId }, { agentId: userId }],
+            createdAt: { $gte: weekAgo },
+          }),
+          Lead.countDocuments({
+            agentId: agentDoc._id,
+            status: { $nin: ["converted", "lost"] },
+            followUpAt: { $lte: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000), $gte: now },
+          }),
+        ]);
+
+        // Skip if no activity at all
+        const totalActivity = leadsCreated + leadsConverted + employersAdded + placementsMade + interviewsScheduled;
+        if (totalActivity === 0 && commissionsEarned === 0 && upcomingFollowUps === 0) return;
+
+        const html = buildAgentDigestEmail(user.name ?? "Agent", {
+          leadsCreated,
+          leadsConverted,
+          leadsContacted,
+          employersAdded,
+          placementsMade,
+          commissionsEarned,
+          interviewsScheduled,
+          upcomingFollowUps,
+        });
+
+        await sendEmail({
+          to: user.email,
+          subject: `📊 Your weekly performance — ${leadsCreated} leads, ${placementsMade} placements`,
+          html,
+          userId,
+          source: "cron-agent-weekly-digest",
+          category: "performance",
+        });
+      },
+      "agent-weekly-digest"
+    );
+
+    sentCount += batchSent;
+    if (failed > 0) {
+      logger.warn({ batchSent, failed }, "[cron] Weekly digest batch completed with failures");
+    }
+
+    // Move cursor forward for next batch
+    lastAgentId = userBatch[userBatch.length - 1]._id.toString();
+
+    // Stop if this batch was smaller than the limit (no more pages)
+    if (userBatch.length < BATCH_SIZE) break;
   }
 
   await logActivity({
     action: "agent.cron_weekly_digest",
     resource: "agents",
     actorRole: "system",
-    meta: { sentCount, totalAgents: agentUsers.length, errors: errors.length },
+    meta: { sentCount },
     req,
   });
 
   return NextResponse.json({
     success: true,
     sent: sentCount,
-    totalAgents: agentUsers.length,
-    errors: errors.length > 0 ? errors : undefined,
     timestamp: now.toISOString(),
   });
 }

@@ -113,7 +113,7 @@ async function postHandler(req: NextRequest, ctx: AuthContext) {
     // Roll back the pending state so the UI doesn't show a dead pending change.
     await User.findByIdAndUpdate(ctx.userId, {
       $unset: { pendingEmail: 1, emailChangeToken: 1, emailChangeExpires: 1 },
-    }).catch(() => {});
+    }).catch((rollbackErr) => { logger.error({ err: rollbackErr, userId: ctx.userId }, "Failed to rollback pending email change"); });
     return NextResponse.json({ error: "Failed to send verification email. Try again later." }, { status: 502 });
   }
 

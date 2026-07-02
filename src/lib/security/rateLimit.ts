@@ -10,6 +10,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import type { Ratelimit as UpstashRatelimit } from "@upstash/ratelimit";
+import logger from "@/lib/logger";
 
 interface RateLimitEntry {
   count: number;
@@ -23,6 +24,8 @@ export interface RateLimitConfig {
   windowSec: number;
   /** Key prefix for namespacing */
   prefix?: string;
+  /** If true and Redis limiter fails, deny the request instead of falling back to in-memory */
+  failClosed?: boolean;
 }
 
 export interface RateLimitResult {
@@ -100,7 +103,7 @@ async function getUpstashLimiter(config: RateLimitConfig): Promise<UpstashRateli
       RatelimitCtor = Ratelimit;
       redisClient = new Redis({ url, token });
     } catch (err) {
-      console.error("[rateLimit] Upstash init failed — using in-memory fallback:", err);
+      logger.error({ err }, "[rateLimit] Upstash init failed — using in-memory fallback");
       RatelimitCtor = null;
       redisClient = null;
     }
@@ -125,6 +128,9 @@ async function getUpstashLimiter(config: RateLimitConfig): Promise<UpstashRateli
 /**
  * Check rate limit for a given identifier.
  * Distributed via Upstash Redis when configured, else per-instance in-memory.
+ * If failClosed=true and Redis fails, denies the request instead of falling back.
+ *
+ * NOTE: Auth endpoints should pass failClosed:true to prevent bypass via Redis errors.
  */
 export async function checkRateLimit(
   identifier: string,
@@ -143,8 +149,12 @@ export async function checkRateLimit(
         resetAt: res.reset,
       };
     } catch (err) {
-      console.error("[rateLimit] Upstash limit() failed — using in-memory fallback:", err);
-      // fall through to in-memory so a Redis hiccup never disables protection
+      if (config.failClosed) {
+        logger.error({ err }, "[rateLimit] Upstash limit() failed with failClosed=true, denying request");
+        return { allowed: false, remaining: 0, resetAt: Date.now() + config.windowSec * 1000 };
+      }
+      logger.warn({ err }, "[rateLimit] Upstash limit() failed, falling back to in-memory");
+      // If no Redis configured at all (dev), keep in-memory behavior regardless
     }
   }
 

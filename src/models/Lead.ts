@@ -47,6 +47,7 @@ export interface ILead extends Document {
     timestamp: Date;
     by?: mongoose.Types.ObjectId;
   }[];
+  lastFollowupReminderAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -100,6 +101,7 @@ const LeadSchema = new Schema<ILead>(
         _id: false,
       },
     ],
+    lastFollowupReminderAt: Date,
   },
   { timestamps: true }
 );

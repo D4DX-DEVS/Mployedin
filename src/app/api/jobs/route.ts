@@ -18,6 +18,7 @@ import { ExtractionDraft } from "@/models/ExtractionDraft";
 void SuperAgent;
 import { notify } from "@/lib/notifications/trigger";
 import type { UserRole } from "@/models/User";
+import logger from "@/lib/logger";
 import { escapeRegex } from "@/lib/security/sanitize";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { validateBody } from "@/lib/validators";
@@ -442,7 +443,7 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
         ? await Employer.findById(employerId).select("companyName").lean()
         : null;
       const empName = (emp as { companyName?: string })?.companyName ?? "An employer";
-      notifySuperAgentNewJob(saUserId, empName, title, String(job._id), ctx.locale).catch(() => {});
+      notifySuperAgentNewJob(saUserId, empName, title, String(job._id), ctx.locale).catch((err) => logger.error({ err, jobId: String(job._id) }, "Failed to notify super agent of new job"));
     }
   }
 
@@ -481,7 +482,7 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
         }
       }
     } catch (err) {
-      console.error("[Jobs POST] ExtractionDraft write-back failed:", err);
+      logger.error({ err }, "[Jobs POST] ExtractionDraft write-back failed");
     }
   }
 

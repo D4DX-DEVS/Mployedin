@@ -6,6 +6,7 @@ import DirectMessage from "@/models/DirectMessage";
 import { triggerRealtimeEvent } from "@/lib/realtime";
 import mongoose from "mongoose";
 import { logActivity } from "@/lib/audit/log";
+import logger from "@/lib/logger";
 
 /**
  * PATCH /api/dm/[conversationId]/read
@@ -43,7 +44,7 @@ async function patchHandler(req: NextRequest, ctx: { userId: string }, params?: 
   // Notify sender that their messages were read (enables "seen" checkmarks)
   const senderId = conv.participants.find((p) => p.toString() !== ctx.userId)?.toString();
   if (senderId) {
-    await triggerRealtimeEvent(senderId, "messages-read", { conversationId }).catch(() => {});
+    await triggerRealtimeEvent(senderId, "messages-read", { conversationId }).catch((err) => logger.error({ err, conversationId }, "Failed to notify sender of message read"));
   }
 
   await logActivity({

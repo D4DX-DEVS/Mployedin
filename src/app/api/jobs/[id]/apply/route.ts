@@ -16,6 +16,7 @@ import { inngest } from "@/lib/inngest/client";
 import { logActivity } from "@/lib/audit/log";
 import { notifyApplicationReceived } from "@/lib/notifications/trigger";
 import type { UserRole } from "@/models/User";
+import logger from "@/lib/logger";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -142,7 +143,7 @@ async function applyHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
         applicationId: String(application._id),
         ...(autoRejectBelow !== undefined ? { autoRejectBelow } : {}),
       },
-    }).catch(() => { /* non-blocking */ });
+    }).catch((err) => { logger.error({ err, applicationId: String(application._id) }, "failed to dispatch ai-screen event for easy-apply"); });
   }
 
   // Send emails (non-blocking — don't fail the response if email errors)
@@ -163,7 +164,7 @@ async function applyHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
         </div>
       </div>`,
       userId: ctx.userId,
-    }).catch(() => {});
+    }).catch((err) => { logger.error({ err, applicationId, userId: ctx.userId }, "failed to send seeker confirmation email"); });
   }
 
   // 2. Alert to employer (only if they have emailNewApplicant enabled or pref is unset)
@@ -184,7 +185,7 @@ async function applyHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
           </div>
         </div>`,
         userId: String((employer as { userId: unknown }).userId),
-      }).catch(() => {});
+      }).catch((err) => { logger.error({ err, applicationId, jobId }, "failed to send employer notification email"); });
     }
   }
 
@@ -195,7 +196,7 @@ async function applyHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     String(job.title ?? "the position"),
     company || "the employer",
     String(application._id)
-  ).catch(() => { /* non-blocking */ });
+  ).catch((err) => { logger.error({ err, applicationId, userId: ctx.userId }, "failed to notify applicant of easy-apply submission"); });
 
   // Fire ActivityEvent (non-blocking — don't fail the response if this errors)
   ActivityEvent.create({
@@ -209,7 +210,7 @@ async function applyHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
       title: job.title,
       autoApplied: false,
     },
-  }).catch(() => {});
+  }).catch((err) => { logger.error({ err, applicationId, userId: ctx.userId }, "failed to create activity event"); });
 
   // Fire "Similar Jobs" email (delayed 2h via Inngest)
   inngest.send({
@@ -220,7 +221,7 @@ async function applyHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
       jobTitle: job.title,
       companyName: company,
     },
-  }).catch(() => {});
+  }).catch((err) => { logger.error({ err, userId: ctx.userId, jobId }, "failed to dispatch similar-jobs email event"); });
 
   // Audit log
   logActivity({

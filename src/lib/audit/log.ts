@@ -14,6 +14,7 @@
  *   3. X-Country  (custom proxy)
  */
 
+import logger from "@/lib/logger";
 import { connectDB } from "@/lib/db/mongoose";
 import AuditLog from "@/models/AuditLog";
 import { NextRequest } from "next/server";
@@ -93,7 +94,7 @@ export async function logActivity(params: LogActivityParams): Promise<void> {
     });
   } catch (err) {
     // Never let logging break the main request
-    console.error("[AuditLog] Failed to write entry:", err);
+    logger.error({ err }, "[AuditLog] Failed to write entry");
   }
 }
 

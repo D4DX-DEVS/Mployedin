@@ -12,6 +12,7 @@
 import { connectDB } from "@/lib/db/mongoose";
 import Notification from "@/models/Notification";
 import { inngest } from "@/lib/inngest/client";
+import logger from "@/lib/logger";
 
 export type NotificationType =
   | "application_received"
@@ -108,7 +109,7 @@ export async function notify(payload: NotifyPayload): Promise<void> {
       });
     } catch (err) {
       // Log but don't block — in-app notification was already created
-      console.error("[notify] Failed to emit Inngest event:", err);
+      logger.error({ err, userId: payload.userId, notificationType: payload.type }, "Failed to emit Inngest notification event");
     }
   }
 }

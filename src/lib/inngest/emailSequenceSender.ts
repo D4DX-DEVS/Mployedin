@@ -13,6 +13,7 @@
 
 import { inngest } from "./client";
 import { connectDB } from "@/lib/db/mongoose";
+import logger from "@/lib/logger";
 import EmailSequence, {
   type IEmailSequence,
   type IEmailSequenceStep,
@@ -126,7 +127,7 @@ export const emailSequenceSenderCron = inngest.createFunction(
           });
         } catch (err) {
           // Leave nextSendAt unchanged so the step retries on the next run.
-          console.error(`[email-sequence] send failed seq=${sequence._id} to=${recipient.email}:`, err);
+          logger.error({ err, seqId: sequence._id, to: recipient.email }, "[email-sequence] send failed");
           continue;
         }
 

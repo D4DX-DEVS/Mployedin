@@ -12,6 +12,7 @@ import ExhibitionRequest, {
 } from "@/models/ExhibitionRequest";
 import User from "@/models/User";
 import { sendEmail } from "@/lib/communications/email";
+import logger from "@/lib/logger";
 
 /** Valid status transitions per role */
 const VALID_TRANSITIONS: Record<string, Record<string, ExhibitionRequestStatus[]>> = {
@@ -208,7 +209,7 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
         item.eventName,
         status,
         (statusReason ?? reviewNote ?? "").trim() || undefined,
-      ).catch(() => {});
+      ).catch((err) => logger.error({ err, exhibitionId: item._id.toString() }, "Failed to send exhibition status email"));
     }
 
     return NextResponse.json(item);

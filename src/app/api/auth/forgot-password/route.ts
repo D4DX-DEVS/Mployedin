@@ -6,6 +6,7 @@ import { checkRateLimit } from "@/lib/security/rateLimit";
 import { logActivity } from "@/lib/audit/log";
 import { sendEmail, EmailTemplates } from "@/lib/communications/email";
 import { z } from "zod";
+import logger from "@/lib/logger";
 
 const schema = z.object({
   email: z.string().email().max(254).trim().toLowerCase(),
@@ -17,7 +18,7 @@ const schema = z.object({
  */
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for") ?? "unknown";
-  const { allowed } = await checkRateLimit(`forgot-pwd:${ip}`, { limit: 5, windowSec: 300, prefix: "fpwd" });
+  const { allowed } = await checkRateLimit(`forgot-pwd:${ip}`, { limit: 5, windowSec: 300, prefix: "fpwd", failClosed: true });
   if (!allowed) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
@@ -54,7 +55,7 @@ export async function POST(req: NextRequest) {
     const template = EmailTemplates.passwordReset(resetUrl);
     await sendEmail({ to: user.email as string, ...template });
   } catch (emailErr) {
-    console.error("[ForgotPassword] Failed to send reset email:", emailErr);
+    logger.error({ err: emailErr }, "[ForgotPassword] Failed to send reset email");
     // Still return success — don't leak delivery failures to the caller
   }
 

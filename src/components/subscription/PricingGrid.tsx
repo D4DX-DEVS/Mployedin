@@ -120,6 +120,32 @@ export function PricingGrid({
 }: PricingGridProps) {
   const { mutate: selfAssign, isPending: activating } = useSelfAssignFreePlan();
   const [showComparison, setShowComparison] = useState(false);
+  const [checkoutPlanId, setCheckoutPlanId] = useState<string | null>(null);
+
+  async function startCheckout(planId: string) {
+    setCheckoutPlanId(planId);
+    try {
+      const res = await fetch("/api/subscriptions/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planId }),
+      });
+      const data = await res.json();
+      if (res.ok && data.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+        return;
+      }
+      toast.info("Upgrade coming soon", {
+        description:
+          data.message ??
+          "Online payments are not yet available. Contact your administrator to upgrade your plan.",
+      });
+    } catch {
+      toast.error("Could not start checkout. Please try again.");
+    } finally {
+      setCheckoutPlanId(null);
+    }
+  }
 
   const isEmployer = plans.some((p) => p.targetRole === "employer");
   const rows = isEmployer ? EMPLOYER_FEATURES : JOB_SEEKER_FEATURES;
@@ -219,13 +245,10 @@ export function PricingGrid({
                 <Button
                   variant={isMostPopular ? "default" : "outline"}
                   className={`w-full mt-auto ${isMostPopular ? "bg-sky-600 hover:bg-sky-700" : ""}`}
-                  onClick={() =>
-                    toast.info("Upgrade coming soon", {
-                      description: "Online payments are not yet available. Contact your administrator to upgrade your plan.",
-                    })
-                  }
+                  onClick={() => startCheckout(plan._id)}
+                  disabled={checkoutPlanId !== null}
                 >
-                  Choose {plan.name}
+                  {checkoutPlanId === plan._id ? "Redirecting…" : `Choose ${plan.name}`}
                 </Button>
               )}
             </div>

@@ -7,6 +7,7 @@ import { validateBody } from "@/lib/validators";
 import { impersonateSchema } from "@/lib/validators/admin";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { isValidObjectId } from "@/lib/security/sanitize";
+import { checkRateLimit } from "@/lib/security/rateLimit";
 
 const SESSION_TTL_MS = 60 * 60 * 1000; // 1 hour
 
@@ -16,6 +17,12 @@ const SESSION_TTL_MS = 60 * 60 * 1000; // 1 hour
  * Body: { exit: true }    — End impersonation; deletes all sessions for this admin
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
+  // Rate limit: 10 impersonations per hour per admin
+  const { allowed } = await checkRateLimit(`impersonate:${ctx.userId}`, { limit: 10, windowSec: 3600, prefix: "impersonate", failClosed: true });
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   await connectDB();
   const body = await validateBody(req, impersonateSchema);
 

@@ -1,10 +1,10 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import GoogleCalendar, {
+import MployedinCalendar, {
   type CalendarEvent,
-} from "@/components/shared/GoogleCalendar";
+} from "@/components/shared/MployedinCalendar";
 import { Users } from "lucide-react";
 
 export default function AgentCalendarPage() {
@@ -16,7 +16,7 @@ export default function AgentCalendarPage() {
     try {
       const start = new Date(year, month, 1).toISOString();
       const end = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
-      const res = await fetch(`/api/interviews?dateFrom=${start}&dateTo=${end}`);
+      const res = await fetch(`/api/interviews?dateFrom=${start}&dateTo=${end}&limit=100`);
       if (res.ok) {
         const data = await res.json();
         const items = data.items ?? data.interviews ?? [];
@@ -24,7 +24,11 @@ export default function AgentCalendarPage() {
           items.map((i: Record<string, unknown>) => ({
             _id: String(i._id),
             title: String(i.jobTitle ?? "Interview"),
-            subtitle: String(i.candidateName ?? ""),
+            subtitle: String(
+              (i.jobSeekerId as { fullName?: string } | undefined)?.fullName ??
+                i.candidateName ??
+                "",
+            ),
             type: (i.type as CalendarEvent["type"]) ?? "video",
             status: String(i.status ?? "scheduled"),
             scheduledAt: String(i.scheduledAt ?? i.createdAt),
@@ -58,7 +62,7 @@ export default function AgentCalendarPage() {
         </p>
       </section>
 
-      <GoogleCalendar
+      <MployedinCalendar
         events={events}
         loading={loading}
         onMonthChange={fetchEvents}

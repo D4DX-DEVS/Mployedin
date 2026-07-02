@@ -36,6 +36,7 @@ import {
 
 // ─── Types ──────────────────────────────────────────────────────
 interface Message {
+  id?: string;
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
@@ -780,17 +781,20 @@ export function RecruitmentAssistant() {
                       ) : (
                         /* Message list */
                         <div className="p-4 space-y-3">
-                          {messages.map((msg, i) => (
-                            <MessageBubble
-                              key={i}
-                              msg={msg}
-                              isLastAssistant={
-                                msg.role === "assistant" &&
-                                i === messages.length - 1 &&
-                                isStreaming
-                              }
-                            />
-                          ))}
+                          {messages.map((msg, i) => {
+                            const msgKey = msg.id || `${i}-${msg.role}-${msg.content.substring(0, 20)}`;
+                            return (
+                              <MessageBubble
+                                key={msgKey}
+                                msg={msg}
+                                isLastAssistant={
+                                  msg.role === "assistant" &&
+                                  i === messages.length - 1 &&
+                                  isStreaming
+                                }
+                              />
+                            );
+                          })}
 
                           {/* Job preview card (job_creator only) */}
                           {activeTab === "job_creator" && extractedJob && (
@@ -1120,7 +1124,7 @@ function BulkJobPreviewCard({
           </p>
           {progress.errors.length > 0 && (
             <div className="text-[11px] text-red-500 space-y-0.5">
-              {progress.errors.map((err, i) => <p key={i}>{err}</p>)}
+              {progress.errors.map((err, i) => <p key={`${i}-${err}`}>{err}</p>)}
             </div>
           )}
         </div>

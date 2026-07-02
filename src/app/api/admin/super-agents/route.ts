@@ -14,6 +14,7 @@ import { enrichProfiles } from "@/lib/targets/profileAchievementCalculator";
 import bcrypt from "bcryptjs";
 import { validateBody } from "@/lib/validators";
 import { superAgentCreateSchema, superAgentUpdateSchema } from "@/lib/validators/admin";
+import logger from "@/lib/logger";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -307,7 +308,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     }
   } catch (err) {
     await User.findByIdAndDelete(user._id);
-    console.error("[admin/super-agents] Profile creation failed:", err);
+    logger.error({ err }, "[admin/super-agents] Profile creation failed");
     return NextResponse.json({ error: "Failed to create super agent profile" }, { status: 500 });
   }
 

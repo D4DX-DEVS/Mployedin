@@ -4,6 +4,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import { Employer } from "@/models/Employer";
 import { ExtractionDraft } from "@/models/ExtractionDraft";
 import type { UserRole } from "@/models/User";
+import logger from "@/lib/logger";
 
 /**
  * GET /api/ai/job-extract/drafts
@@ -67,7 +68,7 @@ export async function GET() {
 
     return NextResponse.json({ drafts: summary });
   } catch (err) {
-    console.error("[ExtractionDrafts] list error:", err);
+    logger.error({ err }, "[ExtractionDrafts] list error");
     return NextResponse.json(
       { error: "Failed to load extraction drafts" },
       { status: 500 }

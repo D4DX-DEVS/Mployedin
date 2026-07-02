@@ -44,7 +44,7 @@ interface Job {
   createdAt?: string;
 }
 interface Employer { _id: string; companyName: string; name?: string; companyEmail?: string; phone?: string; address?: string; country?: string; taxId?: string; employerProfileId?: string }
-interface LineItem { description: string; quantity: number; unitPrice: number; amount: number }
+interface LineItem { id: string; description: string; quantity: number; unitPrice: number; amount: number }
 interface AgentOption { _id: string; name: string; superAgentId?: string; regions: string[] }
 interface SuperAgentOption { _id: string; name: string; regions: string[]; agentCount: number }
 
@@ -205,7 +205,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
   const [customStatusLabel, setCustomStatusLabel] = useState("");
   const [description, setDescription] = useState("");
   const [currency, setCurrency] = useState(defaultCurrency);
-  const [lineItems, setLineItems] = useState<LineItem[]>([{ description: "", quantity: 1, unitPrice: 0, amount: 0 }]);
+  const [lineItems, setLineItems] = useState<LineItem[]>([{ id: crypto.randomUUID(), description: "", quantity: 1, unitPrice: 0, amount: 0 }]);
   const [taxType, setTaxType] = useState("none");
   const [taxPercent, setTaxPercent] = useState(0);
   const [agentRate, setAgentRate] = useState(0);
@@ -249,7 +249,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
       setCategory("recruitment"); setCustomCategory(""); setShowAddType(false); setDescription("");
       setShowAddTaxType(false); setCustomTaxLabel("");
       setShowAddStatus(false); setCustomStatusLabel("");
-      setLineItems([{ description: "", quantity: 1, unitPrice: 0, amount: 0 }]);
+      setLineItems([{ id: crypto.randomUUID(), description: "", quantity: 1, unitPrice: 0, amount: 0 }]);
       setTaxType("none"); setTaxPercent(0);
       setCurrency(defaultCurrency); setPaymentTerms("net_30"); setCustomPaymentDays(30);
       setDueDate(""); setNotes(""); setInternalNotes("");
@@ -664,7 +664,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
     });
   };
 
-  const addLineItem = () => setLineItems(prev => [...prev, { description: "", quantity: 1, unitPrice: 0, amount: 0 }]);
+  const addLineItem = () => setLineItems(prev => [...prev, { id: crypto.randomUUID(), description: "", quantity: 1, unitPrice: 0, amount: 0 }]);
 
   const removeLineItem = (index: number) => {
     if (lineItems.length <= 1) return;
@@ -1641,7 +1641,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                               const itemTax = taxType !== "none" ? (li.quantity * li.unitPrice * taxPercent / 100) : 0;
                               const itemTotal = (li.quantity * li.unitPrice) + itemTax;
                               return (
-                              <tr key={i} className="border-b border-border/30 last:border-b-0">
+                              <tr key={li.id} className="border-b border-border/30 last:border-b-0">
                                 <td className="px-2 py-2 text-center text-muted-foreground">{i + 1}</td>
                                 <td className="px-3 py-2">
                                   <Input className="h-9 rounded border-border/50 text-sm" value={li.description} onChange={e => updateLineItem(i, "description", e.target.value)} placeholder="Enter description" />
@@ -1761,8 +1761,8 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                         </tr>
                       </thead>
                       <tbody>
-                        {lineItems.map((li, i) => (
-                          <tr key={i} className="border-t border-border/50">
+                        {lineItems.map((li) => (
+                          <tr key={li.id} className="border-t border-border/50">
                             <td className="px-3 py-2.5 text-sm">{li.description || "—"}</td>
                             <td className="px-3 py-2.5 text-center">{li.quantity}</td>
                             <td className="px-3 py-2.5 text-right">{fmt(li.unitPrice)}</td>

@@ -6,6 +6,7 @@
  * Each collection is wrapped in try/catch so one conflict never blocks the rest.
  */
 import mongoose from "mongoose";
+import logger from "@/lib/logger";
 
 type IndexSpec = mongoose.mongo.IndexDescription;
 
@@ -21,7 +22,7 @@ async function safeCreateIndexes(
     const code = (err as { code?: number }).code;
     // 85 = IndexOptionsConflict (same key, different name) — harmless, skip
     if (code !== 85) {
-      console.warn(`[DB] Index warning on ${collection}:`, (err as Error).message);
+      logger.warn({ err }, `[DB] Index warning on ${collection}`);
     }
   }
 }
@@ -46,6 +47,8 @@ export async function ensureIndexes() {
     { key: { nationality: 1 } },
     { key: { currentLocation: 1 } },
     { key: { availableFrom: 1 } },
+    // Cron hot path: job-alerts cursor pagination over visible, available seekers
+    { key: { profileVisibility: 1, availabilityStatus: 1, _id: 1 } },
   ]);
 
   // ── Employers ──────────────────────────────────────────────────────────────
@@ -84,6 +87,9 @@ export async function ensureIndexes() {
     { key: { deletedAt: 1 } },
     // Hot path: list active (non-deleted) jobs, newest first
     { key: { status: 1, deletedAt: 1, createdAt: -1 } },
+    // Compound indexes for employer/agent + status filtering
+    { key: { employerId: 1, status: 1 } },
+    { key: { agentId: 1, status: 1, createdAt: -1 } },
     {
       key: { title: "text", description: "text", "requirements.skills": "text" },
       name: "jobs_text_search",
@@ -104,6 +110,8 @@ export async function ensureIndexes() {
     // Pipeline views: applications for a job filtered by status, newest first
     { key: { jobId: 1, status: 1, appliedAt: -1 } },
     { key: { employerId: 1, status: 1, appliedAt: -1 } },
+    // Cron hot path: sla-alerts / nps-trigger scan terminal statuses by recency
+    { key: { status: 1, updatedAt: -1 } },
   ]);
 
   // ── Interviews ─────────────────────────────────────────────────────────────
@@ -140,6 +148,8 @@ export async function ensureIndexes() {
     { key: { status: 1 } },
     { key: { followUpAt: 1 } },
     { key: { createdAt: -1 } },
+    // Cron hot path: lead-followup-reminder selects open leads due for follow-up
+    { key: { status: 1, followUpAt: 1 } },
   ]);
 
   // ── Commissions ────────────────────────────────────────────────────────────
@@ -233,6 +243,8 @@ export async function ensureIndexes() {
     { key: { jobSeekerId: 1 } },
     { key: { employerId: 1 } },
     { key: { status: 1 } },
+    // Compound index for filtering expired offers
+    { key: { status: 1, expiresAt: 1 } },
   ]);
 
   // ── Job Attribute Master Data ──────────────────────────────────────────────
@@ -311,11 +323,17 @@ export async function ensureIndexes() {
     { key: { subscriptionId: 1 } },
   ]);
 
+  // ── Candidate NPS ──────────────────────────────────────────────────────────
+  await safeCreateIndexes(db, "candidatenps", [
+    // Cron hot path: nps-trigger dedup lookup by application
+    { key: { applicationId: 1 } },
+  ]);
+
   // ── AI Daily Usage (per-user daily quota counter) ──────────────────────────
   await safeCreateIndexes(db, "aidailyusages", [
     { key: { userId: 1, day: 1 }, unique: true },
     { key: { expiresAt: 1 }, expireAfterSeconds: 0 },
   ]);
 
-  console.log("[DB] Indexes ensured ✅");
+  logger.info("[DB] Indexes ensured ✅");
 }

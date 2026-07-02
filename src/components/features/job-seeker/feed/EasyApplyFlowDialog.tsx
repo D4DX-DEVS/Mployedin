@@ -110,6 +110,10 @@ export function EasyApplyFlowDialog({
     setLoading(true);
 
     Promise.all([
+      // ponytail: Graceful degradation — fetch failures return null, allowing partial load.
+      // If profile fetch fails, CVs/documents are unavailable but skills/questions can still load.
+      // If skill-gaps fetch fails, skills step is skipped but CV/questions proceed.
+      // If job data fetch fails, screening questions are unavailable but CV/skills can still load.
       fetch("/api/job-seeker/me").then((r) => (r.ok ? r.json() : null)).catch(() => null),
       fetch(`/api/job-seeker/skill-gaps?jobId=${encodeURIComponent(jobId)}`)
         .then((r) => (r.ok ? r.json() : null))

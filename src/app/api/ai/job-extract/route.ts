@@ -11,6 +11,7 @@ import { generateMultimodal, generateText, GEMINI_MODELS } from "@/lib/ai/gemini
 import type { UserRole } from "@/models/User";
 import { ExtractionDraft, type ExtractedJobPayload } from "@/models/ExtractionDraft";
 import mammoth from "mammoth";
+import logger from "@/lib/logger";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
@@ -236,7 +237,7 @@ export async function POST(req: NextRequest) {
       // Draft persistence is best-effort: the extraction itself succeeded, so
       // we must NOT fail the request if the DB write breaks. The jobs are still
       // returned to the client; only resume-on-back is unavailable.
-      console.error("[Job Extract] Draft persistence failed:", err);
+      logger.error({ err }, "[Job Extract] Draft persistence failed");
     }
 
     return NextResponse.json({
@@ -248,7 +249,7 @@ export async function POST(req: NextRequest) {
       draftId,
     });
   } catch (err) {
-    console.error("[Job Extract] Error:", err);
+    logger.error({ err }, "[Job Extract] Error");
     return NextResponse.json(
       { error: "Failed to process the file. Please try again." },
       { status: 500 }

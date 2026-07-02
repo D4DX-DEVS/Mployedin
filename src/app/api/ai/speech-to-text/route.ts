@@ -5,6 +5,7 @@ import { enforceFeatureGate } from "@/lib/subscription/featureGate";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { logActivity } from "@/lib/audit/log";
+import logger from "@/lib/logger";
 
 // Soniox real-time Speech-to-Text via WebSocket
 const SONIOX_WS_URL = "wss://stt-rt.soniox.com/transcribe-websocket";
@@ -101,7 +102,7 @@ async function trySonioxTranscription(
 
     // 30-second hard timeout
     const timeoutId = setTimeout(() => {
-      console.error("[Soniox STT] Timed out after 30s");
+      logger.error("[Soniox STT] Timed out after 30s");
       done(null);
     }, 30000);
 
@@ -154,7 +155,7 @@ async function trySonioxTranscription(
       }
 
       if (res.error_code) {
-        console.error("[Soniox STT Error]", res.error_code, res.error_message);
+        logger.error({ error_code: res.error_code, error_message: res.error_message }, "[Soniox STT Error]");
         done(null);
         return;
       }
@@ -181,7 +182,7 @@ async function trySonioxTranscription(
     });
 
     ws.addEventListener("error", () => {
-      console.error("[Soniox STT] WebSocket error");
+      logger.error("[Soniox STT] WebSocket error");
       done(null);
     });
   });
@@ -266,7 +267,7 @@ export async function POST(req: NextRequest) {
           });
         }
       } catch (sonioxErr) {
-        console.error("[Soniox STT Error]", sonioxErr);
+        logger.error({ err: sonioxErr }, "[Soniox STT Error]");
         // Fall through to Gemini / Google
       }
     }
@@ -342,7 +343,7 @@ Rules:
             { headers: { "X-RateLimit-Remaining": String(remaining) } }
           );
         } catch (geminiErr) {
-          console.error("[Gemini Speech Error]", geminiErr);
+          logger.error({ err: geminiErr }, "[Gemini Speech Error]");
           // Fall through to Google Speech API
         }
       }
@@ -419,7 +420,7 @@ Rules:
 
     if (!speechRes.ok) {
       const errText = await speechRes.text();
-      console.error("[Speech API Error]", errText);
+      logger.error({ errText }, "[Speech API Error]");
       return NextResponse.json(
         { error: "Speech recognition failed" },
         { status: 502 }
@@ -449,7 +450,7 @@ Rules:
       { headers: { "X-RateLimit-Remaining": String(remaining) } }
     );
   } catch (err) {
-    console.error("[Speech-to-Text Error]", err);
+    logger.error({ err }, "[Speech-to-Text Error]");
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

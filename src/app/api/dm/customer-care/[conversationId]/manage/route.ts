@@ -8,6 +8,7 @@ import { triggerRealtimeEvent } from "@/lib/realtime";
 import { validateBody } from "@/lib/validators";
 import { customerCareManageSchema } from "@/lib/validators/dm";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import logger from "@/lib/logger";
 
 interface AuthCtx {
   userId: string;
@@ -74,7 +75,7 @@ async function patchHandler(
         adminParticipant.userId.toString(),
         "customer-care-update",
         { conversationId: conversation._id.toString(), status: "open" }
-      ).catch(() => {});
+      ).catch((err) => logger.error({ err, conversationId: conversation._id.toString() }, "Failed to notify admin of customer care reopen"));
     }
 
     await logActivity({
@@ -132,7 +133,7 @@ async function patchHandler(
         conversationId: conversation._id.toString(),
         status: conversation.customerCare!.status,
       }
-    ).catch(() => {});
+    ).catch((err) => logger.error({ err, conversationId: conversation._id.toString() }, "Failed to notify job seeker of customer care update"));
   }
 
   await logActivity({

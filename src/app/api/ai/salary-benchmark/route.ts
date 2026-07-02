@@ -5,6 +5,7 @@ import { enforceFeatureGate } from "@/lib/subscription/featureGate";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { sanitizeAIInput } from "@/lib/ai/sanitize";
 import { generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
+import logger from "@/lib/logger";
 
 // In-memory cache: key → { data, expiresAt }
 const benchmarkCache = new Map<string, { data: unknown; expiresAt: number }>();
@@ -107,7 +108,7 @@ Base the numbers on real market data for this currency and period. For example i
       headers: { "X-RateLimit-Remaining": String(remaining), "X-Cache": "MISS" },
     });
   } catch (err) {
-    console.error("[Salary Benchmark Error]", err);
+    logger.error({ err }, "[Salary Benchmark Error]");
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

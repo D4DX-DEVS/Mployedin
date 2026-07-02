@@ -18,7 +18,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import connectDB from "@/lib/db/mongoose";
+import { getPaymentGateway, isPaymentGatewayEnabled } from "@/lib/payments";
 import SubscriptionPlan from "@/models/SubscriptionPlan";
+import { User } from "@/models/User";
 import type { UserRole } from "@/types/user";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string }
@@ -54,15 +56,35 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ error: "Plan not found" }, { status: 404 });
   }
 
-  // ── PAYMENT GATEWAY STUB ──────────────────────────────────────────────────
-  // When you integrate Razorpay or Stripe, replace this block:
-  //
-  //   const session = await stripe.checkout.sessions.create({ ... });
-  //   return NextResponse.json({ checkoutUrl: session.url });
-  //
-  // Until then, return a structured response the UI handles gracefully.
-  // ─────────────────────────────────────────────────────────────────────────
+  // ── Gateway configured → create a real checkout session ──────────────────
+  // Fulfillment (subscription + paid invoice) happens in /api/payments/webhook
+  // via the {userId, planId} metadata below.
+  if (isPaymentGatewayEnabled()) {
+    const user = await User.findById(ctx.userId).select("name email").lean();
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? req.nextUrl.origin;
+    const returnPath = `${baseUrl}/${ctx.locale}/${targetRole === "employer" ? "employer" : "job-seeker"}/subscription`;
 
+    const session = await getPaymentGateway().createSession({
+      invoiceId: "", // invoice is created post-payment by the webhook
+      employerId: ctx.userId,
+      amount: plan.price,
+      currency: plan.currency,
+      description: `Subscription: ${plan.name} (${plan.billingCycle})`,
+      customerEmail: user?.email ?? "",
+      customerName: user?.name ?? "",
+      metadata: { userId: ctx.userId, planId: String(plan._id), targetRole },
+      successUrl: `${returnPath}?payment=success`,
+      cancelUrl: `${returnPath}?payment=cancelled`,
+    });
+
+    return NextResponse.json({
+      checkoutUrl: session.checkoutUrl,
+      sessionId: session.sessionId,
+      provider: session.provider,
+    });
+  }
+
+  // ── No gateway → structured response the UI handles gracefully ───────────
   return NextResponse.json(
     {
       error: "payment_gateway_not_configured",

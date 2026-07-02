@@ -11,6 +11,7 @@
 
 import { inngest } from "./client";
 import { connectDB } from "@/lib/db/mongoose";
+import logger from "@/lib/logger";
 import User from "@/models/User";
 import Job from "@/models/Job";
 import JobSeeker from "@/models/JobSeeker";
@@ -183,10 +184,7 @@ export const reEngagementCron = inngest.createFunction(
           sent++;
         });
       } catch (err) {
-        console.error(
-          `[re-engagement] Error for user ${user._id}:`,
-          err,
-        );
+        logger.error({ err, userId: user._id }, "[re-engagement] Error processing user");
       }
     }
 
@@ -297,7 +295,7 @@ export const profileCompletionCron = inngest.createFunction(
           },
         );
       } catch (err) {
-        console.error(`[profile-completion] Error:`, err);
+        logger.error({ err }, "[profile-completion] Error processing seeker");
       }
     }
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
 import { canAccess } from "@/lib/permissions/matrix";
 import { connectDB } from "@/lib/db/mongoose";
+import logger from "@/lib/logger";
 import TenantViewSession from "@/models/TenantViewSession";
 import { verifyTenantCookie, TENANT_COOKIE_NAME } from "@/lib/security/tenantCookie";
 import { logActivity } from "@/lib/audit/log";
@@ -261,7 +262,7 @@ export function withAuth(
         return response;
       } catch (err) {
         if (err instanceof NextResponse) return err;
-        console.error("[withAuth:tenantView] Unhandled error:", err);
+        logger.error({ err }, "[withAuth:tenantView] Unhandled error");
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
       }
     }
@@ -300,7 +301,7 @@ export function withAuth(
     } catch (err) {
       // validateBody() throws a NextResponse on validation failure — surface it directly
       if (err instanceof NextResponse) return err;
-      console.error("[withAuth] Unhandled error in route handler:", err);
+      logger.error({ err }, "[withAuth] Unhandled error in route handler");
       return NextResponse.json(
         { error: "Internal server error" },
         { status: 500 }

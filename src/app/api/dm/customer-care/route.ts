@@ -9,6 +9,7 @@ import { triggerRealtimeEvent } from "@/lib/realtime";
 import { validateBody } from "@/lib/validators";
 import { customerCareTicketSchema } from "@/lib/validators/dm";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import logger from "@/lib/logger";
 
 interface AuthCtx {
   userId: string;
@@ -191,7 +192,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   await triggerRealtimeEvent(adminUser._id.toString(), "new-conversation", {
     conversation: conversation.toObject(),
     type: "customer_care",
-  }).catch(() => {});
+  }).catch((err) => logger.error({ err, conversationId: conversation._id.toString() }, "Failed to notify admin of new customer care conversation"));
 
   await logActivity({
     ...actorFromCtx(ctx),

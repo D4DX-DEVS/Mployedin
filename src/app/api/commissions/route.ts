@@ -21,8 +21,8 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const dateFrom = searchParams.get("dateFrom");
   const dateTo = searchParams.get("dateTo");
   const currency = searchParams.get("currency");
-  const page = parseInt(searchParams.get("page") ?? "1");
-  const limit = parseInt(searchParams.get("limit") ?? "10");
+  const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "10", 10) || 10));
   const skip = (page - 1) * limit;
 
   // Build query based on role
@@ -136,7 +136,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   return NextResponse.json({
     commissions,
     summary,
-    pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+    pagination: { page, limit, total, pages: limit > 0 ? Math.ceil(total / limit) : 1 },
   });
 }
 

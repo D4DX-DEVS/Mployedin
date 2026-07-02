@@ -6,6 +6,7 @@ import type { ConversationContext } from "@/models/ConversationThread";
 import { validateBody } from "@/lib/validators";
 import { chatHistoryCreateSchema } from "@/lib/validators/misc";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import logger from "@/lib/logger";
 
 /**
  * GET /api/ai/chat-history
@@ -45,7 +46,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       title?: string | null;
     };
 
-    console.log("[chat-history] POST", { threadId, context, userId: ctx.userId, msgCount: messages.length });
+    logger.info({ threadId, context, userId: ctx.userId, msgCount: messages.length }, "[chat-history] POST");
 
     if (threadId) {
       // Append to existing thread
@@ -70,13 +71,13 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       messages: messages.map((m) => ({ ...m, timestamp: new Date() })),
     });
 
-    console.log("[chat-history] Created thread", String(thread._id));
+    logger.info({ threadId: String(thread._id) }, "[chat-history] Created thread");
 
     await logActivity({ ...actorFromCtx(ctx), action: "ai.chat_create", resource: "conversation_threads", resourceId: String(thread._id), meta: { context }, req });
 
     return NextResponse.json({ threadId: thread._id }, { status: 201 });
   } catch (err) {
-    console.error("[chat-history] POST error:", err);
+    logger.error({ err }, "[chat-history] POST error");
     return NextResponse.json({ error: "Failed to save chat" }, { status: 500 });
   }
 });

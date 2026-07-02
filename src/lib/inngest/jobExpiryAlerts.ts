@@ -8,6 +8,7 @@
 
 import { inngest } from "./client";
 import { connectDB } from "@/lib/db/mongoose";
+import logger from "@/lib/logger";
 import Job from "@/models/Job";
 import SavedJob from "@/models/SavedJob";
 import User from "@/models/User";
@@ -180,7 +181,7 @@ export const jobExpiryAlertsCron = inngest.createFunction(
 
           sent++;
         } catch (err) {
-          console.error(`[job-expiry-alert] failed for ${uid}:`, err);
+          logger.error({ err, userId: uid }, "[job-expiry-alert] failed");
         }
       }
 

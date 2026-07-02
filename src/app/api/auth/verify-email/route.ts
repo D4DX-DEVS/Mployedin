@@ -24,7 +24,7 @@ const schema = z.object({
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for") ?? "unknown";
   // OTP attempts get a tighter limit than link clicks to resist brute force.
-  const { allowed } = await checkRateLimit(`verify-email:${ip}`, { limit: 10, windowSec: 300, prefix: "vemail" });
+  const { allowed } = await checkRateLimit(`verify-email:${ip}`, { limit: 10, windowSec: 300, prefix: "vemail", failClosed: true });
   if (!allowed) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
   // has only 1M combinations. Bound attempts per email regardless of IP.
   if (body.otp) {
     const emailKey = (body.email as string).toLowerCase().trim();
-    const { allowed: otpAllowed } = await checkRateLimit(`verify-otp:${emailKey}`, { limit: 5, windowSec: 300, prefix: "votp" });
+    const { allowed: otpAllowed } = await checkRateLimit(`verify-otp:${emailKey}`, { limit: 5, windowSec: 300, prefix: "votp", failClosed: true });
     if (!otpAllowed) {
       return NextResponse.json({ error: "Too many attempts. Please wait a few minutes." }, { status: 429 });
     }
@@ -69,22 +69,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (!user || (user.emailVerificationExpiry && user.emailVerificationExpiry < new Date())) {
-    // Distinguish "already verified" (e.g. the link was pre-fetched by an
-    // email-security scanner, or the user double-submitted) from a genuinely
-    // bad/expired code — same query shape either way, just without the OTP
-    // field, so this stays cheap and doesn't leak whether an email exists.
-    if (body.otp) {
-      const alreadyVerified = await User.exists({
-        email: (body.email as string).toLowerCase().trim(),
-        isEmailVerified: true,
-      });
-      if (alreadyVerified) {
-        return NextResponse.json(
-          { error: "This email is already verified. You can sign in now." },
-          { status: 400 }
-        );
-      }
-    }
+    // Don't leak account existence or verification status — use generic message
     return NextResponse.json(
       { error: "Invalid or expired verification code" },
       { status: 400 }

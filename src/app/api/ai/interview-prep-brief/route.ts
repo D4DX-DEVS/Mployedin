@@ -8,6 +8,7 @@ import Interview from "@/models/Interview";
 import Job from "@/models/Job";
 import { JobSeeker } from "@/models/JobSeeker";
 import { Application } from "@/models/Application";
+import logger from "@/lib/logger";
 
 function parseJsonResponse(raw: string): unknown {
   let cleaned = raw.trim();
@@ -150,7 +151,7 @@ Output ONLY valid JSON, no markdown code blocks.`;
     try {
       rawText = await routeGenerate(prompt, "chat", aiOptions);
     } catch (aiErr) {
-      console.error("[Prep Brief AI Error]", aiErr);
+      logger.error({ err: aiErr }, "[Prep Brief AI Error]");
       return NextResponse.json(
         { error: "AI service unavailable. Please try again." },
         { status: 503 }
@@ -162,13 +163,13 @@ Output ONLY valid JSON, no markdown code blocks.`;
       parsed = parseJsonResponse(rawText);
     } catch {
       // Invalidate cached truncated response and retry
-      console.warn("[Prep Brief Parse Error] Retrying... Raw:", rawText.slice(0, 200));
+      logger.warn({ rawText: rawText.slice(0, 200) }, "[Prep Brief Parse Error] Retrying...");
       await invalidateAICache("chat", prompt);
       try {
         const retryText = await routeGenerate(prompt, "chat", aiOptions);
         parsed = parseJsonResponse(retryText);
       } catch {
-        console.error("[Prep Brief Parse Error] Retry also failed. Raw:", rawText.slice(0, 500));
+        logger.error({ rawText: rawText.slice(0, 500) }, "[Prep Brief Parse Error] Retry also failed");
         return NextResponse.json(
           { error: "Failed to parse AI response. Please retry." },
           { status: 422 }
@@ -190,7 +191,7 @@ Output ONLY valid JSON, no markdown code blocks.`;
       { headers: { "X-RateLimit-Remaining": String(remaining) } }
     );
   } catch (err) {
-    console.error("[Interview Prep Brief Error]", err);
+    logger.error({ err }, "[Interview Prep Brief Error]");
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

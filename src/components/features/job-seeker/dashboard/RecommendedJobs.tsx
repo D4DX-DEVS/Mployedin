@@ -135,7 +135,10 @@ export function RecommendedJobs({ locale }: { locale: string }) {
 
   const saveMutation = useMutation({
     mutationFn: (jobId: string) =>
-      fetch(`/api/jobs/${jobId}/save`, { method: "POST" }).then((r) => r.json()),
+      fetch(`/api/jobs/${jobId}/save`, { method: "POST" }).then((r) => {
+        if (!r.ok) return r.json().then((d: { error?: string }) => Promise.reject(d.error ?? "Failed to save job"));
+        return r.json();
+      }),
     onMutate: (jobId) => {
       setSavedIds((s) => {
         const n = new Set(s);
@@ -152,7 +155,10 @@ export function RecommendedJobs({ locale }: { locale: string }) {
       }
       qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
     },
-    onError: () => toast.error("Failed to update saved jobs"),
+    onError: (err: unknown, jobId) => {
+      setSavedIds((s) => { const n = new Set(s); n.has(jobId) ? n.delete(jobId) : n.add(jobId); return n; });
+      toast.error(typeof err === "string" ? err : "Failed to update saved jobs");
+    },
   });
 
   const allJobs = data?.pages.flatMap((p) => p.jobs) ?? [];

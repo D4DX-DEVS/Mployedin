@@ -14,13 +14,14 @@ import { sendEmail, EmailTemplates } from "@/lib/communications/email";
 import { autoAssignDefaultPlan } from "@/lib/subscription/autoAssign";
 import { uploadBuffer } from "@/lib/storage/spaces";
 import { hashOtp } from "@/lib/auth/emailVerification";
+import logger from "@/lib/logger";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   // Rate limit registration attempts
   const ip = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown";
-  const { allowed } = await checkRateLimit(`auth-register:${ip}`, RATE_LIMIT_CONFIGS.auth);
+  const { allowed } = await checkRateLimit(`auth-register:${ip}`, { ...RATE_LIMIT_CONFIGS.auth, failClosed: true });
   if (!allowed) {
     return NextResponse.json(
       { message: "Too many requests. Please try again later." },
@@ -260,7 +261,7 @@ export async function POST(req: NextRequest) {
         const agentName = (agentUser as { name?: string })?.name ?? "An agent";
         notifySuperAgentEmployerRegistered(
           saUserId, companyName || "A company", agentName, String(employer._id),
-        ).catch(() => {});
+        ).catch((err) => logger.error({ err, employerId: String(employer._id) }, "Failed to notify super agent of employer registration"));
       }
     }
 
@@ -281,7 +282,7 @@ export async function POST(req: NextRequest) {
       // transaction this would leave an orphan unverified User, making future
       // retries with the SAME email fail with "already registered". Roll back the
       // partial state so the email is freed and the user can register again.
-      console.error("[Registration] Rolling back partial employer registration:", creationErr);
+      logger.error({ err: creationErr }, "[Registration] Rolling back partial employer registration");
       await Promise.allSettled([
         CompanyUser.deleteMany({ userId: user._id }),
         Employer.deleteOne({ userId: user._id }),
@@ -295,7 +296,7 @@ export async function POST(req: NextRequest) {
 
     // Auto-assign default subscription plan (fire-and-forget — don't block registration)
     autoAssignDefaultPlan(user._id.toString(), "employer").catch((err) =>
-      console.error("[Registration] Failed to auto-assign subscription:", err),
+      logger.error({ err }, "[Registration] Failed to auto-assign subscription"),
     );
 
     await logActivity({
@@ -310,8 +311,9 @@ export async function POST(req: NextRequest) {
 
     // Send emails — await to prevent Next.js from terminating before delivery
     const baseUrl = process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-    const verifyUrl = `${baseUrl}/en/verify-email?token=${rawToken}&email=${encodeURIComponent(contactEmail)}`;
-    const dashboardUrl = `${baseUrl}/en/employer/dashboard`;
+    const locale = req.cookies.get("NEXT_LOCALE")?.value === "ar" ? "ar" : "en";
+    const verifyUrl = `${baseUrl}/${locale}/verify-email?token=${rawToken}&email=${encodeURIComponent(contactEmail)}`;
+    const dashboardUrl = `${baseUrl}/${locale}/employer/dashboard`;
 
     const [verifyResult, welcomeResult] = await Promise.allSettled([
       sendEmail({ to: contactEmail, ...EmailTemplates.verifyEmailOtp(contactName, otp, verifyUrl), source: "registration", category: "system" }),
@@ -319,10 +321,10 @@ export async function POST(req: NextRequest) {
     ]);
 
     if (verifyResult.status === "rejected") {
-      console.error("[Registration] Failed to send verification email:", verifyResult.reason);
+      logger.error({ reason: verifyResult.reason }, "[Registration] Failed to send verification email");
     }
     if (welcomeResult.status === "rejected") {
-      console.error("[Registration] Failed to send welcome email:", welcomeResult.reason);
+      logger.error({ reason: welcomeResult.reason }, "[Registration] Failed to send welcome email");
     }
 
     return NextResponse.json(
@@ -338,7 +340,7 @@ export async function POST(req: NextRequest) {
       { status: 201 }
     );
   } catch (err) {
-    console.error("employer-register error:", err);
+    logger.error({ err }, "employer-register error");
     return NextResponse.json({ message: "Server error." }, { status: 500 });
   }
 }

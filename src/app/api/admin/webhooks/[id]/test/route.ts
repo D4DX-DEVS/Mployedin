@@ -8,6 +8,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import Webhook from "@/models/Webhook";
 import { isValidObjectId } from "@/lib/security/sanitize";
+import { safeFetch } from "@/lib/security/ssrf";
 
 interface AuthCtx { userId: string; role: string; locale: string }
 
@@ -56,7 +57,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10_000);
 
-    const response = await fetch(webhook.url, {
+    const response = await safeFetch(webhook.url, {
       method: "POST",
       headers,
       body,

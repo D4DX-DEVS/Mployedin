@@ -5,11 +5,14 @@ import { CandidateNPS } from "@/models/CandidateNPS";
 import JobSeeker from "@/models/JobSeeker";
 import { notify } from "@/lib/notifications/trigger";
 import { verifyCronRequest } from "@/lib/security/cron-auth";
+import { forEachBounded, byId } from "@/lib/cron/scale";
 import logger from "@/lib/logger";
 
 const TERMINAL_STATUSES = ["hired", "rejected", "withdrawn"];
 const WINDOW_HOURS = 24;       // send NPS request after 24h
 const MAX_WINDOW_DAYS = 14;    // don't send if final status >14 days ago (too late)
+
+export const maxDuration = 300;
 
 /**
  * GET /api/cron/nps-trigger
@@ -33,6 +36,7 @@ export async function GET(req: NextRequest) {
     status: { $in: TERMINAL_STATUSES },
     updatedAt: { $gte: windowStart, $lte: windowEnd },
   })
+    .limit(500)
     .select("_id jobSeekerId jobId employerId status updatedAt")
     .populate("jobId", "title")
     .populate("employerId", "companyName")
@@ -56,16 +60,26 @@ export async function GET(req: NextRequest) {
     (a) => !alreadyRated.has(String(a._id))
   );
 
-  let sent = 0;
+  if (toNotify.length === 0) {
+    return NextResponse.json({ sent: 0, total: 0 });
+  }
+
+  // Batch fetch all job seekers
+  const jobSeekerIds = toNotify.map((a) => a.jobSeekerId);
+  const seekers = await JobSeeker.find({ _id: { $in: jobSeekerIds } })
+    .select("_id userId")
+    .lean();
+  const seekerMap = byId(seekers);
+
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://mployedin.com";
 
-  for (const app of toNotify) {
-    try {
-      // Get the job seeker's userId
-      const seeker = await JobSeeker.findById(app.jobSeekerId)
-        .select("userId")
-        .lean();
-      if (!seeker?.userId) continue;
+  // Send with bounded concurrency
+  const { ok: sent, failed } = await forEachBounded(
+    toNotify,
+    10,
+    async (app) => {
+      const seeker = seekerMap.get(String(app.jobSeekerId));
+      if (!seeker?.userId) return;
 
       const job = app.jobId as { title?: string } | null;
       const employer = app.employerId as { companyName?: string } | null;
@@ -87,11 +101,12 @@ export async function GET(req: NextRequest) {
         link: `${appUrl}/en/job-seeker/applications/${String(app._id)}/feedback`,
         sendEmail: true,
       });
+    },
+    "nps-trigger"
+  );
 
-      sent++;
-    } catch (err) {
-      logger.error({ err, appId: String(app._id) }, "NPS trigger failed for application");
-    }
+  if (failed > 0) {
+    logger.warn({ sent, failed }, "[cron] NPS trigger completed with failures");
   }
 
   return NextResponse.json({ sent, total: toNotify.length });

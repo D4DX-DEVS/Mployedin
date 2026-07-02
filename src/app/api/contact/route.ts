@@ -5,6 +5,7 @@ import { validateBody } from "@/lib/validators";
 import { contactSchema } from "@/lib/validators/misc";
 import { checkRateLimit } from "@/lib/security/rateLimit";
 import { logActivity } from "@/lib/audit/log";
+import logger from "@/lib/logger";
 
 /**
  * Public contact form submission — NO AUTH required.
@@ -28,10 +29,13 @@ export async function POST(req: NextRequest) {
     const captchaSecret = process.env.RECAPTCHA_SECRET_KEY;
     if (captchaSecret && captchaToken) {
       try {
+        const params = new URLSearchParams();
+        params.append("secret", captchaSecret);
+        params.append("response", captchaToken);
         const captchaRes = await fetch("https://www.google.com/recaptcha/api/siteverify", {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: `secret=${captchaSecret}&response=${captchaToken}`,
+          body: params.toString(),
         });
         const captchaData = await captchaRes.json();
         if (!captchaData.success || (captchaData.score !== undefined && captchaData.score < 0.3)) {
@@ -42,7 +46,7 @@ export async function POST(req: NextRequest) {
         }
       } catch {
         // If captcha service fails, proceed — don't block legit users
-        console.warn("[Contact] CAPTCHA verification failed, proceeding");
+        logger.warn("[Contact] CAPTCHA verification failed, proceeding");
       }
     }
 
@@ -73,7 +77,7 @@ export async function POST(req: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("[Contact] Submission error:", error);
+    logger.error({ error }, "[Contact] Submission error");
     return NextResponse.json(
       { error: "Failed to submit your message. Please try again." },
       { status: 500 }

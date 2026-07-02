@@ -37,7 +37,9 @@ export interface IInvoiceDefaults {
 export interface IAgent extends Document {
   _id: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId;
-  superAgentId?: mongoose.Types.ObjectId;  referralCode: string;  assignedCityIds: mongoose.Types.ObjectId[];
+  superAgentId?: mongoose.Types.ObjectId;
+  referralCode: string;
+  assignedCityIds: mongoose.Types.ObjectId[];
   assignedStateIds: mongoose.Types.ObjectId[];
   assignedEmployerIds: mongoose.Types.ObjectId[];
   assignedJobSeekerIds: mongoose.Types.ObjectId[];
@@ -51,6 +53,7 @@ export interface IAgent extends Document {
   workingHoursEnd?: string;
   workingDays?: string[];
   invoiceDefaults?: IInvoiceDefaults;
+  lastDigestSentAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -107,9 +110,18 @@ const AgentSchema = new Schema<IAgent>(
       billingCountry: { type: String, maxlength: 5 },
       billingTaxId: { type: String, maxlength: 50 },
     },
+    lastDigestSentAt: Date,
   },
   { timestamps: true }
 );
+
+// Cap activityLog to prevent unbounded growth (ponytail:)
+// Keep the most recent 200 entries; move to its own collection if history queries are needed
+AgentSchema.pre("save", function () {
+  if (this.activityLog && this.activityLog.length > 200) {
+    this.activityLog = this.activityLog.slice(-200);
+  }
+});
 
 // Schema-level indexes removed — managed centrally in lib/db/indexes.ts
 

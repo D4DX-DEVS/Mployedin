@@ -5,3 +5,8 @@ export { CardListSkeleton } from "./CardListSkeleton";
 export { TableRowsSkeleton } from "./TableRowsSkeleton";
 export { FormFieldsSkeleton } from "./FormFieldsSkeleton";
 export { DashboardPageSkeleton } from "./DashboardPageSkeleton";
+export { ChartSkeleton } from "./ChartSkeleton";
+export { CalendarSkeleton } from "./CalendarSkeleton";
+export { ChatSkeleton } from "./ChatSkeleton";
+export { ProfileDetailSkeleton } from "./ProfileDetailSkeleton";
+export { CardGridSkeleton } from "./CardGridSkeleton";

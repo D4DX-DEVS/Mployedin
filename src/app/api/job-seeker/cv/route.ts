@@ -5,6 +5,7 @@ import JobSeeker from "@/models/JobSeeker";
 import { uploadFile, deleteFile } from "@/lib/storage/spaces";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateUploadedFile } from "@/lib/security/file-validation";
+import { MalwareDetectedError } from "@/lib/security/malware-scan";
 
 // POST /api/job-seeker/cv — upload resume/CV file
 async function postHandler(req: NextRequest, ctx: { userId: string; role: string; locale: string }) {

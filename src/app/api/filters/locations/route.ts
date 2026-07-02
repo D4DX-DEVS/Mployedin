@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import Country from "@/models/Country";
 import State from "@/models/State";
 import City from "@/models/City";
+import logger from "@/lib/logger";
 
 /**
  * GET /api/filters/locations
@@ -114,7 +115,7 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: "Invalid level" }, { status: 400 });
     }
   } catch (err) {
-    console.error("[locations] Error:", err);
+    logger.error({ err }, "[locations] Error");
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

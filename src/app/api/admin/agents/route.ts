@@ -14,6 +14,7 @@ import { validateBody } from "@/lib/validators";
 import { agentCreateSchema, agentUpdateSchema } from "@/lib/validators/admin";
 import { isRegionSubset } from "@/lib/auth/agentRestrictions";
 import type { RegionInfo } from "@/lib/auth/agentRestrictions";
+import logger from "@/lib/logger";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -254,12 +255,12 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       const saDoc = await SuperAgent.findById(superAgentId).select("userId").lean();
       if (saDoc?.userId) {
         const { notifySuperAgentAgentJoined } = await import("@/lib/notifications/trigger");
-        notifySuperAgentAgentJoined(String(saDoc.userId), name, String(user._id)).catch(() => {});
+        notifySuperAgentAgentJoined(String(saDoc.userId), name, String(user._id)).catch((err) => { logger.error({ err, agentId: String(user._id), superAgentId }, "Failed to send agent joined notification"); });
       }
     }
   } catch (err) {
     await User.findByIdAndDelete(user._id);
-    console.error("[admin/agents] Profile creation failed:", err);
+    logger.error({ err }, "[admin/agents] Profile creation failed");
     return NextResponse.json({ error: "Failed to create agent profile" }, { status: 500 });
   }
 

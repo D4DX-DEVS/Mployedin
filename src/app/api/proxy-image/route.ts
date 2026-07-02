@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { assertPublicUrl } from "@/lib/security/ssrf";
 
 /**
  * GET /api/proxy-image?url=<encoded-url>
@@ -31,14 +32,26 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Only HTTPS URLs allowed" }, { status: 400 });
   }
 
-  const isAllowed = ALLOWED_HOSTS.some((host) => parsed.hostname.endsWith(host));
+  // Exact host or a real subdomain (dot boundary) — never a suffix match, so
+  // "evildigitaloceanspaces.com" cannot pass for "digitaloceanspaces.com".
+  const isAllowed = ALLOWED_HOSTS.some(
+    (host) => parsed.hostname === host || parsed.hostname.endsWith("." + host),
+  );
   if (!isAllowed) {
+    return NextResponse.json({ error: "Domain not allowed" }, { status: 403 });
+  }
+
+  // Defence in depth: reject if the allowed host resolves to a private IP.
+  try {
+    await assertPublicUrl(url);
+  } catch {
     return NextResponse.json({ error: "Domain not allowed" }, { status: 403 });
   }
 
   try {
     const response = await fetch(url, {
       headers: { Accept: "image/*" },
+      redirect: "manual",
       signal: AbortSignal.timeout(10_000),
     });
 

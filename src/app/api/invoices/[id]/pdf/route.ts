@@ -18,6 +18,7 @@ import Agent from "@/models/Agent";
 import "@/models/Job";
 import "@/models/Employer";
 import "@/models/City";
+import logger from "@/lib/logger";
 
 async function handler(
   req: NextRequest,
@@ -44,7 +45,7 @@ async function handler(
   Invoice.updateOne(
     { _id: invoice._id, downloadedAt: { $exists: false } },
     { $set: { downloadedAt: new Date() } },
-  ).catch(() => {});
+  ).catch((err) => logger.error({ err, invoiceId: invoice._id.toString() }, "Failed to mark invoice as downloaded"));
 
   // Resolve "Issued By" label for the PDF
   let issuedByLabel: string | undefined;

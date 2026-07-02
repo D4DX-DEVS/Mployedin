@@ -11,6 +11,7 @@ import { isValidObjectId } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
 import { validateBody } from "@/lib/validators";
 import { approvalDecisionSchema } from "@/lib/validators/super-agent";
+import logger from "@/lib/logger";
 
 interface AuthCtx {
   userId: string;
@@ -128,7 +129,7 @@ async function patchHandler(
         link: `/${ctx.locale}/agent/jobs`,
         sendEmail: true,
         metadata: { jobId: String(job._id), reason },
-      }).catch(() => {});
+      }).catch((err) => logger.error({ err, jobId: String(job._id) }, "Failed to notify agent of job approval decision"));
     }
   }
 

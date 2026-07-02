@@ -10,6 +10,7 @@ import { notify } from "@/lib/notifications/trigger";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { z } from "zod";
 import type { UserRole } from "@/models/User";
+import logger from "@/lib/logger";
 
 interface AuthCtx {
   userId: string;
@@ -89,7 +90,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<strin
       link: `/en/employer/interviews`,
       sendEmail: true,
       metadata: { interviewId: params?.id, response },
-    }).catch(() => {});
+    }).catch((err) => { logger.error({ err, interviewId: params?.id, response }, "Failed to send interview update notification to employer"); });
   }
 
   await logActivity({

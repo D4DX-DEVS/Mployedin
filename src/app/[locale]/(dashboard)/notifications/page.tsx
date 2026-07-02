@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { PageHeader } from "@/components/shared/PageHeader";
-import { Bell, CheckCheck, Loader2 } from "lucide-react";
+import { Bell, CheckCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePageNotifications, useMarkAllRead, useMarkOneRead } from "@/hooks/useNotifications";
 import { resolveNotificationText } from "@/lib/notifications/resolve";
@@ -54,8 +54,17 @@ export default function NotificationsPage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <div className="space-y-2" aria-busy="true">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex gap-3 p-4 rounded-xl border border-border animate-pulse"
+              style={{ opacity: 1 - i * 0.12 }}>
+              <div className="w-9 h-9 rounded-full bg-muted flex-shrink-0" />
+              <div className="flex-1 space-y-2 py-0.5">
+                <div className="h-4 w-2/5 rounded bg-muted" />
+                <div className="h-3 w-4/5 rounded bg-muted/60" />
+              </div>
+            </div>
+          ))}
         </div>
       ) : notifications.length === 0 ? (
         <div className="card-base text-center py-16">

@@ -28,6 +28,7 @@ import Testimonial from "@/models/Testimonial";
 import AuditLog from "@/models/AuditLog";
 import { logActivity } from "@/lib/audit/log";
 import type { UserRole } from "@/types/user";
+import logger from "@/lib/logger";
 
 const OPENROUTER_BASE = "https://openrouter.ai/api/v1";
 const CHAT_MODEL = GEMINI_MODELS.flash;
@@ -170,7 +171,7 @@ export async function POST(req: NextRequest) {
           }
         }
       } catch (err) {
-        console.error("[AI Chat] Failed to fetch user profile:", err);
+        logger.error({ err }, "[AI Chat] Failed to fetch user profile");
         // Continue without profile — graceful degradation
       }
     }
@@ -315,7 +316,7 @@ ${categoryLines || "  (no active jobs)"}
 ### Recent Jobs
 ${recentJobLines || "  (no jobs yet)"}`;
       } catch (err) {
-        console.error("[AI Chat] Failed to fetch admin stats:", err);
+        logger.error({ err }, "[AI Chat] Failed to fetch admin stats");
       }
     }
 
@@ -428,7 +429,7 @@ ${agentLines.join("\n")}
 Use this data to answer questions about team performance, identify underperformers, suggest lead redistribution, and provide actionable advice. Always cite specific agent names and numbers.`;
         }
       } catch (err) {
-        console.error("[AI Chat] Failed to fetch super-agent stats:", err);
+        logger.error({ err }, "[AI Chat] Failed to fetch super-agent stats");
       }
     }
 
@@ -448,7 +449,7 @@ Use this data to answer questions about team performance, identify underperforme
           roleStatsContext = `\n\n## Pipeline Stats (live data — use naturally in responses)\n- Active job postings: ${activeJobs}\n- Total applications: ${totalApps}\n- Open leads: ${openLeads}\n- Scheduled interviews: ${scheduledInterviews}\n- Placements: ${placements}`;
         }
       } catch (err) {
-        console.error("[AI Chat] Failed to fetch agent stats:", err);
+        logger.error({ err }, "[AI Chat] Failed to fetch agent stats");
       }
     }
 
@@ -564,7 +565,7 @@ Use this data to answer questions about team performance, identify underperforme
           roleStatsContext = jobsBlock + applicantsBlock;
         }
       } catch (err) {
-        console.error("[AI Chat] Failed to fetch employer data:", err);
+        logger.error({ err }, "[AI Chat] Failed to fetch employer data");
       }
     }
 
@@ -604,7 +605,7 @@ Use this data to answer questions about team performance, identify underperforme
           recentActivityContext = `\n\n## Recent Activity\n${activityLines.join("\n")}`;
         }
       } catch (err) {
-        console.error("[AI Chat] Failed to fetch recent activity:", err);
+        logger.error({ err }, "[AI Chat] Failed to fetch recent activity");
       }
     }
 
@@ -621,7 +622,7 @@ Use this data to answer questions about team performance, identify underperforme
 
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
-      console.error("[AI Chat] OPENROUTER_API_KEY not set");
+      logger.error("[AI Chat] OPENROUTER_API_KEY not set");
       return NextResponse.json({ error: "AI service not configured" }, { status: 503 });
     }
 
@@ -643,7 +644,7 @@ Use this data to answer questions about team performance, identify underperforme
 
     if (!upstream.ok) {
       const err = await upstream.text();
-      console.error("[AI Chat] OpenRouter error:", upstream.status, err);
+      logger.error({ status: upstream.status, err }, "[AI Chat] OpenRouter error");
       return NextResponse.json({ error: "AI service error" }, { status: 502 });
     }
 
@@ -698,7 +699,7 @@ Use this data to answer questions about team performance, identify underperforme
     });
   } catch (error) {
     if (error instanceof NextResponse) return error;
-    console.error("[AI Chat Error]", error);
+    logger.error({ error }, "[AI Chat Error]");
     return NextResponse.json(
       { error: "AI service error" },
       { status: 500 }

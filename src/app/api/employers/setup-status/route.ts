@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth/config";
 import { connectDB } from "@/lib/db/mongoose";
 import { Employer } from "@/models/Employer";
 import Job from "@/models/Job";
+import logger from "@/lib/logger";
 
 interface StepResult {
   id: string;
@@ -115,7 +116,7 @@ export async function GET() {
 
     return NextResponse.json({ steps, allDone });
   } catch (err) {
-    console.error("[Setup Status Error]", err);
+    logger.error({ err }, "[Setup Status Error]");
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

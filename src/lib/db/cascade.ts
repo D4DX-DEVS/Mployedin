@@ -20,6 +20,7 @@
  */
 
 import mongoose, { type Types } from "mongoose";
+import logger from "@/lib/logger";
 import { connectDB } from "@/lib/db/mongoose";
 import Employer from "@/models/Employer";
 import JobSeeker from "@/models/JobSeeker";
@@ -54,7 +55,7 @@ async function track(
       (r as DeleteResult).deletedCount ?? (r as UpdateResult).modifiedCount ?? 0;
     if (count) summary[label] = (summary[label] ?? 0) + count;
   } catch (err) {
-    console.error(`[cascade] failed on "${label}":`, err);
+    logger.error({ err, operation: label }, "[cascade] operation failed");
   }
 }
 

@@ -1,16 +1,16 @@
-"use client";
+﻿"use client";
 
 import { useTranslations } from "next-intl";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import GoogleCalendar, {
+import MployedinCalendar, {
   type CalendarEvent,
   type BookingPayload,
   type BookingCandidate,
   type JobOption,
-} from "@/components/shared/GoogleCalendar";
+} from "@/components/shared/MployedinCalendar";
 import { Briefcase } from "lucide-react";
 
 export default function EmployerCalendarPage() {
@@ -27,14 +27,18 @@ export default function EmployerCalendarPage() {
     try {
       const start = new Date(year, month, 1).toISOString();
       const end = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
-      const res = await fetch(`/api/interviews?dateFrom=${start}&dateTo=${end}`);
+      const res = await fetch(`/api/interviews?dateFrom=${start}&dateTo=${end}&limit=100`);
       if (res.ok) {
         const data = await res.json();
         const items = data.interviews ?? data.items ?? [];
         setEvents(
           items.map((i: Record<string, unknown>) => ({
             _id: String(i._id),
-            title: String(i.candidateName ?? "Candidate"),
+            title: String(
+              (i.jobSeekerId as { fullName?: string } | undefined)?.fullName ??
+                i.candidateName ??
+                "Candidate",
+            ),
             subtitle: String(i.jobTitle ?? ""),
             type: (i.type as CalendarEvent["type"]) ?? "video",
             status: String(i.status ?? "scheduled"),
@@ -186,7 +190,7 @@ export default function EmployerCalendarPage() {
         </div>
       </section>
 
-      <GoogleCalendar
+      <MployedinCalendar
         events={events}
         loading={loading}
         onMonthChange={fetchEvents}

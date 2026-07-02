@@ -5,6 +5,9 @@ const KEY_LENGTH = 32; // 256 bits
 const IV_LENGTH = 16;  // 128 bits
 const TAG_LENGTH = 16; // 128 bits auth tag
 
+let keyCache: Buffer | null = null;
+let keyValidated = false;
+
 function getEncryptionKey(): Buffer {
   const keyHex = process.env.ENCRYPTION_KEY;
   if (!keyHex) {
@@ -14,8 +17,12 @@ function getEncryptionKey(): Buffer {
     );
   }
   const key = Buffer.from(keyHex, "hex");
-  if (key.length !== KEY_LENGTH) {
-    throw new Error(`ENCRYPTION_KEY must be ${KEY_LENGTH * 2} hex characters (${KEY_LENGTH} bytes)`);
+  // Lazy validation: assert key is exactly 32 bytes on first use, not module load
+  if (!keyValidated) {
+    keyValidated = true;
+    if (key.length !== KEY_LENGTH) {
+      throw new Error(`ENCRYPTION_KEY must be exactly ${KEY_LENGTH} bytes (${KEY_LENGTH * 2} hex chars); got ${key.length} bytes`);
+    }
   }
   return key;
 }

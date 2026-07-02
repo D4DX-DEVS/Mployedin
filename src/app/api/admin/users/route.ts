@@ -12,6 +12,7 @@ import { validateBody } from "@/lib/validators";
 import { adminUserCreateSchema, adminUserPatchSchema, adminUserDeleteSchema } from "@/lib/validators/admin";
 
 import bcrypt from "bcryptjs";
+import logger from "@/lib/logger";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -233,7 +234,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     }
   } catch (profileErr) {
     // If profile creation fails, clean up the user document
-    console.error("[admin/users] Profile creation failed:", profileErr);
+    logger.error({ err: profileErr }, "[admin/users] Profile creation failed");
     await User.findByIdAndDelete(user._id);
     return NextResponse.json(
       { error: "Failed to create user profile" },

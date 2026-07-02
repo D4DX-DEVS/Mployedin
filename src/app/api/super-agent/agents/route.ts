@@ -13,6 +13,7 @@ import { getSuperAgentOwnRegion, getSuperAgentScope, isRegionSubset } from "@/li
 import { commonSchemas } from "@/lib/validators";
 import { sendEmail, EmailTemplates } from "@/lib/communications/email";
 import { escapeRegex } from "@/lib/security/sanitize";
+import logger from "@/lib/logger";
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   await connectDB();
@@ -259,7 +260,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       source: "agent-creation",
       category: "system",
     }).catch((err) =>
-      console.error("[super-agent/agents] Failed to send welcome email:", err)
+      logger.error({ err }, "[super-agent/agents] Failed to send welcome email")
     );
 
     return NextResponse.json(
@@ -268,7 +269,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     );
   } catch (err) {
     await User.findByIdAndDelete(user._id);
-    console.error("[super-agent/agents] Agent creation failed:", err);
+    logger.error({ err }, "[super-agent/agents] Agent creation failed");
     return NextResponse.json({ error: "Failed to create agent" }, { status: 500 });
   }
 }, { resource: "agents", action: "create" });

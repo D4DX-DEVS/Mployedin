@@ -3,6 +3,7 @@
  * Increment counters in a fire-and-forget fashion after key agent actions.
  */
 import Agent from "@/models/Agent";
+import logger from "@/lib/logger";
 
 type PerformanceField = keyof typeof FIELD_MAP;
 
@@ -31,5 +32,5 @@ export function incrementAgentCounter(
 
   Agent.findOneAndUpdate(filter, { $inc: { [FIELD_MAP[field]]: 1 } })
     .exec()
-    .catch(() => {});
+    .catch((err) => logger.error({ err, agentIdentifier }, "Failed to increment agent performance counter"));
 }

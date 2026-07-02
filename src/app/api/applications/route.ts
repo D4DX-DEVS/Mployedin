@@ -19,6 +19,7 @@ import { computeBehaviorSignals } from "@/lib/behaviorSignals";
 import { inngest } from "@/lib/inngest/client";
 import { notifyApplicationReceived } from "@/lib/notifications/trigger";
 import type { UserRole } from "@/models/User";
+import logger from "@/lib/logger";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AuthCtx = any;
@@ -633,7 +634,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       applicationId: String(application._id),
       ...(aiAutoScreen && autoRejectBelow !== undefined ? { autoRejectBelow } : {}),
     },
-  }).catch(() => { /* non-blocking */ });
+  }).catch((err) => { logger.error({ err, applicationId: String(application._id) }, "Failed to dispatch application/ai-screen event for AI scoring"); });
 
   await logActivity({
     ...actorFromCtx(ctx),
@@ -652,7 +653,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     String(job.title ?? "the position"),
     companyName,
     String(application._id)
-  ).catch(() => { /* non-blocking */ });
+  ).catch((err) => { logger.error({ err, applicationId: String(application._id), userId: ctx.userId }, "failed to notify applicant of submission"); });
 
   return NextResponse.json({ application }, { status: 201 });
 }

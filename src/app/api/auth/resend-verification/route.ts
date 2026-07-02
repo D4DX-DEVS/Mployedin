@@ -5,6 +5,7 @@ import crypto from "crypto";
 import { checkRateLimit } from "@/lib/security/rateLimit";
 import { sendEmail, EmailTemplates } from "@/lib/communications/email";
 import { hashOtp } from "@/lib/auth/emailVerification";
+import logger from "@/lib/logger";
 import { z } from "zod";
 
 const schema = z.object({
@@ -17,7 +18,7 @@ const schema = z.object({
  */
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for") ?? "unknown";
-  const { allowed } = await checkRateLimit(`resend-verify:${ip}`, { limit: 3, windowSec: 300, prefix: "rsndv" });
+  const { allowed } = await checkRateLimit(`resend-verify:${ip}`, { limit: 3, windowSec: 300, prefix: "rsndv", failClosed: true });
   if (!allowed) {
     return NextResponse.json({ error: "Too many requests. Please wait a few minutes." }, { status: 429 });
   }
@@ -57,12 +58,18 @@ export async function POST(req: NextRequest) {
   await user.save();
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  const verifyUrl = `${baseUrl}/en/verify-email?token=${rawToken}&email=${encodeURIComponent(user.email)}`;
+  const locale = req.cookies.get("NEXT_LOCALE")?.value === "ar" ? "ar" : "en";
+  const verifyUrl = `${baseUrl}/${locale}/verify-email?token=${rawToken}&email=${encodeURIComponent(user.email)}`;
 
-  await sendEmail({
-    to: user.email,
-    ...EmailTemplates.verifyEmailOtp(user.name || "there", otp, verifyUrl),
-  });
+  try {
+    await sendEmail({
+      to: user.email,
+      ...EmailTemplates.verifyEmailOtp(user.name || "there", otp, verifyUrl),
+    });
+  } catch (err) {
+    logger.error({ err }, "[resend-verification] Failed to send verification email");
+    return NextResponse.json({ error: "Couldn't send the email right now. Please try again shortly." }, { status: 502 });
+  }
 
   return NextResponse.json({ success: true, message: "Verification email sent." });
 }

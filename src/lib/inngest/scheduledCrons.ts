@@ -48,6 +48,9 @@ async function triggerCron(path: string): Promise<{ path: string; status: number
     method: "GET",
     headers: buildCronHeaders(path),
     cache: "no-store",
+    // Cron routes self-cap their work; a hung upstream must not pin the
+    // Inngest step forever and mask the failure.
+    signal: AbortSignal.timeout(270_000),
   });
   const body = (await res.text()).slice(0, 1000);
   if (!res.ok) {

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
@@ -16,17 +16,18 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ChangeEmailCard } from "@/components/features/settings/ChangeEmailCard";
+import { CalendarFeedCard } from "@/components/features/settings/CalendarFeedCard";
 import {
   COUNTRY_CURRENCIES,
   SUPPORTED_CURRENCIES,
   currencyForCountry,
 } from "@/lib/currency";
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const COUNTRIES = Object.entries(COUNTRY_CURRENCIES).map(([code, info]) => ({
   code,
-  label: `${code} — ${info.label} (${info.code})`,
+  label: `${code} â€” ${info.label} (${info.code})`,
 }));
 
 type TabKey = "profile" | "region" | "commission" | "invoice" | "notifications" | "availability" | "security";
@@ -84,7 +85,7 @@ const TIMEZONES = [
 
 const DAYS_OF_WEEK = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-// ─── Sub-Components ───────────────────────────────────────────────────────────
+// â”€â”€â”€ Sub-Components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function SectionCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
@@ -129,7 +130,7 @@ function SaveFeedback({ saving, saved, hasChanges, onSave, label }: {
   );
 }
 
-// ─── Helper: CSRF Token ───────────────────────────────────────────────────────
+// â”€â”€â”€ Helper: CSRF Token â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function getCsrfToken(): string {
   const match = document.cookie
@@ -138,7 +139,7 @@ function getCsrfToken(): string {
   return match?.split("=")[1] ?? "";
 }
 
-// ─── Tab: Profile & Avatar ────────────────────────────────────────────────────
+// â”€â”€â”€ Tab: Profile & Avatar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const MAX_SIZE = 2 * 1024 * 1024; // 2MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -422,7 +423,7 @@ function ProfileTab() {
   );
 }
 
-// ─── Tab: Region & Currency ───────────────────────────────────────────────────
+// â”€â”€â”€ Tab: Region & Currency â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function RegionTab() {
   const t = useTranslations("agentSettings");
@@ -522,7 +523,7 @@ function RegionTab() {
               >
                 {SUPPORTED_CURRENCIES.map((c) => (
                   <option key={c.code} value={c.code}>
-                    {c.symbol} — {c.code} ({c.label})
+                    {c.symbol} â€” {c.code} ({c.label})
                   </option>
                 ))}
               </select>
@@ -560,7 +561,7 @@ function RegionTab() {
   );
 }
 
-// ─── Tab: Commission Rate (read-only for agents) ─────────────────────────────
+// â”€â”€â”€ Tab: Commission Rate (read-only for agents) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function CommissionTab() {
   const t = useTranslations("agentSettings");
@@ -634,7 +635,7 @@ function CommissionTab() {
   );
 }
 
-// ─── Tab: Notifications ───────────────────────────────────────────────────────
+// â”€â”€â”€ Tab: Notifications â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function NotificationsTab() {
   const t = useTranslations("agentSettings");
@@ -870,7 +871,7 @@ function NotificationsTab() {
   );
 }
 
-// ─── Tab: Availability ────────────────────────────────────────────────────────
+// â”€â”€â”€ Tab: Availability â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function AvailabilityTab() {
   const t = useTranslations("agentSettings");
@@ -1006,7 +1007,7 @@ function AvailabilityTab() {
   );
 }
 
-// ─── Tab: Invoice Defaults ────────────────────────────────────────────────────
+// â”€â”€â”€ Tab: Invoice Defaults â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const INVOICE_CATEGORIES = [
   "recruitment",
@@ -1258,7 +1259,7 @@ function InvoiceDefaultsTab({ apiBase = "/api/agent/settings/invoice-defaults" }
                 onChange={(e) => update("defaultCurrency", e.target.value)}
                 className="h-11 w-full rounded-xl border border-border bg-background/85 px-3 text-sm text-foreground shadow-none focus:outline-none focus:ring-2 focus:ring-primary/35"
               >
-                {SUPPORTED_CURRENCIES.map((c) => <option key={c.code} value={c.code}>{c.symbol} — {c.code} ({c.label})</option>)}
+                {SUPPORTED_CURRENCIES.map((c) => <option key={c.code} value={c.code}>{c.symbol} â€” {c.code} ({c.label})</option>)}
               </select>
             </div>
           </div>
@@ -1331,7 +1332,7 @@ function InvoiceDefaultsTab({ apiBase = "/api/agent/settings/invoice-defaults" }
   );
 }
 
-// ─── Tab: Account & Security ──────────────────────────────────────────────────
+// â”€â”€â”€ Tab: Account & Security â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function SecurityTab() {
   const t = useTranslations("agentSettings");
@@ -1387,6 +1388,7 @@ function SecurityTab() {
       </SectionCard>
 
       <ChangeEmailCard />
+            <CalendarFeedCard />
 
       <SectionCard>
         <SectionHeader icon={AlertTriangle} title={t("security.dangerTitle")} description={t("security.dangerDescription")} />
@@ -1406,7 +1408,7 @@ function SecurityTab() {
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Main Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export default function AgentSettingsPage() {
   const [activeTab, setActiveTab] = useState<TabKey>("profile");

@@ -12,6 +12,7 @@
  */
 import { uploadBuffer } from "./spaces";
 import logger from "@/lib/logger";
+import { safeFetch } from "@/lib/security/ssrf";
 
 const FETCH_TIMEOUT_MS = 8_000;
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
@@ -34,7 +35,8 @@ export async function rehostExternalAvatar(
 
   let res: Response;
   try {
-    res = await fetch(url, { signal: controller.signal, redirect: "follow" });
+    // safeFetch blocks private-IP targets and re-validates every redirect hop.
+    res = await safeFetch(url, { signal: controller.signal });
   } catch (err) {
     logger.warn({ err, url }, "rehostExternalAvatar: fetch failed");
     return null;

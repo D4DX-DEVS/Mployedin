@@ -14,6 +14,7 @@ import { notify } from "@/lib/notifications/trigger";
 import { sendEmail } from "@/lib/communications/email";
 import { canManageTeam } from "@/lib/permissions/team";
 import { ensureEmployerOwnerMembership } from "@/lib/employers/company-membership";
+import logger from "@/lib/logger";
 
 /**
  * GET /api/employers/team — list team members for the employer's company
@@ -235,7 +236,7 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
         `,
       });
     } catch (err) {
-      console.error("[team.invite] Email send failed:", err);
+      logger.error({ err }, "[team.invite] Email send failed");
     }
   }
 

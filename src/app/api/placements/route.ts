@@ -14,6 +14,10 @@ import { placementCreateSchema } from "@/lib/validators/placements";
 // Ensure referenced schemas are registered for populate() on cold starts.
 void Job; void JobSeeker; void Agent; void User;
 
+import logger from "@/lib/logger";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { notifySuperAgentPlacement } from "@/lib/notifications/trigger";
+
 interface AuthCtx { userId: string; role: string; locale: string; }
 
 async function handler(req: NextRequest, ctx: AuthCtx) {
@@ -244,7 +248,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       const candidateName = (jsUser as { name?: string })?.name ?? "A candidate";
       const jobTitle = (jobDoc as { title?: string })?.title ?? "a position";
       const companyName = (empDoc as { companyName?: string })?.companyName ?? "a company";
-      notifySuperAgentPlacement(saUserId, candidateName, jobTitle, companyName, String(placement._id), ctx.locale).catch(() => {});
+      notifySuperAgentPlacement(saUserId, candidateName, jobTitle, companyName, String(placement._id), ctx.locale).catch((err) => logger.error({ err, placementId: String(placement._id) }, "Failed to notify super agent of new placement"));
     }
   }
 

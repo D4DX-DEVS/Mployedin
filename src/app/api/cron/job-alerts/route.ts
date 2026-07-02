@@ -27,6 +27,7 @@ export async function GET(req: NextRequest) {
     deletedAt: null,
     createdAt: { $gte: since },
   })
+    .limit(500)
     .select("title location requirements salary employmentType category tags employerId")
     .populate("employerId", "companyName")
     .lean();

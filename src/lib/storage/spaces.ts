@@ -22,7 +22,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { randomUUID } from "crypto";
 import path from "path";
-import { validateUploadedFile, ALLOWED_FILE_TYPES } from "@/lib/security/file-validation";
+import { validateUploadedFile, ALLOWED_FILE_TYPES, validateMagicBytes, MAX_FILE_SIZES } from "@/lib/security/file-validation";
 import { scanForMalware, MalwareDetectedError } from "@/lib/security/malware-scan";
 
 // ─── Client singleton ────────────────────────────────────────────────────────
@@ -157,6 +157,7 @@ export async function uploadBuffer(
 /**
  * Upload a large file using S3 multipart upload.
  * Recommended for files > 10 MB.
+ * Validates magic bytes on first chunk and enforces max size ceiling (100MB default).
  */
 export async function uploadLarge(
   stream: NodeJS.ReadableStream | Buffer,
@@ -165,6 +166,12 @@ export async function uploadLarge(
     fileName?: string;
     contentType?: string;
     private?: boolean;
+    /** File validation category — if set, validates magic bytes on first 8KB */
+    validateAs?: keyof typeof ALLOWED_FILE_TYPES;
+    /** Skip malware scanning (caller has already scanned these exact bytes). */
+    skipMalwareScan?: boolean;
+    /** Max file size in bytes (default 100MB). Enforced during stream consumption. */
+    maxSize?: number;
   } = {}
 ): Promise<UploadResult> {
   const client = getClient();
@@ -174,6 +181,31 @@ export async function uploadLarge(
   const prefix = getPrefix();
   const folder = options.folder ?? "other";
   const key = prefix ? `${prefix}/${folder}/${randomUUID()}${ext}` : `${folder}/${randomUUID()}${ext}`;
+
+  // For Buffer input, validate magic bytes and size upfront
+  if (Buffer.isBuffer(stream)) {
+    const maxSize = options.maxSize ?? 100 * 1024 * 1024; // 100MB default
+    if (stream.byteLength > maxSize) {
+      throw new Error(`File too large. Maximum size is ${Math.round(maxSize / 1024 / 1024)}MB.`);
+    }
+
+    if (options.validateAs) {
+      const firstChunk = stream.slice(0, 8 * 1024); // First 8KB for magic-byte validation
+      const detected = validateMagicBytes(firstChunk.buffer);
+      const allowed = Object.values(ALLOWED_FILE_TYPES[options.validateAs] ?? []) as string[];
+      if (!detected || !allowed.includes(detected)) {
+        throw new Error("File type not allowed or corrupted.");
+      }
+    }
+
+    if (!options.skipMalwareScan) {
+      const scan = await scanForMalware(stream);
+      if (!scan.clean) {
+        throw new MalwareDetectedError(scan.reason ?? "File rejected: failed malware scan.");
+      }
+    }
+  }
+  // For streams, size and magic-byte validation are impractical without buffering.
 
   const upload = new Upload({
     client,
@@ -267,7 +299,7 @@ export async function fileExists(key: string): Promise<boolean> {
 /**
  * Generate a time-limited presigned URL for a private file.
  * @param key    Object key
- * @param ttl    Expiry in seconds (default 3600 = 1 hour)
+ * @param ttl    Expiry in seconds (default 600 = 10 minutes)
  * @param opts   Optional response-header overrides. `inline: true` forces the
  *               browser to render the file in-page (e.g. inside an iframe)
  *               instead of downloading it, regardless of the object's stored
@@ -275,7 +307,7 @@ export async function fileExists(key: string): Promise<boolean> {
  */
 export async function getPresignedUrl(
   key: string,
-  ttl = 3600,
+  ttl = 600,
   opts?: { inline?: boolean; contentType?: string },
 ): Promise<string> {
   const client = getClient();

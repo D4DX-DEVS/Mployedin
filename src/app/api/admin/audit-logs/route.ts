@@ -47,7 +47,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
   return NextResponse.json({
     logs,
-    pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+    pagination: { page, limit, total, pages: limit > 0 ? Math.ceil(total / limit) : 1 },
   });
 }
 

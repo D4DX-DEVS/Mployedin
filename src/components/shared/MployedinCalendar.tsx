@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
@@ -65,13 +65,13 @@ export interface JobOption {
   applicantCount?: number;
 }
 
-interface GoogleCalendarProps {
+interface MployedinCalendarProps {
   events: CalendarEvent[];
   loading?: boolean;
   onMonthChange?: (year: number, month: number) => void;
   /** Extra detail lines rendered inside event detail panel */
   renderEventExtra?: (event: CalendarEvent) => React.ReactNode;
-  /** Enable booking mode — shows "Book Interview" button on future dates */
+  /** Enable booking mode â€” shows "Book Interview" button on future dates */
   bookingEnabled?: boolean;
   /** Callback when user submits a booking (single or bulk) */
   onBookInterview?: (payload: BookingPayload) => Promise<void>;
@@ -79,7 +79,7 @@ interface GoogleCalendarProps {
   fetchCandidates?: (search: string, filters?: { jobId?: string; scoreMin?: number }) => Promise<BookingCandidate[]>;
   /** Fetch employer's jobs for the job filter */
   fetchJobs?: () => Promise<JobOption[]>;
-  /** Pre-fill with a specific application — skips candidate selection step */
+  /** Pre-fill with a specific application â€” skips candidate selection step */
   prefilledApplicationId?: string;
   /** Pre-filled candidate data (required when prefilledApplicationId is set) */
   prefilledCandidate?: BookingCandidate;
@@ -420,8 +420,8 @@ function EventDetail({
             month: "short",
             day: "numeric",
           })}{" "}
-          · {formatTime(dt, locale)}
-          {endTime ? ` – ${formatTime(endTime, locale)}` : ""}
+          Â· {formatTime(dt, locale)}
+          {endTime ? ` â€“ ${formatTime(endTime, locale)}` : ""}
           {event.duration ? ` (${t("min", { count: event.duration })})` : ""}
         </p>
 
@@ -585,7 +585,7 @@ function MonthView({
                     } ${EVENT_COLORS[e.type] ?? "bg-primary/10 border-primary/40 text-primary"}`}
                   >
                     <span className="truncate">
-                      {formatTime(new Date(e.scheduledAt), locale).replace(/\s?(AM|PM|ص|م)/, "").trim()}{" "}
+                      {formatTime(new Date(e.scheduledAt), locale).replace(/\s?(AM|PM|Øµ|Ù…)/, "").trim()}{" "}
                       {e.title}
                     </span>
                   </div>
@@ -779,7 +779,7 @@ function TimeGridView({
                         {heightMin >= 40 && (
                           <p className="truncate text-[10px] opacity-75 leading-tight mt-0.5">
                             {formatTime(evtDate, locale)}
-                            {evt.subtitle ? ` · ${evt.subtitle}` : ""}
+                            {evt.subtitle ? ` Â· ${evt.subtitle}` : ""}
                           </p>
                         )}
                       </button>
@@ -867,7 +867,7 @@ function UpcomingList({
                 <p className="mt-1 flex items-center gap-1 text-[10px] opacity-70">
                   <Clock className="h-2.5 w-2.5" />
                   {formatTime(new Date(e.scheduledAt), locale)}
-                  {e.duration ? ` · ${t("min", { count: e.duration })}` : ""}
+                  {e.duration ? ` Â· ${t("min", { count: e.duration })}` : ""}
                 </p>
                 {e.subtitle && (
                   <p className="mt-0.5 truncate text-[10px] opacity-60">
@@ -909,7 +909,7 @@ function UpcomingList({
                         month: "short",
                         day: "numeric",
                       })}{" "}
-                      · {formatTime(dt, locale)}
+                      Â· {formatTime(dt, locale)}
                     </p>
                   </div>
                 </button>
@@ -926,7 +926,7 @@ function UpcomingList({
 /*  Main Component                                                     */
 /* ================================================================== */
 
-export default function GoogleCalendar({
+export default function MployedinCalendar({
   events,
   loading,
   onMonthChange,
@@ -937,13 +937,14 @@ export default function GoogleCalendar({
   fetchJobs,
   prefilledApplicationId,
   prefilledCandidate,
-}: GoogleCalendarProps) {
+}: MployedinCalendarProps) {
   const t = useTranslations("calendar");
   const locale = useLocale();
   const isRtl = locale === "ar";
   const [view, setView] = useState<CalendarViewMode>("month");
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  // ponytail: client-only ("use client") calendar; new Date() in useState is safe, these values aren't server-rendered
+  const [currentDate, setCurrentDate] = useState<Date>(() => new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(
     null,
   );
@@ -1007,9 +1008,9 @@ export default function GoogleCalendar({
       const start = weekDates[0];
       const end = weekDates[6];
       if (start.getMonth() === end.getMonth()) {
-        return `${t(`months.${MONTH_KEYS[start.getMonth()]}`)} ${start.getDate()} – ${end.getDate()}, ${start.getFullYear()}`;
+        return `${t(`months.${MONTH_KEYS[start.getMonth()]}`)} ${start.getDate()} â€“ ${end.getDate()}, ${start.getFullYear()}`;
       }
-      return `${t(`monthsShort.${MONTH_SHORT_KEYS[start.getMonth()]}`)} ${start.getDate()} – ${t(`monthsShort.${MONTH_SHORT_KEYS[end.getMonth()]}`)} ${end.getDate()}, ${end.getFullYear()}`;
+      return `${t(`monthsShort.${MONTH_SHORT_KEYS[start.getMonth()]}`)} ${start.getDate()} â€“ ${t(`monthsShort.${MONTH_SHORT_KEYS[end.getMonth()]}`)} ${end.getDate()}, ${end.getFullYear()}`;
     }
     return formatDateLocale(currentDate, locale, {
       weekday: "long",
@@ -1024,7 +1025,7 @@ export default function GoogleCalendar({
 
   return (
     <div className="flex flex-col gap-5" dir={isRtl ? "rtl" : "ltr"}>
-      {/* ── Toolbar ── */}
+      {/* â”€â”€ Toolbar â”€â”€ */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2.5">
           <Button variant="outline" size="sm" onClick={goToToday} className="rounded-xl font-semibold">
@@ -1092,7 +1093,7 @@ export default function GoogleCalendar({
         </div>
       </div>
 
-      {/* ── Main Layout ── */}
+      {/* â”€â”€ Main Layout â”€â”€ */}
       <div className="grid gap-5 xl:grid-cols-[1fr_280px]">
         {/* Calendar Area */}
         <div className="workspace-panel-surface overflow-hidden rounded-[20px]">
@@ -1169,7 +1170,7 @@ export default function GoogleCalendar({
         </div>
       </div>
 
-      {/* ── Booking Modal ── */}
+      {/* â”€â”€ Booking Modal â”€â”€ */}
       {showBooking && bookingEnabled && onBookInterview && (
         <InterviewBookingModal
           date={selectedDate}

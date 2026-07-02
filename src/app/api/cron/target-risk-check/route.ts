@@ -8,6 +8,8 @@ import { notifyTargetAtRisk, notifyTargetMilestone } from "@/lib/notifications/t
 
 const BATCH_SIZE = 20;
 
+export const maxDuration = 300;
+
 function chunk<T>(items: T[], size: number): T[][] {
   return Array.from({ length: Math.ceil(items.length / size) }, (_, index) =>
     items.slice(index * size, index * size + size)
@@ -29,7 +31,9 @@ export async function GET(req: NextRequest) {
   const profiles = await TargetProfile.find({
     year,
     status: "active",
-  }).lean();
+  })
+    .limit(2000)
+    .lean();
 
   let processed = 0;
   let atRiskAlerted = 0;

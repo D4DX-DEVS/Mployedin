@@ -10,6 +10,7 @@ import { validateBody } from "@/lib/validators";
 import { interviewBulkSchema } from "@/lib/validators/interviews";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { resolveMeetingLink } from "@/lib/interviews/meetingLink";
+import logger from "@/lib/logger";
 
 /**
  * POST /api/interviews/bulk
@@ -209,7 +210,8 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           candidateTime,
           location ?? meetLink ?? "TBD",
           String(interview._id)
-        ).catch(console.error);
+        ).catch((err) =>
+          logger.error({ err, interviewId: String(interview._id) }, "failed to notify interview scheduled (bulk)"));
       }
 
       created.push(String(interview._id));
@@ -220,7 +222,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       // Advance cursor past this slot + gap
       slotCursor = new Date(candidateTime.getTime() + (slotDuration + gapMinutes) * 60_000);
     } catch (e) {
-      console.error("Bulk interview create error:", candidate.applicationId ?? candidate.jobSeekerId, e);
+      logger.error({ candidateId: candidate.applicationId ?? candidate.jobSeekerId, err: e }, "Bulk interview create error");
       failed.push(candidate.applicationId ?? candidate.jobSeekerId);
     }
   }

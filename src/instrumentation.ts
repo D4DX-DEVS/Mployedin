@@ -7,7 +7,17 @@ export async function register() {
   // Only validate in the Node.js runtime (skip Edge, where some secrets are absent).
   if (process.env.NEXT_RUNTIME === "nodejs") {
     const { validateEnv } = await import("@/lib/env");
+    const { default: logger } = await import("@/lib/logger");
+
+    // Validate critical environment variables at boot
     validateEnv();
+
+    // Warn if optional rate-limiting configuration is missing
+    if (!process.env.UPSTASH_REDIS_REST_URL) {
+      logger.warn(
+        "UPSTASH_REDIS_REST_URL not configured — rate limiting degraded"
+      );
+    }
   }
 }
 

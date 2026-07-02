@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
@@ -22,7 +22,7 @@ import {
   ArrowLeft,
   Briefcase,
 } from "lucide-react";
-import type { CalendarEvent, BookingCandidate, BookingPayload, JobOption } from "./GoogleCalendar";
+import type { CalendarEvent, BookingCandidate, BookingPayload, JobOption } from "./MployedinCalendar";
 
 /* ================================================================== */
 /*  Helpers                                                            */
@@ -67,7 +67,7 @@ export function InterviewBookingModal({
   const locale = useLocale();
   const isRtl = locale === "ar";
 
-  // Steps: "candidate" → "details" → "confirmation"
+  // Steps: "candidate" â†’ "details" â†’ "confirmation"
   const initialStep = prefilledCandidate ? "details" : fetchCandidates ? "candidate" : "details";
   const [step, setStep] = useState<"candidate" | "details" | "confirmation">(initialStep);
 
@@ -104,7 +104,12 @@ export function InterviewBookingModal({
   // Fetch jobs on mount
   useEffect(() => {
     if (fetchJobs) {
-      fetchJobs().then(setJobs).catch(() => setJobs([]));
+      fetchJobs()
+        .then(setJobs)
+        .catch(() => {
+          setJobs([]);
+          setError("Failed to load jobs. Please try again.");
+        });
     }
   }, [fetchJobs]);
 
@@ -278,7 +283,7 @@ export function InterviewBookingModal({
         className="animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-4 duration-300 w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl border border-border/50 bg-background/95 backdrop-blur-xl shadow-2xl shadow-black/20"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* ── Header ── */}
+        {/* â”€â”€ Header â”€â”€ */}
         <div className="flex items-center justify-between border-b px-5 py-4 shrink-0">
           <div className="flex items-center gap-2">
             {step === "details" && fetchCandidates && !prefilledCandidate && (
@@ -309,7 +314,7 @@ export function InterviewBookingModal({
           </button>
         </div>
 
-        {/* ── Step 1: Candidate Selection (Table with Filters) ── */}
+        {/* â”€â”€ Step 1: Candidate Selection (Table with Filters) â”€â”€ */}
         {step === "candidate" && (
           <div className="flex flex-col min-h-0 flex-1">
             {/* Filters toolbar */}
@@ -479,7 +484,7 @@ export function InterviewBookingModal({
                                 {c.matchScore}%
                               </span>
                             ) : (
-                              <span className="text-muted-foreground">—</span>
+                              <span className="text-muted-foreground">â€”</span>
                             )}
                           </td>
                           <td className="px-3 py-2.5 hidden sm:table-cell">
@@ -519,7 +524,7 @@ export function InterviewBookingModal({
           </div>
         )}
 
-        {/* ── Step 2: Interview Details ── */}
+        {/* â”€â”€ Step 2: Interview Details â”€â”€ */}
         {step === "details" && (
           <div className="flex-1 overflow-y-auto p-5 space-y-4">
             {/* Selected candidates chip(s) */}
@@ -687,11 +692,11 @@ export function InterviewBookingModal({
               </p>
               <p className="mt-1 text-xs text-foreground">
                 {selectedCandidates.length > 1
-                  ? `${selectedCandidates.length} interviews · `
+                  ? `${selectedCandidates.length} interviews Â· `
                   : selectedCandidates[0]
-                    ? `${selectedCandidates[0].candidateName} · `
+                    ? `${selectedCandidates[0].candidateName} Â· `
                     : ""}
-                {selectedTimeLabel} – {endTimeLabel} · {t("min", { count: duration })} each · {type === "video" ? t("videoCall") : type === "offline" ? t("inPerson") : t("hybrid")}
+                {selectedTimeLabel} â€“ {endTimeLabel} Â· {t("min", { count: duration })} each Â· {type === "video" ? t("videoCall") : type === "offline" ? t("inPerson") : t("hybrid")}
               </p>
               {selectedCandidates.length > 1 && (
                 <p className="mt-1 text-[10px] text-muted-foreground">
@@ -738,7 +743,7 @@ export function InterviewBookingModal({
           </div>
         )}
 
-        {/* ── Step 3: Confirmation ── */}
+        {/* â”€â”€ Step 3: Confirmation â”€â”€ */}
         {step === "confirmation" && (
           <div className="flex-1 overflow-y-auto p-5 space-y-4">
             {/* Candidate list */}
@@ -785,7 +790,7 @@ export function InterviewBookingModal({
               <div className="flex items-center justify-between">
                 <span className="text-xs text-muted-foreground">{t("timeLabel")}</span>
                 <span className="text-xs font-semibold text-foreground">
-                  {selectedTimeLabel} – {endTimeLabel}
+                  {selectedTimeLabel} â€“ {endTimeLabel}
                 </span>
               </div>
               <div className="h-px bg-border/50" />
@@ -793,7 +798,7 @@ export function InterviewBookingModal({
                 <span className="text-xs text-muted-foreground">{t("duration")}</span>
                 <span className="text-xs font-semibold text-foreground">
                   {selectedCandidates.length > 1
-                    ? `${t("min", { count: duration })} × ${selectedCandidates.length} = ${duration * selectedCandidates.length} min total`
+                    ? `${t("min", { count: duration })} Ã— ${selectedCandidates.length} = ${duration * selectedCandidates.length} min total`
                     : t("minutes", { count: duration })}
                 </span>
               </div>

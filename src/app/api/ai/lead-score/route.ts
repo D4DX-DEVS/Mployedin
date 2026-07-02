@@ -5,6 +5,7 @@ import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { routeGenerate } from "@/lib/ai/router";
 import { connectDB } from "@/lib/db/mongoose";
 import Lead from "@/models/Lead";
+import logger from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   try {
@@ -124,7 +125,7 @@ Output ONLY valid JSON, no markdown code blocks.`;
       { headers: { "X-RateLimit-Remaining": String(remaining) } }
     );
   } catch (err) {
-    console.error("[Lead Score Error]", err);
+    logger.error({ err }, "[Lead Score Error]");
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

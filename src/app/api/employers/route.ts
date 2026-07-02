@@ -14,6 +14,7 @@ import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit
 import { sendEmail, EmailTemplates } from "@/lib/communications/email";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
+import logger from "@/lib/logger";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
 
@@ -445,7 +446,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       const agentName = (creatorUser as { name?: string })?.name ?? "An agent";
       notifySuperAgentEmployerRegistered(
         saUserId, companyName || name, agentName, String(employer._id), ctx.locale,
-      ).catch(() => {});
+      ).catch((err) => logger.error({ err, employerId: String(employer._id) }, "Failed to notify super agent of new employer creation"));
     }
   }
 
@@ -466,7 +467,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     userId: user._id.toString(),
     source: "employer-onboard",
     category: "onboarding",
-  }).catch((err) => console.error("[Employer Create] Failed to send welcome email:", err));
+  }).catch((err) => logger.error({ err }, "[Employer Create] Failed to send welcome email"));
 
   await logActivity({
     ...actorFromCtx(ctx),

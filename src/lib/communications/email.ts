@@ -10,6 +10,7 @@
 import nodemailer from "nodemailer";
 import jwt from "jsonwebtoken";
 import { logEmailDelivery } from "@/models/EmailLog";
+import logger from "@/lib/logger";
 
 interface EmailPayload {
   to: string | string[];
@@ -117,7 +118,8 @@ async function resolveTransporter(employerId?: string): Promise<{ transporter: n
       if (employer?.smtpOverride?.smtpEmail && employer.smtpOverride.smtpAppPassword) {
         const { decrypt } = await import("@/lib/security/encryption");
         let password = employer.smtpOverride.smtpAppPassword;
-        try { password = decrypt(password); } catch { /* already plain */ }
+        // ponytail: enforce encrypt-on-save upstream
+        try { password = decrypt(password); } catch (err) { logger.warn({ err, employerId }, "SMTP password decrypt failed, using plaintext fallback"); }
         const smtp: SmtpConfig = {
           smtpEmail: employer.smtpOverride.smtpEmail,
           smtpAppPassword: password,
@@ -139,7 +141,8 @@ async function resolveTransporter(employerId?: string): Promise<{ transporter: n
     if (settings?.smtp?.smtpEmail && settings.smtp.smtpAppPassword) {
       const { decrypt } = await import("@/lib/security/encryption");
       let password = settings.smtp.smtpAppPassword;
-      try { password = decrypt(password); } catch { /* already plain */ }
+      // ponytail: enforce encrypt-on-save upstream
+      try { password = decrypt(password); } catch (err) { logger.warn({ err }, "System SMTP password decrypt failed, using plaintext fallback"); }
       const smtp: SmtpConfig = {
         smtpEmail: settings.smtp.smtpEmail,
         smtpAppPassword: password,
@@ -196,7 +199,7 @@ export async function sendEmail(payload: EmailPayload): Promise<{ messageId: str
       source: payload.source ?? "direct",
       status: "sent",
       messageId: info.messageId,
-    }).catch(() => {});
+    }).catch((err) => { logger.error({ err, to: toAddr, subject: payload.subject }, "Failed to log email delivery"); });
 
     return { messageId: info.messageId };
   } catch (err) {
@@ -209,7 +212,7 @@ export async function sendEmail(payload: EmailPayload): Promise<{ messageId: str
       source: payload.source ?? "direct",
       status: "failed",
       errorMessage: err instanceof Error ? err.message : "Unknown error",
-    }).catch(() => {});
+    }).catch((logErr) => { logger.error({ err: logErr, to: toAddr, subject: payload.subject }, "Failed to log email failure"); });
 
     throw err;
   }

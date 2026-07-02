@@ -14,6 +14,7 @@ import { generateMultimodal, generateText, GEMINI_MODELS } from "@/lib/ai/gemini
 import { uploadBuffer } from "@/lib/storage/spaces";
 import mammoth from "mammoth";
 import { createHash } from "crypto";
+import logger from "@/lib/logger";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
@@ -284,7 +285,7 @@ Rules:
       (updateData as Record<string, unknown>)["cv.parsedAt"] = new Date();
     } catch {
       // Non-fatal — extraction data still saved even if file upload fails
-      console.warn("[CV Extract] File upload to Spaces failed — continuing without storing URL");
+      logger.warn("[CV Extract] File upload to Spaces failed — continuing without storing URL");
     }
 
     const seeker = await JobSeeker.findOneAndUpdate(
@@ -317,7 +318,7 @@ Rules:
       cvUrl: (updateData as Record<string, unknown>)["cv.originalUrl"] ?? null,
     });
   } catch (err) {
-    console.error("[CV Extract]", err);
+    logger.error({ err }, "[CV Extract]");
     if (err instanceof SyntaxError) {
       return NextResponse.json(
         { error: "Failed to parse AI response — try again" },

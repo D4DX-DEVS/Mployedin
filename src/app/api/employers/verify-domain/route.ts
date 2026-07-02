@@ -10,6 +10,7 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { canManageTeam } from "@/lib/permissions/team";
 import { sendEmail } from "@/lib/communications/email";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
+import logger from "@/lib/logger";
 
 /**
  * POST /api/employers/verify-domain — send domain verification email
@@ -77,7 +78,7 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
       `,
     });
   } catch (err) {
-    console.error("[Domain Verify] Email send failed:", err);
+    logger.error({ err }, "[Domain Verify] Email send failed");
     return NextResponse.json({ error: "Failed to send verification email" }, { status: 500 });
   }
 

@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { ArrowLeft, Calendar, User, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { sanitizeHtml } from "@/lib/security/html";
 
 interface Post {
   _id: string;
@@ -116,7 +117,7 @@ export default function BlogDetailPage() {
 
         <div
           className="mt-10 prose prose-neutral dark:prose-invert max-w-none"
-          dangerouslySetInnerHTML={{ __html: body }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(body) }}
         />
       </div>
     </article>

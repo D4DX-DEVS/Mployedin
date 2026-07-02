@@ -133,8 +133,8 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
   await connectDB();
 
   const { searchParams } = new URL(req.url);
-  const page = parseInt(searchParams.get("page") ?? "1");
-  const limit = parseInt(searchParams.get("limit") ?? "20");
+  const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "20", 10) || 20));
 
   // Aggregate paid commissions grouped by paymentRef
   const batches = await Commission.aggregate([
@@ -176,6 +176,7 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
     total,
     page,
     limit,
+    pages: limit > 0 ? Math.ceil(total / limit) : 1,
   });
 }
 

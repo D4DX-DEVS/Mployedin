@@ -11,10 +11,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { verifyCronRequest } from "@/lib/security/cron-auth";
+import { forEachBounded } from "@/lib/cron/scale";
 import Invoice from "@/models/Invoice";
 import User from "@/models/User";
 import { sendEmail } from "@/lib/communications/email";
 import { logActivity } from "@/lib/audit/log";
+
+export const maxDuration = 300;
 
 export async function GET(req: NextRequest) {
   const authError = verifyCronRequest(req);
@@ -25,7 +28,8 @@ export async function GET(req: NextRequest) {
   const now = new Date();
   const threeDaysFromNow = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
 
-  // Find invoices that are: overdue (past due), sent but approaching due, or issued and approaching due
+  // Find invoices that are: overdue (past due), sent but approaching due, or issued and approaching due.
+  // Capped at 1000 per run.
   const invoices = await Invoice.find({
     status: { $in: ["issued", "sent", "overdue", "partially_paid"] },
     dueDate: { $lte: threeDaysFromNow, $exists: true },
@@ -37,6 +41,7 @@ export async function GET(req: NextRequest) {
   })
     .select("invoiceNumber dueDate totalAmount currency status employerId agentId userId reminderCount balanceDue")
     .populate("employerId", "companyName")
+    .limit(1000)
     .lean();
 
   if (invoices.length === 0) {
@@ -54,38 +59,40 @@ export async function GET(req: NextRequest) {
   let sentCount = 0;
   const errors: string[] = [];
 
-  for (const [userId, userInvoices] of byUser) {
-    try {
-      const user = await User.findById(userId).select("name email isActive").lean();
-      if (!user?.email || !user.isActive) continue;
+  const userGroups = Array.from(byUser.entries());
 
-      const html = buildInvoiceReminderEmail(user.name ?? "Team", userInvoices, now);
-      const overdueCount = userInvoices.filter((i) => new Date(i.dueDate!).getTime() < now.getTime()).length;
-      const subject = overdueCount > 0
-        ? `💰 ${overdueCount} invoice${overdueCount > 1 ? "s" : ""} overdue — action needed`
-        : `📄 ${userInvoices.length} invoice${userInvoices.length > 1 ? "s" : ""} due soon`;
+  const sendEmailTask = async (entry: typeof userGroups[0]) => {
+    const [userId, userInvoices] = entry;
+    const user = await User.findById(userId).select("name email isActive").lean();
+    if (!user?.email || !user.isActive) return;
 
-      await sendEmail({
-        to: user.email,
-        subject,
-        html,
-        userId,
-        source: "cron-invoice-overdue",
-        category: "finance",
-      });
+    const html = buildInvoiceReminderEmail(user.name ?? "Team", userInvoices, now);
+    const overdueCount = userInvoices.filter((i) => new Date(i.dueDate!).getTime() < now.getTime()).length;
+    const subject = overdueCount > 0
+      ? `💰 ${overdueCount} invoice${overdueCount > 1 ? "s" : ""} overdue — action needed`
+      : `📄 ${userInvoices.length} invoice${userInvoices.length > 1 ? "s" : ""} due soon`;
 
-      // Update reminder tracking on all invoices
-      const ids = userInvoices.map((i) => i._id);
-      await Invoice.updateMany(
-        { _id: { $in: ids } },
-        { $set: { lastReminderAt: now }, $inc: { reminderCount: 1 } },
-      );
+    // Mark-first: update reminder tracking BEFORE sending email (idempotent on rerun)
+    const ids = userInvoices.map((i) => i._id);
+    await Invoice.updateMany(
+      { _id: { $in: ids } },
+      { $set: { lastReminderAt: now }, $inc: { reminderCount: 1 } },
+    );
 
-      sentCount++;
-    } catch (err) {
-      errors.push(`User ${userId}: ${err instanceof Error ? err.message : "Unknown"}`);
-    }
-  }
+    await sendEmail({
+      to: user.email,
+      subject,
+      html,
+      userId,
+      source: "cron-invoice-overdue",
+      category: "finance",
+    });
+
+    sentCount++;
+  };
+
+  const result = await forEachBounded(userGroups, 5, sendEmailTask, "invoice-overdue-reminder");
+  if (result.failed > 0) errors.push(`${result.failed} reminder emails failed (see logs)`);
 
   await logActivity({
     action: "invoice.cron_overdue_reminder",

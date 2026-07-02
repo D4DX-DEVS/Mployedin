@@ -11,12 +11,13 @@ import { sendEmail, EmailTemplates } from "@/lib/communications/email";
 import { validateBody } from "@/lib/validators";
 import { jobSeekerRegisterSchema } from "@/lib/validators/misc";
 import { hashOtp } from "@/lib/auth/emailVerification";
+import logger from "@/lib/logger";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown";
-  const { allowed } = await checkRateLimit(`auth-register:${ip}`, RATE_LIMIT_CONFIGS.auth);
+  const { allowed } = await checkRateLimit(`auth-register:${ip}`, { ...RATE_LIMIT_CONFIGS.auth, failClosed: true });
   if (!allowed) {
     return NextResponse.json({ message: "Too many requests. Please try again later." }, { status: 429 });
   }
@@ -69,7 +70,7 @@ export async function POST(req: NextRequest) {
 
     // Auto-assign default subscription plan (fire-and-forget — don't block registration)
     autoAssignDefaultPlan(user._id.toString(), "job_seeker").catch((err) =>
-      console.error("[Registration] Failed to auto-assign subscription:", err),
+      logger.error({ err }, "[Registration] Failed to auto-assign subscription"),
     );
 
     await logActivity({
@@ -84,8 +85,9 @@ export async function POST(req: NextRequest) {
 
     // Send emails — await to prevent Next.js from terminating before delivery
     const baseUrl = process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-    const verifyUrl = `${baseUrl}/en/verify-email?token=${rawToken}&email=${encodeURIComponent(normalizedEmail)}`;
-    const dashboardUrl = `${baseUrl}/en/job-seeker/dashboard`;
+    const locale = req.cookies.get("NEXT_LOCALE")?.value === "ar" ? "ar" : "en";
+    const verifyUrl = `${baseUrl}/${locale}/verify-email?token=${rawToken}&email=${encodeURIComponent(normalizedEmail)}`;
+    const dashboardUrl = `${baseUrl}/${locale}/job-seeker/dashboard`;
 
     // Send both emails in parallel, but await them before responding
     const [verifyResult, welcomeResult] = await Promise.allSettled([
@@ -94,10 +96,10 @@ export async function POST(req: NextRequest) {
     ]);
 
     if (verifyResult.status === "rejected") {
-      console.error("[Registration] Failed to send verification email:", verifyResult.reason);
+      logger.error({ reason: verifyResult.reason }, "[Registration] Failed to send verification email");
     }
     if (welcomeResult.status === "rejected") {
-      console.error("[Registration] Failed to send welcome email:", welcomeResult.reason);
+      logger.error({ reason: welcomeResult.reason }, "[Registration] Failed to send welcome email");
     }
 
     return NextResponse.json({
@@ -108,7 +110,7 @@ export async function POST(req: NextRequest) {
     }, { status: 201 });
   } catch (err) {
     if (err instanceof NextResponse) return err;
-    console.error("job-seeker-register error:", err);
+    logger.error({ err }, "job-seeker-register error");
     return NextResponse.json({ message: "Server error." }, { status: 500 });
   }
 }

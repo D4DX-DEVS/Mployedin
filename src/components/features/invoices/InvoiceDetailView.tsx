@@ -142,8 +142,13 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
   const [paymentMethod, setPaymentMethod] = useState("bank_transfer");
   const [paymentRef, setPaymentRef] = useState("");
   const [paymentNotes, setPaymentNotes] = useState("");
-  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split("T")[0]);
+  const [paymentDate, setPaymentDate] = useState("");
   const [recordingPayment, setRecordingPayment] = useState(false);
+
+  // Hydrate payment date on mount
+  useEffect(() => {
+    setPaymentDate(new Date().toISOString().split("T")[0]);
+  }, []);
 
   // Status update
   const [updatingStatus, setUpdatingStatus] = useState(false);

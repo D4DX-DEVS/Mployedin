@@ -11,6 +11,7 @@ import { scorecardCreateSchema } from "@/lib/validators/scorecards";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { notifyScorecardSubmitted } from "@/lib/notifications/trigger";
 import type { UserRole } from "@/models/User";
+import logger from "@/lib/logger";
 
 interface AuthCtx {
   userId: string;
@@ -172,7 +173,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     );
   } catch (err) {
     // Non-blocking — scorecard was already saved
-    console.error("[scorecard] Failed to notify candidate:", err);
+    logger.error({ err }, "[scorecard] Failed to notify candidate");
   }
 
   return NextResponse.json(

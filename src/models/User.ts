@@ -39,6 +39,8 @@ export interface IUser extends Document {
   twoFactorEnabledAt?: Date;
   avatar?: string;
   phone?: string;
+  /** Secret token for the subscribable iCal feed (/api/calendar/feed/[token]) */
+  calendarFeedToken?: string;
   lastLogin?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -101,6 +103,7 @@ const UserSchema = new Schema<IUser>(
     twoFactorEnabledAt: { type: Date },
     avatar: { type: String },
     phone: { type: String },
+    calendarFeedToken: { type: String, select: false },
     lastLogin: { type: Date },
   },
   {
@@ -120,6 +123,7 @@ const UserSchema = new Schema<IUser>(
         delete ret.twoFactorSecretEnc;
         delete ret.twoFactorPendingSecretEnc;
         delete ret.twoFactorRecoveryCodes;
+        delete ret.calendarFeedToken;
         return ret;
       },
     },
@@ -133,6 +137,7 @@ UserSchema.index({ isActive: 1 });
 UserSchema.index({ createdAt: -1 });
 UserSchema.index({ linkedinSub: 1 }, { unique: true, sparse: true });
 UserSchema.index({ appleSub: 1 }, { unique: true, sparse: true });
+UserSchema.index({ calendarFeedToken: 1 }, { unique: true, sparse: true });
 
 // Password comparison method
 UserSchema.methods.comparePassword = async function (

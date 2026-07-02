@@ -319,7 +319,7 @@ export const authConfig: NextAuthConfig = {
               source: "registration",
               category: "system",
             }).catch((err) =>
-              console.error("[Firebase Registration] Failed to send welcome email:", err)
+              logger.error({ err }, "[Firebase Registration] Failed to send welcome email")
             );
 
             return {
@@ -422,15 +422,37 @@ export const authConfig: NextAuthConfig = {
   },
   callbacks: {
     async jwt({ token, user, account, trigger, session: updateData }) {
-      // Client called update() — merge the new values into the token
+      // Client called update() — merge the new values into the token.
+      //
+      // SECURITY: update() is a client-controlled POST to /api/auth/session, so
+      // its payload must NEVER be trusted for authorization fields. Previously
+      // `role`, `isEmailVerified`, and `isOnboarded` were copied straight from
+      // the payload — any logged-in user could call
+      // update({ role: "admin", isEmailVerified: true }) and mint themselves an
+      // admin JWT. Cosmetic fields (name/image/locale) stay client-supplied;
+      // authorization fields are re-read from the DB, which every legitimate
+      // caller has already updated before calling update().
       if (trigger === "update" && updateData) {
         const data = updateData as Record<string, unknown>;
-        if (data.isOnboarded !== undefined) token.isOnboarded = data.isOnboarded;
-        if (data.isEmailVerified !== undefined) token.isEmailVerified = data.isEmailVerified;
-        if (data.role !== undefined) token.role = data.role;
         if (data.locale !== undefined) token.locale = data.locale;
         if (typeof data.name === "string") token.name = data.name;
         if (data.image !== undefined) token.picture = data.image as string | null;
+        if (data.role !== undefined || data.isEmailVerified !== undefined || data.isOnboarded !== undefined) {
+          await connectDB();
+          const dbUser = await User.findById(token.id)
+            .select("role isEmailVerified")
+            .lean() as { role?: UserRole; isEmailVerified?: boolean } | null;
+          if (dbUser) {
+            token.role = dbUser.role ?? token.role;
+            token.isEmailVerified = dbUser.isEmailVerified ?? false;
+          }
+          if (data.isOnboarded !== undefined) {
+            const js = await JobSeeker.findOne({ userId: token.id })
+              .select("isOnboarded")
+              .lean() as { isOnboarded?: boolean } | null;
+            token.isOnboarded = js?.isOnboarded ?? false;
+          }
+        }
         return token;
       }
       if (user) {
@@ -668,7 +690,7 @@ export const authConfig: NextAuthConfig = {
             source: "registration",
             category: "system",
           }).catch((err) =>
-            console.error("[OAuth Registration] Failed to send welcome email:", err)
+            logger.error({ err }, "[OAuth Registration] Failed to send welcome email")
           );
         }
       }

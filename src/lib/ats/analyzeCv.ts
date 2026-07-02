@@ -15,6 +15,7 @@
 
 import { PDFParse } from "pdf-parse";
 import mammoth from "mammoth";
+import logger from "@/lib/logger";
 
 export type AtsCheckStatus = "pass" | "warn" | "fail";
 
@@ -87,7 +88,7 @@ export async function extractResumeText(
         fileType: "pdf",
       };
     } finally {
-      await parser.destroy().catch(() => {});
+      await parser.destroy().catch((err) => logger.warn({ err }, "Failed to destroy PDF parser (cleanup)"));
     }
   }
 

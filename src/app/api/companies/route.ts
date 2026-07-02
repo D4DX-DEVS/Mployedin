@@ -19,8 +19,8 @@ export async function GET(req: NextRequest) {
   await connectDB();
 
   const url = new URL(req.url);
-  const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1"));
-  const limit = Math.min(50, Math.max(1, parseInt(url.searchParams.get("limit") ?? "12")));
+  const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1", 10) || 1);
+  const limit = Math.min(50, Math.max(1, parseInt(url.searchParams.get("limit") ?? "12", 10) || 12));
   const search = url.searchParams.get("search") ?? "";
 
   // Only surface employers that are actively hiring (≥1 active job). This also
@@ -69,6 +69,6 @@ export async function GET(req: NextRequest) {
     })),
     total,
     page,
-    totalPages: Math.ceil(total / limit),
+    totalPages: limit > 0 ? Math.ceil(total / limit) : 1,
   });
 }

@@ -14,6 +14,8 @@ import { logActivity } from "@/lib/audit/log";
 import { nextUsageReset, initAiUsage } from "@/lib/subscription/helpers";
 import Subscription from "@/models/Subscription";
 
+export const maxDuration = 60;
+
 export async function GET(req: NextRequest) {
   const authError = verifyCronRequest(req);
   if (authError) return authError;

@@ -60,8 +60,15 @@ const ReferralLinkSchema = new Schema<IReferralLink>(
 ReferralLinkSchema.index({ createdBy: 1 });
 ReferralLinkSchema.index({ agentId: 1 });
 ReferralLinkSchema.index({ superAgentId: 1 });
-ReferralLinkSchema.index({ code: 1 }, { unique: true });
 ReferralLinkSchema.index({ expiresAt: 1 });
+
+// Cap registrations array to prevent unbounded growth (ponytail:)
+ReferralLinkSchema.pre("save", function () {
+  if (this.registrations && this.registrations.length > 5000) {
+    // Keep only the most recent 5000 registrations
+    this.registrations = this.registrations.slice(-5000);
+  }
+});
 
 export const ReferralLink =
   mongoose.models.ReferralLink ||

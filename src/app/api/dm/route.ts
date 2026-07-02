@@ -11,6 +11,7 @@ import { triggerRealtimeEvent } from "@/lib/realtime";
 import { validateBody } from "@/lib/validators";
 import { dmStartConversationSchema } from "@/lib/validators/dm";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import logger from "@/lib/logger";
 
 interface AuthCtx { userId: string; role: UserRole; }
 
@@ -204,7 +205,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     const conv = conversation as unknown as { _id: { toString(): string }; participants: { toString(): string }[] };
     const recipientObjectId = conv.participants.find((p) => p.toString() !== ctx.userId);
     if (recipientObjectId) {
-      await triggerRealtimeEvent(recipientObjectId.toString(), "new-conversation", { conversation }).catch(() => {});
+      await triggerRealtimeEvent(recipientObjectId.toString(), "new-conversation", { conversation }).catch((err) => logger.error({ err, conversationId: conv._id.toString() }, "Failed to notify recipient of new conversation"));
     }
   }
 

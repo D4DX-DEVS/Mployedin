@@ -7,13 +7,15 @@
 import DOMPurify from "isomorphic-dompurify";
 
 /** Formatting tags considered safe for user/AI rich text. */
+// Keep in sync with the server-side policy in sanitize-html.ts — CMS content
+// (blog posts, static pages) legitimately contains <img>.
 const ALLOWED_TAGS = [
   "a", "b", "i", "em", "strong", "u", "s", "p", "br", "ul", "ol", "li",
   "blockquote", "code", "pre", "h1", "h2", "h3", "h4", "h5", "h6",
-  "span", "div", "table", "thead", "tbody", "tr", "th", "td", "hr",
+  "span", "div", "table", "thead", "tbody", "tr", "th", "td", "hr", "img",
 ];
 
-const ALLOWED_ATTR = ["href", "title", "target", "rel", "class"];
+const ALLOWED_ATTR = ["href", "title", "target", "rel", "class", "src", "alt", "width", "height"];
 
 /**
  * Sanitize an HTML string for safe rendering via dangerouslySetInnerHTML.
@@ -27,6 +29,8 @@ export function sanitizeHtml(dirty: string | null | undefined): string {
     ALLOWED_ATTR,
     // Block javascript:/data: URIs and unknown protocols.
     ALLOWED_URI_REGEXP: /^(?:https?|mailto|tel):/i,
+    // Non-URI attrs the strict regexp above would otherwise strip.
+    ADD_URI_SAFE_ATTR: ["width", "height"],
     ADD_ATTR: ["target"],
   });
 }

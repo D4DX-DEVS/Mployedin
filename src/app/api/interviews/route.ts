@@ -15,6 +15,7 @@ import { notifyInterviewScheduled } from "@/lib/notifications/trigger";
 import { addMinutes } from "date-fns";
 import { escapeRegex } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
+import logger from "@/lib/logger";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -398,7 +399,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       new Date(scheduledAt),
       location ?? meetLink ?? "TBD",
       String(interview._id)
-    ).catch(() => {});
+    ).catch((err) => logger.error({ err, interviewId: String(interview._id) }, "Failed to notify job seeker of scheduled interview"));
   }
 
   await logActivity({

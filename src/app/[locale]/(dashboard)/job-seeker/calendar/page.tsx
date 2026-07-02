@@ -1,11 +1,11 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import GoogleCalendar, {
+import MployedinCalendar, {
   type CalendarEvent,
-} from "@/components/shared/GoogleCalendar";
+} from "@/components/shared/MployedinCalendar";
 import { Building2 } from "lucide-react";
 
 export default function JobSeekerCalendarPage() {
@@ -18,7 +18,7 @@ export default function JobSeekerCalendarPage() {
     try {
       const start = new Date(year, month, 1).toISOString();
       const end = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
-      const res = await fetch(`/api/interviews?dateFrom=${start}&dateTo=${end}`);
+      const res = await fetch(`/api/interviews?dateFrom=${start}&dateTo=${end}&limit=100`);
       if (res.ok) {
         const data = await res.json();
         const items = data.interviews ?? data.items ?? [];
@@ -59,7 +59,7 @@ export default function JobSeekerCalendarPage() {
         </p>
       </section>
 
-      <GoogleCalendar
+      <MployedinCalendar
         events={events}
         loading={loading}
         onMonthChange={fetchEvents}

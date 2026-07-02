@@ -16,6 +16,10 @@ import Agent from "@/models/Agent";
 import User from "@/models/User";
 import { sendEmail } from "@/lib/communications/email";
 import { logActivity } from "@/lib/audit/log";
+import { forEachBounded, byId } from "@/lib/cron/scale";
+import logger from "@/lib/logger";
+
+export const maxDuration = 300;
 
 export async function GET(req: NextRequest) {
   const authError = verifyCronRequest(req);
@@ -26,13 +30,22 @@ export async function GET(req: NextRequest) {
   const now = new Date();
   const endOfToday = new Date(now);
   endOfToday.setUTCHours(23, 59, 59, 999);
+  const startOfToday = new Date(now);
+  startOfToday.setUTCHours(0, 0, 0, 0);
+
+  // Exclude leads recently reminded (within last 20 hours)
+  const twentyHoursAgo = new Date(now.getTime() - 20 * 60 * 60 * 1000);
 
   // Find leads with follow-ups due today or overdue (not converted/lost)
   const overdueLeads = await Lead.find({
     status: { $nin: ["converted", "lost"] },
     followUpAt: { $lte: endOfToday, $exists: true },
+    $or: [
+      { lastFollowupReminderAt: { $exists: false } },
+      { lastFollowupReminderAt: { $lt: twentyHoursAgo } },
+    ],
   })
-    .select("agentId companyName contactPerson status followUpAt country industry")
+    .select("_id agentId companyName contactPerson status followUpAt country industry")
     .lean();
 
   if (overdueLeads.length === 0) {
@@ -47,58 +60,79 @@ export async function GET(req: NextRequest) {
     byAgent.get(key)!.push(lead);
   }
 
-  let sentCount = 0;
-  const errors: string[] = [];
+  // Batch fetch all agents
+  const agentIds = Array.from(byAgent.keys());
+  const agents = await Agent.find({ _id: { $in: agentIds } })
+    .select("_id userId")
+    .lean();
+  const agentMap = byId(agents);
 
+  // Batch fetch all users
+  const userIds = agents.map((a) => a.userId);
+  const users = await User.find({ _id: { $in: userIds } })
+    .select("_id name email isActive")
+    .lean();
+  const userMap = byId(users);
+
+  // Group agent+leads for notification send
+  const agentGroups: { agentDocId: string; user: typeof users[0]; leads: typeof overdueLeads }[] = [];
   for (const [agentDocId, leads] of byAgent) {
-    try {
-      // Resolve agent's email
-      const agentDoc = await Agent.findById(agentDocId).select("userId").lean();
-      if (!agentDoc?.userId) continue;
-
-      const user = await User.findById(agentDoc.userId)
-        .select("name email isActive")
-        .lean();
-      if (!user?.email || !user.isActive) continue;
-
-      // Build the reminder email
-      const overdue = leads.filter((l) => new Date(l.followUpAt!).getTime() < now.getTime());
-      const dueToday = leads.filter(
-        (l) => new Date(l.followUpAt!).getTime() >= now.setUTCHours(0, 0, 0, 0)
-          && new Date(l.followUpAt!).getTime() <= endOfToday.getTime()
-      );
-
-      const html = buildFollowUpReminderEmail(
-        user.name ?? "Agent",
-        overdue,
-        dueToday,
-      );
-
-      const totalCount = leads.length;
-      const subject = overdue.length > 0
-        ? `⚡ ${overdue.length} overdue follow-up${overdue.length > 1 ? "s" : ""} need attention`
-        : `📋 ${totalCount} lead follow-up${totalCount > 1 ? "s" : ""} due today`;
-
-      await sendEmail({
-        to: user.email,
-        subject,
-        html,
-        userId: user._id?.toString(),
-        source: "cron-lead-followup",
-        category: "leads",
-      });
-
-      sentCount++;
-    } catch (err) {
-      errors.push(`Agent ${agentDocId}: ${err instanceof Error ? err.message : "Unknown"}`);
-    }
+    const agentDoc = agentMap.get(agentDocId);
+    if (!agentDoc) continue;
+    const user = userMap.get(String(agentDoc.userId));
+    if (!user?.email || !user.isActive) continue;
+    agentGroups.push({ agentDocId, user, leads });
   }
+
+  // Send emails with bounded concurrency, mark reminder sent BEFORE sending
+  const sentCount = (
+    await forEachBounded(
+      agentGroups,
+      5,
+      async ({ agentDocId, user, leads }) => {
+        // Mark all leads for this agent as reminded before sending
+        const leadIds = leads.map((l) => l._id);
+        await Lead.updateMany(
+          { _id: { $in: leadIds } },
+          { $set: { lastFollowupReminderAt: now } }
+        );
+
+        // Build the reminder email
+        const overdue = leads.filter((l) => new Date(l.followUpAt!).getTime() < startOfToday.getTime());
+        const dueToday = leads.filter(
+          (l) => new Date(l.followUpAt!).getTime() >= startOfToday.getTime()
+            && new Date(l.followUpAt!).getTime() <= endOfToday.getTime()
+        );
+
+        const html = buildFollowUpReminderEmail(
+          user.name ?? "Agent",
+          overdue,
+          dueToday,
+        );
+
+        const totalCount = leads.length;
+        const subject = overdue.length > 0
+          ? `⚡ ${overdue.length} overdue follow-up${overdue.length > 1 ? "s" : ""} need attention`
+          : `📋 ${totalCount} lead follow-up${totalCount > 1 ? "s" : ""} due today`;
+
+        await sendEmail({
+          to: user.email,
+          subject,
+          html,
+          userId: user._id?.toString(),
+          source: "cron-lead-followup",
+          category: "leads",
+        });
+      },
+      "lead-followup-reminder"
+    )
+  ).ok;
 
   await logActivity({
     action: "lead.cron_followup_reminder",
     resource: "leads",
     actorRole: "system",
-    meta: { sentCount, totalLeads: overdueLeads.length, agentCount: byAgent.size, errors: errors.length },
+    meta: { sentCount, totalLeads: overdueLeads.length, agentCount: byAgent.size },
     req,
   });
 
@@ -106,7 +140,6 @@ export async function GET(req: NextRequest) {
     success: true,
     sent: sentCount,
     leadsProcessed: overdueLeads.length,
-    errors: errors.length > 0 ? errors : undefined,
     timestamp: now.toISOString(),
   });
 }

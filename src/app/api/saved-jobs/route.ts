@@ -55,20 +55,20 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   const body = await validateBody(req, saveJobSchema);
   await connectDB();
 
-  const existing = await SavedJob.findOne({
-    jobSeekerId: ctx.userId,
-    jobId: body.jobId,
-  });
-
-  if (existing) {
-    return NextResponse.json({ error: "Job already saved" }, { status: 409 });
+  let saved;
+  try {
+    saved = await SavedJob.create({
+      jobSeekerId: ctx.userId,
+      jobId: body.jobId,
+      notes: body.notes,
+    });
+  } catch (err: unknown) {
+    const error = err as Record<string, unknown>;
+    if ((error.code as number) === 11000) {
+      return NextResponse.json({ error: "Job already saved" }, { status: 409 });
+    }
+    throw err;
   }
-
-  const saved = await SavedJob.create({
-    jobSeekerId: ctx.userId,
-    jobId: body.jobId,
-    notes: body.notes,
-  });
 
   await logActivity({
     ...actorFromCtx(ctx),

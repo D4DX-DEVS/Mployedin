@@ -13,6 +13,7 @@
 
 import { inngest } from "./client";
 import { connectDB } from "@/lib/db/mongoose";
+import logger from "@/lib/logger";
 import User from "@/models/User";
 import Job from "@/models/Job";
 import JobSeeker from "@/models/JobSeeker";
@@ -249,10 +250,7 @@ export const dailyRecommendationsCron = inngest.createFunction(
 
               emitted++;
             } catch (err) {
-              console.error(
-                `[daily-recommendations] Error processing user ${userId}:`,
-                err,
-              );
+              logger.error({ err, userId }, "[daily-recommendations] Error processing user");
             }
           }
 

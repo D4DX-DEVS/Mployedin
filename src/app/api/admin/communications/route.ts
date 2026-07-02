@@ -7,6 +7,7 @@ import { logActivity } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
 import { communicationSchema } from "@/lib/validators/admin";
 import { sendEmail } from "@/lib/communications/email";
+import logger from "@/lib/logger";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
 
@@ -85,7 +86,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
             <p style="color:#374151;font-size:15px;line-height:1.6;white-space:pre-wrap;">${message}</p>
           </div>`,
         }).catch((err: unknown) => {
-          console.error(`[broadcast] email failed for ${u.email}:`, err);
+          logger.error({ email: u.email, err }, `[broadcast] email failed`);
         });
       });
       await Promise.allSettled(emailPromises);

@@ -6,6 +6,7 @@ import Banner from "@/models/Banner";
 import Testimonial from "@/models/Testimonial";
 import Video from "@/models/Video";
 import BlogPost from "@/models/BlogPost";
+import logger from "@/lib/logger";
 
 /**
  * Public aggregated landing page data — NO AUTH required.
@@ -39,7 +40,7 @@ export async function GET(req: NextRequest) {
       recentPosts,
     });
   } catch (error) {
-    console.error("[Public] Landing data error:", error);
+    logger.error({ error }, "[Public] Landing data error");
     return NextResponse.json(
       { error: "Failed to load landing page data" },
       { status: 500 }

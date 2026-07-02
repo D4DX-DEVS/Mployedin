@@ -76,6 +76,7 @@ export interface IApplication extends Document {
     changedBy?: mongoose.Types.ObjectId;
     note?: string;
   }[];
+  slaAlertSentAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -182,6 +183,7 @@ const ApplicationSchema = new Schema<IApplication>(
         _id: false,
       },
     ],
+    slaAlertSentAt: Date,
   },
   { timestamps: true }
 );
