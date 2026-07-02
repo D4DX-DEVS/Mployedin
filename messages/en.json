@@ -3142,6 +3142,10 @@
       "interviewsSetDesc": "Interview conversations booked with candidates.",
       "aiMatches": "AI Recommended Candidates",
       "aiMatchesDesc": "High-match candidates surfaced by AI for your jobs.",
+      "aiHiringSummary": "AI Hiring Summary",
+      "summaryHighMatch": "{count} great-fit candidates found",
+      "summaryReview": "{count} applications require review",
+      "summaryInterviews": "{count} interviews scheduled today",
       "justNow": "just now",
       "minAgo": "{count} min ago",
       "hoursAgo": "{count}h ago",
@@ -3286,8 +3290,15 @@
       "scheduled": "Scheduled",
       "offers": "Offers",
       "sent": "Sent",
+      "hired": "Hired",
+      "placed": "placed",
       "candidates": "candidates",
       "openQueueDesc": "Open the {stage} queue to review candidates and keep momentum moving."
+    },
+    "quickInsights": {
+      "title": "Quick Insights",
+      "avgFitScore": "Average Fit Score",
+      "greatFitCandidates": "Great-Fit Candidates"
     },
     "candidateQuality": {
       "qualitySignal": "Quality signal",

@@ -4,17 +4,16 @@ import { getEmployerDashboardStats } from "@/lib/dashboard/employerStats";
 import { SetupGuide } from "@/components/features/employer/SetupGuide";
 import {
   SmartHeader,
+  DashboardStatCards,
   InteractivePipeline,
+  QuickInsights,
   PriorityActions,
-  CurrentOpeningsList,
-  TimeToHire,
   JobStatusQuickFilters,
   AIRecommendedCandidatesCard,
   DraftExtractionsCard,
   DraftJobsCard,
   AIChatDraftsCard,
 } from "@/components/features/employer/dashboard";
-import { CandidateQualityChartLazy as CandidateQualityChart } from "@/components/features/employer/dashboard/CandidateQualityChartLazy";
 
 export default async function EmployerDashboard({ params }: { params: Promise<{ locale: string }> }) {
   const session = await auth();
@@ -40,14 +39,12 @@ export default async function EmployerDashboard({ params }: { params: Promise<{ 
     band90PlusCount,
     band80to89Count,
     needsReviewCount,
-    lowMatchCount,
-    avgTimeToHire,
     lastActivityMinutes,
   } = await getEmployerDashboardStats(userId);
 
   return (
     <div className="page-container employer-legacy-surface space-y-5 sm:space-y-6">
-      {/* ── Smart Welcome Header (hero + KPI strip) ── */}
+      {/* ── Hero: AI Hiring Summary + mascot + Create-with-AI CTA ── */}
       <SmartHeader
         userName={userName}
         newApplications={newApplications}
@@ -58,7 +55,16 @@ export default async function EmployerDashboard({ params }: { params: Promise<{ 
         locale={locale}
       />
 
-      {/* ── Job Status Quick Filters (Active / Draft / Paused) ── */}
+      {/* ── Headline KPI cards ── */}
+      <DashboardStatCards
+        activeJobCount={activeJobCount}
+        newApplications={newApplications}
+        highMatchCount={highMatchCount}
+        scheduledInterviews={scheduledInterviews}
+        locale={locale}
+      />
+
+      {/* ── Job status quick filters (Active / Draft / Paused) ── */}
       <JobStatusQuickFilters
         activeJobs={activeJobCount}
         draftJobs={draftJobCount}
@@ -66,68 +72,52 @@ export default async function EmployerDashboard({ params }: { params: Promise<{ 
         locale={locale}
       />
 
-      {/* ── Work band: Priority Actions | Continue Working | AI Recommended ──
-          Mirrors the command-center layout: three action columns side by side on
-          desktop, stacked on mobile. Each column self-hides its own content when
-          empty (PriorityActions and AIRecommended return null; the Continue
-          Working cards return null individually).
-          ponytail: on a brand-new account where all three columns are empty this
-          leaves grid gaps — acceptable; SetupGuide covers the cold-start state. */}
+      {/* ── Work band: AI Recommended Candidates | Priority Actions + resume-work drafts ──
+          Left column self-hides when there are no scored candidates; right column
+          self-hides individually (PriorityActions + each draft card return null when
+          empty). ponytail: on a brand-new account both columns can be empty — the
+          SetupGuide below covers that cold-start state. */}
       <div className="grid items-start gap-4 sm:gap-5 lg:grid-cols-3">
-        <PriorityActions
-          activeJobs={activeJobCount}
-          newApplications={newApplications}
-          scheduledInterviews={scheduledInterviews}
-          totalApplications={totalApplications}
-          placements={placements}
-          locale={locale}
-        />
-
-        {/* Continue Working — resume surfaces, each self-hides when empty:
-            1. Draft Jobs     — manual form autosave (Job{status:"draft"})
-            2. AI Chat Drafts — conversational AI creator transcripts
-            3. AI Extractions — batch-extracted unposted jobs */}
+        <div className="lg:col-span-2">
+          <AIRecommendedCandidatesCard
+            highMatchCount={highMatchCount}
+            band90PlusCount={band90PlusCount}
+            band80to89Count={band80to89Count}
+            needsReviewCount={needsReviewCount}
+            activeJobCount={activeJobCount}
+            locale={locale}
+          />
+        </div>
         <div className="space-y-4 sm:space-y-5">
+          <PriorityActions
+            activeJobs={activeJobCount}
+            newApplications={newApplications}
+            scheduledInterviews={scheduledInterviews}
+            totalApplications={totalApplications}
+            placements={placements}
+            locale={locale}
+          />
           <DraftJobsCard locale={locale} />
           <AIChatDraftsCard locale={locale} />
           <DraftExtractionsCard locale={locale} />
         </div>
-
-        <AIRecommendedCandidatesCard
-          highMatchCount={highMatchCount}
-          band90PlusCount={band90PlusCount}
-          band80to89Count={band80to89Count}
-          needsReviewCount={needsReviewCount}
-          activeJobCount={activeJobCount}
-          locale={locale}
-        />
       </div>
 
-      {/* ── Hiring Pipeline (4-stage: Applied / Screening / Interviews / Offers) ── */}
-      <InteractivePipeline
-        totalApplications={totalApplications}
-        newApplications={newApplications}
-        inReview={inReview}
-        interviews={scheduledInterviews}
-        offers={offerCount}
-        offersSent={offersSent}
-        locale={locale}
-      />
-
-      {/* ── Analytics band: Job Management | Candidate Quality | Time to Hire ── */}
+      {/* ── Analytics band: 5-stage Hiring Pipeline | Quick Insights ── */}
       <div className="grid items-start gap-4 sm:gap-5 lg:grid-cols-3">
-        <CurrentOpeningsList
-          activeJobs={activeJobCount}
-          totalApplications={totalApplications}
-          locale={locale}
-        />
-        <CandidateQualityChart
-          avgMatchScore={avgMatchScore}
-          highMatchCount={highMatchCount}
-          lowMatchCount={lowMatchCount}
-          totalApplications={totalApplications}
-        />
-        <TimeToHire avgDays={avgTimeToHire} />
+        <div className="lg:col-span-2">
+          <InteractivePipeline
+            totalApplications={totalApplications}
+            newApplications={newApplications}
+            inReview={inReview}
+            interviews={scheduledInterviews}
+            offers={offerCount}
+            offersSent={offersSent}
+            placements={placements}
+            locale={locale}
+          />
+        </div>
+        <QuickInsights avgMatchScore={avgMatchScore} highMatchCount={highMatchCount} />
       </div>
 
       {/* Setup Guide (conditional — new employers) */}

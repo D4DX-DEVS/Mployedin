@@ -3142,6 +3142,10 @@
       "interviewsSetDesc": "مقابلات محجوزة مع المرشحين.",
       "aiMatches": "المرشحون الموصى بهم بالذكاء الاصطناعي",
       "aiMatchesDesc": "مرشحون عاليو المطابقة برزهم الذكاء الاصطناعي لوظائفك.",
+      "aiHiringSummary": "ملخص التوظيف بالذكاء الاصطناعي",
+      "summaryHighMatch": "تم العثور على {count} مرشحين ممتازي الملاءمة",
+      "summaryReview": "{count} طلبات تحتاج إلى مراجعة",
+      "summaryInterviews": "{count} مقابلات مجدولة اليوم",
       "justNow": "الآن للتو",
       "minAgo": "قبل {count} دقيقة",
       "hoursAgo": "قبل {count} ساعة",
@@ -3286,8 +3290,15 @@
       "scheduled": "مجدولة",
       "offers": "عروض",
       "sent": "مرسلة",
+      "hired": "تم التوظيف",
+      "placed": "تم توظيفهم",
       "candidates": "مرشحون",
       "openQueueDesc": "افتح قائمة انتظار {stage} لمراجعة المرشحين والحفاظ على سير العمل."
+    },
+    "quickInsights": {
+      "title": "رؤى سريعة",
+      "avgFitScore": "متوسط درجة الملاءمة",
+      "greatFitCandidates": "المرشحون ممتازو الملاءمة"
     },
     "candidateQuality": {
       "qualitySignal": "إشارة الجودة",

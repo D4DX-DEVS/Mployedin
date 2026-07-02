@@ -4,6 +4,8 @@ export { ActiveJobsList } from "./ActiveJobsList";
 export { DashboardAIHint } from "./DashboardAIHint";
 export { SmartHeader } from "./SmartHeader";
 export { InteractivePipeline } from "./InteractivePipeline";
+export { DashboardStatCards } from "./DashboardStatCards";
+export { QuickInsights } from "./QuickInsights";
 export { PriorityActions } from "./PriorityActions";
 export { AIInsightsPanel } from "./AIInsightsPanel";
 export { EnhancedJobsList } from "./EnhancedJobsList";

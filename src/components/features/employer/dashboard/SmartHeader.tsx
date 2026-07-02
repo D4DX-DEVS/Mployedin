@@ -1,26 +1,24 @@
-import Image from "next/image";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import {
-  BriefcaseBusiness,
-  CalendarDays,
-  ChevronRight,
-  Clock,
-  FileText,
-  Sparkles,
-} from "lucide-react";
+import { BarChart3, CalendarDays, Clock, Sparkles, Star, UserRoundCheck } from "lucide-react";
 
 interface SmartHeaderProps {
   userName: string;
   newApplications: number;
   scheduledInterviews: number;
   activeJobCount: number;
-  /** High-match candidate count (aiMatchScore >= 80) for the AI Matches tile. */
+  /** High-match candidate count (aiMatchScore >= 80) for the AI Matches signal. */
   highMatchCount: number;
   lastActivityMinutes: number | null;
   locale: string;
 }
 
+/**
+ * Dashboard hero — mirrors the "AI Hiring Summary" mockup: an eyebrow pill that
+ * reflects the most pressing workspace signal, a welcome line, three inline
+ * summary stats sourced from live data, a friendly robot mascot, and the single
+ * "Create Job with AI" CTA. The four KPI tiles now live in DashboardStatCards.
+ */
 export function SmartHeader({
   userName,
   newApplications,
@@ -32,161 +30,92 @@ export function SmartHeader({
 }: SmartHeaderProps) {
   const t = useTranslations("employerDashboard.smartHeader");
 
-  let subtitleKey: string;
+  // AI matches take priority — the platform's key differentiator — then fall
+  // back through review / interview / active / cold-start states.
   let eyebrowKey: string;
-  let subtitleValues: Record<string, string | number | Date> | undefined;
+  if (highMatchCount > 0) eyebrowKey = "aiMatchesFound";
+  else if (newApplications > 0) eyebrowKey = "reviewQueueActive";
+  else if (scheduledInterviews > 0) eyebrowKey = "interviewMomentum";
+  else if (activeJobCount > 0) eyebrowKey = "employerWorkspace";
+  else eyebrowKey = "readyToLaunch";
 
-  // AI matches take priority — it's the platform's key differentiator and
-  // acts as a hook into the AI Recommended Candidates section directly below.
-  if (highMatchCount > 0) {
-    subtitleKey = "subtitleAiMatches";
-    eyebrowKey = "aiMatchesFound";
-    subtitleValues = { count: highMatchCount };
-  } else if (newApplications > 0) {
-    subtitleKey = "subtitleReview";
-    eyebrowKey = "reviewQueueActive";
-  } else if (scheduledInterviews > 0) {
-    subtitleKey = "subtitleInterviews";
-    eyebrowKey = "interviewMomentum";
-  } else if (activeJobCount > 0) {
-    subtitleKey = "subtitleActive";
-    eyebrowKey = "employerWorkspace";
-  } else {
-    subtitleKey = "subtitleEmpty";
-    eyebrowKey = "readyToLaunch";
-  }
-
-  // Route "Create Job" directly to the AI Job Creator, removing the intermediate
-  // intro page click. The /employer/jobs/new route is still reachable from the
-  // Jobs page and the AI Creator's "edit in manual form" affordance, so manual
-  // mode and the Upload (ai-extract) flow remain accessible.
   const newJobHref = `/${locale}/employer/jobs/ai-create`;
-  const viewJobsHref = `/${locale}/employer/jobs`;
-  const applicationsHref = `/${locale}/employer/applications`;
-  const interviewsHref = `/${locale}/employer/interviews`;
-  const aiMatchesHref = `/${locale}/employer/applications?scoreMin=80`;
-  const activityLabel = lastActivityMinutes !== null
-    ? t("lastActivity", { time: formatTimeAgo(lastActivityMinutes, t) })
-    : t("freshWorkspace");
+  const activityLabel =
+    lastActivityMinutes !== null
+      ? t("lastActivity", { time: formatTimeAgo(lastActivityMinutes, t) })
+      : t("freshWorkspace");
+
+  const summary = [
+    { key: "summaryHighMatch", count: highMatchCount, Icon: UserRoundCheck, tone: "text-emerald-600 dark:text-emerald-400" },
+    { key: "summaryReview", count: newApplications, Icon: Star, tone: "text-amber-600 dark:text-amber-400" },
+    { key: "summaryInterviews", count: scheduledInterviews, Icon: CalendarDays, tone: "text-violet-600 dark:text-violet-400" },
+  ];
 
   return (
     <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-5 sm:p-6">
-      <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-        <div className="max-w-3xl min-w-0">
-          <Image src="/logo.png" alt="Mployedin" width={100} height={34} className="mb-4 h-auto w-[106px] object-contain" style={{ height: "auto" }} />
-          <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
+      <div className="flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
+        {/* Copy + AI hiring summary */}
+        <div className="min-w-0 max-w-2xl">
+          <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700 dark:text-sky-300">
             <Sparkles className="h-3.5 w-3.5" />
             {t(eyebrowKey)}
           </div>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-            {t("welcomeBack", { userName })}
+          <h1 className="mt-3 flex items-center gap-2 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
+            {t("welcomeBack", { userName })} <span aria-hidden>👋</span>
           </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-            {t(subtitleKey, subtitleValues)}
-          </p>
-          <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background/80 px-3 py-1 backdrop-blur">
-              <Clock className="h-3.5 w-3.5 text-sky-600" />
-              {activityLabel}
-            </span>
-            {newApplications > 0 ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50/90 px-3 py-1 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300">
-                <FileText className="h-3.5 w-3.5" />
-                {t("reviewQueueLive")}
+          <p className="mt-2 text-sm font-medium text-muted-foreground">{t("aiHiringSummary")}</p>
+
+          <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2">
+            {summary.map(({ key, count, Icon, tone }) => (
+              <span key={key} className="inline-flex items-center gap-2 text-sm font-medium text-foreground/80">
+                <Icon className={`h-4 w-4 ${tone}`} />
+                {t(key, { count })}
               </span>
-            ) : null}
+            ))}
+          </div>
+
+          <div className="mt-3 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Clock className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
+            {activityLabel}
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row xl:min-w-[260px] xl:flex-col xl:justify-end">
-          <Link
-            href={newJobHref}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white transition hover:bg-sky-700"
-          >
-            <Sparkles className="h-4 w-4" />
-            {t("createJob")}
-          </Link>
-        </div>
-      </div>
-
-      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Link
-          href={viewJobsHref}
-          className="workspace-glass-panel group rounded-2xl p-4 transition-all hover:-translate-y-0.5 hover:border-sky-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("activeRoles")}</p>
-              <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{activeJobCount}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{t("activeRolesDesc")}</p>
-            </div>
-            <div className="rounded-2xl bg-emerald-50 p-2.5 text-emerald-600">
-              <BriefcaseBusiness className="h-5 w-5" />
-            </div>
-          </div>
-          <span className="mt-3 flex items-center gap-1 text-xs font-semibold text-sky-700 dark:text-sky-300">
-            {t("viewAll")}
-          </span>
-        </Link>
+        <RobotMascot />
 
         <Link
-          href={applicationsHref}
-          className="workspace-glass-panel group rounded-2xl p-4 transition-all hover:-translate-y-0.5 hover:border-sky-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+          href={newJobHref}
+          className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-sky-600 px-5 text-sm font-semibold text-white shadow-[0_10px_28px_-12px_rgba(2,132,199,0.7)] transition hover:bg-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
         >
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("needsReview")}</p>
-              <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{newApplications}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{t("needsReviewDesc")}</p>
-            </div>
-            <div className="rounded-2xl bg-amber-50 p-2.5 text-amber-600">
-              <FileText className="h-5 w-5" />
-            </div>
-          </div>
-          <span className="mt-3 flex items-center gap-1 text-xs font-semibold text-sky-700 dark:text-sky-300">
-            {t("viewAll")}
-          </span>
-        </Link>
-
-        <Link
-          href={aiMatchesHref}
-          className="workspace-glass-panel group rounded-2xl p-4 transition-all hover:-translate-y-0.5 hover:border-sky-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("aiMatches")}</p>
-              <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{highMatchCount}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{t("aiMatchesDesc")}</p>
-            </div>
-            <div className="rounded-2xl bg-gradient-to-r from-amber-50 to-sky-50 p-2.5 text-amber-600">
-              <Sparkles className="h-5 w-5" />
-            </div>
-          </div>
-          <span className="mt-3 flex items-center gap-1 text-xs font-semibold text-sky-700 dark:text-sky-300">
-            {t("viewAll")}
-          </span>
-        </Link>
-
-        <Link
-          href={interviewsHref}
-          className="workspace-glass-panel group rounded-2xl p-4 transition-all hover:-translate-y-0.5 hover:border-sky-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("interviewsSet")}</p>
-              <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{scheduledInterviews}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{t("interviewsSetDesc")}</p>
-            </div>
-            <div className="rounded-2xl bg-sky-50 p-2.5 text-sky-600">
-              <CalendarDays className="h-5 w-5" />
-            </div>
-          </div>
-          <span className="mt-3 flex items-center gap-1 text-xs font-semibold text-sky-700 dark:text-sky-300">
-            {t("viewAll")}
-          </span>
+          <Sparkles className="h-4 w-4" />
+          {t("createJob")}
         </Link>
       </div>
     </section>
+  );
+}
+
+/** Decorative AI mascot with two floating capability badges. */
+function RobotMascot() {
+  return (
+    <div className="relative mx-auto flex h-[120px] w-[150px] shrink-0 items-center justify-center" aria-hidden>
+      <div className="absolute h-24 w-24 rounded-full bg-sky-400/15 blur-xl dark:bg-sky-400/10" />
+      <svg width="72" height="72" viewBox="0 0 24 24" fill="none" className="relative">
+        <rect x="4" y="6" width="16" height="13" rx="5" fill="#2F6FED" />
+        <circle cx="9.3" cy="12.5" r="1.6" fill="white" />
+        <circle cx="14.7" cy="12.5" r="1.6" fill="white" />
+        <path d="M9.5 15.5a3 2 0 0 0 5 0" stroke="white" strokeWidth="1.2" strokeLinecap="round" />
+        <line x1="12" y1="6" x2="12" y2="3" stroke="#2F6FED" strokeWidth="1.8" />
+        <circle cx="12" cy="2.2" r="1.2" fill="#EA7A1A" />
+        <rect x="1" y="11" width="2.5" height="5" rx="1" fill="#9CBBF5" />
+        <rect x="20.5" y="9" width="2.5" height="7" rx="1" fill="#9CBBF5" />
+      </svg>
+      <div className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-lg bg-background shadow-md">
+        <Star className="h-3.5 w-3.5 text-violet-500" />
+      </div>
+      <div className="absolute bottom-0 left-0 flex h-7 w-7 items-center justify-center rounded-lg bg-background shadow-md">
+        <BarChart3 className="h-3.5 w-3.5 text-sky-500" />
+      </div>
+    </div>
   );
 }
 
