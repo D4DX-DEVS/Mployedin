@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useParams } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, XCircle, Loader2, MailQuestion } from "lucide-react";
 
 type Status = "verifying" | "success" | "error" | "no-token";
 
 export default function ConfirmEmailChangePage() {
+  const t = useTranslations("confirmEmailChange");
   const searchParams = useSearchParams();
   const { locale } = useParams<{ locale: string }>();
   const token = searchParams.get("token");
@@ -33,16 +35,16 @@ export default function ConfirmEmailChangePage() {
           setStatus("success");
         } else {
           setStatus("error");
-          setMessage(data.error ?? "Confirmation failed. The link may have expired.");
+          setMessage(data.error ?? t("confirmationFailedFallback"));
         }
       } catch {
         setStatus("error");
-        setMessage("Network error. Please try again.");
+        setMessage(t("networkError"));
       }
     };
 
     confirm();
-  }, [token]);
+  }, [token, t]);
 
   return (
     <div className="w-full flex flex-col gap-8">
@@ -60,8 +62,8 @@ export default function ConfirmEmailChangePage() {
             <Loader2 className="h-7 w-7 text-primary animate-spin" />
           </div>
           <div className="space-y-1">
-            <h1 className="text-2xl font-semibold tracking-tight">Confirming your new email…</h1>
-            <p className="text-base text-muted-foreground font-light">Just a moment, please wait.</p>
+            <h1 className="text-2xl font-semibold tracking-tight">{t("confirmingTitle")}</h1>
+            <p className="text-base text-muted-foreground font-light">{t("pleaseWait")}</p>
           </div>
         </div>
       )}
@@ -72,14 +74,14 @@ export default function ConfirmEmailChangePage() {
             <CheckCircle className="h-7 w-7 text-green-600 dark:text-green-400" />
           </div>
           <div className="space-y-1.5">
-            <h1 className="text-2xl font-semibold tracking-tight">Email updated!</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">{t("emailUpdatedTitle")}</h1>
             <p className="text-base text-muted-foreground font-light">
-              Your account email is now{newEmail ? <> <strong className="font-medium text-foreground">{newEmail}</strong></> : " updated"}.
-              Use it the next time you sign in.
+              {t("emailNowPrefix")}{newEmail ? <> <strong className="font-medium text-foreground">{newEmail}</strong></> : ` ${t("updatedWord")}`}.
+              {" "}{t("useItNextTime")}
             </p>
           </div>
           <Button asChild className="w-full max-w-xs h-11">
-            <Link href={`/${locale ?? "en"}/login`}>Continue to sign in</Link>
+            <Link href={`/${locale ?? "en"}/login`}>{t("continueToSignIn")}</Link>
           </Button>
         </div>
       )}
@@ -90,11 +92,11 @@ export default function ConfirmEmailChangePage() {
             <XCircle className="h-7 w-7 text-destructive" />
           </div>
           <div className="space-y-1.5">
-            <h1 className="text-2xl font-semibold tracking-tight">Confirmation failed</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">{t("confirmationFailedTitle")}</h1>
             <p className="text-base text-muted-foreground font-light">{message}</p>
           </div>
           <Button asChild variant="outline" className="w-full max-w-xs h-11">
-            <Link href={`/${locale ?? "en"}/login`}>Back to sign in</Link>
+            <Link href={`/${locale ?? "en"}/login`}>{t("backToSignIn")}</Link>
           </Button>
         </div>
       )}
@@ -105,9 +107,9 @@ export default function ConfirmEmailChangePage() {
             <MailQuestion className="h-7 w-7 text-muted-foreground" />
           </div>
           <div className="space-y-1.5">
-            <h1 className="text-2xl font-semibold tracking-tight">Missing confirmation link</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">{t("missingLinkTitle")}</h1>
             <p className="text-base text-muted-foreground font-light">
-              Open the confirmation link from the email we sent to your new address.
+              {t("missingLinkBody")}
             </p>
           </div>
         </div>

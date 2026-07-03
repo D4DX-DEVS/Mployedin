@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,10 +18,11 @@ function getStrength(password: string): number {
   ].filter(Boolean).length;
 }
 
-const STRENGTH_LABELS = ["Very Weak", "Weak", "Good", "Strong"] as const;
 const STRENGTH_COLORS = ["bg-red-500", "bg-orange-400", "bg-yellow-400", "bg-green-500"] as const;
 
 export default function ResetPasswordPage() {
+  const t = useTranslations("resetPassword");
+  const STRENGTH_LABELS = [t("veryWeak"), t("weak"), t("good"), t("strong")];
   const { locale } = useParams<{ locale: string }>();
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
@@ -39,11 +41,11 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     if (confirmPassword && password !== confirmPassword) {
-      setMatchError("Passwords do not match");
+      setMatchError(t("passwordsDoNotMatch"));
     } else {
       setMatchError("");
     }
-  }, [password, confirmPassword]);
+  }, [password, confirmPassword, t]);
 
   const isSubmitDisabled =
     loading ||
@@ -56,7 +58,7 @@ export default function ResetPasswordPage() {
     setError("");
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match.");
+      setError(t("passwordsDoNotMatchPeriod"));
       return;
     }
 
@@ -73,15 +75,15 @@ export default function ResetPasswordPage() {
 
       if (!res.ok) {
         if (res.status === 429) {
-          setError("Too many requests. Please wait a few minutes and try again.");
+          setError(t("tooManyRequests"));
         } else {
-          setError(data?.error ?? "Something went wrong. Please try again.");
+          setError(data?.error ?? t("somethingWentWrong"));
         }
       } else {
         setSuccess(true);
       }
     } catch {
-      setError("Network error. Please check your connection and try again.");
+      setError(t("networkErrorCheckConnection"));
     } finally {
       setLoading(false);
     }
@@ -96,17 +98,17 @@ export default function ResetPasswordPage() {
           </div>
           <div className="space-y-1.5">
             <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-              Password reset successful
+              {t("resetSuccessTitle")}
             </h1>
             <p className="text-base text-muted-foreground font-light max-w-xs mx-auto">
-              Your password has been updated. You can now sign in with your new password.
+              {t("resetSuccessBody")}
             </p>
           </div>
         </div>
 
         <Link href={`/${locale}/login`}>
           <Button className="w-full h-11 text-base font-medium shadow-sm transition-all rounded-lg">
-            Sign in
+            {t("signIn")}
           </Button>
         </Link>
       </div>
@@ -118,16 +120,16 @@ export default function ResetPasswordPage() {
       <div className="w-full flex flex-col gap-8">
         <div className="space-y-1.5">
           <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-            Invalid reset link
+            {t("invalidLinkTitle")}
           </h1>
           <p className="text-base text-muted-foreground font-light">
-            This password reset link is invalid or has expired. Please request a new one.
+            {t("invalidLinkBody")}
           </p>
         </div>
 
         <Link href={`/${locale}/forgot-password`}>
           <Button className="w-full h-11 text-base font-medium shadow-sm transition-all rounded-lg">
-            Request new reset link
+            {t("requestNewLink")}
           </Button>
         </Link>
 
@@ -137,7 +139,7 @@ export default function ResetPasswordPage() {
             className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            Back to sign in
+            {t("backToSignIn")}
           </Link>
         </div>
       </div>
@@ -148,16 +150,16 @@ export default function ResetPasswordPage() {
     <div className="w-full flex flex-col gap-8">
       <div className="space-y-1.5">
         <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-          Set new password
+          {t("setNewPasswordTitle")}
         </h1>
         <p className="text-base text-muted-foreground font-light">
-          Choose a strong password with at least 8 characters.
+          {t("chooseStrongPassword")}
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="space-y-2">
-          <Label htmlFor="password" className="text-sm font-medium">New password</Label>
+          <Label htmlFor="password" className="text-sm font-medium">{t("newPassword")}</Label>
           <div className="relative">
             <Input
               id="password"
@@ -174,7 +176,7 @@ export default function ResetPasswordPage() {
               type="button"
               onClick={() => setShowPassword((v) => !v)}
               className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-foreground transition-colors"
-              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-label={showPassword ? t("hidePassword") : t("showPassword")}
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
@@ -193,9 +195,9 @@ export default function ResetPasswordPage() {
                 ))}
               </div>
               <p className="text-xs text-muted-foreground">
-                Strength:{" "}
+                {t("strengthLabel")}{" "}
                 <span className="font-medium text-foreground">
-                  {STRENGTH_LABELS[strength - 1] ?? "Very Weak"}
+                  {STRENGTH_LABELS[strength - 1] ?? t("veryWeak")}
                 </span>
               </p>
             </div>
@@ -203,7 +205,7 @@ export default function ResetPasswordPage() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="confirmPassword" className="text-sm font-medium">Confirm password</Label>
+          <Label htmlFor="confirmPassword" className="text-sm font-medium">{t("confirmPassword")}</Label>
           <div className="relative">
             <Input
               id="confirmPassword"
@@ -220,7 +222,7 @@ export default function ResetPasswordPage() {
               type="button"
               onClick={() => setShowConfirm((v) => !v)}
               className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-foreground transition-colors"
-              aria-label={showConfirm ? "Hide password" : "Show password"}
+              aria-label={showConfirm ? t("hidePassword") : t("showPassword")}
             >
               {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
@@ -242,7 +244,7 @@ export default function ResetPasswordPage() {
           disabled={isSubmitDisabled}
         >
           {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-          Reset password
+          {t("resetPasswordButton")}
         </Button>
       </form>
 
@@ -252,7 +254,7 @@ export default function ResetPasswordPage() {
           className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          Back to sign in
+          {t("backToSignIn")}
         </Link>
       </div>
     </div>

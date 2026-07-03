@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { User, MapPin, CheckCircle, ChevronRight, ChevronLeft, Loader2, Briefcase, Shield } from "lucide-react";
 import { FormInput, FormSelect } from "@/components/shared/AppForm";
 
@@ -21,47 +22,49 @@ interface Step2Data {
   languages: string;
 }
 
-const COUNTRIES = [
-  { value: "AE", label: "United Arab Emirates" },
-  { value: "SA", label: "Saudi Arabia" },
-  { value: "QA", label: "Qatar" },
-  { value: "OM", label: "Oman" },
-  { value: "BH", label: "Bahrain" },
-  { value: "KW", label: "Kuwait" },
-  { value: "IN", label: "India" },
-  { value: "PK", label: "Pakistan" },
-  { value: "PH", label: "Philippines" },
-  { value: "BD", label: "Bangladesh" },
-];
-
-const EXPERIENCE_OPTIONS = [
-  { value: "0-1", label: "Less than 1 year" },
-  { value: "1-3", label: "1–3 years" },
-  { value: "3-5", label: "3–5 years" },
-  { value: "5-10", label: "5–10 years" },
-  { value: "10+", label: "10+ years" },
-];
-
-const SPECIALIZATION_OPTIONS = [
-  { value: "general", label: "General Recruitment" },
-  { value: "technology", label: "Technology & IT" },
-  { value: "healthcare", label: "Healthcare" },
-  { value: "construction", label: "Construction & Engineering" },
-  { value: "hospitality", label: "Hospitality & Tourism" },
-  { value: "finance", label: "Finance & Banking" },
-  { value: "oil_gas", label: "Oil & Gas" },
-  { value: "retail", label: "Retail" },
-  { value: "education", label: "Education" },
-  { value: "logistics", label: "Logistics & Supply Chain" },
-];
-
-const STEPS = [
-  { icon: User, label: "Personal Info" },
-  { icon: MapPin, label: "Professional Details" },
-  { icon: CheckCircle, label: "Complete" },
-];
-
 export default function AgentRegisterPage() {
+  const t = useTranslations("agentRegister");
+
+  const COUNTRIES = [
+    { value: "AE", label: t("countryAE") },
+    { value: "SA", label: t("countrySA") },
+    { value: "QA", label: t("countryQA") },
+    { value: "OM", label: t("countryOM") },
+    { value: "BH", label: t("countryBH") },
+    { value: "KW", label: t("countryKW") },
+    { value: "IN", label: t("countryIN") },
+    { value: "PK", label: t("countryPK") },
+    { value: "PH", label: t("countryPH") },
+    { value: "BD", label: t("countryBD") },
+  ];
+
+  const EXPERIENCE_OPTIONS = [
+    { value: "0-1", label: t("expLessThan1") },
+    { value: "1-3", label: t("exp1to3") },
+    { value: "3-5", label: t("exp3to5") },
+    { value: "5-10", label: t("exp5to10") },
+    { value: "10+", label: t("exp10plus") },
+  ];
+
+  const SPECIALIZATION_OPTIONS = [
+    { value: "general", label: t("specGeneral") },
+    { value: "technology", label: t("specTechnology") },
+    { value: "healthcare", label: t("specHealthcare") },
+    { value: "construction", label: t("specConstruction") },
+    { value: "hospitality", label: t("specHospitality") },
+    { value: "finance", label: t("specFinance") },
+    { value: "oil_gas", label: t("specOilGas") },
+    { value: "retail", label: t("specRetail") },
+    { value: "education", label: t("specEducation") },
+    { value: "logistics", label: t("specLogistics") },
+  ];
+
+  const STEPS = [
+    { icon: User, label: t("stepPersonalInfo") },
+    { icon: MapPin, label: t("stepProfessionalDetails") },
+    { icon: CheckCircle, label: t("stepComplete") },
+  ];
+
   const router = useRouter();
   const searchParams = useSearchParams();
   const referralCode = searchParams.get("ref") ?? "";
@@ -86,19 +89,19 @@ export default function AgentRegisterPage() {
 
   const validateStep1 = (): boolean => {
     if (!step1.fullName || !step1.email || !step1.password) {
-      setError("Please fill all required fields");
+      setError(t("fillAllRequiredFields"));
       return false;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(step1.email)) {
-      setError("Invalid email address");
+      setError(t("invalidEmailAddress"));
       return false;
     }
     if (step1.password.length < 8) {
-      setError("Password must be at least 8 characters");
+      setError(t("passwordMinLength"));
       return false;
     }
     if (step1.password !== step1.confirmPassword) {
-      setError("Passwords do not match");
+      setError(t("passwordsDoNotMatch"));
       return false;
     }
     setError("");
@@ -107,7 +110,7 @@ export default function AgentRegisterPage() {
 
   const validateStep2 = (): boolean => {
     if (!step2.country) {
-      setError("Please select your country");
+      setError(t("selectYourCountry"));
       return false;
     }
     setError("");
@@ -145,10 +148,10 @@ export default function AgentRegisterPage() {
           router.push(`/en/verify-email?email=${encodeURIComponent(step1.email)}`);
         }, 2000);
       } else {
-        setError(data.error ?? "Registration failed. Please try again.");
+        setError(data.error ?? t("registrationFailed"));
       }
     } catch {
-      setError("Network error. Please try again.");
+      setError(t("networkError"));
     } finally {
       setLoading(false);
     }
@@ -162,8 +165,8 @@ export default function AgentRegisterPage() {
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
             <Shield className="h-7 w-7 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Agent Registration</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Join Mployedin as a recruitment agent</p>
+          <h1 className="text-2xl font-bold text-foreground">{t("pageTitle")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("pageSubtitle")}</p>
         </div>
 
         {/* Step Indicator */}
@@ -194,24 +197,24 @@ export default function AgentRegisterPage() {
           {/* Step 1 */}
           {step === 0 && (
             <div className="space-y-4">
-              <h2 className="text-lg font-semibold">Personal Information</h2>
-              <FormInput label="Full Name *" value={step1.fullName} onChange={(e) => updateStep1("fullName", e.target.value)} placeholder="Enter your full name" />
-              <FormInput label="Email Address *" type="email" value={step1.email} onChange={(e) => updateStep1("email", e.target.value)} placeholder="agent@example.com" />
-              <FormInput label="Phone Number" value={step1.phone} onChange={(e) => updateStep1("phone", e.target.value)} placeholder="+971 50 000 0000" />
-              <FormInput label="Password *" type="password" value={step1.password} onChange={(e) => updateStep1("password", e.target.value)} placeholder="Min 8 characters" />
-              <FormInput label="Confirm Password *" type="password" value={step1.confirmPassword} onChange={(e) => updateStep1("confirmPassword", e.target.value)} placeholder="Re-enter password" />
+              <h2 className="text-lg font-semibold">{t("personalInformation")}</h2>
+              <FormInput label={t("fullNameLabel")} value={step1.fullName} onChange={(e) => updateStep1("fullName", e.target.value)} placeholder={t("fullNamePlaceholder")} />
+              <FormInput label={t("emailAddressLabel")} type="email" value={step1.email} onChange={(e) => updateStep1("email", e.target.value)} placeholder="agent@example.com" />
+              <FormInput label={t("phoneNumberLabel")} value={step1.phone} onChange={(e) => updateStep1("phone", e.target.value)} placeholder="+971 50 000 0000" />
+              <FormInput label={t("passwordLabel")} type="password" value={step1.password} onChange={(e) => updateStep1("password", e.target.value)} placeholder={t("passwordPlaceholder")} />
+              <FormInput label={t("confirmPasswordLabel")} type="password" value={step1.confirmPassword} onChange={(e) => updateStep1("confirmPassword", e.target.value)} placeholder={t("confirmPasswordPlaceholder")} />
             </div>
           )}
 
           {/* Step 2 */}
           {step === 1 && (
             <div className="space-y-4">
-              <h2 className="text-lg font-semibold">Professional Details</h2>
-              <FormSelect label="Country *" value={step2.country} onChange={(v) => updateStep2("country", v)} options={COUNTRIES} placeholder="Select country" />
-              <FormInput label="City" value={step2.city} onChange={(e) => updateStep2("city", e.target.value)} placeholder="Enter your city" />
-              <FormSelect label="Years of Experience" value={step2.experience} onChange={(v) => updateStep2("experience", v)} options={EXPERIENCE_OPTIONS} placeholder="Select experience" />
-              <FormSelect label="Industry Specialization" value={step2.specialization} onChange={(v) => updateStep2("specialization", v)} options={SPECIALIZATION_OPTIONS} placeholder="Select specialization" />
-              <FormInput label="Languages (comma-separated)" value={step2.languages} onChange={(e) => updateStep2("languages", e.target.value)} placeholder="English, Arabic, Hindi" />
+              <h2 className="text-lg font-semibold">{t("professionalDetails")}</h2>
+              <FormSelect label={t("countryLabel")} value={step2.country} onChange={(v) => updateStep2("country", v)} options={COUNTRIES} placeholder={t("selectCountryPlaceholder")} />
+              <FormInput label={t("cityLabel")} value={step2.city} onChange={(e) => updateStep2("city", e.target.value)} placeholder={t("cityPlaceholder")} />
+              <FormSelect label={t("experienceLabel")} value={step2.experience} onChange={(v) => updateStep2("experience", v)} options={EXPERIENCE_OPTIONS} placeholder={t("selectExperiencePlaceholder")} />
+              <FormSelect label={t("specializationLabel")} value={step2.specialization} onChange={(v) => updateStep2("specialization", v)} options={SPECIALIZATION_OPTIONS} placeholder={t("selectSpecializationPlaceholder")} />
+              <FormInput label={t("languagesLabel")} value={step2.languages} onChange={(e) => updateStep2("languages", e.target.value)} placeholder="English, Arabic, Hindi" />
             </div>
           )}
 
@@ -219,13 +222,13 @@ export default function AgentRegisterPage() {
           {step === 2 && (
             <div className="flex flex-col items-center py-8 text-center">
               <CheckCircle className="h-16 w-16 text-emerald-500" />
-              <h2 className="mt-4 text-xl font-semibold text-foreground">Registration Complete!</h2>
+              <h2 className="mt-4 text-xl font-semibold text-foreground">{t("registrationCompleteTitle")}</h2>
               <p className="mt-2 text-sm text-muted-foreground">
-                We&apos;ve sent a verification email to <strong>{step1.email}</strong>.
-                Please check your inbox to activate your account.
+                {t("verificationEmailSentPrefix")} <strong>{step1.email}</strong>.
+                {" "}{t("checkInboxToActivate")}
               </p>
               <p className="mt-4 text-xs text-muted-foreground">
-                Once verified, an admin will review and activate your agent account.
+                {t("adminReviewNote")}
               </p>
             </div>
           )}
@@ -238,7 +241,7 @@ export default function AgentRegisterPage() {
                   onClick={() => setStep((s) => s - 1)}
                   className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
                 >
-                  <ChevronLeft className="h-4 w-4" /> Back
+                  <ChevronLeft className="h-4 w-4" /> {t("back")}
                 </button>
               ) : (
                 <div />
@@ -250,14 +253,14 @@ export default function AgentRegisterPage() {
                   className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                 >
                   {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
-                  Create Account
+                  {t("createAccount")}
                 </button>
               ) : (
                 <button
                   onClick={handleNext}
                   className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
                 >
-                  Next <ChevronRight className="h-4 w-4" />
+                  {t("next")} <ChevronRight className="h-4 w-4" />
                 </button>
               )}
             </div>
@@ -266,8 +269,8 @@ export default function AgentRegisterPage() {
 
         {/* Login link */}
         <p className="mt-4 text-center text-sm text-muted-foreground">
-          Already have an account?{" "}
-          <a href="/en/login" className="font-medium text-primary hover:underline">Sign in</a>
+          {t("alreadyHaveAccount")}{" "}
+          <a href="/en/login" className="font-medium text-primary hover:underline">{t("signIn")}</a>
         </p>
       </div>
     </div>

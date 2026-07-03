@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useSearchParams, useParams } from "next/navigation";
 import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CheckCircle, XCircle, Loader2, Mail, RefreshCw, ShieldCheck } from "lucide-react";
@@ -11,6 +12,7 @@ import { CheckCircle, XCircle, Loader2, Mail, RefreshCw, ShieldCheck } from "luc
 type Status = "idle" | "verifying" | "success" | "error" | "no-token";
 
 export default function VerifyEmailPage() {
+  const t = useTranslations("verifyEmail");
   const searchParams = useSearchParams();
   const { locale } = useParams<{ locale: string }>();
   const { update: updateSession } = useSession();
@@ -39,25 +41,25 @@ export default function VerifyEmailPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        setResendMsg("Verification email sent! Check your inbox.");
+        setResendMsg(t("resendSuccess"));
       } else {
-        setResendMsg(data.error ?? "Failed to resend. Please try again later.");
+        setResendMsg(data.error ?? t("resendFailure"));
       }
     } catch {
-      setResendMsg("Network error. Please try again.");
+      setResendMsg(t("networkError"));
     } finally {
       setResending(false);
     }
-  }, [emailParam, resending]);
+  }, [emailParam, resending, t]);
 
   const handleSubmitOtp = useCallback(async () => {
     const code = otp.trim();
     if (!/^\d{6}$/.test(code)) {
-      setOtpError("Please enter the 6-digit code.");
+      setOtpError(t("otpEmptyError"));
       return;
     }
     if (!emailParam) {
-      setOtpError("We couldn't tell which account this code belongs to. Please open the link from your verification email instead.");
+      setOtpError(t("otpNoEmailError"));
       return;
     }
     setVerifyingOtp(true);
@@ -77,14 +79,14 @@ export default function VerifyEmailPage() {
         await updateSession({ isEmailVerified: true });
         setStatus("success");
       } else {
-        setOtpError(data.error ?? "Invalid or expired code. Try resending.");
+        setOtpError(data.error ?? t("otpInvalidError"));
       }
     } catch {
-      setOtpError("Network error. Please try again.");
+      setOtpError(t("networkError"));
     } finally {
       setVerifyingOtp(false);
     }
-  }, [otp, emailParam, updateSession]);
+  }, [otp, emailParam, updateSession, t]);
 
   useEffect(() => {
     if (!token) return;
@@ -106,21 +108,21 @@ export default function VerifyEmailPage() {
           // can still verify via OTP or resend, rather than hitting a dead-end
           // error screen with no recovery path.
           if (emailParam) {
-            setLinkError(data.error ?? "That link is invalid or has expired. Enter the code from your email below, or resend it.");
+            setLinkError(data.error ?? t("linkErrorFallback"));
             setStatus("no-token");
           } else {
             setStatus("error");
-            setMessage(data.error ?? "Verification failed. The link may have expired.");
+            setMessage(data.error ?? t("verificationFailedFallback"));
           }
         }
       } catch {
         setStatus("error");
-        setMessage("Network error. Please try again.");
+        setMessage(t("networkError"));
       }
     };
 
     verify();
-  }, [token, emailParam, updateSession]);
+  }, [token, emailParam, updateSession, t]);
 
   return (
     <div className="w-full flex flex-col gap-8">
@@ -139,8 +141,8 @@ export default function VerifyEmailPage() {
             <Loader2 className="h-7 w-7 text-primary animate-spin" />
           </div>
           <div className="space-y-1">
-            <h1 className="text-2xl font-semibold tracking-tight">Verifying your email…</h1>
-            <p className="text-base text-muted-foreground font-light">Just a moment, please wait.</p>
+            <h1 className="text-2xl font-semibold tracking-tight">{t("verifyingTitle")}</h1>
+            <p className="text-base text-muted-foreground font-light">{t("pleaseWait")}</p>
           </div>
         </div>
       )}
@@ -152,13 +154,13 @@ export default function VerifyEmailPage() {
             <CheckCircle className="h-7 w-7 text-green-600 dark:text-green-400" />
           </div>
           <div className="space-y-1.5">
-            <h1 className="text-2xl font-semibold tracking-tight">Email verified!</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">{t("verifiedTitle")}</h1>
             <p className="text-base text-muted-foreground font-light">
-              Your email address has been confirmed. You can now access your dashboard.
+              {t("verifiedBody")}
             </p>
           </div>
           <Button asChild className="w-full max-w-xs h-11">
-            <Link href={`/${locale ?? "en"}/login`}>Continue to sign in</Link>
+            <Link href={`/${locale ?? "en"}/login`}>{t("continueToSignIn")}</Link>
           </Button>
         </div>
       )}
@@ -170,19 +172,19 @@ export default function VerifyEmailPage() {
             <XCircle className="h-7 w-7 text-destructive" />
           </div>
           <div className="space-y-1.5">
-            <h1 className="text-2xl font-semibold tracking-tight">Verification failed</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">{t("verificationFailedTitle")}</h1>
             <p className="text-base text-muted-foreground font-light">
-              {message || "This link is invalid or has already been used."}
+              {message || t("linkUsedError")}
             </p>
           </div>
           <div className="w-full max-w-xs space-y-3">
             <Button asChild variant="outline" className="w-full h-11">
-              <Link href={`/${locale ?? "en"}/login`}>Back to sign in</Link>
+              <Link href={`/${locale ?? "en"}/login`}>{t("backToSignIn")}</Link>
             </Button>
             <p className="text-xs text-muted-foreground">
-              Need help?{" "}
+              {t("needHelp")}{" "}
               <Link href={`/${locale ?? "en"}/contact`} className="text-primary hover:underline">
-                Contact support
+                {t("contactSupport")}
               </Link>
             </p>
           </div>
@@ -196,15 +198,15 @@ export default function VerifyEmailPage() {
             <Mail className="h-7 w-7 text-primary" />
           </div>
           <div className="space-y-1.5">
-            <h1 className="text-2xl font-semibold tracking-tight">Check your email</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">{t("checkEmailTitle")}</h1>
             <p className="text-base text-muted-foreground font-light">
-              We sent a 6-digit verification code to{" "}
+              {t("sentCodeToPrefix")}{" "}
               {emailParam ? (
                 <span className="font-medium text-foreground">{emailParam}</span>
               ) : (
-                "your email address"
+                t("yourEmailAddress")
               )}
-              . Enter the code below to activate your account — or click the link in the email.
+              {t("sentCodeSuffix")}
             </p>
           </div>
 
@@ -217,7 +219,7 @@ export default function VerifyEmailPage() {
           {emailFailed && (
             <div className="w-full max-w-xs p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-left">
               <p className="text-xs text-amber-800 dark:text-amber-300">
-                We had trouble sending that email. Tap <strong>Resend</strong> below to get your code.
+                {t("troubleSendingBefore")} <strong>{t("resendWord")}</strong>{t("troubleSendingAfter")}
               </p>
             </div>
           )}
@@ -231,7 +233,7 @@ export default function VerifyEmailPage() {
                 inputMode="numeric"
                 pattern="\d{6}"
                 maxLength={6}
-                placeholder="Enter 6-digit code"
+                placeholder={t("otpPlaceholder")}
                 value={otp}
                 onChange={(e) => {
                   setOtp(e.target.value.replace(/\D/g, "").slice(0, 6));
@@ -244,7 +246,7 @@ export default function VerifyEmailPage() {
                   }
                 }}
                 disabled={verifyingOtp}
-                aria-label="Verification code"
+                aria-label={t("verificationCodeAria")}
                 className="h-12 pl-9 text-center text-lg tracking-[0.5em] font-semibold"
               />
             </div>
@@ -257,19 +259,19 @@ export default function VerifyEmailPage() {
               disabled={verifyingOtp || otp.length !== 6}
             >
               {verifyingOtp ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Verifying…</>
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("verifyingEllipsis")}</>
               ) : (
-                "Verify code"
+                t("verifyCode")
               )}
             </Button>
           </div>
 
           <div className="w-full max-w-xs p-4 rounded-xl bg-muted/50 border text-left space-y-2">
-            <p className="text-sm font-medium text-foreground">Didn&apos;t receive it?</p>
+            <p className="text-sm font-medium text-foreground">{t("didntReceive")}</p>
             <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
-              <li>Check your spam or junk folder</li>
-              <li>Make sure you used the correct email address</li>
-              <li>Allow a few minutes for the email to arrive</li>
+              <li>{t("checkSpamFolder")}</li>
+              <li>{t("correctEmailUsed")}</li>
+              <li>{t("allowFewMinutes")}</li>
             </ul>
           </div>
           {resendMsg && (
@@ -285,9 +287,9 @@ export default function VerifyEmailPage() {
               disabled={resending}
             >
               {resending ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Sending…</>
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("sendingEllipsis")}</>
               ) : (
-                <><RefreshCw className="mr-2 h-4 w-4" />Resend verification email</>
+                <><RefreshCw className="mr-2 h-4 w-4" />{t("resendVerificationEmail")}</>
               )}
             </Button>
           )}
@@ -296,7 +298,7 @@ export default function VerifyEmailPage() {
             className="w-full max-w-xs h-11"
             onClick={() => signOut({ callbackUrl: `/${locale ?? "en"}/login` })}
           >
-            Back to sign in
+            {t("backToSignIn")}
           </Button>
         </div>
       )}

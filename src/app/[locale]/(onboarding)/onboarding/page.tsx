@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import Image from "next/image";
 import { useRouter, useParams } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
+import { useTranslations } from "next-intl";
 import { Check, ChevronRight, ChevronDown, Search, Loader2, X, Upload, Briefcase, GraduationCap, Sparkles, CheckCircle, LogOut, Linkedin, Mail, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -198,15 +199,10 @@ const GENDERS = ["Male", "Female", "Transgender"];
 const YEARS_RANGE = Array.from({ length: 40 }, (_, i) => String(new Date().getFullYear() - i));
 
 // ── Step sidebar config ───────────────────────────────────────────────────────
-const STEPS = [
-  { label: "Basic details", subtitle: "Your basic information" },
-  { label: "Employment", subtitle: "Your experience is your success story, talk about it" },
-  { label: "Education", subtitle: "Employers prefer to know about your Education" },
-  { label: "Last step", subtitle: "Add headline & preferences" },
-] as const;
+// Note: STEPS labels/subtitles are translated dynamically inside the component
 
 // ── Tiny helpers ──────────────────────────────────────────────────────────────
-function CountryCodeSelect({ value, onChange }: { value: string; onChange: (code: string) => void }) {
+function CountryCodeSelect({ value, onChange, t }: { value: string; onChange: (code: string) => void; t: ReturnType<typeof useTranslations> }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const ref = useRef<HTMLDivElement>(null);
@@ -245,13 +241,13 @@ function CountryCodeSelect({ value, onChange }: { value: string; onChange: (code
               autoFocus
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search country or code"
+              placeholder={t("searchCountryPlaceholder")}
               className="w-full bg-transparent text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none"
             />
           </div>
           <ul className="max-h-60 overflow-y-auto py-1">
             {filtered.length === 0 && (
-              <li className="px-3 py-2 text-sm text-gray-400">No matches</li>
+              <li className="px-3 py-2 text-sm text-gray-400">{t("noMatches")}</li>
             )}
             {filtered.map((c) => (
               <li key={c.code + c.country}>
@@ -330,9 +326,18 @@ const NOTICE_PERIOD_DAYS: Record<string, number> = {
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function JobSeekerOnboardingPage() {
+  const t = useTranslations("onboarding");
   const router = useRouter();
   const { locale } = useParams<{ locale: string }>();
   const { data: session, status, update: updateSession } = useSession();
+
+  // Construct STEPS array with translations
+  const STEPS = [
+    { label: t("stepBasicDetails"), subtitle: t("stepBasicDetailsSubtitle") },
+    { label: t("stepEmployment"), subtitle: t("stepEmploymentSubtitle") },
+    { label: t("stepEducation"), subtitle: t("stepEducationSubtitle") },
+    { label: t("stepLastStep"), subtitle: t("stepLastStepSubtitle") },
+  ] as const;
 
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -552,7 +557,7 @@ export default function JobSeekerOnboardingPage() {
   // ── AI-powered CV/Resume parsing ──────────────────────────────────────────
   const handleCvParse = useCallback(async (file: File) => {
     if (!file || file.size > 10 * 1024 * 1024) {
-      setCvParseError(file.size > 10 * 1024 * 1024 ? "File size must be under 10 MB" : "No file selected");
+      setCvParseError(file.size > 10 * 1024 * 1024 ? t("fileSizeTooLarge") : t("noFileSelected"));
       return;
     }
     setCvParsing(true);
@@ -563,7 +568,7 @@ export default function JobSeekerOnboardingPage() {
       const res = await csrfFetch("/api/ai/cv-extract", { method: "POST", body: formData });
       if (!res.ok) {
         const d = await res.json().catch(() => ({})) as { error?: string };
-        throw new Error(d.error ?? "CV parsing failed");
+        throw new Error(d.error ?? t("cvParsingFailed"));
       }
       const { extracted } = await res.json() as {
         extracted: {
@@ -581,7 +586,7 @@ export default function JobSeekerOnboardingPage() {
       };
 
       if (!extracted) {
-        throw new Error("Could not extract data from this CV. Try a different file.");
+        throw new Error(t("couldNotExtractCV"));
       }
 
       // Pre-fill Step 0
@@ -800,7 +805,7 @@ export default function JobSeekerOnboardingPage() {
 
   const handleFinish = async () => {
     if (!step3.headline.trim()) {
-      setSaveError("Please enter a resume headline.");
+      setSaveError(t("enterHeadline"));
       return;
     }
     setSaving(true);
@@ -834,12 +839,12 @@ export default function JobSeekerOnboardingPage() {
         </div>
         <div className="flex items-center gap-3">
           <div className="hidden text-right sm:block">
-            <p className="text-xs font-medium text-gray-600">App theme</p>
-            <p className="text-[11px] text-gray-400">Applies after onboarding</p>
+            <p className="text-xs font-medium text-gray-600">{t("appTheme")}</p>
+            <p className="text-[11px] text-gray-400">{t("appThemeSubtitle")}</p>
           </div>
           <ThemeToggle />
           {userName && (
-            <span className="text-sm text-gray-600">Welcome, {userName}</span>
+            <span className="text-sm text-gray-600">{t("welcome", { name: userName })}</span>
           )}
           <Button
             type="button"
@@ -847,13 +852,13 @@ export default function JobSeekerOnboardingPage() {
             size="sm"
             onClick={() => signOut({ callbackUrl: `/${locale}/login` })}
             className="group ml-1 h-10 rounded-full border-slate-200/80 bg-white/90 px-3.5 text-slate-600 shadow-sm shadow-slate-200/60 hover:border-red-200 hover:bg-red-50 hover:text-red-600 dark:border-slate-700/80 dark:bg-slate-900/80 dark:text-slate-200 dark:shadow-slate-950/60 dark:hover:border-red-900 dark:hover:bg-red-950/60 dark:hover:text-red-300"
-            title="Sign out"
+            title={t("signOut")}
           >
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors group-hover:bg-red-100 group-hover:text-red-500 dark:bg-slate-800 dark:text-slate-300 dark:group-hover:bg-red-950 dark:group-hover:text-red-300">
               <LogOut className="h-3.5 w-3.5" />
             </span>
-            <span className="hidden sm:inline">Sign out</span>
-            <span className="sr-only sm:hidden">Sign out</span>
+            <span className="hidden sm:inline">{t("signOut")}</span>
+            <span className="sr-only sm:hidden">{t("signOut")}</span>
           </Button>
         </div>
       </div>
@@ -919,7 +924,7 @@ export default function JobSeekerOnboardingPage() {
                   {linkedInPrefilled && (
                     <div className="mt-3 flex items-center gap-2 p-3 rounded-lg bg-blue-50 border border-blue-200 text-sm text-blue-800">
                       <Linkedin className="w-4 h-4 text-[#0A66C2] shrink-0" />
-                      We imported your info from LinkedIn. Please verify and complete the remaining fields.
+                      {t("linkedInImportBanner")}
                     </div>
                   )}
                   {/* AI Import from LinkedIn — auto-triggered */}
@@ -927,10 +932,10 @@ export default function JobSeekerOnboardingPage() {
                     <div className="mt-3">
                       <div className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-medium shadow-md">
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        Importing your LinkedIn profile with AI — please wait...
+                        {t("aiImportingLinkedIn")}
                       </div>
                       <p className="text-xs text-gray-400 mt-1.5 text-center">
-                        AI is analyzing your LinkedIn profile to fill experience, education, skills &amp; more
+                        {t("aiImportingLinkedInDesc")}
                       </p>
                     </div>
                   )}
@@ -938,7 +943,7 @@ export default function JobSeekerOnboardingPage() {
                     <div className="mt-3">
                       <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
                         <X className="w-4 h-4 shrink-0" />
-                        Auto-import failed: {aiImportError}
+                        {t("aiImportFailed", { error: aiImportError })}
                       </div>
                       <button
                         type="button"
@@ -946,30 +951,30 @@ export default function JobSeekerOnboardingPage() {
                         className="mt-2 w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm font-medium shadow-md transition-all"
                       >
                         <Wand2 className="w-4 h-4" />
-                        Retry auto-fill from LinkedIn
+                        {t("retryAutoFill")}
                       </button>
                     </div>
                   )}
                   {aiImported && (
                     <div className="mt-3 flex items-center gap-2 p-3 rounded-lg bg-purple-50 border border-purple-200 text-sm text-purple-800">
                       <Sparkles className="w-4 h-4 text-purple-600 shrink-0" />
-                      Your profile has been auto-filled from LinkedIn! Please verify the details below and edit if needed.
+                      {t("aiImportedSuccessfully")}
                     </div>
                   )}
                   <div className="mt-3 flex items-center gap-2 p-3 rounded-lg bg-green-50 border border-green-200 text-sm text-green-800">
                     <CheckCircle className="w-4 h-4 text-green-600 shrink-0" />
-                    Your account is created successfully. Let&rsquo;s get started!
+                    {t("accountCreatedSuccess")}
                   </div>
-                  <p className="text-sm text-blue-600 mt-2">Search &amp; apply to jobs from the Gulf&rsquo;s No.1 Job Site</p>
+                  <p className="text-sm text-blue-600 mt-2">{t("jobSiteTagline")}</p>
                 </div>
 
                 {/* Full name */}
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-2">
-                    <Label className="text-sm font-medium text-gray-800">Full name <span className="text-red-500">*</span></Label>
+                    <Label className="text-sm font-medium text-gray-800">{t("fullName")} <span className="text-red-500">*</span></Label>
                     {linkedInPrefilled && step0.name.trim() && (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-[11px] font-medium text-[#0A66C2]">
-                        <Linkedin className="w-3 h-3" /> From LinkedIn
+                        <Linkedin className="w-3 h-3" /> {t("fromLinkedIn")}
                       </span>
                     )}
                   </div>
@@ -977,7 +982,7 @@ export default function JobSeekerOnboardingPage() {
                     <Input
                       value={step0.name}
                       onChange={(e) => setStep0((p) => ({ ...p, name: e.target.value }))}
-                      placeholder="Your full name"
+                      placeholder={t("fullNamePlaceholder")}
                       className="h-11 pr-10 border-gray-300 focus:border-blue-500 focus:ring-blue-500/20"
                     />
                     {step0.name.trim().length > 1 && (
@@ -990,9 +995,9 @@ export default function JobSeekerOnboardingPage() {
                 {linkedInPrefilled && userEmail && (
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-2">
-                      <Label className="text-sm font-medium text-gray-800">Email</Label>
+                      <Label className="text-sm font-medium text-gray-800">{t("email")}</Label>
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-[11px] font-medium text-[#0A66C2]">
-                        <Linkedin className="w-3 h-3" /> From LinkedIn
+                        <Linkedin className="w-3 h-3" /> {t("fromLinkedIn")}
                       </span>
                     </div>
                     <div className="relative">
@@ -1008,11 +1013,12 @@ export default function JobSeekerOnboardingPage() {
 
                 {/* Mobile number */}
                 <div className="space-y-1.5">
-                  <Label className="text-sm font-medium text-gray-800">Mobile number <span className="text-red-500">*</span></Label>
+                  <Label className="text-sm font-medium text-gray-800">{t("mobileNumber")} <span className="text-red-500">*</span></Label>
                   <div className="flex gap-2">
                     <CountryCodeSelect
                       value={step0.countryCode}
                       onChange={(code) => setStep0((p) => ({ ...p, countryCode: code }))}
+                      t={t}
                     />
                     <div className="relative flex-1">
                       <Input
@@ -1020,7 +1026,7 @@ export default function JobSeekerOnboardingPage() {
                         type="tel"
                         value={step0.phone}
                         onChange={(e) => setStep0((p) => ({ ...p, phone: e.target.value.replace(/\D/g, "") }))}
-                        placeholder="Enter your mobile number"
+                        placeholder={t("mobileNumberPlaceholder")}
                         className={`h-11 border-gray-300 focus:border-blue-500 pr-10 ${!step0.phone && "border-red-400"}`}
                       />
                       {step0.phone.length >= 7 && (
@@ -1028,17 +1034,17 @@ export default function JobSeekerOnboardingPage() {
                       )}
                     </div>
                   </div>
-                  {!step0.phone && <p className="text-xs text-red-500">Please enter your mobile number</p>}
-                  {step0.phone.length >= 7 && <p className="text-xs text-gray-500">Recruiters will contact you on this number</p>}
+                  {!step0.phone && <p className="text-xs text-red-500">{t("mobileNumberRequired")}</p>}
+                  {step0.phone.length >= 7 && <p className="text-xs text-gray-500">{t("recruitersWillContact")}</p>}
                 </div>
 
                 {/* Work status */}
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-800">Work status <span className="text-red-500">*</span></Label>
+                  <Label className="text-sm font-medium text-gray-800">{t("workStatus")} <span className="text-red-500">*</span></Label>
                   <div className="grid grid-cols-2 gap-3">
                     {[
-                      { value: "experienced", icon: <Briefcase className="w-8 h-8 text-gray-400" />, title: "I'm experienced", sub: "I have work experience (excluding internships)" },
-                      { value: "fresher", icon: <GraduationCap className="w-8 h-8 text-gray-400" />, title: "I'm a fresher", sub: "I am a student/ Haven't worked after graduation" },
+                      { value: "experienced", icon: <Briefcase className="w-8 h-8 text-gray-400" />, title: t("iExperienced"), sub: t("iExperiencedDesc") },
+                      { value: "fresher", icon: <GraduationCap className="w-8 h-8 text-gray-400" />, title: t("iAFresher"), sub: t("iAFresherDesc") },
                     ].map(({ value, icon, title, sub }) => (
                       <button
                         key={value}
@@ -1063,7 +1069,7 @@ export default function JobSeekerOnboardingPage() {
                 {/* Resume upload (shown after work status chosen) */}
                 {step0.workStatus && (
                   <div className="space-y-1.5">
-                    <Label className="text-sm font-medium text-gray-800">Resume</Label>
+                    <Label className="text-sm font-medium text-gray-800">{t("resume")}</Label>
                     <div className="flex items-center gap-3">
                       <label className="cursor-pointer">
                         <input
@@ -1078,21 +1084,21 @@ export default function JobSeekerOnboardingPage() {
                         />
                         <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium transition-colors">
                           {cvParsing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                          {cvParsing ? "Parsing…" : step0.resumeFile ? step0.resumeFile.name.slice(0, 20) + "…" : "Upload Resume"}
+                          {cvParsing ? t("parsing") : step0.resumeFile ? step0.resumeFile.name.slice(0, 20) + "…" : t("uploadResume")}
                         </span>
                       </label>
-                      <span className="text-xs text-gray-500">DOC, DOCx, PDF, RTF | Max: 10 MB</span>
+                      <span className="text-xs text-gray-500">{t("resumeFormats")}</span>
                     </div>
                     {cvParsed && (
                       <p className="text-xs text-green-600 flex items-center gap-1">
-                        <CheckCircle className="w-3.5 h-3.5" /> Resume parsed! Fields auto-filled below.
+                        <CheckCircle className="w-3.5 h-3.5" /> {t("resumeParsedSuccess")}
                       </p>
                     )}
                     {cvParseError && (
                       <p className="text-xs text-red-500">{cvParseError}</p>
                     )}
                     {!cvParsed && !cvParseError && (
-                      <p className="text-xs text-gray-500">Upload your resume to auto-fill your profile using AI</p>
+                      <p className="text-xs text-gray-500">{t("uploadResumeToAutoFill")}</p>
                     )}
                   </div>
                 )}
@@ -1106,14 +1112,14 @@ export default function JobSeekerOnboardingPage() {
                     className="mt-0.5 w-4 h-4 rounded border-gray-400 accent-blue-600"
                   />
                   <span className="text-sm text-gray-600">
-                    Send me important updates &amp; promotions via SMS, email, and WhatsApp
+                    {t("marketingConsent")}
                   </span>
                 </label>
 
                 <p className="text-xs text-gray-400">
-                  By clicking Save and continue, you agree to the{" "}
-                  <span className="text-blue-600 cursor-pointer">Terms and Conditions</span> &amp;{" "}
-                  <span className="text-blue-600 cursor-pointer">Privacy Policy</span> of mployedin.
+                  {t("termsAgreement")}{" "}
+                  <span className="text-blue-600 cursor-pointer">{t("termsAndConditions")}</span> &amp;{" "}
+                  <span className="text-blue-600 cursor-pointer">{t("privacyPolicy")}</span> {t("ofMployedin")}.
                 </p>
               </div>
             )}
@@ -1122,30 +1128,30 @@ export default function JobSeekerOnboardingPage() {
             {step === 1 && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">Employment details</h2>
-                  <p className="text-sm text-gray-500 mt-1">These details help recruiters identify your professional experience</p>
+                  <h2 className="text-2xl font-bold text-gray-900">{t("employmentDetails")}</h2>
+                  <p className="text-sm text-gray-500 mt-1">{t("employmentDetailsDesc")}</p>
                 </div>
 
                 {step0.workStatus === "fresher" ? (
                   <div className="flex flex-col items-center gap-4 py-8 text-center">
                     <GraduationCap className="w-16 h-16 text-gray-300" />
                     <div>
-                      <p className="font-semibold text-gray-700">You haven&rsquo;t worked yet — that&rsquo;s fine!</p>
-                      <p className="text-sm text-gray-500 mt-1">You can skip this step and add internship details later from your profile.</p>
+                      <p className="font-semibold text-gray-700">{t("noWorkExperience")}</p>
+                      <p className="text-sm text-gray-500 mt-1">{t("skipEmploymentStepDesc")}</p>
                     </div>
                   </div>
                 ) : (
                   <>
                     {/* Currently employed */}
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium text-gray-800">Are you currently employed? <span className="text-red-500">*</span></Label>
+                      <Label className="text-sm font-medium text-gray-800">{t("currentlyEmployed")} <span className="text-red-500">*</span></Label>
                       <div className="flex gap-3">
-                        {["Yes", "No"].map((opt) => (
+                        {[t("yes"), t("no")].map((opt) => (
                           <ChipButton
                             key={opt}
                             label={opt}
-                            selected={step1.isCurrentlyEmployed === (opt === "Yes")}
-                            onClick={() => setStep1((p) => ({ ...p, isCurrentlyEmployed: opt === "Yes" }))}
+                            selected={step1.isCurrentlyEmployed === (opt === t("yes"))}
+                            onClick={() => setStep1((p) => ({ ...p, isCurrentlyEmployed: opt === t("yes") }))}
                           />
                         ))}
                       </div>
@@ -1153,25 +1159,25 @@ export default function JobSeekerOnboardingPage() {
 
                     {/* Total experience */}
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium text-gray-800">Total work experience <span className="text-red-500">*</span></Label>
+                      <Label className="text-sm font-medium text-gray-800">{t("totalExperience")} <span className="text-red-500">*</span></Label>
                       <div className="flex gap-3">
                         <Select value={step1.experienceYears} onValueChange={(v) => setStep1((p) => ({ ...p, experienceYears: v }))}>
                           <SelectTrigger className="flex-1 h-11">
-                            <SelectValue placeholder="Select year" />
+                            <SelectValue placeholder={t("selectYear")} />
                           </SelectTrigger>
                           <SelectContent>
                             {Array.from({ length: 31 }, (_, i) => (
-                              <SelectItem key={i} value={String(i)}>{i === 0 ? "0 Years" : `${i} Year${i > 1 ? "s" : ""}`}</SelectItem>
+                              <SelectItem key={i} value={String(i)}>{i === 0 ? t("zeroYears") : t("yearCount", { count: i })}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                         <Select value={step1.experienceMonths} onValueChange={(v) => setStep1((p) => ({ ...p, experienceMonths: v }))}>
                           <SelectTrigger className="flex-1 h-11">
-                            <SelectValue placeholder="Select month" />
+                            <SelectValue placeholder={t("selectMonth")} />
                           </SelectTrigger>
                           <SelectContent>
                             {Array.from({ length: 12 }, (_, i) => (
-                              <SelectItem key={i} value={String(i)}>{i} Month{i !== 1 ? "s" : ""}</SelectItem>
+                              <SelectItem key={i} value={String(i)}>{t("monthCount", { count: i })}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -1180,12 +1186,12 @@ export default function JobSeekerOnboardingPage() {
 
                     {/* Company name */}
                     <div className="space-y-1.5">
-                      <Label className="text-sm font-medium text-gray-800">Company name <span className="text-red-500">*</span></Label>
+                      <Label className="text-sm font-medium text-gray-800">{t("companyName")} <span className="text-red-500">*</span></Label>
                       <div className="relative">
                         <Input
                           value={step1.companyName}
                           onChange={(e) => setStep1((p) => ({ ...p, companyName: e.target.value }))}
-                          placeholder="Eg. Amazon"
+                          placeholder={t("companyNamePlaceholder")}
                           className="h-11 border-gray-300 focus:border-blue-500 pr-10"
                         />
                         {step1.companyName.trim() && <Check className="absolute right-3 top-3 w-5 h-5 text-green-500" />}
@@ -1194,11 +1200,11 @@ export default function JobSeekerOnboardingPage() {
 
                     {/* Job title */}
                     <div className="space-y-1.5">
-                      <Label className="text-sm font-medium text-gray-800">Current job title <span className="text-red-500">*</span></Label>
+                      <Label className="text-sm font-medium text-gray-800">{t("currentJobTitle")} <span className="text-red-500">*</span></Label>
                       <Input
                         value={step1.jobTitle}
                         onChange={(e) => setStep1((p) => ({ ...p, jobTitle: e.target.value }))}
-                        placeholder="Eg. Software Developer"
+                        placeholder={t("jobTitlePlaceholder")}
                         className="h-11 border-gray-300 focus:border-blue-500"
                       />
                     </div>
@@ -1206,10 +1212,10 @@ export default function JobSeekerOnboardingPage() {
                     {/* Current city */}
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2">
-                        <Label className="text-sm font-medium text-gray-800">Current city <span className="text-red-500">*</span></Label>
+                        <Label className="text-sm font-medium text-gray-800">{t("currentCity")} <span className="text-red-500">*</span></Label>
                         {linkedInPrefilled && step1.currentCity.trim() && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-[11px] font-medium text-[#0A66C2]">
-                            <Linkedin className="w-3 h-3" /> From LinkedIn
+                            <Linkedin className="w-3 h-3" /> {t("fromLinkedIn")}
                           </span>
                         )}
                       </div>
@@ -1217,20 +1223,20 @@ export default function JobSeekerOnboardingPage() {
                         type="locations"
                         value={step1.currentCity}
                         onChange={(v) => setStep1((p) => ({ ...p, currentCity: v }))}
-                        placeholder="Eg. Dubai, Mumbai"
+                        placeholder={t("cityPlaceholder")}
                         inputClassName="h-11 border-gray-300 focus:border-blue-500"
                       />
-                      <p className="text-xs text-gray-500">This helps recruiters know your location preferences</p>
+                      <p className="text-xs text-gray-500">{t("locationHelpsRecruiters")}</p>
                     </div>
 
                     {/* Duration */}
                     <div className="space-y-1.5">
-                      <Label className="text-sm font-medium text-gray-800">Duration <span className="text-red-500">*</span></Label>
+                      <Label className="text-sm font-medium text-gray-800">{t("duration")} <span className="text-red-500">*</span></Label>
                       <div className="flex items-center gap-3">
                         <div className="flex gap-2 flex-1">
                           <Select value={step1.startMonth} onValueChange={(v) => setStep1((p) => ({ ...p, startMonth: v }))}>
                             <SelectTrigger className="flex-1 h-11">
-                              <SelectValue placeholder="Month" />
+                              <SelectValue placeholder={t("month")} />
                             </SelectTrigger>
                             <SelectContent>
                               {["01","02","03","04","05","06","07","08","09","10","11","12"].map((m) => (
@@ -1240,23 +1246,23 @@ export default function JobSeekerOnboardingPage() {
                           </Select>
                           <Select value={step1.startYear} onValueChange={(v) => setStep1((p) => ({ ...p, startYear: v }))}>
                             <SelectTrigger className="flex-1 h-11">
-                              <SelectValue placeholder="Year" />
+                              <SelectValue placeholder={t("year")} />
                             </SelectTrigger>
                             <SelectContent>
                               {YEARS_RANGE.map((y) => <SelectItem key={y} value={y}>{y}</SelectItem>)}
                             </SelectContent>
                           </Select>
                         </div>
-                        <span className="text-sm text-gray-500 shrink-0">To</span>
+                        <span className="text-sm text-gray-500 shrink-0">{t("to")}</span>
                         <div className="flex-1 h-11 rounded-lg border border-gray-200 bg-gray-50 flex items-center px-3 text-sm text-gray-500">
-                          {step1.isCurrentlyEmployed ? "Present" : "End date"}
+                          {step1.isCurrentlyEmployed ? t("present") : t("endDate")}
                         </div>
                       </div>
                     </div>
 
                     {/* Annual salary */}
                     <div className="space-y-1.5">
-                      <Label className="text-sm font-medium text-gray-800">Annual salary <span className="text-red-500">*</span></Label>
+                      <Label className="text-sm font-medium text-gray-800">{t("annualSalary")} <span className="text-red-500">*</span></Label>
                       <div className="flex gap-2">
                         <Select value={step1.salaryCurrency} onValueChange={(v) => setStep1((p) => ({ ...p, salaryCurrency: v }))}>
                           <SelectTrigger className="h-11 w-24 shrink-0">
@@ -1273,18 +1279,18 @@ export default function JobSeekerOnboardingPage() {
                           min="0"
                           value={step1.annualSalary}
                           onChange={(e) => setStep1((p) => ({ ...p, annualSalary: e.target.value }))}
-                          placeholder="Eg. 60,000"
+                          placeholder={t("salaryPlaceholder")}
                           className="flex-1 h-11 border-gray-300 focus:border-blue-500"
                         />
                       </div>
                       {step1.annualSalary && parseFloat(step1.annualSalary) < 1000 && (
-                        <p className="text-xs text-orange-500">Please make sure you&rsquo;ve entered correct salary</p>
+                        <p className="text-xs text-orange-500">{t("verifySalary")}</p>
                       )}
                     </div>
 
                     {/* Notice period */}
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium text-gray-800">Notice period <span className="text-red-500">*</span></Label>
+                      <Label className="text-sm font-medium text-gray-800">{t("noticePeriod")} <span className="text-red-500">*</span></Label>
                       <div className="flex flex-wrap gap-2">
                         {NOTICE_PERIODS.map((np) => (
                           <ChipButton
@@ -1299,20 +1305,20 @@ export default function JobSeekerOnboardingPage() {
 
                     {/* Key skills */}
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium text-gray-800">Key skills <span className="text-red-500">*</span></Label>
+                      <Label className="text-sm font-medium text-gray-800">{t("keySkills")} <span className="text-red-500">*</span></Label>
                       <TagAutocomplete
                         type="skills"
                         value={step1.skills}
                         onChange={(next) => setStep1((p) => ({ ...p, skills: next }))}
-                        placeholder={step1.skills.length === 0 ? "Type a skill and press Enter" : "Add more…"}
+                        placeholder={step1.skills.length === 0 ? t("typeSkillPlaceholder") : t("addMore")}
                         max={30}
                       />
-                      <p className="text-xs text-gray-500">Recruiters look for candidates with specific key skills</p>
+                      <p className="text-xs text-gray-500">{t("skillsHelpRecruiters")}</p>
                     </div>
 
                     {/* Industry */}
                     <div className="space-y-1.5" ref={industryRef}>
-                      <Label className="text-sm font-medium text-gray-800">Industry <span className="text-red-500">*</span></Label>
+                      <Label className="text-sm font-medium text-gray-800">{t("industry")} <span className="text-red-500">*</span></Label>
                       <div className="relative">
                         {step1.industry ? (
                           <div className="flex flex-wrap gap-2 p-3 rounded-lg border border-gray-300 min-h-[44px]">
@@ -1323,7 +1329,7 @@ export default function JobSeekerOnboardingPage() {
                             value={industrySearch}
                             onChange={(e) => { setIndustrySearch(e.target.value); setIndustryOpen(true); }}
                             onFocus={() => setIndustryOpen(true)}
-                            placeholder="Eg. IT Services & Consulting"
+                            placeholder={t("industryPlaceholder")}
                             className={`h-11 border-gray-300 focus:border-blue-500 ${!step1.industry ? "border-red-300" : ""}`}
                           />
                         )}
@@ -1346,16 +1352,16 @@ export default function JobSeekerOnboardingPage() {
 
                     {/* Department */}
                     <div className="space-y-1.5">
-                      <Label className="text-sm font-medium text-gray-800">Department</Label>
+                      <Label className="text-sm font-medium text-gray-800">{t("department")}</Label>
                       <Input
                         value={step1.department}
                         onChange={(e) => setStep1((p) => ({ ...p, department: e.target.value }))}
-                        placeholder="Select your department / area of expertise"
+                        placeholder={t("departmentPlaceholder")}
                         className="h-11 border-gray-300 focus:border-blue-500"
                       />
                       <div className="flex flex-wrap gap-2">
-                        <span className="text-xs text-gray-500">Suggestions:</span>
-                        {["Engineering - Software & QA", "UX, Design & Architecture", "Finance & Accounting"].filter((d) => d !== step1.department).map((d) => (
+                        <span className="text-xs text-gray-500">{t("suggestions")}:</span>
+                        {[t("dept1"), t("dept2"), t("dept3")].filter((d) => d !== step1.department).map((d) => (
                           <SuggestionChip key={d} label={d} onClick={() => setStep1((p) => ({ ...p, department: d }))} />
                         ))}
                       </div>
@@ -1363,22 +1369,22 @@ export default function JobSeekerOnboardingPage() {
 
                     {/* Role category */}
                     <div className="space-y-1.5">
-                      <Label className="text-sm font-medium text-gray-800">Role category <span className="text-red-500">*</span></Label>
+                      <Label className="text-sm font-medium text-gray-800">{t("roleCategory")} <span className="text-red-500">*</span></Label>
                       <Input
                         value={step1.roleCategory}
                         onChange={(e) => setStep1((p) => ({ ...p, roleCategory: e.target.value }))}
-                        placeholder="Eg. Software Development"
+                        placeholder={t("roleCategoryPlaceholder")}
                         className="h-11 border-gray-300 focus:border-blue-500"
                       />
                     </div>
 
                     {/* Job role */}
                     <div className="space-y-1.5">
-                      <Label className="text-sm font-medium text-gray-800">Job role <span className="text-red-500">*</span></Label>
+                      <Label className="text-sm font-medium text-gray-800">{t("jobRole")} <span className="text-red-500">*</span></Label>
                       <Input
                         value={step1.jobRole}
                         onChange={(e) => setStep1((p) => ({ ...p, jobRole: e.target.value }))}
-                        placeholder="Eg. Backend Developer"
+                        placeholder={t("jobRolePlaceholder")}
                         className="h-11 border-gray-300 focus:border-blue-500"
                       />
                     </div>
@@ -1391,13 +1397,13 @@ export default function JobSeekerOnboardingPage() {
             {step === 2 && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">Education details</h2>
-                  <p className="text-sm text-gray-500 mt-1">These details help recruiters identify your background</p>
+                  <h2 className="text-2xl font-bold text-gray-900">{t("educationDetails")}</h2>
+                  <p className="text-sm text-gray-500 mt-1">{t("educationDetailsDesc")}</p>
                 </div>
 
                 {/* Highest qualification */}
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-800">Highest qualification <span className="text-red-500">*</span></Label>
+                  <Label className="text-sm font-medium text-gray-800">{t("highestQualification")} <span className="text-red-500">*</span></Label>
                   {step2.qualification ? (
                     <div className="flex flex-wrap gap-2">
                       <TagChip
@@ -1423,7 +1429,7 @@ export default function JobSeekerOnboardingPage() {
                 {["graduation", "masters", "doctorate"].includes(step2.qualification) && (
                   <>
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium text-gray-800">Course <span className="text-red-500">*</span></Label>
+                      <Label className="text-sm font-medium text-gray-800">{t("course")} <span className="text-red-500">*</span></Label>
                       {step2.course && courseConfirmed ? (
                         <div className="flex flex-wrap gap-2 p-3 rounded-lg border border-gray-300 min-h-[44px]">
                           <TagChip label={step2.course} onRemove={() => { setStep2((p) => ({ ...p, course: "" })); setCourseConfirmed(false); }} />
@@ -1435,7 +1441,7 @@ export default function JobSeekerOnboardingPage() {
                               value={step2.course}
                               onChange={(e) => setStep2((p) => ({ ...p, course: e.target.value }))}
                               onKeyDown={(e) => { if (e.key === "Enter" && step2.course.trim()) { e.preventDefault(); setCourseConfirmed(true); } }}
-                              placeholder="Eg. B.Tech (type and press Enter or pick below)"
+                              placeholder={t("coursePlaceholder")}
                               autoComplete="off"
                               className="h-11 border-gray-300 focus:border-blue-500 pr-20"
                             />
@@ -1445,12 +1451,12 @@ export default function JobSeekerOnboardingPage() {
                                 onClick={() => setCourseConfirmed(true)}
                                 className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-blue-600 hover:text-blue-800 font-medium bg-blue-50 px-2 py-1 rounded"
                               >
-                                ✓ Confirm
+                                ✓ {t("confirm")}
                               </button>
                             )}
                           </div>
                           <div className="flex flex-wrap gap-2">
-                            <span className="text-xs text-gray-500">Suggestions</span>
+                            <span className="text-xs text-gray-500">{t("suggestions")}</span>
                             {(COURSE_SUGGESTIONS[step2.qualification] ?? []).filter((c) => !step2.course || c.toLowerCase().includes(step2.course.toLowerCase())).map((c) => (
                               <SuggestionChip key={c} label={c} onClick={() => { setStep2((p) => ({ ...p, course: c })); setCourseConfirmed(true); }} />
                             ))}
@@ -1462,7 +1468,7 @@ export default function JobSeekerOnboardingPage() {
                     {/* Course type */}
                     {step2.course && courseConfirmed && (
                       <div className="space-y-2">
-                        <Label className="text-sm font-medium text-gray-800">Course type <span className="text-red-500">*</span></Label>
+                        <Label className="text-sm font-medium text-gray-800">{t("courseType")} <span className="text-red-500">*</span></Label>
                         <div className="flex flex-wrap gap-2">
                           {COURSE_TYPES.map((ct) => (
                             step2.courseType === ct ? (
@@ -1478,7 +1484,7 @@ export default function JobSeekerOnboardingPage() {
                     {/* Specialization */}
                     {step2.courseType && (
                       <div className="space-y-1.5">
-                        <Label className="text-sm font-medium text-gray-800">Specialization <span className="text-red-500">*</span></Label>
+                        <Label className="text-sm font-medium text-gray-800">{t("specialization")} <span className="text-red-500">*</span></Label>
                         {step2.specialization && specConfirmed ? (
                           <div className="flex flex-wrap gap-2 p-3 rounded-lg border border-gray-300 min-h-[44px]">
                             <TagChip label={step2.specialization} onRemove={() => { setStep2((p) => ({ ...p, specialization: "" })); setSpecConfirmed(false); }} />
@@ -1488,7 +1494,7 @@ export default function JobSeekerOnboardingPage() {
                             type="specializations"
                             value={step2.specialization}
                             onChange={(v) => { setStep2((p) => ({ ...p, specialization: v })); setSpecConfirmed(true); }}
-                            placeholder="Eg. Computer Science"
+                            placeholder={t("specializationPlaceholder")}
                             inputClassName="h-11 border-gray-300 focus:border-blue-500"
                           />
                         )}
@@ -1498,11 +1504,11 @@ export default function JobSeekerOnboardingPage() {
                     {/* University */}
                     {step2.specialization && specConfirmed && (
                       <div className="space-y-1.5">
-                        <Label className="text-sm font-medium text-gray-800">University / Institute <span className="text-red-500">*</span></Label>
+                        <Label className="text-sm font-medium text-gray-800">{t("university")} <span className="text-red-500">*</span></Label>
                         <Input
                           value={step2.university}
                           onChange={(e) => setStep2((p) => ({ ...p, university: e.target.value }))}
-                          placeholder="Your university or institute"
+                          placeholder={t("universityPlaceholder")}
                           className="h-11 border-gray-300 focus:border-blue-500"
                         />
                       </div>
@@ -1512,7 +1518,7 @@ export default function JobSeekerOnboardingPage() {
                     {step2.university && (
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1.5">
-                          <Label className="text-sm font-medium text-gray-800">Starting year <span className="text-red-500">*</span></Label>
+                          <Label className="text-sm font-medium text-gray-800">{t("startingYear")} <span className="text-red-500">*</span></Label>
                           <div className="relative">
                             <Input
                               type="number"
@@ -1527,7 +1533,7 @@ export default function JobSeekerOnboardingPage() {
                           </div>
                         </div>
                         <div className="space-y-1.5">
-                          <Label className="text-sm font-medium text-gray-800">Passing year <span className="text-red-500">*</span></Label>
+                          <Label className="text-sm font-medium text-gray-800">{t("passingYear")} <span className="text-red-500">*</span></Label>
                           <div className="relative">
                             <Input
                               type="number"
@@ -1552,20 +1558,20 @@ export default function JobSeekerOnboardingPage() {
             {step === 3 && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">Add headline &amp; preferences</h2>
+                  <h2 className="text-2xl font-bold text-gray-900">{t("addHeadlinePreferences")}</h2>
                   <div className="flex items-center gap-2 mt-2">
                     <Sparkles className="w-4 h-4 text-blue-600" />
-                    <p className="text-sm text-gray-500">Make your profile stronger to get more relevant job recommendations</p>
+                    <p className="text-sm text-gray-500">{t("makeProfileStronger")}</p>
                   </div>
                 </div>
 
                 {/* Resume headline */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <Label className="text-sm font-medium text-gray-800">Resume headline</Label>
+                    <Label className="text-sm font-medium text-gray-800">{t("resumeHeadline")}</Label>
                     {linkedInPrefilled && step3.headline.trim() && (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-[11px] font-medium text-[#0A66C2]">
-                        <Linkedin className="w-3 h-3" /> From LinkedIn
+                        <Linkedin className="w-3 h-3" /> {t("fromLinkedIn")}
                       </span>
                     )}
                   </div>
@@ -1574,13 +1580,13 @@ export default function JobSeekerOnboardingPage() {
                     onChange={(e) => setStep3((p) => ({ ...p, headline: e.target.value }))}
                     rows={3}
                     maxLength={500}
-                    placeholder="Eg. Senior MERN Stack Developer with 5 years of experience..."
+                    placeholder={t("headlinePlaceholder")}
                     className="w-full px-4 py-3 rounded-lg border border-gray-300 text-sm text-gray-800 focus:outline-none focus:border-blue-500 resize-none"
                   />
                   {/* Suggestion */}
                   {(step1.jobTitle || step2.course) && !step3.headline && (
                     <div className="space-y-1">
-                      <p className="text-xs text-gray-500">Suggestions:</p>
+                      <p className="text-xs text-gray-500">{t("suggestions")}</p>
                       {[
                         `${step1.jobTitle || "Professional"}${step2.course ? ` with ${step2.course}` : ""}${step2.specialization ? ` in ${step2.specialization}` : ""}`,
                       ].map((s) => (
@@ -1599,19 +1605,19 @@ export default function JobSeekerOnboardingPage() {
 
                 {/* Preferred work locations */}
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-800">Preferred work locations <span className="text-gray-400 font-normal">(Maximum 10)</span></Label>
+                  <Label className="text-sm font-medium text-gray-800">{t("preferredLocations")} <span className="text-gray-400 font-normal">{t("maximum10")}</span></Label>
                   <TagAutocomplete
                     type="locations"
                     value={step3.preferredLocations}
                     onChange={(next) => setStep3((p) => ({ ...p, preferredLocations: next }))}
-                    placeholder="Eg. Dubai, Riyadh, Mumbai"
+                    placeholder={t("locationsPlaceholder")}
                     max={10}
                   />
                 </div>
 
                 {/* Preferred salary */}
                 <div className="space-y-1.5">
-                  <Label className="text-sm font-medium text-gray-800">Preferred salary</Label>
+                  <Label className="text-sm font-medium text-gray-800">{t("preferredSalary")}</Label>
                   <div className="flex items-center gap-2">
                     <Select value={step3.salaryCurrency} onValueChange={(v) => setStep3((p) => ({ ...p, salaryCurrency: v }))}>
                       <SelectTrigger className="h-11 w-24 shrink-0">
@@ -1628,16 +1634,16 @@ export default function JobSeekerOnboardingPage() {
                       min="0"
                       value={step3.preferredSalary}
                       onChange={(e) => setStep3((p) => ({ ...p, preferredSalary: e.target.value }))}
-                      placeholder="Eg. 120,000"
+                      placeholder={t("salaryPlaceholder")}
                       className="flex-1 h-11 border-gray-300 focus:border-blue-500"
                     />
-                    <span className="text-sm text-gray-500 shrink-0">per year</span>
+                    <span className="text-sm text-gray-500 shrink-0">{t("perYear")}</span>
                   </div>
                 </div>
 
                 {/* Gender */}
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-800">Gender</Label>
+                  <Label className="text-sm font-medium text-gray-800">{t("gender")}</Label>
                   <div className="flex flex-wrap gap-2">
                     {GENDERS.map((g) => (
                       <ChipButton
@@ -1668,7 +1674,7 @@ export default function JobSeekerOnboardingPage() {
                   onClick={() => { setStep((s) => s - 1); setSaveError(""); }}
                   className="text-sm text-gray-500 hover:text-gray-800 transition-colors"
                 >
-                  ← Back
+                  ← {t("back")}
                 </button>
               ) : <div />}
               <div className="flex items-center gap-3">
@@ -1682,7 +1688,7 @@ export default function JobSeekerOnboardingPage() {
                       await updateSession({ isOnboarded: true });
                       router.push(`/${locale ?? "en"}/job-seeker`);
                     } catch {
-                      setSaveError("Failed to skip. Please try again.");
+                      setSaveError(t("failedToSkip"));
                     } finally {
                       setSaving(false);
                     }
@@ -1690,7 +1696,7 @@ export default function JobSeekerOnboardingPage() {
                   disabled={saving}
                   className="text-sm text-gray-500 hover:text-gray-800 transition-colors underline underline-offset-2"
                 >
-                  Complete later
+                  {t("completeLater")}
                 </button>
                 {/* Skip button for fresher Employment step */}
                 {step === 1 && step0.workStatus === "fresher" && (
@@ -1699,7 +1705,7 @@ export default function JobSeekerOnboardingPage() {
                     onClick={() => setStep(2)}
                     className="text-sm text-blue-600 hover:text-blue-800"
                   >
-                    Skip
+                    {t("skip")}
                   </button>
                 )}
                 {step < 3 ? (
@@ -1709,7 +1715,7 @@ export default function JobSeekerOnboardingPage() {
                     className="rounded-full px-8 h-11 bg-blue-600 hover:bg-blue-700 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                    Save and continue
+                    {t("saveAndContinue")}
                   </Button>
                 ) : (
                   <Button
@@ -1718,7 +1724,7 @@ export default function JobSeekerOnboardingPage() {
                     className="rounded-full px-8 h-11 bg-blue-600 hover:bg-blue-700 text-white font-semibold disabled:opacity-50"
                   >
                     {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                    Submit
+                    {t("submit")}
                   </Button>
                 )}
               </div>
