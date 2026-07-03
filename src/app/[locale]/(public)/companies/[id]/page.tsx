@@ -4,6 +4,7 @@ import Job from "@/models/Job";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { Building2, MapPin, Globe, Users, Briefcase, CheckCircle2, Calendar, ExternalLink } from "lucide-react";
 import RelativeDate from "@/components/shared/RelativeDate";
 import CompanyReviews from "@/components/features/public/CompanyReviews";
@@ -28,6 +29,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function PublicCompanyDetailPage({ params }: PageProps) {
   const { locale, id } = await params;
+  const t = await getTranslations("publicCompanyDetail");
   await connectDB();
 
   const emp = await Employer.findOne({ _id: id, isActive: true })
@@ -80,19 +82,19 @@ export default async function PublicCompanyDetailPage({ params }: PageProps) {
               {employer.companySize ? (
                 <span className="flex items-center gap-1.5">
                   <Users className="w-4 h-4" />
-                  {employer.companySize as string} employees
+                  {t("employeesCount", { count: employer.companySize as string })}
                 </span>
               ) : null}
               {employer.foundedYear ? (
                 <span className="flex items-center gap-1.5">
                   <Calendar className="w-4 h-4" />
-                  Founded {employer.foundedYear as number}
+                  {t("founded", { year: employer.foundedYear as number })}
                 </span>
               ) : null}
               {employer.website ? (
                 <a href={employer.website as string} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-primary hover:underline">
                   <Globe className="w-4 h-4" />
-                  Website
+                  {t("website")}
                 </a>
               ) : null}
             </div>
@@ -101,7 +103,7 @@ export default async function PublicCompanyDetailPage({ params }: PageProps) {
 
         {employer.description ? (
           <div className="mt-6 pt-6 border-t border-border">
-            <h2 className="font-semibold text-foreground mb-2">About</h2>
+            <h2 className="font-semibold text-foreground mb-2">{t("about")}</h2>
             <p className="text-sm text-muted-foreground leading-relaxed">{employer.description as string}</p>
           </div>
         ) : null}
@@ -123,14 +125,14 @@ export default async function PublicCompanyDetailPage({ params }: PageProps) {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
             <Briefcase className="w-5 h-5" />
-            Open Positions ({jobCount})
+            {t("openPositionsCount", { count: jobCount })}
           </h2>
         </div>
 
         {jobs.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground bg-card border border-border rounded-xl">
             <Briefcase className="w-10 h-10 mx-auto mb-3 opacity-50" />
-            <p>No open positions at the moment</p>
+            <p>{t("noOpenPositions")}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -188,7 +190,7 @@ export default async function PublicCompanyDetailPage({ params }: PageProps) {
 
       <div className="mt-8 text-center">
         <Link href={`/${locale}/companies`} className="text-primary hover:underline text-sm">
-          ← Back to all companies
+          ← {t("backToAllCompanies")}
         </Link>
       </div>
     </main>

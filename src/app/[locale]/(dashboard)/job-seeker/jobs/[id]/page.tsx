@@ -7,6 +7,7 @@ import { MapPin, Briefcase, Clock, Users, Globe } from "lucide-react";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { getTranslations } from "next-intl/server";
 import EasyApply, { type EasyApplyScreeningQuestion } from "@/components/features/public/EasyApply";
 import TrackJobView from "@/components/features/public/TrackJobView";
 import { SimilarJobs } from "@/components/features/job-seeker/SimilarJobs";
@@ -58,12 +59,20 @@ function closesInDays(expiresAt?: Date | null): number | null {
   return days > 0 ? days : null;
 }
 
-function salaryLabel(salary: { min?: number; max?: number; currency?: string; isNegotiable?: boolean } | null) {
+function salaryLabel(
+  salary: { min?: number; max?: number; currency?: string; isNegotiable?: boolean } | null,
+  t: Awaited<ReturnType<typeof getTranslations>>
+) {
   if (!salary) return null;
-  if (salary.isNegotiable) return "Negotiable";
+  if (salary.isNegotiable) return t("negotiable");
   if (salary.min && salary.max)
-    return `${salary.currency ?? "AED"} ${salary.min.toLocaleString()} – ${salary.max.toLocaleString()} / month`;
-  if (salary.min) return `From ${salary.currency ?? "AED"} ${salary.min.toLocaleString()} / month`;
+    return t("salaryRangePerMonth", {
+      currency: salary.currency ?? "AED",
+      min: salary.min.toLocaleString(),
+      max: salary.max.toLocaleString(),
+    });
+  if (salary.min)
+    return t("fromSalaryPerMonth", { currency: salary.currency ?? "AED", min: salary.min.toLocaleString() });
   return null;
 }
 
@@ -101,6 +110,8 @@ function renderJobDescription(text: string) {
 
 export default async function DashboardJobDetailPage({ params }: PageProps) {
   const { locale, id } = await params;
+  const t = await getTranslations("jobSeekerJobDetail");
+  const tc = await getTranslations("common");
 
   await connectDB();
   const job = await Job.findById(id)
@@ -120,10 +131,10 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
     responseTimeDays = (emp as unknown as { responseTimeCommitment?: number })?.responseTimeCommitment ?? null;
   }
 
-  const salary = job.showSalary !== false ? salaryLabel(job.salary as Parameters<typeof salaryLabel>[0]) : null;
+  const salary = job.showSalary !== false ? salaryLabel(job.salary as Parameters<typeof salaryLabel>[0], t) : null;
   const daysLeft = closesInDays(job.expiresAt as Date | null);
   const locationLabel = job.location?.isRemote
-    ? "Remote"
+    ? t("remote")
     : [job.location?.city, job.location?.country].filter(Boolean).join(", ") || "Location flexible";
   const employerLocation = [employer?.city, employer?.country].filter(Boolean).join(", ");
 
@@ -173,7 +184,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
         <div className="border-b border-border bg-muted/20">
           <div className="mx-auto flex max-w-6xl items-center gap-2 px-4 py-3 text-xs text-muted-foreground">
             <Link href={`/${locale}/job-seeker/jobs`} className="hover:text-foreground transition-colors">
-              Job Search
+              {t("jobSearch")}
             </Link>
             <span>/</span>
             <span className="text-foreground truncate">{job.title}</span>
@@ -185,7 +196,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
             <div>
               <div>
                 <div className="inline-flex rounded-full border border-primary/10 bg-primary/[0.06] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
-                  Job detail
+                  {t("jobDetail")}
                 </div>
                 <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                   <div className="min-w-0">
@@ -206,7 +217,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                   <div className="flex items-center gap-2 shrink-0">
                     {(employer?.domainVerified || employer?.isAgentVerified) && (
                       <span className="shrink-0 rounded-full bg-green-500/10 px-3 py-1 text-xs font-medium text-green-600">
-                        Verified employer
+                        {t("verifiedEmployer")}
                       </span>
                     )}
                     <ShareJob
@@ -232,13 +243,13 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                   {job.requirements?.experienceMin != null && (
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/90 px-3 py-1.5">
                       <Briefcase className="h-4 w-4" />
-                      {job.requirements.experienceMin}–{job.requirements.experienceMax ?? "+"} years experience
+                      {job.requirements.experienceMin}–{job.requirements.experienceMax ?? "+"} {t("yearsExperience")}
                     </span>
                   )}
                   {(job.vacancies ?? 0) > 1 && (
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/90 px-3 py-1.5">
                       <Users className="h-4 w-4" />
-                      {job.vacancies} openings
+                      {job.vacancies} {t("openings")}
                     </span>
                   )}
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/90 px-3 py-1.5">
@@ -253,7 +264,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                           : "bg-yellow-500/10 text-yellow-700"
                       }`}
                     >
-                      Closes in {daysLeft} day{daysLeft === 1 ? "" : "s"}
+                      {daysLeft === 1 ? t("closesInDay") : t("closesInDays", { count: daysLeft })}
                     </span>
                   )}
                 </div>
@@ -264,8 +275,8 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
           <div className="mt-5 sm:mt-6 grid gap-5 sm:gap-6 lg:grid-cols-[minmax(0,1.7fr)_320px]">
             <div className="space-y-5 sm:space-y-6">
               <section className="card-base rounded-xl sm:rounded-[28px] p-4 sm:p-6">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Overview</div>
-                <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">What this role covers</h2>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("overview")}</div>
+                <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">{t("whatThisRoleCovers")}</h2>
                 <div className="mt-4 space-y-2">
                   {renderJobDescription(job.description ?? "")}
                 </div>
@@ -274,8 +285,8 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
               {/* Responsibilities */}
               {job.responsibilities?.length > 0 && (
                 <section className="card-base rounded-xl sm:rounded-[28px] p-4 sm:p-6">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Responsibilities</div>
-                  <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">What you&apos;ll do</h2>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("responsibilities")}</div>
+                  <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">{t("whatYouWillDo")}</h2>
                   <ul className="mt-4 space-y-2">
                     {job.responsibilities.map((r: string, i: number) => (
                       <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
@@ -290,8 +301,8 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
               {/* Qualifications */}
               {job.qualifications?.length > 0 && (
                 <section className="card-base rounded-xl sm:rounded-[28px] p-4 sm:p-6">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Qualifications</div>
-                  <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">What we&apos;re looking for</h2>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("qualifications")}</div>
+                  <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">{t("whatWereLookingFor")}</h2>
                   <ul className="mt-4 space-y-2">
                     {job.qualifications.map((q: string, i: number) => (
                       <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
@@ -306,8 +317,8 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
               {/* Benefits */}
               {job.benefits?.length > 0 && (
                 <section className="card-base rounded-xl sm:rounded-[28px] p-4 sm:p-6">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Benefits</div>
-                  <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">What you&apos;ll get</h2>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("benefits")}</div>
+                  <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">{t("whatYouWillGet")}</h2>
                   <ul className="mt-4 space-y-2">
                     {job.benefits.map((b: string, i: number) => (
                       <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
@@ -322,8 +333,8 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
               {/* Learning Outcomes */}
               {job.learningOutcomes?.length > 0 && (
                 <section className="card-base rounded-xl sm:rounded-[28px] p-4 sm:p-6">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Learning</div>
-                  <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">What you&apos;ll learn</h2>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("learning")}</div>
+                  <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">{t("whatYouWillLearn")}</h2>
                   <ul className="mt-4 space-y-2">
                     {job.learningOutcomes.map((l: string, i: number) => (
                       <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
@@ -340,13 +351,13 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
 
               {job.requirements && (
                 <section className="card-base rounded-xl sm:rounded-[28px] p-4 sm:p-6">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Requirements</div>
-                  <h2 className="mt-1 text-lg sm:text-xl font-semibold tracking-tight text-foreground">What the employer is looking for</h2>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("requirements")}</div>
+                  <h2 className="mt-1 text-lg sm:text-xl font-semibold tracking-tight text-foreground">{t("whatTheEmployerIsLookingFor")}</h2>
 
                   <div className="mt-5 space-y-5">
                     {job.requirements.skills?.length > 0 && (
                       <div>
-                        <p className="mb-2 text-sm font-medium text-foreground">Skills</p>
+                        <p className="mb-2 text-sm font-medium text-foreground">{t("skills")}</p>
                         <div className="flex flex-wrap gap-2">
                           {job.requirements.skills.map((s: string) => (
                             <span key={s} className="rounded-full border border-border/60 bg-muted/20 px-3 py-1 text-sm text-muted-foreground">
@@ -358,35 +369,35 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                     )}
 
                     <div>
-                      <p className="mb-1 text-sm font-medium text-foreground">Experience</p>
+                      <p className="mb-1 text-sm font-medium text-foreground">{t("experience")}</p>
                       <p className="text-sm text-muted-foreground">
                         {job.requirements.experienceMin != null
                           ? `${job.requirements.experienceMin}${
                               job.requirements.experienceMax != null
                                 ? `–${job.requirements.experienceMax}`
                                 : "+"
-                            } years`
-                          : "Not specified"}
+                            } ${t("experience")}`
+                          : t("notSpecified")}
                       </p>
                     </div>
 
                     {job.requirements.education && (
                       <div>
-                        <p className="mb-1 text-sm font-medium text-foreground">Education</p>
+                        <p className="mb-1 text-sm font-medium text-foreground">{t("education")}</p>
                         <p className="text-sm text-muted-foreground">{job.requirements.education}</p>
                       </div>
                     )}
 
                     {employer?.industry && (
                       <div>
-                        <p className="mb-1 text-sm font-medium text-foreground">Industry</p>
+                        <p className="mb-1 text-sm font-medium text-foreground">{t("industry")}</p>
                         <p className="text-sm text-muted-foreground">{employer.industry}</p>
                       </div>
                     )}
 
                     {job.requirements.languages?.length > 0 && (
                       <div>
-                        <p className="mb-2 text-sm font-medium text-foreground">Languages</p>
+                        <p className="mb-2 text-sm font-medium text-foreground">{t("languages")}</p>
                         <div className="flex flex-wrap gap-2">
                           {job.requirements.languages.map((l: string) => (
                             <span
@@ -405,8 +416,8 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
 
               {job.tags?.length > 0 && (
                 <section className="card-base rounded-xl sm:rounded-[28px] p-4 sm:p-6">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Search terms</div>
-                  <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">Related tags</h2>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("searchTerms")}</div>
+                  <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">{t("relatedTags")}</h2>
                   <div className="mt-4 flex flex-wrap gap-2">
                     {job.tags.map((t: string) => (
                       <Link
@@ -425,14 +436,14 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
             <div className="space-y-4 sm:space-y-5 lg:self-start">
               <aside className="rounded-xl sm:rounded-[26px] border border-border/70 bg-background/95 p-4 sm:p-5 shadow-[0_16px_40px_rgba(15,23,42,0.07)]">
                 <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Quick apply</div>
-                  <h2 className="mt-1 text-lg font-semibold tracking-tight text-foreground">Apply with the profile you already built.</h2>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("quickApply")}</div>
+                  <h2 className="mt-1 text-lg font-semibold tracking-tight text-foreground">{t("applyWithYourProfile")}</h2>
                 </div>
                 <div className="mt-4 space-y-2 rounded-xl sm:rounded-[22px] border border-border/60 bg-card px-4 py-4 text-sm text-muted-foreground">
-                  <p>Use your saved profile details and attach your CV automatically when available.</p>
+                  <p>{t("useYourSavedProfile")}</p>
                   {responseTimeDays ? (
                     <p className="font-medium text-green-600">
-                      Typically responds within {responseTimeDays} day{responseTimeDays > 1 ? "s" : ""}.
+                      {responseTimeDays === 1 ? t("typicallyRespondsWithinDay") : t("typicallyRespondsWithinDays", { count: responseTimeDays })}
                     </p>
                   ) : null}
                 </div>
@@ -447,8 +458,8 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
               </aside>
 
               <section className="card-base rounded-xl sm:rounded-[28px] p-4 sm:p-5">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Employer profile</div>
-                <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">About the employer</h3>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("employerProfile")}</div>
+                <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">{t("aboutTheEmployer")}</h3>
                 <div className="mt-4 space-y-3 text-sm text-muted-foreground">
                   {employer?._id ? (
                     <Link
@@ -460,7 +471,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                   ) : (
                     <p className="font-medium text-foreground">{employer?.companyName}</p>
                   )}
-                  {employer?.industry && <p>Industry: {employer.industry}</p>}
+                  {employer?.industry && <p>{t("industryLabel")}: {employer.industry}</p>}
                   {employerLocation && (
                     <p className="flex items-center gap-1.5">
                       <MapPin className="h-3.5 w-3.5" />
@@ -474,7 +485,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                       rel="noopener noreferrer"
                       className="flex items-center gap-1.5 text-primary hover:underline"
                     >
-                      <Globe className="h-3.5 w-3.5" /> Website
+                      <Globe className="h-3.5 w-3.5" /> {t("website")}
                     </a>
                   )}
                 </div>
@@ -483,7 +494,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                     href={`/${locale}/job-seeker/companies/${String(employer._id)}`}
                     className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-primary transition-colors hover:text-primary/80"
                   >
-                    View company profile
+                    {t("viewCompanyProfile")}
                   </Link>
                 ) : null}
               </section>
@@ -492,7 +503,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                 href={`/${locale}/job-seeker/jobs`}
                 className="block rounded-xl sm:rounded-[22px] border border-border/70 bg-background/90 px-4 py-3 text-center text-sm font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
               >
-                Back to Job Search
+                {tc("back")} {t("jobSearch")}
               </Link>
             </div>
           </div>

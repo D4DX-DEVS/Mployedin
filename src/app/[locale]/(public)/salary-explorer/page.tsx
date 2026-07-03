@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { TrendingUp, DollarSign, MapPin, Briefcase, Search } from "lucide-react";
 
 interface SalaryData {
@@ -10,6 +11,7 @@ interface SalaryData {
 }
 
 export default function SalaryExplorerPage() {
+  const t = useTranslations("salaryExplorer");
   const [data, setData] = useState<SalaryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState("");
@@ -46,9 +48,9 @@ export default function SalaryExplorerPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-foreground mb-2 flex items-center gap-3">
           <DollarSign className="w-8 h-8 text-primary" />
-          Salary Explorer
+          {t("title")}
         </h1>
-        <p className="text-muted-foreground">Discover salary ranges by role, location, and industry</p>
+        <p className="text-muted-foreground">{t("subtitle")}</p>
       </div>
 
       {/* Search */}
@@ -59,7 +61,7 @@ export default function SalaryExplorerPage() {
             type="text"
             value={role}
             onChange={(e) => setRole(e.target.value)}
-            placeholder="Job title (e.g. Software Engineer)"
+            placeholder={t("jobTitlePlaceholder")}
             className="w-full pl-10 pr-4 py-2.5 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
@@ -69,20 +71,20 @@ export default function SalaryExplorerPage() {
             type="text"
             value={country}
             onChange={(e) => setCountry(e.target.value)}
-            placeholder="Country"
+            placeholder={t("countryPlaceholder")}
             className="w-full pl-10 pr-4 py-2.5 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
         <button type="submit" className="px-6 py-2.5 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors flex items-center gap-2">
           <Search className="w-4 h-4" />
-          Explore
+          {t("explore")}
         </button>
       </form>
 
       {loading ? (
-        <div className="text-center py-16 text-muted-foreground">Loading salary data...</div>
+        <div className="text-center py-16 text-muted-foreground">{t("loadingData")}</div>
       ) : !data ? (
-        <div className="text-center py-16 text-muted-foreground">No data available</div>
+        <div className="text-center py-16 text-muted-foreground">{t("noDataAvailable")}</div>
       ) : (
         <div className="space-y-8">
           {/* Salary Overview Cards */}
@@ -90,11 +92,11 @@ export default function SalaryExplorerPage() {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {data.salaryOverview.map((item) => (
                 <div key={item._id.currency} className="p-5 bg-card border border-border rounded-xl">
-                  <p className="text-sm text-muted-foreground mb-1">{item._id.currency} — {item.count} jobs</p>
+                  <p className="text-sm text-muted-foreground mb-1">{item._id.currency} {t("jobsCountSuffix", { count: item.count })}</p>
                   <p className="text-xl font-bold text-foreground">
                     {fmt(item.avgMin, item._id.currency)} – {fmt(item.avgMax, item._id.currency)}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">Average monthly range</p>
+                  <p className="text-xs text-muted-foreground mt-1">{t("averageMonthlyRange")}</p>
                 </div>
               ))}
             </div>
@@ -105,16 +107,16 @@ export default function SalaryExplorerPage() {
             <div>
               <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-primary" />
-                Top Paying Roles
+                {t("topPayingRoles")}
               </h2>
               <div className="bg-card border border-border rounded-xl overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead className="bg-muted/50">
                       <tr>
-                        <th className="px-4 py-3 text-left font-medium text-muted-foreground">Role</th>
-                        <th className="px-4 py-3 text-left font-medium text-muted-foreground">Avg Range (Monthly)</th>
-                        <th className="px-4 py-3 text-left font-medium text-muted-foreground">Jobs</th>
+                        <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t("roleHeader")}</th>
+                        <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t("avgRangeHeader")}</th>
+                        <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t("jobsHeader")}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
@@ -139,7 +141,7 @@ export default function SalaryExplorerPage() {
             <div>
               <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
                 <MapPin className="w-5 h-5 text-primary" />
-                Salaries by Country
+                {t("countriesSalaries")}
               </h2>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {data.byCountry.map((item, i) => (
@@ -148,7 +150,7 @@ export default function SalaryExplorerPage() {
                     <p className="text-sm text-green-600 dark:text-green-400 mt-1">
                       {fmt(item.avgMin, item.currency)} – {fmt(item.avgMax, item.currency)}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{item.count} jobs</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{t("jobsCount", { count: item.count })}</p>
                   </div>
                 ))}
               </div>

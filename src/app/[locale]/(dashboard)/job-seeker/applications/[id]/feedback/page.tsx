@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Star, CheckCircle, Send, Loader2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,6 +18,8 @@ interface ApplicationInfo {
 export default function ApplicationFeedbackPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const t = useTranslations("applicationFeedback");
+  const tc = useTranslations("common");
 
   const [app, setApp] = useState<ApplicationInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -37,7 +40,7 @@ export default function ApplicationFeedbackPage() {
       .then((data) => {
         setApp(data.application ?? data);
       })
-      .catch(() => setError("Could not load application details."))
+      .catch(() => setError(t("errorLoadingDetails")))
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -67,7 +70,7 @@ export default function ApplicationFeedbackPage() {
       }
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error ?? "Submission failed");
+        throw new Error(err.error ?? t("submissionFailed"));
       }
       setSubmitted(true);
     } catch (e) {
@@ -80,7 +83,7 @@ export default function ApplicationFeedbackPage() {
   const TERMINAL_STATUSES = ["hired", "rejected", "withdrawn"];
   const canSubmit = app ? TERMINAL_STATUSES.includes(app.status) : false;
 
-  const starLabels = ["", "Poor", "Fair", "Good", "Great", "Excellent"];
+  const starLabels = ["", t("starPoor"), t("starFair"), t("starGood"), t("starGreat"), t("starExcellent")];
 
   if (loading) {
     return (
@@ -98,12 +101,12 @@ export default function ApplicationFeedbackPage() {
       <div className="page-container">
         <div className="max-w-lg mx-auto text-center py-16 space-y-4">
           <AlertTriangle className="w-12 h-12 text-muted-foreground mx-auto" />
-          <h2 className="text-lg font-semibold">Feedback Not Available</h2>
+          <h2 className="text-lg font-semibold">{t("feedbackNotAvailable")}</h2>
           <p className="text-sm text-muted-foreground">
-            Feedback can only be submitted after a final decision (hired, rejected, or withdrawn).
+            {t("feedbackOnlyAfterDecision")}
           </p>
           <Button variant="outline" onClick={() => router.push(`../applications`)}>
-            Back to Applications
+            {t("backToApplications")}
           </Button>
         </div>
       </div>
@@ -120,13 +123,12 @@ export default function ApplicationFeedbackPage() {
           <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/40 flex items-center justify-center mx-auto">
             <CheckCircle className="w-8 h-8 text-emerald-600" />
           </div>
-          <h2 className="text-xl font-semibold">Thank You!</h2>
+          <h2 className="text-xl font-semibold">{t("thankYou")}</h2>
           <p className="text-sm text-muted-foreground">
-            Your feedback for <strong>{jobTitle}</strong> at <strong>{companyName}</strong> has been
-            recorded. Your input helps improve the hiring process for future candidates.
+            {t("feedbackRecorded", { jobTitle, companyName })}
           </p>
           <Button variant="outline" onClick={() => router.push(`../applications`)}>
-            Back to Applications
+            {t("backToApplications")}
           </Button>
         </div>
       </div>
@@ -136,15 +138,15 @@ export default function ApplicationFeedbackPage() {
   return (
     <div className="page-container">
       <PageHeader
-        title="Rate Your Experience"
-        description={`Application for ${jobTitle} at ${companyName}`}
+        title={t("rateYourExperience")}
+        description={t("applicationForPosition", { jobTitle, companyName })}
       />
 
       <div className="max-w-lg space-y-6">
         {/* Star rating */}
         <div className="card-base text-center space-y-4">
           <p className="text-sm font-medium text-foreground/80">
-            How was your overall experience with the hiring process?
+            {t("overallExperienceQuestion")}
           </p>
 
           <div className="flex justify-center gap-2">
@@ -156,7 +158,7 @@ export default function ApplicationFeedbackPage() {
                 onMouseEnter={() => setHovered(star)}
                 onMouseLeave={() => setHovered(0)}
                 className="transition-transform hover:scale-110 focus:outline-none"
-                aria-label={`Rate ${star} stars`}
+                aria-label={t("rateStarsAria", { count: star })}
               >
                 <Star
                   className={`w-10 h-10 transition-colors ${
@@ -178,11 +180,11 @@ export default function ApplicationFeedbackPage() {
 
         {/* Aspect Ratings */}
         <div className="card-base space-y-3">
-          <p className="text-sm font-medium text-foreground/80">Rate specific aspects (optional)</p>
+          <p className="text-sm font-medium text-foreground/80">{t("rateAspectsOptional")}</p>
           {[
-            { label: "Communication", value: communicationRating, set: setCommunicationRating },
-            { label: "Hiring Process", value: processRating, set: setProcessRating },
-            { label: "Timeliness", value: timelinessRating, set: setTimelinessRating },
+            { label: t("communication"), value: communicationRating, set: setCommunicationRating },
+            { label: t("hiringProcess"), value: processRating, set: setProcessRating },
+            { label: t("timeliness"), value: timelinessRating, set: setTimelinessRating },
           ].map(({ label, value, set }) => (
             <div key={label} className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">{label}</span>
@@ -196,10 +198,10 @@ export default function ApplicationFeedbackPage() {
             </div>
           ))}
           <div className="pt-2 border-t border-border">
-            <p className="text-sm text-muted-foreground mb-2">Would you recommend this employer?</p>
+            <p className="text-sm text-muted-foreground mb-2">{t("recommendEmployerQuestion")}</p>
             <div className="flex gap-2">
-              <button type="button" onClick={() => setWouldRecommend(true)} className={`px-3 py-1.5 rounded-lg border text-sm ${wouldRecommend === true ? "border-emerald-500 bg-emerald-500/10 text-emerald-600" : "border-border hover:bg-muted"}`}>👍 Yes</button>
-              <button type="button" onClick={() => setWouldRecommend(false)} className={`px-3 py-1.5 rounded-lg border text-sm ${wouldRecommend === false ? "border-red-500 bg-red-500/10 text-red-600" : "border-border hover:bg-muted"}`}>👎 No</button>
+              <button type="button" onClick={() => setWouldRecommend(true)} className={`px-3 py-1.5 rounded-lg border text-sm ${wouldRecommend === true ? "border-emerald-500 bg-emerald-500/10 text-emerald-600" : "border-border hover:bg-muted"}`}>👍 {tc("yes")}</button>
+              <button type="button" onClick={() => setWouldRecommend(false)} className={`px-3 py-1.5 rounded-lg border text-sm ${wouldRecommend === false ? "border-red-500 bg-red-500/10 text-red-600" : "border-border hover:bg-muted"}`}>👎 {tc("no")}</button>
             </div>
           </div>
         </div>
@@ -207,10 +209,10 @@ export default function ApplicationFeedbackPage() {
         {/* Comment */}
         <div className="space-y-2">
           <label className="text-sm font-medium">
-            Additional comments <span className="text-muted-foreground font-normal">(optional)</span>
+            {t("additionalComments")} <span className="text-muted-foreground font-normal">{t("optional")}</span>
           </label>
           <Textarea
-            placeholder="Tell us about your experience — what went well, what could improve, how the employer communicated..."
+            placeholder={t("commentPlaceholder")}
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             maxLength={500}
@@ -234,14 +236,14 @@ export default function ApplicationFeedbackPage() {
             className="gap-2"
           >
             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-            Submit Feedback
+            {t("submitFeedback")}
           </Button>
           <Button
             variant="ghost"
             onClick={() => router.push(`../applications`)}
             disabled={submitting}
           >
-            Skip
+            {t("skip")}
           </Button>
         </div>
       </div>

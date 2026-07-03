@@ -3,6 +3,7 @@ import Employer from "@/models/Employer";
 import Job from "@/models/Job";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { Building2, MapPin, Users, Briefcase, CheckCircle2 } from "lucide-react";
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://mployedin-8a4rc.ondigitalocean.app";
@@ -47,6 +48,8 @@ interface PageProps {
 
 export default async function PublicCompaniesPage({ params, searchParams }: PageProps) {
   const { locale } = await params;
+  const t = await getTranslations("publicCompanies");
+  const tc = await getTranslations("common");
   const sp = await searchParams;
   const page = Math.max(1, parseInt(sp.page ?? "1"));
   const limit = 12;
@@ -88,8 +91,8 @@ export default async function PublicCompaniesPage({ params, searchParams }: Page
   return (
     <main className="container mx-auto px-4 py-8 max-w-7xl">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground mb-2">Companies</h1>
-        <p className="text-muted-foreground">Discover top employers hiring on mployedin</p>
+        <h1 className="text-3xl font-bold text-foreground mb-2">{t("title")}</h1>
+        <p className="text-muted-foreground">{t("subtitle")}</p>
       </div>
 
       {/* Search */}
@@ -98,18 +101,18 @@ export default async function PublicCompaniesPage({ params, searchParams }: Page
           type="text"
           name="search"
           defaultValue={search}
-          placeholder="Search companies..."
+          placeholder={t("searchPlaceholder")}
           className="flex-1 min-w-[200px] px-4 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
         />
         <input
           type="text"
           name="industry"
           defaultValue={industry}
-          placeholder="Filter by industry..."
+          placeholder={t("industryPlaceholder")}
           className="w-[200px] px-4 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
         />
         <button type="submit" className="px-6 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors">
-          Search
+          {tc("search")}
         </button>
       </form>
 
@@ -117,7 +120,7 @@ export default async function PublicCompaniesPage({ params, searchParams }: Page
       {employers.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <Building2 className="w-12 h-12 mx-auto mb-4 opacity-50" />
-          <p className="text-lg">No companies found</p>
+          <p className="text-lg">{t("noCompaniesFound")}</p>
         </div>
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -165,7 +168,7 @@ export default async function PublicCompaniesPage({ params, searchParams }: Page
                 ) : null}
                 <span className="flex items-center gap-1">
                   <Briefcase className="w-3.5 h-3.5" />
-                  {jobCountMap.get(String(emp._id)) ?? 0} open jobs
+                  {t("openJobsCount", { count: jobCountMap.get(String(emp._id)) ?? 0 })}
                 </span>
               </div>
 
@@ -187,18 +190,18 @@ export default async function PublicCompaniesPage({ params, searchParams }: Page
               href={`/${locale}/companies?page=${page - 1}${search ? `&search=${search}` : ""}${industry ? `&industry=${industry}` : ""}`}
               className="px-4 py-2 border border-border rounded-lg hover:bg-accent transition-colors"
             >
-              Previous
+              {t("previous")}
             </Link>
           )}
           <span className="px-4 py-2 text-sm text-muted-foreground">
-            Page {page} of {totalPages}
+            {tc("page")} {page} {tc("of")} {totalPages}
           </span>
           {page < totalPages && (
             <Link
               href={`/${locale}/companies?page=${page + 1}${search ? `&search=${search}` : ""}${industry ? `&industry=${industry}` : ""}`}
               className="px-4 py-2 border border-border rounded-lg hover:bg-accent transition-colors"
             >
-              Next
+              {tc("next")}
             </Link>
           )}
         </div>

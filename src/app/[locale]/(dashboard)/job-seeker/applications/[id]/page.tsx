@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   ArrowLeft,
   Building2,
@@ -72,20 +73,15 @@ interface OfferItem {
   expiresAt?: string;
 }
 
-const DOC_TYPES = [
-  { value: "resume", label: "Resume / CV" },
-  { value: "cover_letter", label: "Cover Letter" },
-  { value: "portfolio", label: "Portfolio" },
-  { value: "certification", label: "Certification" },
-  { value: "reference", label: "Reference Letter" },
-  { value: "id_document", label: "ID Document" },
-  { value: "other", label: "Other" },
-];
+// Note: DOC_TYPES labels will be populated from translations
+// The .value is sent to the API as-is (stays English)
 
 // ── Main Page ──────────────────────────────────────────────────────
 export default function ApplicationDetailPage() {
   const { id, locale } = useParams<{ id: string; locale: string }>();
   const router = useRouter();
+  const t = useTranslations("applicationDetail");
+  const tc = useTranslations("common");
   const [app, setApp] = useState<ApplicationDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -98,7 +94,7 @@ export default function ApplicationDetailPage() {
       const data = await res.json();
       setApp(data.application ?? data);
     } catch {
-      setError("Could not load application details.");
+      setError(t("errorLoadingDetails"));
     } finally {
       setLoading(false);
     }
@@ -127,9 +123,9 @@ export default function ApplicationDetailPage() {
   if (error || !app) {
     return (
       <div className="page-container max-w-3xl text-center py-16">
-        <p className="text-muted-foreground">{error || "Application not found"}</p>
+        <p className="text-muted-foreground">{error || t("applicationNotFound")}</p>
         <Button variant="outline" className="mt-4" onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4 mr-2" /> Go Back
+          <ArrowLeft className="h-4 w-4 mr-2" /> {tc("back")}
         </Button>
       </div>
     );
@@ -148,7 +144,7 @@ export default function ApplicationDetailPage() {
         className="gap-1.5 -ml-2 text-muted-foreground hover:text-foreground"
         onClick={() => router.push(`/${locale}/job-seeker/applications`)}
       >
-        <ArrowLeft className="h-4 w-4" /> Back to Applications
+        <ArrowLeft className="h-4 w-4" /> {t("backToApplications")}
       </Button>
 
       {/* ── Header Card ─────────────────────────────────────────── */}
@@ -162,8 +158,8 @@ export default function ApplicationDetailPage() {
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-semibold truncate">{job?.title ?? "Position"}</h1>
-            <p className="text-sm text-muted-foreground">{employer?.companyName ?? "Company"}</p>
+            <h1 className="text-xl font-semibold truncate">{job?.title ?? t("position")}</h1>
+            <p className="text-sm text-muted-foreground">{employer?.companyName ?? t("company")}</p>
           </div>
           <StatusBadge status={app.status} />
         </div>
@@ -171,11 +167,11 @@ export default function ApplicationDetailPage() {
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
             <Calendar className="h-3 w-3" />
-            Applied {new Date(app.appliedAt).toLocaleDateString()}
+            {t("applied")} {new Date(app.appliedAt).toLocaleDateString()}
           </span>
           {(() => {
             const loc = job?.location?.isRemote
-              ? "Remote"
+              ? t("remote")
               : [job?.location?.city, job?.location?.country].filter(Boolean).join(", ");
             return loc ? (
               <span className="flex items-center gap-1">
@@ -196,7 +192,7 @@ export default function ApplicationDetailPage() {
               "font-medium",
               app.aiMatchScore >= 70 ? "text-emerald-600" : app.aiMatchScore >= 50 ? "text-amber-600" : "text-muted-foreground"
             )}>
-              {app.aiMatchScore}% match
+              {app.aiMatchScore}% {t("match")}
             </span>
           )}
         </div>
@@ -208,7 +204,7 @@ export default function ApplicationDetailPage() {
             className="gap-1.5"
             onClick={() => router.push(`/${locale}/job-seeker/jobs/${job._id}`)}
           >
-            <ExternalLink className="h-3.5 w-3.5" /> View job posting
+            <ExternalLink className="h-3.5 w-3.5" /> {t("viewJobPosting")}
           </Button>
         )}
 
@@ -229,7 +225,7 @@ export default function ApplicationDetailPage() {
       {app.interviews?.length > 0 && (
         <section className="space-y-3">
           <h2 className="text-base font-semibold flex items-center gap-2">
-            <Video className="h-4 w-4" /> Interviews ({app.interviews.length})
+            <Video className="h-4 w-4" /> {t("interviews")} ({app.interviews.length})
           </h2>
           {app.interviews.map((iv) => (
             <InterviewActionCard key={iv._id} interview={iv} onUpdated={fetchApplication} />
@@ -241,7 +237,7 @@ export default function ApplicationDetailPage() {
       {app.offers?.length > 0 && (
         <section className="space-y-3">
           <h2 className="text-base font-semibold flex items-center gap-2">
-            <ThumbsUp className="h-4 w-4" /> Offers ({app.offers.length})
+            <ThumbsUp className="h-4 w-4" /> {t("offers")} ({app.offers.length})
           </h2>
           {app.offers.map((offer) => (
             <OfferActionCard key={offer._id} offer={offer} onUpdated={fetchApplication} />
@@ -255,6 +251,8 @@ export default function ApplicationDetailPage() {
         documents={app.documents ?? []}
         isActive={isActive}
         onUpdated={fetchApplication}
+        t={t}
+        tc={tc}
       />
     </div>
   );
@@ -262,6 +260,7 @@ export default function ApplicationDetailPage() {
 
 // ── Interview Action Card ──────────────────────────────────────────
 function InterviewActionCard({ interview: iv, onUpdated }: { interview: InterviewItem; onUpdated: () => void }) {
+  const t = useTranslations("applicationDetail");
   const [responding, setResponding] = useState(false);
   const [showReschedule, setShowReschedule] = useState(false);
   const [rescheduleNote, setRescheduleNote] = useState("");
@@ -307,7 +306,7 @@ function InterviewActionCard({ interview: iv, onUpdated }: { interview: Intervie
             iv.candidateResponse === "declined" && "bg-red-50 text-red-700 border-red-200",
             iv.candidateResponse === "reschedule_requested" && "bg-amber-50 text-amber-700 border-amber-200",
           )}>
-            {iv.candidateResponse === "confirmed" ? "Confirmed" : iv.candidateResponse === "declined" ? "Declined" : "Reschedule Requested"}
+            {iv.candidateResponse === "confirmed" ? t("confirmed") : iv.candidateResponse === "declined" ? t("declined") : t("rescheduleRequested")}
           </Badge>
         )}
       </div>
@@ -319,11 +318,11 @@ function InterviewActionCard({ interview: iv, onUpdated }: { interview: Intervie
         </span>
         <span className="flex items-center gap-1">
           <Clock className="h-3 w-3" />
-          {new Date(iv.scheduledAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })} · {iv.duration}min
+          {new Date(iv.scheduledAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })} · {iv.duration}{t("minSuffix")}
         </span>
         {iv.meetLink && (
           <a href={iv.meetLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-primary hover:underline">
-            <ExternalLink className="h-3 w-3" /> Join Meeting
+            <ExternalLink className="h-3 w-3" /> {t("joinMeeting")}
           </a>
         )}
         {iv.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{iv.location}</span>}
@@ -335,7 +334,7 @@ function InterviewActionCard({ interview: iv, onUpdated }: { interview: Intervie
 
       {iv.outcome && (
         <div className="text-xs">
-          Outcome: <span className="font-medium capitalize">{iv.outcome.replace("_", " ")}</span>
+          {t("outcome")}: <span className="font-medium capitalize">{iv.outcome.replace("_", " ")}</span>
         </div>
       )}
 
@@ -349,7 +348,7 @@ function InterviewActionCard({ interview: iv, onUpdated }: { interview: Intervie
             disabled={responding}
           >
             {responding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-            Confirm
+            {t("confirm")}
           </Button>
           <Button
             size="sm"
@@ -358,7 +357,7 @@ function InterviewActionCard({ interview: iv, onUpdated }: { interview: Intervie
             onClick={() => setShowReschedule(true)}
             disabled={responding}
           >
-            <RotateCcw className="h-3.5 w-3.5" /> Reschedule
+            <RotateCcw className="h-3.5 w-3.5" /> {t("reschedule")}
           </Button>
           <Button
             size="sm"
@@ -367,7 +366,7 @@ function InterviewActionCard({ interview: iv, onUpdated }: { interview: Intervie
             onClick={() => handleRespond("declined")}
             disabled={responding}
           >
-            <X className="h-3.5 w-3.5" /> Decline
+            <X className="h-3.5 w-3.5" /> {t("decline")}
           </Button>
         </div>
       )}
@@ -376,7 +375,7 @@ function InterviewActionCard({ interview: iv, onUpdated }: { interview: Intervie
       {showReschedule && (
         <div className="space-y-2 pt-1 border-t">
           <Textarea
-            placeholder="Please explain why you need to reschedule..."
+            placeholder={t("rescheduleReasonPlaceholder")}
             value={rescheduleNote}
             onChange={(e) => setRescheduleNote(e.target.value)}
             maxLength={500}
@@ -391,10 +390,10 @@ function InterviewActionCard({ interview: iv, onUpdated }: { interview: Intervie
               disabled={!rescheduleNote.trim() || responding}
             >
               {responding && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}
-              Request Reschedule
+              {t("requestReschedule")}
             </Button>
             <Button size="sm" variant="ghost" className="h-8" onClick={() => setShowReschedule(false)}>
-              Cancel
+              {t("cancel")}
             </Button>
           </div>
         </div>
@@ -405,6 +404,7 @@ function InterviewActionCard({ interview: iv, onUpdated }: { interview: Intervie
 
 // ── Offer Action Card ──────────────────────────────────────────────
 function OfferActionCard({ offer, onUpdated }: { offer: OfferItem; onUpdated: () => void }) {
+  const t = useTranslations("applicationDetail");
   const [responding, setResponding] = useState(false);
   const [showDeclineForm, setShowDeclineForm] = useState(false);
   const [declineReason, setDeclineReason] = useState("");
@@ -435,7 +435,7 @@ function OfferActionCard({ offer, onUpdated }: { offer: OfferItem; onUpdated: ()
   return (
     <div className="card-base rounded-xl border border-emerald-200/70 bg-emerald-50/30 p-4 space-y-2.5">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-emerald-800">Offer</span>
+        <span className="text-sm font-medium text-emerald-800">{t("offer")}</span>
         <Badge variant="outline" className={cn(
           "text-xs",
           offer.status === "pending" && "bg-amber-50 text-amber-700 border-amber-200",
@@ -455,12 +455,12 @@ function OfferActionCard({ offer, onUpdated }: { offer: OfferItem; onUpdated: ()
         )}
         {offer.startDate && (
           <span className="flex items-center gap-1">
-            <Calendar className="h-3 w-3" /> Start: {new Date(offer.startDate).toLocaleDateString()}
+            <Calendar className="h-3 w-3" /> {t("startDate")}: {new Date(offer.startDate).toLocaleDateString()}
           </span>
         )}
         {offer.expiresAt && isPending && (
           <span className={cn("text-[11px]", isExpired ? "text-red-600" : "text-amber-600")}>
-            {isExpired ? "Expired" : `Expires: ${new Date(offer.expiresAt).toLocaleDateString()}`}
+            {isExpired ? t("expired") : `${t("expires")}: ${new Date(offer.expiresAt).toLocaleDateString()}`}
           </span>
         )}
       </div>
@@ -479,7 +479,7 @@ function OfferActionCard({ offer, onUpdated }: { offer: OfferItem; onUpdated: ()
             disabled={responding}
           >
             {responding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-            Accept Offer
+            {t("acceptOffer")}
           </Button>
           <Button
             size="sm"
@@ -488,7 +488,7 @@ function OfferActionCard({ offer, onUpdated }: { offer: OfferItem; onUpdated: ()
             onClick={() => setShowDeclineForm(true)}
             disabled={responding}
           >
-            <XCircle className="h-3.5 w-3.5" /> Decline
+            <XCircle className="h-3.5 w-3.5" /> {t("decline")}
           </Button>
         </div>
       )}
@@ -496,7 +496,7 @@ function OfferActionCard({ offer, onUpdated }: { offer: OfferItem; onUpdated: ()
       {showDeclineForm && (
         <div className="space-y-2 pt-1 border-t">
           <Textarea
-            placeholder="Reason for declining (optional)..."
+            placeholder={t("declineReasonPlaceholder")}
             value={declineReason}
             onChange={(e) => setDeclineReason(e.target.value)}
             maxLength={500}
@@ -512,10 +512,10 @@ function OfferActionCard({ offer, onUpdated }: { offer: OfferItem; onUpdated: ()
               disabled={responding}
             >
               {responding && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}
-              Confirm Decline
+              {t("confirmDecline")}
             </Button>
             <Button size="sm" variant="ghost" className="h-8" onClick={() => setShowDeclineForm(false)}>
-              Cancel
+              {t("cancel")}
             </Button>
           </div>
         </div>
@@ -530,11 +530,15 @@ function DocumentsSection({
   documents,
   isActive,
   onUpdated,
+  t,
+  tc,
 }: {
   applicationId: string;
   documents: { name: string; url: string; type: string }[];
   isActive: boolean;
   onUpdated: () => void;
+  t: ReturnType<typeof useTranslations>;
+  tc: ReturnType<typeof useTranslations>;
 }) {
   const [showUpload, setShowUpload] = useState(false);
   const [docName, setDocName] = useState("");
@@ -582,7 +586,7 @@ function DocumentsSection({
     <section className="space-y-3">
       <div className="flex items-center justify-between">
         <h2 className="text-base font-semibold flex items-center gap-2">
-          <Paperclip className="h-4 w-4" /> Documents ({documents.length})
+          <Paperclip className="h-4 w-4" /> {t("documents")} ({documents.length})
         </h2>
         {isActive && (
           <Button
@@ -591,7 +595,7 @@ function DocumentsSection({
             className="gap-1.5 h-8"
             onClick={() => setShowUpload(!showUpload)}
           >
-            <Plus className="h-3.5 w-3.5" /> Add Document
+            <Plus className="h-3.5 w-3.5" /> {t("addDocument")}
           </Button>
         )}
       </div>
@@ -632,19 +636,19 @@ function DocumentsSection({
         </div>
       ) : (
         <div className="card-base rounded-xl border border-dashed p-6 text-center text-muted-foreground text-sm">
-          No documents attached. Add supporting documents to strengthen your application.
+          {t("noDocumentsAttached")}
         </div>
       )}
 
       {/* Add Document Form */}
       {showUpload && (
         <div className="card-base rounded-xl border p-4 space-y-3">
-          <h3 className="text-sm font-medium">Add Document</h3>
+          <h3 className="text-sm font-medium">{t("addDocument")}</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-xs font-medium">Document Name</label>
+              <label className="text-xs font-medium">{t("documentName")}</label>
               <Input
-                placeholder="e.g. Software Engineering Certificate"
+                placeholder={t("documentNamePlaceholder")}
                 value={docName}
                 onChange={(e) => setDocName(e.target.value)}
                 className="h-9 text-sm"
@@ -652,20 +656,24 @@ function DocumentsSection({
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-medium">Type</label>
+              <label className="text-xs font-medium">{t("type")}</label>
               <select
                 value={docType}
                 onChange={(e) => setDocType(e.target.value)}
                 className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
               >
-                {DOC_TYPES.map((t) => (
-                  <option key={t.value} value={t.value}>{t.label}</option>
-                ))}
+                <option value="resume">{t("docResume")}</option>
+                <option value="cover_letter">{t("docCoverLetter")}</option>
+                <option value="portfolio">{t("docPortfolio")}</option>
+                <option value="certification">{t("docCertification")}</option>
+                <option value="reference">{t("docReference")}</option>
+                <option value="id_document">{t("docIdDocument")}</option>
+                <option value="other">{t("docOther")}</option>
               </select>
             </div>
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-medium">Document URL</label>
+            <label className="text-xs font-medium">{t("documentUrl")}</label>
             <Input
               placeholder="https://drive.google.com/..."
               value={docUrl}
@@ -674,7 +682,7 @@ function DocumentsSection({
               type="url"
             />
             <p className="text-[11px] text-muted-foreground">
-              Upload your file to Google Drive, Dropbox, or any cloud storage and paste the sharing link here.
+              {t("uploadDocumentHint")}
             </p>
           </div>
           <div className="flex gap-2">
@@ -685,10 +693,10 @@ function DocumentsSection({
               disabled={!docName.trim() || !docUrl.trim() || uploading}
             >
               {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-              Add Document
+              {t("addDocument")}
             </Button>
             <Button size="sm" variant="ghost" className="h-8" onClick={() => setShowUpload(false)}>
-              Cancel
+              {tc("cancel")}
             </Button>
           </div>
         </div>
