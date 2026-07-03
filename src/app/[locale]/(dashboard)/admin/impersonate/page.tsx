@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,7 @@ interface ImpersonateResult {
 }
 
 export default function AdminUserImpersonatePage() {
+  const t = useTranslations("adminImpersonate");
   const [users, setUsers] = useState<UserRow[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
@@ -75,10 +77,10 @@ export default function AdminUserImpersonatePage() {
         <div className="flex items-center justify-between rounded-xl border border-amber-300 bg-amber-50 px-4 py-3">
           <div>
             <p className="text-sm font-semibold text-amber-800">
-              Impersonation session started for {impersonateResult.target.name}
+              {t("sessionStartedFor", { name: impersonateResult.target.name })}
             </p>
             <p className="mt-0.5 text-xs text-amber-600">
-              Role: {impersonateResult.target.role} · {impersonateResult.target.email}
+              {t("roleAndEmail", { role: impersonateResult.target.role, email: impersonateResult.target.email })}
             </p>
           </div>
           <Button
@@ -93,7 +95,7 @@ export default function AdminUserImpersonatePage() {
             }}
             className="h-8 px-3 text-xs bg-amber-600 hover:bg-amber-700 text-white"
           >
-            Exit Impersonation
+            {t("exitImpersonation")}
           </Button>
         </div>
       )}
@@ -102,8 +104,8 @@ export default function AdminUserImpersonatePage() {
         {/* Compact header row */}
         <div className="flex flex-col gap-3 border-b border-border/80 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-lg font-semibold text-foreground">User Impersonation</h1>
-            <p className="mt-0.5 text-xs text-muted-foreground">View the platform as any user for support and debugging.</p>
+            <h1 className="text-lg font-semibold text-foreground">{t("title")}</h1>
+            <p className="mt-0.5 text-xs text-muted-foreground">{t("description")}</p>
           </div>
           <div className="flex items-center gap-2">
             <div className="relative">
@@ -111,7 +113,7 @@ export default function AdminUserImpersonatePage() {
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search users by name or email…"
+                placeholder={t("searchPlaceholder")}
                 className="h-9 w-48 rounded-lg border-border bg-secondary/65 pl-8 text-sm shadow-none sm:w-64"
               />
             </div>
@@ -123,12 +125,12 @@ export default function AdminUserImpersonatePage() {
           <Table>
             <TableHeader>
               <TableRow className="border-border/80 bg-secondary/72 hover:bg-secondary/72">
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Joined</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t("name")}</TableHead>
+                <TableHead>{t("email")}</TableHead>
+                <TableHead>{t("role")}</TableHead>
+                <TableHead>{t("status")}</TableHead>
+                <TableHead>{t("joined")}</TableHead>
+                <TableHead className="text-right">{t("actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -147,8 +149,8 @@ export default function AdminUserImpersonatePage() {
                   <TableCell colSpan={6} className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center gap-2">
                       <Inbox className="h-6 w-6 text-muted-foreground/50" />
-                      <p className="text-sm font-medium text-foreground">No users found</p>
-                      <p className="text-xs text-muted-foreground">Try adjusting your search.</p>
+                      <p className="text-sm font-medium text-foreground">{t("noUsersFound")}</p>
+                      <p className="text-xs text-muted-foreground">{t("adjustSearch")}</p>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -162,7 +164,7 @@ export default function AdminUserImpersonatePage() {
                     <TableCell className="text-muted-foreground">{new Date(user.createdAt).toLocaleDateString()}</TableCell>
                     <TableCell>
                       <div className="flex items-center justify-end gap-1.5">
-                        <Button variant="ghost" size="xs" asChild title="View profile">
+                        <Button variant="ghost" size="xs" asChild title={t("viewProfileTitle")}>
                           <a href={`../users/${user._id}`}>
                             <Eye className="h-3.5 w-3.5 text-primary" />
                           </a>
@@ -173,12 +175,12 @@ export default function AdminUserImpersonatePage() {
                           disabled={impersonating === user._id}
                           className="h-7 gap-1 px-2.5 text-xs text-amber-700 border border-amber-200 bg-amber-50 hover:bg-amber-100"
                           variant="ghost"
-                          title="View as this user"
+                          title={t("viewAsUserTitle")}
                         >
                           {impersonating === user._id
                             ? <Loader2 className="h-3 w-3 animate-spin" />
                             : <UserCog className="h-3 w-3" />}
-                          Impersonate
+                          {t("impersonate")}
                         </Button>
                       </div>
                     </TableCell>

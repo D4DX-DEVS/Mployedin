@@ -11,6 +11,7 @@ import { calculateMatchScore, jobProfileFromDoc } from "@/lib/matchScore";
 import { effectiveSeekerProfile } from "@/lib/effectiveSeekerProfile";
 import { JobSeekerHomePage } from "@/components/features/job-seeker/home/JobSeekerHomePage";
 import type { InitialHomeData } from "@/components/features/job-seeker/home/JobSeekerHomePage";
+import { setRequestLocale } from "next-intl/server";
 
 export default async function JobSeekerPage({
   params,
@@ -18,6 +19,7 @@ export default async function JobSeekerPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
+  setRequestLocale(locale);
   const session = await auth();
   if (!session?.user) redirect(`/${locale}/login`);
 

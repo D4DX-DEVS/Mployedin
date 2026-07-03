@@ -9,6 +9,7 @@
  */
 
 import { AlertTriangle } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useSubscriptionDashboard } from "@/components/features/subscription-dashboard/useSubscriptionDashboard";
 import { SubscriptionHero } from "@/components/features/subscription-dashboard/SubscriptionHero";
 import { KpiCardsRow } from "@/components/features/subscription-dashboard/KpiCardsRow";
@@ -29,6 +30,7 @@ import { ConversionFunnelChart } from "@/components/features/subscription-dashbo
 // ── Main Page ────────────────────────────────────────────────────────────────
 
 export default function AdminSubscriptionDashboardPage() {
+  const t = useTranslations("adminSubscriptionDashboard");
   const { data, isLoading, error, refetch } = useSubscriptionDashboard();
 
   /* ── Loading skeleton ── */
@@ -59,7 +61,7 @@ export default function AdminSubscriptionDashboardPage() {
         <div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-6 text-center">
           <AlertTriangle className="h-8 w-8 text-red-500 mx-auto mb-2" />
           <p className="text-sm text-muted-foreground">
-            Failed to load dashboard data. Please try again.
+            {t("failedToLoadDashboardData")}
           </p>
         </div>
       </div>

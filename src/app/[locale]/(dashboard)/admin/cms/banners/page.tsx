@@ -3,64 +3,67 @@
 import CmsPage from "@/components/features/admin/CmsPage";
 import type { CrudField } from "@/components/shared/CrudModal";
 import { ImageIcon } from "lucide-react";
-
-const FIELDS: CrudField[] = [
-  { name: "title", label: "Title (English)", type: "text", placeholder: "Banner headline" },
-  { name: "titleAr", label: "Title (Arabic)", type: "text", placeholder: "عنوان البانر" },
-  { name: "subtitle", label: "Subtitle (English)", type: "text", placeholder: "Supporting text" },
-  { name: "subtitleAr", label: "Subtitle (Arabic)", type: "text", placeholder: "نص فرعي" },
-  { name: "image", label: "Image URL", type: "text", required: true, placeholder: "https://..." },
-  { name: "imageMobile", label: "Mobile Image URL", type: "text", placeholder: "https://... (optional)" },
-  { name: "linkUrl", label: "Link URL", type: "text", placeholder: "https://..." },
-  { name: "linkText", label: "Link Text (English)", type: "text", placeholder: "Learn More" },
-  { name: "linkTextAr", label: "Link Text (Arabic)", type: "text", placeholder: "اعرف المزيد" },
-  { name: "sortOrder", label: "Sort Order", type: "number", placeholder: "0" },
-  {
-    name: "isActive",
-    label: "Status",
-    type: "select",
-    options: [
-      { value: "true", label: "Active" },
-      { value: "false", label: "Inactive" },
-    ],
-  },
-];
-
-const COLUMNS = [
-  { key: "title", label: "Title" },
-  {
-    key: "image",
-    label: "Image",
-    render: (value: unknown) =>
-      value ? (
-        <img src={String(value)} alt="" className="h-10 w-16 rounded object-cover" />
-      ) : (
-        <span className="text-muted-foreground">—</span>
-      ),
-  },
-  { key: "sortOrder", label: "Order" },
-  { key: "isActive", label: "Status" },
-];
+import { useTranslations } from "next-intl";
 
 export default function BannersAdminPage() {
+  const t = useTranslations("adminCmsBanners");
+
+  const FIELDS: CrudField[] = [
+    { name: "title", label: t("titleEnglish"), type: "text", placeholder: t("bannerHeadline") },
+    { name: "titleAr", label: t("titleArabic"), type: "text", placeholder: t("bannerHeadlineAr") },
+    { name: "subtitle", label: t("subtitleEnglish"), type: "text", placeholder: t("supportingText") },
+    { name: "subtitleAr", label: t("subtitleArabic"), type: "text", placeholder: t("supportingTextAr") },
+    { name: "image", label: t("imageUrl"), type: "text", required: true, placeholder: "https://..." },
+    { name: "imageMobile", label: t("mobileImageUrl"), type: "text", placeholder: "https://... (optional)" },
+    { name: "linkUrl", label: t("linkUrl"), type: "text", placeholder: "https://..." },
+    { name: "linkText", label: t("linkTextEnglish"), type: "text", placeholder: t("learnMore") },
+    { name: "linkTextAr", label: t("linkTextArabic"), type: "text", placeholder: t("learnMoreAr") },
+    { name: "sortOrder", label: t("sortOrder"), type: "number", placeholder: "0" },
+    {
+      name: "isActive",
+      label: t("status"),
+      type: "select",
+      options: [
+        { value: "true", label: t("active") },
+        { value: "false", label: t("inactive") },
+      ],
+    },
+  ];
+
+  const COLUMNS = [
+    { key: "title", label: t("title") },
+    {
+      key: "image",
+      label: t("image"),
+      render: (value: unknown) =>
+        value ? (
+          <img src={String(value)} alt="" className="h-10 w-16 rounded object-cover" />
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
+    },
+    { key: "sortOrder", label: t("order") },
+    { key: "isActive", label: t("status") },
+  ];
+
   return (
     <CmsPage
       apiUrl="/api/admin/cms/banners"
-      title="Banners"
-      description="Manage homepage banner slider images"
+      title={t("banners")}
+      description={t("manageBanners")}
       columns={COLUMNS}
       fields={FIELDS}
       icon={ImageIcon}
       iconColor="text-orange-600"
       filterFields={[
-        { type: "search", placeholder: "Search banner title…" },
+        { type: "search", placeholder: t("searchBannerTitle") },
         {
           type: "status",
-          label: "Visibility",
+          label: t("visibility"),
           options: [
-            { value: "all", label: "All statuses" },
-            { value: "active", label: "Active" },
-            { value: "inactive", label: "Inactive" },
+            { value: "all", label: t("allStatuses") },
+            { value: "active", label: t("active") },
+            { value: "inactive", label: t("inactive") },
           ],
         },
       ]}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   Scale, Plus, Trash2, Edit2, Save, X, Loader2, Shield,
   ChevronDown, ChevronUp,
@@ -29,17 +30,6 @@ const DEFAULT_WEIGHTS: MatchingWeights = {
   languages: 5,
   availability: 4,
   behaviorSignals: 10,
-};
-
-const WEIGHT_LABELS: Record<keyof MatchingWeights, string> = {
-  skills: "Skills Match",
-  experience: "Experience",
-  education: "Education",
-  location: "Location",
-  salary: "Salary",
-  languages: "Languages",
-  availability: "Availability",
-  behaviorSignals: "Behavior Signals",
 };
 
 interface TemplateFormState {
@@ -71,6 +61,7 @@ function templateToForm(t: MatchingWeightTemplateItem): TemplateFormState {
 }
 
 export default function AdminMatchingWeightTemplatesPage() {
+  const tr = useTranslations("adminMatchingWeightTemplates");
   const { data: templates, isLoading } = useAdminMatchingWeightTemplates();
   const createMut = useCreateAdminMatchingWeightTemplate();
   const updateMut = useUpdateAdminMatchingWeightTemplate();
@@ -81,6 +72,17 @@ export default function AdminMatchingWeightTemplatesPage() {
   const [form, setForm] = useState<TemplateFormState>(emptyForm());
   const [tagInput, setTagInput] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const weightLabels: Record<keyof MatchingWeights, string> = {
+    skills: tr("skillsMatchLabel"),
+    experience: tr("experienceLabel"),
+    education: tr("educationLabel"),
+    location: tr("locationLabel"),
+    salary: tr("salaryLabel"),
+    languages: tr("languagesLabel"),
+    availability: tr("availabilityLabel"),
+    behaviorSignals: tr("behaviorSignalsLabel"),
+  };
 
   const total = Object.values(form.weights).reduce((a, b) => a + b, 0);
   const isTotalValid = total === 100;
@@ -146,7 +148,7 @@ export default function AdminMatchingWeightTemplatesPage() {
   if (isLoading) {
     return (
       <div className="page-container space-y-4">
-        <PageHeader title="Matching Weight Templates" description="Manage system-wide matching weight presets" />
+        <PageHeader title={tr("pageTitle")} description={tr("pageDescription")} />
         {[1, 2, 3].map((i) => (
           <div key={i} className="h-24 animate-pulse rounded-2xl border border-border bg-background/70" />
         ))}
@@ -157,11 +159,11 @@ export default function AdminMatchingWeightTemplatesPage() {
   return (
     <div className="page-container space-y-6">
       <PageHeader
-        title="Matching Weight Templates"
-        description="Create and manage system-wide matching weight presets that all employers can use"
+        title={tr("pageTitle")}
+        description={tr("pageDescription")}
         actions={
           <Button onClick={openCreate} className="gap-2 rounded-xl bg-sky-600 text-white hover:bg-sky-700" size="sm">
-            <Plus className="h-4 w-4" /> New Template
+            <Plus className="h-4 w-4" /> {tr("newTemplateButton")}
           </Button>
         }
       />
@@ -171,7 +173,7 @@ export default function AdminMatchingWeightTemplatesPage() {
         <section className="rounded-2xl border border-sky-500/30 bg-sky-500/5 p-6 space-y-5">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold text-foreground">
-              {editId ? "Edit Template" : "Create New Template"}
+              {editId ? tr("editFormTitle") : tr("createFormTitle")}
             </h3>
             <button onClick={closeForm} className="text-muted-foreground hover:text-foreground">
               <X className="h-5 w-5" />
@@ -180,20 +182,20 @@ export default function AdminMatchingWeightTemplatesPage() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-1">
-              <label className="text-sm font-medium text-muted-foreground">Name *</label>
+              <label className="text-sm font-medium text-muted-foreground">{tr("nameLabel")}</label>
               <Input
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                placeholder="e.g. Tech Roles — Skills Heavy"
+                placeholder={tr("namePlaceholder")}
                 maxLength={100}
               />
             </div>
             <div className="space-y-1">
-              <label className="text-sm font-medium text-muted-foreground">Description</label>
+              <label className="text-sm font-medium text-muted-foreground">{tr("descriptionLabel")}</label>
               <Input
                 value={form.description}
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                placeholder="Brief description of this weight preset"
+                placeholder={tr("descriptionPlaceholder")}
                 maxLength={500}
               />
             </div>
@@ -201,7 +203,7 @@ export default function AdminMatchingWeightTemplatesPage() {
 
           {/* Tags */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-muted-foreground">Tags</label>
+            <label className="text-sm font-medium text-muted-foreground">{tr("tagsLabel")}</label>
             <div className="flex flex-wrap gap-2">
               {form.tags.map((tag) => (
                 <Badge key={tag} variant="secondary" className="gap-1">
@@ -216,7 +218,7 @@ export default function AdminMatchingWeightTemplatesPage() {
                   value={tagInput}
                   onChange={(e) => setTagInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addTag())}
-                  placeholder="Add tag"
+                  placeholder={tr("tagPlaceholder")}
                   className="h-8 w-32"
                   maxLength={50}
                 />
@@ -230,21 +232,21 @@ export default function AdminMatchingWeightTemplatesPage() {
           {/* Default switch */}
           <div className="flex items-center gap-3">
             <Switch checked={form.isDefault} onCheckedChange={(v) => setForm((f) => ({ ...f, isDefault: v }))} />
-            <span className="text-sm text-foreground">Mark as default template</span>
+            <span className="text-sm text-foreground">{tr("markAsDefaultLabel")}</span>
           </div>
 
           {/* Weights */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-muted-foreground">Weight Distribution</p>
+              <p className="text-sm font-medium text-muted-foreground">{tr("weightDistributionLabel")}</p>
               <span className={`text-sm font-semibold ${isTotalValid ? "text-green-600" : "text-red-500"}`}>
-                Total: {total}% {isTotalValid ? "✓" : "(must be 100%)"}
+                {tr("totalWeightLabel", { total })} {isTotalValid ? tr("weightDistributionValid") : tr("weightDistributionInvalid")}
               </span>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               {weightKeys.map((key) => (
                 <div key={key} className="flex items-center gap-3 rounded-xl border border-border bg-background/80 p-3">
-                  <span className="min-w-[8rem] text-sm">{WEIGHT_LABELS[key]}</span>
+                  <span className="min-w-[8rem] text-sm">{weightLabels[key]}</span>
                   <Input
                     type="number"
                     value={form.weights[key]}
@@ -276,10 +278,10 @@ export default function AdminMatchingWeightTemplatesPage() {
               className="gap-2 rounded-xl bg-sky-600 text-white hover:bg-sky-700"
             >
               {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              {editId ? "Update Template" : "Create Template"}
+              {editId ? tr("updateButton") : tr("createButton")}
             </Button>
             <Button variant="ghost" onClick={closeForm} className="rounded-xl">
-              Cancel
+              {tr("cancelButton")}
             </Button>
           </div>
         </section>
@@ -289,12 +291,12 @@ export default function AdminMatchingWeightTemplatesPage() {
       {!templates?.length && !showForm ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-background/60 py-16 text-center">
           <Scale className="mb-3 h-10 w-10 text-muted-foreground" />
-          <p className="text-sm font-semibold text-foreground">No matching weight templates yet</p>
+          <p className="text-sm font-semibold text-foreground">{tr("emptyStateTitle")}</p>
           <p className="mb-4 mt-1 text-xs text-muted-foreground">
-            Create system-wide matching weight presets for employers to use
+            {tr("emptyStateDescription")}
           </p>
           <Button onClick={openCreate} size="sm" className="gap-1.5 rounded-xl bg-sky-600 text-white hover:bg-sky-700">
-            <Plus className="h-3.5 w-3.5" /> Create First Template
+            <Plus className="h-3.5 w-3.5" /> {tr("createFirstButton")}
           </Button>
         </div>
       ) : (
@@ -315,10 +317,10 @@ export default function AdminMatchingWeightTemplatesPage() {
                       <h4 className="text-sm font-semibold text-foreground">{t.name}</h4>
                       {t.isDefault && (
                         <Badge variant="secondary" className="gap-1 text-[10px]">
-                          <Shield className="h-3 w-3" /> Default
+                          <Shield className="h-3 w-3" /> {tr("defaultBadge")}
                         </Badge>
                       )}
-                      <Badge variant="outline" className="text-[10px]">System</Badge>
+                      <Badge variant="outline" className="text-[10px]">{tr("systemBadge")}</Badge>
                     </div>
                     {t.description && (
                       <p className="mt-1 text-xs text-muted-foreground">{t.description}</p>
@@ -333,7 +335,7 @@ export default function AdminMatchingWeightTemplatesPage() {
                       </div>
                     )}
                     <div className="mt-2 text-xs text-muted-foreground">
-                      Top priority: {WEIGHT_LABELS[topWeight]} ({t.weights[topWeight]}%)
+                      {tr("topPriorityLabel", { weightLabel: weightLabels[topWeight], percentage: t.weights[topWeight] })}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -369,12 +371,12 @@ export default function AdminMatchingWeightTemplatesPage() {
                 {isExpanded && (
                   <div className="mt-4 rounded-xl border border-border bg-background/60 p-4">
                     <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Weight Distribution
+                      {tr("weightDistributionExpandedLabel")}
                     </p>
                     <div className="grid gap-2 sm:grid-cols-2">
                       {weightKeys.map((key) => (
                         <div key={key} className="flex items-center gap-2">
-                          <span className="min-w-[8rem] text-xs text-muted-foreground">{WEIGHT_LABELS[key]}</span>
+                          <span className="min-w-[8rem] text-xs text-muted-foreground">{weightLabels[key]}</span>
                           <div className="flex-1">
                             <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
                               <div

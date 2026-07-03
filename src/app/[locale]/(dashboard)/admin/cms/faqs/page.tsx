@@ -1,60 +1,63 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import CmsPage from "@/components/features/admin/CmsPage";
 import type { CrudField } from "@/components/shared/CrudModal";
 import { HelpCircle } from "lucide-react";
 
-const FIELDS: CrudField[] = [
-  { name: "question", label: "Question (English)", type: "textarea", required: true, placeholder: "e.g. How do I register?" },
-  { name: "questionAr", label: "Question (Arabic)", type: "textarea", placeholder: "السؤال بالعربية" },
-  { name: "answer", label: "Answer (English)", type: "textarea", required: true, placeholder: "The detailed answer..." },
-  { name: "answerAr", label: "Answer (Arabic)", type: "textarea", placeholder: "الجواب بالعربية" },
-  { name: "category", label: "Category", type: "text", placeholder: "general" },
-  { name: "sortOrder", label: "Sort Order", type: "number", placeholder: "0" },
-  {
-    name: "isActive",
-    label: "Status",
-    type: "select",
-    options: [
-      { value: "true", label: "Active" },
-      { value: "false", label: "Inactive" },
-    ],
-  },
-];
-
-const COLUMNS = [
-  { key: "question", label: "Question" },
-  { key: "category", label: "Category" },
-  { key: "sortOrder", label: "Order" },
-  { key: "isActive", label: "Status" },
-];
-
 export default function FaqsAdminPage() {
+  const t = useTranslations("adminCmsFaqs");
+
+  const FIELDS: CrudField[] = [
+    { name: "question", label: t("field.question"), type: "textarea", required: true, placeholder: t("placeholder.questionEn") },
+    { name: "questionAr", label: t("field.questionAr"), type: "textarea", placeholder: t("placeholder.questionAr") },
+    { name: "answer", label: t("field.answer"), type: "textarea", required: true, placeholder: t("placeholder.answerEn") },
+    { name: "answerAr", label: t("field.answerAr"), type: "textarea", placeholder: t("placeholder.answerAr") },
+    { name: "category", label: t("field.category"), type: "text", placeholder: t("placeholder.category") },
+    { name: "sortOrder", label: t("field.sortOrder"), type: "number", placeholder: t("placeholder.sortOrder") },
+    {
+      name: "isActive",
+      label: t("field.status"),
+      type: "select",
+      options: [
+        { value: "true", label: t("status.active") },
+        { value: "false", label: t("status.inactive") },
+      ],
+    },
+  ];
+
+  const COLUMNS = [
+    { key: "question", label: t("column.question") },
+    { key: "category", label: t("column.category") },
+    { key: "sortOrder", label: t("column.order") },
+    { key: "isActive", label: t("column.status") },
+  ];
+
   return (
     <CmsPage
       apiUrl="/api/admin/cms/faqs"
-      title="FAQs"
-      description="Manage frequently asked questions for the landing page"
+      title={t("title")}
+      description={t("description")}
       columns={COLUMNS}
       fields={FIELDS}
       icon={HelpCircle}
       iconColor="text-blue-600"
       filterFields={[
-        { type: "search", placeholder: "Search question, answer, or category…" },
+        { type: "search", placeholder: t("filter.searchPlaceholder") },
         {
           type: "status",
-          label: "Visibility",
+          label: t("filter.visibility"),
           options: [
-            { value: "all", label: "All statuses" },
-            { value: "active", label: "Active" },
-            { value: "inactive", label: "Inactive" },
+            { value: "all", label: t("filter.allStatuses") },
+            { value: "active", label: t("filter.active") },
+            { value: "inactive", label: t("filter.inactive") },
           ],
         },
         {
           type: "text",
           key: "category",
-          label: "Category",
-          placeholder: "e.g. general, billing, jobs",
+          label: t("filter.category"),
+          placeholder: t("filter.categoryPlaceholder"),
           param: "category",
         },
       ]}

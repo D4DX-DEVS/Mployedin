@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback } from "react";
 import { useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -44,12 +45,12 @@ function linkStatus(link: ReferralLinkItem): "active" | "expired" | "maxed" | "i
   return "active";
 }
 
-function statusLabel(s: ReturnType<typeof linkStatus>): string {
+function getStatusLabelKey(s: ReturnType<typeof linkStatus>): string {
   switch (s) {
-    case "active": return "Active";
-    case "expired": return "Expired";
-    case "maxed": return "Limit Reached";
-    case "inactive": return "Disabled";
+    case "active": return "statusActive";
+    case "expired": return "statusExpired";
+    case "maxed": return "statusMaxed";
+    case "inactive": return "statusInactive";
   }
 }
 
@@ -64,6 +65,7 @@ function creatorEmail(link: ReferralLinkItem): string {
 }
 
 export default function AdminReferralLinksPage() {
+  const t = useTranslations("adminReferralLinks");
   const { locale } = useParams<{ locale: string }>();
   const { page, limit, setPage, setLimit, resetPage } = usePagination();
   const [search, setSearch] = useState("");
@@ -99,14 +101,14 @@ export default function AdminReferralLinksPage() {
   const totalRegistrations = data?.stats?.totalRegistrations ?? 0;
 
   const exportColumns: ExportColumn<ReferralLinkItem>[] = [
-    { header: "Code", key: "code" as keyof ReferralLinkItem },
-    { header: "Creator", key: "createdBy" as keyof ReferralLinkItem, formatter: (_v, r) => creatorName(r as unknown as ReferralLinkItem) },
-    { header: "Role", key: "creatorRole" as keyof ReferralLinkItem, formatter: (v) => v === "super_agent" ? "Super Agent" : "Agent" },
-    { header: "Label", key: "label" as keyof ReferralLinkItem, formatter: (v) => String(v || "—") },
-    { header: "Used", key: "usedCount" as keyof ReferralLinkItem, formatter: (v, r) => { const l = r as unknown as ReferralLinkItem; return `${v}${l.maxUses > 0 ? ` / ${l.maxUses}` : ""}`; } },
-    { header: "Status", key: "isActive" as keyof ReferralLinkItem, formatter: (_v, r) => statusLabel(linkStatus(r as unknown as ReferralLinkItem)) },
-    { header: "Expires", key: "expiresAt" as keyof ReferralLinkItem, formatter: (v) => formatDate(v as string) },
-    { header: "Created", key: "createdAt" as keyof ReferralLinkItem, formatter: (v) => formatDate(v as string) },
+    { header: t("tableHeaderCode"), key: "code" as keyof ReferralLinkItem },
+    { header: t("tableHeaderCreator"), key: "createdBy" as keyof ReferralLinkItem, formatter: (_v, r) => creatorName(r as unknown as ReferralLinkItem) },
+    { header: t("tableHeaderRole"), key: "creatorRole" as keyof ReferralLinkItem, formatter: (v) => v === "super_agent" ? t("roleSuperAgent") : t("roleAgent") },
+    { header: t("tableHeaderLabel"), key: "label" as keyof ReferralLinkItem, formatter: (v) => String(v || t("dashPlaceholder")) },
+    { header: t("tableHeaderUsed"), key: "usedCount" as keyof ReferralLinkItem, formatter: (v, r) => { const l = r as unknown as ReferralLinkItem; return `${v}${l.maxUses > 0 ? ` / ${l.maxUses}` : ""}`; } },
+    { header: t("tableHeaderStatus"), key: "isActive" as keyof ReferralLinkItem, formatter: (_v, r) => t(getStatusLabelKey(linkStatus(r as unknown as ReferralLinkItem))) },
+    { header: t("tableHeaderExpires"), key: "expiresAt" as keyof ReferralLinkItem, formatter: (v) => formatDate(v as string) },
+    { header: t("tableHeaderCreated"), key: "createdAt" as keyof ReferralLinkItem, formatter: (v) => formatDate(v as string) },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: links as unknown as Record<string, unknown>[],
@@ -117,24 +119,24 @@ export default function AdminReferralLinksPage() {
 
   return (
     <div className="page-container">
-      <PageHeader title="Referral Links" description="Overview of all referral links created by agents and super-agents across the platform." />
+      <PageHeader title={t("pageTitle")} description={t("pageDescription")} />
 
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-4">
         <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-xs font-medium text-muted-foreground">Total Links</p>
+          <p className="text-xs font-medium text-muted-foreground">{t("totalLinks")}</p>
           <p className="mt-1 text-2xl font-bold">{serverTotal}</p>
         </div>
         <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-xs font-medium text-muted-foreground">Active Links</p>
+          <p className="text-xs font-medium text-muted-foreground">{t("activeLinks")}</p>
           <p className="mt-1 text-2xl font-bold text-green-600">{activeLinks}</p>
         </div>
         <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-xs font-medium text-muted-foreground">Total Registrations</p>
+          <p className="text-xs font-medium text-muted-foreground">{t("totalRegistrations")}</p>
           <p className="mt-1 text-2xl font-bold text-blue-600">{totalRegistrations}</p>
         </div>
         <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-xs font-medium text-muted-foreground">Avg Registrations/Link</p>
+          <p className="text-xs font-medium text-muted-foreground">{t("avgRegistrationsPerLink")}</p>
           <p className="mt-1 text-2xl font-bold">{serverTotal > 0 ? (totalRegistrations / serverTotal).toFixed(1) : "0"}</p>
         </div>
       </div>
@@ -143,7 +145,7 @@ export default function AdminReferralLinksPage() {
       <TableToolbar
         search={search}
         onSearchChange={(v) => { setSearch(v); resetPage(); }}
-        searchPlaceholder="Search by code, label, or creator…"
+        searchPlaceholder={t("searchPlaceholder")}
         onExportCsv={handleExportCsv}
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
@@ -155,15 +157,15 @@ export default function AdminReferralLinksPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Code</TableHead>
-                <TableHead>Creator</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Label</TableHead>
-                <TableHead>Used</TableHead>
-                <TableHead>Expires</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t("tableHeaderCode")}</TableHead>
+                <TableHead>{t("tableHeaderCreator")}</TableHead>
+                <TableHead>{t("tableHeaderRole")}</TableHead>
+                <TableHead>{t("tableHeaderLabel")}</TableHead>
+                <TableHead>{t("tableHeaderUsed")}</TableHead>
+                <TableHead>{t("tableHeaderExpires")}</TableHead>
+                <TableHead>{t("tableHeaderCreated")}</TableHead>
+                <TableHead>{t("tableHeaderStatus")}</TableHead>
+                <TableHead className="text-right">{t("tableHeaderActions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -182,23 +184,23 @@ export default function AdminReferralLinksPage() {
       ) : links.length === 0 ? (
         <div className="flex flex-col items-center gap-2 py-16 text-center">
           <Link2 className="h-10 w-10 text-muted-foreground/40" />
-          <p className="font-medium text-foreground">No referral links found</p>
-          <p className="text-sm text-muted-foreground">Referral links created by agents and super-agents will appear here.</p>
+          <p className="font-medium text-foreground">{t("emptyStateHeading")}</p>
+          <p className="text-sm text-muted-foreground">{t("emptyStateDescription")}</p>
         </div>
       ) : (
         <div className="rounded-xl border border-border overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Code</TableHead>
-                <TableHead>Creator</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Label</TableHead>
-                <TableHead>Used</TableHead>
-                <TableHead>Expires</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t("tableHeaderCode")}</TableHead>
+                <TableHead>{t("tableHeaderCreator")}</TableHead>
+                <TableHead>{t("tableHeaderRole")}</TableHead>
+                <TableHead>{t("tableHeaderLabel")}</TableHead>
+                <TableHead>{t("tableHeaderUsed")}</TableHead>
+                <TableHead>{t("tableHeaderExpires")}</TableHead>
+                <TableHead>{t("tableHeaderCreated")}</TableHead>
+                <TableHead>{t("tableHeaderStatus")}</TableHead>
+                <TableHead className="text-right">{t("tableHeaderActions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -220,10 +222,10 @@ export default function AdminReferralLinksPage() {
                       </TableCell>
                       <TableCell>
                         <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${link.creatorRole === "super_agent" ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300" : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"}`}>
-                          {link.creatorRole === "super_agent" ? "Super Agent" : "Agent"}
+                          {link.creatorRole === "super_agent" ? t("roleSuperAgent") : t("roleAgent")}
                         </span>
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{link.label || "—"}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{link.label || t("dashPlaceholder")}</TableCell>
                       <TableCell className="text-sm font-medium">{link.usedCount}{link.maxUses > 0 ? ` / ${link.maxUses}` : ""}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{formatDate(link.expiresAt)}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{formatDate(link.createdAt)}</TableCell>
@@ -237,7 +239,7 @@ export default function AdminReferralLinksPage() {
                             onClick={(e) => { e.stopPropagation(); handleCopy(link.code); }}
                           >
                             {copyMap[link.code] ? <Check className="mr-1 h-3 w-3" /> : <Copy className="mr-1 h-3 w-3" />}
-                            {copyMap[link.code] ? "Copied" : "Copy"}
+                            {copyMap[link.code] ? t("buttonCopied") : t("buttonCopy")}
                           </Button>
                           <Button
                             variant="outline"
@@ -245,7 +247,7 @@ export default function AdminReferralLinksPage() {
                             className={`h-7 px-2 text-[11px] ${link.isActive ? "text-amber-600 hover:text-amber-700" : "text-green-600 hover:text-green-700"}`}
                             onClick={(e) => { e.stopPropagation(); handleToggleActive(link); }}
                           >
-                            {link.isActive ? "Disable" : "Enable"}
+                            {link.isActive ? t("buttonDisable") : t("buttonEnable")}
                           </Button>
                           <Button
                             variant="ghost"
@@ -262,10 +264,10 @@ export default function AdminReferralLinksPage() {
                       <TableRow>
                         <TableCell colSpan={9} className="bg-muted/30 px-6 py-4">
                           <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                            Registrations ({link.registrations.length})
+                            {t("registrationsLabel")} ({link.registrations.length})
                           </p>
                           {link.registrations.length === 0 ? (
-                            <p className="text-sm text-muted-foreground">No registrations yet.</p>
+                            <p className="text-sm text-muted-foreground">{t("noRegistrationsYet")}</p>
                           ) : (
                             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                               {link.registrations.map((reg, i) => (

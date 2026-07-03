@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo, Fragment } from "react";
+import { useTranslations } from "next-intl";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -70,25 +71,27 @@ interface AiFilters {
   summary?: string;
 }
 
-const AI_SUGGESTIONS = [
-  "Find electrical engineers with 5+ years experience",
-  "HR managers available immediately",
-  "Candidates with MBA in marketing",
-  "Remote developers with React and Node.js skills",
-  "Fresh graduates in computer science with CV uploaded",
-  "Senior accountants in Dubai",
-];
-
-const EDIT_FIELDS: CrudField[] = [
-  { name: "name", label: "Name", type: "text", required: true },
-  { name: "email", label: "Email", type: "email" },
-  { name: "nationality", label: "Nationality", type: "text" },
-  { name: "currentLocation", label: "Location", type: "text" },
-  { name: "summary", label: "Summary", type: "textarea" },
-];
-
 export default function AdminJobSeekersPage() {
+  const tr = useTranslations("adminJobSeekers");
   const { can } = usePermissions();
+
+  // Translation maps
+  const aiSuggestions = [
+    tr("aiSuggestionElectricalEngineers"),
+    tr("aiSuggestionHrManagers"),
+    tr("aiSuggestionMbaCandidates"),
+    tr("aiSuggestionRemoteDevelopers"),
+    tr("aiSuggestionFreshGraduates"),
+    tr("aiSuggestionAccountants"),
+  ];
+
+  const editFields: CrudField[] = [
+    { name: "name", label: tr("editFieldName"), type: "text", required: true },
+    { name: "email", label: tr("editFieldEmail"), type: "email" },
+    { name: "nationality", label: tr("editFieldNationality"), type: "text" },
+    { name: "currentLocation", label: tr("editFieldLocation"), type: "text" },
+    { name: "summary", label: tr("editFieldSummary"), type: "textarea" },
+  ];
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
 
@@ -189,8 +192,8 @@ export default function AdminJobSeekersPage() {
   }, [search, skillsFilter, locationFilter, availabilityFilter, jobTypeFilter, sortFilter, hasCVFilter, educationFilter, nationalityFilter, experienceYearsFilter, page, limit]);
 
   useEffect(() => {
-    const t = setTimeout(fetchJobSeekers, 300);
-    return () => clearTimeout(t);
+    const timeout = setTimeout(fetchJobSeekers, 300);
+    return () => clearTimeout(timeout);
   }, [fetchJobSeekers]);
 
   // ── AI Search handler ───────────────────────────────────
@@ -240,12 +243,12 @@ export default function AdminJobSeekersPage() {
           if (vectorItems.length > 0) {
             setJobSeekers(vectorItems);
             updateTotal(vectorItems.length);
-            setAiSummary(`${aiData.summary ?? `AI search: "${q}"`} (${vectorItems.length} semantic matches found)`);
+            setAiSummary(`${aiData.summary ?? `AI search: "${q}"`} (${vectorItems.length} ${tr("semanticMatches")})`);
             setAiActive(true);
             setShowAdvancedFilters(true);
             resetPage();
             setAiLoading(false);
-            toast.success("Vector search results loaded");
+            toast.success(tr("vectorSearchLoaded"));
             return;
           }
         }
@@ -255,12 +258,12 @@ export default function AdminJobSeekersPage() {
       setAiActive(true);
       setShowAdvancedFilters(true);
       resetPage();
-      toast.success(aiData.degraded ? "AI unavailable, using keyword search" : "AI filters applied");
+      toast.success(aiData.degraded ? tr("aiUnavailableKeywordSearch") : tr("aiFiltersApplied"));
     } catch {
       setSearch(q);
       resetPage();
-      setAiSummary("AI search unavailable — using keyword search instead.");
-      toast.error("AI search failed, using keyword fallback");
+      setAiSummary(tr("aiSearchUnavailable"));
+      toast.error(tr("aiSearchFailed"));
     } finally {
       setAiLoading(false);
     }
@@ -305,7 +308,7 @@ export default function AdminJobSeekersPage() {
       const cvs = data.cvs as { id: string; name: string; url: string }[];
 
       if (cvs.length === 0) {
-        toast.error("No CVs found for this search");
+        toast.error(tr("noCvsFound"));
         return;
       }
 
@@ -327,9 +330,9 @@ export default function AdminJobSeekersPage() {
           // Skip individual failures
         }
       }
-      toast.success(`Downloaded ${downloaded} CV${downloaded > 1 ? "s" : ""}`);
+      toast.success(tr("cvsDownloadedSuccess", { count: downloaded }));
     } catch {
-      toast.error("Failed to download CVs");
+      toast.error(tr("cvsDownloadFailed"));
     } finally {
       setCvDownloading(false);
     }
@@ -348,14 +351,14 @@ export default function AdminJobSeekersPage() {
   };
 
   const handleDelete = async (id: string) => {
-    const ok = await confirmDialog({ message: "Deactivate this job seeker? They won't be able to log in.", confirmLabel: "Deactivate" });
+    const ok = await confirmDialog({ message: tr("confirmDeactivateMessage"), confirmLabel: tr("confirmDeactivateButton") });
     if (!ok) return;
     await fetch(`/api/job-seekers/${id}`, { method: "DELETE" });
     fetchJobSeekers();
   };
 
   const handlePermanentDelete = async (id: string) => {
-    const ok = await confirmDialog({ title: "Permanently Delete Job Seeker", message: "This will permanently delete the job seeker and all their data. This cannot be undone.", confirmLabel: "Delete Forever" });
+    const ok = await confirmDialog({ title: tr("confirmDeleteTitle"), message: tr("confirmDeleteMessage"), confirmLabel: tr("confirmDeleteButton") });
     if (!ok) return;
     await fetch(`/api/job-seekers/${id}?permanent=true`, { method: "DELETE" });
     fetchJobSeekers();
@@ -384,11 +387,11 @@ export default function AdminJobSeekersPage() {
           <div className="min-w-0 flex-1">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
               <Sparkles className="h-3.5 w-3.5" />
-              Admin workspace
+              {tr("heroAdminWorkspace")}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">Job Seekers</h1>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{tr("heroTitle")}</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Browse, search, and manage all candidate profiles with AI-powered search.
+              {tr("heroDescription")}
             </p>
           </div>
         </div>
@@ -398,7 +401,7 @@ export default function AdminJobSeekersPage() {
       <section className="workspace-panel-surface rounded-[20px] p-4">
         <div className="flex items-center gap-2 mb-3">
           <Sparkles className="h-4 w-4 text-primary" />
-          <h2 className="text-sm font-semibold text-foreground">AI-Powered Candidate Search</h2>
+          <h2 className="text-sm font-semibold text-foreground">{tr("aiSearchTitle")}</h2>
         </div>
 
         <div className="flex gap-2">
@@ -409,7 +412,7 @@ export default function AdminJobSeekersPage() {
               value={aiQuery}
               onChange={(e) => setAiQuery(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") handleAiSearch(); }}
-              placeholder='Try: "electrical engineers with 5+ years" or "HR managers available immediately"...'
+              placeholder={tr("aiSearchPlaceholder")}
               className="h-10 pl-10 text-sm rounded-lg"
               disabled={aiLoading}
             />
@@ -420,18 +423,18 @@ export default function AdminJobSeekersPage() {
             className="h-10 rounded-lg px-4"
           >
             {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-            <span className="ml-1.5">Search</span>
+            <span className="ml-1.5">{tr("searchButton")}</span>
           </Button>
           {aiActive && (
             <Button variant="ghost" size="sm" onClick={clearAiFilters} className="h-10 rounded-lg">
-              <X className="h-4 w-4" /> Clear
+              <X className="h-4 w-4" /> {tr("clearButton")}
             </Button>
           )}
         </div>
 
         {/* AI Suggestions */}
         <div className="mt-2 flex flex-wrap gap-1.5">
-          {AI_SUGGESTIONS.map((suggestion) => (
+          {aiSuggestions.map((suggestion) => (
             <button
               key={suggestion}
               onClick={() => { setAiQuery(suggestion); handleAiSearch(suggestion); }}
@@ -446,7 +449,7 @@ export default function AdminJobSeekersPage() {
         {aiSummary && (
           <div className="mt-3 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
             <Sparkles className="h-3.5 w-3.5 text-primary flex-shrink-0" />
-            <p className="text-xs text-primary">{aiSummary}</p>
+            <p className="text-xs text-primary">{tr("aiSummarySuffix", { summary: aiSummary })}</p>
           </div>
         )}
       </section>
@@ -457,9 +460,9 @@ export default function AdminJobSeekersPage() {
         <div className="flex flex-col gap-3 border-b border-border/80 px-5 py-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-lg font-semibold text-foreground">Job Seekers</h1>
+              <h1 className="text-lg font-semibold text-foreground">{tr("mainTitle")}</h1>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                {total > 0 ? `${total} candidate${total > 1 ? "s" : ""} found` : "Browse and manage all candidate profiles."}
+                {total > 0 ? tr("candidatesFound", { count: total }) : tr("mainSubtitle")}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -469,7 +472,7 @@ export default function AdminJobSeekersPage() {
                 size="sm"
                 className="h-8 text-xs text-muted-foreground hover:text-primary"
                 onClick={async () => {
-                  toast.info("Generating search embeddings...");
+                  toast.info(tr("embeddingGenerationStarted"));
                   try {
                     const res = await fetch("/api/job-seekers/generate-embeddings", {
                       method: "POST",
@@ -478,16 +481,16 @@ export default function AdminJobSeekersPage() {
                     });
                     if (res.ok) {
                       const data = await res.json();
-                      toast.success(`Embeddings ready: ${data.generated} generated`);
+                      toast.success(tr("embeddingGenerationSuccess", { count: data.generated }));
                     } else {
-                      toast.error("Failed to generate embeddings");
+                      toast.error(tr("embeddingGenerationFailed"));
                     }
                   } catch {
-                    toast.error("Embedding generation failed");
+                    toast.error(tr("embeddingGenerationError"));
                   }
                 }}
               >
-                <Sparkles className="h-3 w-3" /> Index AI
+                <Sparkles className="h-3 w-3" /> {tr("indexAiButton")}
               </Button>
               {/* Keyword search */}
               <div className="relative">
@@ -495,7 +498,7 @@ export default function AdminJobSeekersPage() {
                 <Input
                   value={search}
                   onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-                  placeholder="Search name, skill, role…"
+                  placeholder={tr("keywordSearchPlaceholder")}
                   className="h-8 w-56 rounded-lg pl-8 text-sm"
                 />
               </div>
@@ -508,7 +511,7 @@ export default function AdminJobSeekersPage() {
                 className="h-8 rounded-lg border-border/80"
               >
                 <SlidersHorizontal className="h-3.5 w-3.5" />
-                Filters
+                {tr("filtersButton")}
                 {activeFilterCount > 0 && (
                   <span className="ml-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[0.6rem] text-primary-foreground">
                     {activeFilterCount}
@@ -525,27 +528,27 @@ export default function AdminJobSeekersPage() {
                 className="h-8 rounded-lg border-border/80"
               >
                 {cvDownloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />}
-                Download CVs
+                {tr("downloadCvsButton")}
               </Button>
 
               {/* Export Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" className="h-8 rounded-lg border-border/80">
-                    <Download className="h-3.5 w-3.5" /> Export
+                    <Download className="h-3.5 w-3.5" /> {tr("exportButton")}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuLabel>Export Search Results</DropdownMenuLabel>
+                  <DropdownMenuLabel>{tr("exportLabel")}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleExportCsv}>
-                    <FileText className="h-4 w-4" /> CSV (Full Details)
+                    <FileText className="h-4 w-4" /> {tr("exportCsv")}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleExportExcel}>
-                    <FileSpreadsheet className="h-4 w-4" /> Excel (Full Details)
+                    <FileSpreadsheet className="h-4 w-4" /> {tr("exportExcel")}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleExportPdf}>
-                    <FileText className="h-4 w-4" /> PDF Report
+                    <FileText className="h-4 w-4" /> {tr("exportPdf")}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -557,67 +560,67 @@ export default function AdminJobSeekersPage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 pt-2 border-t border-border/50">
               {/* Skills */}
               <div>
-                <label className="text-[0.65rem] font-medium text-muted-foreground mb-0.5 block">Skills</label>
+                <label className="text-[0.65rem] font-medium text-muted-foreground mb-0.5 block">{tr("filterLabelSkills")}</label>
                 <Input
                   value={skillsFilter}
                   onChange={(e) => { setSkillsFilter(e.target.value); resetPage(); }}
-                  placeholder="React, Python…"
+                  placeholder={tr("filterPlaceholderSkills")}
                   className="h-7 text-xs rounded-md"
                 />
               </div>
               {/* Location */}
               <div>
-                <label className="text-[0.65rem] font-medium text-muted-foreground mb-0.5 block">Location</label>
+                <label className="text-[0.65rem] font-medium text-muted-foreground mb-0.5 block">{tr("filterLabelLocation")}</label>
                 <Input
                   value={locationFilter}
                   onChange={(e) => { setLocationFilter(e.target.value); resetPage(); }}
-                  placeholder="City or country"
+                  placeholder={tr("filterPlaceholderLocation")}
                   className="h-7 text-xs rounded-md"
                 />
               </div>
               {/* Availability */}
               <div>
-                <label className="text-[0.65rem] font-medium text-muted-foreground mb-0.5 block">Availability</label>
+                <label className="text-[0.65rem] font-medium text-muted-foreground mb-0.5 block">{tr("filterLabelAvailability")}</label>
                 <Select value={availabilityFilter || "all"} onValueChange={(v) => { setAvailabilityFilter(v === "all" ? "" : v); resetPage(); }}>
                   <SelectTrigger className="h-7 text-xs rounded-md">
-                    <SelectValue placeholder="All" />
+                    <SelectValue placeholder={tr("filterPlaceholderAll")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="immediately">Immediately</SelectItem>
-                    <SelectItem value="within_month">Within 1 Month</SelectItem>
-                    <SelectItem value="within_3_months">Within 3 Months</SelectItem>
-                    <SelectItem value="not_available">Not Available</SelectItem>
+                    <SelectItem value="all">{tr("filterPlaceholderAll")}</SelectItem>
+                    <SelectItem value="immediately">{tr("availabilityImmediately")}</SelectItem>
+                    <SelectItem value="within_month">{tr("availabilityWithinMonth")}</SelectItem>
+                    <SelectItem value="within_3_months">{tr("availabilityWithin3Months")}</SelectItem>
+                    <SelectItem value="not_available">{tr("availabilityNotAvailable")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               {/* Job Type */}
               <div>
-                <label className="text-[0.65rem] font-medium text-muted-foreground mb-0.5 block">Job Type</label>
+                <label className="text-[0.65rem] font-medium text-muted-foreground mb-0.5 block">{tr("filterLabelJobType")}</label>
                 <Select value={jobTypeFilter || "all"} onValueChange={(v) => { setJobTypeFilter(v === "all" ? "" : v); resetPage(); }}>
                   <SelectTrigger className="h-7 text-xs rounded-md">
-                    <SelectValue placeholder="All" />
+                    <SelectValue placeholder={tr("filterPlaceholderAll")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="remote">Remote</SelectItem>
-                    <SelectItem value="hybrid">Hybrid</SelectItem>
-                    <SelectItem value="onsite">Onsite</SelectItem>
+                    <SelectItem value="all">{tr("filterPlaceholderAll")}</SelectItem>
+                    <SelectItem value="remote">{tr("jobTypeRemote")}</SelectItem>
+                    <SelectItem value="hybrid">{tr("jobTypeHybrid")}</SelectItem>
+                    <SelectItem value="onsite">{tr("jobTypeOnsite")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               {/* Sort */}
               <div>
-                <label className="text-[0.65rem] font-medium text-muted-foreground mb-0.5 block">Sort By</label>
+                <label className="text-[0.65rem] font-medium text-muted-foreground mb-0.5 block">{tr("filterLabelSort")}</label>
                 <Select value={sortFilter} onValueChange={(v) => { setSortFilter(v); resetPage(); }}>
                   <SelectTrigger className="h-7 text-xs rounded-md">
-                    <SelectValue placeholder="Newest" />
+                    <SelectValue placeholder={tr("sortNewest")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="newest">Newest First</SelectItem>
-                    <SelectItem value="oldest">Oldest First</SelectItem>
-                    <SelectItem value="profile_high">Profile % (High)</SelectItem>
-                    <SelectItem value="profile_low">Profile % (Low)</SelectItem>
+                    <SelectItem value="newest">{tr("sortNewest")}</SelectItem>
+                    <SelectItem value="oldest">{tr("sortOldest")}</SelectItem>
+                    <SelectItem value="profile_high">{tr("sortProfileHigh")}</SelectItem>
+                    <SelectItem value="profile_low">{tr("sortProfileLow")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -630,7 +633,7 @@ export default function AdminJobSeekersPage() {
                     onChange={(e) => { setHasCVFilter(e.target.checked); resetPage(); }}
                     className="h-3.5 w-3.5 rounded border-border accent-primary"
                   />
-                  <span className="text-xs text-muted-foreground">Has CV only</span>
+                  <span className="text-xs text-muted-foreground">{tr("filterHasCvOnly")}</span>
                 </label>
               </div>
             </div>
@@ -641,20 +644,20 @@ export default function AdminJobSeekersPage() {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Profession</TableHead>
-              <TableHead>Education</TableHead>
-              <TableHead>Nationality</TableHead>
-              <TableHead>Skills</TableHead>
-              <TableHead>Exp</TableHead>
-              <TableHead>Profile %</TableHead>
-              <TableHead>Availability</TableHead>
-              <TableHead>CV</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Joined</TableHead>
+              <TableHead>{tr("tableHeaderName")}</TableHead>
+              <TableHead>{tr("tableHeaderEmail")}</TableHead>
+              <TableHead>{tr("tableHeaderProfession")}</TableHead>
+              <TableHead>{tr("tableHeaderEducation")}</TableHead>
+              <TableHead>{tr("tableHeaderNationality")}</TableHead>
+              <TableHead>{tr("tableHeaderSkills")}</TableHead>
+              <TableHead>{tr("tableHeaderExp")}</TableHead>
+              <TableHead>{tr("tableHeaderProfilePercent")}</TableHead>
+              <TableHead>{tr("tableHeaderAvailability")}</TableHead>
+              <TableHead>{tr("tableHeaderCv")}</TableHead>
+              <TableHead>{tr("tableHeaderStatus")}</TableHead>
+              <TableHead>{tr("tableHeaderJoined")}</TableHead>
               {(can("job_seekers", "update") || can("job_seekers", "delete")) && (
-                <TableHead>Actions</TableHead>
+                <TableHead>{tr("tableHeaderActions")}</TableHead>
               )}
             </TableRow>
           </TableHeader>
@@ -674,8 +677,8 @@ export default function AdminJobSeekersPage() {
                 <TableCell colSpan={13} className="h-32 text-center">
                   <div className="flex flex-col items-center gap-2 text-muted-foreground">
                     <Inbox className="h-8 w-8 opacity-40" />
-                    <span className="text-sm">No job seekers found</span>
-                    <span className="text-xs">Try adjusting your search or filters</span>
+                    <span className="text-sm">{tr("emptyStateTitle")}</span>
+                    <span className="text-xs">{tr("emptyStateSubtitle")}</span>
                   </div>
                 </TableCell>
               </TableRow>
@@ -718,7 +721,7 @@ export default function AdminJobSeekersPage() {
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
                       className="inline-flex items-center justify-center h-7 w-7 rounded-md hover:bg-primary/10 text-primary transition-colors"
-                      title="View CV"
+                      title={tr("viewCvTitle")}
                     >
                       <Eye className="h-4 w-4" />
                     </a>
@@ -730,17 +733,17 @@ export default function AdminJobSeekersPage() {
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-1">
                       {can("job_seekers", "update") && (
-                        <Button variant="ghost" size="xs" onClick={() => setEditItem(js)} title="Edit">
+                        <Button variant="ghost" size="xs" onClick={() => setEditItem(js)} title={tr("actionEditTitle")}>
                           <Pencil className="h-3.5 w-3.5 text-primary" />
                         </Button>
                       )}
                       {can("job_seekers", "delete") && (
-                        <Button variant="ghost" size="xs" onClick={() => handleDelete(js._id)} title="Deactivate">
+                        <Button variant="ghost" size="xs" onClick={() => handleDelete(js._id)} title={tr("actionDeactivateTitle")}>
                           <Trash2 className="h-3.5 w-3.5 text-destructive" />
                         </Button>
                       )}
                       {can("job_seekers", "delete") && (
-                        <Button variant="ghost" size="xs" onClick={() => handlePermanentDelete(js._id)} title="Delete permanently">
+                        <Button variant="ghost" size="xs" onClick={() => handlePermanentDelete(js._id)} title={tr("actionDeletePermanentlyTitle")}>
                           <UserX className="h-3.5 w-3.5 text-destructive" />
                         </Button>
                       )}
@@ -757,53 +760,53 @@ export default function AdminJobSeekersPage() {
                       {/* Summary */}
                       {js.summary && (
                         <div className="md:col-span-3">
-                          <p className="text-xs font-semibold text-muted-foreground mb-1">Summary</p>
+                          <p className="text-xs font-semibold text-muted-foreground mb-1">{tr("expandedLabelSummary")}</p>
                           <p className="text-muted-foreground text-xs">{js.summary}</p>
                         </div>
                       )}
                       {/* Contact */}
                       <div>
-                        <p className="text-xs font-semibold text-muted-foreground mb-1">Contact</p>
+                        <p className="text-xs font-semibold text-muted-foreground mb-1">{tr("expandedLabelContact")}</p>
                         <p className="text-muted-foreground text-xs">{js.email ?? js.userId?.email ?? "—"}</p>
                         {js.phone && <p className="text-muted-foreground text-xs">{js.phone}</p>}
                         {js.currentLocation && <p className="text-muted-foreground text-xs">{js.currentLocation}</p>}
                       </div>
                       {/* Experience */}
                       <div>
-                        <p className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1"><Briefcase className="h-3 w-3" /> Experience</p>
+                        <p className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1"><Briefcase className="h-3 w-3" /> {tr("expandedLabelExperience")}</p>
                         {js.experience?.length ? js.experience.slice(0, 3).map((exp, i) => (
                           <div key={i} className="mb-1.5">
                             <p className="font-medium text-foreground text-xs">{exp.jobTitle || "—"}</p>
-                            <p className="text-xs text-muted-foreground">{exp.company}{exp.isCurrent ? " · Current" : ""}</p>
+                            <p className="text-xs text-muted-foreground">{exp.company}{exp.isCurrent ? ` · ${tr("experienceCurrent")}` : ""}</p>
                           </div>
-                        )) : <p className="text-xs text-muted-foreground">No experience</p>}
+                        )) : <p className="text-xs text-muted-foreground">{tr("expandedNoExperience")}</p>}
                       </div>
                       {/* Education */}
                       <div>
-                        <p className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1"><GraduationCap className="h-3 w-3" /> Education</p>
+                        <p className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1"><GraduationCap className="h-3 w-3" /> {tr("expandedLabelEducation")}</p>
                         {js.education?.length ? js.education.slice(0, 3).map((edu, i) => (
                           <div key={i} className="mb-1.5">
                             <p className="font-medium text-foreground text-xs">{edu.degree || "—"}{edu.field ? ` — ${edu.field}` : ""}</p>
                             <p className="text-xs text-muted-foreground">{edu.institution}{edu.passingYear ? ` · ${edu.passingYear}` : ""}</p>
                           </div>
-                        )) : <p className="text-xs text-muted-foreground">No education</p>}
+                        )) : <p className="text-xs text-muted-foreground">{tr("expandedNoEducation")}</p>}
                       </div>
                       {/* Skills */}
                       {js.skills?.length ? (
                         <div>
-                          <p className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1"><Award className="h-3 w-3" /> Skills</p>
+                          <p className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1"><Award className="h-3 w-3" /> {tr("expandedLabelSkills")}</p>
                           <div className="flex flex-wrap gap-1">
                             {js.skills.slice(0, 12).map((s) => (
                               <span key={s} className="rounded-full border bg-muted/30 px-2 py-0.5 text-[0.65rem] text-muted-foreground">{s}</span>
                             ))}
-                            {js.skills.length > 12 && <span className="text-xs text-muted-foreground">+{js.skills.length - 12} more</span>}
+                            {js.skills.length > 12 && <span className="text-xs text-muted-foreground">{tr("expandedMoreSkills", { count: js.skills.length - 12 })}</span>}
                           </div>
                         </div>
                       ) : null}
                       {/* Languages */}
                       {js.languages?.length ? (
                         <div>
-                          <p className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1"><Globe className="h-3 w-3" /> Languages</p>
+                          <p className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1"><Globe className="h-3 w-3" /> {tr("expandedLabelLanguages")}</p>
                           <div className="flex flex-wrap gap-1">
                             {js.languages.map((l, i) => (
                               <span key={i} className="rounded-full border bg-muted/30 px-2 py-0.5 text-[0.65rem] text-muted-foreground">{l.language} ({l.proficiency})</span>
@@ -814,7 +817,7 @@ export default function AdminJobSeekersPage() {
                       {/* Certifications */}
                       {js.certifications?.length ? (
                         <div>
-                          <p className="text-xs font-semibold text-muted-foreground mb-1">Certifications</p>
+                          <p className="text-xs font-semibold text-muted-foreground mb-1">{tr("expandedLabelCertifications")}</p>
                           <div className="flex flex-wrap gap-1">
                             {js.certifications.slice(0, 5).map((c, i) => (
                               <span key={i} className="rounded-full border bg-muted/30 px-2 py-0.5 text-[0.65rem] text-muted-foreground">{c}</span>
@@ -825,7 +828,7 @@ export default function AdminJobSeekersPage() {
                       {/* CV Download (individual) */}
                       {js.cv?.originalUrl && (
                         <div>
-                          <p className="text-xs font-semibold text-muted-foreground mb-1">CV / Resume</p>
+                          <p className="text-xs font-semibold text-muted-foreground mb-1">{tr("expandedLabelCvResume")}</p>
                           <a
                             href={js.cv.originalUrl}
                             target="_blank"
@@ -833,7 +836,7 @@ export default function AdminJobSeekersPage() {
                             className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/5 px-2.5 py-1 text-xs text-primary hover:bg-primary/10 transition-colors"
                           >
                             <Download className="h-3 w-3" />
-                            Download CV
+                            {tr("downloadCvLink")}
                           </a>
                         </div>
                       )}
@@ -851,7 +854,7 @@ export default function AdminJobSeekersPage() {
       <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
 
       {/* ── Edit Modal ────────────────────────────────────── */}
-      <CrudModal open={!!editItem} onClose={() => setEditItem(null)} title="Edit Job Seeker" fields={EDIT_FIELDS}
+      <CrudModal open={!!editItem} onClose={() => setEditItem(null)} title={tr("editModalTitle")} fields={editFields}
         initialValues={editItem ? { name: editItem.fullName || editItem.userId?.name || "", email: editItem.email ?? editItem.userId?.email ?? "", nationality: editItem.nationality ?? "", currentLocation: editItem.currentLocation ?? "", summary: editItem.summary ?? "" } : undefined}
         onSubmit={handleEdit} />
     </div>

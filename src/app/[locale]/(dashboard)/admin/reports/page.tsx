@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -197,6 +198,7 @@ function TrendBadge({ trend }: { trend: TrendData }) {
 }
 
 export default function AdminReportsPage() {
+  const t = useTranslations("adminReports");
   const [stats, setStats] = useState<ReportStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -208,7 +210,7 @@ export default function AdminReportsPage() {
     fetch("/api/admin/analytics", { signal: controller.signal })
       .then((r) => {
         if (!r.ok) {
-          throw new Error("Failed to load reports.");
+          throw new Error(t("failedToLoadReports"));
         }
 
         return r.json();
@@ -222,7 +224,7 @@ export default function AdminReportsPage() {
           return;
         }
 
-        setErrorMessage(error instanceof Error ? error.message : "Failed to load reports.");
+        setErrorMessage(error instanceof Error ? error.message : t("failedToLoadReports"));
       })
       .finally(() => {
         if (isActive) {
@@ -251,11 +253,11 @@ export default function AdminReportsPage() {
 
   const kpis = [
     {
-      label: "Total Jobs",
+      label: t("totalJobs"),
       value: totalJobs.toLocaleString(),
       trend: stats?.trends.jobs,
-      detail: `${stats?.trends.jobs.current ?? 0} roles created in the last 30 days.`,
-      insight: `${stats?.summary.jobsWithoutApplications ?? 0} roles still need candidate demand.`,
+      detail: t("totalJobsRolesDetail", { current: stats?.trends.jobs.current ?? 0 }),
+      insight: t("totalJobsInsight", { count: stats?.summary.jobsWithoutApplications ?? 0 }),
       valueClassName: "text-foreground",
       indicatorClassName: "bg-blue-500",
       toneClassName: "workspace-tone-sky",
@@ -263,11 +265,11 @@ export default function AdminReportsPage() {
       href: "../jobs",
     },
     {
-      label: "Applications",
+      label: t("applications"),
       value: totalApplications.toLocaleString(),
       trend: stats?.trends.applications,
-      detail: `${stats?.trends.applications.current ?? 0} candidates entered the funnel in the last 30 days.`,
-      insight: `${applicationRate.toFixed(1)} applications per role across the platform.`,
+      detail: t("applicationsDetail", { current: stats?.trends.applications.current ?? 0 }),
+      insight: t("applicationsInsight", { rate: applicationRate.toFixed(1) }),
       valueClassName: "text-foreground",
       indicatorClassName: "bg-violet-500",
       toneClassName: "workspace-tone-violet",
@@ -275,11 +277,11 @@ export default function AdminReportsPage() {
       href: "../applications",
     },
     {
-      label: "Placements",
+      label: t("placements"),
       value: totalPlacements.toLocaleString(),
       trend: stats?.trends.placements,
-      detail: `${stats?.trends.placements.current ?? 0} placements closed in the last 30 days.`,
-      insight: `${Math.round(placementRate * 100)}% application-to-placement conversion.`,
+      detail: t("placementsDetail", { current: stats?.trends.placements.current ?? 0 }),
+      insight: t("placementsInsight", { rate: Math.round(placementRate * 100) }),
       valueClassName: "text-foreground",
       indicatorClassName: totalPlacements > 0 ? "bg-emerald-500" : "bg-yellow-500",
       toneClassName: totalPlacements > 0 ? "workspace-tone-emerald" : "workspace-tone-amber",
@@ -287,13 +289,13 @@ export default function AdminReportsPage() {
       href: "../applications?status=placed",
     },
     {
-      label: "Revenue",
+      label: t("revenue"),
       value: `$${totalRevenue.toLocaleString()}`,
       trend: stats?.trends.revenue,
-      detail: `$${(stats?.trends.revenue.current ?? 0).toLocaleString()} paid in the last 30 days.`,
+      detail: t("revenueDetail", { current: (stats?.trends.revenue.current ?? 0).toLocaleString() }),
       insight: totalPlacements > 0
-        ? `$${Math.round(totalRevenue / totalPlacements).toLocaleString()} earned per placement.`
-        : "No placement revenue has been unlocked yet.",
+        ? t("revenueInsightWithPlacements", { earned: Math.round(totalRevenue / totalPlacements).toLocaleString() })
+        : t("revenueInsightNoPlacements"),
       valueClassName: "text-foreground",
       indicatorClassName: totalRevenue > 0 ? "bg-amber-500" : "bg-slate-400",
       toneClassName: "workspace-tone-amber",
@@ -308,11 +310,11 @@ export default function AdminReportsPage() {
       <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
           <Sparkles className="h-3.5 w-3.5" />
-          Admin workspace
+          {t("adminWorkspace")}
         </div>
-        <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">Reports &amp; Analytics</h1>
+        <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("reportsAndAnalytics")}</h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-          Platform demand, funnel health, conversion pressure, and operator workload at a glance.
+          {t("platformDemandDescription")}
         </p>
       </section>
 
@@ -324,7 +326,7 @@ export default function AdminReportsPage() {
                 <div>
                   <div className="flex items-center gap-2">
                     <span className={`h-2 w-2 rounded-full ${kpi.indicatorClassName}`} />
-                    <p className="text-xs font-semibold text-muted-foreground">{kpi.label}</p>
+                    <p className="text-xs font-semibold text-muted-foreground">{t(kpi.label)}</p>
                   </div>
                   <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{loading ? <span className="inline-block h-7 w-16 animate-pulse rounded bg-muted" /> : kpi.value}</p>
                 </div>
@@ -334,7 +336,7 @@ export default function AdminReportsPage() {
               </div>
               <div className="mt-3 flex items-center gap-2">
                 {kpi.trend ? <TrendBadge trend={kpi.trend} /> : null}
-                <span className="text-xs text-muted-foreground">vs prev 30d</span>
+                <span className="text-xs text-muted-foreground">{t("vsPrev30d")}</span>
               </div>
               <p className="mt-2 text-xs leading-5 text-muted-foreground">{kpi.insight}</p>
             </Link>
@@ -343,14 +345,14 @@ export default function AdminReportsPage() {
       </section>
 
       {loading ? (
-        <div className="grid gap-4 lg:grid-cols-2" role="status" aria-live="polite" aria-label="Loading reports">
+        <div className="grid gap-4 lg:grid-cols-2" role="status" aria-live="polite" aria-label={t("loadingReports")}>
           <div className="workspace-panel-surface h-72 animate-pulse rounded-[20px]" />
           <div className="workspace-panel-surface h-72 animate-pulse rounded-[20px]" />
           <div className="workspace-panel-surface h-72 animate-pulse rounded-[20px] lg:col-span-2" />
         </div>
       ) : errorMessage ? (
         <section className="workspace-panel-surface rounded-[28px] border border-rose-200/80 p-5 sm:p-6 dark:border-rose-900/60" aria-label="Reports error">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-rose-500">Unable to load reports</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-rose-500">{t("unableToLoadReports")}</p>
           <p className="mt-2 text-sm leading-6 text-rose-700 dark:text-rose-200">{errorMessage}</p>
         </section>
       ) : (
@@ -359,9 +361,9 @@ export default function AdminReportsPage() {
             <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label="Platform alerts">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Action queue</p>
-                  <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Platform Alerts</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">The issues below deserve admin attention before they turn into missed placements or stalled revenue.</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("actionQueue")}</p>
+                  <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("platformAlerts")}</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">{t("platformAlertsDescription")}</p>
                 </div>
                 <div className="workspace-tone-amber rounded-2xl p-2.5">
                   <AlertTriangle className="h-5 w-5" />
@@ -399,9 +401,9 @@ export default function AdminReportsPage() {
             <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label="Jobs versus applications over time">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Demand trend</p>
-                  <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Jobs vs Applications</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">A compact trend chart showing whether candidate demand is keeping pace with job supply.</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("demandTrend")}</p>
+                  <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("jobsVsApplications")}</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">{t("jobsVsApplicationsDescription")}</p>
                 </div>
                 <div className="workspace-tone-sky rounded-2xl p-2.5">
                   <TrendingUp className="h-5 w-5" />
@@ -409,15 +411,15 @@ export default function AdminReportsPage() {
               </div>
 
               <div className="mt-6 flex items-center gap-4 text-xs font-medium text-muted-foreground">
-                <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-blue-500" /> Jobs</div>
-                <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-violet-500" /> Applications</div>
+                <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-blue-500" /> {t("jobs")}</div>
+                <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-violet-500" /> {t("applicationsChartLabel")}</div>
               </div>
 
               {activitySeries.length ? (
                 <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6">
                   {activitySeries.map((point) => (
                     <div key={point.label} className="rounded-[22px] border border-slate-200/80 bg-slate-50/80 px-3 py-4">
-                      <div className="flex h-32 items-end justify-center gap-2" aria-label={`${point.label} demand chart`}>
+                      <div className="flex h-32 items-end justify-center gap-2" aria-label={t("jobsDemandChart", { label: point.label })}>
                         <div
                           className="w-4 rounded-t-full bg-blue-500"
                           style={{ height: `${Math.max(10, (point.jobs / maxActivityValue) * 100)}%` }}
@@ -433,11 +435,11 @@ export default function AdminReportsPage() {
                       <div className="mt-3 grid grid-cols-2 gap-2 text-center text-xs text-muted-foreground">
                         <div>
                           <p className="font-semibold text-foreground">{point.jobs}</p>
-                          <p>Jobs</p>
+                          <p>{t("jobsCount")}</p>
                         </div>
                         <div>
                           <p className="font-semibold text-foreground">{point.applications}</p>
-                          <p>Apps</p>
+                          <p>{t("appsCount")}</p>
                         </div>
                       </div>
                     </div>
@@ -445,7 +447,7 @@ export default function AdminReportsPage() {
                 </div>
               ) : (
                 <div className="mt-6 rounded-2xl border border-dashed border-border/70 bg-background/60 px-4 py-6 text-sm text-muted-foreground">
-                  No trend data is available yet.
+                  {t("noDemandData")}
                 </div>
               )}
             </section>
@@ -455,9 +457,9 @@ export default function AdminReportsPage() {
             <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label="Applications by status">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Pipeline mix</p>
-                  <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Applications by Status</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">A segmented breakdown of where candidates are clustering inside the funnel right now.</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("pipelineMix")}</p>
+                  <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("applicationsByStatus")}</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">{t("applicationsByStatusDescription")}</p>
                 </div>
                 <div className="workspace-tone-violet rounded-2xl p-2.5">
                   <FileText className="h-5 w-5" />
@@ -466,7 +468,7 @@ export default function AdminReportsPage() {
 
               {statusRows.length ? (
                 <>
-                  <div className="mt-6 flex h-4 overflow-hidden rounded-full bg-secondary" role="progressbar" aria-label="Application status distribution" aria-valuemin={0} aria-valuemax={100} aria-valuenow={100}>
+                  <div className="mt-6 flex h-4 overflow-hidden rounded-full bg-secondary" role="progressbar" aria-label={t("applicationStatusDistribution")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={100}>
                     {statusRows.map((row) => (
                       <div
                         key={row.key}
@@ -494,7 +496,7 @@ export default function AdminReportsPage() {
                 </>
               ) : (
                 <div className="mt-6 rounded-2xl border border-dashed border-border/70 bg-background/60 px-4 py-6 text-sm text-muted-foreground">
-                  No application status data is available yet.
+                  {t("noApplicationStatusData")}
                 </div>
               )}
             </section>
@@ -502,9 +504,9 @@ export default function AdminReportsPage() {
             <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label="Conversion funnel">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Flow efficiency</p>
-                  <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Conversion Funnel</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">From published jobs to placements, see where volume compresses across the hiring journey.</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("flowEfficiency")}</p>
+                  <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("conversionFunnel")}</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">{t("conversionFunnelDescription")}</p>
                 </div>
                 <div className="workspace-tone-emerald rounded-2xl p-2.5">
                   <UserCheck className="h-5 w-5" />
@@ -522,7 +524,7 @@ export default function AdminReportsPage() {
                         <div>
                           <p className="font-semibold text-foreground">{stage.label}</p>
                           <p className="text-xs text-muted-foreground">
-                            {index === 0 ? "Base funnel volume" : `${conversion}% retained from ${funnel[index - 1]?.label.toLowerCase()}`}
+                            {index === 0 ? t("baseFunnelVolume") : t("retainedFromPrevious", { conversion, previous: funnel[index - 1]?.label.toLowerCase() })}
                           </p>
                         </div>
                         <p className="text-2xl font-semibold tracking-tight text-foreground">{stage.count.toLocaleString()}</p>
@@ -530,7 +532,7 @@ export default function AdminReportsPage() {
                       <div
                         className="mt-3 h-2 overflow-hidden rounded-full bg-secondary"
                         role="progressbar"
-                        aria-label={`${stage.label} funnel stage`}
+                        aria-label={t("funnelStage", { label: stage.label })}
                         aria-valuemin={0}
                         aria-valuemax={maxFunnelValue}
                         aria-valuenow={stage.count}
@@ -551,8 +553,8 @@ export default function AdminReportsPage() {
             <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label="Recent jobs">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Recent activity</p>
-                  <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Recent Jobs</h2>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("recentActivity")}</p>
+                  <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("recentJobs")}</h2>
                 </div>
                 <div className="workspace-tone-sky rounded-2xl p-2.5">
                   <Briefcase className="h-5 w-5" />
@@ -564,8 +566,8 @@ export default function AdminReportsPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Role</TableHead>
-                        <TableHead>Apps</TableHead>
+                        <TableHead>{t("jobTableHeaderRole")}</TableHead>
+                        <TableHead>{t("jobTableHeaderApps")}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -590,7 +592,7 @@ export default function AdminReportsPage() {
                 </div>
               ) : (
                 <div className="mt-6 rounded-2xl border border-dashed border-border/70 bg-background/60 px-4 py-6 text-sm text-muted-foreground">
-                  No recent jobs available yet.
+                  {t("noRecentJobsAvailable")}
                 </div>
               )}
             </section>
@@ -598,8 +600,8 @@ export default function AdminReportsPage() {
             <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label="Recent applications">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Recent activity</p>
-                  <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Recent Applications</h2>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("recentActivity")}</p>
+                  <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("recentApplications")}</h2>
                 </div>
                 <div className="workspace-tone-violet rounded-2xl p-2.5">
                   <FileText className="h-5 w-5" />
@@ -611,8 +613,8 @@ export default function AdminReportsPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Role</TableHead>
-                        <TableHead>Status</TableHead>
+                        <TableHead>{t("applicationTableHeaderRole")}</TableHead>
+                        <TableHead>{t("applicationTableHeaderStatus")}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -637,7 +639,7 @@ export default function AdminReportsPage() {
                 </div>
               ) : (
                 <div className="mt-6 rounded-2xl border border-dashed border-border/70 bg-background/60 px-4 py-6 text-sm text-muted-foreground">
-                  No recent applications available yet.
+                  {t("noRecentApplicationsAvailable")}
                 </div>
               )}
             </section>
@@ -645,8 +647,8 @@ export default function AdminReportsPage() {
             <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label="Top agents">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Ownership</p>
-                  <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Top Agents</h2>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("ownership")}</p>
+                  <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("topAgents")}</h2>
                 </div>
                 <div className="workspace-tone-emerald rounded-2xl p-2.5">
                   <CheckCircle2 className="h-5 w-5" />
@@ -659,26 +661,26 @@ export default function AdminReportsPage() {
                     <div key={agent.id} className="workspace-subtle-surface rounded-[22px] px-4 py-4">
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Rank {index + 1}</p>
+                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("rankPrefix", { index: index + 1 })}</p>
                           <p className="mt-2 text-base font-semibold text-foreground">{agent.name}</p>
                         </div>
                         <ArrowRight className="mt-1 h-4 w-4 text-muted-foreground" />
                       </div>
                       <div className="mt-4 grid grid-cols-2 gap-3 text-sm xl:grid-cols-4">
                         <div>
-                          <p className="text-xs text-muted-foreground">Jobs</p>
+                          <p className="text-xs text-muted-foreground">{t("topAgentJobsMetric")}</p>
                           <p className="font-semibold text-foreground">{agent.jobs}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-muted-foreground">Apps</p>
+                          <p className="text-xs text-muted-foreground">{t("topAgentAppsMetric")}</p>
                           <p className="font-semibold text-foreground">{agent.applications}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-muted-foreground">Placements</p>
+                          <p className="text-xs text-muted-foreground">{t("topAgentPlacementsMetric")}</p>
                           <p className="font-semibold text-foreground">{agent.placements}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-muted-foreground">Paid</p>
+                          <p className="text-xs text-muted-foreground">{t("topAgentPaidMetric")}</p>
                           <p className="font-semibold text-foreground">${agent.revenue.toLocaleString()}</p>
                         </div>
                       </div>
@@ -687,7 +689,7 @@ export default function AdminReportsPage() {
                 </div>
               ) : (
                 <div className="mt-6 rounded-2xl border border-dashed border-border/70 bg-background/60 px-4 py-6 text-sm text-muted-foreground">
-                  No agent performance data is available yet.
+                  {t("noAgentPerformanceData")}
                 </div>
               )}
             </section>
@@ -696,9 +698,9 @@ export default function AdminReportsPage() {
           <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label="Operational highlights">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Decision support</p>
-                <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Operational Highlights</h2>
-                <p className="mt-1 text-sm text-muted-foreground">Three quick reads for throughput, aging, and commercial efficiency.</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("decisionSupport")}</p>
+                <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("operationalHighlights")}</h2>
+                <p className="mt-1 text-sm text-muted-foreground">{t("operationalHighlightsDescription")}</p>
               </div>
             </div>
 
@@ -706,26 +708,26 @@ export default function AdminReportsPage() {
               <div className="workspace-subtle-surface rounded-[24px] p-4">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Clock3 className="h-4 w-4" />
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">Aging queue</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">{t("agingQueue")}</p>
                 </div>
                 <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{stats?.summary.staleOpenApplications ?? 0}</p>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">Open applications sitting beyond 48 hours and likely needing review attention.</p>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">{t("agingQueueDescription")}</p>
               </div>
               <div className="workspace-subtle-surface rounded-[24px] p-4">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <TrendingUp className="h-4 w-4" />
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">Demand efficiency</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">{t("demandEfficiency")}</p>
                 </div>
                 <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{applicationRate.toFixed(1)}</p>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">Average applications generated per published role.</p>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">{t("demandEfficiencyDescription")}</p>
               </div>
               <div className="workspace-subtle-surface rounded-[24px] p-4">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Wallet className="h-4 w-4" />
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">Commercial yield</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">{t("commercialYield")}</p>
                 </div>
                 <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{Math.round(placementRate * 100)}%</p>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">Application-to-placement conversion across the current platform book.</p>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">{t("commercialYieldDescription")}</p>
               </div>
             </div>
           </section>

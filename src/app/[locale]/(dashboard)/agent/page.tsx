@@ -5,7 +5,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import Agent from "@/models/Agent";
 import Job from "@/models/Job";
 import Application from "@/models/Application";
-import { getTranslations } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import {
   ArrowRight,
   BarChart3,
@@ -22,6 +22,7 @@ import {
 export default async function AgentDashboard({ params }: { params: Promise<{ locale: string }> }) {
   const session = await auth();
   const { locale } = await params;
+  setRequestLocale(locale);
   const t = await getTranslations("agentDashboard");
   if (!session?.user) redirect(`/${locale}/login`);
 

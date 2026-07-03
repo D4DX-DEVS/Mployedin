@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
   Activity, Server, Database, Clock, Cpu, HardDrive, Wifi,
@@ -38,6 +39,7 @@ interface SystemHealth {
 /* ------------------------------------------------------------------ */
 
 export default function AdminSystemHealthPage() {
+  const t = useTranslations("adminSystemHealth");
   const [health, setHealth] = useState<SystemHealth | null>(null);
   const [loading, setLoading] = useState(true);
   // Initialize to null so the server-rendered HTML and the first client render
@@ -54,14 +56,14 @@ export default function AdminSystemHealthPage() {
         setHealth(data);
         setLastRefresh(new Date());
       } else {
-        toast.error("Failed to fetch system health");
+        toast.error(t("errorFetchHealth"));
       }
     } catch {
-      toast.error("Error connecting to health endpoint");
+      toast.error(t("errorConnectHealth"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => { fetchHealth(); }, [fetchHealth]);
 
@@ -103,21 +105,21 @@ export default function AdminSystemHealthPage() {
               <Activity className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground">System Health</h1>
-              <p className="text-sm text-muted-foreground">Real-time platform monitoring and diagnostics</p>
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t("pageTitle")}</h1>
+              <p className="text-sm text-muted-foreground">{t("pageDescription")}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase ${getStatusColor(overallStatus)}`}>
               {getStatusIcon(overallStatus)}
-              {overallStatus === "healthy" ? "All Systems Operational" : overallStatus === "warning" ? "Degraded" : "Checking..."}
+              {overallStatus === "healthy" ? t("statusOperational") : overallStatus === "warning" ? t("statusDegraded") : t("statusChecking")}
             </div>
             <Button variant="outline" size="sm" onClick={fetchHealth} disabled={loading}>
-              <RefreshCcw className={`mr-1 h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Refresh
+              <RefreshCcw className={`mr-1 h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> {t("buttonRefresh")}
             </Button>
           </div>
         </div>
-        <p className="mt-2 text-xs text-muted-foreground">Last updated: {lastRefresh ? lastRefresh.toLocaleTimeString() : "—"} · Auto-refreshes every 60s</p>
+        <p className="mt-2 text-xs text-muted-foreground">{t("lastUpdatedLabel")} {lastRefresh ? lastRefresh.toLocaleTimeString() : "—"} · {t("autoRefreshLabel")}</p>
       </section>
 
       {loading && !health ? (
@@ -141,24 +143,24 @@ export default function AdminSystemHealthPage() {
         <>
           {/* Core Services */}
           <section className="workspace-panel-surface rounded-[28px] p-5">
-            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Core Services</h2>
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t("coreServicesHeading")}</h2>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {/* Database */}
               <div className="workspace-glass-panel rounded-2xl p-5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Database className="h-5 w-5 text-indigo-500" />
-                    <span className="font-medium text-foreground">Database</span>
+                    <span className="font-medium text-foreground">{t("databaseLabel")}</span>
                   </div>
                   {getStatusIcon(health.database.status)}
                 </div>
                 <div className="mt-4 space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Latency</span>
+                    <span className="text-muted-foreground">{t("latencyLabel")}</span>
                     <span className="font-medium">{health.database.latencyMs}ms</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Connections</span>
+                    <span className="text-muted-foreground">{t("connectionsLabel")}</span>
                     <span className="font-medium">{health.database.connections}</span>
                   </div>
                 </div>
@@ -169,21 +171,21 @@ export default function AdminSystemHealthPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Globe className="h-5 w-5 text-sky-500" />
-                    <span className="font-medium text-foreground">API</span>
+                    <span className="font-medium text-foreground">{t("apiLabel")}</span>
                   </div>
                   {getStatusIcon(health.api.status)}
                 </div>
                 <div className="mt-4 space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Avg Response</span>
+                    <span className="text-muted-foreground">{t("avgResponseLabel")}</span>
                     <span className="font-medium">{health.api.avgResponseMs}ms</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Error Rate</span>
+                    <span className="text-muted-foreground">{t("errorRateLabel")}</span>
                     <span className={`font-medium ${health.api.errorRate > 5 ? "text-red-500" : ""}`}>{health.api.errorRate}%</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Requests Today</span>
+                    <span className="text-muted-foreground">{t("requestsTodayLabel")}</span>
                     <span className="font-medium">{health.api.requestsToday.toLocaleString()}</span>
                   </div>
                 </div>
@@ -194,13 +196,13 @@ export default function AdminSystemHealthPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <HardDrive className="h-5 w-5 text-violet-500" />
-                    <span className="font-medium text-foreground">Storage</span>
+                    <span className="font-medium text-foreground">{t("storageLabel")}</span>
                   </div>
                   {getStatusIcon(health.storage.status)}
                 </div>
                 <div className="mt-4 space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Used</span>
+                    <span className="text-muted-foreground">{t("usedLabel")}</span>
                     <span className="font-medium">{health.storage.usedGb} GB / {health.storage.totalGb} GB</span>
                   </div>
                   <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted">
@@ -218,59 +220,59 @@ export default function AdminSystemHealthPage() {
 
           {/* Platform Metrics */}
           <section className="workspace-panel-surface rounded-[28px] p-5">
-            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Platform Metrics</h2>
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t("platformMetricsHeading")}</h2>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <div className="workspace-glass-panel rounded-2xl p-4">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Users className="h-4 w-4" />
-                  <span className="text-xs font-semibold uppercase tracking-wider">Active Users</span>
+                  <span className="text-xs font-semibold uppercase tracking-wider">{t("activeUsersLabel")}</span>
                 </div>
                 <p className="mt-2 text-2xl font-semibold">{health.users.totalActive.toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground">{health.users.online} online now</p>
+                <p className="text-xs text-muted-foreground">{health.users.online} {t("onlineNowLabel")}</p>
               </div>
 
               <div className="workspace-glass-panel rounded-2xl p-4">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Zap className="h-4 w-4" />
-                  <span className="text-xs font-semibold uppercase tracking-wider">Active Jobs</span>
+                  <span className="text-xs font-semibold uppercase tracking-wider">{t("activeJobsLabel")}</span>
                 </div>
                 <p className="mt-2 text-2xl font-semibold">{health.jobs.active.toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground">{health.jobs.applicationsToday} applications today</p>
+                <p className="text-xs text-muted-foreground">{health.jobs.applicationsToday} {t("applicationsTodayLabel")}</p>
               </div>
 
               <div className="workspace-glass-panel rounded-2xl p-4">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <TrendingUp className="h-4 w-4" />
-                  <span className="text-xs font-semibold uppercase tracking-wider">Uptime</span>
+                  <span className="text-xs font-semibold uppercase tracking-wider">{t("uptimeLabel")}</span>
                 </div>
                 <p className="mt-2 text-2xl font-semibold">{health.uptime.percentage}%</p>
                 <p className="text-xs text-muted-foreground">
-                  {health.uptime.lastDowntime ? `Last incident: ${new Date(health.uptime.lastDowntime).toLocaleDateString()}` : "No incidents"}
+                  {health.uptime.lastDowntime ? `${t("lastIncidentLabel")} ${new Date(health.uptime.lastDowntime).toLocaleDateString()}` : t("noIncidentsLabel")}
                 </p>
               </div>
 
               <div className="workspace-glass-panel rounded-2xl p-4">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <BarChart3 className="h-4 w-4" />
-                  <span className="text-xs font-semibold uppercase tracking-wider">Cron Jobs</span>
+                  <span className="text-xs font-semibold uppercase tracking-wider">{t("cronJobsLabel")}</span>
                 </div>
                 <p className="mt-2 text-2xl font-semibold flex items-center gap-2">
                   {getStatusIcon(health.cron.failedJobs > 0 ? "warning" : "healthy")}
-                  {health.cron.failedJobs === 0 ? "OK" : `${health.cron.failedJobs} failed`}
+                  {health.cron.failedJobs === 0 ? t("cronStatusOk") : `${health.cron.failedJobs} ${t("cronStatusFailed")}`}
                 </p>
-                <p className="text-xs text-muted-foreground">Last run: {health.cron.lastRun ? new Date(health.cron.lastRun).toLocaleTimeString() : "Never"}</p>
+                <p className="text-xs text-muted-foreground">{t("lastRunLabel")} {health.cron.lastRun ? new Date(health.cron.lastRun).toLocaleTimeString() : t("neverLabel")}</p>
               </div>
             </div>
           </section>
 
           {/* Memory */}
           <section className="workspace-panel-surface rounded-[28px] p-5">
-            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Memory Usage</h2>
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t("memoryHeading")}</h2>
             <div className="workspace-glass-panel rounded-2xl p-5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Cpu className="h-5 w-5 text-amber-500" />
-                  <span className="font-medium">Heap Memory</span>
+                  <span className="font-medium">{t("heapMemoryLabel")}</span>
                 </div>
                 <span className="text-sm font-medium">{health.memory.usedMb} MB / {health.memory.totalMb} MB</span>
               </div>

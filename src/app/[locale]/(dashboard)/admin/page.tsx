@@ -18,7 +18,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getTranslations } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Suspense, type ReactNode } from "react";
 import {
   BadgeSkeleton,
@@ -473,6 +473,7 @@ async function getFastStats(locale: string): Promise<AdminStats> {
 export default async function AdminDashboardPage({ params }: { params: Promise<{ locale: string }> }) {
   const session = await auth();
   const { locale } = await params;
+  setRequestLocale(locale);
   const t = await getTranslations("adminDashboard");
 
   if (!session?.user) {

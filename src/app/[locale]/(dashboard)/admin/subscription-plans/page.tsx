@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import {
   Plus, Trash2, Edit2, X, Loader2, Crown, ChevronDown, ChevronUp,
   Check, Copy, Users, Briefcase, Sparkles, BarChart3, FileText, ShieldCheck, AlertTriangle,
@@ -135,6 +136,7 @@ function planToForm(p: SubscriptionPlanItem): PlanFormState {
 
 // ── Subscription Enforcement Toggle ────────────────────────────────
 function EnforcementToggleCard() {
+  const t = useTranslations("adminSubscriptionPlans");
   const [enabled, setEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -149,7 +151,7 @@ function EnforcementToggleCard() {
         const data = await res.json();
         if (active) setEnabled(Boolean(data?.settings?.subscriptionEnforcementEnabled));
       } catch {
-        if (active) setError("Could not load the current setting.");
+        if (active) setError(t("enforcementLoadError"));
       } finally {
         if (active) setLoading(false);
       }
@@ -171,7 +173,7 @@ function EnforcementToggleCard() {
       if (!res.ok) throw new Error("Failed to save");
     } catch {
       setEnabled(previous); // rollback
-      setError("Could not update the setting. Please try again.");
+      setError(t("enforcementSaveError"));
     } finally {
       setSaving(false);
     }
@@ -185,24 +187,24 @@ function EnforcementToggleCard() {
             <ShieldCheck className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-foreground">Subscription Enforcement</h3>
+            <h3 className="text-sm font-semibold text-foreground">{t("subscriptionEnforcement")}</h3>
             <p className="mt-0.5 max-w-xl text-sm text-muted-foreground">
               {enabled
-                ? "Enforcement is ON. Plan limits and feature gates apply to employers and job seekers."
-                : "Enforcement is OFF. All users get full access and no plan limits or feature gates apply. Keep this off until payment integration is live."}
+                ? t("enforcementEnabledDescription")
+                : t("enforcementDisabledDescription")}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-3 self-start sm:self-center">
           {(loading || saving) && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
           <span className={`text-xs font-medium ${enabled ? "text-emerald-700" : "text-muted-foreground"}`}>
-            {enabled ? "ON" : "OFF"}
+            {enabled ? t("enforcementOn") : t("enforcementOff")}
           </span>
           <Switch
             checked={enabled}
             disabled={loading || saving}
             onCheckedChange={handleToggle}
-            aria-label="Toggle subscription enforcement"
+            aria-label={t("enforcementToggleLabel")}
           />
         </div>
       </div>
@@ -210,10 +212,7 @@ function EnforcementToggleCard() {
       {enabled && (
         <div className="mt-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>
-            With enforcement on, users without an active subscription (and past their grace period) will be
-            blocked from gated features. Only turn this on once billing is ready.
-          </span>
+          <span>{t("enforcementWarning")}</span>
         </div>
       )}
 
@@ -226,6 +225,7 @@ function EnforcementToggleCard() {
 
 // ── Page Component ─────────────────────────────────────────────────
 export default function AdminSubscriptionPlansPage() {
+  const t = useTranslations("adminSubscriptionPlans");
   const [activeTab, setActiveTab] = useState<"employer" | "job_seeker">("employer");
   const { data: plans, isLoading } = useSubscriptionPlans({ targetRole: activeTab });
   const createMut = useCreateSubscriptionPlan();
@@ -324,7 +324,7 @@ export default function AdminSubscriptionPlansPage() {
   if (isLoading) {
     return (
       <div className="page-container space-y-4">
-        <PageHeader title="Subscription Plans" description="Manage subscription tiers and feature limits" />
+        <PageHeader title={t("pageTitle")} description={t("pageDescription")} />
         {[1, 2, 3].map((i) => (
           <div key={i} className="h-28 animate-pulse rounded-2xl border border-border bg-background/70" />
         ))}
@@ -335,11 +335,11 @@ export default function AdminSubscriptionPlansPage() {
   return (
     <div className="page-container space-y-6">
       <PageHeader
-        title="Subscription Plans"
-        description="Create and manage subscription tiers for employers and job seekers"
+        title={t("pageTitle")}
+        description={t("pageDescription")}
         actions={
           <Button onClick={openCreate} className="gap-2 rounded-xl bg-sky-600 text-white hover:bg-sky-700" size="sm">
-            <Plus className="h-4 w-4" /> New Plan
+            <Plus className="h-4 w-4" /> {t("newPlanButton")}
           </Button>
         }
       />
@@ -357,7 +357,7 @@ export default function AdminSubscriptionPlansPage() {
               : "bg-muted text-muted-foreground hover:bg-muted/80"
           }`}
         >
-          <Briefcase className="h-4 w-4" /> Employer Plans
+          <Briefcase className="h-4 w-4" /> {t("employerPlansTab")}
         </button>
         <button
           onClick={() => { setActiveTab("job_seeker"); setShowForm(false); }}
@@ -367,7 +367,7 @@ export default function AdminSubscriptionPlansPage() {
               : "bg-muted text-muted-foreground hover:bg-muted/80"
           }`}
         >
-          <Users className="h-4 w-4" /> Job Seeker Plans
+          <Users className="h-4 w-4" /> {t("jobSeekerPlansTab")}
         </button>
       </div>
 
@@ -376,7 +376,7 @@ export default function AdminSubscriptionPlansPage() {
         <section className="rounded-2xl border border-sky-500/30 bg-sky-500/5 p-6 space-y-5">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold text-foreground">
-              {editId ? "Edit Plan" : "Create New Plan"}
+              {editId ? t("editPlanTitle") : t("createNewPlanTitle")}
             </h3>
             <button onClick={closeForm} className="text-muted-foreground hover:text-foreground">
               <X className="h-5 w-5" />
@@ -395,7 +395,7 @@ export default function AdminSubscriptionPlansPage() {
                     : "text-muted-foreground hover:bg-muted"
                 }`}
               >
-                {s === "basic" ? "Basic Info" : s === "limits" ? "Feature Limits" : "AI Features"}
+                {s === "basic" ? t("basicInfoTab") : s === "limits" ? t("featureLimitsTab") : t("aiFeaturesTab")}
               </button>
             ))}
           </div>
@@ -404,16 +404,16 @@ export default function AdminSubscriptionPlansPage() {
           {activeSection === "basic" && (
             <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <label className="mb-1 block text-sm font-medium">Plan Name *</label>
+                <label className="mb-1 block text-sm font-medium">{t("planNameLabel")}</label>
                 <Input
                   value={form.name}
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                  placeholder="e.g., Premium"
+                  placeholder={t("planNamePlaceholder")}
                   className="rounded-xl"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">Tier Level *</label>
+                <label className="mb-1 block text-sm font-medium">{t("tierLevelLabel")}</label>
                 <Input
                   type="number"
                   value={form.tier}
@@ -422,10 +422,10 @@ export default function AdminSubscriptionPlansPage() {
                   max={10}
                   className="rounded-xl"
                 />
-                <p className="mt-1 text-xs text-muted-foreground">0 = Free (default). Higher number = higher tier.</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t("tierLevelHelper")}</p>
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">Price *</label>
+                <label className="mb-1 block text-sm font-medium">{t("priceLabel")}</label>
                 <Input
                   type="text"
                   inputMode="decimal"
@@ -438,17 +438,17 @@ export default function AdminSubscriptionPlansPage() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">Currency</label>
+                <label className="mb-1 block text-sm font-medium">{t("currencyLabel")}</label>
                 <Input
                   value={form.currency}
                   onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value.toUpperCase() }))}
                   maxLength={3}
-                  placeholder="AED"
+                  placeholder={t("currencyPlaceholder")}
                   className="rounded-xl"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">Billing Cycle *</label>
+                <label className="mb-1 block text-sm font-medium">{t("billingCycleLabel")}</label>
                 <Select
                   value={form.billingCycle}
                   onValueChange={(v) => setForm((f) => ({ ...f, billingCycle: v as PlanFormState["billingCycle"] }))}
@@ -457,14 +457,14 @@ export default function AdminSubscriptionPlansPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="monthly">Monthly</SelectItem>
-                    <SelectItem value="quarterly">Quarterly</SelectItem>
-                    <SelectItem value="yearly">Yearly</SelectItem>
+                    <SelectItem value="monthly">{t("billingCycleMonthly")}</SelectItem>
+                    <SelectItem value="quarterly">{t("billingCycleQuarterly")}</SelectItem>
+                    <SelectItem value="yearly">{t("billingCycleYearly")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">Sort Order</label>
+                <label className="mb-1 block text-sm font-medium">{t("sortOrderLabel")}</label>
                 <Input
                   type="number"
                   value={form.sortOrder}
@@ -474,11 +474,11 @@ export default function AdminSubscriptionPlansPage() {
                 />
               </div>
               <div className="md:col-span-2">
-                <label className="mb-1 block text-sm font-medium">Description</label>
+                <label className="mb-1 block text-sm font-medium">{t("descriptionLabel")}</label>
                 <Input
                   value={form.description}
                   onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                  placeholder="Brief description of this plan"
+                  placeholder={t("descriptionPlaceholder")}
                   className="rounded-xl"
                 />
               </div>
@@ -488,14 +488,14 @@ export default function AdminSubscriptionPlansPage() {
                     checked={form.isActive}
                     onCheckedChange={(v) => setForm((f) => ({ ...f, isActive: v }))}
                   />
-                  <span className="text-sm">Active</span>
+                  <span className="text-sm">{t("activeToggleLabel")}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Switch
                     checked={form.isDefault}
                     onCheckedChange={(v) => setForm((f) => ({ ...f, isDefault: v }))}
                   />
-                  <span className="text-sm">Default Plan</span>
+                  <span className="text-sm">{t("defaultPlanToggleLabel")}</span>
                 </div>
               </div>
             </div>
@@ -505,7 +505,7 @@ export default function AdminSubscriptionPlansPage() {
           {activeSection === "limits" && form.targetRole === "employer" && (
             <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <label className="mb-1 block text-sm font-medium">Max Active Jobs</label>
+                <label className="mb-1 block text-sm font-medium">{t("maxActiveJobsLabel")}</label>
                 <Input
                   type="number"
                   value={form.employerLimits.maxActiveJobs}
@@ -518,10 +518,10 @@ export default function AdminSubscriptionPlansPage() {
                   min={-1}
                   className="rounded-xl"
                 />
-                <p className="mt-1 text-xs text-muted-foreground">-1 = unlimited</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t("maxActiveJobsHelper")}</p>
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">Max Applications View / Month</label>
+                <label className="mb-1 block text-sm font-medium">{t("maxApplicationsViewLabel")}</label>
                 <Input
                   type="number"
                   value={form.employerLimits.maxApplicationsViewPerMonth}
@@ -534,10 +534,10 @@ export default function AdminSubscriptionPlansPage() {
                   min={-1}
                   className="rounded-xl"
                 />
-                <p className="mt-1 text-xs text-muted-foreground">-1 = unlimited</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t("maxApplicationsViewHelper")}</p>
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">Max Team Members</label>
+                <label className="mb-1 block text-sm font-medium">{t("maxTeamMembersLabel")}</label>
                 <Input
                   type="number"
                   value={form.employerLimits.maxTeamMembers}
@@ -550,10 +550,10 @@ export default function AdminSubscriptionPlansPage() {
                   min={-1}
                   className="rounded-xl"
                 />
-                <p className="mt-1 text-xs text-muted-foreground">-1 = unlimited</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t("maxTeamMembersHelper")}</p>
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">Featured Job Listings</label>
+                <label className="mb-1 block text-sm font-medium">{t("featuredJobListingsLabel")}</label>
                 <Input
                   type="number"
                   value={form.employerLimits.featuredJobListings}
@@ -566,10 +566,10 @@ export default function AdminSubscriptionPlansPage() {
                   min={-1}
                   className="rounded-xl"
                 />
-                <p className="mt-1 text-xs text-muted-foreground">0 = none, -1 = unlimited</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t("featuredJobListingsHelper")}</p>
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">Analytics Level</label>
+                <label className="mb-1 block text-sm font-medium">{t("analyticsLevelLabel")}</label>
                 <select
                   value={form.employerLimits.analyticsLevel}
                   onChange={(e) =>
@@ -583,21 +583,21 @@ export default function AdminSubscriptionPlansPage() {
                   }
                   className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
                 >
-                  <option value="none">None</option>
-                  <option value="basic">Basic</option>
-                  <option value="advanced">Advanced</option>
+                  <option value="none">{t("analyticsLevelNone")}</option>
+                  <option value="basic">{t("analyticsLevelBasic")}</option>
+                  <option value="advanced">{t("analyticsLevelAdvanced")}</option>
                 </select>
               </div>
               <div className="space-y-3">
                 {([
-                  ["dataExport", "Data Export"],
-                  ["commTemplates", "Communication Templates"],
-                  ["scorecardEvaluations", "Scorecard Evaluations"],
-                  ["matchingWeightCustomization", "Matching Weight Customization"],
-                  ["workflowCustomization", "Workflow Customization"],
-                  ["prioritySupport", "Priority Support"],
-                  ["brandedCompanyPage", "Branded Company Page"],
-                ] as [keyof IEmployerFeatureLimits, string][]).map(([key, label]) => (
+                  ["dataExport", "dataExportLabel"],
+                  ["commTemplates", "commTemplatesLabel"],
+                  ["scorecardEvaluations", "scorecardEvaluationsLabel"],
+                  ["matchingWeightCustomization", "matchingWeightCustomizationLabel"],
+                  ["workflowCustomization", "workflowCustomizationLabel"],
+                  ["prioritySupport", "prioritySupportLabel"],
+                  ["brandedCompanyPage", "brandedCompanyPageLabel"],
+                ] as [keyof IEmployerFeatureLimits, string][]).map(([key, labelKey]) => (
                   <div key={key} className="flex items-center gap-2">
                     <Switch
                       checked={form.employerLimits[key] as boolean}
@@ -608,7 +608,7 @@ export default function AdminSubscriptionPlansPage() {
                         }))
                       }
                     />
-                    <span className="text-sm">{label}</span>
+                    <span className="text-sm">{t(labelKey)}</span>
                   </div>
                 ))}
               </div>
@@ -618,7 +618,7 @@ export default function AdminSubscriptionPlansPage() {
           {activeSection === "limits" && form.targetRole === "job_seeker" && (
             <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <label className="mb-1 block text-sm font-medium">Max Applications / Month</label>
+                <label className="mb-1 block text-sm font-medium">{t("maxApplicationsJobSeekerLabel")}</label>
                 <Input
                   type="number"
                   value={form.jobSeekerLimits.maxApplicationsPerMonth}
@@ -631,15 +631,15 @@ export default function AdminSubscriptionPlansPage() {
                   min={-1}
                   className="rounded-xl"
                 />
-                <p className="mt-1 text-xs text-muted-foreground">-1 = unlimited</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t("maxApplicationsJobSeekerHelper")}</p>
               </div>
               <div className="space-y-3">
                 {([
-                  ["profileVisibilityBoost", "Profile Visibility Boost"],
-                  ["salaryInsights", "Salary Insights"],
-                  ["priorityApplicationReview", "Priority Application Review"],
-                  ["resumeBuilderAccess", "Resume Builder Access"],
-                ] as [keyof IJobSeekerFeatureLimits, string][]).map(([key, label]) => (
+                  ["profileVisibilityBoost", "profileVisibilityBoostLabel"],
+                  ["salaryInsights", "salaryInsightsLabel"],
+                  ["priorityApplicationReview", "priorityApplicationReviewLabel"],
+                  ["resumeBuilderAccess", "resumeBuilderAccessLabel"],
+                ] as [keyof IJobSeekerFeatureLimits, string][]).map(([key, labelKey]) => (
                   <div key={key} className="flex items-center gap-2">
                     <Switch
                       checked={form.jobSeekerLimits[key] as boolean}
@@ -650,7 +650,7 @@ export default function AdminSubscriptionPlansPage() {
                         }))
                       }
                     />
-                    <span className="text-sm">{label}</span>
+                    <span className="text-sm">{t(labelKey)}</span>
                   </div>
                 ))}
               </div>
@@ -661,7 +661,7 @@ export default function AdminSubscriptionPlansPage() {
           {activeSection === "ai" && (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                Enable AI features and set monthly usage limits (0 = unlimited when enabled)
+                {t("aiFeatureDescription")}
               </p>
               <div className="grid gap-3 md:grid-cols-2">
                 {(form.targetRole === "employer"
@@ -690,7 +690,7 @@ export default function AdminSubscriptionPlansPage() {
                         onChange={(e) => updateAIFeature(idx, "monthlyLimit", Number(e.target.value))}
                         min={0}
                         className="w-20 rounded-lg text-sm"
-                        placeholder="0=∞"
+                        placeholder={t("aiFeaturePlaceholder")}
                       />
                     )}
                   </div>
@@ -707,10 +707,10 @@ export default function AdminSubscriptionPlansPage() {
               className="gap-2 rounded-xl bg-sky-600 text-white hover:bg-sky-700"
             >
               {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-              {editId ? "Update Plan" : "Create Plan"}
+              {editId ? t("updatePlanButton") : t("createPlanButton")}
             </Button>
             <Button variant="ghost" onClick={closeForm} className="rounded-xl">
-              Cancel
+              {t("cancelButton")}
             </Button>
           </div>
         </section>
@@ -720,12 +720,14 @@ export default function AdminSubscriptionPlansPage() {
       {!plans?.length ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border py-16 text-center">
           <Crown className="mb-4 h-12 w-12 text-muted-foreground/40" />
-          <h3 className="text-lg font-semibold text-foreground">No plans yet</h3>
+          <h3 className="text-lg font-semibold text-foreground">{t("noPlanEmptyState")}</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            Create your first {activeTab === "employer" ? "employer" : "job seeker"} subscription plan
+            {t("noPlanEmptyDescription", {
+              role: activeTab === "employer" ? t("noPlanEmptyDescriptionEmployer") : t("noPlanEmptyDescriptionJobSeeker")
+            })}
           </p>
           <Button onClick={openCreate} className="mt-4 gap-2 rounded-xl bg-sky-600 text-white hover:bg-sky-700" size="sm">
-            <Plus className="h-4 w-4" /> Create Plan
+            <Plus className="h-4 w-4" /> {t("createPlanButtonEmpty")}
           </Button>
         </div>
       ) : (
@@ -750,16 +752,16 @@ export default function AdminSubscriptionPlansPage() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <h4 className="text-base font-semibold text-foreground">{p.name}</h4>
                       <Badge className={`text-xs ${TIER_COLORS[p.tier] ?? TIER_COLORS[0]}`}>
-                        Tier {p.tier}
+                        {t("tierBadge", { tier: p.tier })}
                       </Badge>
                       {p.isDefault && (
                         <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 text-xs">
-                          Default
+                          {t("defaultBadge")}
                         </Badge>
                       )}
                       {!p.isActive && (
                         <Badge variant="outline" className="text-xs text-muted-foreground">
-                          Inactive
+                          {t("inactiveBadge")}
                         </Badge>
                       )}
                     </div>
@@ -772,19 +774,19 @@ export default function AdminSubscriptionPlansPage() {
                       </span>
                       <span>·</span>
                       <span className="flex items-center gap-1">
-                        <Sparkles className="h-3.5 w-3.5" /> {enabledAI} AI features
+                        <Sparkles className="h-3.5 w-3.5" /> {t("aiFeatureCount", { count: enabledAI })}
                       </span>
                       {p.targetRole === "employer" && p.employerLimits && (
                         <>
                           <span>·</span>
                           <span className="flex items-center gap-1">
                             <Briefcase className="h-3.5 w-3.5" />
-                            {p.employerLimits.maxActiveJobs === -1 ? "∞" : p.employerLimits.maxActiveJobs} jobs
+                            {t("jobsLimitDisplay", { jobs: p.employerLimits.maxActiveJobs === -1 ? t("unlimitedSymbol") : p.employerLimits.maxActiveJobs })}
                           </span>
                           <span>·</span>
                           <span className="flex items-center gap-1">
                             <Users className="h-3.5 w-3.5" />
-                            {p.employerLimits.maxTeamMembers === -1 ? "∞" : p.employerLimits.maxTeamMembers} seats
+                            {t("seatsLimitDisplay", { seats: p.employerLimits.maxTeamMembers === -1 ? t("unlimitedSymbol") : p.employerLimits.maxTeamMembers })}
                           </span>
                         </>
                       )}
@@ -797,7 +799,7 @@ export default function AdminSubscriptionPlansPage() {
                       size="sm"
                       onClick={() => handleDuplicate(p)}
                       className="h-8 w-8 p-0 rounded-lg"
-                      title="Duplicate"
+                      title={t("duplicateTooltip")}
                     >
                       <Copy className="h-4 w-4" />
                     </Button>
@@ -806,7 +808,7 @@ export default function AdminSubscriptionPlansPage() {
                       size="sm"
                       onClick={() => openEdit(p)}
                       className="h-8 w-8 p-0 rounded-lg"
-                      title="Edit"
+                      title={t("editTooltip")}
                     >
                       <Edit2 className="h-4 w-4" />
                     </Button>
@@ -816,7 +818,7 @@ export default function AdminSubscriptionPlansPage() {
                       onClick={() => handleDelete(p._id)}
                       disabled={deleteMut.isPending}
                       className="h-8 w-8 p-0 rounded-lg text-destructive hover:text-destructive"
-                      title="Deactivate"
+                      title={t("deactivateTooltip")}
                     >
                       {deleteMut.isPending ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -846,14 +848,14 @@ export default function AdminSubscriptionPlansPage() {
                     {p.targetRole === "employer" && p.employerLimits && (
                       <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
                         {([
-                          ["Max Active Jobs", p.employerLimits.maxActiveJobs],
-                          ["App Views/Mo", p.employerLimits.maxApplicationsViewPerMonth],
-                          ["Team Seats", p.employerLimits.maxTeamMembers],
-                          ["Featured Jobs", p.employerLimits.featuredJobListings],
-                        ] as [string, number][]).map(([label, val]) => (
-                          <div key={label} className="rounded-xl border border-border bg-background p-3">
-                            <p className="text-xs text-muted-foreground">{label}</p>
-                            <p className="text-lg font-semibold">{val === -1 ? "Unlimited" : val}</p>
+                          ["maxActiveJobsDetail", p.employerLimits.maxActiveJobs],
+                          ["appViewsPerMonthDetail", p.employerLimits.maxApplicationsViewPerMonth],
+                          ["teamSeatsDetail", p.employerLimits.maxTeamMembers],
+                          ["featuredJobsDetail", p.employerLimits.featuredJobListings],
+                        ] as [string, number][]).map(([labelKey, val]) => (
+                          <div key={labelKey} className="rounded-xl border border-border bg-background p-3">
+                            <p className="text-xs text-muted-foreground">{t(labelKey)}</p>
+                            <p className="text-lg font-semibold">{val === -1 ? t("unlimitedValue") : val}</p>
                           </div>
                         ))}
                       </div>
@@ -862,10 +864,10 @@ export default function AdminSubscriptionPlansPage() {
                     {p.targetRole === "job_seeker" && p.jobSeekerLimits && (
                       <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
                         <div className="rounded-xl border border-border bg-background p-3">
-                          <p className="text-xs text-muted-foreground">Applications/Mo</p>
+                          <p className="text-xs text-muted-foreground">{t("maxApplicationsJobSeekerLabel")}</p>
                           <p className="text-lg font-semibold">
                             {p.jobSeekerLimits.maxApplicationsPerMonth === -1
-                              ? "Unlimited"
+                              ? t("unlimitedValue")
                               : p.jobSeekerLimits.maxApplicationsPerMonth}
                           </p>
                         </div>
@@ -874,26 +876,26 @@ export default function AdminSubscriptionPlansPage() {
 
                     {/* Boolean features */}
                     <div>
-                      <h5 className="mb-2 text-sm font-medium text-foreground">Features</h5>
+                      <h5 className="mb-2 text-sm font-medium text-foreground">{t("featuresHeading")}</h5>
                       <div className="flex flex-wrap gap-2">
                         {p.targetRole === "employer" && p.employerLimits && (
                           <>
-                            <FeatureBadge label="Analytics" value={p.employerLimits.analyticsLevel !== "none"} detail={p.employerLimits.analyticsLevel} />
-                            <FeatureBadge label="Data Export" value={p.employerLimits.dataExport} />
-                            <FeatureBadge label="Comm Templates" value={p.employerLimits.commTemplates} />
-                            <FeatureBadge label="Scorecards" value={p.employerLimits.scorecardEvaluations} />
-                            <FeatureBadge label="Matching Weights" value={p.employerLimits.matchingWeightCustomization} />
-                            <FeatureBadge label="Workflow" value={p.employerLimits.workflowCustomization} />
-                            <FeatureBadge label="Priority Support" value={p.employerLimits.prioritySupport} />
-                            <FeatureBadge label="Branded Page" value={p.employerLimits.brandedCompanyPage} />
+                            <FeatureBadge t={t} labelKey="analyticsFeatureLabel" value={p.employerLimits.analyticsLevel !== "none"} detail={p.employerLimits.analyticsLevel} />
+                            <FeatureBadge t={t} labelKey="dataExportFeatureLabel" value={p.employerLimits.dataExport} />
+                            <FeatureBadge t={t} labelKey="commTemplatesFeatureLabel" value={p.employerLimits.commTemplates} />
+                            <FeatureBadge t={t} labelKey="scorecardsFeatureLabel" value={p.employerLimits.scorecardEvaluations} />
+                            <FeatureBadge t={t} labelKey="matchingWeightsFeatureLabel" value={p.employerLimits.matchingWeightCustomization} />
+                            <FeatureBadge t={t} labelKey="workflowFeatureLabel" value={p.employerLimits.workflowCustomization} />
+                            <FeatureBadge t={t} labelKey="prioritySupportFeatureLabel" value={p.employerLimits.prioritySupport} />
+                            <FeatureBadge t={t} labelKey="brandedPageFeatureLabel" value={p.employerLimits.brandedCompanyPage} />
                           </>
                         )}
                         {p.targetRole === "job_seeker" && p.jobSeekerLimits && (
                           <>
-                            <FeatureBadge label="Visibility Boost" value={p.jobSeekerLimits.profileVisibilityBoost} />
-                            <FeatureBadge label="Salary Insights" value={p.jobSeekerLimits.salaryInsights} />
-                            <FeatureBadge label="Priority Review" value={p.jobSeekerLimits.priorityApplicationReview} />
-                            <FeatureBadge label="Resume Builder" value={p.jobSeekerLimits.resumeBuilderAccess} />
+                            <FeatureBadge t={t} labelKey="visibilityBoostFeatureLabel" value={p.jobSeekerLimits.profileVisibilityBoost} />
+                            <FeatureBadge t={t} labelKey="salaryInsightsFeatureLabel" value={p.jobSeekerLimits.salaryInsights} />
+                            <FeatureBadge t={t} labelKey="priorityReviewFeatureLabel" value={p.jobSeekerLimits.priorityApplicationReview} />
+                            <FeatureBadge t={t} labelKey="resumeBuilderFeatureLabel" value={p.jobSeekerLimits.resumeBuilderAccess} />
                           </>
                         )}
                       </div>
@@ -903,7 +905,7 @@ export default function AdminSubscriptionPlansPage() {
                     {limits?.aiFeatures && limits.aiFeatures.some((a) => a.enabled) && (
                       <div>
                         <h5 className="mb-2 text-sm font-medium text-foreground flex items-center gap-1.5">
-                          <Sparkles className="h-4 w-4 text-sky-500" /> AI Features
+                          <Sparkles className="h-4 w-4 text-sky-500" /> {t("aiFeatureHeading")}
                         </h5>
                         <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
                           {limits.aiFeatures
@@ -915,7 +917,7 @@ export default function AdminSubscriptionPlansPage() {
                               >
                                 <span className="text-sm">{AI_FEATURE_LABELS[a.feature] ?? a.feature}</span>
                                 <span className="text-xs font-medium text-muted-foreground">
-                                  {a.monthlyLimit === 0 ? "Unlimited" : `${a.monthlyLimit}/mo`}
+                                  {a.monthlyLimit === 0 ? t("unlimitedValue") : t("monthlyLimitFormat", { limit: a.monthlyLimit })}
                                 </span>
                               </div>
                             ))}
@@ -935,11 +937,13 @@ export default function AdminSubscriptionPlansPage() {
 
 // ── Helper Components ──────────────────────────────────────────────
 function FeatureBadge({
-  label,
+  t,
+  labelKey,
   value,
   detail,
 }: {
-  label: string;
+  t: (key: string) => string;
+  labelKey: string;
   value: boolean;
   detail?: string;
 }) {
@@ -952,7 +956,7 @@ function FeatureBadge({
       }`}
     >
       {value ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-      {label}
+      {t(labelKey)}
       {detail && value && <span className="opacity-60">({detail})</span>}
     </span>
   );

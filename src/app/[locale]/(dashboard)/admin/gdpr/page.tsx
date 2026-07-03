@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -66,21 +67,6 @@ interface GdprStats {
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
 
-const REQUEST_TYPE_OPTIONS = [
-  { value: "all", label: "All types" },
-  { value: "export", label: "Data Export" },
-  { value: "delete", label: "Erasure" },
-  { value: "rectification", label: "Rectification" },
-  { value: "restrict", label: "Restrict Processing" },
-];
-
-const STATUS_OPTIONS = [
-  { value: "all", label: "All statuses" },
-  { value: "pending", label: "Pending" },
-  { value: "in_progress", label: "In Progress" },
-  { value: "completed", label: "Completed" },
-  { value: "rejected", label: "Rejected" },
-];
 
 const DEFAULT_RETENTION: RetentionPolicy[] = [
   { _id: "1", dataCategory: "User Accounts", retentionPeriod: 3, unit: "years", autoDelete: false, lastReview: new Date().toISOString() },
@@ -96,6 +82,7 @@ const DEFAULT_RETENTION: RetentionPolicy[] = [
 /* ------------------------------------------------------------------ */
 
 export default function AdminGdprPage() {
+  const t = useTranslations("adminGdpr");
   const [activeTab, setActiveTab] = useState<"requests" | "consent" | "retention">("requests");
   const [requests, setRequests] = useState<GdprRequest[]>([]);
   const [consentLogs, setConsentLogs] = useState<ConsentLog[]>([]);
@@ -109,6 +96,23 @@ export default function AdminGdprPage() {
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const pagination = usePagination();
+
+  // i18n option maps (moved inside component)
+  const REQUEST_TYPE_OPTIONS = [
+    { value: "all", label: t("allTypesLabel") },
+    { value: "export", label: t("dataExportLabel") },
+    { value: "delete", label: t("erasureLabel") },
+    { value: "rectification", label: t("rectificationLabel") },
+    { value: "restrict", label: t("restrictProcessingLabel") },
+  ];
+
+  const STATUS_OPTIONS = [
+    { value: "all", label: t("allStatusesLabel") },
+    { value: "pending", label: t("pendingStatusLabel") },
+    { value: "in_progress", label: t("inProgressStatusLabel") },
+    { value: "completed", label: t("completedStatusLabel") },
+    { value: "rejected", label: t("rejectedStatusLabel") },
+  ];
 
   /* ---- Fetch data requests ---- */
   const fetchRequests = useCallback(async () => {
@@ -127,11 +131,11 @@ export default function AdminGdprPage() {
         if (data.stats) setStats(data.stats);
       }
     } catch {
-      toast.error("Failed to load GDPR data");
+      toast.error(t("failedLoadGdprData"));
     } finally {
       setLoading(false);
     }
-  }, [search, typeFilter, statusFilter, pagination.page, pagination.limit]);
+  }, [search, typeFilter, statusFilter, pagination.page, pagination.limit, t]);
 
   /* ---- Fetch consent logs ---- */
   const fetchConsentLogs = useCallback(async () => {
@@ -145,9 +149,9 @@ export default function AdminGdprPage() {
         pagination.updateTotal(data.total ?? 0);
       }
     } catch {
-      toast.error("Failed to load consent logs");
+      toast.error(t("failedLoadConsentLogs"));
     }
-  }, [search, pagination.page, pagination.limit]);
+  }, [search, pagination.page, pagination.limit, t]);
 
   useEffect(() => {
     if (activeTab === "requests") fetchRequests();
@@ -164,27 +168,27 @@ export default function AdminGdprPage() {
         body: JSON.stringify({ status }),
       });
       if (res.ok) {
-        toast.success("Request status updated");
+        toast.success(t("statusUpdatedSuccess"));
         fetchRequests();
       } else {
-        toast.error("Failed to update status");
+        toast.error(t("failedUpdateStatus"));
       }
     } catch {
-      toast.error("Error updating request");
+      toast.error(t("errorUpdatingRequest"));
     }
   };
 
   const TABS = [
-    { key: "requests" as const, label: "Data Requests", icon: <FileText className="h-4 w-4" /> },
-    { key: "consent" as const, label: "Consent Logs", icon: <UserCheck className="h-4 w-4" /> },
-    { key: "retention" as const, label: "Retention Policies", icon: <Database className="h-4 w-4" /> },
+    { key: "requests" as const, label: t("dataRequestsTab"), icon: <FileText className="h-4 w-4" /> },
+    { key: "consent" as const, label: t("consentLogsTab"), icon: <UserCheck className="h-4 w-4" /> },
+    { key: "retention" as const, label: t("retentionPoliciesTab"), icon: <Database className="h-4 w-4" /> },
   ];
 
   const metricsItems = [
-    { label: "Total Requests", value: stats.totalRequests, icon: <FileText className="h-5 w-5" />, tone: "workspace-tone-sky" },
-    { label: "Pending", value: stats.pendingRequests, icon: <Clock className="h-5 w-5" />, tone: "workspace-tone-amber" },
-    { label: "Completed", value: stats.completedRequests, icon: <CheckCircle2 className="h-5 w-5" />, tone: "workspace-tone-emerald" },
-    { label: "Avg Response (days)", value: stats.avgResponseDays, icon: <AlertTriangle className="h-5 w-5" />, tone: "workspace-tone-violet" },
+    { label: t("totalRequestsLabel"), value: stats.totalRequests, icon: <FileText className="h-5 w-5" />, tone: "workspace-tone-sky" },
+    { label: t("pendingLabel"), value: stats.pendingRequests, icon: <Clock className="h-5 w-5" />, tone: "workspace-tone-amber" },
+    { label: t("completedLabel"), value: stats.completedRequests, icon: <CheckCircle2 className="h-5 w-5" />, tone: "workspace-tone-emerald" },
+    { label: t("avgResponseDaysLabel"), value: stats.avgResponseDays, icon: <AlertTriangle className="h-5 w-5" />, tone: "workspace-tone-violet" },
   ];
 
   return (
@@ -196,8 +200,8 @@ export default function AdminGdprPage() {
             <Shield className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">GDPR & Privacy</h1>
-            <p className="text-sm text-muted-foreground">Manage data subject requests, consent logs, and retention policies</p>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t("pageTitle")}</h1>
+            <p className="text-sm text-muted-foreground">{t("pageDescription")}</p>
           </div>
         </div>
 
@@ -237,15 +241,15 @@ export default function AdminGdprPage() {
       {/* Filters */}
       {activeTab !== "retention" && (
         <TableToolbar
-          title="GDPR Data"
-          description={activeTab === "requests" ? "Filter data privacy requests" : "Filter consent logs"}
+          title={t("gdprDataTitle")}
+          description={activeTab === "requests" ? t("filterDataPrivacyDesc") : t("filterConsentLogsDesc")}
           search={search}
           onSearchChange={(v) => { setSearch(v); pagination.resetPage(); }}
-          searchPlaceholder="Search by name or email..."
+          searchPlaceholder={t("searchPlaceholder")}
           hasActiveFilters={typeFilter !== "all" || statusFilter !== "all"}
           actions={
             <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setTypeFilter("all"); setStatusFilter("all"); pagination.resetPage(); }}>
-              <RotateCcw className="mr-1 h-4 w-4" /> Reset
+              <RotateCcw className="mr-1 h-4 w-4" /> {t("resetButton")}
             </Button>
           }
           filterContent={activeTab === "requests" ? (
@@ -254,14 +258,14 @@ export default function AdminGdprPage() {
                 options={REQUEST_TYPE_OPTIONS}
                 value={typeFilter}
                 onValueChange={(v) => { setTypeFilter(v); pagination.resetPage(); }}
-                placeholder="Request Type"
+                placeholder={t("requestTypeLabel")}
                 className="h-11 w-44 rounded-xl border-border bg-card"
               />
               <SearchableSelect
                 options={STATUS_OPTIONS}
                 value={statusFilter}
                 onValueChange={(v) => { setStatusFilter(v); pagination.resetPage(); }}
-                placeholder="Status"
+                placeholder={t("statusLabel")}
                 className="h-11 w-36 rounded-xl border-border bg-card"
               />
             </div>
@@ -278,12 +282,12 @@ export default function AdminGdprPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>User</TableHead>
-                      <TableHead>Request Type</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Submitted</TableHead>
-                      <TableHead>Completed</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead>{t("userColumnHeader")}</TableHead>
+                      <TableHead>{t("requestTypeColumnHeader")}</TableHead>
+                      <TableHead>{t("statusColumnHeader")}</TableHead>
+                      <TableHead>{t("submittedColumnHeader")}</TableHead>
+                      <TableHead>{t("completedColumnHeader")}</TableHead>
+                      <TableHead className="text-right">{t("actionsColumnHeader")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -302,20 +306,20 @@ export default function AdminGdprPage() {
             ) : requests.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <ShieldCheck className="h-12 w-12 text-muted-foreground/40" />
-                <p className="mt-4 text-sm font-medium text-muted-foreground">No data requests found</p>
-                <p className="mt-1 text-xs text-muted-foreground/70">All clear — no pending privacy requests</p>
+                <p className="mt-4 text-sm font-medium text-muted-foreground">{t("noDataRequestsMessage")}</p>
+                <p className="mt-1 text-xs text-muted-foreground/70">{t("noDataRequestsSubtext")}</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>User</TableHead>
-                      <TableHead>Request Type</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Submitted</TableHead>
-                      <TableHead>Completed</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead>{t("userColumnHeader")}</TableHead>
+                      <TableHead>{t("requestTypeColumnHeader")}</TableHead>
+                      <TableHead>{t("statusColumnHeader")}</TableHead>
+                      <TableHead>{t("submittedColumnHeader")}</TableHead>
+                      <TableHead>{t("completedColumnHeader")}</TableHead>
+                      <TableHead className="text-right">{t("actionsColumnHeader")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -342,16 +346,16 @@ export default function AdminGdprPage() {
                             {r.status === "pending" && (
                               <>
                                 <Button size="sm" variant="ghost" onClick={() => handleUpdateStatus(r._id, "in_progress")}>
-                                  <Clock className="mr-1 h-3.5 w-3.5" /> Start
+                                  <Clock className="mr-1 h-3.5 w-3.5" /> {t("startButton")}
                                 </Button>
                                 <Button size="sm" variant="ghost" onClick={() => handleUpdateStatus(r._id, "rejected")}>
-                                  <XCircle className="mr-1 h-3.5 w-3.5" /> Reject
+                                  <XCircle className="mr-1 h-3.5 w-3.5" /> {t("rejectButton")}
                                 </Button>
                               </>
                             )}
                             {r.status === "in_progress" && (
                               <Button size="sm" variant="ghost" onClick={() => handleUpdateStatus(r._id, "completed")}>
-                                <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Complete
+                                <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> {t("completeButton")}
                               </Button>
                             )}
                           </div>
@@ -370,18 +374,18 @@ export default function AdminGdprPage() {
             {consentLogs.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <UserCheck className="h-12 w-12 text-muted-foreground/40" />
-                <p className="mt-4 text-sm font-medium text-muted-foreground">No consent logs yet</p>
+                <p className="mt-4 text-sm font-medium text-muted-foreground">{t("noConsentLogsMessage")}</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>User</TableHead>
-                      <TableHead>Consent Type</TableHead>
-                      <TableHead>Granted</TableHead>
-                      <TableHead>Timestamp</TableHead>
-                      <TableHead>IP Address</TableHead>
+                      <TableHead>{t("consentUserColumnHeader")}</TableHead>
+                      <TableHead>{t("consentTypeColumnHeader")}</TableHead>
+                      <TableHead>{t("grantedColumnHeader")}</TableHead>
+                      <TableHead>{t("timestampColumnHeader")}</TableHead>
+                      <TableHead>{t("ipAddressColumnHeader")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -391,9 +395,9 @@ export default function AdminGdprPage() {
                         <TableCell className="capitalize">{c.consentType.replace(/_/g, " ")}</TableCell>
                         <TableCell>
                           {c.granted ? (
-                            <span className="inline-flex items-center gap-1 text-sm text-emerald-600"><CheckCircle2 className="h-3.5 w-3.5" /> Yes</span>
+                            <span className="inline-flex items-center gap-1 text-sm text-emerald-600"><CheckCircle2 className="h-3.5 w-3.5" /> {t("consentYesLabel")}</span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 text-sm text-red-600"><XCircle className="h-3.5 w-3.5" /> No</span>
+                            <span className="inline-flex items-center gap-1 text-sm text-red-600"><XCircle className="h-3.5 w-3.5" /> {t("consentNoLabel")}</span>
                           )}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">{new Date(c.timestamp).toLocaleString()}</TableCell>
@@ -410,16 +414,16 @@ export default function AdminGdprPage() {
         {activeTab === "retention" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">Configure how long different data categories are retained before automated cleanup.</p>
+              <p className="text-sm text-muted-foreground">{t("retentionDescription")}</p>
             </div>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Data Category</TableHead>
-                    <TableHead>Retention Period</TableHead>
-                    <TableHead>Auto-Delete</TableHead>
-                    <TableHead>Last Reviewed</TableHead>
+                    <TableHead>{t("dataCategoryColumnHeader")}</TableHead>
+                    <TableHead>{t("retentionPeriodColumnHeader")}</TableHead>
+                    <TableHead>{t("autoDeleteColumnHeader")}</TableHead>
+                    <TableHead>{t("lastReviewedColumnHeader")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -429,9 +433,9 @@ export default function AdminGdprPage() {
                       <TableCell>{p.retentionPeriod} {p.unit}</TableCell>
                       <TableCell>
                         {p.autoDelete ? (
-                          <span className="text-sm text-emerald-600">Enabled</span>
+                          <span className="text-sm text-emerald-600">{t("autoDeleteEnabled")}</span>
                         ) : (
-                          <span className="text-sm text-muted-foreground">Manual</span>
+                          <span className="text-sm text-muted-foreground">{t("autoDeleteManual")}</span>
                         )}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">{new Date(p.lastReview).toLocaleDateString()}</TableCell>

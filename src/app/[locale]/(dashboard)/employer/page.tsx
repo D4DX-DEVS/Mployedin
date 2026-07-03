@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth/config";
 import { redirect } from "next/navigation";
+import { setRequestLocale } from "next-intl/server";
 import { getEmployerDashboardStats } from "@/lib/dashboard/employerStats";
 import { SetupGuide } from "@/components/features/employer/SetupGuide";
 import {
@@ -18,6 +19,7 @@ import {
 export default async function EmployerDashboard({ params }: { params: Promise<{ locale: string }> }) {
   const session = await auth();
   const { locale } = await params;
+  setRequestLocale(locale);
   if (!session?.user) redirect(`/${locale}/login`);
 
   const userId = (session.user as unknown as { id: string }).id;

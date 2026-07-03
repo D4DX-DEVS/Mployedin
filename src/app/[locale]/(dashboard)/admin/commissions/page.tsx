@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
@@ -40,42 +41,43 @@ interface Commission {
   createdAt: string;
 }
 
-const CURRENCY_FORM_OPTIONS = SUPPORTED_CURRENCIES.map(c => ({ value: c.code, label: `${c.code} — ${c.label}` }));
-
-const ADD_FIELDS: CrudField[] = [
-  { name: "type", label: "Type", type: "select", required: true, options: [
-    { value: "placement", label: "Placement" }, { value: "override", label: "Override" }, { value: "bonus", label: "Bonus" }
-  ]},
-  { name: "amount", label: "Amount", type: "number", required: true },
-  { name: "currency", label: "Currency", type: "select", options: CURRENCY_FORM_OPTIONS },
-  { name: "rate", label: "Rate (%)", type: "number" },
-  { name: "notes", label: "Notes", type: "textarea" },
-];
-
-const STATUS_OPTIONS = [
-  { value: "all", label: "All statuses" },
-  { value: "pending", label: "Pending" },
-  { value: "approved", label: "Approved" },
-  { value: "paid", label: "Paid" },
-  { value: "disputed", label: "Disputed" },
-  { value: "clawed_back", label: "Clawed Back" },
-];
-
-const TYPE_OPTIONS = [
-  { value: "all", label: "All types" },
-  { value: "placement", label: "Placement" },
-  { value: "override", label: "Override" },
-  { value: "bonus", label: "Bonus" },
-];
-
-const CURRENCY_OPTIONS = [
-  { value: "all", label: "All currencies" },
-  ...SUPPORTED_CURRENCIES.map(c => ({ value: c.code, label: `${c.code} — ${c.label}` })),
-];
-
 export default function AdminCommissionsPage() {
+  const t = useTranslations("adminCommissions");
   const { can } = usePermissions();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
+
+  const CURRENCY_FORM_OPTIONS = SUPPORTED_CURRENCIES.map(c => ({ value: c.code, label: `${c.code} — ${c.label}` }));
+
+  const ADD_FIELDS: CrudField[] = [
+    { name: "type", label: t("fieldTypeLabel"), type: "select", required: true, options: [
+      { value: "placement", label: t("typePlacement") }, { value: "override", label: t("typeOverride") }, { value: "bonus", label: t("typeBonus") }
+    ]},
+    { name: "amount", label: t("fieldAmountLabel"), type: "number", required: true },
+    { name: "currency", label: t("fieldCurrencyLabel"), type: "select", options: CURRENCY_FORM_OPTIONS },
+    { name: "rate", label: t("fieldRateLabel"), type: "number" },
+    { name: "notes", label: t("fieldNotesLabel"), type: "textarea" },
+  ];
+
+  const STATUS_OPTIONS = [
+    { value: "all", label: t("allStatuses") },
+    { value: "pending", label: t("statusPending") },
+    { value: "approved", label: t("statusApproved") },
+    { value: "paid", label: t("statusPaid") },
+    { value: "disputed", label: t("statusDisputed") },
+    { value: "clawed_back", label: t("statusClawedBack") },
+  ];
+
+  const TYPE_OPTIONS = [
+    { value: "all", label: t("allTypes") },
+    { value: "placement", label: t("typePlacement") },
+    { value: "override", label: t("typeOverride") },
+    { value: "bonus", label: t("typeBonus") },
+  ];
+
+  const CURRENCY_OPTIONS = [
+    { value: "all", label: t("allCurrencies") },
+    ...SUPPORTED_CURRENCIES.map(c => ({ value: c.code, label: `${c.code} — ${c.label}` })),
+  ];
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -116,7 +118,7 @@ export default function AdminCommissionsPage() {
 
       const res = await fetch(`/api/commissions?${params}`);
       if (!res.ok) {
-        throw new Error("Failed to load commissions. Please try again.");
+        throw new Error(t("failedLoadCommissions"));
       }
 
       const data = await res.json();
@@ -124,7 +126,7 @@ export default function AdminCommissionsPage() {
       updateTotal(data.total ?? data.totalCount ?? data.pagination?.total ?? ((data.totalPages ?? data.pagination?.pages ?? 1) * limit));
       if (data.summary) setSummary(data.summary);
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Failed to load commissions. Please try again.";
+      const message = error instanceof Error ? error.message : t("failedLoadCommissions");
       setErrorMessage(message);
       toast.error(message);
     } finally {
@@ -142,7 +144,7 @@ export default function AdminCommissionsPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...values, amount: Number(values.amount), rate: values.rate ? Number(values.rate) : undefined }),
     });
-    if (!res.ok) { const e = await res.json(); throw new Error(e.error ?? "Failed"); }
+    if (!res.ok) { const e = await res.json(); throw new Error(e.error ?? t("failedLoadCommissions")); }
     await fetchCommissions();
   };
 
@@ -156,31 +158,31 @@ export default function AdminCommissionsPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...values, amount: Number(values.amount), rate: values.rate ? Number(values.rate) : undefined }),
     });
-    if (!res.ok) { const e = await res.json(); throw new Error(e.error ?? "Failed"); }
+    if (!res.ok) { const e = await res.json(); throw new Error(e.error ?? t("failedLoadCommissions")); }
     setEditItem(null);
     await fetchCommissions();
   };
 
   const handleDelete = async (id: string) => {
-    const ok = await confirmDialog("Delete this commission?");
+    const ok = await confirmDialog(t("deleteConfirmation"));
     if (!ok) return;
 
     try {
       const res = await csrfFetch(`/api/commissions/${id}`, { method: "DELETE" });
       if (!res.ok) {
         const error = await res.json().catch(() => null);
-        throw new Error(error?.error ?? "Failed to delete commission");
+        throw new Error(error?.error ?? t("failedDelete"));
       }
 
-      toast.success("Commission deleted");
+      toast.success(t("commissionDeleted"));
       await fetchCommissions();
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Failed to delete commission");
+      toast.error(error instanceof Error ? error.message : t("failedDelete"));
     }
   };
 
   const updateStatus = async (id: string, newStatus: string) => {
-    const successMessage = newStatus === "approved" ? "Commission approved" : "Commission marked as paid";
+    const successMessage = newStatus === "approved" ? t("commissionApproved") : t("commissionMarkedPaid");
 
     try {
       const res = await csrfFetch(`/api/commissions/${id}`, {
@@ -191,18 +193,18 @@ export default function AdminCommissionsPage() {
 
       if (!res.ok) {
         const error = await res.json().catch(() => null);
-        throw new Error(error?.error ?? "Failed to update commission status");
+        throw new Error(error?.error ?? t("failedUpdateStatus"));
       }
 
       toast.success(successMessage);
       await fetchCommissions();
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Failed to update commission status");
+      toast.error(error instanceof Error ? error.message : t("failedUpdateStatus"));
     }
   };
 
   const handleDispute = async (id: string) => {
-    const reason = prompt("Enter dispute reason:");
+    const reason = prompt(t("disputeReasonPrompt"));
     if (!reason?.trim()) return;
     try {
       const res = await csrfFetch(`/api/commissions/${id}`, {
@@ -210,22 +212,22 @@ export default function AdminCommissionsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "disputed", disputeReason: reason.trim() }),
       });
-      if (!res.ok) throw new Error("Failed to dispute commission");
-      toast.success("Commission marked as disputed");
+      if (!res.ok) throw new Error(t("failedDispute"));
+      toast.success(t("markDisputedSuccess"));
       await fetchCommissions();
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Failed to dispute commission");
+      toast.error(error instanceof Error ? error.message : t("failedDispute"));
     }
   };
 
   const handleClawback = async (id: string, amount: number) => {
-    const reason = prompt("Enter clawback reason:");
+    const reason = prompt(t("disputeReasonPrompt"));
     if (!reason?.trim()) return;
-    const amountStr = prompt(`Clawback amount (full amount: ${amount}):`, String(amount));
+    const amountStr = prompt(t("clawbackAmountPrompt") + ` ${amount}):`, String(amount));
     if (!amountStr) return;
     const clawbackAmount = Number(amountStr);
     if (isNaN(clawbackAmount) || clawbackAmount <= 0 || clawbackAmount > amount) {
-      toast.error("Invalid clawback amount");
+      toast.error(t("invalidClawbackAmount"));
       return;
     }
     try {
@@ -234,16 +236,16 @@ export default function AdminCommissionsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "clawed_back", clawbackReason: reason.trim(), clawbackAmount }),
       });
-      if (!res.ok) throw new Error("Failed to clawback commission");
-      toast.success("Commission clawed back");
+      if (!res.ok) throw new Error(t("failedClawback"));
+      toast.success(t("commissionClawbacked"));
       await fetchCommissions();
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Failed to clawback commission");
+      toast.error(error instanceof Error ? error.message : t("failedClawback"));
     }
   };
 
   const handleResolveDispute = async (id: string) => {
-    const ok = await confirmDialog("Resolve this dispute? The commission will return to its previous approved status.");
+    const ok = await confirmDialog(t("resolveDisputeConfirmation"));
     if (!ok) return;
     try {
       const res = await csrfFetch(`/api/commissions/${id}`, {
@@ -251,11 +253,11 @@ export default function AdminCommissionsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ disputeResolution: "resolved" }),
       });
-      if (!res.ok) throw new Error("Failed to resolve dispute");
-      toast.success("Dispute resolved");
+      if (!res.ok) throw new Error(t("failedResolveDispute"));
+      toast.success(t("disputeResolved"));
       await fetchCommissions();
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Failed to resolve dispute");
+      toast.error(error instanceof Error ? error.message : t("failedResolveDispute"));
     }
   };
 
@@ -293,17 +295,17 @@ export default function AdminCommissionsPage() {
           <div className="min-w-0 flex-1">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
               <Sparkles className="h-3.5 w-3.5" />
-              Finance workspace
+              {t("financeWorkspace")}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">Commissions</h1>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("commissionsTitle")}</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Track agent commission records, clear pending approvals, and keep payout operations inside the same admin workspace.
+              {t("commissionsDescription")}
             </p>
           </div>
           <div className="flex items-center gap-3">
             <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">
               <ArrowRight className="h-3.5 w-3.5 text-primary" />
-              {total.toLocaleString()} commission records across {totalPages.toLocaleString()} page{totalPages === 1 ? "" : "s"}
+              {total.toLocaleString()} {t("commissionRecordsAcross")} {totalPages.toLocaleString()} {totalPages === 1 ? t("commissionRecordsPages") : t("commissionRecordsPages_plural")}
             </div>
           </div>
         </div>
@@ -312,14 +314,14 @@ export default function AdminCommissionsPage() {
       <TableToolbar
         search={searchTerm}
         onSearchChange={(value) => { setSearchTerm(value); resetPage(); }}
-        searchPlaceholder="Search agent…"
+        searchPlaceholder={t("searchPlaceholder")}
         actions={can("commissions", "create") ? (
           <Button
             onClick={() => setShowAdd(true)}
             className="h-9 gap-2 rounded-lg bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700"
           >
             <Plus className="h-4 w-4" />
-            Add Commission
+            {t("addCommissionButton")}
           </Button>
         ) : undefined}
         onExportCsv={handleExportCsv}
@@ -329,7 +331,7 @@ export default function AdminCommissionsPage() {
           <div className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
               <div>
-                <label htmlFor="admin-commissions-status-filter" className="sr-only">Filter commissions by status</label>
+                <label htmlFor="admin-commissions-status-filter" className="sr-only">{t("filterByStatus")}</label>
                 <SearchableSelect
                   id="admin-commissions-status-filter"
                   className="h-11 w-full rounded-xl border-border bg-card"
@@ -339,12 +341,12 @@ export default function AdminCommissionsPage() {
                     setStatus(value === "all" ? "" : value);
                     resetPage();
                   }}
-                  placeholder="All statuses"
+                  placeholder={t("allStatuses")}
                 />
               </div>
 
               <div>
-                <label htmlFor="admin-commissions-type-filter" className="sr-only">Filter commissions by type</label>
+                <label htmlFor="admin-commissions-type-filter" className="sr-only">{t("filterByType")}</label>
                 <SearchableSelect
                   id="admin-commissions-type-filter"
                   className="h-11 w-full rounded-xl border-border bg-card"
@@ -354,12 +356,12 @@ export default function AdminCommissionsPage() {
                     setTypeFilter(value === "all" ? "" : value);
                     resetPage();
                   }}
-                  placeholder="All types"
+                  placeholder={t("allTypes")}
                 />
               </div>
 
               <div>
-                <label htmlFor="admin-commissions-currency-filter" className="sr-only">Filter by currency / country</label>
+                <label htmlFor="admin-commissions-currency-filter" className="sr-only">{t("filterByCurrency")}</label>
                 <SearchableSelect
                   id="admin-commissions-currency-filter"
                   className="h-11 w-full rounded-xl border-border bg-card"
@@ -369,7 +371,7 @@ export default function AdminCommissionsPage() {
                     setCurrencyFilter(value === "all" ? "" : value);
                     resetPage();
                   }}
-                  placeholder="All currencies"
+                  placeholder={t("allCurrencies")}
                 />
               </div>
 
@@ -381,17 +383,17 @@ export default function AdminCommissionsPage() {
                     className="h-11 rounded-xl border-border bg-card pl-9 text-sm"
                     value={dateFrom}
                     onChange={(event) => { setDateFrom(event.target.value); resetPage(); }}
-                    aria-label="Date from"
+                    aria-label={t("dateFromLabel")}
                   />
                 </div>
-                <span className="text-xs text-muted-foreground">to</span>
+                <span className="text-xs text-muted-foreground">{t("dateRangeSeparator")}</span>
                 <div className="relative flex-1">
                   <Input
                     type="date"
                     className="h-11 rounded-xl border-border bg-card text-sm"
                     value={dateTo}
                     onChange={(event) => { setDateTo(event.target.value); resetPage(); }}
-                    aria-label="Date to"
+                    aria-label={t("dateToLabel")}
                   />
                 </div>
               </div>
@@ -414,7 +416,7 @@ export default function AdminCommissionsPage() {
                 className="h-11 rounded-xl border-border bg-card px-4 text-sm font-medium text-foreground hover:bg-secondary disabled:opacity-50"
               >
                 <RotateCcw className="mr-2 h-4 w-4" />
-                Clear filters
+                {t("clearFiltersButton")}
               </Button>
             </div>
           </div>
@@ -426,9 +428,9 @@ export default function AdminCommissionsPage() {
           <div className="workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Visible records</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("visibleRecordsLabel")}</p>
                 <p className="mt-3 text-3xl font-semibold tracking-tight text-primary">{visibleCommissions}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Commission records loaded on the current page.</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t("visibleRecordsHint")}</p>
               </div>
               <div className="workspace-tone-sky rounded-2xl p-2.5">
                 <WalletCards className="h-5 w-5" />
@@ -438,9 +440,9 @@ export default function AdminCommissionsPage() {
           <div className="workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Pending review</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("pendingReviewLabel")}</p>
                 <p className="mt-3 text-3xl font-semibold tracking-tight text-primary">{displayCurrency} {pendingAmount.toLocaleString()}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Total amount waiting for approval.</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t("pendingReviewHint")}</p>
               </div>
               <div className="workspace-tone-sky rounded-2xl p-2.5">
                 <Clock3 className="h-5 w-5" />
@@ -450,9 +452,9 @@ export default function AdminCommissionsPage() {
           <div className="workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Approved</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("approvedLabel")}</p>
                 <p className="mt-3 text-3xl font-semibold tracking-tight text-primary">{displayCurrency} {approvedAmount.toLocaleString()}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Total approved amount ready for payout.</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t("approvedHint")}</p>
               </div>
               <div className="workspace-tone-sky rounded-2xl p-2.5">
                 <CheckCircle2 className="h-5 w-5" />
@@ -462,9 +464,9 @@ export default function AdminCommissionsPage() {
           <div className="workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Paid out</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("paidOutLabel")}</p>
                 <p className="mt-3 text-3xl font-semibold tracking-tight text-primary">{displayCurrency} {paidAmount.toLocaleString()}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Total paid commission amount.</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t("paidOutHint")}</p>
               </div>
               <div className="workspace-tone-sky rounded-2xl p-2.5">
                 <ReceiptText className="h-5 w-5" />
@@ -481,10 +483,10 @@ export default function AdminCommissionsPage() {
 
       <section className="workspace-panel-surface overflow-hidden rounded-[24px]">
         <div className="flex flex-col gap-2 border-b border-border/80 px-4 py-4 sm:px-5">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Commission ledger</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("commissionLedgerLabel")}</p>
           <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-            <h3 className="text-lg font-semibold text-foreground">Review and action agent payouts</h3>
-            <p className="text-sm text-muted-foreground">Showing {visibleCommissions.toLocaleString()} record{visibleCommissions === 1 ? "" : "s"} on this page.</p>
+            <h3 className="text-lg font-semibold text-foreground">{t("commissionLedgerTitle")}</h3>
+            <p className="text-sm text-muted-foreground">{t("recordsShowing")} {visibleCommissions.toLocaleString()} {visibleCommissions === 1 ? t("record") : t("records")} {t("onThisPage")}</p>
           </div>
         </div>
 
@@ -492,12 +494,12 @@ export default function AdminCommissionsPage() {
           <Table>
             <TableHeader>
               <TableRow className="border-border/80 bg-secondary/72 hover:bg-secondary/72">
-                <TableHead>Agent</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t("tableHeaderAgent")}</TableHead>
+                <TableHead>{t("tableHeaderType")}</TableHead>
+                <TableHead>{t("tableHeaderAmount")}</TableHead>
+                <TableHead>{t("tableHeaderStatus")}</TableHead>
+                <TableHead>{t("tableHeaderDate")}</TableHead>
+                <TableHead className="text-right">{t("tableHeaderActions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -519,8 +521,8 @@ export default function AdminCommissionsPage() {
                         <Inbox className="h-6 w-6" />
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-foreground">No commissions found</p>
-                        <p className="mt-1 text-sm text-muted-foreground">Adjust filters or create a new commission record to populate this ledger.</p>
+                        <p className="text-sm font-semibold text-foreground">{t("noCommissionsFound")}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">{t("noCommissionsHint")}</p>
                       </div>
                     </div>
                   </TableCell>
@@ -530,7 +532,7 @@ export default function AdminCommissionsPage() {
                   <TableCell>
                     <div>
                       <p className="font-medium text-foreground">{c.agentName ?? c.agentId?.fullName ?? "—"}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">Commission record</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{t("commissionRecord")}</p>
                     </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
@@ -541,7 +543,7 @@ export default function AdminCommissionsPage() {
                   <TableCell>
                     <div>
                       <p className="font-semibold text-foreground">{c.currency ?? "USD"} {c.amount.toLocaleString()}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">{c.rate ? `${c.rate}% rate` : "Rate not set"}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{c.rate ? `${c.rate}% rate` : t("rateNotSet")}</p>
                     </div>
                   </TableCell>
                   <TableCell><StatusBadge status={c.status} /></TableCell>
@@ -555,7 +557,7 @@ export default function AdminCommissionsPage() {
                           onClick={() => updateStatus(c._id, "approved")}
                           className="text-emerald-700 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
                         >
-                          Approve
+                          {t("approveButton")}
                         </Button>
                       )}
                       {can("commissions", "approve") && c.status === "approved" && (
@@ -565,7 +567,7 @@ export default function AdminCommissionsPage() {
                           onClick={() => updateStatus(c._id, "paid")}
                           className="text-sky-700 hover:bg-sky-50 dark:text-sky-300 dark:hover:bg-sky-950/40"
                         >
-                          Mark Paid
+                          {t("markPaidButton")}
                         </Button>
                       )}
                       {can("commissions", "approve") && (c.status === "approved" || c.status === "paid") && (
@@ -574,9 +576,9 @@ export default function AdminCommissionsPage() {
                           size="xs"
                           onClick={() => handleDispute(c._id)}
                           className="text-amber-700 hover:bg-amber-50 dark:text-amber-300 dark:hover:bg-amber-950/40"
-                          title="Open dispute"
+                          title={t("disputeTitle")}
                         >
-                          Dispute
+                          {t("disputeButton")}
                         </Button>
                       )}
                       {can("commissions", "approve") && c.status === "paid" && (
@@ -585,9 +587,9 @@ export default function AdminCommissionsPage() {
                           size="xs"
                           onClick={() => handleClawback(c._id, c.amount)}
                           className="text-rose-700 hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-950/40"
-                          title="Clawback commission"
+                          title={t("clawbackTitle")}
                         >
-                          Clawback
+                          {t("clawbackButton")}
                         </Button>
                       )}
                       {can("commissions", "approve") && c.status === "disputed" && (
@@ -596,9 +598,9 @@ export default function AdminCommissionsPage() {
                           size="xs"
                           onClick={() => handleResolveDispute(c._id)}
                           className="text-emerald-700 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
-                          title="Resolve dispute"
+                          title={t("resolveTitle")}
                         >
-                          Resolve
+                          {t("resolveButton")}
                         </Button>
                       )}
                       {can("commissions", "update") && (
@@ -606,8 +608,8 @@ export default function AdminCommissionsPage() {
                           variant="ghost"
                           size="xs"
                           onClick={() => setEditItem(c)}
-                          title="Edit"
-                          aria-label={`Edit commission for ${c.agentId?.fullName ?? "agent"}`}
+                          title={t("editButton")}
+                          aria-label={`${t("editAriaLabel")} ${c.agentId?.fullName ?? "agent"}`}
                         >
                           <Pencil className="h-3.5 w-3.5 text-primary" />
                         </Button>
@@ -617,8 +619,8 @@ export default function AdminCommissionsPage() {
                           variant="ghost"
                           size="xs"
                           onClick={() => handleDelete(c._id)}
-                          title="Delete"
-                          aria-label={`Delete commission for ${c.agentId?.fullName ?? "agent"}`}
+                          title={t("deleteButton")}
+                          aria-label={`${t("deleteAriaLabel")} ${c.agentId?.fullName ?? "agent"}`}
                         >
                           <Trash2 className="h-3.5 w-3.5 text-destructive" />
                         </Button>
@@ -636,8 +638,8 @@ export default function AdminCommissionsPage() {
         </div>
       </section>
 
-      <CrudModal open={showAdd} onClose={() => setShowAdd(false)} title="Add Commission" fields={ADD_FIELDS} onSubmit={handleCreate} />
-      <CrudModal open={!!editItem} onClose={() => setEditItem(null)} title="Edit Commission" fields={ADD_FIELDS}
+      <CrudModal open={showAdd} onClose={() => setShowAdd(false)} title={t("addModalTitle")} fields={ADD_FIELDS} onSubmit={handleCreate} />
+      <CrudModal open={!!editItem} onClose={() => setEditItem(null)} title={t("editModalTitle")} fields={ADD_FIELDS}
         initialValues={editItem ? { type: editItem.type ?? "placement", amount: String(editItem.amount), currency: editItem.currency ?? "AED", rate: String(editItem.rate ?? ""), notes: editItem.notes ?? "" } : undefined}
         onSubmit={handleEdit} />
     </div>

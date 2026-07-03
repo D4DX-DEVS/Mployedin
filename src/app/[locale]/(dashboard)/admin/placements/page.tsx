@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import {
   Search, Filter, CheckCircle2, Clock, AlertCircle, Pencil,
   Trash2, Inbox, CalendarDays, DollarSign, Sparkles, ChevronDown, ChevronUp, X, RotateCcw,
@@ -56,13 +57,14 @@ function formatSalaryValue(value: number): string {
   return value.toLocaleString();
 }
 
-function formatCurrencyBreakdown(salaryByCurrency: Record<string, number>): string {
+function formatCurrencyBreakdown(salaryByCurrency: Record<string, number>, t: any): string {
   const entries = Object.entries(salaryByCurrency).filter(([, v]) => v > 0);
-  if (entries.length === 0) return "No salary data";
-  return entries.map(([cur, val]) => `${val.toLocaleString()} ${cur}`).join(" · ");
+  if (entries.length === 0) return t("noSalaryData");
+  return entries.map(([cur, val]) => `${val.toLocaleString()} ${cur}`).join(t("currencyBreakdownSeparator"));
 }
 
 export default function AdminPlacementsPage() {
+  const t = useTranslations("adminPlacements");
   const { can } = usePermissions();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [placements, setPlacements] = useState<Placement[]>([]);
@@ -128,7 +130,7 @@ export default function AdminPlacementsPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: `Analyze the current placement data and provide brief actionable insights. We have ${total} total placements. Salary breakdown: ${formatCurrencyBreakdown(salaryByCurrency)}. Pending visas: ${pendingVisa}. Unpaid commissions: ${unpaidCommissions}. Recent placements this page: ${placements.length}. Give 3-4 bullet points with trends, risks, and recommendations. Keep it concise.`,
+          message: `Analyze the current placement data and provide brief actionable insights. We have ${total} total placements. Salary breakdown: ${formatCurrencyBreakdown(salaryByCurrency, t)}. Pending visas: ${pendingVisa}. Unpaid commissions: ${unpaidCommissions}. Recent placements this page: ${placements.length}. Give 3-4 bullet points with trends, risks, and recommendations. Keep it concise.`,
         }),
       });
       if (res.ok) {
@@ -163,22 +165,27 @@ export default function AdminPlacementsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    const ok = await confirmDialog("Delete this placement?");
+    const ok = await confirmDialog(t("deleteConfirmation"));
     if (!ok) return;
     await fetch(`/api/placements/${id}`, { method: "DELETE" });
     load();
   };
 
+  const visaStatusOptions = [
+    { value: "not_required", label: t("notRequired") },
+    { value: "pending", label: t("pending") },
+    { value: "approved", label: t("approved") },
+    { value: "rejected", label: t("rejected") },
+    { value: "stamped", label: t("stamped") },
+  ];
+
   const EDIT_FIELDS: CrudField[] = [
-    { name: "salary", label: "Salary", type: "number" },
-    { name: "currency", label: "Currency", type: "select", options: [
+    { name: "salary", label: t("salary"), type: "number" },
+    { name: "currency", label: t("currency"), type: "select", options: [
       { value: "AED", label: "AED" }, { value: "USD", label: "USD" }, { value: "EUR", label: "EUR" }, { value: "SAR", label: "SAR" }
     ]},
-    { name: "visaStatus", label: "Visa Status", type: "select", options: [
-      { value: "not_required", label: "Not Required" }, { value: "pending", label: "Pending" },
-      { value: "approved", label: "Approved" }, { value: "rejected", label: "Rejected" }, { value: "stamped", label: "Stamped" }
-    ]},
-    { name: "notes", label: "Notes", type: "textarea" },
+    { name: "visaStatus", label: t("visa"), type: "select", options: visaStatusOptions },
+    { name: "notes", label: t("notes"), type: "textarea" },
   ];
 
   const pendingVisa = placements.filter((p) => p.visaStatus === "pending").length;
@@ -211,21 +218,21 @@ export default function AdminPlacementsPage() {
           <div className="max-w-3xl">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
               <Sparkles className="h-3.5 w-3.5" />
-              Recruitment Control
+              {t("recruitmentControl")}
             </div>
             <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-              Placement Tracking
+              {t("placementTracking")}
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Monitor and manage all candidate placements across the platform — visa status, commissions, and salary data in one place.
+              {t("placementTrackingDescription")}
             </p>
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Portfolio</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">{total} placements</p>
-              <p className="text-xs text-muted-foreground">{formatCurrencyBreakdown(salaryByCurrency)}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("portfolio")}</p>
+              <p className="mt-1 text-lg font-semibold text-foreground">{t("placementsCount", { count: total })}</p>
+              <p className="text-xs text-muted-foreground">{formatCurrencyBreakdown(salaryByCurrency, t)}</p>
             </div>
             <Button
               onClick={fetchAiInsights}
@@ -233,7 +240,7 @@ export default function AdminPlacementsPage() {
               className="h-11 gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700"
             >
               {aiLoading ? <RotateCcw className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-              {aiLoading ? "Analyzing…" : "Generate Insights"}
+              {aiLoading ? t("analyzing") : t("generateInsights")}
             </Button>
           </div>
         </div>
@@ -241,10 +248,10 @@ export default function AdminPlacementsPage() {
         {/* Stats Row */}
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {([
-            { label: "Total Placements", value: total, note: "All time", icon: Users, tone: "text-sky-600", chip: "bg-sky-50 dark:bg-sky-950/30" },
-            { label: "Pending Visa", value: pendingVisa, note: "Awaiting approval", icon: Clock, tone: "text-amber-600", chip: "bg-amber-50 dark:bg-amber-950/30" },
-            { label: "Unpaid Commission", value: unpaidCommissions, note: "Needs collection", icon: DollarSign, tone: "text-red-500", chip: "bg-red-50 dark:bg-red-950/30" },
-            { label: "Total Salary Value", value: formatSalaryValue(totalValue), note: Object.keys(salaryByCurrency).length > 0 ? Object.entries(salaryByCurrency).slice(0, 2).map(([c, v]) => `${formatSalaryValue(v)} ${c}`).join(" · ") : "No data", icon: TrendingUp, tone: "text-emerald-600", chip: "bg-emerald-50 dark:bg-emerald-950/30" },
+            { label: t("totalPlacements"), value: total, note: t("allTime"), icon: Users, tone: "text-sky-600", chip: "bg-sky-50 dark:bg-sky-950/30" },
+            { label: t("pendingVisa"), value: pendingVisa, note: t("awaitingApproval"), icon: Clock, tone: "text-amber-600", chip: "bg-amber-50 dark:bg-amber-950/30" },
+            { label: t("unpaidCommission"), value: unpaidCommissions, note: t("needsCollection"), icon: DollarSign, tone: "text-red-500", chip: "bg-red-50 dark:bg-red-950/30" },
+            { label: t("totalSalaryValue"), value: formatSalaryValue(totalValue), note: Object.keys(salaryByCurrency).length > 0 ? Object.entries(salaryByCurrency).slice(0, 2).map(([c, v]) => `${formatSalaryValue(v)} ${c}`).join(t("currencyBreakdownSeparator")) : t("noData"), icon: TrendingUp, tone: "text-emerald-600", chip: "bg-emerald-50 dark:bg-emerald-950/30" },
           ] as const).map(({ label, value, note, icon: Icon, tone, chip }) => (
             <div key={label} className="workspace-glass-panel rounded-2xl p-4">
               <div className="flex items-start justify-between gap-3">
@@ -266,7 +273,7 @@ export default function AdminPlacementsPage() {
           <div className="mt-4 rounded-[20px] border border-sky-200/50 bg-sky-50/50 p-4 dark:border-sky-800/30 dark:bg-sky-950/20">
             <div className="mb-2 flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-sky-600 dark:text-sky-400" />
-              <span className="text-sm font-semibold text-sky-800 dark:text-sky-300">AI Placement Insights</span>
+              <span className="text-sm font-semibold text-sky-800 dark:text-sky-300">{t("aiPlacementInsights")}</span>
             </div>
             <div className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{aiInsights}</div>
           </div>
@@ -280,15 +287,15 @@ export default function AdminPlacementsPage() {
             className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-white/10 dark:hover:bg-white/5"
           >
             <Filter className="h-4 w-4 text-muted-foreground" />
-            {showFilters ? "Hide Filters" : "Show Filters"}
-            {activeFilterCount > 0 && <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">{activeFilterCount} active</Badge>}
+            {showFilters ? t("hideFilters") : t("showFilters")}
+            {activeFilterCount > 0 && <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">{t("activeFilters", { count: activeFilterCount })}</Badge>}
             {showFilters ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
           </button>
           <div className="flex items-center gap-2">
             {activeFilterCount > 0 && (
               <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1.5 text-xs text-muted-foreground">
                 <X className="h-3.5 w-3.5" />
-                Clear {activeFilterCount} filter{activeFilterCount > 1 ? "s" : ""}
+                {t("clearActiveFilters", { count: activeFilterCount })}
               </Button>
             )}
             <TableToolbar
@@ -307,7 +314,7 @@ export default function AdminPlacementsPage() {
               <Input
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-                placeholder="Search candidate or company…"
+                placeholder={t("searchPlaceholder")}
                 className="h-11 rounded-xl border-border bg-card pl-9 text-sm shadow-none"
               />
             </div>
@@ -316,32 +323,32 @@ export default function AdminPlacementsPage() {
               <SearchableSelect
                 className="h-11 w-full rounded-xl border-border bg-card"
                 options={[
-                  { value: "", label: "All Visa Statuses" },
-                  { value: "not_required", label: "Not Required" },
-                  { value: "pending", label: "Pending" },
-                  { value: "approved", label: "Approved" },
-                  { value: "rejected", label: "Rejected" },
-                  { value: "stamped", label: "Stamped" },
+                  { value: "", label: t("allVisaStatuses") },
+                  { value: "not_required", label: t("notRequired") },
+                  { value: "pending", label: t("pending") },
+                  { value: "approved", label: t("approved") },
+                  { value: "rejected", label: t("rejected") },
+                  { value: "stamped", label: t("stamped") },
                 ]}
                 value={visaFilter}
                 onValueChange={(v) => { setVisaFilter(v); resetPage(); }}
-                placeholder="All Visa Statuses"
+                placeholder={t("allVisaStatuses")}
               />
               <SearchableSelect
                 className="h-11 w-full rounded-xl border-border bg-card"
                 options={[
-                  { value: "", label: "All Commission" },
-                  { value: "true", label: "Paid" },
-                  { value: "false", label: "Unpaid" },
+                  { value: "", label: t("allCommission") },
+                  { value: "true", label: t("paid") },
+                  { value: "false", label: t("unpaid") },
                 ]}
                 value={commissionFilter}
                 onValueChange={(v) => { setCommissionFilter(v); resetPage(); }}
-                placeholder="All Commission"
+                placeholder={t("allCommission")}
               />
               <SearchableSelect
                 className="h-11 w-full rounded-xl border-border bg-card"
                 options={[
-                  { value: "", label: "All Currencies" },
+                  { value: "", label: t("allCurrencies") },
                   { value: "AED", label: "AED" },
                   { value: "USD", label: "USD" },
                   { value: "EUR", label: "EUR" },
@@ -349,7 +356,7 @@ export default function AdminPlacementsPage() {
                 ]}
                 value={currencyFilter}
                 onValueChange={(v) => { setCurrencyFilter(v); resetPage(); }}
-                placeholder="All Currencies"
+                placeholder={t("allCurrencies")}
               />
             </div>
 
@@ -360,7 +367,7 @@ export default function AdminPlacementsPage() {
                 className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
               >
                 <Filter className="h-3.5 w-3.5" />
-                Advanced Filters
+                {t("advancedFilters")}
                 {showAdvanced ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
               </button>
             </div>
@@ -389,7 +396,7 @@ export default function AdminPlacementsPage() {
                   <DollarSign className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     type="number"
-                    placeholder="Min salary"
+                    placeholder={t("minSalaryPlaceholder")}
                     value={salaryMin}
                     onChange={(e) => { setSalaryMin(e.target.value); resetPage(); }}
                     className="h-11 rounded-xl border-border bg-card pl-9 text-sm shadow-none"
@@ -399,7 +406,7 @@ export default function AdminPlacementsPage() {
                   <DollarSign className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     type="number"
-                    placeholder="Max salary"
+                    placeholder={t("maxSalaryPlaceholder")}
                     value={salaryMax}
                     onChange={(e) => { setSalaryMax(e.target.value); resetPage(); }}
                     className="h-11 rounded-xl border-border bg-card pl-9 text-sm shadow-none"
@@ -417,7 +424,7 @@ export default function AdminPlacementsPage() {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
-                {["Candidate", "Role", "Company", "Agent", "Salary", "Visa", "Commission", "Date", ""].map((h, i) => (
+                {[t("candidate"), t("role"), t("company"), t("agent"), t("salary"), t("visa"), t("commission"), t("date"), ""].map((h, i) => (
                   <TableHead key={i} className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">{h}</TableHead>
                 ))}
               </TableRow>
@@ -441,16 +448,16 @@ export default function AdminPlacementsPage() {
                         <Inbox className="h-7 w-7 opacity-40" />
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-foreground">No placements found</p>
+                        <p className="text-sm font-semibold text-foreground">{t("noPlacementsFound")}</p>
                         <p className="mt-1 text-xs text-muted-foreground">
                           {activeFilterCount > 0
-                            ? "Try adjusting the filters above."
-                            : "Placements will appear here once candidates are hired."}
+                            ? t("tryAdjustingFilters")
+                            : t("placementsWillAppear")}
                         </p>
                       </div>
                       {activeFilterCount > 0 && (
                         <Button variant="outline" size="sm" onClick={clearFilters} className="mt-1 h-8 rounded-lg text-xs">
-                          Clear filters
+                          {t("clearFilters")}
                         </Button>
                       )}
                     </div>
@@ -459,12 +466,12 @@ export default function AdminPlacementsPage() {
               ) : placements.map((p) => (
                 <TableRow key={p._id} className="group transition-colors">
                   <TableCell className="px-4 py-3">
-                    <p className="font-medium">{p.candidateName ?? "—"}</p>
+                    <p className="font-medium">{p.candidateName ?? t("dashSeparator")}</p>
                     <p className="text-xs text-muted-foreground">{p.candidateEmail}</p>
                   </TableCell>
-                  <TableCell className="px-4 py-3 text-muted-foreground">{p.jobTitle ?? "—"}</TableCell>
-                  <TableCell className="px-4 py-3">{p.companyName ?? "—"}</TableCell>
-                  <TableCell className="px-4 py-3 text-muted-foreground">{p.agentName ?? "—"}</TableCell>
+                  <TableCell className="px-4 py-3 text-muted-foreground">{p.jobTitle ?? t("dashSeparator")}</TableCell>
+                  <TableCell className="px-4 py-3">{p.companyName ?? t("dashSeparator")}</TableCell>
+                  <TableCell className="px-4 py-3 text-muted-foreground">{p.agentName ?? t("dashSeparator")}</TableCell>
                   <TableCell className="px-4 py-3 font-medium">
                     {p.salary?.toLocaleString()}{" "}
                     <span className="text-xs text-muted-foreground">{p.currency}</span>
@@ -490,7 +497,7 @@ export default function AdminPlacementsPage() {
                           onClick={() => markCommission(p._id, true)}
                           className="text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
                         >
-                          Mark Paid
+                          {t("markPaid")}
                         </Button>
                       )}
                       {can("placements", "update") && (
@@ -499,7 +506,7 @@ export default function AdminPlacementsPage() {
                           size="xs"
                           onClick={() => setEditItem(p)}
                           className="text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30"
-                          title="Edit"
+                          title={t("edit")}
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
@@ -510,7 +517,7 @@ export default function AdminPlacementsPage() {
                           size="xs"
                           onClick={() => handleDelete(p._id)}
                           className="text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
-                          title="Delete"
+                          title={t("delete")}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
@@ -538,7 +545,7 @@ export default function AdminPlacementsPage() {
       <CrudModal
         open={!!editItem}
         onClose={() => setEditItem(null)}
-        title="Edit Placement"
+        title={t("editPlacement")}
         fields={EDIT_FIELDS}
         initialValues={editItem ? {
           salary: String(editItem.salary ?? ""),

@@ -537,7 +537,7 @@ export default function EmployerWorkflowPage() {
                               checked={stage.autoProgress}
                               onCheckedChange={() => toggleStage(stage.id, "autoProgress")}
                               disabled={!stage.enabled}
-                              className="h-6 w-11 data-[state=checked]:[&>span]:translate-x-5 [&>span]:h-5 [&>span]:w-5"
+                              className="h-6 w-11 data-[state=checked]:[&>span]:translate-x-5 rtl:data-[state=checked]:[&>span]:-translate-x-5 [&>span]:h-5 [&>span]:w-5"
                             />
                           </div>
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -545,7 +545,7 @@ export default function EmployerWorkflowPage() {
                             <Switch
                               checked={stage.enabled}
                               onCheckedChange={() => toggleStage(stage.id, "enabled")}
-                              className="h-6 w-11 data-[state=checked]:[&>span]:translate-x-5 [&>span]:h-5 [&>span]:w-5"
+                              className="h-6 w-11 data-[state=checked]:[&>span]:translate-x-5 rtl:data-[state=checked]:[&>span]:-translate-x-5 [&>span]:h-5 [&>span]:w-5"
                             />
                           </div>
                         </div>

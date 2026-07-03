@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CascadingLocationPicker } from "@/components/shared/CascadingLocationPicker";
@@ -59,6 +60,7 @@ interface SuperAgentOption {
 }
 
 export default function AdminAgentsPage() {
+  const tr = useTranslations("adminAgents");
   const { can } = usePermissions();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -86,18 +88,18 @@ export default function AdminAgentsPage() {
   const [editError, setEditError] = useState("");
 
   const exportColumns: ExportColumn<Agent>[] = [
-    { header: "Name", key: "name" },
-    { header: "Email", key: "email" },
-    { header: "Super Agent", key: "agentProfile" as keyof Agent, formatter: (_v, r) => (r as unknown as Agent).agentProfile?.superAgentName ?? "—" },
-    { header: "Commission %", key: "agentProfile" as keyof Agent, formatter: (_v, r) => String((r as unknown as Agent).agentProfile?.commissionRate ?? 0) },
-    { header: "Status", key: "isActive", formatter: (v) => v !== false ? "Active" : "Inactive" },
-    { header: "Joined", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
+    { header: tr("exportName"), key: "name" },
+    { header: tr("exportEmail"), key: "email" },
+    { header: tr("exportSuperAgent"), key: "agentProfile" as keyof Agent, formatter: (_v, r) => (r as unknown as Agent).agentProfile?.superAgentName ?? "—" },
+    { header: tr("exportCommission"), key: "agentProfile" as keyof Agent, formatter: (_v, r) => String((r as unknown as Agent).agentProfile?.commissionRate ?? 0) },
+    { header: tr("exportStatus"), key: "isActive", formatter: (v) => v !== false ? tr("active") : tr("inactive") },
+    { header: tr("exportJoined"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: agents as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "agents",
-    title: "Agents",
+    title: tr("agents"),
   });
 
   // Fetch super agents with region data for dropdown + auto-fill
@@ -157,7 +159,7 @@ export default function AdminAgentsPage() {
   const handleCreate = async () => {
     setAddError("");
     if (!addForm.name || !addForm.email || !addForm.password) {
-      setAddError("Name, email, and password are required");
+      setAddError(tr("requiredFieldsError"));
       return;
     }
     setAddLoading(true);
@@ -178,7 +180,7 @@ export default function AdminAgentsPage() {
       });
       if (!res.ok) {
         const e = await res.json();
-        setAddError(e.error ?? "Failed to create agent");
+        setAddError(e.error ?? tr("createAgentFailed"));
         return;
       }
       setShowAdd(false);
@@ -187,7 +189,7 @@ export default function AdminAgentsPage() {
       setAddStateIds([]);
       fetchAgents();
     } catch {
-      setAddError("Network error");
+      setAddError(tr("networkError"));
     } finally {
       setAddLoading(false);
     }
@@ -240,20 +242,20 @@ export default function AdminAgentsPage() {
       });
       if (!res.ok) {
         const e = await res.json();
-        setEditError(e.error ?? "Failed to update");
+        setEditError(e.error ?? tr("updateAgentFailed"));
         return;
       }
       setEditAgent(null);
       fetchAgents();
     } catch {
-      setEditError("Network error");
+      setEditError(tr("networkError"));
     } finally {
       setEditLoading(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    const ok = await confirmDialog({ message: "Deactivate this agent? They won't be able to log in.", confirmLabel: "Deactivate" });
+    const ok = await confirmDialog({ message: tr("deactivateConfirm"), confirmLabel: tr("deactivate") });
     if (!ok) return;
     await fetch("/api/admin/users", {
       method: "DELETE",
@@ -264,7 +266,7 @@ export default function AdminAgentsPage() {
   };
 
   const handlePermanentDelete = async (id: string) => {
-    const ok = await confirmDialog({ title: "Permanently Delete Agent", message: "This will permanently delete the agent and their profile. This cannot be undone.", confirmLabel: "Delete Forever" });
+    const ok = await confirmDialog({ title: tr("deleteForeverTitle"), message: tr("deleteForeverConfirm"), confirmLabel: tr("deleteForever") });
     if (!ok) return;
     await fetch("/api/admin/users", {
       method: "DELETE",
@@ -282,7 +284,7 @@ export default function AdminAgentsPage() {
     const parts: string[] = [];
     if (stateCount > 0) {
       const names = profile.assignedStateIds!.slice(0, 2).map((s) => s.name);
-      parts.push(names.join(", ") + (stateCount > 2 ? ` +${stateCount - 2}` : "") + " (state)");
+      parts.push(names.join(", ") + (stateCount > 2 ? ` +${stateCount - 2}` : "") + ` (${tr("state")})`);
     }
     if (cityCount > 0) {
       const names = profile.assignedCityIds!.slice(0, 2).map((c) => c.name);
@@ -301,11 +303,11 @@ export default function AdminAgentsPage() {
           <div className="min-w-0 flex-1">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
               <Sparkles className="h-3.5 w-3.5" />
-              Admin workspace
+              {tr("adminWorkspace")}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">Agents</h1>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{tr("agents")}</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Manage recruitment agents and their assigned regions.
+              {tr("heroDescription")}
             </p>
           </div>
         </div>
@@ -318,42 +320,42 @@ export default function AdminAgentsPage() {
               <Input
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-                placeholder="Search agent…"
+                placeholder={tr("searchAgentPlaceholder")}
                 className="h-8 w-52 rounded-lg pl-8 text-sm"
               />
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="h-8 rounded-lg border-border/80">
-                  <Download className="h-3.5 w-3.5" /> Export
+                  <Download className="h-3.5 w-3.5" /> {tr("export")}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-44">
-                <DropdownMenuLabel>Export</DropdownMenuLabel>
+                <DropdownMenuLabel>{tr("export")}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleExportCsv}><FileText className="h-4 w-4" />CSV</DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExportExcel}><FileSpreadsheet className="h-4 w-4" />Excel</DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExportPdf}><FileText className="h-4 w-4" />PDF</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportCsv}><FileText className="h-4 w-4" />{tr("csv")}</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportExcel}><FileSpreadsheet className="h-4 w-4" />{tr("excel")}</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportPdf}><FileText className="h-4 w-4" />{tr("pdf")}</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             {can("agents", "create") && (
               <Button onClick={() => setShowAdd(true)} size="sm" className="h-8 rounded-lg">
-                <Plus className="h-3.5 w-3.5" /> Add Agent
+                <Plus className="h-3.5 w-3.5" /> {tr("addAgent")}
               </Button>
             )}
         </div>
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Super Agent</TableHead>
-              <TableHead>Region</TableHead>
-              <TableHead>Commission</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Joined</TableHead>
+              <TableHead>{tr("name")}</TableHead>
+              <TableHead>{tr("email")}</TableHead>
+              <TableHead>{tr("superAgent")}</TableHead>
+              <TableHead>{tr("region")}</TableHead>
+              <TableHead>{tr("commission")}</TableHead>
+              <TableHead>{tr("status")}</TableHead>
+              <TableHead>{tr("joined")}</TableHead>
               {(can("agents", "update") || can("agents", "delete")) && (
-                <TableHead>Actions</TableHead>
+                <TableHead>{tr("actions")}</TableHead>
               )}
             </TableRow>
           </TableHeader>
@@ -373,7 +375,7 @@ export default function AdminAgentsPage() {
                 <TableCell colSpan={8} className="h-32 text-center">
                   <div className="flex flex-col items-center gap-2 text-muted-foreground">
                     <Inbox className="h-8 w-8 opacity-40" />
-                    <span className="text-sm">No agents found</span>
+                    <span className="text-sm">{tr("noAgentsFound")}</span>
                   </div>
                 </TableCell>
               </TableRow>
@@ -410,17 +412,17 @@ export default function AdminAgentsPage() {
                   <TableCell>
                     <div className="flex items-center gap-1">
                       {can("agents", "update") && (
-                        <Button variant="ghost" size="xs" onClick={() => openEdit(agent)} title="Edit">
+                        <Button variant="ghost" size="xs" onClick={() => openEdit(agent)} title={tr("edit")}>
                           <Pencil className="h-3.5 w-3.5 text-primary" />
                         </Button>
                       )}
                       {can("agents", "delete") && (
-                        <Button variant="ghost" size="xs" onClick={() => handleDelete(agent._id)} title="Deactivate">
+                        <Button variant="ghost" size="xs" onClick={() => handleDelete(agent._id)} title={tr("deactivate")}>
                           <Ban className="h-3.5 w-3.5 text-amber-500" />
                         </Button>
                       )}
                       {can("agents", "delete") && (
-                        <Button variant="ghost" size="xs" onClick={() => handlePermanentDelete(agent._id)} title="Delete permanently">
+                        <Button variant="ghost" size="xs" onClick={() => handlePermanentDelete(agent._id)} title={tr("deletePermanently")}>
                           <Trash2 className="h-3.5 w-3.5 text-destructive" />
                         </Button>
                       )}
@@ -439,8 +441,8 @@ export default function AdminAgentsPage() {
       <Dialog open={showAdd} onOpenChange={setShowAdd}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-none">
           <DialogHeader>
-            <DialogTitle>Add Agent</DialogTitle>
-            <DialogDescription>Create a new recruitment agent with region assignment</DialogDescription>
+            <DialogTitle>{tr("addAgent")}</DialogTitle>
+            <DialogDescription>{tr("addAgentDescription")}</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
@@ -452,29 +454,29 @@ export default function AdminAgentsPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Full Name <span className="text-destructive">*</span></Label>
+                <Label>{tr("fullName")} <span className="text-destructive">*</span></Label>
                 <Input value={addForm.name} onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))} />
               </div>
               <div className="space-y-2">
-                <Label>Email <span className="text-destructive">*</span></Label>
+                <Label>{tr("email")} <span className="text-destructive">*</span></Label>
                 <Input type="email" value={addForm.email} onChange={(e) => setAddForm((f) => ({ ...f, email: e.target.value }))} />
               </div>
               <div className="space-y-2">
-                <Label>Password <span className="text-destructive">*</span></Label>
-                <Input type="text" value={addForm.password} onChange={(e) => setAddForm((f) => ({ ...f, password: e.target.value }))} placeholder="Min 8 characters" />
+                <Label>{tr("password")} <span className="text-destructive">*</span></Label>
+                <Input type="text" value={addForm.password} onChange={(e) => setAddForm((f) => ({ ...f, password: e.target.value }))} placeholder={tr("passwordPlaceholder")} />
               </div>
               <div className="space-y-2">
-                <Label>Commission Rate (%)</Label>
+                <Label>{tr("commissionRate")}</Label>
                 <Input type="number" min="0" max="100" value={addForm.commissionRate} onChange={(e) => setAddForm((f) => ({ ...f, commissionRate: e.target.value }))} />
-                <p className="text-xs text-muted-foreground">This percentage is used when future recruitment invoices are generated for this agent&apos;s jobs.</p>
+                <p className="text-xs text-muted-foreground">{tr("commissionRateHelp")}</p>
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label>Assigned Super Agent</Label>
+              <Label>{tr("assignedSuperAgent")}</Label>
               <InlineSearchSelect
                 options={[
-                  { value: "none", label: "None" },
+                  { value: "none", label: tr("none") },
                   ...superAgents.map((sa) => ({ value: sa._id, label: sa.name })),
                 ]}
                 value={addForm.superAgentId || "none"}
@@ -484,7 +486,7 @@ export default function AdminAgentsPage() {
                   if (id) applySARegion(id, setAddCityIds, setAddStateIds);
                   else { setAddCityIds([]); setAddStateIds([]); }
                 }}
-                placeholder="Select super agent (optional)"
+                placeholder={tr("selectSuperAgentPlaceholder")}
               />
               {addForm.superAgentId && (() => {
                 const sa = superAgents.find((s) => s._id === addForm.superAgentId);
@@ -492,7 +494,7 @@ export default function AdminAgentsPage() {
                 return regionCount > 0 ? (
                   <p className="text-xs text-primary flex items-center gap-1">
                     <Globe className="h-3 w-3" />
-                    Region auto-filled from {sa?.name}&apos;s territory ({regionCount} location{regionCount > 1 ? "s" : ""})
+                    {tr("regionAutoFilled", { name: sa?.name || "", count: regionCount })}
                   </p>
                 ) : null;
               })()}
@@ -502,15 +504,15 @@ export default function AdminAgentsPage() {
               selectedCityIds={addCityIds}
               selectedStateIds={addStateIds}
               onChange={(cities, states) => { setAddCityIds(cities); setAddStateIds(states); }}
-              label="Assigned Region"
+              label={tr("assignedRegion")}
             />
           </div>
 
           <DialogFooter className="pt-2">
-            <Button type="button" variant="outline" onClick={() => setShowAdd(false)} disabled={addLoading}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={() => setShowAdd(false)} disabled={addLoading}>{tr("cancel")}</Button>
             <Button onClick={handleCreate} disabled={addLoading}>
               {addLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-              {addLoading ? "Creating…" : "Create Agent"}
+              {addLoading ? tr("creating") : tr("createAgent")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -520,7 +522,7 @@ export default function AdminAgentsPage() {
       <Dialog open={!!editAgent} onOpenChange={(open) => { if (!open) setEditAgent(null); }}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-none">
           <DialogHeader>
-            <DialogTitle>Edit Agent</DialogTitle>
+            <DialogTitle>{tr("editAgent")}</DialogTitle>
             <DialogDescription>{editAgent?.name} — {editAgent?.email}</DialogDescription>
           </DialogHeader>
 
@@ -533,36 +535,36 @@ export default function AdminAgentsPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Full Name</Label>
+                <Label>{tr("fullName")}</Label>
                 <Input value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} />
               </div>
               <div className="space-y-2">
-                <Label>Email</Label>
+                <Label>{tr("email")}</Label>
                 <Input type="email" value={editForm.email} onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))} />
               </div>
               <div className="space-y-2">
-                <Label>Status</Label>
+                <Label>{tr("status")}</Label>
                 <InlineSearchSelect
                   options={[
-                    { value: "true", label: "Active" },
-                    { value: "false", label: "Inactive" },
+                    { value: "true", label: tr("active") },
+                    { value: "false", label: tr("inactive") },
                   ]}
                   value={editForm.isActive}
                   onValueChange={(v) => setEditForm((f) => ({ ...f, isActive: v }))}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Commission Rate (%)</Label>
+                <Label>{tr("commissionRate")}</Label>
                 <Input type="number" min="0" max="100" value={editForm.commissionRate} onChange={(e) => setEditForm((f) => ({ ...f, commissionRate: e.target.value }))} />
-                <p className="text-xs text-muted-foreground">Changes affect future recruitment invoice commissions, not previously created invoices.</p>
+                <p className="text-xs text-muted-foreground">{tr("commissionRateEditHelp")}</p>
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label>Assigned Super Agent</Label>
+              <Label>{tr("assignedSuperAgent")}</Label>
               <InlineSearchSelect
                 options={[
-                  { value: "none", label: "None" },
+                  { value: "none", label: tr("none") },
                   ...superAgents.map((sa) => ({ value: sa._id, label: sa.name })),
                 ]}
                 value={editForm.superAgentId || "none"}
@@ -571,7 +573,7 @@ export default function AdminAgentsPage() {
                   setEditForm((f) => ({ ...f, superAgentId: id }));
                   if (id) applySARegion(id, setEditCityIds, setEditStateIds);
                 }}
-                placeholder="Select super agent"
+                placeholder={tr("selectSuperAgentPlaceholder")}
               />
               {editForm.superAgentId && (() => {
                 const sa = superAgents.find((s) => s._id === editForm.superAgentId);
@@ -579,7 +581,7 @@ export default function AdminAgentsPage() {
                 return regionCount > 0 ? (
                   <p className="text-xs text-primary flex items-center gap-1">
                     <Globe className="h-3 w-3" />
-                    Region from {sa?.name}&apos;s territory ({regionCount} location{regionCount > 1 ? "s" : ""})
+                    {tr("regionFromTerritory", { name: sa?.name || "", count: regionCount })}
                   </p>
                 ) : null;
               })()}
@@ -589,15 +591,15 @@ export default function AdminAgentsPage() {
               selectedCityIds={editCityIds}
               selectedStateIds={editStateIds}
               onChange={(cities, states) => { setEditCityIds(cities); setEditStateIds(states); }}
-              label="Assigned Region"
+              label={tr("assignedRegion")}
             />
           </div>
 
           <DialogFooter className="pt-2">
-            <Button type="button" variant="outline" onClick={() => setEditAgent(null)} disabled={editLoading}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={() => setEditAgent(null)} disabled={editLoading}>{tr("cancel")}</Button>
             <Button onClick={handleEdit} disabled={editLoading}>
               {editLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-              {editLoading ? "Saving…" : "Update Agent"}
+              {editLoading ? tr("saving") : tr("updateAgent")}
             </Button>
           </DialogFooter>
         </DialogContent>

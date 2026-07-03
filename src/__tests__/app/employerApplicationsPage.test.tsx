@@ -154,8 +154,9 @@ describe("EmployerApplicationsPage", () => {
     await user.click(screen.getByRole("button", { name: /detailed view/i }));
 
     expect(await screen.findByRole("dialog", { name: /candidate details for amina noor/i })).toBeInTheDocument();
-    expect(screen.getByText("Review signals")).toBeInTheDocument();
-    expect(screen.getByText("Delivers production-ready React features across global teams.")).toBeInTheDocument();
+    expect(screen.getByText("Strengths")).toBeInTheDocument();
+    // coverLetter is no longer rendered in the detail panel (dropped in a later
+    // redesign); matchStrengths remains the "rich detail" gated by this toggle
     expect(screen.getByText("Leadership in cross-functional delivery")).toBeInTheDocument();
   });
 
@@ -180,6 +181,6 @@ describe("EmployerApplicationsPage", () => {
     await user.click(screen.getByTestId("applicant-row-app-1"));
 
     expect(await screen.findByRole("dialog", { name: /candidate details for amina noor/i })).toBeInTheDocument();
-    expect(screen.getByText("Review signals")).toBeInTheDocument();
+    expect(screen.getByText("Strengths")).toBeInTheDocument();
   });
 });

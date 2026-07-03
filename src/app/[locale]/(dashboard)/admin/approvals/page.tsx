@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { Eye, Briefcase, MapPin, Building2, Clock, Search, DollarSign, Calendar, Globe, Users, UserCheck, FileText, Sparkles, Inbox } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,22 +43,6 @@ interface Job {
 
 interface FilterOption { value: string; label: string }
 
-const STATUS_OPTIONS: FilterOption[] = [
-  { value: "all", label: "All statuses" },
-  { value: "draft", label: "Draft" },
-  { value: "active", label: "Active" },
-  { value: "paused", label: "Paused" },
-  { value: "closed", label: "Closed" },
-  { value: "expired", label: "Expired" },
-];
-
-const APPROVAL_OPTIONS: FilterOption[] = [
-  { value: "all", label: "All approvals" },
-  { value: "pending", label: "Pending" },
-  { value: "approved", label: "Approved" },
-  { value: "rejected", label: "Rejected" },
-];
-
 function getApproval(job: Job) {
   return job.poster?.approvalStatus ?? "pending";
 }
@@ -78,6 +63,7 @@ function getSuperAgentName(job: Job) {
 }
 
 export default function AdminApprovalsPage() {
+  const t = useTranslations("adminApprovals");
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
@@ -97,6 +83,23 @@ export default function AdminApprovalsPage() {
 
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
 
+  // Status and approval options
+  const STATUS_OPTIONS: FilterOption[] = [
+    { value: "all", label: t("allStatuses") },
+    { value: "draft", label: t("draft") },
+    { value: "active", label: t("statusActive") },
+    { value: "paused", label: t("paused") },
+    { value: "closed", label: t("closed") },
+    { value: "expired", label: t("expired") },
+  ];
+
+  const APPROVAL_OPTIONS: FilterOption[] = [
+    { value: "all", label: t("allApprovals") },
+    { value: "pending", label: t("approvalPending") },
+    { value: "approved", label: t("approvalApproved") },
+    { value: "rejected", label: t("approvalRejected") },
+  ];
+
   useEffect(() => { document.title = "All Jobs · MPLOYEDIN"; }, []);
 
   // Fetch filter options
@@ -111,12 +114,12 @@ export default function AdminApprovalsPage() {
         if (empRes.ok) {
           const data = await empRes.json();
           const list = (data.employers ?? data.items ?? data ?? []) as { _id: string; companyName?: string }[];
-          setEmployers([{ value: "all", label: "All employers" }, ...list.map((e) => ({ value: e._id, label: e.companyName ?? e._id }))]);
+          setEmployers([{ value: "all", label: t("allEmployers") }, ...list.map((e) => ({ value: e._id, label: e.companyName ?? e._id }))]);
         }
         if (agentRes.ok) {
           const data = await agentRes.json();
           const list = (data.agents ?? data.items ?? data ?? []) as { _id: string; userId?: { name?: string; email?: string } | string; name?: string }[];
-          setAgents([{ value: "all", label: "All agents" }, ...list.map((a) => {
+          setAgents([{ value: "all", label: t("allAgents") }, ...list.map((a) => {
             const label = typeof a.userId === "object" ? (a.userId?.name ?? a.userId?.email ?? a._id) : (a.name ?? a._id);
             return { value: a._id, label };
           })]);
@@ -124,7 +127,7 @@ export default function AdminApprovalsPage() {
         if (saRes.ok) {
           const data = await saRes.json();
           const list = (data.superAgents ?? data.items ?? data ?? []) as { _id: string; userId?: { name?: string; email?: string } | string; name?: string }[];
-          setSuperAgentsList([{ value: "all", label: "All super agents" }, ...list.map((s) => {
+          setSuperAgentsList([{ value: "all", label: t("allSuperAgents") }, ...list.map((s) => {
             const label = typeof s.userId === "object" ? (s.userId?.name ?? s.userId?.email ?? s._id) : (s.name ?? s._id);
             return { value: s._id, label };
           })]);
@@ -160,20 +163,20 @@ export default function AdminApprovalsPage() {
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
 
   const exportColumns: ExportColumn<Job>[] = [
-    { header: "Title", key: "title" },
-    { header: "Employer", key: "employerId" as keyof Job, formatter: (_v, r) => (r as unknown as Job).employerId?.companyName ?? "—" },
-    { header: "Agent", key: "agentId" as keyof Job, formatter: (_v, r) => getAgentName(r as unknown as Job) ?? "—" },
-    { header: "Status", key: "status" },
-    { header: "Approval", key: "poster" as keyof Job, formatter: (_v, r) => getApproval(r as unknown as Job) },
-    { header: "Location", key: "location", formatter: (v) => formatLocation(v as Job["location"]) },
-    { header: "Applicants", key: "applicantsCount", formatter: (v) => String(v ?? 0) },
-    { header: "Created", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
+    { header: t("tableHeaderTitle"), key: "title" },
+    { header: t("tableHeaderEmployer"), key: "employerId" as keyof Job, formatter: (_v, r) => (r as unknown as Job).employerId?.companyName ?? "—" },
+    { header: t("tableHeaderPostedBy"), key: "agentId" as keyof Job, formatter: (_v, r) => getAgentName(r as unknown as Job) ?? "—" },
+    { header: t("tableHeaderStatus"), key: "status" },
+    { header: t("tableHeaderApproval"), key: "poster" as keyof Job, formatter: (_v, r) => getApproval(r as unknown as Job) },
+    { header: t("tableHeaderLocation"), key: "location", formatter: (v) => formatLocation(v as Job["location"]) },
+    { header: t("tableHeaderApps"), key: "applicantsCount", formatter: (v) => String(v ?? 0) },
+    { header: t("tableHeaderPosted"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: jobs as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "approvals",
-    title: "Job Approvals",
+    title: t("platformJobsOverview"),
   });
 
   const pending = approvalCounts.pending ?? jobs.filter((j) => getApproval(j) === "pending").length;
@@ -186,31 +189,31 @@ export default function AdminApprovalsPage() {
         <div className="max-w-3xl">
           <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
             <Sparkles className="h-3.5 w-3.5" />
-            All jobs
+            {t("allJobs")}
           </div>
           <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-            Platform Jobs Overview
+            {t("platformJobsOverview")}
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-            View all job postings across the platform. Filter by employer, agent, super agent, status, or approval state.
+            {t("platformJobsDescription")}
           </p>
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-4">
           <div className="workspace-glass-panel rounded-2xl p-4 text-center">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Total</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("total")}</p>
             <p className="mt-2 text-2xl font-semibold text-foreground">{total.toLocaleString()}</p>
           </div>
           <div className="workspace-glass-panel rounded-2xl p-4 text-center">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Active</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("active")}</p>
             <p className="mt-2 text-2xl font-semibold text-emerald-600 dark:text-emerald-300">{active}</p>
           </div>
           <div className="workspace-glass-panel rounded-2xl p-4 text-center">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Pending</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("pending")}</p>
             <p className="mt-2 text-2xl font-semibold text-amber-500 dark:text-amber-300">{pending}</p>
           </div>
           <div className="workspace-glass-panel rounded-2xl p-4 text-center">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">This page</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("thisPage")}</p>
             <p className="mt-2 text-2xl font-semibold text-foreground">{jobs.length}</p>
           </div>
         </div>
@@ -218,10 +221,10 @@ export default function AdminApprovalsPage() {
 
       {/* Filters */}
       <TableToolbar
-        title="Find specific jobs"
+        title={t("findSpecificJobs")}
         search={search}
         onSearchChange={(v) => { setSearch(v); resetPage(); }}
-        searchPlaceholder="Search by job title…"
+        searchPlaceholder={t("searchByJobTitle")}
         onExportCsv={handleExportCsv}
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
@@ -229,29 +232,29 @@ export default function AdminApprovalsPage() {
         filterContent={
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             <div>
-              <label htmlFor="approvals-status" className="sr-only">Status</label>
-              <SearchableSelect id="approvals-status" className="h-11 w-full rounded-xl border-border bg-card" options={STATUS_OPTIONS} value={status} onValueChange={(v) => { setStatus(v); resetPage(); }} placeholder="All statuses" />
+              <label htmlFor="approvals-status" className="sr-only">{t("statusLabel")}</label>
+              <SearchableSelect id="approvals-status" className="h-11 w-full rounded-xl border-border bg-card" options={STATUS_OPTIONS} value={status} onValueChange={(v) => { setStatus(v); resetPage(); }} placeholder={t("allStatuses")} />
             </div>
             <div>
-              <label htmlFor="approvals-approval" className="sr-only">Approval</label>
-              <SearchableSelect id="approvals-approval" className="h-11 w-full rounded-xl border-border bg-card" options={APPROVAL_OPTIONS} value={approvalStatus} onValueChange={(v) => { setApprovalStatus(v); resetPage(); }} placeholder="All approvals" />
+              <label htmlFor="approvals-approval" className="sr-only">{t("approvalLabel")}</label>
+              <SearchableSelect id="approvals-approval" className="h-11 w-full rounded-xl border-border bg-card" options={APPROVAL_OPTIONS} value={approvalStatus} onValueChange={(v) => { setApprovalStatus(v); resetPage(); }} placeholder={t("allApprovals")} />
             </div>
             {employers.length > 1 && (
               <div>
-                <label htmlFor="approvals-employer" className="sr-only">Employer</label>
-                <SearchableSelect id="approvals-employer" className="h-11 w-full rounded-xl border-border bg-card" options={employers} value={selectedEmployer} onValueChange={(v) => { setSelectedEmployer(v); resetPage(); }} placeholder="All employers" />
+                <label htmlFor="approvals-employer" className="sr-only">{t("employerLabel")}</label>
+                <SearchableSelect id="approvals-employer" className="h-11 w-full rounded-xl border-border bg-card" options={employers} value={selectedEmployer} onValueChange={(v) => { setSelectedEmployer(v); resetPage(); }} placeholder={t("allEmployers")} />
               </div>
             )}
             {agents.length > 1 && (
               <div>
-                <label htmlFor="approvals-agent" className="sr-only">Agent</label>
-                <SearchableSelect id="approvals-agent" className="h-11 w-full rounded-xl border-border bg-card" options={agents} value={selectedAgent} onValueChange={(v) => { setSelectedAgent(v); resetPage(); }} placeholder="All agents" />
+                <label htmlFor="approvals-agent" className="sr-only">{t("agentLabel")}</label>
+                <SearchableSelect id="approvals-agent" className="h-11 w-full rounded-xl border-border bg-card" options={agents} value={selectedAgent} onValueChange={(v) => { setSelectedAgent(v); resetPage(); }} placeholder={t("allAgents")} />
               </div>
             )}
             {superAgentsList.length > 1 && (
               <div>
-                <label htmlFor="approvals-sa" className="sr-only">Super Agent</label>
-                <SearchableSelect id="approvals-sa" className="h-11 w-full rounded-xl border-border bg-card" options={superAgentsList} value={selectedSuperAgent} onValueChange={(v) => { setSelectedSuperAgent(v); resetPage(); }} placeholder="All super agents" />
+                <label htmlFor="approvals-sa" className="sr-only">{t("superAgentLabel")}</label>
+                <SearchableSelect id="approvals-sa" className="h-11 w-full rounded-xl border-border bg-card" options={superAgentsList} value={selectedSuperAgent} onValueChange={(v) => { setSelectedSuperAgent(v); resetPage(); }} placeholder={t("allSuperAgents")} />
               </div>
             )}
           </div>
@@ -268,8 +271,8 @@ export default function AdminApprovalsPage() {
       ) : jobs.length === 0 ? (
         <div className="workspace-panel-surface flex flex-col items-center gap-3 rounded-[28px] py-16 text-center">
           <div className="workspace-muted-pill rounded-[20px] p-3"><Inbox className="h-6 w-6" /></div>
-          <p className="text-sm font-semibold text-foreground">No jobs found</p>
-          <p className="text-sm text-muted-foreground">Adjust the filters to widen the view.</p>
+          <p className="text-sm font-semibold text-foreground">{t("noJobsFound")}</p>
+          <p className="text-sm text-muted-foreground">{t("adjustFiltersMessage")}</p>
         </div>
       ) : (
         <section className="workspace-panel-surface overflow-hidden rounded-[24px]">
@@ -277,16 +280,16 @@ export default function AdminApprovalsPage() {
             <Table>
               <TableHeader>
                 <TableRow className="border-border/80 bg-secondary/72 hover:bg-secondary/72">
-                  <TableHead>Title</TableHead>
-                  <TableHead>Employer</TableHead>
-                  <TableHead>Posted By</TableHead>
-                  <TableHead>Super Agent</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Approval</TableHead>
-                  <TableHead className="text-right">Apps</TableHead>
-                  <TableHead>Posted</TableHead>
-                  <TableHead className="text-center">View</TableHead>
+                  <TableHead>{t("tableHeaderTitle")}</TableHead>
+                  <TableHead>{t("tableHeaderEmployer")}</TableHead>
+                  <TableHead>{t("tableHeaderPostedBy")}</TableHead>
+                  <TableHead>{t("tableHeaderSuperAgent")}</TableHead>
+                  <TableHead>{t("tableHeaderLocation")}</TableHead>
+                  <TableHead>{t("tableHeaderStatus")}</TableHead>
+                  <TableHead>{t("tableHeaderApproval")}</TableHead>
+                  <TableHead className="text-right">{t("tableHeaderApps")}</TableHead>
+                  <TableHead>{t("tableHeaderPosted")}</TableHead>
+                  <TableHead className="text-center">{t("tableHeaderView")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -299,7 +302,7 @@ export default function AdminApprovalsPage() {
                       </div>
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">{job.employerId?.companyName ?? "—"}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{getAgentName(job) ?? "Employer"}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{getAgentName(job) ?? t("employer")}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{getSuperAgentName(job) ?? "—"}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{formatLocation(job.location)}</TableCell>
                     <TableCell><StatusBadge status={job.status} /></TableCell>
@@ -309,7 +312,7 @@ export default function AdminApprovalsPage() {
                     <TableCell className="text-center">
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedJob(job)}>
                         <Eye className="h-4 w-4" />
-                        <span className="sr-only">View details</span>
+                        <span className="sr-only">{t("viewDetails")}</span>
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -334,7 +337,7 @@ export default function AdminApprovalsPage() {
                   {selectedJob.title}
                   <StatusBadge status={getApproval(selectedJob)} />
                 </DialogTitle>
-                <DialogDescription className="sr-only">Review details and approval status for this job listing.</DialogDescription>
+                <DialogDescription className="sr-only">{t("reviewDetailsAria")}</DialogDescription>
               </DialogHeader>
 
               <div className="space-y-5 pt-2">
@@ -348,26 +351,26 @@ export default function AdminApprovalsPage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  <Fact icon={MapPin} label="Location" value={formatLocation(selectedJob.location)} />
-                  <Fact icon={DollarSign} label="Salary" value={selectedJob.salary?.isNegotiable ? "Negotiable" : selectedJob.salary?.min ? `${selectedJob.salary.min.toLocaleString()} – ${selectedJob.salary.max?.toLocaleString()} ${selectedJob.salary.currency ?? ""}` : "—"} />
-                  {selectedJob.employmentType && <Fact icon={Clock} label="Type" value={selectedJob.employmentType.replace(/_/g, " ")} />}
-                  {selectedJob.workMode && <Fact icon={Globe} label="Work mode" value={selectedJob.workMode.replace(/_/g, " ")} />}
-                  {(selectedJob.vacancies ?? 0) > 0 && <Fact icon={Users} label="Vacancies" value={String(selectedJob.vacancies)} />}
-                  <Fact icon={Calendar} label="Posted" value={new Date(selectedJob.createdAt).toLocaleDateString()} />
-                  <Fact icon={UserCheck} label="Posted by" value={getAgentName(selectedJob) ?? "Employer"} />
-                  {getSuperAgentName(selectedJob) && <Fact icon={UserCheck} label="Super agent" value={getSuperAgentName(selectedJob)!} />}
+                  <Fact icon={MapPin} label={t("factLabelLocation")} value={formatLocation(selectedJob.location)} />
+                  <Fact icon={DollarSign} label={t("factLabelSalary")} value={selectedJob.salary?.isNegotiable ? t("salaryNegotiable") : selectedJob.salary?.min ? `${selectedJob.salary.min.toLocaleString()} – ${selectedJob.salary.max?.toLocaleString()} ${selectedJob.salary.currency ?? ""}` : "—"} />
+                  {selectedJob.employmentType && <Fact icon={Clock} label={t("factLabelType")} value={selectedJob.employmentType.replace(/_/g, " ")} />}
+                  {selectedJob.workMode && <Fact icon={Globe} label={t("factLabelWorkMode")} value={selectedJob.workMode.replace(/_/g, " ")} />}
+                  {(selectedJob.vacancies ?? 0) > 0 && <Fact icon={Users} label={t("factLabelVacancies")} value={String(selectedJob.vacancies)} />}
+                  <Fact icon={Calendar} label={t("factLabelPosted")} value={new Date(selectedJob.createdAt).toLocaleDateString()} />
+                  <Fact icon={UserCheck} label={t("factLabelPostedBy")} value={getAgentName(selectedJob) ?? t("employer")} />
+                  {getSuperAgentName(selectedJob) && <Fact icon={UserCheck} label={t("factLabelSuperAgent")} value={getSuperAgentName(selectedJob)!} />}
                 </div>
 
                 {selectedJob.description && (
                   <div>
-                    <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Description</h4>
+                    <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("description")}</h4>
                     <p className="text-sm leading-relaxed text-foreground line-clamp-6">{selectedJob.description}</p>
                   </div>
                 )}
 
                 {(selectedJob.requirements?.skills?.length ?? 0) > 0 && (
                   <div>
-                    <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Required Skills</h4>
+                    <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("requiredSkills")}</h4>
                     <div className="flex flex-wrap gap-1.5">
                       {selectedJob.requirements!.skills!.map((s) => (
                         <Badge key={s} variant="secondary" className="text-xs">{s}</Badge>
@@ -378,14 +381,14 @@ export default function AdminApprovalsPage() {
 
                 {(selectedJob.requirements?.experience || selectedJob.requirements?.education) && (
                   <div className="grid gap-3 sm:grid-cols-2">
-                    {selectedJob.requirements?.experience && <Fact icon={Briefcase} label="Experience" value={selectedJob.requirements.experience} />}
-                    {selectedJob.requirements?.education && <Fact icon={FileText} label="Education" value={selectedJob.requirements.education} />}
+                    {selectedJob.requirements?.experience && <Fact icon={Briefcase} label={t("experience")} value={selectedJob.requirements.experience} />}
+                    {selectedJob.requirements?.education && <Fact icon={FileText} label={t("education")} value={selectedJob.requirements.education} />}
                   </div>
                 )}
 
                 {(selectedJob.responsibilities?.length ?? 0) > 0 && (
                   <div>
-                    <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Responsibilities</h4>
+                    <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("responsibilities")}</h4>
                     <ul className="list-disc space-y-0.5 pl-4 text-sm text-foreground">
                       {selectedJob.responsibilities!.map((r, i) => <li key={i}>{r}</li>)}
                     </ul>
@@ -394,7 +397,7 @@ export default function AdminApprovalsPage() {
 
                 {(selectedJob.benefits?.length ?? 0) > 0 && (
                   <div>
-                    <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Benefits</h4>
+                    <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("benefits")}</h4>
                     <ul className="list-disc space-y-0.5 pl-4 text-sm text-foreground">
                       {selectedJob.benefits!.map((b, i) => <li key={i}>{b}</li>)}
                     </ul>

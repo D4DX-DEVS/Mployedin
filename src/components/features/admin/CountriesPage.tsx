@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/table";
 import { Plus, Pencil, Trash2, Search, Inbox, SlidersHorizontal, RotateCcw } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
+import { useTranslations } from "next-intl";
 
 interface CountryItem {
   _id: string;
@@ -35,30 +36,31 @@ interface CountryItem {
   isActive: boolean;
 }
 
-const CREATE_FIELDS: CrudField[] = [
-  { name: "name", label: "Country Name (English)", type: "text", required: true, placeholder: "e.g. Afghanistan" },
-  { name: "nameAr", label: "Country Name (Arabic)", type: "text", placeholder: "e.g. أفغانستان" },
-  { name: "code", label: "Short Name (ISO Code)", type: "text", required: true, placeholder: "e.g. AF" },
-  { name: "phoneCode", label: "Phone Code", type: "text", placeholder: "e.g. 93" },
-  { name: "currency", label: "Currency", type: "text", placeholder: "e.g. Afghanis" },
-  { name: "currencyCode", label: "Currency Code", type: "text", placeholder: "e.g. AFN" },
-  { name: "currencySymbol", label: "Currency Symbol", type: "text", placeholder: "e.g. ؋" },
-  { name: "thousandSeparator", label: "Thousand Separator", type: "text", placeholder: "e.g. ," },
-  { name: "decimalSeparator", label: "Decimal Separator", type: "text", placeholder: "e.g. ." },
-  { name: "sortOrder", label: "Sort Order", type: "number", placeholder: "0" },
-  {
-    name: "isActive",
-    label: "Status",
-    type: "select",
-    options: [
-      { value: "true", label: "Active" },
-      { value: "false", label: "Inactive" },
-    ],
-  },
-];
-
 export default function CountriesPage() {
+  const t = useTranslations("adminLocationData");
   const { can } = usePermissions();
+
+  const CREATE_FIELDS: CrudField[] = [
+    { name: "name", label: t("countryNameEn"), type: "text", required: true, placeholder: t("countryNamePlaceholder") },
+    { name: "nameAr", label: t("countryNameAr"), type: "text", placeholder: t("countryNameArPlaceholder") },
+    { name: "code", label: t("shortName"), type: "text", required: true, placeholder: t("shortNamePlaceholder") },
+    { name: "phoneCode", label: t("phoneCode"), type: "text", placeholder: t("phoneCodePlaceholder") },
+    { name: "currency", label: t("currency"), type: "text", placeholder: t("currencyPlaceholder") },
+    { name: "currencyCode", label: t("currencyCode"), type: "text", placeholder: t("currencyCodePlaceholder") },
+    { name: "currencySymbol", label: t("currencySymbol"), type: "text", placeholder: t("currencySymbolPlaceholder") },
+    { name: "thousandSeparator", label: t("thousandSep"), type: "text", placeholder: "," },
+    { name: "decimalSeparator", label: t("decimalSep"), type: "text", placeholder: "." },
+    { name: "sortOrder", label: t("sortOrder"), type: "number", placeholder: "0" },
+    {
+      name: "isActive",
+      label: t("status"),
+      type: "select",
+      options: [
+        { value: "true", label: t("active") },
+        { value: "false", label: t("inactive") },
+      ],
+    },
+  ];
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [items, setItems] = useState<CountryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -146,7 +148,7 @@ export default function CountriesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    const ok = await confirmDialog("Are you sure you want to delete this country?");
+    const ok = await confirmDialog(t("confirmDeleteCountry"));
     if (!ok) return;
     await fetch(`/api/admin/location-data/countries/${id}`, { method: "DELETE" });
     fetchItems();
@@ -160,15 +162,15 @@ export default function CountriesPage() {
         {/* Compact header row */}
         <div className="flex flex-col gap-3 border-b border-border/80 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-lg font-semibold text-foreground">Country Details</h1>
-            <p className="mt-0.5 text-xs text-muted-foreground">Manage countries, phone codes, and currency metadata.</p>
+            <h1 className="text-lg font-semibold text-foreground">{t("countriesTitle")}</h1>
+            <p className="mt-0.5 text-xs text-muted-foreground">{t("countriesSubtitle")}</p>
           </div>
           <div className="flex items-center gap-2">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 id="admin-countries-search"
-                placeholder="Search countries…"
+                placeholder={t("searchCountries")}
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); resetPage(); }}
                 className="h-9 w-48 rounded-lg border-border bg-secondary/65 pl-8 text-sm shadow-none sm:w-56"
@@ -182,7 +184,7 @@ export default function CountriesPage() {
               className={`h-9 gap-1.5 rounded-lg border-border px-3 text-sm font-medium ${showFilters ? "bg-primary/10 text-primary border-primary/30" : "bg-card text-foreground hover:bg-secondary"}`}
             >
               <SlidersHorizontal className="h-3.5 w-3.5" />
-              Filter
+              {t("filter")}
               {hasActiveFilters && <span className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">!</span>}
             </Button>
             {can("location_data", "create") && (
@@ -191,7 +193,7 @@ export default function CountriesPage() {
                 size="sm"
                 className="h-9 gap-1.5 rounded-lg bg-sky-600 px-3 text-sm font-semibold text-white hover:bg-sky-700"
               >
-                <Plus className="h-3.5 w-3.5" /> Add New
+                <Plus className="h-3.5 w-3.5" /> {t("addNew")}
               </Button>
             )}
           </div>
@@ -200,18 +202,18 @@ export default function CountriesPage() {
         {/* Collapsible filter panel */}
         {showFilters && (
           <div className="flex flex-wrap items-center gap-3 border-b border-border/60 bg-secondary/30 px-5 py-3">
-            <label htmlFor="admin-countries-status" className="text-xs font-medium text-muted-foreground">Status</label>
+            <label htmlFor="admin-countries-status" className="text-xs font-medium text-muted-foreground">{t("status")}</label>
             <SearchableSelect
               id="admin-countries-status"
               className="h-8 w-[140px] rounded-lg border-border bg-card text-sm"
               options={[
-                { value: "all", label: "All" },
-                { value: "active", label: "Active" },
-                { value: "inactive", label: "Inactive" },
+                { value: "all", label: t("all") },
+                { value: "active", label: t("active") },
+                { value: "inactive", label: t("inactive") },
               ]}
               value={statusFilter}
               onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
-              placeholder="Status"
+              placeholder={t("status")}
             />
             {hasActiveFilters && (
               <Button
@@ -221,7 +223,7 @@ export default function CountriesPage() {
                 onClick={() => { setSearch(""); setStatusFilter("all"); resetPage(); }}
                 className="h-8 gap-1 rounded-lg px-2 text-xs text-muted-foreground hover:text-foreground"
               >
-                <RotateCcw className="h-3 w-3" /> Clear
+                <RotateCcw className="h-3 w-3" /> {t("clear")}
               </Button>
             )}
           </div>
@@ -232,17 +234,17 @@ export default function CountriesPage() {
           <Table>
             <TableHeader>
               <TableRow className="border-border/80 bg-secondary/72 hover:bg-secondary/72">
-                <TableHead>Country</TableHead>
-                <TableHead>Short Name</TableHead>
-                <TableHead>Phone Code</TableHead>
-                <TableHead>Currency</TableHead>
-                <TableHead>Code</TableHead>
-                <TableHead>Symbol</TableHead>
-                <TableHead>Thousand Sep.</TableHead>
-                <TableHead>Decimal Sep.</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t("colCountry")}</TableHead>
+                <TableHead>{t("shortName")}</TableHead>
+                <TableHead>{t("phoneCode")}</TableHead>
+                <TableHead>{t("currency")}</TableHead>
+                <TableHead>{t("currencyCode")}</TableHead>
+                <TableHead>{t("currencySymbol")}</TableHead>
+                <TableHead>{t("thousandSep")}</TableHead>
+                <TableHead>{t("decimalSep")}</TableHead>
+                <TableHead>{t("status")}</TableHead>
                 {(can("location_data", "update") || can("location_data", "delete")) && (
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="text-right">{t("actions")}</TableHead>
                 )}
               </TableRow>
             </TableHeader>
@@ -262,8 +264,8 @@ export default function CountriesPage() {
                   <TableCell colSpan={10} className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center gap-2">
                       <Inbox className="h-6 w-6 text-muted-foreground/50" />
-                      <p className="text-sm font-medium text-foreground">No countries found</p>
-                      <p className="text-xs text-muted-foreground">Adjust the filters or add a new country.</p>
+                      <p className="text-sm font-medium text-foreground">{t("noCountriesFound")}</p>
+                      <p className="text-xs text-muted-foreground">{t("adjustFiltersCountry")}</p>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -283,12 +285,12 @@ export default function CountriesPage() {
                       <TableCell>
                         <div className="flex justify-end gap-1.5">
                           {can("location_data", "update") && (
-                            <Button variant="ghost" size="xs" onClick={() => setEditItem(item)} title="Edit" aria-label={`Edit ${item.name}`}>
+                            <Button variant="ghost" size="xs" onClick={() => setEditItem(item)} title={t("edit")} aria-label={t("editItem", { name: item.name })}>
                               <Pencil className="h-3.5 w-3.5 text-primary" />
                             </Button>
                           )}
                           {can("location_data", "delete") && (
-                            <Button variant="ghost" size="xs" onClick={() => handleDelete(item._id)} title="Delete" aria-label={`Delete ${item.name}`}>
+                            <Button variant="ghost" size="xs" onClick={() => handleDelete(item._id)} title={t("delete")} aria-label={t("deleteItem", { name: item.name })}>
                               <Trash2 className="h-3.5 w-3.5 text-destructive" />
                             </Button>
                           )}
@@ -310,7 +312,7 @@ export default function CountriesPage() {
       <CrudModal
         open={showAdd}
         onClose={() => setShowAdd(false)}
-        title="Add Country"
+        title={t("addCountryTitle")}
         fields={CREATE_FIELDS}
         onSubmit={handleCreate}
       />
@@ -318,7 +320,7 @@ export default function CountriesPage() {
       <CrudModal
         open={!!editItem}
         onClose={() => setEditItem(null)}
-        title="Edit Country"
+        title={t("editCountryTitle")}
         fields={CREATE_FIELDS}
         initialValues={
           editItem

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
@@ -51,30 +52,36 @@ interface Job {
 
 interface FilterOption { value: string; label: string }
 
-const STATUS_OPTIONS: FilterOption[] = [
-  { value: "all", label: "All statuses" },
-  { value: "draft", label: "Draft" },
-  { value: "active", label: "Active" },
-  { value: "paused", label: "Paused" },
-  { value: "closed", label: "Closed" },
-  { value: "expired", label: "Expired" },
-];
+function getStatusOptions(t: ReturnType<typeof useTranslations>): FilterOption[] {
+  return [
+    { value: "all", label: t("allStatuses") },
+    { value: "draft", label: t("draft") },
+    { value: "active", label: t("active") },
+    { value: "paused", label: t("paused") },
+    { value: "closed", label: t("closed") },
+    { value: "expired", label: t("expired") },
+  ];
+}
 
-const WORK_MODE_OPTIONS: FilterOption[] = [
-  { value: "all", label: "All work modes" },
-  { value: "onsite", label: "On-site" },
-  { value: "hybrid", label: "Hybrid" },
-  { value: "remote", label: "Remote" },
-];
+function getWorkModeOptions(t: ReturnType<typeof useTranslations>): FilterOption[] {
+  return [
+    { value: "all", label: t("allWorkModes") },
+    { value: "onsite", label: t("onSite") },
+    { value: "hybrid", label: t("hybrid") },
+    { value: "remote", label: t("remote") },
+  ];
+}
 
-const EMPLOYMENT_TYPE_OPTIONS: FilterOption[] = [
-  { value: "all", label: "All types" },
-  { value: "full_time", label: "Full-time" },
-  { value: "part_time", label: "Part-time" },
-  { value: "contract", label: "Contract" },
-  { value: "internship", label: "Internship" },
-  { value: "freelance", label: "Freelance" },
-];
+function getEmploymentTypeOptions(t: ReturnType<typeof useTranslations>): FilterOption[] {
+  return [
+    { value: "all", label: t("allTypes") },
+    { value: "full_time", label: t("fullTime") },
+    { value: "part_time", label: t("partTime") },
+    { value: "contract", label: t("contract") },
+    { value: "internship", label: t("internship") },
+    { value: "freelance", label: t("freelance") },
+  ];
+}
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -87,12 +94,12 @@ function formatLocation(loc?: string | { isRemote?: boolean; city?: string; coun
   return [loc.city, loc.country].filter(Boolean).join(", ") || "—";
 }
 
-function getSourceLabel(job: Job) {
+function getSourceLabel(job: Job, t: ReturnType<typeof useTranslations>) {
   const agent = job.agentId?.userId?.name;
   const superAgent = job.agentId?.superAgentId?.userId?.name;
   if (agent && superAgent) return `${agent} · ${superAgent}`;
   if (agent) return agent;
-  return "Employer";
+  return t("employerLabel");
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -105,11 +112,12 @@ const STATUS_COLORS: Record<string, string> = {
 
 const JOB_SUMMARY_MAX_LENGTH = 180;
 
-function formatSalary(job: Job): string | null {
+function formatSalary(job: Job, t: ReturnType<typeof useTranslations>): string | null {
   const min = job.salary?.min ?? 0;
   const max = job.salary?.max ?? 0;
   const currency = job.salary?.currency ?? "USD";
   if (min <= 0 && max <= 0) return null;
+  if (job.salary?.isNegotiable) return t("negotiable");
   if (min > 0 && max > 0) return `${min.toLocaleString()} - ${max.toLocaleString()} ${currency}`;
   return `${Math.max(min, max).toLocaleString()} ${currency}`;
 }
@@ -128,6 +136,7 @@ function getJobSummary(job: Job): string | null {
 /* ------------------------------------------------------------------ */
 
 export default function AdminJobsPage() {
+  const t = useTranslations("adminJobs");
   const router = useRouter();
   const { locale } = useParams<{ locale: string }>();
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -167,12 +176,12 @@ export default function AdminJobsPage() {
         if (empRes.ok) {
           const data = await empRes.json();
           const list = (data.employers ?? data.items ?? data ?? []) as { _id: string; companyName?: string }[];
-          setEmployers([{ value: "all", label: "All employers" }, ...list.map((e) => ({ value: e._id, label: e.companyName ?? e._id }))]);
+          setEmployers([{ value: "all", label: t("allEmployers") }, ...list.map((e) => ({ value: e._id, label: e.companyName ?? e._id }))]);
         }
         if (agentRes.ok) {
           const data = await agentRes.json();
           const list = (data.agents ?? data.items ?? data ?? []) as { _id: string; userId?: { name?: string; email?: string } | string; name?: string }[];
-          setAgents([{ value: "all", label: "All agents" }, ...list.map((a) => {
+          setAgents([{ value: "all", label: t("allAgents") }, ...list.map((a) => {
             const label = typeof a.userId === "object" ? (a.userId?.name ?? a.userId?.email ?? a._id) : (a.name ?? a._id);
             return { value: a._id, label };
           })]);
@@ -196,7 +205,7 @@ export default function AdminJobsPage() {
       if (skillsFilter) params.set("skills", skillsFilter);
 
       const res = await fetch(`/api/admin/jobs?${params}`);
-      if (!res.ok) throw new Error("Failed to load jobs. Please try again.");
+      if (!res.ok) throw new Error(t("jobLoadFailed"));
 
       const data = await res.json();
       setJobs(data.jobs ?? data.items ?? []);
@@ -204,7 +213,7 @@ export default function AdminJobsPage() {
       setServerApplicants(typeof data.totalApplicants === "number" ? data.totalApplicants : null);
       updateTotal(data.pagination?.total ?? data.total ?? data.totalCount ?? ((data.totalPages ?? 1) * limit));
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Failed to load jobs. Please try again.";
+      const message = error instanceof Error ? error.message : t("jobLoadFailed");
       setErrorMessage(message);
       toast.error(message);
     } finally {
@@ -221,10 +230,10 @@ export default function AdminJobsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ approved: true }),
       });
-      if (!res.ok) throw new Error("Failed to approve");
-      toast.success("Job approved successfully");
+      if (!res.ok) throw new Error(t("jobApprovalFailed"));
+      toast.success(t("jobApprovedSuccess"));
       fetchJobs();
-    } catch { toast.error("Failed to approve job"); }
+    } catch { toast.error(t("jobApprovalFailed")); }
   };
 
   const handleRejectJob = async (jobId: string) => {
@@ -234,20 +243,20 @@ export default function AdminJobsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ approved: false }),
       });
-      if (!res.ok) throw new Error("Failed to reject");
-      toast.success("Job rejected");
+      if (!res.ok) throw new Error(t("jobRejectionFailed"));
+      toast.success(t("jobRejectedSuccess"));
       fetchJobs();
-    } catch { toast.error("Failed to reject job"); }
+    } catch { toast.error(t("jobRejectionFailed")); }
   };
 
   const handleDeleteJob = async (jobId: string) => {
-    if (!confirm("Are you sure you want to delete this job?")) return;
+    if (!confirm(t("deleteConfirmation"))) return;
     try {
       const res = await fetch(`/api/jobs/${jobId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
-      toast.success("Job deleted");
+      if (!res.ok) throw new Error(t("jobDeletionFailed"));
+      toast.success(t("jobDeletedSuccess"));
       fetchJobs();
-    } catch { toast.error("Failed to delete job"); }
+    } catch { toast.error(t("jobDeletionFailed")); }
   };
 
   const activeJobs = statusCounts.active ?? jobs.filter((j) => j.status === "active").length;
@@ -257,20 +266,20 @@ export default function AdminJobsPage() {
   const hasActiveFilters = search || status !== "all" || selectedEmployer !== "all" || selectedAgent !== "all" || workMode !== "all" || employmentType !== "all" || locationFilter || skillsFilter;
 
   const exportColumns: ExportColumn<Job>[] = [
-    { header: "Title", key: "title" },
-    { header: "Employer", key: "employerId" as keyof Job, formatter: (_v, r) => (r as unknown as Job).employerId?.companyName ?? "—" },
-    { header: "Source", key: "agentId" as keyof Job, formatter: (_v, r) => getSourceLabel(r as unknown as Job) },
-    { header: "Status", key: "status" },
-    { header: "Location", key: "location", formatter: (v) => formatLocation(v as Job["location"]) },
-    { header: "Category", key: "category", formatter: (v) => String(v ?? "—") },
-    { header: "Applicants", key: "applicantsCount", formatter: (v) => String(v ?? 0) },
-    { header: "Created", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
+    { header: t("jobListings"), key: "title" },
+    { header: t("employerLabel"), key: "employerId" as keyof Job, formatter: (_v, r) => (r as unknown as Job).employerId?.companyName ?? "—" },
+    { header: t("source"), key: "agentId" as keyof Job, formatter: (_v, r) => getSourceLabel(r as unknown as Job, t) },
+    { header: t("active"), key: "status" },
+    { header: t("location"), key: "location", formatter: (v) => formatLocation(v as Job["location"]) },
+    { header: t("categoryLabel"), key: "category", formatter: (v) => String(v ?? "—") },
+    { header: t("applicantsCountLabel"), key: "applicantsCount", formatter: (v) => String(v ?? 0) },
+    { header: t("createdLabel"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: jobs as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "jobs",
-    title: "Jobs",
+    title: t("exportTitle"),
   });
 
   function resetFilters() {
@@ -308,11 +317,11 @@ export default function AdminJobsPage() {
       setSkillsFilter(hasSkills ? filters.skills.join(", ") : "");
       setAiSummary(data.summary ?? null);
       resetPage();
-      toast.success(data.degraded ? "AI search unavailable. Keyword search applied." : "AI search applied.");
+      toast.success(data.degraded ? t("aiSearchUnavailable") : t("aiSearchApplied"));
     } catch {
       setSearch(query);
-      setAiSummary(`AI search was unavailable, so keyword results are being shown for "${query}".`);
-      toast.error("AI search unavailable. Keyword search applied instead.");
+      setAiSummary(t("aiSearchUnavailableKeyword", { query }));
+      toast.error(t("aiSearchFallback"));
     } finally {
       setIsApplyingAiSearch(false);
     }
@@ -327,26 +336,26 @@ export default function AdminJobsPage() {
           <div className="max-w-3xl">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
               <Sparkles className="h-3.5 w-3.5" />
-              Recruitment Control
+              {t("recruitmentControl")}
             </div>
             <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-              Job Listings
+              {t("jobListings")}
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Manage and monitor all job postings across the platform — approve, reject, or edit roles from employers and agents.
+              {t("jobListingsDescription")}
             </p>
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Platform total</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">{total.toLocaleString()} jobs</p>
-              <p className="text-xs text-muted-foreground">Across {totalPages} page{totalPages === 1 ? "" : "s"}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("platformTotal")}</p>
+              <p className="mt-1 text-lg font-semibold text-foreground">{t("jobsCount", { total: total.toLocaleString() })}</p>
+              <p className="text-xs text-muted-foreground">{t("acrossPages", { totalPages })}</p>
             </div>
             <Link href="./new">
               <Button className="h-11 gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700">
                 <Plus className="h-4 w-4" />
-                Post Job
+                {t("postJob")}
               </Button>
             </Link>
           </div>
@@ -355,10 +364,10 @@ export default function AdminJobsPage() {
         {/* Stats Row */}
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {([
-            { label: "Total Jobs", value: total, note: "All postings", icon: Briefcase, tone: "text-sky-600", chip: "bg-sky-50 dark:bg-sky-950/30" },
-            { label: "Active", value: activeJobs, note: "Currently live", icon: ShieldCheck, tone: "text-emerald-600", chip: "bg-emerald-50 dark:bg-emerald-950/30" },
-            { label: "Pending Review", value: pendingJobs, note: "Awaiting moderation", icon: FileText, tone: "text-amber-600", chip: "bg-amber-50 dark:bg-amber-950/30" },
-            { label: "Applicants", value: totalApplicants, note: "Total applications", icon: Users, tone: "text-violet-600", chip: "bg-violet-50 dark:bg-violet-950/30" },
+            { label: t("totalJobs"), value: total, note: t("totalJobsNote"), icon: Briefcase, tone: "text-sky-600", chip: "bg-sky-50 dark:bg-sky-950/30" },
+            { label: t("active"), value: activeJobs, note: t("activeNote"), icon: ShieldCheck, tone: "text-emerald-600", chip: "bg-emerald-50 dark:bg-emerald-950/30" },
+            { label: t("pendingReview"), value: pendingJobs, note: t("pendingReviewNote"), icon: FileText, tone: "text-amber-600", chip: "bg-amber-50 dark:bg-amber-950/30" },
+            { label: t("applicants"), value: totalApplicants, note: t("applicantsNote"), icon: Users, tone: "text-violet-600", chip: "bg-violet-50 dark:bg-violet-950/30" },
           ] as const).map(({ label, value, note, icon: Icon, tone, chip }) => (
             <div key={label} className="workspace-glass-panel rounded-2xl p-4">
               <div className="flex items-start justify-between gap-3">
@@ -383,14 +392,14 @@ export default function AdminJobsPage() {
             className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-white/10 dark:hover:bg-white/5"
           >
             <Filter className="h-4 w-4 text-muted-foreground" />
-            {showFilters ? "Hide Filters" : "Show Filters"}
-            {hasActiveFilters && <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">Active</Badge>}
+            {showFilters ? t("hideFilters") : t("showFilters")}
+            {hasActiveFilters && <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">{t("activeFilterBadge")}</Badge>}
             {showFilters ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
           </button>
           <div className="flex items-center gap-2">
             {(hasActiveFilters || aiSummary || aiQuery) && (
               <Button variant="ghost" size="sm" onClick={resetFilters} className="gap-1.5 text-xs text-muted-foreground">
-                Clear filters
+                {t("clearFilters")}
               </Button>
             )}
             <TableToolbar
@@ -407,7 +416,7 @@ export default function AdminJobsPage() {
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Search by job title…"
+                placeholder={t("searchPlaceholder")}
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); resetPage(); }}
                 className="h-11 rounded-xl border-border bg-card pl-9 text-sm shadow-none"
@@ -418,10 +427,10 @@ export default function AdminJobsPage() {
               <SearchableSelect
                 id="admin-jobs-status-filter"
                 className="h-11 w-full rounded-xl border-border bg-card"
-                options={STATUS_OPTIONS}
+                options={getStatusOptions(t)}
                 value={status}
                 onValueChange={(value) => { setStatus(value); resetPage(); }}
-                placeholder="All statuses"
+                placeholder={t("statusFilterPlaceholder")}
               />
               {employers.length > 1 && (
                 <SearchableSelect
@@ -430,7 +439,7 @@ export default function AdminJobsPage() {
                   options={employers}
                   value={selectedEmployer}
                   onValueChange={(value) => { setSelectedEmployer(value); resetPage(); }}
-                  placeholder="All employers"
+                  placeholder={t("allEmployers")}
                 />
               )}
               {agents.length > 1 && (
@@ -440,16 +449,16 @@ export default function AdminJobsPage() {
                   options={agents}
                   value={selectedAgent}
                   onValueChange={(value) => { setSelectedAgent(value); resetPage(); }}
-                  placeholder="All agents"
+                  placeholder={t("allAgents")}
                 />
               )}
               <SearchableSelect
                 id="admin-jobs-workmode-filter"
                 className="h-11 w-full rounded-xl border-border bg-card"
-                options={WORK_MODE_OPTIONS}
+                options={getWorkModeOptions(t)}
                 value={workMode}
                 onValueChange={(value) => { setWorkMode(value); resetPage(); }}
-                placeholder="All work modes"
+                placeholder={t("allWorkModes")}
               />
             </div>
 
@@ -460,7 +469,7 @@ export default function AdminJobsPage() {
                 className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
               >
                 <Filter className="h-3.5 w-3.5" />
-                Advanced Filters
+                {t("advancedFilters")}
                 {showAdvanced ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
               </button>
             </div>
@@ -470,22 +479,22 @@ export default function AdminJobsPage() {
                 <SearchableSelect
                   id="admin-jobs-type-filter"
                   className="h-11 w-full rounded-xl border-border bg-card"
-                  options={EMPLOYMENT_TYPE_OPTIONS}
+                  options={getEmploymentTypeOptions(t)}
                   value={employmentType}
                   onValueChange={(value) => { setEmploymentType(value); resetPage(); }}
-                  placeholder="All types"
+                  placeholder={t("allTypes")}
                 />
                 <div className="relative">
                   <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
-                    placeholder="Filter by location"
+                    placeholder={t("locationFilterPlaceholder")}
                     value={locationFilter}
                     onChange={(e) => { setLocationFilter(e.target.value); resetPage(); }}
                     className="h-11 rounded-xl border-border bg-card pl-9 text-sm shadow-none"
                   />
                 </div>
                 <Input
-                  placeholder="Skills, comma separated"
+                  placeholder={t("skillsFilterPlaceholder")}
                   value={skillsFilter}
                   onChange={(e) => { setSkillsFilter(e.target.value); resetPage(); }}
                   className="h-11 rounded-xl border-border bg-card text-sm shadow-none"
@@ -497,7 +506,7 @@ export default function AdminJobsPage() {
               <div className="relative">
                 <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-sky-500" />
                 <Input
-                  placeholder='AI search: e.g. "active remote React jobs in Dubai"'
+                  placeholder={t("aiSearchPlaceholder")}
                   value={aiQuery}
                   onChange={(e) => setAiQuery(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleApplyAiSearch(); } }}
@@ -511,7 +520,7 @@ export default function AdminJobsPage() {
                 className="h-11 gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
               >
                 <Wand2 className="h-4 w-4" />
-                {isApplyingAiSearch ? "Applying…" : "AI Search"}
+                {isApplyingAiSearch ? t("searching") : t("aiSearch")}
               </Button>
             </div>
 
@@ -545,19 +554,17 @@ export default function AdminJobsPage() {
             <Inbox className="h-7 w-7" />
           </div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            {hasActiveFilters ? "No matching jobs" : "No jobs yet"}
+            {hasActiveFilters ? t("noMatchingJobs") : t("noJobsYet")}
           </p>
           <h3 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
-            {hasActiveFilters ? "No jobs match the current search." : "No job postings found on the platform."}
+            {hasActiveFilters ? t("noMatchingJobsHeading") : t("noJobsYetHeading")}
           </h3>
           <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">
-            {hasActiveFilters
-              ? "Adjust the filters, remove a keyword, or try the AI search box to broaden the results."
-              : "When employers or agents post jobs, they will appear here."}
+            {hasActiveFilters ? t("noMatchingJobsDescription") : t("noJobsYetDescription")}
           </p>
           {hasActiveFilters && (
             <Button onClick={resetFilters} variant="outline" className="mt-6 h-11 rounded-xl border-border bg-background/70 px-4 text-sm">
-              Clear filters
+              {t("clearFilters")}
             </Button>
           )}
         </div>
@@ -565,7 +572,7 @@ export default function AdminJobsPage() {
         <div className="space-y-4">
           {jobs.map((job) => {
             const posted = new Date(job.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-            const salaryLabel = formatSalary(job);
+            const salaryLabel = formatSalary(job, t);
             const jobSummary = getJobSummary(job);
 
             return (
@@ -596,10 +603,10 @@ export default function AdminJobsPage() {
                       )}
                       {(job.vacancies ?? 0) > 0 && (
                         <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">
-                          {job.vacancies} opening{job.vacancies === 1 ? "" : "s"}
+                          {t("openings", { count: job.vacancies ?? 0 })}
                         </span>
                       )}
-                      <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">Posted {posted}</span>
+                      <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">{t("posted", { date: posted })}</span>
                     </div>
 
                     {(job.requirements?.skills?.length ?? 0) > 0 && (
@@ -616,15 +623,15 @@ export default function AdminJobsPage() {
 
                     <div className="mt-2.5 grid gap-2 sm:grid-cols-3">
                       <div className="workspace-subtle-surface rounded-xl border border-border px-3 py-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Source</p>
-                        <p className="mt-0.5 text-sm font-semibold text-foreground sm:text-base">{getSourceLabel(job)}</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("source")}</p>
+                        <p className="mt-0.5 text-sm font-semibold text-foreground sm:text-base">{getSourceLabel(job, t)}</p>
                       </div>
                       <div className="workspace-subtle-surface rounded-xl border border-border px-3 py-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Applicants</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("applicantsCountLabel")}</p>
                         <p className="mt-0.5 text-sm font-semibold text-foreground sm:text-base">{job.applicantsCount ?? 0}</p>
                       </div>
                       <div className="workspace-subtle-surface rounded-xl border border-border px-3 py-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Capacity</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("capacityLabel")}</p>
                         <p className="mt-0.5 text-sm font-semibold text-foreground sm:text-base">{job.vacancies ?? "Open"}</p>
                       </div>
                     </div>
@@ -634,8 +641,8 @@ export default function AdminJobsPage() {
                   <div aria-label={`Actions for ${job.title}`} role="group" className="workspace-subtle-surface flex flex-col gap-2 rounded-[20px] border border-border p-2.5 xl:self-start">
                     <div className="workspace-muted-pill flex items-center justify-between gap-3 rounded-2xl border border-border px-3 py-2">
                       <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Next actions</p>
-                        <p className="mt-0.5 text-xs text-muted-foreground">Manage this role in one place.</p>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("nextActions")}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">{t("nextActionsDescription")}</p>
                       </div>
                       <ArrowRight className="h-4 w-4 text-muted-foreground" />
                     </div>
@@ -647,7 +654,7 @@ export default function AdminJobsPage() {
                         onClick={() => setSelectedJob(job)}
                       >
                         <Eye className="h-4 w-4" />
-                        View Details
+                        {t("viewDetails")}
                         <ArrowRight className="ml-auto h-4 w-4" />
                       </Button>
                       {(job.poster?.approvalStatus === "pending" || job.status === "draft") && (
@@ -656,7 +663,7 @@ export default function AdminJobsPage() {
                           className="h-9 gap-1.5 rounded-xl bg-emerald-600 px-3 text-xs font-semibold text-white hover:bg-emerald-700"
                           onClick={() => handleApproveJob(job._id)}
                         >
-                          <CheckCircle className="h-3.5 w-3.5" /> Approve
+                          <CheckCircle className="h-3.5 w-3.5" /> {t("approve")}
                         </Button>
                       )}
                       {(job.poster?.approvalStatus === "pending" || job.status === "draft") && (
@@ -666,7 +673,7 @@ export default function AdminJobsPage() {
                           className="h-9 gap-1.5 rounded-xl border-amber-200 px-3 text-xs font-semibold text-amber-700 hover:bg-amber-50"
                           onClick={() => handleRejectJob(job._id)}
                         >
-                          <XCircle className="h-3.5 w-3.5" /> Reject
+                          <XCircle className="h-3.5 w-3.5" /> {t("reject")}
                         </Button>
                       )}
                       <Button
@@ -675,7 +682,7 @@ export default function AdminJobsPage() {
                         className="h-9 gap-1.5 rounded-xl px-3 text-xs font-semibold"
                         onClick={() => router.push(`/${locale}/admin/jobs/${job._id}/edit`)}
                       >
-                        <Edit2 className="h-3.5 w-3.5" /> Edit
+                        <Edit2 className="h-3.5 w-3.5" /> {t("edit")}
                       </Button>
                       <Button
                         size="sm"
@@ -683,7 +690,7 @@ export default function AdminJobsPage() {
                         className="h-9 gap-1.5 rounded-xl px-3 text-xs font-semibold"
                         onClick={() => router.push(`/${locale}/admin/applications?jobId=${job._id}`)}
                       >
-                        <ClipboardList className="h-3.5 w-3.5" /> Applications
+                        <ClipboardList className="h-3.5 w-3.5" /> {t("applications")}
                       </Button>
                       <Button
                         size="sm"
@@ -691,7 +698,7 @@ export default function AdminJobsPage() {
                         className="col-span-2 h-9 gap-1.5 rounded-xl border-destructive/20 px-3 text-xs font-semibold text-destructive hover:bg-destructive/5"
                         onClick={() => handleDeleteJob(job._id)}
                       >
-                        <Trash2 className="h-3.5 w-3.5" /> Delete
+                        <Trash2 className="h-3.5 w-3.5" /> {t("delete")}
                       </Button>
                     </div>
                   </div>
@@ -723,7 +730,7 @@ export default function AdminJobsPage() {
                     {selectedJob.title}
                     <StatusBadge status={selectedJob.status} />
                   </DialogTitle>
-                  <DialogDescription className="sr-only">View full details for this job listing.</DialogDescription>
+                  <DialogDescription className="sr-only">{t("jobDetailsDescription")}</DialogDescription>
                 </DialogHeader>
                 <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                   {selectedJob.employerId?.companyName && (
@@ -738,25 +745,25 @@ export default function AdminJobsPage() {
               <div className="flex-1 overflow-y-auto overscroll-contain scroll-smooth px-6 py-5">
                 <div className="space-y-6">
                   <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-                    <Fact icon={MapPin} label="Location" value={formatLocation(selectedJob.location)} />
-                    <Fact icon={DollarSign} label="Salary" value={selectedJob.salary?.isNegotiable ? "Negotiable" : selectedJob.salary?.min ? `${selectedJob.salary.min.toLocaleString()} – ${selectedJob.salary.max?.toLocaleString()} ${selectedJob.salary.currency ?? ""}` : "—"} />
-                    {selectedJob.employmentType && <Fact icon={Clock} label="Type" value={selectedJob.employmentType.replace(/_/g, " ")} />}
-                    {selectedJob.workMode && <Fact icon={Globe} label="Work mode" value={selectedJob.workMode.replace(/_/g, " ")} />}
-                    {(selectedJob.vacancies ?? 0) > 0 && <Fact icon={Users} label="Vacancies" value={String(selectedJob.vacancies)} />}
-                    <Fact icon={Calendar} label="Posted" value={new Date(selectedJob.createdAt).toLocaleDateString()} />
-                    <Fact icon={UserCheck} label="Source" value={getSourceLabel(selectedJob)} />
+                    <Fact icon={MapPin} label={t("location")} value={formatLocation(selectedJob.location)} />
+                    <Fact icon={DollarSign} label={t("salary")} value={formatSalary(selectedJob, t) || "—"} />
+                    {selectedJob.employmentType && <Fact icon={Clock} label={t("type")} value={selectedJob.employmentType.replace(/_/g, " ")} />}
+                    {selectedJob.workMode && <Fact icon={Globe} label={t("workMode")} value={selectedJob.workMode.replace(/_/g, " ")} />}
+                    {(selectedJob.vacancies ?? 0) > 0 && <Fact icon={Users} label={t("vacancies")} value={String(selectedJob.vacancies)} />}
+                    <Fact icon={Calendar} label={t("posted")} value={new Date(selectedJob.createdAt).toLocaleDateString()} />
+                    <Fact icon={UserCheck} label={t("source")} value={getSourceLabel(selectedJob, t)} />
                   </div>
 
                   {selectedJob.description && (
                     <section>
-                      <SectionHeading>Description</SectionHeading>
+                      <SectionHeading>{t("description")}</SectionHeading>
                       <p className="text-sm leading-relaxed text-foreground/90">{selectedJob.description}</p>
                     </section>
                   )}
 
                   {(selectedJob.requirements?.skills?.length ?? 0) > 0 && (
                     <section>
-                      <SectionHeading>Required Skills</SectionHeading>
+                      <SectionHeading>{t("requiredSkills")}</SectionHeading>
                       <div className="flex flex-wrap gap-2">
                         {selectedJob.requirements!.skills!.map((s) => (
                           <Badge key={s} variant="secondary" className="rounded-full border border-border/40 bg-secondary/50 px-3 py-1 text-xs font-medium">{s}</Badge>
@@ -767,14 +774,14 @@ export default function AdminJobsPage() {
 
                   {(selectedJob.requirements?.experience || selectedJob.requirements?.education) && (
                     <div className="grid gap-2.5 sm:grid-cols-2">
-                      {selectedJob.requirements?.experience && <Fact icon={Briefcase} label="Experience" value={selectedJob.requirements.experience} />}
-                      {selectedJob.requirements?.education && <Fact icon={FileText} label="Education" value={selectedJob.requirements.education} />}
+                      {selectedJob.requirements?.experience && <Fact icon={Briefcase} label={t("experience")} value={selectedJob.requirements.experience} />}
+                      {selectedJob.requirements?.education && <Fact icon={FileText} label={t("education")} value={selectedJob.requirements.education} />}
                     </div>
                   )}
 
                   {(selectedJob.responsibilities?.length ?? 0) > 0 && (
                     <section>
-                      <SectionHeading>Responsibilities</SectionHeading>
+                      <SectionHeading>{t("responsibilities")}</SectionHeading>
                       <ul className="space-y-1.5 text-sm text-foreground/90">
                         {selectedJob.responsibilities!.map((r, i) => (
                           <li key={i} className="flex items-start gap-2.5">
@@ -788,7 +795,7 @@ export default function AdminJobsPage() {
 
                   {(selectedJob.benefits?.length ?? 0) > 0 && (
                     <section>
-                      <SectionHeading>Benefits</SectionHeading>
+                      <SectionHeading>{t("benefits")}</SectionHeading>
                       <ul className="space-y-1.5 text-sm text-foreground/90">
                         {selectedJob.benefits!.map((b, i) => (
                           <li key={i} className="flex items-start gap-2.5">

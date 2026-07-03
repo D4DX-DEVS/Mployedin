@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,7 @@ interface Territory {
 const GCC_COUNTRIES = ["UAE", "Saudi Arabia", "Qatar", "Kuwait", "Bahrain", "Oman", "Egypt", "Jordan", "Lebanon"];
 
 export default function AdminTerritoryPage() {
+  const tr = useTranslations("adminTerritory");
   const [territories, setTerritories] = useState<Territory[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -69,13 +71,13 @@ export default function AdminTerritoryPage() {
       body: JSON.stringify(payload),
     });
     if (res.ok) {
-      toast.success("Territory created");
+      toast.success(tr("toastTerritoryCreated"));
       setShowForm(false);
       setForm({ name: "", countries: [], superAgentId: "" });
       fetchTerritories();
     } else {
       const err = await res.json().catch(() => ({}));
-      toast.error(err.error ?? "Failed to create");
+      toast.error(err.error ?? tr("toastFailedToCreate"));
     }
     setSaving(false);
   };
@@ -108,12 +110,12 @@ export default function AdminTerritoryPage() {
       body: JSON.stringify(payload),
     });
     if (res.ok) {
-      toast.success("Territory updated");
+      toast.success(tr("toastTerritoryUpdated"));
       setEditTerritory(null);
       fetchTerritories();
     } else {
       const err = await res.json().catch(() => ({}));
-      toast.error(err.error ?? "Failed to update");
+      toast.error(err.error ?? tr("toastFailedToUpdate"));
     }
     setEditSaving(false);
   };
@@ -122,18 +124,18 @@ export default function AdminTerritoryPage() {
     if (!deleteId) return;
     const res = await fetch(`/api/admin/territories/${deleteId}`, { method: "DELETE" });
     if (res.ok) {
-      toast.success("Territory deleted");
+      toast.success(tr("toastTerritoryDeleted"));
       setDeleteId(null);
       fetchTerritories();
     } else {
-      toast.error("Failed to delete");
+      toast.error(tr("toastFailedToDelete"));
     }
   };
 
   const getSaName = (sa: Territory["superAgentId"]) => {
-    if (!sa) return "Unassigned";
-    if (typeof sa === "string") return "Assigned";
-    return sa.name ?? sa.email ?? "Assigned";
+    if (!sa) return tr("superAgentUnassigned");
+    if (typeof sa === "string") return tr("superAgentAssigned");
+    return sa.name ?? sa.email ?? tr("superAgentAssigned");
   };
 
   return (
@@ -144,18 +146,18 @@ export default function AdminTerritoryPage() {
           <div className="min-w-0 flex-1">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
               <Sparkles className="h-3.5 w-3.5" />
-              Admin workspace
+              {tr("adminWorkspaceBadge")}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">Territory Management</h1>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{tr("pageTitle")}</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Manage geographic territories, assign super-agents, and control lead routing.
+              {tr("pageDescription")}
             </p>
           </div>
           <div className="flex items-center gap-2">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Search territories…"
+                placeholder={tr("searchPlaceholder")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="h-10 w-48 rounded-xl border-border/70 bg-background/90 pl-8 text-sm sm:w-56"
@@ -166,7 +168,7 @@ export default function AdminTerritoryPage() {
               onClick={() => setShowForm((v) => !v)}
               className="h-10 gap-1.5 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700"
             >
-              {showForm ? <><X className="h-3.5 w-3.5" /> Cancel</> : <><Plus className="h-3.5 w-3.5" /> New Territory</>}
+              {showForm ? <><X className="h-3.5 w-3.5" /> {tr("cancelButtonLabel")}</> : <><Plus className="h-3.5 w-3.5" /> {tr("newTerritoryButtonLabel")}</>}
             </Button>
           </div>
         </div>
@@ -177,19 +179,19 @@ export default function AdminTerritoryPage() {
         {showForm && (
           <div className="border-b border-border/60 bg-secondary/30 px-5 py-4">
             <form onSubmit={handleSubmit} className="space-y-4 max-w-lg">
-              <h3 className="text-sm font-semibold text-foreground">Create Territory</h3>
+              <h3 className="text-sm font-semibold text-foreground">{tr("createTerritoryFormHeading")}</h3>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground">Territory Name <span className="text-destructive">*</span></label>
+                <label className="text-xs font-medium text-muted-foreground">{tr("territoryNameLabel")} <span className="text-destructive">*</span></label>
                 <Input
                   value={form.name}
                   onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
                   required
-                  placeholder="e.g. Gulf East, UAE North"
+                  placeholder={tr("territoryNamePlaceholder")}
                   className="h-9 rounded-lg"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground">Countries</label>
+                <label className="text-xs font-medium text-muted-foreground">{tr("countriesLabel")}</label>
                 <div className="flex flex-wrap gap-2">
                   {GCC_COUNTRIES.map((c) => (
                     <Button key={c} type="button" variant={form.countries.includes(c) ? "default" : "outline"} size="xs" onClick={() => toggleCountry(c, "form")} className="rounded-full">{c}</Button>
@@ -197,20 +199,20 @@ export default function AdminTerritoryPage() {
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground">Assign Super-Agent</label>
+                <label className="text-xs font-medium text-muted-foreground">{tr("assignSuperAgentLabel")}</label>
                 <select
                   value={form.superAgentId}
                   onChange={(e) => setForm((p) => ({ ...p, superAgentId: e.target.value }))}
                   className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm"
                 >
-                  <option value="">— No assignment —</option>
+                  <option value="">{tr("noAssignmentOption")}</option>
                   {superAgents.map((sa) => (
                     <option key={sa._id} value={sa._id}>{sa.name} ({sa.email})</option>
                   ))}
                 </select>
               </div>
               <Button type="submit" size="sm" disabled={saving} className="bg-sky-600 hover:bg-sky-700 text-white">
-                {saving ? "Saving…" : "Create Territory"}
+                {saving ? tr("savingButtonText") : tr("createButtonText")}
               </Button>
             </form>
           </div>
@@ -227,8 +229,8 @@ export default function AdminTerritoryPage() {
           ) : territories.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-12 text-center">
               <Inbox className="h-6 w-6 text-muted-foreground/50" />
-              <p className="text-sm font-medium text-foreground">No territories yet</p>
-              <p className="text-xs text-muted-foreground">Create your first territory using the button above.</p>
+              <p className="text-sm font-medium text-foreground">{tr("emptyStateTitle")}</p>
+              <p className="text-xs text-muted-foreground">{tr("emptyStateDescription")}</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -243,10 +245,10 @@ export default function AdminTerritoryPage() {
                       </p>
                     </div>
                     <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                      <Button variant="ghost" size="xs" onClick={() => openEdit(t)} title="Edit">
+                      <Button variant="ghost" size="xs" onClick={() => openEdit(t)} title={tr("editButtonTitle")}>
                         <Edit2 className="h-3.5 w-3.5 text-primary" />
                       </Button>
-                      <Button variant="ghost" size="xs" onClick={() => setDeleteId(t._id)} title="Delete">
+                      <Button variant="ghost" size="xs" onClick={() => setDeleteId(t._id)} title={tr("deleteButtonTitle")}>
                         <Trash2 className="h-3.5 w-3.5 text-destructive" />
                       </Button>
                     </div>
@@ -258,7 +260,7 @@ export default function AdminTerritoryPage() {
                       ))}
                     </div>
                   ) : (
-                    <p className="mt-3 text-xs text-muted-foreground/50">No countries assigned</p>
+                    <p className="mt-3 text-xs text-muted-foreground/50">{tr("noCountriesAssignedText")}</p>
                   )}
                 </div>
               ))}
@@ -271,16 +273,16 @@ export default function AdminTerritoryPage() {
       <Dialog open={!!editTerritory} onOpenChange={(open) => { if (!open) setEditTerritory(null); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit Territory</DialogTitle>
-            <DialogDescription>Update territory details and super-agent assignment.</DialogDescription>
+            <DialogTitle>{tr("editDialogTitle")}</DialogTitle>
+            <DialogDescription>{tr("editDialogDescription")}</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleEdit} className="space-y-4">
             <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">Name</label>
+              <label className="text-xs font-medium text-muted-foreground">{tr("nameLabel")}</label>
               <Input value={editForm.name} onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))} required className="h-9" />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground">Countries</label>
+              <label className="text-xs font-medium text-muted-foreground">{tr("countriesLabel")}</label>
               <div className="flex flex-wrap gap-2">
                 {GCC_COUNTRIES.map((c) => (
                   <Button key={c} type="button" variant={editForm.countries.includes(c) ? "default" : "outline"} size="xs" onClick={() => toggleCountry(c, "edit")} className="rounded-full">{c}</Button>
@@ -288,21 +290,21 @@ export default function AdminTerritoryPage() {
               </div>
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">Assign Super-Agent</label>
+              <label className="text-xs font-medium text-muted-foreground">{tr("assignSuperAgentLabel")}</label>
               <select
                 value={editForm.superAgentId}
                 onChange={(e) => setEditForm((p) => ({ ...p, superAgentId: e.target.value }))}
                 className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm"
               >
-                <option value="">— Unassigned —</option>
+                <option value="">{tr("unassignedOption")}</option>
                 {superAgents.map((sa) => (
                   <option key={sa._id} value={sa._id}>{sa.name} ({sa.email})</option>
                 ))}
               </select>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setEditTerritory(null)}>Cancel</Button>
-              <Button type="submit" disabled={editSaving}>{editSaving ? "Saving…" : "Save"}</Button>
+              <Button type="button" variant="outline" onClick={() => setEditTerritory(null)}>{tr("cancelButtonLabel")}</Button>
+              <Button type="submit" disabled={editSaving}>{editSaving ? tr("savingButtonText") : tr("saveButtonText")}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -312,12 +314,12 @@ export default function AdminTerritoryPage() {
       <Dialog open={!!deleteId} onOpenChange={(open) => { if (!open) setDeleteId(null); }}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Delete Territory</DialogTitle>
-            <DialogDescription>This will permanently remove the territory. Leads already routed to it will keep their assignment.</DialogDescription>
+            <DialogTitle>{tr("deleteDialogTitle")}</DialogTitle>
+            <DialogDescription>{tr("deleteDialogDescription")}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteId(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleDelete}>Delete</Button>
+            <Button variant="outline" onClick={() => setDeleteId(null)}>{tr("cancelButtonLabel")}</Button>
+            <Button variant="destructive" onClick={handleDelete}>{tr("deleteButtonLabel")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import {
   Bell, Mail, Clock, Users, Send, BarChart3, Shield, Loader2,
   CheckCircle2, AlertTriangle, Save, PowerOff, UserX, Pause, Zap,
@@ -58,20 +59,13 @@ interface EmailLogEntry {
   sentAt: string;
 }
 
-const CRON_META: Record<string, { label: string; schedule: string; desc: string }> = {
-  dailyRecommendations: { label: "Daily Job Recommendations", schedule: "9:00 AM UTC", desc: "Top 5 matching jobs to seekers" },
-  dailyDigestWorker: { label: "Daily Digest Worker", schedule: "Triggered by cron", desc: "Builds & sends combined digest emails" },
-  reEngagement: { label: "Re-engagement Emails", schedule: "10:00 AM UTC", desc: "Nudges 7+ day inactive seekers" },
-  profileCompletion: { label: "Profile Completion", schedule: "10:30 AM UTC", desc: "Reminds seekers < 70% completeness" },
-  weeklyDigest: { label: "Weekly Digest", schedule: "Sunday 9:00 AM", desc: "Weekly activity summary" },
-  jobExpiryAlerts: { label: "Job Expiry Alerts", schedule: "8:00 AM UTC", desc: "Alerts seekers about saved jobs expiring" },
-};
 
 type TabKey = "overview" | "cron-jobs" | "email-logs" | "user-overrides" | "test";
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AdminNotificationsPage() {
+  const t = useTranslations("adminSettingsNotifications");
   const [tab, setTab] = useState<TabKey>("overview");
   const [stats, setStats] = useState<NotifStats | null>(null);
   const [config, setConfig] = useState<SystemConfigData | null>(null);
@@ -131,11 +125,11 @@ export default function AdminNotificationsPage() {
   };
 
   const TABS: { key: TabKey; label: string; icon: typeof Bell }[] = [
-    { key: "overview", label: "Overview", icon: BarChart3 },
-    { key: "cron-jobs", label: "Cron Jobs", icon: Clock },
-    { key: "email-logs", label: "Email Logs", icon: Mail },
-    { key: "user-overrides", label: "User Controls", icon: UserX },
-    { key: "test", label: "Test Email", icon: Send },
+    { key: "overview", label: t("overviewTabLabel"), icon: BarChart3 },
+    { key: "cron-jobs", label: t("cronJobsTabLabel"), icon: Clock },
+    { key: "email-logs", label: t("emailLogsTabLabel"), icon: Mail },
+    { key: "user-overrides", label: t("userControlsTabLabel"), icon: UserX },
+    { key: "test", label: t("testEmailTabLabel"), icon: Send },
   ];
 
   return (
@@ -146,24 +140,24 @@ export default function AdminNotificationsPage() {
           <div className="min-w-0 flex-1">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
               <Sparkles className="h-3.5 w-3.5" />
-              Admin workspace
+              {t("adminWorkspaceLabel")}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">Notification Control Center</h1>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("notificationControlCenter")}</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Full control over the platform email automation system — cron jobs, delivery logs, and user overrides.
+              {t("notificationControlCenterDescription")}
             </p>
           </div>
           <div className="flex items-center gap-2">
             {config?.globalDefaults.maintenanceMode && (
-              <Badge variant="destructive" className="gap-1"><PowerOff className="w-3 h-3" /> Maintenance</Badge>
+              <Badge variant="destructive" className="gap-1"><PowerOff className="w-3 h-3" /> {t("maintenanceModeBadge")}</Badge>
             )}
             {saved && (
               <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50 gap-1">
-                <CheckCircle2 className="w-3 h-3" /> Saved
+                <CheckCircle2 className="w-3 h-3" /> {t("savedBadge")}
               </Badge>
             )}
             <Button variant="outline" size="sm" onClick={fetchAll} disabled={loading} className="gap-1.5 rounded-xl">
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} /> Refresh
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} /> {t("refreshButtonLabel")}
             </Button>
           </div>
         </div>
@@ -200,6 +194,7 @@ export default function AdminNotificationsPage() {
 // ─── Overview ─────────────────────────────────────────────────────────────────
 
 function OverviewTab({ stats, loading }: { stats: NotifStats | null; loading: boolean }) {
+  const t = useTranslations("adminSettingsNotifications");
   const d = stats?.delivery24h ?? {};
   const totalSent = (d.sent ?? 0) + (d.delivered ?? 0);
   const totalFailed = (d.failed ?? 0) + (d.bounced ?? 0);
@@ -207,23 +202,23 @@ function OverviewTab({ stats, loading }: { stats: NotifStats | null; loading: bo
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard icon={Users} label="Total Users" value={stats?.totalUsers ?? "—"} loading={loading} />
-        <StatCard icon={Mail} label="Email Enabled" value={stats?.emailEnabled ?? "—"} loading={loading} color="text-green-600" />
-        <StatCard icon={Send} label="Sent (24h)" value={totalSent} loading={loading} color="text-blue-600" />
-        <StatCard icon={AlertTriangle} label="Failed (24h)" value={totalFailed} loading={loading} color="text-red-600" />
+        <StatCard icon={Users} label={t("totalUsersLabel")} value={stats?.totalUsers ?? "—"} loading={loading} />
+        <StatCard icon={Mail} label={t("emailEnabledLabel")} value={stats?.emailEnabled ?? "—"} loading={loading} color="text-green-600" />
+        <StatCard icon={Send} label={t("sent24hLabel")} value={totalSent} loading={loading} color="text-blue-600" />
+        <StatCard icon={AlertTriangle} label={t("failed24hLabel")} value={totalFailed} loading={loading} color="text-red-600" />
       </div>
 
-      <SectionCard title="Frequency Distribution" icon={TrendingUp}>
+      <SectionCard title={t("frequencyDistributionTitle")} icon={TrendingUp}>
         <div className="p-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <MiniStat label="Instant" value={stats?.instantFrequency ?? 0} color="bg-blue-100 text-blue-700" />
-          <MiniStat label="Daily" value={stats?.dailyFrequency ?? 0} color="bg-green-100 text-green-700" />
-          <MiniStat label="Weekly" value={stats?.weeklyFrequency ?? 0} color="bg-purple-100 text-purple-700" />
-          <MiniStat label="Unsubscribed" value={stats?.unsubscribed ?? 0} color="bg-red-100 text-red-700" />
+          <MiniStat label={t("instantFrequencyLabel")} value={stats?.instantFrequency ?? 0} color="bg-blue-100 text-blue-700" />
+          <MiniStat label={t("dailyFrequencyLabel")} value={stats?.dailyFrequency ?? 0} color="bg-green-100 text-green-700" />
+          <MiniStat label={t("weeklyFrequencyLabel")} value={stats?.weeklyFrequency ?? 0} color="bg-purple-100 text-purple-700" />
+          <MiniStat label={t("unsubscribedLabel")} value={stats?.unsubscribed ?? 0} color="bg-red-100 text-red-700" />
         </div>
       </SectionCard>
 
       {stats?.bySource7d && Object.keys(stats.bySource7d).length > 0 && (
-        <SectionCard title="Emails by Source (7d)" icon={Activity}>
+        <SectionCard title={t("emailsBySourceTitle")} icon={Activity}>
           <div className="p-5 flex flex-wrap gap-2">
             {Object.entries(stats.bySource7d).sort(([, a], [, b]) => b - a).map(([src, cnt]) => (
               <div key={src} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/40 border border-border/30">
@@ -235,13 +230,13 @@ function OverviewTab({ stats, loading }: { stats: NotifStats | null; loading: bo
         </SectionCard>
       )}
 
-      <SectionCard title="System Pipeline" icon={BarChart3}>
+      <SectionCard title={t("systemPipelineTitle")} icon={BarChart3}>
         <div className="p-5 space-y-3 text-sm">
-          <FlowStep n={1} title="Event Trigger" desc="API routes call notify() → emits Inngest event" />
-          <FlowStep n={2} title="Orchestrator" desc="Maintenance check → admin overrides → user prefs → dedup (5 min) → channel routing" />
-          <FlowStep n={3} title="Cron Jobs" desc="6 admin-controlled jobs: daily/weekly digest, re-engagement, profile, job expiry" />
-          <FlowStep n={4} title="Delivery" desc="Email (Gmail OAuth2/SMTP) + WhatsApp + In-app — all logged to EmailLog" />
-          <FlowStep n={5} title="User Control" desc="Each user sets frequency + categories. Admin can override per-user." />
+          <FlowStep n={1} title={t("eventTriggerTitle")} desc={t("eventTriggerDesc")} />
+          <FlowStep n={2} title={t("orchestratorTitle")} desc={t("orchestratorDesc")} />
+          <FlowStep n={3} title={t("cronJobsTitle")} desc={t("cronJobsDesc")} />
+          <FlowStep n={4} title={t("deliveryTitle")} desc={t("deliveryDesc")} />
+          <FlowStep n={5} title={t("userControlTitle")} desc={t("userControlDesc")} />
         </div>
       </SectionCard>
     </div>
@@ -257,6 +252,17 @@ function CronJobsTab({
   onToggleCron: (key: string, enabled: boolean) => void;
   onToggleMaintenance: (on: boolean) => void;
 }) {
+  const t = useTranslations("adminSettingsNotifications");
+
+  const CRON_META: Record<string, { label: string; schedule: string; desc: string }> = {
+    dailyRecommendations: { label: t("dailyJobRecommendations"), schedule: t("dailyJobSchedule"), desc: t("dailyJobDesc") },
+    dailyDigestWorker: { label: t("dailyDigestWorkerLabel"), schedule: t("dailyDigestSchedule"), desc: t("dailyDigestDesc") },
+    reEngagement: { label: t("reEngagementEmailsLabel"), schedule: t("reEngagementSchedule"), desc: t("reEngagementDesc") },
+    profileCompletion: { label: t("profileCompletionLabel"), schedule: t("profileCompletionSchedule"), desc: t("profileCompletionDesc") },
+    weeklyDigest: { label: t("weeklyDigestLabel"), schedule: t("weeklyDigestSchedule"), desc: t("weeklyDigestDesc") },
+    jobExpiryAlerts: { label: t("jobExpiryAlertsLabel"), schedule: t("jobExpirySchedule"), desc: t("jobExpiryDesc") },
+  };
+
   return (
     <div className="space-y-6">
       <div className={`rounded-xl border-2 p-5 ${config?.globalDefaults.maintenanceMode ? "border-red-300 bg-red-50/50" : "border-border/50 bg-card"}`}>
@@ -266,15 +272,15 @@ function CronJobsTab({
               <PowerOff className={`w-5 h-5 ${config?.globalDefaults.maintenanceMode ? "text-red-600" : "text-muted-foreground"}`} />
             </div>
             <div>
-              <h3 className="text-sm font-bold">Maintenance Mode (Kill Switch)</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">All outbound emails paused, all cron jobs skip</p>
+              <h3 className="text-sm font-bold">{t("maintenanceModeKillSwitch")}</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("maintenanceModeDescription")}</p>
             </div>
           </div>
           <Switch checked={config?.globalDefaults.maintenanceMode ?? false} onCheckedChange={onToggleMaintenance} />
         </div>
       </div>
 
-      <SectionCard title="Scheduled Email Jobs" icon={Clock}>
+      <SectionCard title={t("scheduledEmailJobsTitle")} icon={Clock}>
         <div className="divide-y divide-border/30">
           {Object.entries(CRON_META).map(([key, meta]) => {
             const state = config?.cronJobs?.[key];
@@ -287,14 +293,14 @@ function CronJobsTab({
                     <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-mono">{meta.schedule}</Badge>
                     {state?.lastRunStatus && (
                       <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${state.lastRunStatus === "success" ? "text-green-600 border-green-200" : "text-red-600 border-red-200"}`}>
-                        Last: {state.lastRunStatus}
+                        {t("lastRunStatus", { status: state.lastRunStatus })}
                       </Badge>
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">{meta.desc}</p>
                   {state?.lastRunAt && (
                     <p className="text-[10px] text-muted-foreground/70 mt-1">
-                      Last run: {new Date(state.lastRunAt).toLocaleString()}{state.lastRunMessage ? ` — ${state.lastRunMessage}` : ""}
+                      {t("lastRunTime", { time: new Date(state.lastRunAt).toLocaleString(), message: state.lastRunMessage ? ` — ${state.lastRunMessage}` : "" })}
                     </p>
                   )}
                 </div>
@@ -311,6 +317,7 @@ function CronJobsTab({
 // ─── Email Logs ───────────────────────────────────────────────────────────────
 
 function EmailLogsTab() {
+  const t = useTranslations("adminSettingsNotifications");
   const [logs, setLogs] = useState<EmailLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -347,23 +354,23 @@ function EmailLogsTab() {
 
       <div className="flex items-center gap-2 flex-wrap">
         <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} className="text-xs border rounded-md px-2 py-1.5 bg-background">
-          <option value="">All statuses</option>
-          <option value="sent">Sent</option>
-          <option value="failed">Failed</option>
-          <option value="bounced">Bounced</option>
+          <option value="">{t("allStatusesOption")}</option>
+          <option value="sent">{t("sentStatusOption")}</option>
+          <option value="failed">{t("failedStatusOption")}</option>
+          <option value="bounced">{t("bouncedStatusOption")}</option>
         </select>
         <select value={sourceFilter} onChange={(e) => { setSourceFilter(e.target.value); setPage(1); }} className="text-xs border rounded-md px-2 py-1.5 bg-background">
-          <option value="">All sources</option>
-          <option value="orchestrator">Orchestrator</option>
-          <option value="daily-digest">Daily Digest</option>
-          <option value="weekly-digest">Weekly Digest</option>
-          <option value="re-engagement">Re-engagement</option>
-          <option value="broadcast">Broadcast</option>
-          <option value="direct">Direct</option>
-          <option value="test">Test</option>
+          <option value="">{t("allSourcesOption")}</option>
+          <option value="orchestrator">{t("orchestratorSourceOption")}</option>
+          <option value="daily-digest">{t("dailyDigestSourceOption")}</option>
+          <option value="weekly-digest">{t("weeklyDigestSourceOption")}</option>
+          <option value="re-engagement">{t("reEngagementSourceOption")}</option>
+          <option value="broadcast">{t("broadcastSourceOption")}</option>
+          <option value="direct">{t("directSourceOption")}</option>
+          <option value="test">{t("testSourceOption")}</option>
         </select>
         <Button variant="outline" size="sm" onClick={fetchLogs} disabled={loading} className="gap-1 ml-auto">
-          <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} /> Refresh
+          <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} /> {t("refreshButtonLabel")}
         </Button>
       </div>
 
@@ -372,18 +379,18 @@ function EmailLogsTab() {
           <table className="w-full text-xs">
             <thead className="bg-muted/40">
               <tr>
-                <th className="text-left px-3 py-2 font-medium text-muted-foreground">Time</th>
-                <th className="text-left px-3 py-2 font-medium text-muted-foreground">To</th>
-                <th className="text-left px-3 py-2 font-medium text-muted-foreground">Subject</th>
-                <th className="text-left px-3 py-2 font-medium text-muted-foreground">Source</th>
-                <th className="text-left px-3 py-2 font-medium text-muted-foreground">Status</th>
+                <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("emailLogsTableTimeHeader")}</th>
+                <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("emailLogsTableToHeader")}</th>
+                <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("emailLogsTableSubjectHeader")}</th>
+                <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("emailLogsTableSourceHeader")}</th>
+                <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("emailLogsTableStatusHeader")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/20">
               {loading ? (
                 <tr><td colSpan={5} className="text-center py-8"><Loader2 className="w-4 h-4 animate-spin inline-block" /></td></tr>
               ) : logs.length === 0 ? (
-                <tr><td colSpan={5} className="text-center py-8 text-muted-foreground">No email logs found</td></tr>
+                <tr><td colSpan={5} className="text-center py-8 text-muted-foreground">{t("emailLogsEmptyMessage")}</td></tr>
               ) : logs.map((log) => (
                 <tr key={log._id} className="hover:bg-muted/20">
                   <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">{new Date(log.sentAt).toLocaleString()}</td>
@@ -403,7 +410,7 @@ function EmailLogsTab() {
         </div>
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-2 border-t border-border/30 bg-muted/20">
-            <span className="text-xs text-muted-foreground">Page {page}/{totalPages}</span>
+            <span className="text-xs text-muted-foreground">{t("emailLogsPaginationLabel", { page: page, totalPages: totalPages })}</span>
             <div className="flex gap-1">
               <Button variant="ghost" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}><ChevronLeft className="w-3 h-3" /></Button>
               <Button variant="ghost" size="sm" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}><ChevronRight className="w-3 h-3" /></Button>
@@ -418,6 +425,7 @@ function EmailLogsTab() {
 // ─── User Overrides ───────────────────────────────────────────────────────────
 
 function UserOverridesTab({ config, onRefresh }: { config: SystemConfigData | null; onRefresh: () => void }) {
+  const t = useTranslations("adminSettingsNotifications");
   const [userId, setUserId] = useState("");
   const [action, setAction] = useState("force_unsubscribe");
   const [reason, setReason] = useState("");
@@ -447,34 +455,34 @@ function UserOverridesTab({ config, onRefresh }: { config: SystemConfigData | nu
   };
 
   const labels: Record<string, { label: string; icon: typeof UserX; color: string }> = {
-    force_unsubscribe: { label: "Force Unsubscribe", icon: UserX, color: "text-red-600" },
-    pause_emails: { label: "Pause Emails", icon: Pause, color: "text-amber-600" },
-    force_instant: { label: "Force Instant", icon: Zap, color: "text-blue-600" },
+    force_unsubscribe: { label: t("forceUnsubscribeLabel"), icon: UserX, color: "text-red-600" },
+    pause_emails: { label: t("pauseEmailsLabel"), icon: Pause, color: "text-amber-600" },
+    force_instant: { label: t("forceInstantLabel"), icon: Zap, color: "text-blue-600" },
   };
 
   return (
     <div className="space-y-6">
-      <SectionCard title="Add User Override" icon={UserX}>
+      <SectionCard title={t("addUserOverrideTitle")} icon={UserX}>
         <div className="p-5 space-y-3">
-          <p className="text-xs text-muted-foreground">Override a specific user&apos;s notification behavior. Takes priority over their own settings.</p>
+          <p className="text-xs text-muted-foreground">{t("addUserOverrideDescription")}</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <Input placeholder="User ID (ObjectId)" value={userId} onChange={(e) => setUserId(e.target.value)} className="text-sm" />
+            <Input placeholder={t("userIdPlaceholder")} value={userId} onChange={(e) => setUserId(e.target.value)} className="text-sm" />
             <select value={action} onChange={(e) => setAction(e.target.value)} className="text-sm border rounded-md px-3 py-2 bg-background">
-              <option value="force_unsubscribe">Force Unsubscribe</option>
-              <option value="pause_emails">Pause Emails</option>
-              <option value="force_instant">Force Instant</option>
+              <option value="force_unsubscribe">{t("forceUnsubscribeOption")}</option>
+              <option value="pause_emails">{t("pauseEmailsOption")}</option>
+              <option value="force_instant">{t("forceInstantOption")}</option>
             </select>
-            <Input placeholder="Reason" value={reason} onChange={(e) => setReason(e.target.value)} className="text-sm" />
+            <Input placeholder={t("reasonPlaceholder")} value={reason} onChange={(e) => setReason(e.target.value)} className="text-sm" />
           </div>
           <Button onClick={addOverride} disabled={submitting || !userId || !reason} size="sm" className="gap-2">
-            <Shield className="w-3.5 h-3.5" /> Add Override
+            <Shield className="w-3.5 h-3.5" /> {t("addOverrideButton")}
           </Button>
         </div>
       </SectionCard>
 
-      <SectionCard title={`Active Overrides (${overrides.length})`} icon={Shield}>
+      <SectionCard title={t("activeOverridesTitle", { count: overrides.length })} icon={Shield}>
         {overrides.length === 0 ? (
-          <p className="p-5 text-sm text-muted-foreground">No user overrides active.</p>
+          <p className="p-5 text-sm text-muted-foreground">{t("noUserOverridesMessage")}</p>
         ) : (
           <div className="divide-y divide-border/30">
             {overrides.map((o, i) => {
@@ -489,7 +497,7 @@ function UserOverridesTab({ config, onRefresh }: { config: SystemConfigData | nu
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">{o.reason}</p>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={() => removeOverride(o.userId)} className="text-red-500 hover:text-red-700 hover:bg-red-50">Remove</Button>
+                  <Button variant="ghost" size="sm" onClick={() => removeOverride(o.userId)} className="text-red-500 hover:text-red-700 hover:bg-red-50">{t("removeOverrideButton")}</Button>
                 </div>
               );
             })}
@@ -503,6 +511,7 @@ function UserOverridesTab({ config, onRefresh }: { config: SystemConfigData | nu
 // ─── Test Email ───────────────────────────────────────────────────────────────
 
 function TestEmailTab() {
+  const t = useTranslations("adminSettingsNotifications");
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
@@ -513,19 +522,19 @@ function TestEmailTab() {
     try {
       const res = await fetch("/api/admin/test-email", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ to: email }) });
       const data = await res.json();
-      setResult({ ok: res.ok, msg: data.message ?? (res.ok ? "Sent!" : "Failed") });
-    } catch { setResult({ ok: false, msg: "Network error" }); }
+      setResult({ ok: res.ok, msg: data.message ?? (res.ok ? t("testEmailSuccessMessage") : t("testEmailFailedMessage")) });
+    } catch { setResult({ ok: false, msg: t("testEmailNetworkErrorMessage") }); }
     finally { setSending(false); }
   };
 
   return (
-    <SectionCard title="Send Test Email" icon={Send}>
+    <SectionCard title={t("sendTestEmailTitle")} icon={Send}>
       <div className="p-5 space-y-4">
-        <p className="text-xs text-muted-foreground">Verify the email pipeline. Creates an entry in Email Logs.</p>
+        <p className="text-xs text-muted-foreground">{t("sendTestEmailDescription")}</p>
         <div className="flex items-center gap-3">
-          <Input type="email" placeholder="admin@mployedin.com" value={email} onChange={(e) => setEmail(e.target.value)} className="max-w-sm" />
+          <Input type="email" placeholder={t("testEmailPlaceholder")} value={email} onChange={(e) => setEmail(e.target.value)} className="max-w-sm" />
           <Button onClick={send} disabled={sending || !email} size="sm" className="gap-2">
-            {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} Send Test
+            {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} {t("sendTestButton")}
           </Button>
         </div>
         {result && (

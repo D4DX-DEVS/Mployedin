@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -110,9 +111,11 @@ function fmt(value: number, currency = "AED"): string {
 }
 
 function StatusBadge({ status }: { status: string }) {
+  const t = useTranslations("adminCommissionsReport");
+  const statusLabel = status === "pending" ? t("pending") : status === "approved" ? t("approved") : t("paidOut");
   return (
     <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize ${STATUS_BADGE[status] ?? "bg-muted text-muted-foreground"}`}>
-      {status}
+      {statusLabel}
     </span>
   );
 }
@@ -128,6 +131,7 @@ function DeltaChip({ value }: { value: number }) {
 /* ------------------------------------------------------------------ */
 
 export default function AdminCommissionsReportPage() {
+  const t = useTranslations("adminCommissionsReport");
   const currentYear = new Date().getFullYear();
   const [yearFilter, setYearFilter] = useState(currentYear);
   const [searchQuery, setSearchQuery] = useState("");
@@ -141,14 +145,14 @@ export default function AdminCommissionsReportPage() {
       if (res.ok) {
         setData(await res.json());
       } else {
-        toast.error("Failed to load commission report");
+        toast.error(t("failedToLoadReport"));
       }
     } catch {
-      toast.error("Failed to load commission report");
+      toast.error(t("failedToLoadReport"));
     } finally {
       setLoading(false);
     }
-  }, [yearFilter]);
+  }, [yearFilter, t]);
 
   useEffect(() => { fetchReport(); }, [fetchReport]);
 
@@ -204,11 +208,11 @@ export default function AdminCommissionsReportPage() {
           <div className="min-w-0 flex-1">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
               <Sparkles className="h-3.5 w-3.5" />
-              Admin workspace
+              {t("adminWorkspace")}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">Commission Report</h1>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("commissionReportTitle")}</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Aggregated commission analytics across all agents and super-agents — {yearFilter}. Track payouts, pending approvals, and commission types.
+              {t("reportDescription", { year: yearFilter })}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -232,16 +236,16 @@ export default function AdminCommissionsReportPage() {
         {/* KPI Cards inside hero */}
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           {[
-            { label: "Total Commissions", value: s ? fmt(s.totalCommissions, s.currency) : "—", icon: CircleDollarSign, tone: "text-indigo-600", chip: "bg-indigo-50 dark:bg-indigo-950/30" },
-            { label: "Pending", value: s ? fmt(s.totalPending, s.currency) : "—", icon: Clock, tone: "text-amber-600", chip: "bg-amber-50 dark:bg-amber-950/30" },
-            { label: "Approved", value: s ? fmt(s.totalApproved, s.currency) : "—", icon: CheckCircle2, tone: "text-blue-600", chip: "bg-blue-50 dark:bg-blue-950/30" },
-            { label: "Paid Out", value: s ? fmt(s.totalPaid, s.currency) : "—", icon: Wallet, tone: "text-emerald-600", chip: "bg-emerald-50 dark:bg-emerald-950/30" },
-            { label: "Avg Rate", value: s ? `${s.avgRate}%` : "—", icon: TrendingUp, tone: "text-violet-600", chip: "bg-violet-50 dark:bg-violet-950/30" },
-          ].map(({ label, value, icon: Icon, tone, chip }) => (
-            <div key={label} className="workspace-glass-panel rounded-2xl p-4">
+            { labelKey: "totalCommissions", value: s ? fmt(s.totalCommissions, s.currency) : "—", icon: CircleDollarSign, tone: "text-indigo-600", chip: "bg-indigo-50 dark:bg-indigo-950/30" },
+            { labelKey: "pending", value: s ? fmt(s.totalPending, s.currency) : "—", icon: Clock, tone: "text-amber-600", chip: "bg-amber-50 dark:bg-amber-950/30" },
+            { labelKey: "approved", value: s ? fmt(s.totalApproved, s.currency) : "—", icon: CheckCircle2, tone: "text-blue-600", chip: "bg-blue-50 dark:bg-blue-950/30" },
+            { labelKey: "paidOut", value: s ? fmt(s.totalPaid, s.currency) : "—", icon: Wallet, tone: "text-emerald-600", chip: "bg-emerald-50 dark:bg-emerald-950/30" },
+            { labelKey: "avgRate", value: s ? `${s.avgRate}%` : "—", icon: TrendingUp, tone: "text-violet-600", chip: "bg-violet-50 dark:bg-violet-950/30" },
+          ].map(({ labelKey, value, icon: Icon, tone, chip }) => (
+            <div key={labelKey} className="workspace-glass-panel rounded-2xl p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t(labelKey as any)}</p>
                   <p className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
                     {loading ? <span className="h-6 w-20 animate-pulse rounded bg-muted inline-block" /> : value}
                   </p>
@@ -258,7 +262,7 @@ export default function AdminCommissionsReportPage() {
       {/* ── Monthly Trend Chart + Type Breakdown ── */}
       <div className="grid gap-4 lg:grid-cols-3">
         <section className="lg:col-span-2 workspace-panel-surface rounded-[28px] p-5 sm:p-6">
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">Monthly Trend ({yearFilter})</h2>
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("monthlyTrendTitle", { year: yearFilter })}</h2>
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -274,7 +278,7 @@ export default function AdminCommissionsReportPage() {
         </section>
 
         <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">By Type</h2>
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("byTypeTitle")}</h2>
           {pieData.length > 0 ? (
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
@@ -288,18 +292,21 @@ export default function AdminCommissionsReportPage() {
               </PieChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">No data</div>
+            <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">{t("noData")}</div>
           )}
           <div className="mt-2 space-y-1.5">
-            {data?.typeBreakdown.map((t) => (
-              <div key={t.type} className="flex items-center justify-between text-xs">
-                <span className="flex items-center gap-1.5 capitalize">
-                  <span className="h-2 w-2 rounded-full" style={{ background: TYPE_COLORS[t.type] ?? "#94a3b8" }} />
-                  {t.type}
-                </span>
-                <span className="font-medium">{t.percent}%</span>
-              </div>
-            ))}
+            {data?.typeBreakdown.map((typeItem) => {
+              const typeKey = typeItem.type === "placement" ? "placementType" : typeItem.type === "override" ? "overrideType" : "bonusType";
+              return (
+                <div key={typeItem.type} className="flex items-center justify-between text-xs">
+                  <span className="flex items-center gap-1.5 capitalize">
+                    <span className="h-2 w-2 rounded-full" style={{ background: TYPE_COLORS[typeItem.type] ?? "#94a3b8" }} />
+                    {t(typeKey as any)}
+                  </span>
+                  <span className="font-medium">{typeItem.percent}%</span>
+                </div>
+              );
+            })}
           </div>
         </section>
       </div>
@@ -312,7 +319,7 @@ export default function AdminCommissionsReportPage() {
               <p className="text-xs font-semibold text-muted-foreground">{q.label}</p>
               <p className="mt-1 text-lg font-bold">{fmt(q.total, data.summary.currency)}</p>
               <div className="mt-1 flex gap-2 text-xs text-muted-foreground">
-                <span>{q.count} commissions</span>
+                <span>{t("quarterlyBreakdownCommissionsLabel", { count: q.count })}</span>
               </div>
               <div className="mt-1 flex gap-1">
                 <StatusBadge status="approved" />
@@ -328,13 +335,13 @@ export default function AdminCommissionsReportPage() {
         <div className="border-b px-4 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-sm font-semibold">Agent Breakdown</h2>
-            {data && <Badge variant="secondary">{data.agentBreakdown.length} agents</Badge>}
+            <h2 className="text-sm font-semibold">{t("agentBreakdownTitle")}</h2>
+            {data && <Badge variant="secondary">{t("agentsCount", { count: data.agentBreakdown.length })}</Badge>}
           </div>
           <TableToolbar
             search={searchQuery}
             onSearchChange={setSearchQuery}
-            searchPlaceholder="Search agent, email, super-agent…"
+            searchPlaceholder={t("searchPlaceholder")}
             onExportCsv={handleExportCsv}
             onExportExcel={handleExportExcel}
           />
@@ -343,14 +350,14 @@ export default function AdminCommissionsReportPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Agent</TableHead>
-                <TableHead>Super-Agent</TableHead>
-                <TableHead className="text-right">Total</TableHead>
-                <TableHead className="text-right">Pending</TableHead>
-                <TableHead className="text-right">Approved</TableHead>
-                <TableHead className="text-right">Paid</TableHead>
-                <TableHead className="text-right">Count</TableHead>
-                <TableHead className="text-right">Avg Rate</TableHead>
+                <TableHead>{t("agentTableHeader")}</TableHead>
+                <TableHead>{t("superAgentTableHeader")}</TableHead>
+                <TableHead className="text-right">{t("totalTableHeader")}</TableHead>
+                <TableHead className="text-right">{t("pendingTableHeader")}</TableHead>
+                <TableHead className="text-right">{t("approvedTableHeader")}</TableHead>
+                <TableHead className="text-right">{t("paidTableHeader")}</TableHead>
+                <TableHead className="text-right">{t("countTableHeader")}</TableHead>
+                <TableHead className="text-right">{t("avgRateTableHeader")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -367,7 +374,7 @@ export default function AdminCommissionsReportPage() {
               ) : filteredAgents.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="py-10 text-center text-sm text-muted-foreground">
-                    No commission data for {yearFilter}
+                    {t("noCommissionData", { year: yearFilter })}
                   </TableCell>
                 </TableRow>
               ) : (

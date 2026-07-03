@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -44,21 +44,10 @@ interface Employer {
   employerProfileId?: string;
 }
 
-const FIELDS: CrudField[] = [
-  { name: "name", label: "Contact Name", type: "text", required: true },
-  { name: "email", label: "Email", type: "email", required: true },
-  { name: "password", label: "Password", type: "text", required: true, placeholder: "Min 8 characters" },
-  { name: "companyName", label: "Company Name", type: "text", required: true },
-  { name: "industry", label: "Industry", type: "text" },
-  { name: "location", label: "Location", type: "text" },
-  { name: "phone", label: "Phone", type: "text" },
-];
-const EDIT_FIELDS: CrudField[] = FIELDS.filter(f => f.name !== "password");
-
 export default function AdminEmployersPage() {
   const { can } = usePermissions();
   const router = useRouter();
-  const locale = useLocale();
+  const t = useTranslations("adminEmployers");
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [employers, setEmployers] = useState<Employer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,6 +62,11 @@ export default function AdminEmployersPage() {
   const [verifyReason, setVerifyReason] = useState("");
   const [switchingEmployerId, setSwitchingEmployerId] = useState<string | null>(null);
 
+  const getLocalePrefix = () => {
+    const pathParts = window.location.pathname.split('/');
+    return `/${pathParts[1] || 'en'}`;
+  };
+
   const handleSwitchToEmployerView = async (employerId: string) => {
     setSwitchingEmployerId(employerId);
     try {
@@ -82,25 +76,26 @@ export default function AdminEmployersPage() {
         body: JSON.stringify({ employerId }),
       });
       if (res.ok) {
-        router.push(`/${locale}/employer`);
+        const localePrefix = getLocalePrefix();
+        router.push(`${localePrefix}/employer`);
         router.refresh();
       } else {
         const data = await res.json().catch(() => ({}));
-        alert(data.error ?? "Failed to switch to employer view");
+        alert(data.error ?? t("switchViewErrorFallback"));
       }
     } catch {
-      alert("Network error — please try again");
+      alert(t("switchViewNetworkError"));
     } finally {
       setSwitchingEmployerId(null);
     }
   };
 
   const exportColumns: ExportColumn<Employer>[] = [
-    { header: "Company", key: "companyName" },
-    { header: "Email", key: "email" },
-    { header: "Industry", key: "industry" },
-    { header: "Status", key: "status", formatter: (v, r) => r.status ?? (r.isActive !== false ? "active" : "inactive") },
-    { header: "Joined", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
+    { header: t("exportColumnCompany"), key: "companyName" },
+    { header: t("exportColumnEmail"), key: "email" },
+    { header: t("exportColumnIndustry"), key: "industry" },
+    { header: t("exportColumnStatus"), key: "status", formatter: (v, r) => r.status ?? (r.isActive !== false ? "active" : "inactive") },
+    { header: t("exportColumnJoined"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: employers as unknown as Record<string, unknown>[],
@@ -146,14 +141,14 @@ export default function AdminEmployersPage() {
   };
 
   const handleDelete = async (id: string) => {
-    const ok = await confirmDialog({ message: "Deactivate this employer? They won't be able to log in.", confirmLabel: "Deactivate" });
+    const ok = await confirmDialog({ message: t("deactivateConfirmMessage"), confirmLabel: t("deactivateConfirmLabel") });
     if (!ok) return;
     await fetch(`/api/employers/${id}`, { method: "DELETE" });
     fetchEmployers();
   };
 
   const handlePermanentDelete = async (id: string) => {
-    const ok = await confirmDialog({ title: "Permanently Delete Employer", message: "This will permanently delete the employer and all their data. This cannot be undone.", confirmLabel: "Delete Forever" });
+    const ok = await confirmDialog({ title: t("permanentDeleteTitle"), message: t("permanentDeleteMessage"), confirmLabel: t("permanentDeleteLabel") });
     if (!ok) return;
     await fetch(`/api/employers/${id}?permanent=true`, { method: "DELETE" });
     fetchEmployers();
@@ -206,11 +201,11 @@ export default function AdminEmployersPage() {
           <div className="min-w-0 flex-1">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
               <Sparkles className="h-3.5 w-3.5" />
-              Admin workspace
+              {t("adminWorkspace")}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">Employers</h1>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("pageTitle")}</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Manage all employer accounts and company profiles.
+              {t("pageDescription")}
             </p>
           </div>
         </div>
@@ -223,40 +218,40 @@ export default function AdminEmployersPage() {
               <Input
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-                placeholder="Search employer…"
+                placeholder={t("searchPlaceholder")}
                 className="h-8 w-52 rounded-lg pl-8 text-sm"
               />
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="h-8 rounded-lg border-border/80">
-                  <Download className="h-3.5 w-3.5" /> Export
+                  <Download className="h-3.5 w-3.5" /> {t("exportLabel")}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-44">
-                <DropdownMenuLabel>Export</DropdownMenuLabel>
+                <DropdownMenuLabel>{t("exportLabel")}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleExportCsv}><FileText className="h-4 w-4" />CSV</DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExportExcel}><FileSpreadsheet className="h-4 w-4" />Excel</DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExportPdf}><FileText className="h-4 w-4" />PDF</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportCsv}><FileText className="h-4 w-4" />{t("exportCsv")}</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportExcel}><FileSpreadsheet className="h-4 w-4" />{t("exportExcel")}</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportPdf}><FileText className="h-4 w-4" />{t("exportPdf")}</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             {can("employers", "create") && (
               <Button onClick={() => setShowAdd(true)} size="sm" className="h-8 rounded-lg">
-                <Plus className="h-3.5 w-3.5" /> Add Employer
+                <Plus className="h-3.5 w-3.5" /> {t("addEmployerButton")}
               </Button>
             )}
         </div>
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
-              <TableHead>Company</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Industry</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Joined</TableHead>
+              <TableHead>{t("tableHeaderCompany")}</TableHead>
+              <TableHead>{t("tableHeaderEmail")}</TableHead>
+              <TableHead>{t("tableHeaderIndustry")}</TableHead>
+              <TableHead>{t("tableHeaderStatus")}</TableHead>
+              <TableHead>{t("tableHeaderJoined")}</TableHead>
               {(can("employers", "update") || can("employers", "delete") || can("employers", "approve")) && (
-                <TableHead>Actions</TableHead>
+                <TableHead>{t("tableHeaderActions")}</TableHead>
               )}
             </TableRow>
           </TableHeader>
@@ -276,7 +271,7 @@ export default function AdminEmployersPage() {
                 <TableCell colSpan={6} className="h-32 text-center">
                   <div className="flex flex-col items-center gap-2 text-muted-foreground">
                     <Inbox className="h-8 w-8 opacity-40" />
-                    <span className="text-sm">No employers found</span>
+                    <span className="text-sm">{t("noEmployersFound")}</span>
                   </div>
                 </TableCell>
               </TableRow>
@@ -286,7 +281,7 @@ export default function AdminEmployersPage() {
                   <div className="flex items-center gap-2">
                     <span className="font-medium">{emp.companyName || emp.name}</span>
                     {emp.domainVerified && (
-                      <Badge className="text-[10px] px-1.5 py-0 bg-emerald-100 text-emerald-700 border-emerald-200">Verified</Badge>
+                      <Badge className="text-[10px] px-1.5 py-0 bg-emerald-100 text-emerald-700 border-emerald-200">{t("verifiedBadge")}</Badge>
                     )}
                   </div>
                 </TableCell>
@@ -302,23 +297,23 @@ export default function AdminEmployersPage() {
                           variant="ghost"
                           size="xs"
                           onClick={() => setVerifyItem(emp)}
-                          title={emp.domainVerified ? "Verified — click to manage" : "Verify employer"}
+                          title={emp.domainVerified ? t("verifiedButtonTitle") : t("verifyButtonTitle")}
                         >
                           <ShieldCheck className={`h-3.5 w-3.5 ${emp.domainVerified ? "text-emerald-600" : "text-muted-foreground"}`} />
                         </Button>
                       )}
                       {can("employers", "update") && (
-                        <Button variant="ghost" size="xs" onClick={() => setEditItem(emp)} title="Edit">
+                        <Button variant="ghost" size="xs" onClick={() => setEditItem(emp)} title={t("editButtonTitle")}>
                           <Pencil className="h-3.5 w-3.5 text-primary" />
                         </Button>
                       )}
                       {can("employers", "delete") && (
-                        <Button variant="ghost" size="xs" onClick={() => handleDelete(emp._id)} title="Deactivate">
+                        <Button variant="ghost" size="xs" onClick={() => handleDelete(emp._id)} title={t("deactivateButtonTitle")}>
                           <Ban className="h-3.5 w-3.5 text-amber-500" />
                         </Button>
                       )}
                       {can("employers", "delete") && (
-                        <Button variant="ghost" size="xs" onClick={() => handlePermanentDelete(emp._id)} title="Delete permanently">
+                        <Button variant="ghost" size="xs" onClick={() => handlePermanentDelete(emp._id)} title={t("deleteButtonTitle")}>
                           <Trash2 className="h-3.5 w-3.5 text-destructive" />
                         </Button>
                       )}
@@ -327,7 +322,7 @@ export default function AdminEmployersPage() {
                         size="xs"
                         onClick={() => handleSwitchToEmployerView(emp.employerProfileId ?? emp._id)}
                         disabled={switchingEmployerId === (emp.employerProfileId ?? emp._id) || emp.isActive === false}
-                        title="Switch to employer workspace"
+                        title={t("switchViewTitle")}
                       >
                         {switchingEmployerId === (emp.employerProfileId ?? emp._id) ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin text-sky-600" />
@@ -346,42 +341,59 @@ export default function AdminEmployersPage() {
 
       <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
 
-      <CrudModal open={showAdd} onClose={() => setShowAdd(false)} title="Add Employer" fields={FIELDS} onSubmit={handleCreate} />
-      <CrudModal open={!!editItem} onClose={() => setEditItem(null)} title="Edit Employer" fields={EDIT_FIELDS}
-        initialValues={editItem ? { name: editItem.name ?? "", email: editItem.email ?? editItem.contactEmail ?? "", companyName: editItem.companyName ?? "", industry: editItem.industry ?? "", location: editItem.location ?? "", phone: editItem.phone ?? "" } : undefined}
-        onSubmit={handleEdit} />
+      {(() => {
+        const fields: CrudField[] = [
+          { name: "name", label: t("fieldContactName"), type: "text", required: true },
+          { name: "email", label: t("fieldEmail"), type: "email", required: true },
+          { name: "password", label: t("fieldPassword"), type: "text", required: true, placeholder: t("fieldPasswordPlaceholder") },
+          { name: "companyName", label: t("fieldCompanyName"), type: "text", required: true },
+          { name: "industry", label: t("fieldIndustry"), type: "text" },
+          { name: "location", label: t("fieldLocation"), type: "text" },
+          { name: "phone", label: t("fieldPhone"), type: "text" },
+        ];
+        const editFields: CrudField[] = fields.filter(f => f.name !== "password");
+
+        return (
+          <>
+            <CrudModal open={showAdd} onClose={() => setShowAdd(false)} title={t("addEmployerTitle")} fields={fields} onSubmit={handleCreate} />
+            <CrudModal open={!!editItem} onClose={() => setEditItem(null)} title={t("editEmployerTitle")} fields={editFields}
+              initialValues={editItem ? { name: editItem.name ?? "", email: editItem.email ?? editItem.contactEmail ?? "", companyName: editItem.companyName ?? "", industry: editItem.industry ?? "", location: editItem.location ?? "", phone: editItem.phone ?? "" } : undefined}
+              onSubmit={handleEdit} />
+          </>
+        );
+      })()}
 
       {/* Verification Modal */}
       <Dialog open={!!verifyItem} onOpenChange={(open) => { if (!open) { setVerifyItem(null); setVerifyError(null); setVerifyOverride(false); setVerifyReason(""); } }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Employer Verification</DialogTitle>
+            <DialogTitle>{t("verificationDialogTitle")}</DialogTitle>
             <DialogDescription>
-              {verifyItem?.companyName} — review documents and manage verification status.
+              {t("verificationDialogDescription", { companyName: verifyItem?.companyName || "" })}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             {/* Current status */}
             <div className="flex items-center gap-2 text-sm">
-              <span className="text-muted-foreground">Status:</span>
+              <span className="text-muted-foreground">{t("verificationStatusLabel")}</span>
               {verifyItem?.domainVerified ? (
-                <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">Verified</Badge>
+                <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">{t("verifiedBadge")}</Badge>
               ) : (
-                <Badge variant="outline" className="text-muted-foreground">Unverified</Badge>
+                <Badge variant="outline" className="text-muted-foreground">{t("verificationUnverified")}</Badge>
               )}
               {verifyItem?.verificationLevel && verifyItem.verificationLevel !== "basic" && (
-                <Badge variant="secondary" className="capitalize">{verifyItem.verificationLevel}</Badge>
+                <Badge variant="secondary" className="capitalize">{t("verificationLevel", { level: verifyItem.verificationLevel })}</Badge>
               )}
             </div>
 
             {/* Documents */}
             <div>
-              <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Uploaded Documents</p>
+              <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">{t("uploadedDocumentsLabel")}</p>
               {(verifyItem?.verificationDocs?.length ?? 0) === 0 ? (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground p-3 rounded-lg bg-muted/30">
                   <FileText className="w-4 h-4" />
-                  No documents uploaded yet
+                  {t("noDocumentsUploaded")}
                 </div>
               ) : (
                 <div className="space-y-1.5">
@@ -424,15 +436,15 @@ export default function AdminEmployersPage() {
                     className="mt-0.5"
                   />
                   <span>
-                    No documents on file. I confirm verification based on out-of-band evidence
-                    <span className="text-muted-foreground"> (override is recorded in the audit log).</span>
+                    {t("noDocumentsOverrideLabel")}
+                    <span className="text-muted-foreground"> {t("overrideAuditNote")}</span>
                   </span>
                 </label>
                 {verifyOverride && (
                   <Input
                     value={verifyReason}
                     onChange={(e) => setVerifyReason(e.target.value)}
-                    placeholder="Reason for override (e.g. verified via phone call / business registry)"
+                    placeholder={t("overridePlaceholder")}
                     className="h-9 text-sm"
                   />
                 )}
@@ -450,7 +462,7 @@ export default function AdminEmployersPage() {
                   className="flex-1"
                 >
                   <ShieldOff className="w-3.5 h-3.5 me-1.5" />
-                  {verifyLoading ? "Revoking…" : "Revoke Verification"}
+                  {verifyLoading ? t("revokeButtonLoading") : t("revokeButtonLabel")}
                 </Button>
               ) : (
                 <Button
@@ -460,11 +472,11 @@ export default function AdminEmployersPage() {
                   className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
                 >
                   <ShieldCheck className="w-3.5 h-3.5 me-1.5" />
-                  {verifyLoading ? "Verifying…" : "Verify Employer"}
+                  {verifyLoading ? t("verifyButtonLoading") : t("verifyButtonLabel")}
                 </Button>
               )}
               <Button variant="outline" size="sm" onClick={() => setVerifyItem(null)}>
-                Close
+                {t("closeButtonLabel")}
               </Button>
             </div>
           </div>

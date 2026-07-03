@@ -14,6 +14,7 @@ const getTranslations = async (arg?: GetTranslationsArg) =>
   useTranslations(namespaceFrom(arg));
 
 const getLocale = async () => "en";
+const setRequestLocale = (_locale: string) => {};
 const getMessages = async () => ({});
 const getNow = async () => new Date();
 const getTimeZone = async () => "UTC";
@@ -26,6 +27,7 @@ const getFormatter = async () => ({
 export {
   getTranslations,
   getLocale,
+  setRequestLocale,
   getMessages,
   getNow,
   getTimeZone,

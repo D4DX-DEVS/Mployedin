@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { Search, UserCheck, UserX, Shield, ChevronDown, Inbox, Plus, Settings2, Check, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,6 +52,7 @@ const ROLE_COLORS: Record<string, string> = {
 const ROLES = ["admin", "super_agent", "agent", "employer", "job_seeker"];
 
 export default function AdminUsersPage() {
+  const t = useTranslations("adminUsers");
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -75,16 +77,16 @@ export default function AdminUsersPage() {
   const [editPerms, setEditPerms] = useState<CustomPermissions>({});
   const [permSaving, setPermSaving] = useState(false);
 
-  useEffect(() => { document.title = "User Management · MPLOYEDIN"; }, []);
+  useEffect(() => { document.title = `${t("userManagement")} · MPLOYEDIN`; }, [t]);
 
   const exportColumns: ExportColumn<User>[] = [
-    { header: "Name", key: "name" },
-    { header: "Email", key: "email" },
-    { header: "Role", key: "role" },
-    { header: "Status", key: "isActive", formatter: (v) => v ? "Active" : "Inactive" },
-    { header: "Locale", key: "locale" },
+    { header: t("userTableHeader"), key: "name" },
+    { header: t("email"), key: "email" },
+    { header: t("roleTableHeader"), key: "role" },
+    { header: t("statusTableHeader"), key: "isActive", formatter: (v) => v ? t("active") : t("inactive") },
+    { header: t("localeTableHeader"), key: "locale" },
     { header: "Last Login", key: "lastLoginAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
-    { header: "Joined", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
+    { header: t("joinedTableHeader"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: users as unknown as Record<string, unknown>[],
@@ -145,7 +147,7 @@ export default function AdminUsersPage() {
   async function handleCreateUser() {
     setCreateError("");
     if (!createForm.name || !createForm.email || !createForm.password || !createForm.role) {
-      setCreateError("All fields are required");
+      setCreateError(t("allFieldsRequired"));
       return;
     }
     setCreateLoading(true);
@@ -170,7 +172,7 @@ export default function AdminUsersPage() {
               .filter(Boolean)
               .join("; ")
           : "";
-        setCreateError(details || e.error || "Failed to create user");
+        setCreateError(details || e.error || t("failedToCreateUser"));
         return;
       }
       setShowCreate(false);
@@ -179,7 +181,7 @@ export default function AdminUsersPage() {
       setCreatePerms({});
       fetchUsers();
     } catch {
-      setCreateError("Network error");
+      setCreateError(t("networkError"));
     } finally {
       setCreateLoading(false);
     }
@@ -225,11 +227,11 @@ export default function AdminUsersPage() {
           <div className="min-w-0 flex-1">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
               <Sparkles className="h-3.5 w-3.5" />
-              Admin workspace
+              {t("adminWorkspace")}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">User Management</h1>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("userManagement")}</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Manage platform users, roles, permissions, and account status. {total.toLocaleString()} total users.
+              {t("userManagementDesc", { total: total.toLocaleString() })}
             </p>
           </div>
         </div>
@@ -242,69 +244,69 @@ export default function AdminUsersPage() {
               <Input
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-                placeholder="Search by name or email…"
+                placeholder={t("searchPlaceholder")}
                 className="h-8 w-52 rounded-lg pl-8 text-sm"
               />
             </div>
             <div className="w-[130px]">
               <InlineSearchSelect
                 options={[
-                  { value: "all", label: "All roles" },
+                  { value: "all", label: t("allRoles") },
                   ...ROLES.map((r) => ({ value: r, label: r.replace("_", " ") })),
                 ]}
                 value={roleFilter}
                 onValueChange={(v) => { setRoleFilter(v); resetPage(); }}
-                placeholder="All roles"
+                placeholder={t("allRoles")}
               />
             </div>
             <div className="w-[120px]">
               <InlineSearchSelect
                 options={[
-                  { value: "all", label: "All status" },
-                  { value: "true", label: "Active" },
-                  { value: "false", label: "Inactive" },
+                  { value: "all", label: t("allStatus") },
+                  { value: "true", label: t("active") },
+                  { value: "false", label: t("inactive") },
                 ]}
                 value={activeFilter}
                 onValueChange={(v) => { setActiveFilter(v); resetPage(); }}
-                placeholder="All status"
+                placeholder={t("allStatus")}
               />
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="h-8 rounded-lg border-border/80">
-                  <Download className="h-3.5 w-3.5" /> Export
+                  <Download className="h-3.5 w-3.5" /> {t("export")}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-44">
-                <DropdownMenuLabel>Export</DropdownMenuLabel>
+                <DropdownMenuLabel>{t("export")}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleExportCsv}><FileText className="h-4 w-4" />CSV</DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExportExcel}><FileSpreadsheet className="h-4 w-4" />Excel</DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExportPdf}><FileText className="h-4 w-4" />PDF</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportCsv}><FileText className="h-4 w-4" />{t("csv")}</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportExcel}><FileSpreadsheet className="h-4 w-4" />{t("excel")}</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportPdf}><FileText className="h-4 w-4" />{t("pdf")}</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             <Button onClick={() => setShowCreate(true)} size="sm" className="h-8 rounded-lg">
-              <Plus className="h-3.5 w-3.5" /> Create User
+              <Plus className="h-3.5 w-3.5" /> {t("createUser")}
             </Button>
         </div>
 
         {/* Bulk Actions Bar */}
         {selected.length > 0 && (
           <div className="flex items-center gap-3 border-b border-border/80 px-5 py-2.5 bg-primary/5">
-            <span className="text-sm font-medium text-primary">{selected.length} selected</span>
+            <span className="text-sm font-medium text-primary">{t("selected", { count: selected.length })}</span>
             <select value={bulkAction} onChange={e => setBulkAction(e.target.value)} className="input-field flex-1 max-w-xs text-sm">
-              <option value="">Bulk action…</option>
-              <option value="setRole:agent">Set Role → Agent</option>
-              <option value="setRole:employer">Set Role → Employer</option>
-              <option value="setRole:job_seeker">Set Role → Job Seeker</option>
-              <option value="activate">Activate selected</option>
-              <option value="deactivate">Deactivate selected</option>
-              <option value="delete">Delete selected</option>
+              <option value="">{t("bulkAction")}</option>
+              <option value="setRole:agent">{t("setRoleAgent")}</option>
+              <option value="setRole:employer">{t("setRoleEmployer")}</option>
+              <option value="setRole:job_seeker">{t("setRoleJobSeeker")}</option>
+              <option value="activate">{t("activate")}</option>
+              <option value="deactivate">{t("deactivate")}</option>
+              <option value="delete">{t("delete")}</option>
             </select>
             <Button size="sm" onClick={applyBulk} disabled={!bulkAction || bulkLoading} className="btn-primary">
-              Apply
+              {t("apply")}
             </Button>
-            <button onClick={() => setSelected([])} className="text-xs text-muted-foreground hover:text-foreground">Clear</button>
+            <button onClick={() => setSelected([])} className="text-xs text-muted-foreground hover:text-foreground">{t("clear")}</button>
           </div>
         )}
 
@@ -317,12 +319,12 @@ export default function AdminUsersPage() {
                   onCheckedChange={toggleAll}
                 />
               </TableHead>
-              <TableHead>User</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Locale</TableHead>
-              <TableHead>Joined</TableHead>
-              <TableHead>Actions</TableHead>
+              <TableHead>{t("userTableHeader")}</TableHead>
+              <TableHead>{t("roleTableHeader")}</TableHead>
+              <TableHead>{t("statusTableHeader")}</TableHead>
+              <TableHead>{t("localeTableHeader")}</TableHead>
+              <TableHead>{t("joinedTableHeader")}</TableHead>
+              <TableHead>{t("actionsTableHeader")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -341,7 +343,7 @@ export default function AdminUsersPage() {
                 <TableCell colSpan={7} className="h-32 text-center">
                   <div className="flex flex-col items-center gap-2 text-muted-foreground">
                     <Inbox className="h-8 w-8 opacity-40" />
-                    <span className="text-sm">No users found matching your filters</span>
+                    <span className="text-sm">{t("noUsers")}</span>
                   </div>
                 </TableCell>
               </TableRow>
@@ -365,7 +367,7 @@ export default function AdminUsersPage() {
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-medium">{user.name || "Unnamed"}</p>
+                        <p className="font-medium">{user.name || t("unnamed")}</p>
                         <p className="text-xs text-muted-foreground">{user.email}</p>
                       </div>
                     </div>
@@ -382,7 +384,7 @@ export default function AdminUsersPage() {
                           </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start" className="w-40">
-                          <DropdownMenuLabel className="text-xs">Change role</DropdownMenuLabel>
+                          <DropdownMenuLabel className="text-xs">{t("changeRole")}</DropdownMenuLabel>
                           <DropdownMenuSeparator />
                           {ROLES.map((r) => (
                             <DropdownMenuItem
@@ -405,7 +407,7 @@ export default function AdminUsersPage() {
                   </TableCell>
                   <TableCell>
                     <Badge className={user.isActive ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-muted text-muted-foreground"}>
-                      {user.isActive ? "Active" : "Inactive"}
+                      {user.isActive ? t("active") : t("inactive")}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground text-xs uppercase">{user.locale}</TableCell>
@@ -416,7 +418,7 @@ export default function AdminUsersPage() {
                         size="sm"
                         variant="ghost"
                         className="h-7 text-xs"
-                        title="Manage permissions"
+                        title={t("managePermissions")}
                         onClick={() => openPermissions(user)}
                       >
                         <Shield className="w-3.5 h-3.5 text-primary" />
@@ -425,7 +427,7 @@ export default function AdminUsersPage() {
                         size="sm"
                         variant="ghost"
                         className="h-7 text-xs"
-                        title={user.isActive ? "Deactivate" : "Activate"}
+                        title={user.isActive ? t("deactivate_user") : t("activate_user")}
                         onClick={() => updateUser(user._id, { isActive: !user.isActive })}
                       >
                         {user.isActive ? (
@@ -449,8 +451,8 @@ export default function AdminUsersPage() {
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-none">
           <DialogHeader>
-            <DialogTitle>Create New User</DialogTitle>
-            <DialogDescription>Create a user with optional custom permissions</DialogDescription>
+            <DialogTitle>{t("createNewUser")}</DialogTitle>
+            <DialogDescription>{t("createUserDesc")}</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
@@ -463,41 +465,41 @@ export default function AdminUsersPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="create-name">Full Name <span className="text-destructive">*</span></Label>
+                <Label htmlFor="create-name">{t("fullName")} <span className="text-destructive">*</span></Label>
                 <Input
                   id="create-name"
                   value={createForm.name}
                   onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
-                  placeholder="John Doe"
+                  placeholder={t("johnDoe")}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="create-email">Email <span className="text-destructive">*</span></Label>
+                <Label htmlFor="create-email">{t("email")} <span className="text-destructive">*</span></Label>
                 <Input
                   id="create-email"
                   type="email"
                   value={createForm.email}
                   onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))}
-                  placeholder="john@example.com"
+                  placeholder={t("johnAtExample")}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="create-password">Password <span className="text-destructive">*</span></Label>
+                <Label htmlFor="create-password">{t("password")} <span className="text-destructive">*</span></Label>
                 <Input
                   id="create-password"
                   type="text"
                   value={createForm.password}
                   onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))}
-                  placeholder="Min 8 characters"
+                  placeholder={t("passwordHint")}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="create-role">Role <span className="text-destructive">*</span></Label>
+                <Label htmlFor="create-role">{t("role")} <span className="text-destructive">*</span></Label>
                 <InlineSearchSelect
                   options={ROLES.map((r) => ({ value: r, label: r.replace("_", " ") }))}
                   value={createForm.role}
                   onValueChange={(v) => setCreateForm((f) => ({ ...f, role: v }))}
-                  placeholder="Select role"
+                  placeholder={t("selectRole")}
                 />
               </div>
             </div>
@@ -516,11 +518,11 @@ export default function AdminUsersPage() {
 
           <DialogFooter className="pt-2">
             <Button type="button" variant="outline" onClick={() => setShowCreate(false)} disabled={createLoading}>
-              Cancel
+              {t("cancel")}
             </Button>
             <Button onClick={handleCreateUser} disabled={createLoading}>
               {createLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-              {createLoading ? "Creating…" : "Create User"}
+              {createLoading ? t("creating") : t("create")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -530,9 +532,9 @@ export default function AdminUsersPage() {
       <Dialog open={!!permUser} onOpenChange={(open) => { if (!open) setPermUser(null); }}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-none">
           <DialogHeader>
-            <DialogTitle>Manage Permissions</DialogTitle>
+            <DialogTitle>{t("managePermissionsTitle")}</DialogTitle>
             <DialogDescription>
-              {permUser?.name} ({permUser?.email}) — Role: {permUser?.role?.replace("_", " ")}
+              {t("managePermissionsDesc", { name: permUser?.name || "", email: permUser?.email || "", role: permUser?.role?.replace("_", " ") || "" })}
             </DialogDescription>
           </DialogHeader>
 
@@ -550,11 +552,11 @@ export default function AdminUsersPage() {
 
           <DialogFooter className="pt-2">
             <Button type="button" variant="outline" onClick={() => setPermUser(null)} disabled={permSaving}>
-              Cancel
+              {t("cancel")}
             </Button>
             <Button onClick={handleSavePermissions} disabled={permSaving}>
               {permSaving && <Loader2 className="h-4 w-4 animate-spin" />}
-              {permSaving ? "Saving…" : "Save Permissions"}
+              {permSaving ? t("saving") : t("save")}
             </Button>
           </DialogFooter>
         </DialogContent>

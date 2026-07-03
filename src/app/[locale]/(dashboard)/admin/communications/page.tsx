@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import {
   ArrowRight,
   Clock,
@@ -21,16 +22,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
 const USER_ROLES = ["all", "job_seeker", "employer", "agent", "super_agent", "admin"];
-const CHANNEL_OPTIONS = [
-  { key: "in_app", label: "In-App" },
-  { key: "email", label: "Email" },
-  { key: "whatsapp", label: "WhatsApp" },
-] as const;
-const TABS = [
-  { key: "broadcast" as const, label: "Broadcast", icon: Radio },
-  { key: "templates" as const, label: "Templates", icon: LayoutTemplate },
-  { key: "history" as const, label: "History", icon: History },
-];
+const TEMPLATE_TYPES_ARRAY = ["onboarding", "transactional", "marketing", "system"] as const;
 const fieldClassName =
   "w-full rounded-2xl border border-slate-200 bg-slate-50/85 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-300 focus:bg-white focus:ring-4 focus:ring-sky-100";
 const panelClassName =
@@ -60,21 +52,8 @@ interface BroadcastTemplate {
   createdAt: string;
 }
 
-const TEMPLATE_TYPES = ["onboarding", "transactional", "marketing", "system"] as const;
-
-function formatRoleLabel(role: string): string {
-  return role === "all" ? "All Users" : role.replace(/_/g, " ");
-}
-
-function formatChannelLabel(channel: string): string {
-  return CHANNEL_OPTIONS.find((option) => option.key === channel)?.label ?? channel.replace(/_/g, " ");
-}
-
-function formatTemplateType(type: string): string {
-  return type.charAt(0).toUpperCase() + type.slice(1);
-}
-
 export default function AdminCommunicationsPage() {
+  const tr = useTranslations("adminCommunications");
   const [tab, setTab] = useState<"broadcast" | "templates" | "history">("broadcast");
   const [form, setForm] = useState<BroadcastForm>({
     title: "",
@@ -190,7 +169,7 @@ export default function AdminCommunicationsPage() {
         const data = await res.json();
         setSentCount(data.sent ?? 0);
         setForm({ title: "", message: "", targetRoles: ["all"], channels: ["in_app"] });
-        toast.success(`Broadcast sent to ${data.sent ?? 0} users`);
+        toast.success(tr("sentToUsers", { count: data.sent ?? 0 }));
         void loadHistory();
         setTimeout(() => setSentCount(null), 4000);
       } else {
@@ -204,15 +183,15 @@ export default function AdminCommunicationsPage() {
     }
   };
 
-  const handleUseTemplate = (t: BroadcastTemplate) => {
-    setForm((prev) => ({ ...prev, title: t.subject, message: t.body }));
+  const handleUseTemplate = (template: BroadcastTemplate) => {
+    setForm((prev) => ({ ...prev, title: template.subject, message: template.body }));
     setTab("broadcast");
-    toast.success(`Loaded template: ${t.name}`);
+    toast.success(tr("recentTemplates"));
   };
 
-  const startEdit = (t: BroadcastTemplate) => {
-    setEditId(t._id);
-    setTemplateForm({ name: t.name, type: t.type, subject: t.subject, body: t.body });
+  const startEdit = (template: BroadcastTemplate) => {
+    setEditId(template._id);
+    setTemplateForm({ name: template.name, type: template.type, subject: template.subject, body: template.body });
     setShowCreate(false);
     setTemplateError("");
   };
@@ -233,11 +212,11 @@ export default function AdminCommunicationsPage() {
         setEditId(null);
         setShowCreate(false);
         setTemplateForm({ name: "", type: "system", subject: "", body: "" });
-        toast.success(id ? "Template updated" : "Template created");
+        toast.success(id ? tr("templateUpdated") : tr("templateCreated"));
         void loadTemplates();
       } else {
         const data = await res.json();
-        const message = data.error ?? "Failed to save template";
+        const message = data.error ?? tr("templateDeleteFailed");
         setTemplateError(message);
         toast.error(message);
       }
@@ -249,7 +228,7 @@ export default function AdminCommunicationsPage() {
   const handleDeleteTemplate = async (id: string) => {
     const template = templates.find((item) => item._id === id);
     const confirmed = window.confirm(
-      `Delete${template ? ` "${template.name}"` : ""}? This cannot be undone.`
+      tr("deleteTemplateConfirm", { template: template?.name || "EMPTY" })
     );
 
     if (!confirmed) {
@@ -261,7 +240,7 @@ export default function AdminCommunicationsPage() {
     try {
       const res = await fetch(`/api/admin/comm-templates/${id}`, { method: "DELETE" });
       if (res.ok) {
-        toast.success("Template deleted");
+        toast.success(tr("templateDeleted"));
         if (editId === id) {
           setEditId(null);
         }
@@ -269,17 +248,55 @@ export default function AdminCommunicationsPage() {
         return;
       }
 
-      toast.error("Failed to delete template");
+      toast.error(tr("templateDeleteFailed"));
     } finally {
       setDeletingTemplateId((current) => (current === id ? null : current));
     }
   };
 
   const selectedAudience = form.targetRoles.includes("all")
-    ? "All platform users"
-    : `${form.targetRoles.length} selected role${form.targetRoles.length === 1 ? "" : "s"}`;
+    ? tr("allPlatformUsers")
+    : tr("selectedRoles", { count: form.targetRoles.length });
   const selectedChannels = form.channels.length;
   const quickTemplates = templates.slice(0, 3);
+
+  const CHANNEL_OPTIONS = [
+    { key: "in_app", label: tr("inAppChannel") },
+    { key: "email", label: tr("emailChannel") },
+    { key: "whatsapp", label: tr("whatsappChannel") },
+  ] as const;
+
+  const TABS = [
+    { key: "broadcast" as const, label: tr("broadcastTabLabel"), icon: Radio },
+    { key: "templates" as const, label: tr("templatesTabLabel"), icon: LayoutTemplate },
+    { key: "history" as const, label: tr("historyTabLabel"), icon: History },
+  ];
+
+  const formatRoleLabel = (role: string): string => {
+    const roleMap: Record<string, string> = {
+      all: tr("allUsersRole"),
+      job_seeker: tr("jobSeekerRole"),
+      employer: tr("employerRole"),
+      agent: tr("agentRole"),
+      super_agent: tr("superAgentRole"),
+      admin: tr("adminRole"),
+    };
+    return roleMap[role] || role.replace(/_/g, " ");
+  };
+
+  const formatChannelLabel = (channel: string): string => {
+    return CHANNEL_OPTIONS.find((option) => option.key === channel)?.label ?? channel.replace(/_/g, " ");
+  };
+
+  const formatTemplateType = (type: string): string => {
+    const typeMap: Record<string, string> = {
+      onboarding: tr("onboardingType"),
+      transactional: tr("transactionalType"),
+      marketing: tr("marketingType"),
+      system: tr("systemType"),
+    };
+    return typeMap[type] || type.charAt(0).toUpperCase() + type.slice(1);
+  };
 
   return (
     <div className="page-container space-y-4">
@@ -289,11 +306,11 @@ export default function AdminCommunicationsPage() {
           <div className="min-w-0 flex-1">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
               <Sparkles className="h-3.5 w-3.5" />
-              Admin workspace
+              {tr("adminWorkspace")}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">Communications Center</h1>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{tr("communicationsCenterHeading")}</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Broadcast announcements, manage templates, and review delivery history.
+              {tr("communicationsCenterDesc")}
             </p>
           </div>
         </div>
@@ -309,7 +326,13 @@ export default function AdminCommunicationsPage() {
                 key={tabOption.key}
                 type="button"
                 onClick={() => setTab(tabOption.key)}
-                aria-label={`Switch to ${tabOption.label} tab`}
+                aria-label={
+                  tabOption.key === "broadcast"
+                    ? tr("switchToBroadcastTab")
+                    : tabOption.key === "templates"
+                      ? tr("switchToTemplatesTab")
+                      : tr("switchToHistoryTab")
+                }
                 aria-pressed={active}
                 className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition ${
                   active
@@ -330,40 +353,40 @@ export default function AdminCommunicationsPage() {
           <form onSubmit={handleSend} className={`${panelClassName} space-y-6`}>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Live broadcast</p>
-                <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950">Send a message across the platform</h2>
-                <p className="mt-1 text-sm text-slate-500">Compose the message once, choose the audience, and deliver it immediately.</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{tr("liveBroadcast")}</p>
+                <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950">{tr("sendMessageTitle")}</h2>
+                <p className="mt-1 text-sm text-slate-500">{tr("sendMessageDesc")}</p>
               </div>
               <div className="rounded-2xl border border-sky-100 bg-sky-50/80 px-4 py-3 text-sm text-sky-900">
-                <p className="font-semibold">{form.channels.length} channel{form.channels.length === 1 ? "" : "s"} selected</p>
-                <p className="mt-1 text-xs text-sky-700">Every selected channel receives the same message body.</p>
+                <p className="font-semibold">{tr("channelsSelected", { count: form.channels.length })}</p>
+                <p className="mt-1 text-xs text-sky-700">{tr("channelDeliveryNote")}</p>
               </div>
             </div>
 
             <div className="grid gap-4 lg:grid-cols-2">
               <div className="space-y-2 lg:col-span-2">
                 <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Title <span className="text-rose-500">*</span>
+                  {tr("titleLabel")} <span className="text-rose-500">*</span>
                 </label>
                 <input
                   value={form.title}
                   onChange={(e) => setForm((current) => ({ ...current, title: e.target.value }))}
                   required
-                  placeholder="Platform update, policy alert, onboarding reminder..."
+                  placeholder={tr("titlePlaceholder")}
                   className={fieldClassName}
                 />
               </div>
 
               <div className="space-y-2 lg:col-span-2">
                 <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Message <span className="text-rose-500">*</span>
+                  {tr("messageLabel")} <span className="text-rose-500">*</span>
                 </label>
                 <textarea
                   value={form.message}
                   onChange={(e) => setForm((current) => ({ ...current, message: e.target.value }))}
                   required
                   rows={6}
-                  placeholder="Write the exact message recipients should receive. Keep the opening clear and action oriented."
+                  placeholder={tr("messagePlaceholder")}
                   className={`${fieldClassName} min-h-[160px] resize-y`}
                 />
               </div>
@@ -371,7 +394,7 @@ export default function AdminCommunicationsPage() {
 
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-3">
-                <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Target audience</label>
+                <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{tr("targetAudienceLabel")}</label>
                 <span className="text-xs text-slate-500">{selectedAudience}</span>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -398,10 +421,10 @@ export default function AdminCommunicationsPage() {
 
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-3">
-                <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Channels</label>
+                <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{tr("channelsLabel")}</label>
                 <span className="inline-flex items-center gap-1 text-xs text-slate-500">
                   <Clock className="h-3.5 w-3.5" />
-                  Sends immediately on submission
+                  {tr("sendsImmediately")}
                 </span>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -435,31 +458,31 @@ export default function AdminCommunicationsPage() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="text-sm text-slate-500">
                 {sentCount !== null ? (
-                  <span className="font-medium text-emerald-600">Sent to {sentCount} users.</span>
+                  <span className="font-medium text-emerald-600">{tr("sentToUsers", { count: sentCount })}</span>
                 ) : (
-                  "Messages are stored in history once delivery starts."
+                  tr("messagesStored")
                 )}
               </div>
               <Button type="submit" disabled={sending} className="h-11 gap-2 rounded-xl bg-sky-600 px-5 text-sm font-semibold text-white hover:bg-sky-700">
                 <Send className="h-4 w-4" />
-                {sending ? "Sending..." : "Send Now"}
+                {sending ? tr("sending") : tr("sendNow")}
               </Button>
             </div>
           </form>
 
           <div className="space-y-6">
             <aside className={panelClassName}>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Delivery notes</p>
-              <h3 className="mt-2 text-lg font-semibold tracking-tight text-slate-950">Keep the message operationally clear</h3>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{tr("deliveryNotes")}</p>
+              <h3 className="mt-2 text-lg font-semibold tracking-tight text-slate-950">{tr("keepMessageClear")}</h3>
               <div className="mt-4 space-y-3 text-sm text-slate-600">
                 <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
-                  Start with the action recipients need to take.
+                  {tr("deliveryNote1")}
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
-                  Reuse templates for repeat announcements to keep wording consistent.
+                  {tr("deliveryNote2")}
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
-                  Limit channels to the ones that matter so the message does not feel noisy.
+                  {tr("deliveryNote3")}
                 </div>
               </div>
             </aside>
@@ -467,15 +490,15 @@ export default function AdminCommunicationsPage() {
             <aside className={panelClassName}>
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Quick start</p>
-                  <h3 className="mt-2 text-lg font-semibold tracking-tight text-slate-950">Recent templates</h3>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{tr("quickStart")}</p>
+                  <h3 className="mt-2 text-lg font-semibold tracking-tight text-slate-950">{tr("recentTemplates")}</h3>
                 </div>
                 <button
                   type="button"
                   onClick={() => setTab("templates")}
                   className="inline-flex items-center gap-1 text-sm font-medium text-sky-700 hover:text-sky-800"
                 >
-                  Manage
+                  {tr("manageTemplates")}
                   <ArrowRight className="h-4 w-4" />
                 </button>
               </div>
@@ -487,7 +510,7 @@ export default function AdminCommunicationsPage() {
                   ))
                 ) : quickTemplates.length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center text-sm text-slate-500">
-                    No templates yet. Create one from the Templates tab to speed up repeat broadcasts.
+                    {tr("noTemplatesYet")}
                   </div>
                 ) : (
                   quickTemplates.map((template) => (
@@ -503,7 +526,7 @@ export default function AdminCommunicationsPage() {
                           onClick={() => handleUseTemplate(template)}
                           className="h-9 rounded-xl border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
                         >
-                          Use
+                          {tr("useTemplateButton")}
                         </Button>
                       </div>
                       <p className="mt-3 line-clamp-2 text-sm text-slate-600">{template.subject}</p>
@@ -520,9 +543,9 @@ export default function AdminCommunicationsPage() {
         <section className="space-y-6">
           <div className={`${panelClassName} flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between`}>
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Reusable content</p>
-              <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950">Template library</h2>
-              <p className="mt-1 text-sm text-slate-500">Keep repeat announcements structured and ready to send.</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{tr("reusableContent")}</p>
+              <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950">{tr("templateLibrary")}</h2>
+              <p className="mt-1 text-sm text-slate-500">{tr("templateLibraryDesc")}</p>
             </div>
             <Button
               type="button"
@@ -535,32 +558,32 @@ export default function AdminCommunicationsPage() {
               className="h-11 gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700"
             >
               <Plus className="h-4 w-4" />
-              {showCreate ? "Cancel" : "New Template"}
+              {showCreate ? tr("cancelButton") : tr("newTemplateButton")}
             </Button>
           </div>
 
           {showCreate ? (
             <form onSubmit={(e) => handleSaveTemplate(e)} className={`${panelClassName} space-y-5`}>
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Create template</p>
-                <h3 className="mt-2 text-lg font-semibold tracking-tight text-slate-950">Save a message pattern for later</h3>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{tr("createTemplateHeading")}</p>
+                <h3 className="mt-2 text-lg font-semibold tracking-tight text-slate-950">{tr("createTemplateSub")}</h3>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    Name <span className="text-rose-500">*</span>
+                    {tr("nameLabel")} <span className="text-rose-500">*</span>
                   </label>
                   <input
                     required
                     value={templateForm.name}
                     onChange={(e) => setTemplateForm((current) => ({ ...current, name: e.target.value }))}
-                    placeholder="New user activation"
+                    placeholder={tr("namePlaceholder")}
                     className={fieldClassName}
                   />
                 </div>
                 <div className="space-y-2">
                   <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    Type <span className="text-rose-500">*</span>
+                    {tr("typeLabel")} <span className="text-rose-500">*</span>
                   </label>
                   <select
                     required
@@ -568,7 +591,7 @@ export default function AdminCommunicationsPage() {
                     onChange={(e) => setTemplateForm((current) => ({ ...current, type: e.target.value }))}
                     className={fieldClassName}
                   >
-                    {TEMPLATE_TYPES.map((type) => (
+                    {TEMPLATE_TYPES_ARRAY.map((type) => (
                       <option key={type} value={type}>
                         {formatTemplateType(type)}
                       </option>
@@ -577,26 +600,26 @@ export default function AdminCommunicationsPage() {
                 </div>
                 <div className="space-y-2 md:col-span-2">
                   <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    Subject / Title <span className="text-rose-500">*</span>
+                    {tr("subjectLabel")} <span className="text-rose-500">*</span>
                   </label>
                   <input
                     required
                     value={templateForm.subject}
                     onChange={(e) => setTemplateForm((current) => ({ ...current, subject: e.target.value }))}
-                    placeholder="Your account is ready"
+                    placeholder={tr("subjectPlaceholder")}
                     className={fieldClassName}
                   />
                 </div>
                 <div className="space-y-2 md:col-span-2">
                   <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    Body <span className="text-rose-500">*</span>
+                    {tr("bodyLabel")} <span className="text-rose-500">*</span>
                   </label>
                   <textarea
                     required
                     rows={5}
                     value={templateForm.body}
                     onChange={(e) => setTemplateForm((current) => ({ ...current, body: e.target.value }))}
-                    placeholder="Write the reusable message body here..."
+                    placeholder={tr("bodyPlaceholder")}
                     className={`${fieldClassName} min-h-[150px] resize-y`}
                   />
                 </div>
@@ -610,7 +633,7 @@ export default function AdminCommunicationsPage() {
 
               <div className="flex justify-end">
                 <Button type="submit" disabled={templateSaving} className="h-11 rounded-xl bg-sky-600 px-5 text-sm font-semibold text-white hover:bg-sky-700">
-                  {templateSaving ? "Saving..." : "Save Template"}
+                  {templateSaving ? tr("saving") : tr("saveTemplate")}
                 </Button>
               </div>
             </form>
@@ -624,7 +647,7 @@ export default function AdminCommunicationsPage() {
             ) : templates.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-14 text-center text-sm text-slate-500">
                 <FileText className="mx-auto mb-3 h-8 w-8 text-slate-300" />
-                No templates yet. Create one to keep recurring broadcasts consistent.
+                {tr("noTemplatesInLibrary")}
               </div>
             ) : (
               templates.map((template) => (
@@ -650,7 +673,7 @@ export default function AdminCommunicationsPage() {
                         className="h-10 gap-2 rounded-xl border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
                       >
                         <Pencil className="h-4 w-4" />
-                        Edit
+                        {tr("editButton")}
                       </Button>
                       <Button
                         type="button"
@@ -658,7 +681,7 @@ export default function AdminCommunicationsPage() {
                         className="h-10 gap-2 rounded-xl bg-sky-600 text-sm font-semibold text-white hover:bg-sky-700"
                       >
                         <Megaphone className="h-4 w-4" />
-                        Use Template
+                        {tr("useTemplateAction")}
                       </Button>
                       <Button
                         type="button"
@@ -668,7 +691,7 @@ export default function AdminCommunicationsPage() {
                         className="h-10 gap-2 rounded-xl border-rose-200 bg-white text-rose-600 hover:bg-rose-50 hover:text-rose-700"
                       >
                         <Trash2 className="h-4 w-4" />
-                        {deletingTemplateId === template._id ? "Deleting..." : "Delete"}
+                        {deletingTemplateId === template._id ? tr("deleting") : tr("deleteButton")}
                       </Button>
                     </div>
                   </div>
@@ -677,7 +700,7 @@ export default function AdminCommunicationsPage() {
                     <form onSubmit={(e) => handleSaveTemplate(e, template._id)} className="mt-5 space-y-4 rounded-2xl border border-slate-200 bg-white p-4">
                       <div className="grid gap-4 md:grid-cols-2">
                         <div className="space-y-2">
-                          <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Name</label>
+                          <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{tr("nameLabel")}</label>
                           <input
                             required
                             value={templateForm.name}
@@ -686,14 +709,14 @@ export default function AdminCommunicationsPage() {
                           />
                         </div>
                         <div className="space-y-2">
-                          <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Type</label>
+                          <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{tr("templateType")}</label>
                           <select
                             required
                             value={templateForm.type}
                             onChange={(e) => setTemplateForm((current) => ({ ...current, type: e.target.value }))}
                             className={fieldClassName}
                           >
-                            {TEMPLATE_TYPES.map((type) => (
+                            {TEMPLATE_TYPES_ARRAY.map((type) => (
                               <option key={type} value={type}>
                                 {formatTemplateType(type)}
                               </option>
@@ -710,7 +733,7 @@ export default function AdminCommunicationsPage() {
                           />
                         </div>
                         <div className="space-y-2 md:col-span-2">
-                          <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Body</label>
+                          <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{tr("bodyLabel")}</label>
                           <textarea
                             required
                             rows={4}
@@ -729,10 +752,10 @@ export default function AdminCommunicationsPage() {
 
                       <div className="flex flex-wrap justify-end gap-2">
                         <Button type="button" variant="outline" onClick={() => setEditId(null)} className="h-10 rounded-xl border-slate-200 bg-white text-slate-700 hover:bg-slate-100">
-                          Cancel
+                          {tr("cancelButton")}
                         </Button>
                         <Button type="submit" disabled={templateSaving} className="h-10 rounded-xl bg-sky-600 text-sm font-semibold text-white hover:bg-sky-700">
-                          {templateSaving ? "Saving..." : "Save Changes"}
+                          {templateSaving ? tr("saving") : tr("saveTemplate")}
                         </Button>
                       </div>
                     </form>
@@ -747,14 +770,14 @@ export default function AdminCommunicationsPage() {
       {tab === "history" ? (
         <section className={`${panelClassName} space-y-4`}>
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Sent broadcasts</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950">Recent delivery activity</h2>
-            <p className="mt-1 text-sm text-slate-500">Review what was sent, when it was delivered, and which primary channel was used.</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{tr("broadcastHistoryHead")}</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950">{tr("recentActivityHeading")}</h2>
+            <p className="mt-1 text-sm text-slate-500">{tr("recentActivityDesc")}</p>
           </div>
 
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <Input placeholder="Search broadcasts..." value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} className="pl-9 h-9 text-sm border-slate-200 bg-white" />
+            <Input placeholder={tr("searchPlaceholder")} value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} className="pl-9 h-9 text-sm border-slate-200 bg-white" />
           </div>
 
           {historyLoading ? (
@@ -764,7 +787,7 @@ export default function AdminCommunicationsPage() {
           ) : history.filter((r) => r.title.toLowerCase().includes(historySearch.toLowerCase()) || r.body?.toLowerCase().includes(historySearch.toLowerCase())).length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-14 text-center text-sm text-slate-500">
               <History className="mx-auto mb-3 h-8 w-8 text-slate-300" />
-              {history.length === 0 ? "No broadcasts sent yet. Messages sent from the Broadcast tab will appear here." : "No broadcasts match your search."}
+              {history.length === 0 ? tr("noBroadcastsSent") : tr("noSearchResults")}
             </div>
           ) : (
             history.filter((r) => r.title.toLowerCase().includes(historySearch.toLowerCase()) || r.body?.toLowerCase().includes(historySearch.toLowerCase())).map((record) => (
@@ -780,7 +803,7 @@ export default function AdminCommunicationsPage() {
                     <p className="max-w-3xl whitespace-pre-wrap text-sm leading-6 text-slate-600">{record.body}</p>
                   </div>
                   <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Sent</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{tr("sentLabel")}</p>
                     <p className="mt-2 font-medium text-slate-900">{new Date(record.createdAt).toLocaleString()}</p>
                   </div>
                 </div>

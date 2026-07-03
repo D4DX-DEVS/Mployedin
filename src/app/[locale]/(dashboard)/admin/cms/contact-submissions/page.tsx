@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
 import { useConfirm } from "@/hooks/useConfirm";
@@ -42,20 +43,8 @@ interface ContactItem {
   createdAt: string;
 }
 
-const CONTACT_FILTER_FIELDS: CmsFilterField[] = [
-  { type: "search", placeholder: "Search name, email, subject, or message…" },
-  {
-    type: "status",
-    label: "Read status",
-    options: [
-      { value: "all", label: "All messages" },
-      { value: "unread", label: "Unread" },
-      { value: "read", label: "Read" },
-    ],
-  },
-];
-
 export default function ContactSubmissionsPage() {
+  const t = useTranslations("adminCmsContactSubmissions");
   const [items, setItems] = useState<ContactItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterValues, setFilterValues] = useState<CmsFilterValues>(getDefaultCmsFilterValues);
@@ -64,7 +53,20 @@ export default function ContactSubmissionsPage() {
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
 
-  const hasActiveFilters = cmsFiltersAreActive(filterValues, CONTACT_FILTER_FIELDS);
+  const contactFilterFields: CmsFilterField[] = [
+    { type: "search", placeholder: t("searchPlaceholder") },
+    {
+      type: "status",
+      label: t("readStatusLabel"),
+      options: [
+        { value: "all", label: t("allMessagesOption") },
+        { value: "unread", label: t("unreadOption") },
+        { value: "read", label: t("readOption") },
+      ],
+    },
+  ];
+
+  const hasActiveFilters = cmsFiltersAreActive(filterValues, contactFilterFields);
 
   const resetFilters = useCallback(() => {
     setFilterValues(getDefaultCmsFilterValues());
@@ -76,7 +78,7 @@ export default function ContactSubmissionsPage() {
     try {
       const params = buildCmsQueryParams(
         filterValues,
-        CONTACT_FILTER_FIELDS,
+        contactFilterFields,
         new URLSearchParams({ page: String(page), limit: String(limit) })
       );
       const r = await fetch(`/api/admin/cms/contact-submissions?${params}`);
@@ -103,7 +105,7 @@ export default function ContactSubmissionsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    const ok = await confirmDialog("Are you sure you want to delete this submission?");
+    const ok = await confirmDialog(t("deleteConfirmation"));
     if (!ok) return;
     await fetch(`/api/admin/cms/contact-submissions/${id}`, { method: "DELETE" });
     fetchItems();
@@ -128,20 +130,20 @@ export default function ContactSubmissionsPage() {
           <div className="max-w-3xl">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
               <Sparkles className="h-3.5 w-3.5" />
-              CMS Workspace
+              {t("cmsWorkspace")}
             </div>
             <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-              Contact Inbox
+              {t("contactInbox")}
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              View and manage messages from the public contact form. Keep track of inquiries and respond promptly.
+              {t("heroDescription")}
             </p>
           </div>
 
           <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Total messages</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("totalMessages")}</p>
             <p className="mt-1 text-lg font-semibold text-foreground">{total.toLocaleString()}</p>
-            <p className="text-xs text-muted-foreground">Across {totalPages} page{totalPages === 1 ? "" : "s"}</p>
+            <p className="text-xs text-muted-foreground">{t("acrossPages", { count: totalPages })}</p>
           </div>
         </div>
 
@@ -150,50 +152,50 @@ export default function ContactSubmissionsPage() {
           <div className="workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Total</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statTotal")}</p>
                 <p className="mt-3 text-4xl font-semibold tracking-tight text-foreground">{total}</p>
               </div>
               <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 dark:bg-amber-950/30">
                 <Mail className="h-5 w-5 text-amber-600" />
               </span>
             </div>
-            <p className="mt-3 text-sm leading-5 text-muted-foreground">All submissions</p>
+            <p className="mt-3 text-sm leading-5 text-muted-foreground">{t("allSubmissions")}</p>
           </div>
           <div className="workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Unread</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statUnread")}</p>
                 <p className="mt-3 text-4xl font-semibold tracking-tight text-foreground">{unreadCount}</p>
               </div>
               <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-50 dark:bg-sky-950/30">
                 <MessageSquare className="h-5 w-5 text-sky-600" />
               </span>
             </div>
-            <p className="mt-3 text-sm leading-5 text-muted-foreground">Awaiting review</p>
+            <p className="mt-3 text-sm leading-5 text-muted-foreground">{t("awaitingReview")}</p>
           </div>
           <div className="workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Read</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statRead")}</p>
                 <p className="mt-3 text-4xl font-semibold tracking-tight text-foreground">{items.length - unreadCount}</p>
               </div>
               <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 dark:bg-emerald-950/30">
                 <MailOpen className="h-5 w-5 text-emerald-600" />
               </span>
             </div>
-            <p className="mt-3 text-sm leading-5 text-muted-foreground">Already reviewed</p>
+            <p className="mt-3 text-sm leading-5 text-muted-foreground">{t("alreadyReviewed")}</p>
           </div>
         </div>
 
         <CmsHeroFilters
-          fields={CONTACT_FILTER_FIELDS}
+          fields={contactFilterFields}
           values={filterValues}
           onChange={handleFilterChange}
           onReset={resetFilters}
           hasActiveFilters={hasActiveFilters}
           showFilters={showFilters}
           onToggleFilters={() => setShowFilters((v) => !v)}
-          searchPlaceholder="Search name, email, subject, or message…"
+          searchPlaceholder={t("searchPlaceholder")}
         />
       </section>
 
@@ -203,11 +205,11 @@ export default function ContactSubmissionsPage() {
             <TableHeader>
               <TableRow className="border-border/80 bg-secondary/72 hover:bg-secondary/72">
                 <TableHead className="w-[30px]"></TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Subject</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t("tableHeaderName")}</TableHead>
+                <TableHead>{t("tableHeaderEmail")}</TableHead>
+                <TableHead>{t("tableHeaderSubject")}</TableHead>
+                <TableHead>{t("tableHeaderDate")}</TableHead>
+                <TableHead className="text-right">{t("tableHeaderActions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -229,15 +231,15 @@ export default function ContactSubmissionsPage() {
                         <Inbox className="h-7 w-7 text-muted-foreground" />
                       </div>
                       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                        {hasActiveFilters ? "No matching messages" : "No messages yet"}
+                        {hasActiveFilters ? t("emptyStateNoMatchingLabel") : t("emptyStateNoMessagesLabel")}
                       </p>
                       <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">
-                        {hasActiveFilters ? "No messages match the current search." : "No contact messages found."}
+                        {hasActiveFilters ? t("emptyStateNoMatchingTitle") : t("emptyStateNoContactsTitle")}
                       </h3>
                       <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-muted-foreground">
                         {hasActiveFilters
-                          ? "Adjust the filters or check back later."
-                          : "When visitors submit the contact form, messages will appear here."}
+                          ? t("emptyStateNoMatchingDesc")
+                          : t("emptyStateNoContactsDesc")}
                       </p>
                       {hasActiveFilters && (
                         <Button
@@ -245,7 +247,7 @@ export default function ContactSubmissionsPage() {
                           variant="outline"
                           className="mt-4 h-9 rounded-xl border-border bg-background/70 px-4 text-sm"
                         >
-                          Clear filters
+                          {t("clearFiltersButton")}
                         </Button>
                       )}
                     </div>
@@ -268,10 +270,10 @@ export default function ContactSubmissionsPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-end gap-1">
-                        <Button variant="ghost" size="xs" onClick={() => handleView(item)} title="View">
+                        <Button variant="ghost" size="xs" onClick={() => handleView(item)} title={t("viewButtonTitle")}>
                           <Eye className="h-3.5 w-3.5 text-primary" />
                         </Button>
-                        <Button variant="ghost" size="xs" onClick={() => handleDelete(item._id)} title="Delete">
+                        <Button variant="ghost" size="xs" onClick={() => handleDelete(item._id)} title={t("deleteButtonTitle")}>
                           <Trash2 className="h-3.5 w-3.5 text-destructive" />
                         </Button>
                       </div>
@@ -299,41 +301,41 @@ export default function ContactSubmissionsPage() {
       <Dialog open={!!viewItem} onOpenChange={(open) => { if (!open) setViewItem(null); }}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Contact Message</DialogTitle>
-            <DialogDescription className="sr-only">View the full details of the selected contact form submission.</DialogDescription>
+            <DialogTitle>{t("dialogTitle")}</DialogTitle>
+            <DialogDescription className="sr-only">{t("dialogDescription")}</DialogDescription>
           </DialogHeader>
           {viewItem && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <p className="font-medium text-muted-foreground">Name</p>
+                  <p className="font-medium text-muted-foreground">{t("fieldName")}</p>
                   <p>{viewItem.name}</p>
                 </div>
                 <div>
-                  <p className="font-medium text-muted-foreground">Email</p>
+                  <p className="font-medium text-muted-foreground">{t("fieldEmail")}</p>
                   <p>{viewItem.email}</p>
                 </div>
                 <div>
-                  <p className="font-medium text-muted-foreground">Phone</p>
+                  <p className="font-medium text-muted-foreground">{t("fieldPhone")}</p>
                   <p>{viewItem.phone || "—"}</p>
                 </div>
                 <div>
-                  <p className="font-medium text-muted-foreground">Date</p>
+                  <p className="font-medium text-muted-foreground">{t("fieldDate")}</p>
                   <p>{new Date(viewItem.createdAt).toLocaleString()}</p>
                 </div>
               </div>
               <div>
-                <p className="font-medium text-muted-foreground text-sm">Subject</p>
+                <p className="font-medium text-muted-foreground text-sm">{t("fieldSubject")}</p>
                 <p className="font-medium">{viewItem.subject || "—"}</p>
               </div>
               <div>
-                <p className="font-medium text-muted-foreground text-sm">Message</p>
+                <p className="font-medium text-muted-foreground text-sm">{t("fieldMessage")}</p>
                 <div className="mt-1 rounded-lg border bg-muted/50 p-4 text-sm whitespace-pre-wrap">
                   {viewItem.message}
                 </div>
               </div>
               <div className="text-xs text-muted-foreground">
-                IP: {viewItem.ipAddress}
+                {t("ipLabel")}: {viewItem.ipAddress}
               </div>
             </div>
           )}

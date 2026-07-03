@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState, useEffect, useCallback } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -92,33 +93,19 @@ interface AIInsightsData {
 /* ------------------------------------------------------------------ */
 
 const STATUSES = ["applied", "shortlisted", "interview_scheduled", "selected", "offer", "hired", "rejected", "withdrawn"];
-const STATUS_OPTIONS = [{ value: "", label: "All Statuses" }, ...STATUSES.map((s) => ({ value: s, label: statusLabel(s) }))];
-const SOURCE_OPTIONS = [
-  { value: "", label: "All Sources" },
-  { value: "easy_apply", label: "Easy Apply" },
-  { value: "full_form", label: "Full Form" },
-  { value: "direct", label: "Direct" },
-  { value: "auto_apply", label: "Auto Apply" },
-];
-const SORT_OPTIONS = [
-  { value: "appliedAt", label: "Applied Date" },
-  { value: "aiMatchScore", label: "AI Match Score" },
-  { value: "status", label: "Status" },
-];
-const SCORE_RANGE_OPTIONS = [
-  { value: "", label: "All Scores" },
-  { value: "80-100", label: "Excellent (80–100)" },
-  { value: "60-79", label: "Good (60–79)" },
-  { value: "40-59", label: "Average (40–59)" },
-  { value: "0-39", label: "Low (0–39)" },
-];
 
-function statusLabel(s: string) {
-  return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-function sourceLabel(s?: string) {
-  return SOURCE_OPTIONS.find((o) => o.value === s)?.label ?? s ?? "—";
+function statusLabelKey(s: string): string {
+  const key: Record<string, string> = {
+    applied: "appliedStatus",
+    shortlisted: "shortlistedStatus",
+    interview_scheduled: "interviewScheduledStatus",
+    selected: "selectedStatus",
+    offer: "offerStatus",
+    hired: "hiredStatus",
+    rejected: "rejectedStatus",
+    withdrawn: "withdrawnStatus",
+  };
+  return key[s] || s;
 }
 
 function InsightIcon({ type }: { type: string }) {
@@ -150,6 +137,7 @@ function ScoreBadge({ score }: { score?: number }) {
 /* ------------------------------------------------------------------ */
 
 export default function AdminApplicationsPage() {
+  const t = useTranslations("adminApplications");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -186,6 +174,38 @@ export default function AdminApplicationsPage() {
   const [isApplyingAiSearch, setIsApplyingAiSearch] = useState(false);
 
   const activeFilters = [jobIdFilter, status, employerId, source, scoreRange, dateFrom, dateTo].filter(Boolean).length;
+
+  // Build STATUS_OPTIONS, SOURCE_OPTIONS, SORT_OPTIONS, SCORE_RANGE_OPTIONS inside component for translations
+  const STATUS_OPTIONS = [{ value: "", label: t("allStatuses") }, ...STATUSES.map((s) => ({ value: s, label: t(statusLabelKey(s)) }))];
+  const SOURCE_OPTIONS = [
+    { value: "", label: t("allSources") },
+    { value: "easy_apply", label: t("sourceEasyApply") },
+    { value: "full_form", label: t("sourceFullForm") },
+    { value: "direct", label: t("sourceDirect") },
+    { value: "auto_apply", label: t("sourceAutoApply") },
+  ];
+  const SORT_OPTIONS = [
+    { value: "appliedAt", label: t("appliedDate") },
+    { value: "aiMatchScore", label: t("aiMatchScore") },
+    { value: "status", label: t("status") },
+  ];
+  const SCORE_RANGE_OPTIONS = [
+    { value: "", label: t("allScores") },
+    { value: "80-100", label: t("excellent80100") },
+    { value: "60-79", label: t("good6079") },
+    { value: "40-59", label: t("average4059") },
+    { value: "0-39", label: t("low039") },
+  ];
+
+  const sourceLabel = (s?: string): string => {
+    const key: Record<string, string> = {
+      easy_apply: "sourceEasyApply",
+      full_form: "sourceFullForm",
+      direct: "sourceDirect",
+      auto_apply: "sourceAutoApply",
+    };
+    return key[s || ""] ? t(key[s || ""]) : s ?? "—";
+  };
 
   const exportColumns: ExportColumn<Application>[] = [
     { header: "Applicant", key: "jobSeekerId" as keyof Application, formatter: (_v, r) => { const a = r as unknown as Application; return a.jobSeekerId?.fullName ?? a.jobSeekerId?.userId?.name ?? "—"; } },
@@ -320,21 +340,21 @@ export default function AdminApplicationsPage() {
           <div className="max-w-3xl">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
               <Sparkles className="h-3.5 w-3.5" />
-              Recruitment Control
+              {t("recruitmentControl")}
             </div>
             <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-              Applications
+              {t("applications")}
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              View and manage all job applications across the platform — track pipeline health, AI match scores, and candidate sources.
+              {t("applicationsDescription")}
             </p>
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Pipeline</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">{stats?.totalAll ?? total} total</p>
-              <p className="text-xs text-muted-foreground">Avg score: {stats?.avgAiScore ?? 0}%</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("pipeline")}</p>
+              <p className="mt-1 text-lg font-semibold text-foreground">{stats?.totalAll ?? total} {t("total")}</p>
+              <p className="text-xs text-muted-foreground">{t("avgScore")} {stats?.avgAiScore ?? 0}%</p>
             </div>
             <Button
               variant={showAiPanel ? "default" : "outline"}
@@ -345,7 +365,7 @@ export default function AdminApplicationsPage() {
               className="h-11 gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700 border-0"
             >
               <Sparkles className="h-4 w-4" />
-              AI Insights
+              {t("aiInsights")}
             </Button>
           </div>
         </div>
@@ -353,10 +373,10 @@ export default function AdminApplicationsPage() {
         {/* Stats Row */}
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {([
-            { label: "Total", value: stats?.totalAll ?? 0, note: "All applications", icon: FileText, tone: "text-sky-600", chip: "bg-sky-50 dark:bg-sky-950/30" },
-            { label: "Today", value: stats?.todayCount ?? 0, note: "New today", icon: TrendingUp, tone: "text-emerald-600", chip: "bg-emerald-50 dark:bg-emerald-950/30" },
-            { label: "AI Scored", value: stats?.scoredCount ?? 0, note: `Avg: ${stats?.avgAiScore ?? 0}%`, icon: Brain, tone: "text-violet-600", chip: "bg-violet-50 dark:bg-violet-950/30" },
-            { label: "In Shortlist", value: stats?.byStatus?.["shortlisted"] ?? 0, note: "Pipeline", icon: Users, tone: "text-amber-600", chip: "bg-amber-50 dark:bg-amber-950/30" },
+            { label: t("totalApps"), value: stats?.totalAll ?? 0, note: t("allApplications"), icon: FileText, tone: "text-sky-600", chip: "bg-sky-50 dark:bg-sky-950/30" },
+            { label: t("today"), value: stats?.todayCount ?? 0, note: t("newToday"), icon: TrendingUp, tone: "text-emerald-600", chip: "bg-emerald-50 dark:bg-emerald-950/30" },
+            { label: t("aiScored"), value: stats?.scoredCount ?? 0, note: `${t("avgColon")} ${stats?.avgAiScore ?? 0}%`, icon: Brain, tone: "text-violet-600", chip: "bg-violet-50 dark:bg-violet-950/30" },
+            { label: t("inShortlist"), value: stats?.byStatus?.["shortlisted"] ?? 0, note: t("pipelineLabel"), icon: Users, tone: "text-amber-600", chip: "bg-amber-50 dark:bg-amber-950/30" },
           ] as const).map(({ label, value, note, icon: Icon, tone, chip }) => (
             <div key={label} className="workspace-glass-panel rounded-2xl p-4">
               <div className="flex items-start justify-between gap-3">
@@ -379,11 +399,11 @@ export default function AdminApplicationsPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-sky-500" />
-                <h3 className="text-lg font-semibold">AI Pipeline Insights</h3>
+                <h3 className="text-lg font-semibold">{t("aiPipelineInsights")}</h3>
               </div>
               <Button variant="ghost" size="sm" onClick={fetchAiInsights} disabled={aiLoading} className="gap-1.5">
                 <RefreshCw className={`h-3.5 w-3.5 ${aiLoading ? "animate-spin" : ""}`} />
-                Refresh
+                {t("refresh")}
               </Button>
             </div>
 
@@ -405,7 +425,7 @@ export default function AdminApplicationsPage() {
                       }`}>
                         {aiInsights.healthScore}
                       </div>
-                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Health</span>
+                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{t("health")}</span>
                     </div>
                   )}
                   <p className="flex-1 text-sm leading-relaxed text-muted-foreground">{aiInsights.summary}</p>
@@ -428,7 +448,7 @@ export default function AdminApplicationsPage() {
                 {aiInsights.recommendations.length > 0 && (
                   <div className="rounded-xl border border-sky-200/50 bg-sky-50/50 p-3 space-y-1.5 dark:border-sky-800/30 dark:bg-sky-950/20">
                     <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-sky-700 dark:text-sky-400">
-                      <Zap className="h-3.5 w-3.5" /> Recommendations
+                      <Zap className="h-3.5 w-3.5" /> {t("recommendations")}
                     </p>
                     {aiInsights.recommendations.map((rec, i) => (
                       <p key={i} className="pl-5 text-sm text-sky-900 dark:text-sky-200">• {rec}</p>
@@ -439,7 +459,7 @@ export default function AdminApplicationsPage() {
                 <div className="grid gap-3 sm:grid-cols-2">
                   {aiInsights.data.topJobs.length > 0 && (
                     <div className="rounded-xl border border-border/50 p-3">
-                      <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Top Jobs (30d)</p>
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("topJobs30d")}</p>
                       <div className="space-y-2">
                         {aiInsights.data.topJobs.map((j, i) => (
                           <div key={i} className="flex items-center justify-between text-sm">
@@ -448,7 +468,7 @@ export default function AdminApplicationsPage() {
                               <span className="text-xs text-muted-foreground">{j.company}</span>
                             </div>
                             <div className="flex shrink-0 items-center gap-2">
-                              <Badge variant="secondary" className="text-[10px]">{j.applications} apps</Badge>
+                              <Badge variant="secondary" className="text-[10px]">{j.applications} {t("apps")}</Badge>
                               <ScoreBadge score={j.avgScore || undefined} />
                             </div>
                           </div>
@@ -458,15 +478,15 @@ export default function AdminApplicationsPage() {
                   )}
                   {aiInsights.data.avgDaysInPipeline > 0 && (
                     <div className="rounded-xl border border-border/50 p-3">
-                      <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Pipeline Metrics</p>
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("pipelineMetrics")}</p>
                       <div className="space-y-2">
                         <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">Avg. days in pipeline</span>
+                          <span className="text-muted-foreground">{t("avgDaysInPipeline")}</span>
                           <span className="font-semibold">{aiInsights.data.avgDaysInPipeline}d</span>
                         </div>
                         {aiInsights.data.scoreDistribution.map((sd, i) => (
                           <div key={i} className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">Score {sd.range}</span>
+                            <span className="text-muted-foreground">{t("scoreRange")} {sd.range}</span>
                             <span className="font-medium">{sd.count}</span>
                           </div>
                         ))}
@@ -476,7 +496,7 @@ export default function AdminApplicationsPage() {
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">Click Refresh to load AI insights.</p>
+              <p className="text-sm text-muted-foreground">{t("clickRefreshToLoad")}</p>
             )}
           </div>
         )}
@@ -489,19 +509,19 @@ export default function AdminApplicationsPage() {
             className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-white/10 dark:hover:bg-white/5"
           >
             <Filter className="h-4 w-4 text-muted-foreground" />
-            {showFilters ? "Hide Filters" : "Show Filters"}
-            {activeFilters > 0 && <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">{activeFilters} active</Badge>}
+            {showFilters ? t("hideFilters") : t("showFilters")}
+            {activeFilters > 0 && <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">{activeFilters} {t("active")}</Badge>}
             {showFilters ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
           </button>
           <div className="flex items-center gap-2">
             {jobIdFilter && (
               <Badge variant="secondary" className="rounded-full px-2.5 py-1 text-[11px] font-medium">
-                Selected job only
+                {t("selectedJobOnly")}
               </Badge>
             )}
             {activeFilters > 0 && (
               <Button variant="ghost" size="sm" onClick={clearAllFilters} className="gap-1.5 text-xs text-muted-foreground">
-                Clear filters
+                {t("clearFilters")}
               </Button>
             )}
             <TableToolbar
@@ -518,7 +538,7 @@ export default function AdminApplicationsPage() {
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Search applicant, job, company, skills…"
+                placeholder={t("searchPlaceholder")}
                 value={search}
                 onChange={(v) => { setSearch(v.target.value); resetPage(); }}
                 className="h-11 rounded-xl border-border bg-card pl-9 text-sm shadow-none"
@@ -531,7 +551,7 @@ export default function AdminApplicationsPage() {
                 options={STATUS_OPTIONS}
                 value={status}
                 onValueChange={(v) => { setStatus(v); resetPage(); }}
-                placeholder="All Statuses"
+                placeholder={t("allStatuses")}
               />
               {employerOptions.length > 2 && (
                 <SearchableSelect
@@ -539,7 +559,7 @@ export default function AdminApplicationsPage() {
                   options={employerOptions}
                   value={employerId}
                   onValueChange={(v) => { setEmployerId(v); resetPage(); }}
-                  placeholder="All Employers"
+                  placeholder={t("allEmployers")}
                 />
               )}
               <SearchableSelect
@@ -547,7 +567,7 @@ export default function AdminApplicationsPage() {
                 options={SOURCE_OPTIONS}
                 value={source}
                 onValueChange={(v) => { setSource(v); resetPage(); }}
-                placeholder="All Sources"
+                placeholder={t("allSources")}
               />
             </div>
 
@@ -558,11 +578,11 @@ export default function AdminApplicationsPage() {
                 className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
               >
                 <Filter className="h-3.5 w-3.5" />
-                Advanced Filters
+                {t("advancedFilters")}
                 {showAdvancedFilters ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
               </button>
               {activeFilters > 0 && (
-                <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">{activeFilters} active</Badge>
+                <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">{activeFilters} {t("active")}</Badge>
               )}
             </div>
 
@@ -573,7 +593,7 @@ export default function AdminApplicationsPage() {
                   options={SCORE_RANGE_OPTIONS}
                   value={scoreRange}
                   onValueChange={(v) => { setScoreRange(v); resetPage(); }}
-                  placeholder="All AI Scores"
+                  placeholder={t("allScores")}
                 />
                 <div className="relative">
                   <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -598,7 +618,7 @@ export default function AdminApplicationsPage() {
                   options={SORT_OPTIONS}
                   value={sortBy}
                   onValueChange={(v) => { setSortBy(v); resetPage(); }}
-                  placeholder="Sort by"
+                  placeholder={t("sortBy")}
                 />
               </div>
             )}
@@ -607,7 +627,7 @@ export default function AdminApplicationsPage() {
               <div className="relative">
                 <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-sky-500" />
                 <Input
-                  placeholder='AI search: e.g. "rejected applications from d4dx"'
+                  placeholder={t("aiSearch")}
                   value={aiQuery}
                   onChange={(e) => setAiQuery(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleApplyAiSearch(); } }}
@@ -621,7 +641,7 @@ export default function AdminApplicationsPage() {
                 className="h-11 gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
               >
                 <Wand2 className="h-4 w-4" />
-                {isApplyingAiSearch ? "Applying…" : "AI Search"}
+                {isApplyingAiSearch ? t("applying") : t("aiSearchButton")}
               </Button>
             </div>
 
@@ -648,19 +668,19 @@ export default function AdminApplicationsPage() {
             <Inbox className="h-7 w-7" />
           </div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            {activeFilters ? "No matching applications" : "No applications yet"}
+            {activeFilters ? t("noMatchingApplications") : t("noApplicationsYet")}
           </p>
           <h3 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
-            {activeFilters ? "No applications match the current filters." : "No applications found on the platform."}
+            {activeFilters ? t("noApplicationsMatchFilters") : t("noApplicationsFound")}
           </h3>
           <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">
             {activeFilters
-              ? "Try widening the score range, status, or search terms to bring more applicants back into view."
-              : "Applications will appear here once candidates apply to jobs across the platform."}
+              ? t("tryWideningFilters")
+              : t("applicationsAppearHere")}
           </p>
           {activeFilters > 0 && (
             <Button onClick={clearAllFilters} variant="outline" className="mt-6 h-11 rounded-xl border-border bg-background/70 px-4 text-sm">
-              Clear filters
+              {t("clearFilters")}
             </Button>
           )}
         </div>
@@ -668,11 +688,11 @@ export default function AdminApplicationsPage() {
         <section className="workspace-panel-surface overflow-hidden rounded-[28px]">
           {/* Column headers */}
           <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] items-center gap-4 border-b border-border/70 bg-background/50 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground lg:grid">
-            <span>Candidate</span>
-            <span>Role, Match, Skills</span>
+            <span>{t("candidate")}</span>
+            <span>{t("roleMatchSkills")}</span>
             <span className="text-right">
               <button type="button" className="inline-flex items-center gap-1" onClick={() => toggleSort("appliedAt")}>
-                Applied <ArrowUpDown className="h-3 w-3" />
+                {t("applied")} <ArrowUpDown className="h-3 w-3" />
               </button>
             </span>
           </div>
@@ -744,11 +764,11 @@ export default function AdminApplicationsPage() {
                         </span>
                       ))}
                       {topSkills.length === 0 && !aiScoreLabel && (
-                        <span className="text-xs text-muted-foreground">No skills listed</span>
+                        <span className="text-xs text-muted-foreground">{t("noSkillsListed")}</span>
                       )}
                     </div>
                     <div className="mt-1.5 flex flex-wrap items-center gap-2.5 text-xs text-muted-foreground">
-                      <span>Applied {appliedDate}</span>
+                      <span>{t("applied")} {appliedDate}</span>
                       <Badge variant={app.autoApplied ? "warning" : "secondary"} className="text-[11px]">
                         {sourceLabel(app.source)}
                       </Badge>

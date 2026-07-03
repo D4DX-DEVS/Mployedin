@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   GitBranch, Plus, Trash2, Edit2, Save, X, Loader2, CheckCircle,
   ArrowRight, ChevronDown, ChevronUp, Sparkles, Shield,
@@ -69,6 +70,7 @@ function templateToForm(t: WorkflowTemplateItem): TemplateFormState {
 }
 
 export default function AdminWorkflowTemplatesPage() {
+  const tr = useTranslations("adminWorkflowTemplates");
   const { data: templates, isLoading } = useAdminWorkflowTemplates();
   const createMut = useCreateAdminWorkflowTemplate();
   const updateMut = useUpdateAdminWorkflowTemplate();
@@ -155,11 +157,11 @@ export default function AdminWorkflowTemplatesPage() {
         <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
           <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
             <Sparkles className="h-3.5 w-3.5" />
-            Admin workspace
+            {tr("adminWorkspaceLabel")}
           </div>
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">Workflow Templates</h1>
+          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{tr("pageTitle")}</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-            Manage system-wide hiring workflow presets.
+            {tr("pageDescription")}
           </p>
         </section>
         {[1, 2, 3].map((i) => (
@@ -177,15 +179,15 @@ export default function AdminWorkflowTemplatesPage() {
           <div className="min-w-0 flex-1">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
               <Sparkles className="h-3.5 w-3.5" />
-              Admin workspace
+              {tr("adminWorkspaceLabel")}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">Workflow Templates</h1>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{tr("pageTitle")}</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Create and manage system-wide hiring workflow presets that all employers can use.
+              {tr("pageDescription")}
             </p>
           </div>
           <Button onClick={openCreate} className="gap-2 rounded-xl bg-sky-600 text-white hover:bg-sky-700" size="sm">
-            <Plus className="h-4 w-4" /> New Template
+            <Plus className="h-4 w-4" /> {tr("newTemplateButton")}
           </Button>
         </div>
       </section>
@@ -195,7 +197,7 @@ export default function AdminWorkflowTemplatesPage() {
         <section className="rounded-2xl border border-sky-500/30 bg-sky-500/5 p-6 space-y-5">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold text-foreground">
-              {editId ? "Edit Template" : "Create New Template"}
+              {editId ? tr("editTemplateHeading") : tr("createNewTemplateHeading")}
             </h3>
             <button onClick={closeForm} className="text-muted-foreground hover:text-foreground">
               <X className="h-5 w-5" />
@@ -204,20 +206,20 @@ export default function AdminWorkflowTemplatesPage() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-1">
-              <label className="text-sm font-medium text-muted-foreground">Name *</label>
+              <label className="text-sm font-medium text-muted-foreground">{tr("nameLabel")}</label>
               <Input
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                placeholder="e.g. Tech Hiring Pipeline"
+                placeholder={tr("namePlaceholder")}
                 maxLength={100}
               />
             </div>
             <div className="space-y-1">
-              <label className="text-sm font-medium text-muted-foreground">Description</label>
+              <label className="text-sm font-medium text-muted-foreground">{tr("descriptionLabel")}</label>
               <Input
                 value={form.description}
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                placeholder="Brief description of this workflow"
+                placeholder={tr("descriptionPlaceholder")}
                 maxLength={500}
               />
             </div>
@@ -225,7 +227,7 @@ export default function AdminWorkflowTemplatesPage() {
 
           {/* Tags */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-muted-foreground">Tags</label>
+            <label className="text-sm font-medium text-muted-foreground">{tr("tagsLabel")}</label>
             <div className="flex flex-wrap gap-2">
               {form.tags.map((tag) => (
                 <Badge key={tag} variant="secondary" className="gap-1">
@@ -240,7 +242,7 @@ export default function AdminWorkflowTemplatesPage() {
                   value={tagInput}
                   onChange={(e) => setTagInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addTag())}
-                  placeholder="Add tag"
+                  placeholder={tr("tagPlaceholder")}
                   className="h-8 w-32"
                   maxLength={50}
                 />
@@ -254,7 +256,7 @@ export default function AdminWorkflowTemplatesPage() {
           {/* Default switch */}
           <div className="flex items-center gap-3">
             <Switch checked={form.isDefault} onCheckedChange={(v) => setForm((f) => ({ ...f, isDefault: v }))} />
-            <span className="text-sm text-foreground">Mark as default template</span>
+            <span className="text-sm text-foreground">{tr("markAsDefaultCheckbox")}</span>
           </div>
 
           {/* Settings */}
@@ -264,17 +266,17 @@ export default function AdminWorkflowTemplatesPage() {
                 checked={form.settings.aiAutoScreen}
                 onCheckedChange={(v) => setForm((f) => ({ ...f, settings: { ...f.settings, aiAutoScreen: v } }))}
               />
-              <span className="text-sm">AI Auto-Screen</span>
+              <span className="text-sm">{tr("aiAutoScreenLabel")}</span>
             </div>
             <div className="flex items-center gap-3 rounded-xl border border-border bg-background/80 p-3">
               <Switch
                 checked={form.settings.notifyOnStageChange}
                 onCheckedChange={(v) => setForm((f) => ({ ...f, settings: { ...f.settings, notifyOnStageChange: v } }))}
               />
-              <span className="text-sm">Stage Notifications</span>
+              <span className="text-sm">{tr("stageNotificationsLabel")}</span>
             </div>
             <div className="rounded-xl border border-border bg-background/80 p-3">
-              <label className="text-xs text-muted-foreground">Auto-reject below</label>
+              <label className="text-xs text-muted-foreground">{tr("autoRejectBelowLabel")}</label>
               <Input
                 type="number"
                 value={form.settings.autoRejectBelow}
@@ -293,7 +295,7 @@ export default function AdminWorkflowTemplatesPage() {
 
           {/* Stages */}
           <div className="space-y-3">
-            <p className="text-sm font-medium text-muted-foreground">Pipeline Stages</p>
+            <p className="text-sm font-medium text-muted-foreground">{tr("pipelineStagesLabel")}</p>
             {[...form.stages].sort((a, b) => a.order - b.order).map((stage, i) => (
               <div key={stage.id} className="flex items-center gap-3 rounded-xl border border-border bg-background/80 p-3">
                 <div className="flex flex-col gap-0.5 text-muted-foreground">
@@ -311,14 +313,14 @@ export default function AdminWorkflowTemplatesPage() {
                       checked={stage.enabled}
                       onCheckedChange={() => toggleStage(stage.id, "enabled")}
                     />
-                    Enabled
+                    {tr("enabledLabel")}
                   </label>
                   <label className="flex items-center gap-1.5 text-xs">
                     <Switch
                       checked={stage.autoProgress}
                       onCheckedChange={() => toggleStage(stage.id, "autoProgress")}
                     />
-                    Auto
+                    {tr("autoLabel")}
                   </label>
                 </div>
               </div>
@@ -333,10 +335,10 @@ export default function AdminWorkflowTemplatesPage() {
               className="gap-2 rounded-xl bg-sky-600 text-white hover:bg-sky-700"
             >
               {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              {editId ? "Update Template" : "Create Template"}
+              {editId ? tr("updateTemplateButton") : tr("createTemplateButton")}
             </Button>
             <Button variant="ghost" onClick={closeForm} className="rounded-xl">
-              Cancel
+              {tr("cancelButton")}
             </Button>
           </div>
         </section>
@@ -346,12 +348,12 @@ export default function AdminWorkflowTemplatesPage() {
       {!templates?.length && !showForm ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-background/60 py-16 text-center">
           <GitBranch className="mb-3 h-10 w-10 text-muted-foreground" />
-          <p className="text-sm font-semibold text-foreground">No workflow templates yet</p>
+          <p className="text-sm font-semibold text-foreground">{tr("noTemplatesEmptyStateTitle")}</p>
           <p className="mb-4 mt-1 text-xs text-muted-foreground">
-            Create system-wide workflow presets for employers to use
+            {tr("noTemplatesEmptyStateDescription")}
           </p>
           <Button onClick={openCreate} size="sm" className="gap-1.5 rounded-xl bg-sky-600 text-white hover:bg-sky-700">
-            <Plus className="h-3.5 w-3.5" /> Create First Template
+            <Plus className="h-3.5 w-3.5" /> {tr("createFirstTemplateButton")}
           </Button>
         </div>
       ) : (
@@ -371,10 +373,10 @@ export default function AdminWorkflowTemplatesPage() {
                       <h4 className="text-sm font-semibold text-foreground">{t.name}</h4>
                       {t.isDefault && (
                         <Badge variant="secondary" className="gap-1 text-[10px]">
-                          <Shield className="h-3 w-3" /> Default
+                          <Shield className="h-3 w-3" /> {tr("defaultBadge")}
                         </Badge>
                       )}
-                      <Badge variant="outline" className="text-[10px]">System</Badge>
+                      <Badge variant="outline" className="text-[10px]">{tr("systemBadge")}</Badge>
                     </div>
                     {t.description && (
                       <p className="mt-1 text-xs text-muted-foreground">{t.description}</p>
@@ -389,7 +391,7 @@ export default function AdminWorkflowTemplatesPage() {
                       </div>
                     )}
                     <div className="mt-2 text-xs text-muted-foreground">
-                      {activeStages.length} stages active · AI screen: {t.settings.aiAutoScreen ? "On" : "Off"} · Reject below: {t.settings.autoRejectBelow}%
+                      {tr("stagesSummary", { count: activeStages.length })} · {tr("aiScreenStatus", { status: t.settings.aiAutoScreen ? "On" : "Off" })} · {tr("rejectBelowSummary", { percentage: t.settings.autoRejectBelow })}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -425,7 +427,7 @@ export default function AdminWorkflowTemplatesPage() {
                 {isExpanded && (
                   <div className="mt-4 rounded-xl border border-border bg-background/60 p-4">
                     <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Pipeline Preview
+                      {tr("pipelinePreviewHeading")}
                     </p>
                     <div className="flex flex-wrap items-center gap-1.5">
                       {activeStages.map((stage, idx) => (

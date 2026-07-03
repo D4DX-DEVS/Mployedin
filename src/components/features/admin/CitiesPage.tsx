@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/table";
 import { Plus, Pencil, Trash2, Search, Inbox, SlidersHorizontal, RotateCcw } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
+import { useTranslations } from "next-intl";
 
 interface CountryOption {
   _id: string;
@@ -43,6 +44,7 @@ interface CityItem {
 }
 
 export default function CitiesPage() {
+  const t = useTranslations("adminLocationData");
   const { can } = usePermissions();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [items, setItems] = useState<CityItem[]>([]);
@@ -143,11 +145,11 @@ export default function CitiesPage() {
   const hasActiveFilters = Boolean(search.trim()) || statusFilter !== "all" || countryFilter !== "all" || stateFilter !== "all";
 
   const getFields = useCallback((): CrudField[] => [
-    { name: "name", label: "City Name (English)", type: "text", required: true, placeholder: "e.g. New York" },
-    { name: "nameAr", label: "City Name (Arabic)", type: "text", placeholder: "e.g. نيويورك" },
+    { name: "name", label: t("cityNameEn"), type: "text", required: true, placeholder: t("cityNamePlaceholder") },
+    { name: "nameAr", label: t("cityNameAr"), type: "text", placeholder: t("cityNameArPlaceholder") },
     {
       name: "stateId",
-      label: "State",
+      label: t("state"),
       type: "select",
       required: true,
       options: (modalStates.length > 0 ? modalStates : allStates).map((s) => {
@@ -157,18 +159,18 @@ export default function CitiesPage() {
         return { value: s._id, label: countryName ? `${s.name} - ${countryName}` : s.name };
       }),
     },
-    { name: "slug", label: "Slug", type: "text", placeholder: "auto-generated from name if empty" },
-    { name: "sortOrder", label: "Sort Order", type: "number", placeholder: "0" },
+    { name: "slug", label: t("slug"), type: "text", placeholder: t("slugPlaceholder") },
+    { name: "sortOrder", label: t("sortOrder"), type: "number", placeholder: "0" },
     {
       name: "isActive",
-      label: "Status",
+      label: t("status"),
       type: "select",
       options: [
-        { value: "true", label: "Active" },
-        { value: "false", label: "Inactive" },
+        { value: "true", label: t("active") },
+        { value: "false", label: t("inactive") },
       ],
     },
-  ], [modalStates, allStates]);
+  ], [modalStates, allStates, t]);
 
   const handleCreate = async (values: Record<string, string>) => {
     const body: Record<string, unknown> = {
@@ -215,7 +217,7 @@ export default function CitiesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    const ok = await confirmDialog("Are you sure you want to delete this city?");
+    const ok = await confirmDialog(t("confirmDeleteCity"));
     if (!ok) return;
     await fetch(`/api/admin/location-data/cities/${id}`, { method: "DELETE" });
     fetchItems();
@@ -240,15 +242,15 @@ export default function CitiesPage() {
         {/* Compact header row */}
         <div className="flex flex-col gap-3 border-b border-border/80 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-lg font-semibold text-foreground">Cities</h1>
-            <p className="mt-0.5 text-xs text-muted-foreground">Manage cities for each state or province.</p>
+            <h1 className="text-lg font-semibold text-foreground">{t("citiesTitle")}</h1>
+            <p className="mt-0.5 text-xs text-muted-foreground">{t("citiesSubtitle")}</p>
           </div>
           <div className="flex items-center gap-2">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 id="admin-cities-search"
-                placeholder="Search cities…"
+                placeholder={t("searchCities")}
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); resetPage(); }}
                 className="h-9 w-48 rounded-lg border-border bg-secondary/65 pl-8 text-sm shadow-none sm:w-56"
@@ -262,7 +264,7 @@ export default function CitiesPage() {
               className={`h-9 gap-1.5 rounded-lg border-border px-3 text-sm font-medium ${showFilters ? "bg-primary/10 text-primary border-primary/30" : "bg-card text-foreground hover:bg-secondary"}`}
             >
               <SlidersHorizontal className="h-3.5 w-3.5" />
-              Filter
+              {t("filter")}
               {hasActiveFilters && <span className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">!</span>}
             </Button>
             {can("location_data", "create") && (
@@ -271,7 +273,7 @@ export default function CitiesPage() {
                 size="sm"
                 className="h-9 gap-1.5 rounded-lg bg-sky-600 px-3 text-sm font-semibold text-white hover:bg-sky-700"
               >
-                <Plus className="h-3.5 w-3.5" /> Add New
+                <Plus className="h-3.5 w-3.5" /> {t("addNew")}
               </Button>
             )}
           </div>
@@ -280,36 +282,36 @@ export default function CitiesPage() {
         {/* Collapsible filter panel */}
         {showFilters && (
           <div className="flex flex-wrap items-center gap-3 border-b border-border/60 bg-secondary/30 px-5 py-3">
-            <label className="text-xs font-medium text-muted-foreground">Country</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("colCountry")}</label>
             <SearchableSelect
               id="admin-cities-country"
               className="h-8 w-[160px] rounded-lg border-border bg-card text-sm"
-              options={[{ value: "all", label: "All Countries" }, ...countries.map((c) => ({ value: c._id, label: c.name }))]}
+              options={[{ value: "all", label: t("allCountries") }, ...countries.map((c) => ({ value: c._id, label: c.name }))]}
               value={countryFilter}
               onValueChange={(v) => { setCountryFilter(v); setStateFilter("all"); resetPage(); }}
-              placeholder="All Countries"
+              placeholder={t("allCountries")}
             />
-            <label className="text-xs font-medium text-muted-foreground">State</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("state")}</label>
             <SearchableSelect
               id="admin-cities-state"
               className="h-8 w-[160px] rounded-lg border-border bg-card text-sm"
-              options={[{ value: "all", label: "All States" }, ...filteredStates.map((s) => ({ value: s._id, label: s.name }))]}
+              options={[{ value: "all", label: t("allStates") }, ...filteredStates.map((s) => ({ value: s._id, label: s.name }))]}
               value={stateFilter}
               onValueChange={(v) => { setStateFilter(v); resetPage(); }}
-              placeholder="All States"
+              placeholder={t("allStates")}
             />
-            <label className="text-xs font-medium text-muted-foreground">Status</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("status")}</label>
             <SearchableSelect
               id="admin-cities-status"
               className="h-8 w-[120px] rounded-lg border-border bg-card text-sm"
               options={[
-                { value: "all", label: "All" },
-                { value: "active", label: "Active" },
-                { value: "inactive", label: "Inactive" },
+                { value: "all", label: t("all") },
+                { value: "active", label: t("active") },
+                { value: "inactive", label: t("inactive") },
               ]}
               value={statusFilter}
               onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
-              placeholder="Status"
+              placeholder={t("status")}
             />
             {hasActiveFilters && (
               <Button
@@ -319,7 +321,7 @@ export default function CitiesPage() {
                 onClick={() => { setCountryFilter("all"); setStateFilter("all"); setSearch(""); setStatusFilter("all"); resetPage(); }}
                 className="h-8 gap-1 rounded-lg px-2 text-xs text-muted-foreground hover:text-foreground"
               >
-                <RotateCcw className="h-3 w-3" /> Clear
+                <RotateCcw className="h-3 w-3" /> {t("clear")}
               </Button>
             )}
           </div>
@@ -330,11 +332,11 @@ export default function CitiesPage() {
           <Table>
             <TableHeader>
               <TableRow className="border-border/80 bg-secondary/72 hover:bg-secondary/72">
-                <TableHead>City</TableHead>
-                <TableHead>State</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t("colCity")}</TableHead>
+                <TableHead>{t("state")}</TableHead>
+                <TableHead>{t("status")}</TableHead>
                 {(can("location_data", "update") || can("location_data", "delete")) && (
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="text-right">{t("actions")}</TableHead>
                 )}
               </TableRow>
             </TableHeader>
@@ -354,8 +356,8 @@ export default function CitiesPage() {
                   <TableCell colSpan={4} className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center gap-2">
                       <Inbox className="h-6 w-6 text-muted-foreground/50" />
-                      <p className="text-sm font-medium text-foreground">No cities found</p>
-                      <p className="text-xs text-muted-foreground">Adjust the filters or add a new city.</p>
+                      <p className="text-sm font-medium text-foreground">{t("noCitiesFound")}</p>
+                      <p className="text-xs text-muted-foreground">{t("adjustFiltersCity")}</p>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -382,14 +384,14 @@ export default function CitiesPage() {
                                 }
                                 setEditItem(item);
                               }}
-                              title="Edit"
-                              aria-label={`Edit ${item.name}`}
+                              title={t("edit")}
+                              aria-label={t("editItem", { name: item.name })}
                             >
                               <Pencil className="h-3.5 w-3.5 text-primary" />
                             </Button>
                           )}
                           {can("location_data", "delete") && (
-                            <Button variant="ghost" size="xs" onClick={() => handleDelete(item._id)} title="Delete" aria-label={`Delete ${item.name}`}>
+                            <Button variant="ghost" size="xs" onClick={() => handleDelete(item._id)} title={t("delete")} aria-label={t("deleteItem", { name: item.name })}>
                               <Trash2 className="h-3.5 w-3.5 text-destructive" />
                             </Button>
                           )}
@@ -411,7 +413,7 @@ export default function CitiesPage() {
       <CrudModal
         open={showAdd}
         onClose={() => setShowAdd(false)}
-        title="Add New City"
+        title={t("addCityTitle")}
         fields={getFields()}
         onSubmit={handleCreate}
       />
@@ -419,7 +421,7 @@ export default function CitiesPage() {
       <CrudModal
         open={!!editItem}
         onClose={() => setEditItem(null)}
-        title="Edit City"
+        title={t("editCityTitle")}
         fields={getFields()}
         initialValues={
           editItem

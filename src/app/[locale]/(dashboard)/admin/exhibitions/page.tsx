@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -352,6 +353,7 @@ function quoteCsv(value: string | number | undefined | null) {
 }
 
 export default function AdminExhibitionsPage() {
+  const t = useTranslations("adminExhibitions");
   const [items, setItems] = useState<ExhibitionRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -424,11 +426,11 @@ export default function AdminExhibitionsPage() {
         setItems(data.items ?? []);
       }
     } catch {
-      toast.error("Could not load exhibition requests");
+      toast.error(t("couldNotLoadExhibitionRequests"));
     } finally {
       setLoading(false);
     }
-  }, [priorityFilter, search, statusFilter]);
+  }, [priorityFilter, search, statusFilter, t]);
 
   useEffect(() => {
     fetchItems();
@@ -520,37 +522,51 @@ export default function AdminExhibitionsPage() {
         body: JSON.stringify(payload),
       });
       if (response.ok) {
-        toast.success(`Request moved to ${STATUS_LABELS[actionStatus] ?? actionStatus}`);
+        const statusMap: Record<string, string> = {
+          draft: t("draft"),
+          submitted: t("submitted"),
+          under_review: t("underReview"),
+          approved: t("financeReviewStatus"),
+          revision_requested: t("needsRevision"),
+          budget_approved: t("approved"),
+          resources_assigned: t("approved"),
+          active: t("completedStatus"),
+          completed: t("completedStatus"),
+          rejected: t("rejected"),
+          archived: t("archivedStatus"),
+          cancelled: t("cancelledStatus"),
+        };
+        toast.success(t("requestMovedTo", { status: statusMap[actionStatus] ?? actionStatus }));
         setActionItem(null);
         fetchItems();
       } else {
         const error = await response.json();
-        toast.error(error.error ?? "Failed to update request");
+        toast.error(error.error ?? t("failedToUpdateRequest"));
       }
     } catch {
-      toast.error("Failed to update request");
+      toast.error(t("failedToUpdateRequest"));
     }
   };
 
   const handleDelete = async (item: ExhibitionRequest) => {
-    if (!window.confirm(`Delete ${item.eventName}? This action cannot be undone.`)) return;
+    if (!window.confirm(t("requestDeletedConfirm", { eventName: item.eventName }))) return;
     try {
       const response = await csrfFetch(`/api/exhibitions/${item._id}`, { method: "DELETE" });
       if (response.ok) {
-        toast.success("Request deleted");
+        toast.success(t("requestDeleted"));
         fetchItems();
       }
     } catch {
-      toast.error("Failed to delete request");
+      toast.error(t("failedToDeleteRequest"));
     }
   };
 
   const handleBulkStatus = async (status: string) => {
     if (!selectedItems.length) {
-      toast.info("Select at least one request first");
+      toast.info(t("selectAtLeastOneRequest"));
       return;
     }
-    if (status === "rejected" && !window.confirm(`Reject ${selectedItems.length} selected request(s)?`)) return;
+    if (status === "rejected" && !window.confirm(t("rejectSelectedRequests", { count: selectedItems.length }))) return;
     try {
       await Promise.all(
         selectedItems.map((item) =>
@@ -559,23 +575,23 @@ export default function AdminExhibitionsPage() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               status,
-              reviewNote: status === "rejected" ? "Bulk rejected from admin queue" : "Bulk approved from admin queue",
-              statusReason: status === "rejected" ? "Bulk rejected from admin queue" : "Bulk approved from admin queue",
+              reviewNote: status === "rejected" ? t("bulkRejectedFromAdminQueue") : t("bulkApprovedFromAdminQueue"),
+              statusReason: status === "rejected" ? t("bulkRejectedFromAdminQueue") : t("bulkApprovedFromAdminQueue"),
             }),
           }),
         ),
       );
-      toast.success(`${selectedItems.length} request(s) updated`);
+      toast.success(t("bulkActionsCompleted", { count: selectedItems.length }));
       setSelectedIds(new Set());
       fetchItems();
     } catch {
-      toast.error("Bulk action failed");
+      toast.error(t("bulkActionFailed"));
     }
   };
 
   const handleExport = () => {
     const rows = [
-      ["Request ID", "Event", "Agent", "Location", "Dates", "Stage", "Budget Requested", "Budget Approved", "Priority", "Submitted", "SLA"],
+      [t("requestIdHeader"), t("eventHeader"), t("agentHeader"), t("locationHeader"), t("datesHeader"), t("stageHeader"), t("budgetRequestedHeader"), t("budgetApprovedHeader"), t("priorityHeader"), t("submittedHeader"), t("slaHeader")],
       ...filteredItems.map((item) => {
         const sla = getSla(item);
         return [
@@ -598,7 +614,7 @@ export default function AdminExhibitionsPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = "exhibition-requests.csv";
+    link.download = t("exhibitionRequests");
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -659,35 +675,45 @@ export default function AdminExhibitionsPage() {
           <div className="min-w-0 flex-1">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
               <CalendarDays className="h-3.5 w-3.5" />
-              Admin operations
+              {t("adminOperations")}
             </div>
             <h1 className="mt-4 flex items-center gap-2 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
               <CalendarDays className="h-7 w-7 text-primary" />
-              Exhibition Operations Center
+              {t("exhibitionOperationsCenter")}
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Manage exhibition requests, approvals, budgets, resources, and operational risk from one controlled workspace.
+              {t("manageExhibitionRequests")}
             </p>
           </div>
           <div className="flex shrink-0 flex-col gap-3 sm:flex-row xl:items-start">
             <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:min-w-[200px]">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Queue health</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("queueHealth")}</p>
               <p className="mt-1 text-2xl font-semibold text-foreground">
                 {items.filter((item) => !["completed", "rejected", "archived"].includes(item.status)).length}
               </p>
-              <p className="text-xs text-muted-foreground">Open operational requests</p>
+              <p className="text-xs text-muted-foreground">{t("openOperationalRequests")}</p>
             </div>
             <a href="exhibitions/analytics" className="self-start">
               <Button variant="outline" className="h-10 rounded-xl border-border/70 bg-background/90">
                 <BarChart2 className="h-4 w-4" />
-                Analytics
+                {t("analytics")}
               </Button>
             </a>
           </div>
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-9">
-          {kpis.map(({ label, value, trend, subtitle, icon: Icon, tone, bg }) => (
+          {[
+            { label: t("totalRequests"), value: items.length, trend: "+8.4%", subtitle: t("allTime"), icon: ClipboardCheck, tone: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950/30" },
+            { label: t("pendingReview"), value: items.filter((item) => ["submitted", "under_review"].includes(item.status)).length, trend: "-2.1%", subtitle: t("needsFirstAction"), icon: Clock, tone: "text-orange-600", bg: "bg-orange-50 dark:bg-orange-950/30" },
+            { label: t("financeReview"), value: items.filter((item) => item.status === "approved").length, trend: "+3", subtitle: t("inFinanceQueue"), icon: CircleDollarSign, tone: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-950/30" },
+            { label: t("awaitingApproval"), value: items.filter((item) => ["budget_approved", "resources_assigned"].includes(item.status)).length, trend: "Stable", subtitle: t("finalApprovers"), icon: ShieldAlert, tone: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950/30" },
+            { label: t("approved"), value: items.filter((item) => ["budget_approved", "resources_assigned", "active"].includes(item.status)).length, trend: "+5.2%", subtitle: t("readyOrActive"), icon: CheckCircle2, tone: "text-green-600", bg: "bg-green-50 dark:bg-green-950/30" },
+            { label: t("rejected"), value: items.filter((item) => item.status === "rejected").length, trend: "-1", subtitle: t("declinedRequests"), icon: XCircle, tone: "text-red-600", bg: "bg-red-50 dark:bg-red-950/30" },
+            { label: t("budgetRequested"), value: formatMoney(totalBudgetReq, "AED"), trend: "+12%", subtitle: t("pipelineTotal"), icon: Wallet, tone: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950/30" },
+            { label: t("budgetApproved"), value: formatMoney(totalBudgetApp, "AED"), trend: "+9%", subtitle: t("approvedTotal"), icon: Target, tone: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950/30" },
+            { label: t("budgetUtilized"), value: formatMoney(totalBudgetUsed, "AED"), trend: `${totalBudgetApp ? Math.round((totalBudgetUsed / totalBudgetApp) * 100) : 0}%`, subtitle: t("actualSpend"), icon: Percent, tone: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-950/30" },
+          ].map(({ label, value, trend, subtitle, icon: Icon, tone, bg }) => (
             <div key={label} className="workspace-glass-panel min-h-[132px] rounded-2xl p-4">
               <div className="flex h-full flex-col justify-between gap-3">
                 <div className="flex items-start justify-between gap-3">
@@ -712,18 +738,18 @@ export default function AdminExhibitionsPage() {
       <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Request queue</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">All exhibition requests</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Review, assign, approve, and export requests from a single operational queue.</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("requestQueue")}</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("allExhibitionRequests")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("reviewAssignApproveAndExport")}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" size="sm" className="h-9 rounded-lg" onClick={resetFilters}>
               <RotateCcw className="h-4 w-4" />
-              Reset Filters
+              {t("resetFilters")}
             </Button>
             <Button variant="outline" size="sm" className="h-9 rounded-lg" onClick={handleExport}>
               <Download className="h-4 w-4" />
-              Export
+              {t("export")}
             </Button>
           </div>
         </div>
@@ -735,39 +761,76 @@ export default function AdminExhibitionsPage() {
               <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search requests, agents, events..."
+                placeholder={t("searchRequestsAgentsEvents")}
                 className="h-9 rounded-lg pl-9 text-sm"
               />
             </div>
-            <FilterSelect value={statusFilter} onChange={setStatusFilter} options={STATUS_OPTIONS} placeholder="Status" />
-            <FilterSelect value={priorityFilter} onChange={setPriorityFilter} options={PRIORITY_OPTIONS} placeholder="Priority" />
-            <FilterSelect value={stageFilter} onChange={setStageFilter} options={STAGE_OPTIONS} placeholder="Approval Stage" />
-            <FilterSelect value={dateRange} onChange={setDateRange} options={DATE_OPTIONS} placeholder="Date Range" />
-            <FilterSelect value={countryFilter} onChange={setCountryFilter} options={countries} placeholder="Country" />
-            <FilterSelect value={budgetRange} onChange={setBudgetRange} options={BUDGET_OPTIONS} placeholder="Budget Range" />
-            <FilterSelect value={reviewerFilter} onChange={setReviewerFilter} options={REVIEWER_OPTIONS} placeholder="Assigned Reviewer" />
+            <FilterSelect value={statusFilter} onChange={setStatusFilter} options={[
+              { value: "all", label: t("allStatus") },
+              { value: "submitted", label: t("submitted") },
+              { value: "under_review", label: t("underReview") },
+              { value: "approved", label: t("financeReviewStatus") },
+              { value: "revision_requested", label: t("needsRevision") },
+              { value: "budget_approved", label: t("approved") },
+              { value: "completed", label: t("completedStatus") },
+              { value: "rejected", label: t("rejected") },
+              { value: "archived", label: t("archivedStatus") },
+            ]} placeholder={t("status")} />
+            <FilterSelect value={priorityFilter} onChange={setPriorityFilter} options={[
+              { value: "all", label: t("allPriority") },
+              { value: "low", label: t("low") },
+              { value: "medium", label: t("medium") },
+              { value: "high", label: t("high") },
+              { value: "critical", label: t("critical") },
+            ]} placeholder={t("priority")} />
+            <FilterSelect value={stageFilter} onChange={setStageFilter} options={[
+              { value: "all", label: t("allStages") },
+              { value: "team_leader", label: t("teamLeaderReview") },
+              { value: "finance", label: t("financeReviewStage") },
+              { value: "super_agent", label: t("superAgentApproval") },
+              { value: "admin", label: t("adminApproval") },
+              { value: "completed", label: t("completedStage") },
+            ]} placeholder={t("approvalStage")} />
+            <FilterSelect value={dateRange} onChange={setDateRange} options={[
+              { value: "all", label: t("anyDate") },
+              { value: "7", label: t("last7Days") },
+              { value: "30", label: t("last30Days") },
+              { value: "90", label: t("last90Days") },
+            ]} placeholder={t("dateRange")} />
+            <FilterSelect value={countryFilter} onChange={setCountryFilter} options={countries} placeholder={t("country")} />
+            <FilterSelect value={budgetRange} onChange={setBudgetRange} options={[
+              { value: "all", label: t("anyBudget") },
+              { value: "0-10000", label: t("under10k") },
+              { value: "10000-50000", label: t("from10kTo50k") },
+              { value: "50000-999999999", label: t("from50kPlus") },
+            ]} placeholder={t("budgetRange")} />
+            <FilterSelect value={reviewerFilter} onChange={setReviewerFilter} options={[
+              { value: "all", label: t("anyReviewer") },
+              { value: "unassigned", label: t("unassigned") },
+              { value: "assigned", label: t("assignedStatus") },
+            ]} placeholder={t("assignedReviewer")} />
           </div>
         </div>
 
         {selectedItems.length > 0 && (
           <div className="mt-3 flex flex-col gap-2 rounded-2xl border border-primary/15 bg-primary/5 p-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm font-medium text-foreground">{selectedItems.length} selected</p>
+            <p className="text-sm font-medium text-foreground">{selectedItems.length} {t("selected")}</p>
             <div className="flex flex-wrap gap-2">
               <Button size="sm" className="h-8 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700" onClick={() => handleBulkStatus("approved")}>
                 <CheckCheck className="h-4 w-4" />
-                Bulk Approve
+                {t("bulkApprove")}
               </Button>
               <Button size="sm" variant="destructive" className="h-8 rounded-lg" onClick={() => handleBulkStatus("rejected")}>
                 <XCircle className="h-4 w-4" />
-                Bulk Reject
+                {t("bulkReject")}
               </Button>
-              <Button size="sm" variant="outline" className="h-8 rounded-lg" onClick={() => toast.info("Reviewer assignment workflow queued")}>
+              <Button size="sm" variant="outline" className="h-8 rounded-lg" onClick={() => toast.info(t("reviewerAssignmentWorkflowQueued"))}>
                 <UserPlus className="h-4 w-4" />
-                Assign Reviewer
+                {t("assignReviewer")}
               </Button>
               <Button size="sm" variant="outline" className="h-8 rounded-lg" onClick={handleExport}>
                 <Download className="h-4 w-4" />
-                Export
+                {t("export")}
               </Button>
             </div>
           </div>
@@ -794,8 +857,8 @@ export default function AdminExhibitionsPage() {
               <div className="workspace-muted-pill rounded-[20px] p-3">
                 <Inbox className="h-8 w-8 text-muted-foreground" />
               </div>
-              <p className="text-sm font-semibold text-foreground">No exhibition requests found</p>
-              <p className="max-w-md text-sm text-muted-foreground">Adjust the filters or reset the queue to see more requests.</p>
+              <p className="text-sm font-semibold text-foreground">{t("noExhibitionRequestsFound")}</p>
+              <p className="max-w-md text-sm text-muted-foreground">{t("adjustFiltersOrResetTheQueue")}</p>
             </div>
           ) : (
             <div className="workspace-panel-surface overflow-hidden rounded-2xl">
@@ -807,16 +870,16 @@ export default function AdminExhibitionsPage() {
                         <Checkbox
                           checked={partiallySelected ? "indeterminate" : allVisibleSelected}
                           onCheckedChange={toggleVisibleSelection}
-                          aria-label="Select visible rows"
+                          aria-label={t("selectVisibleRows")}
                         />
                       </TableHead>
-                      <TableHead className="w-[28%]">Event</TableHead>
-                      <TableHead className="w-[19%]">Agent</TableHead>
-                      <TableHead className="w-[17%]">Current Stage</TableHead>
-                      <TableHead className="w-[13%]">Budget</TableHead>
-                      <TableHead className="w-[10%]">Priority</TableHead>
-                      <TableHead className="w-[13%]">SLA</TableHead>
-                      <TableHead className="w-[112px] text-right">Action</TableHead>
+                      <TableHead className="w-[28%]">{t("event")}</TableHead>
+                      <TableHead className="w-[19%]">{t("agent")}</TableHead>
+                      <TableHead className="w-[17%]">{t("currentStage")}</TableHead>
+                      <TableHead className="w-[13%]">{t("budget")}</TableHead>
+                      <TableHead className="w-[10%]">{t("priority")}</TableHead>
+                      <TableHead className="w-[13%]">{t("sla")}</TableHead>
+                      <TableHead className="w-[112px] text-right">{t("action")}</TableHead>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/60">
@@ -851,7 +914,7 @@ export default function AdminExhibitionsPage() {
                             <button className="block min-w-0 text-left" onClick={() => handleDetailOpen(item)}>
                               <span className="block truncate font-semibold text-foreground hover:text-primary">{item.eventName}</span>
                               <span className="mt-1 block truncate text-xs text-muted-foreground">
-                                {CATEGORY_LABELS[item.eventCategory] ?? item.eventCategory} · {item._id.slice(-12).toUpperCase()}
+                                {t(`${Object.entries({ career_fair: "careerFair", recruitment_expo: "recruitmentExpo", employer_branding: "employerBranding", hiring_drive: "hiringDrive", university_event: "universityEvent", gcc_recruitment: "gccRecruitment", job_fair: "jobFair", other: "otherCategory" }).find(([k]) => k === item.eventCategory)?.[1] || "otherCategory"}`)} · {item._id.slice(-12).toUpperCase()}
                               </span>
                             </button>
                           </td>
@@ -861,7 +924,7 @@ export default function AdminExhibitionsPage() {
                                 <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">{initials(item.agentId?.name)}</AvatarFallback>
                               </Avatar>
                               <div className="min-w-0">
-                                <p className="truncate font-medium text-foreground">{item.agentId?.name ?? "Agent"}</p>
+                                <p className="truncate font-medium text-foreground">{item.agentId?.name ?? t("agentRole")}</p>
                                 <p className="truncate text-xs text-muted-foreground">{item.agentId?.email}</p>
                               </div>
                             </div>
@@ -891,7 +954,7 @@ export default function AdminExhibitionsPage() {
                           </td>
                           <td className="px-4 py-4 text-right align-middle">
                             <Button variant={isSelected ? "default" : "outline"} size="sm" className="h-8 rounded-lg" onClick={() => handleDetailOpen(item)}>
-                              Review
+                              {t("review")}
                               <ArrowRight className="h-4 w-4" />
                             </Button>
                           </td>
@@ -904,7 +967,7 @@ export default function AdminExhibitionsPage() {
 
               <div className="flex flex-col gap-3 border-t bg-background px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-xs text-muted-foreground">
-                  Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, filteredItems.length)} of {filteredItems.length} results
+                  {t("showing", { start: (page - 1) * pageSize + 1, end: Math.min(page * pageSize, filteredItems.length), total: filteredItems.length })}
                 </p>
                 <div className="flex items-center gap-2">
                   <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" disabled={page === 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>
@@ -942,49 +1005,65 @@ export default function AdminExhibitionsPage() {
               <DialogHeader>
                 <DialogTitle>
                   {actionStatus === "rejected"
-                    ? "Confirm rejection"
+                    ? t("confirmRejection")
                     : actionStatus === "revision_requested"
-                      ? "Request changes"
+                      ? t("requestChanges")
                       : actionStatus === "archived"
-                        ? "Archive request"
-                        : `Move to ${STATUS_LABELS[actionStatus] ?? actionStatus}`}
+                        ? t("archiveRequest")
+                        : t("moveTo", { status: (() => {
+                          const statusMap: Record<string, string> = {
+                            draft: t("draft"),
+                            submitted: t("submitted"),
+                            under_review: t("underReview"),
+                            approved: t("financeReviewStatus"),
+                            revision_requested: t("needsRevision"),
+                            budget_approved: t("approved"),
+                            resources_assigned: t("approved"),
+                            active: t("completedStatus"),
+                            completed: t("completedStatus"),
+                            rejected: t("rejected"),
+                            archived: t("archivedStatus"),
+                            cancelled: t("cancelledStatus"),
+                          };
+                          return statusMap[actionStatus] ?? actionStatus;
+                        })() })}
                 </DialogTitle>
                 <DialogDescription>
-                  {actionItem.eventName} by {actionItem.agentId?.name}. Add an audit note before confirming.
+                  {actionItem.eventName} by {actionItem.agentId?.name}. {t("addAnAuditNoteBeforeConfirming")}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
                 {["approved", "budget_approved"].includes(actionStatus) && (
                   <div>
-                    <Label>Approved Budget ({actionItem.budgetCurrency})</Label>
+                    <Label>{t("approvedBudget", { currency: actionItem.budgetCurrency })}</Label>
                     <Input type="number" value={approvedBudget} onChange={(event) => setApprovedBudget(event.target.value)} />
-                    <p className="mt-1 text-xs text-muted-foreground">Requested: {formatMoney(actionItem.estimatedBudget, actionItem.budgetCurrency)}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{t("requested")}: {formatMoney(actionItem.estimatedBudget, actionItem.budgetCurrency)}</p>
                   </div>
                 )}
                 {actionStatus === "resources_assigned" && (
                   <div>
-                    <Label>Assigned Team</Label>
-                    <Input value={assignedTeam} onChange={(event) => setAssignedTeam(event.target.value)} placeholder="e.g. John, Sarah, Ahmed" />
+                    <Label>{t("assignedTeam")}</Label>
+                    <Input value={assignedTeam} onChange={(event) => setAssignedTeam(event.target.value)} placeholder={t("egJohnSarahAhmed")} />
                   </div>
                 )}
                 <div>
-                  <Label>{["rejected", "revision_requested"].includes(actionStatus) ? "Reason *" : "Review Notes"}</Label>
+                  <Label>{["rejected", "revision_requested"].includes(actionStatus) ? t("reason") : t("reviewNotes")}</Label>
                   <Textarea
                     value={reviewNote}
                     onChange={(event) => setReviewNote(event.target.value)}
-                    placeholder={actionStatus === "revision_requested" ? "What needs to change?" : "Add a concise audit note..."}
+                    placeholder={actionStatus === "revision_requested" ? t("whatNeedsToChange") : t("addAConciseAuditNote")}
                     rows={3}
                   />
                 </div>
                 {["rejected", "archived"].includes(actionStatus) && (
                   <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-300">
-                    This is a destructive workflow action and will be recorded in the request timeline.
+                    {t("thisIsADestructiveWorkflowAction")}
                   </div>
                 )}
               </div>
               <DialogFooter>
                 <Button variant="ghost" onClick={() => setActionItem(null)}>
-                  Cancel
+                  {t("cancel")}
                 </Button>
                 <Button
                   onClick={handleAction}
@@ -992,7 +1071,7 @@ export default function AdminExhibitionsPage() {
                   className={actionStatus !== "rejected" ? "bg-emerald-600 text-white hover:bg-emerald-700" : ""}
                   disabled={["rejected", "revision_requested"].includes(actionStatus) && !reviewNote.trim()}
                 >
-                  Confirm
+                  {t("confirm")}
                 </Button>
               </DialogFooter>
             </>
@@ -1055,6 +1134,7 @@ function DetailDrawer({
   onPrevious: () => void;
   onNext: () => void;
 }) {
+  const tr = useTranslations("adminExhibitions");
   const budgetApproved = item?.approvedBudget ?? 0;
   const actualSpend = item?.actualSpend ?? 0;
   const variance = budgetApproved ? ((budgetApproved - actualSpend) / budgetApproved) * 100 : 0;
@@ -1064,22 +1144,22 @@ function DetailDrawer({
 
   return (
     <aside
-      aria-label="Exhibition request inspector"
+      aria-label={tr("exhibitionRequestInspector")}
       className="fixed bottom-0 right-0 top-[72px] z-[70] flex w-full md:max-w-[700px] animate-in slide-in-from-right-8 flex-col border-l border-t border-border bg-background shadow-2xl shadow-black/15 duration-200"
     >
       <div className="border-b bg-background px-6 py-3">
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-border/60 pb-3">
           <Button variant="ghost" size="sm" className="h-8 justify-self-start rounded-lg px-2 text-primary" disabled={!previousItem} onClick={onPrevious}>
             <ChevronLeft className="h-4 w-4" />
-            Previous
+            {tr("previous")}
           </Button>
           <p className="truncate text-sm font-semibold text-foreground">{item._id.slice(-12).toUpperCase()}</p>
           <div className="flex items-center justify-end gap-2">
             <Button variant="ghost" size="sm" className="h-8 rounded-lg px-2 text-primary" disabled={!nextItem} onClick={onNext}>
-              Next
+              {tr("next")}
               <ChevronRight className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={onClose} aria-label="Close inspector">
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={onClose} aria-label={tr("closeInspector")}>
               <XCircle className="h-4 w-4" />
             </Button>
           </div>
@@ -1089,52 +1169,68 @@ function DetailDrawer({
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <h2 className="truncate text-xl font-semibold tracking-tight text-foreground">{item.eventName}</h2>
             <Badge className={`${STATUS_BADGES[item.status]} rounded-md px-2 py-0.5 text-[11px] font-semibold`}>
-              {STATUS_LABELS[item.status] ?? item.status}
+              {(() => {
+                const statusMap: Record<string, string> = {
+                  draft: tr("draft"),
+                  submitted: tr("submitted"),
+                  under_review: tr("underReview"),
+                  approved: tr("financeReviewStatus"),
+                  revision_requested: tr("needsRevision"),
+                  budget_approved: tr("approved"),
+                  resources_assigned: tr("approved"),
+                  active: tr("completedStatus"),
+                  completed: tr("completedStatus"),
+                  rejected: tr("rejected"),
+                  archived: tr("archivedStatus"),
+                  cancelled: tr("cancelledStatus"),
+                };
+                return statusMap[item.status] ?? item.status;
+              })()}
             </Badge>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            {CATEGORY_LABELS[item.eventCategory] ?? item.eventCategory}
+            {tr(`${Object.entries({ career_fair: "careerFair", recruitment_expo: "recruitmentExpo", employer_branding: "employerBranding", hiring_drive: "hiringDrive", university_event: "universityEvent", gcc_recruitment: "gccRecruitment", job_fair: "jobFair", other: "otherCategory" }).find(([k]) => k === item.eventCategory)?.[1] || "otherCategory"}`)}
             {item.eventLocation ? ` · ${item.eventLocation}` : ""}
           </p>
         </div>
 
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-          <InfoChip icon={<Flag className="h-3.5 w-3.5" />} label="Priority" value={item.priority} />
-          <InfoChip icon={<Clock className="h-3.5 w-3.5" />} label="SLA" value={getSla(item).label} />
-          <InfoChip icon={<CalendarDays className="h-3.5 w-3.5" />} label="Submitted" value={formatDate(item.createdAt)} />
+          <InfoChip icon={<Flag className="h-3.5 w-3.5" />} label={tr("priority")} value={item.priority} />
+          <InfoChip icon={<Clock className="h-3.5 w-3.5" />} label={tr("sla")} value={getSla(item).label} />
+          <InfoChip icon={<CalendarDays className="h-3.5 w-3.5" />} label={tr("submittedHeader")} value={formatDate(item.createdAt)} />
         </div>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
         <div className="space-y-6">
-          <RequestSummaryCard item={item} />
+          <RequestSummaryCard item={item} tr={tr} />
 
-          <SectionBlock title="Workflow">
-            <WorkflowTimeline item={item} compact />
+          <SectionBlock title={tr("workflow")} tr={tr}>
+            <WorkflowTimeline item={item} compact tr={tr} />
           </SectionBlock>
 
-          <SectionBlock title="Overview">
+          <SectionBlock title={tr("overview")} tr={tr}>
             <div className="grid grid-cols-1 sm:grid-cols-2 overflow-hidden rounded-xl border border-border/60 text-sm">
-              <DetailCell label="Location" value={item.eventLocation || "-"} />
-              <DetailCell label="Organizer" value={item.organizerName || item.agentId?.name || "-"} />
-              <DetailCell label="Dates" value={`${formatDate(item.eventStartDate)} - ${formatDate(item.eventEndDate)}`} />
-              <DetailCell label="Expected Leads" value={String(item.expectedLeads ?? "-")} />
-              <DetailCell label="Duration" value={`${dayCount(item.eventStartDate, item.eventEndDate) ?? 1} day(s)`} />
-              <DetailCell label="Participants" value={String(item.assignedTeam?.length ?? 1)} />
-              <DetailCell label="Booths" value={item.participationTypes?.includes("booth") ? "Requested" : "Not requested"} />
-              <DetailCell label="Venue" value={item.venue ?? "TBD"} />
+              <DetailCell label={tr("location")} value={item.eventLocation || "-"} />
+              <DetailCell label={tr("organizer")} value={item.organizerName || item.agentId?.name || "-"} />
+              <DetailCell label={tr("dates")} value={`${formatDate(item.eventStartDate)} - ${formatDate(item.eventEndDate)}`} />
+              <DetailCell label={tr("expectedLeads")} value={String(item.expectedLeads ?? "-")} />
+              <DetailCell label={tr("duration")} value={`${dayCount(item.eventStartDate, item.eventEndDate) ?? 1} ${tr("days")}`} />
+              <DetailCell label={tr("participants")} value={String(item.assignedTeam?.length ?? 1)} />
+              <DetailCell label={tr("booths")} value={item.participationTypes?.includes("booth") ? tr("requested") : tr("notRequested")} />
+              <DetailCell label={tr("venue")} value={item.venue ?? tr("tbd")} />
             </div>
             <div className="mt-4">
-              <p className="text-sm leading-6 text-muted-foreground">{item.description || item.executionPlan || "No description provided."}</p>
+              <p className="text-sm leading-6 text-muted-foreground">{item.description || item.executionPlan || tr("noDescriptionProvided")}</p>
             </div>
           </SectionBlock>
 
-          <SectionBlock title="Budget">
+          <SectionBlock title={tr("budget")} tr={tr}>
             <div className="rounded-2xl border border-border/60 bg-background p-4 shadow-sm shadow-black/[0.03]">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-sm font-semibold text-foreground">Financial Overview</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Approved budget utilization and variance</p>
+                  <p className="text-sm font-semibold text-foreground">{tr("financialOverview")}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{tr("approvedBudgetUtilizationAndVariance")}</p>
                 </div>
                 <div
                   className="grid h-20 w-20 place-items-center rounded-full text-xs font-semibold text-foreground"
@@ -1144,97 +1240,111 @@ function DetailDrawer({
                 </div>
               </div>
               <div className="mt-4 grid grid-cols-2 gap-2">
-                <MetricTile label="Requested" value={formatMoney(item.estimatedBudget, item.budgetCurrency)} />
-                <MetricTile label="Approved" value={formatMoney(item.approvedBudget, item.budgetCurrency)} accent="text-emerald-600" />
-                <MetricTile label="Actual" value={formatMoney(item.actualSpend, item.budgetCurrency)} />
-                <MetricTile label="Variance" value={`${Math.round(variance)}%`} accent={variance >= 0 ? "text-emerald-600" : "text-red-600"} />
-                <MetricTile label="Savings" value={formatMoney(Math.max(0, budgetApproved - actualSpend), item.budgetCurrency)} accent="text-emerald-600" />
+                <MetricTile label={tr("requestedLabel")} value={formatMoney(item.estimatedBudget, item.budgetCurrency)} />
+                <MetricTile label={tr("approvedLabel")} value={formatMoney(item.approvedBudget, item.budgetCurrency)} accent="text-emerald-600" />
+                <MetricTile label={tr("actualLabel")} value={formatMoney(item.actualSpend, item.budgetCurrency)} />
+                <MetricTile label={tr("variance")} value={`${Math.round(variance)}%`} accent={variance >= 0 ? "text-emerald-600" : "text-red-600"} />
+                <MetricTile label={tr("savings")} value={formatMoney(Math.max(0, budgetApproved - actualSpend), item.budgetCurrency)} accent="text-emerald-600" />
               </div>
               <div className="mt-4">
                 <div className="mb-2 flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">Utilized</span>
+                  <span className="text-muted-foreground">{tr("utilized")}</span>
                   <span className="font-semibold text-foreground">{formatMoney(actualSpend, item.budgetCurrency)}</span>
                 </div>
                 <Progress value={utilization} className="h-2" />
               </div>
             </div>
             <div className="mt-4 space-y-3">
-              <BudgetLine icon={<Building2 className="h-4 w-4" />} label="Venue" value={item.budgetBreakdown?.stallCost ?? 0} total={item.estimatedBudget} currency={item.budgetCurrency} />
-              <BudgetLine icon={<Megaphone className="h-4 w-4" />} label="Marketing" value={item.budgetBreakdown?.marketingMaterial ?? 0} total={item.estimatedBudget} currency={item.budgetCurrency} />
-              <BudgetLine icon={<Plane className="h-4 w-4" />} label="Travel" value={item.budgetBreakdown?.travel ?? 0} total={item.estimatedBudget} currency={item.budgetCurrency} />
-              <BudgetLine icon={<Hotel className="h-4 w-4" />} label="Accommodation" value={item.budgetBreakdown?.accommodation ?? 0} total={item.estimatedBudget} currency={item.budgetCurrency} />
-              <BudgetLine icon={<Package className="h-4 w-4" />} label="Miscellaneous" value={item.budgetBreakdown?.miscellaneous ?? 0} total={item.estimatedBudget} currency={item.budgetCurrency} />
+              <BudgetLine icon={<Building2 className="h-4 w-4" />} label={tr("venueCost")} value={item.budgetBreakdown?.stallCost ?? 0} total={item.estimatedBudget} currency={item.budgetCurrency} />
+              <BudgetLine icon={<Megaphone className="h-4 w-4" />} label={tr("marketingMaterial")} value={item.budgetBreakdown?.marketingMaterial ?? 0} total={item.estimatedBudget} currency={item.budgetCurrency} />
+              <BudgetLine icon={<Plane className="h-4 w-4" />} label={tr("travel")} value={item.budgetBreakdown?.travel ?? 0} total={item.estimatedBudget} currency={item.budgetCurrency} />
+              <BudgetLine icon={<Hotel className="h-4 w-4" />} label={tr("accommodation")} value={item.budgetBreakdown?.accommodation ?? 0} total={item.estimatedBudget} currency={item.budgetCurrency} />
+              <BudgetLine icon={<Package className="h-4 w-4" />} label={tr("miscellaneous")} value={item.budgetBreakdown?.miscellaneous ?? 0} total={item.estimatedBudget} currency={item.budgetCurrency} />
             </div>
           </SectionBlock>
 
-          <SectionBlock title="Risk Indicators">
+          <SectionBlock title={tr("riskIndicators")} tr={tr}>
             <div className="flex flex-wrap gap-2">
-              <RiskBadge ok={!!item.venue} label={item.venue ? "Venue Confirmed" : "Venue Pending"} />
-              <RiskBadge ok={!!item.assignedTeam?.length} label={item.assignedTeam?.length ? "Vendor Assigned" : "Vendor Pending"} />
-              <RiskBadge ok={!!item.requiredResources?.length} label={item.requiredResources?.length ? "Documents Complete" : "Documents Missing"} />
-              <RiskBadge ok={false} label="Insurance Pending" />
+              <RiskBadge ok={!!item.venue} label={item.venue ? tr("venueConfirmed") : tr("venuePending")} />
+              <RiskBadge ok={!!item.assignedTeam?.length} label={item.assignedTeam?.length ? tr("vendorAssigned") : tr("vendorPending")} />
+              <RiskBadge ok={!!item.requiredResources?.length} label={item.requiredResources?.length ? tr("documentsComplete") : tr("documentsMissing")} />
+              <RiskBadge ok={false} label={tr("insurancePending")} />
             </div>
           </SectionBlock>
 
-          <SectionBlock title="Resources">
+          <SectionBlock title={tr("resources")} tr={tr}>
             <div className="flex flex-wrap gap-2">
-              {item.requiredResources?.map((resource) => (
-                <Badge key={resource} variant="outline" className="rounded-md">
-                  {RESOURCE_LABELS[resource] ?? resource}
-                </Badge>
-              ))}
+              {item.requiredResources?.map((resource) => {
+                const resourceMap: Record<string, string> = {
+                  brochures: tr("brochures"),
+                  standee: tr("standeeResource"),
+                  flyers: tr("flyersResource"),
+                  presentation_deck: tr("presentationDeck"),
+                  employer_catalog: tr("employerCatalog"),
+                  candidate_forms: tr("candidateForms"),
+                  branding_banners: tr("brandingBanners"),
+                  video_assets: tr("videoAssets"),
+                  business_cards: tr("businessCards"),
+                  booth_design: tr("boothDesign"),
+                };
+                return (
+                  <Badge key={resource} variant="outline" className="rounded-md">
+                    {resourceMap[resource] ?? resource}
+                  </Badge>
+                );
+              })}
             </div>
             <div className="mt-3 space-y-2">
               {resourcesLoading ? (
-                <p className="text-sm text-muted-foreground">Loading matching resources...</p>
+                <p className="text-sm text-muted-foreground">{tr("loadingMatchingResources")}</p>
               ) : matchedResources.length > 0 ? (
                 matchedResources.map((resource) => (
                   <FileCard key={resource._id} title={resource.title} subtitle={resource.category?.replace(/_/g, " ")} icon={<FolderOpen className="h-4 w-4" />} actionLabel="Open" onClick={() => resource.files?.[0]?.url && window.open(resource.files[0].url, "_blank")} />
                 ))
               ) : (
-                <div className="rounded-xl border border-dashed bg-muted/10 p-4 text-center text-sm text-muted-foreground">No matching resources uploaded yet.</div>
+                <div className="rounded-xl border border-dashed bg-muted/10 p-4 text-center text-sm text-muted-foreground">{tr("noMatchingResourcesUploaded")}</div>
               )}
             </div>
           </SectionBlock>
 
-          <SectionBlock title="Attachments">
+          <SectionBlock title={tr("attachments")} tr={tr}>
             <div className="space-y-2">
               {[
-                ["Proposal.pdf", "Event proposal", FileText],
-                ["Quotation.pdf", "Vendor quotation", ReceiptText],
-                ["Venue.pdf", "Venue contract", Building2],
-                ["Images", "Event photos", FileImage],
-                ["Brochure", "Marketing collateral", Megaphone],
-                ["Invoice", "Finance document", ReceiptText],
+                ["Proposal.pdf", tr("proposal"), FileText],
+                ["Quotation.pdf", tr("quotation"), ReceiptText],
+                ["Venue.pdf", tr("venueContract"), Building2],
+                ["Images", tr("eventPhotos"), FileImage],
+                ["Brochure", tr("marketingCollateral"), Megaphone],
+                ["Invoice", tr("financeDocument"), ReceiptText],
               ].map(([title, subtitle, Icon]) => (
-                <FileCard key={title as string} title={title as string} subtitle={subtitle as string} icon={<Icon className="h-4 w-4" />} actionLabel="Preview" onClick={() => toast.info("Preview will open when the file is attached")} />
+                <FileCard key={title as string} title={title as string} subtitle={subtitle as string} icon={<Icon className="h-4 w-4" />} actionLabel={tr("preview")} onClick={() => toast.info(tr("previewWillOpenWhenTheFile"))} />
               ))}
             </div>
           </SectionBlock>
 
-          <SectionBlock title="Comments">
+          <SectionBlock title={tr("comments")} tr={tr}>
             <div className="space-y-4">
-              <ThreadedComment role="Agent" name={item.agentId?.name ?? "Agent"} time={relativeTime(item.createdAt)} text="Submitted the exhibition request with initial budget and expected lead targets." />
-              <ThreadedComment role="Finance" name="Finance Reviewer" time="1d ago" text="Please confirm whether venue deposit is included in the approved amount." />
-              <ThreadedComment role="Admin" name="Admin Ops" time="4h ago" text="Resources team is checking booth collateral availability." />
+              <ThreadedComment role={tr("agentRole")} name={item.agentId?.name ?? tr("agentRole")} time={relativeTime(item.createdAt)} text={tr("submitTheExhibitionRequest")} />
+              <ThreadedComment role={tr("financeReviewerRole")} name={tr("financeReviewer")} time="1d ago" text={tr("pleaseConfirmWhetherVenue")} />
+              <ThreadedComment role={tr("adminOpsRole")} name={tr("adminOps")} time="4h ago" text={tr("resourcesTeamIsChecking")} />
               <div className="rounded-2xl border border-border/60 p-3">
-                <Textarea rows={3} placeholder="Write a comment, use @ to mention teammates, or attach supporting files..." />
+                <Textarea rows={3} placeholder={tr("writeAComment")} />
                 <div className="mt-2 flex items-center justify-between">
                   <Button variant="ghost" size="sm" className="h-8 rounded-lg">
                     <Paperclip className="h-4 w-4" />
-                    Attach
+                    {tr("attach")}
                   </Button>
                   <Button size="sm" className="h-8 rounded-lg">
                     <Send className="h-4 w-4" />
-                    Comment
+                    {tr("comment")}
                   </Button>
                 </div>
               </div>
             </div>
           </SectionBlock>
 
-          <SectionBlock title="Activity">
-            <WorkflowTimeline item={item} />
+          <SectionBlock title={tr("activity")} tr={tr}>
+            <WorkflowTimeline item={item} tr={tr} />
           </SectionBlock>
         </div>
       </div>
@@ -1243,37 +1353,37 @@ function DetailDrawer({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <Button className="h-9 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700" onClick={() => onAction(item, item.status === "approved" ? "budget_approved" : "approved")}>
             <CheckCircle2 className="h-4 w-4" />
-            Approve
+            {tr("approveButton")}
           </Button>
           <Button variant="outline" className="h-9 rounded-lg border-red-200 bg-red-50/40 text-red-700 hover:bg-red-50 hover:text-red-800" onClick={() => onAction(item, "rejected")}>
             <XCircle className="h-4 w-4" />
-            Reject
+            {tr("rejectButton")}
           </Button>
           <Button variant="outline" className="h-9 rounded-lg bg-muted/30" onClick={() => onAction(item, "revision_requested")}>
             <Undo2 className="h-4 w-4" />
-            Send Back
+            {tr("sendBackButton")}
           </Button>
-          <Button variant="secondary" className="h-9 rounded-lg" onClick={() => toast.info("Reviewer assignment workflow queued")}>
+          <Button variant="secondary" className="h-9 rounded-lg" onClick={() => toast.info(tr("reviewerAssignmentWorkflowQueued"))}>
             <UserPlus className="h-4 w-4" />
-            Assign Reviewer
+            {tr("assignReviewerButton")}
           </Button>
-          <Button variant="ghost" className="h-9 rounded-lg" onClick={() => toast.info("PDF generation queued")}>
+          <Button variant="ghost" className="h-9 rounded-lg" onClick={() => toast.info(tr("pdfGenerationQueued"))}>
             <Download className="h-4 w-4" />
-            Download PDF
+            {tr("downloadPdfButton")}
           </Button>
           <Button variant="ghost" className="h-9 rounded-lg" onClick={() => window.print()}>
             <Printer className="h-4 w-4" />
-            Print
+            {tr("printButton")}
           </Button>
         </div>
         <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
           <button className="inline-flex items-center gap-1 disabled:opacity-40" disabled={!previousItem} onClick={onPrevious}>
             <ChevronLeft className="h-3.5 w-3.5" />
-            Previous
+            {tr("previous")}
           </button>
-          <span>Esc close · ←/→ navigate · A approve · R reject</span>
+          <span>{tr("escCloseLeftRightNavigateAApproveRReject")}</span>
           <button className="inline-flex items-center gap-1 disabled:opacity-40" disabled={!nextItem} onClick={onNext}>
-            Next
+            {tr("next")}
             <ChevronRight className="h-3.5 w-3.5" />
           </button>
         </div>
@@ -1294,7 +1404,7 @@ function InfoChip({ icon, label, value }: { icon: React.ReactNode; label: string
   );
 }
 
-function SectionBlock({ title, children }: { title: string; children: React.ReactNode }) {
+function SectionBlock({ title, children }: { title: string; children: React.ReactNode; tr?: any }) {
   return (
     <section>
       <h3 className="mb-3 text-sm font-semibold text-foreground">{title}</h3>
@@ -1303,23 +1413,34 @@ function SectionBlock({ title, children }: { title: string; children: React.Reac
   );
 }
 
-function RequestSummaryCard({ item }: { item: ExhibitionRequest }) {
+function RequestSummaryCard({ item, tr }: { item: ExhibitionRequest; tr?: any }) {
+  const t = tr || useTranslations("adminExhibitions");
+  const categoryMap: Record<string, string> = {
+    career_fair: t("careerFair"),
+    recruitment_expo: t("recruitmentExpo"),
+    employer_branding: t("employerBranding"),
+    hiring_drive: t("hiringDrive"),
+    university_event: t("universityEvent"),
+    gcc_recruitment: t("gccRecruitment"),
+    job_fair: t("jobFair"),
+    other: t("otherCategory"),
+  };
   return (
     <div className="rounded-2xl border border-border/60 bg-muted/15 p-4">
       <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-foreground">
-        <span>{CATEGORY_LABELS[item.eventCategory] ?? item.eventCategory}</span>
+        <span>{categoryMap[item.eventCategory] ?? item.eventCategory}</span>
         <span className="text-muted-foreground">·</span>
-        <span>{item.country || item.eventLocation || "Location TBD"}</span>
+        <span>{item.country || item.eventLocation || t("locationTbd")}</span>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <SummaryMetric label="Budget" value={formatMoney(item.estimatedBudget, item.budgetCurrency)} />
-        <SummaryMetric label="Dates" value={`${formatDate(item.eventStartDate)} - ${formatDate(item.eventEndDate)}`} />
-        <SummaryMetric label="Agent" value={item.agentId?.name ?? "Agent"} />
-        <SummaryMetric label="Expected Leads" value={String(item.expectedLeads ?? "-")} />
-        <SummaryMetric label="Duration" value={`${dayCount(item.eventStartDate, item.eventEndDate) ?? 1} day(s)`} />
-        <SummaryMetric label="Priority" value={item.priority} />
-        <SummaryMetric label="Venue" value={item.venue ?? "TBD"} />
-        <SummaryMetric label="Submitted" value={formatDate(item.createdAt)} />
+        <SummaryMetric label={t("budget")} value={formatMoney(item.estimatedBudget, item.budgetCurrency)} />
+        <SummaryMetric label={t("dates")} value={`${formatDate(item.eventStartDate)} - ${formatDate(item.eventEndDate)}`} />
+        <SummaryMetric label={t("agent")} value={item.agentId?.name ?? t("agentRole")} />
+        <SummaryMetric label={t("expectedLeads")} value={String(item.expectedLeads ?? "-")} />
+        <SummaryMetric label={t("duration")} value={`${dayCount(item.eventStartDate, item.eventEndDate) ?? 1} ${t("days")}`} />
+        <SummaryMetric label={t("priority")} value={item.priority} />
+        <SummaryMetric label={t("venue")} value={item.venue ?? t("tbd")} />
+        <SummaryMetric label={t("submittedHeader")} value={formatDate(item.createdAt)} />
       </div>
     </div>
   );
@@ -1394,7 +1515,8 @@ function FileCard({ title, subtitle, icon, actionLabel, onClick }: { title: stri
   );
 }
 
-function WorkflowTimeline({ item, compact = false }: { item: ExhibitionRequest; compact?: boolean }) {
+function WorkflowTimeline({ item, compact = false, tr }: { item: ExhibitionRequest; compact?: boolean; tr?: any }) {
+  const t = tr || useTranslations("adminExhibitions");
   const workflowIndexByStatus: Record<string, number> = {
     draft: 0,
     submitted: 1,
@@ -1409,11 +1531,11 @@ function WorkflowTimeline({ item, compact = false }: { item: ExhibitionRequest; 
   const currentIndex = item.status === "rejected" ? 5 : (workflowIndexByStatus[item.status] ?? 1);
   const historyByStatus = new Map((item.statusHistory ?? []).map((entry) => [entry.status, entry]));
   const steps = [
-    { key: "submitted", label: "Agent Submitted", owner: item.agentId?.name ?? "Agent" },
-    { key: "under_review", label: "Team Leader Review", owner: "Team Leader" },
-    { key: "approved", label: "Finance Budget Review", owner: "Finance" },
-    { key: "budget_approved", label: "Super Agent Approval", owner: "Super Agent" },
-    { key: "resources_assigned", label: "Admin Verification", owner: "Admin" },
+    { key: "submitted", label: t("agentSubmitted"), owner: item.agentId?.name ?? t("agentRole") },
+    { key: "under_review", label: t("teamLeaderReviewLabel"), owner: "Team Leader" },
+    { key: "approved", label: t("financeBudgetReview"), owner: "Finance" },
+    { key: "budget_approved", label: t("superAgentApprovalLabel"), owner: "Super Agent" },
+    { key: "resources_assigned", label: t("adminVerification"), owner: "Admin" },
   ];
 
   return (
@@ -1424,7 +1546,7 @@ function WorkflowTimeline({ item, compact = false }: { item: ExhibitionRequest; 
         const isDone = index < currentIndex || item.status === "completed";
         const isCurrent = item.status !== "completed" && item.status !== "rejected" && index === currentIndex;
         const tone = isRejected ? "border-red-500 bg-red-50 text-red-600" : isCurrent ? "border-primary bg-primary/10 text-primary" : isDone ? "border-emerald-500 bg-emerald-50 text-emerald-600" : "border-border bg-muted text-muted-foreground";
-        const statusLabel = isRejected ? "Rejected" : isCurrent ? "Current" : isDone ? "Done" : "Waiting";
+        const statusLabel = isRejected ? t("rejectedStatusLabel") : isCurrent ? t("currentStatusLabel") : isDone ? t("doneStatusLabel") : t("waitingStatusLabel");
         const timestamp = history?.changedAt ?? (isDone ? item.createdAt : isCurrent ? item.reviewedAt ?? item.createdAt : null);
 
         if (compact) {
@@ -1439,7 +1561,7 @@ function WorkflowTimeline({ item, compact = false }: { item: ExhibitionRequest; 
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-foreground">{step.label}</p>
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      {timestamp ? formatDateTime(timestamp) : "Pending"} · {history?.changedBy?.name ?? step.owner}
+                      {timestamp ? formatDateTime(timestamp) : t("pendingAction")} · {history?.changedBy?.name ?? step.owner}
                     </p>
                   </div>
                   <Badge className={`${isRejected ? "border-red-200 bg-red-50 text-red-700" : isCurrent ? "border-blue-200 bg-blue-50 text-blue-700" : isDone ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-gray-200 bg-gray-50 text-gray-600"} rounded-md px-2 py-0.5 text-[10px]`}>
@@ -1467,9 +1589,9 @@ function WorkflowTimeline({ item, compact = false }: { item: ExhibitionRequest; 
                   {statusLabel}
                 </Badge>
               </div>
-              <p className="mt-2 text-xs text-muted-foreground">{timestamp ? formatDateTime(timestamp) : "Awaiting action"}</p>
+              <p className="mt-2 text-xs text-muted-foreground">{timestamp ? formatDateTime(timestamp) : t("pendingAction")}</p>
               <p className="mt-2 rounded-lg bg-muted/40 px-3 py-2 text-xs leading-5 text-muted-foreground">
-                {history?.note || history?.statusReason || (isCurrent ? "Current approval owner is reviewing this request." : isDone ? "Step completed without blocking notes." : "No activity recorded yet.")}
+                {history?.note || history?.statusReason || (isCurrent ? t("currentApprovalOwnerIsReviewing") : isDone ? t("stepCompletedWithoutBlockingNotes") : t("noActivityRecordedYet"))}
               </p>
             </div>
           </div>
@@ -1481,8 +1603,8 @@ function WorkflowTimeline({ item, compact = false }: { item: ExhibitionRequest; 
             <AvatarFallback className="bg-transparent text-xs font-semibold">RJ</AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1 rounded-2xl border border-red-200 bg-red-50/60 p-3">
-            <p className="text-sm font-semibold text-red-700">Rejected</p>
-            <p className="mt-1 text-xs text-red-600">{item.reviewNote || "Request rejected by an approver."}</p>
+            <p className="text-sm font-semibold text-red-700">{t("rejectedStatusLabel")}</p>
+            <p className="mt-1 text-xs text-red-600">{item.reviewNote || t("requestRejected")}</p>
           </div>
         </div>
       )}
@@ -1491,6 +1613,7 @@ function WorkflowTimeline({ item, compact = false }: { item: ExhibitionRequest; 
 }
 
 function ThreadedComment({ role, name, time, text }: { role: string; name: string; time: string; text: string }) {
+  const t = useTranslations("adminExhibitions");
   return (
     <div className="flex gap-3 rounded-2xl border border-border/60 p-3">
       <Avatar className="h-8 w-8 ring-1 ring-border">
@@ -1507,7 +1630,7 @@ function ThreadedComment({ role, name, time, text }: { role: string; name: strin
         <p className="mt-2 text-sm leading-6 text-muted-foreground">{text}</p>
         <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
           <Paperclip className="h-3.5 w-3.5" />
-          Supports mentions and attachments
+          {t("supportsAndAttachments")}
         </div>
       </div>
     </div>

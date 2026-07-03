@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { JobFormWizard } from "@/components/features/employer/job-form/JobFormWizard";
 
@@ -7,12 +8,13 @@ interface PageProps {
 
 export default async function AdminNewJobPage({ params }: PageProps) {
   const { locale } = await params;
+  const t = await getTranslations("adminJobsNew");
 
   return (
     <div className="page-container space-y-6">
       <PageHeader
-        title="Post a Job (Admin)"
-        description="Create a job posting on behalf of an employer."
+        title={t("postJobAdmin")}
+        description={t("createJobPostingDescription")}
       />
       <JobFormWizard locale={locale} />
     </div>

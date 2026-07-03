@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { Search, Shield, Clock, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -33,6 +34,7 @@ const RESOURCE_COLOR: Record<string, string> = {
 };
 
 export default function AuditLogsPage() {
+  const t = useTranslations("adminAuditLogs");
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [resource, setResource] = useState("all");
@@ -42,22 +44,42 @@ export default function AuditLogsPage() {
   const [toDate, setToDate] = useState("");
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
 
-  useEffect(() => { document.title = "Audit Logs · MPLOYEDIN"; }, []);
+  useEffect(() => { document.title = `${t("auditLogs")} · MPLOYEDIN`; }, [t]);
+
+  const resourceOptions = [
+    { value: "all", label: t("allResources") },
+    { value: "users", label: t("resourceUsers") },
+    { value: "jobs", label: t("resourceJobs") },
+    { value: "applications", label: t("resourceApplications") },
+    { value: "interviews", label: t("resourceInterviews") },
+    { value: "placements", label: t("resourcePlacements") },
+    { value: "offers", label: t("resourceOffers") },
+    { value: "commissions", label: t("resourceCommissions") },
+    { value: "employers", label: t("resourceEmployers") },
+    { value: "job_seekers", label: t("resourceJobSeekers") },
+    { value: "agents", label: t("resourceAgents") },
+    { value: "super_agents", label: t("resourceSuperAgents") },
+    { value: "leads", label: t("resourceLeads") },
+    { value: "saved_jobs", label: t("resourceSavedJobs") },
+    { value: "messages", label: t("resourceMessages") },
+    { value: "conversation_threads", label: t("resourceConversationThreads") },
+    { value: "settings", label: t("resourceSettings") },
+  ];
 
   const exportColumns: ExportColumn<AuditLogEntry>[] = [
-    { header: "Timestamp", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleString() : "—" },
-    { header: "Actor", key: "actorId" as keyof AuditLogEntry, formatter: (_v, r) => (r as unknown as AuditLogEntry).actorId?.name ?? "System" },
-    { header: "Email", key: "actorId" as keyof AuditLogEntry, formatter: (_v, r) => (r as unknown as AuditLogEntry).actorId?.email ?? "—" },
-    { header: "Action", key: "action" },
-    { header: "Resource", key: "resource" },
-    { header: "IP Address", key: "ipAddress" },
-    { header: "Country", key: "country", formatter: (v) => String(v ?? "—") },
+    { header: t("timestamp"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleString() : "—" },
+    { header: t("actor"), key: "actorId" as keyof AuditLogEntry, formatter: (_v, r) => (r as unknown as AuditLogEntry).actorId?.name ?? t("system") },
+    { header: t("email"), key: "actorId" as keyof AuditLogEntry, formatter: (_v, r) => (r as unknown as AuditLogEntry).actorId?.email ?? "—" },
+    { header: t("action"), key: "action" },
+    { header: t("resource"), key: "resource" },
+    { header: t("ipAddress"), key: "ipAddress" },
+    { header: t("country"), key: "country", formatter: (v) => String(v ?? "—") },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: logs as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "audit-logs",
-    title: "Audit Logs",
+    title: t("auditLogs"),
   });
 
   const fetchLogs = useCallback(async () => {
@@ -88,11 +110,11 @@ export default function AuditLogsPage() {
       <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
           <Sparkles className="h-3.5 w-3.5" />
-          Admin workspace
+          {t("adminWorkspace")}
         </div>
-        <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">Audit Logs</h1>
+        <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("auditLogs")}</h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-          {total.toLocaleString()} log entries · read-only. Track all platform activity and changes.
+          {total.toLocaleString()} {t("logEntriesDescription")}
         </p>
       </section>
 
@@ -105,18 +127,15 @@ export default function AuditLogsPage() {
           <div className="flex gap-3 flex-wrap items-center">
             <SearchableSelect
               className="h-11 w-44 rounded-xl border-border bg-card"
-              options={[
-                { value: "all", label: "All resources" },
-                ...["users", "jobs", "applications", "interviews", "placements", "offers", "commissions", "employers", "job_seekers", "agents", "super_agents", "leads", "saved_jobs", "messages", "conversation_threads", "settings"].map((r) => ({ value: r, label: r })),
-              ]}
+              options={resourceOptions}
               value={resource}
               onValueChange={(v) => { setResource(v); resetPage(); }}
-              placeholder="All resources"
+              placeholder={t("allResources")}
             />
             <div className="relative">
               <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Filter by action…"
+                placeholder={t("filterByAction")}
                 value={action}
                 onChange={(e) => { setAction(e.target.value); resetPage(); }}
                 className="h-11 rounded-xl border-border bg-card ps-10 w-56 text-sm shadow-none"
@@ -125,7 +144,7 @@ export default function AuditLogsPage() {
             <div className="relative">
               <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Country code (e.g. AE)"
+                placeholder={t("countryCodeExample")}
                 value={country}
                 onChange={(e) => { setCountry(e.target.value.toUpperCase()); resetPage(); }}
                 className="h-11 rounded-xl border-border bg-card ps-10 w-44 text-sm shadow-none uppercase"
@@ -137,14 +156,14 @@ export default function AuditLogsPage() {
               value={fromDate}
               onChange={(e) => { setFromDate(e.target.value); resetPage(); }}
               className="h-11 w-40 rounded-xl border-border bg-card text-sm shadow-none"
-              placeholder="From"
+              placeholder={t("from")}
             />
             <Input
               type="date"
               value={toDate}
               onChange={(e) => { setToDate(e.target.value); resetPage(); }}
               className="h-11 w-40 rounded-xl border-border bg-card text-sm shadow-none"
-              placeholder="To"
+              placeholder={t("to")}
             />
           </div>
         }
@@ -160,19 +179,19 @@ export default function AuditLogsPage() {
       ) : logs.length === 0 ? (
         <div className="card-base text-center py-16">
           <Shield className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">No audit log entries found</p>
+          <p className="text-sm text-muted-foreground">{t("noAuditLogEntriesFound")}</p>
         </div>
       ) : (
         <div className="rounded-xl border overflow-x-auto bg-background">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-xs text-muted-foreground uppercase tracking-wide">
               <tr>
-                <th className="text-start px-4 py-3">Timestamp</th>
-                <th className="text-start px-4 py-3">Actor</th>
-                <th className="text-start px-4 py-3">Action</th>
-                <th className="text-start px-4 py-3">Resource</th>
-                <th className="text-start px-4 py-3">IP Address</th>
-                <th className="text-start px-4 py-3">Country</th>
+                <th className="text-start px-4 py-3">{t("timestamp")}</th>
+                <th className="text-start px-4 py-3">{t("actor")}</th>
+                <th className="text-start px-4 py-3">{t("action")}</th>
+                <th className="text-start px-4 py-3">{t("resource")}</th>
+                <th className="text-start px-4 py-3">{t("ipAddress")}</th>
+                <th className="text-start px-4 py-3">{t("country")}</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -191,11 +210,11 @@ export default function AuditLogsPage() {
                     <td className="px-4 py-3">
                       {log.actorId ? (
                         <div>
-                          <p className="font-medium text-foreground">{log.actorId.name ?? "Unknown"}</p>
+                          <p className="font-medium text-foreground">{log.actorId.name ?? t("unknown")}</p>
                           <p className="text-muted-foreground">{log.actorId.email}</p>
                         </div>
                       ) : (
-                        <span className="text-muted-foreground">System</span>
+                        <span className="text-muted-foreground">{t("system")}</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-foreground">{log.action}</td>

@@ -41,6 +41,7 @@ interface StateItem {
 export default function StatesPage() {
   const { can } = usePermissions();
   const tc = useTranslations("common");
+  const t = useTranslations("adminLocationData");
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [items, setItems] = useState<StateItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -89,27 +90,27 @@ export default function StatesPage() {
   const hasActiveFilters = Boolean(search.trim()) || statusFilter !== "all" || countryFilter !== "all";
 
   const getFields = useCallback((): CrudField[] => [
-    { name: "name", label: "State Name (English)", type: "text", required: true, placeholder: "e.g. California" },
-    { name: "nameAr", label: "State Name (Arabic)", type: "text", placeholder: "e.g. كاليفورنيا" },
+    { name: "name", label: t("stateNameEn"), type: "text", required: true, placeholder: t("stateNamePlaceholder") },
+    { name: "nameAr", label: t("stateNameAr"), type: "text", placeholder: t("stateNameArPlaceholder") },
     {
       name: "countryId",
-      label: "Country",
+      label: t("colCountry"),
       type: "select",
       required: true,
       options: countries.map((c) => ({ value: c._id, label: `${c.name} (${c.code})` })),
     },
-    { name: "slug", label: "Slug", type: "text", placeholder: "auto-generated from name if empty" },
-    { name: "sortOrder", label: "Sort Order", type: "number", placeholder: "0" },
+    { name: "slug", label: t("slug"), type: "text", placeholder: t("slugPlaceholder") },
+    { name: "sortOrder", label: t("sortOrder"), type: "number", placeholder: "0" },
     {
       name: "isActive",
-      label: "Status",
+      label: t("status"),
       type: "select",
       options: [
-        { value: "true", label: "Active" },
-        { value: "false", label: "Inactive" },
+        { value: "true", label: t("active") },
+        { value: "false", label: t("inactive") },
       ],
     },
-  ], [countries]);
+  ], [countries, t]);
 
   const handleCreate = async (values: Record<string, string>) => {
     const body: Record<string, unknown> = {
@@ -177,15 +178,15 @@ export default function StatesPage() {
         {/* Compact header row */}
         <div className="flex flex-col gap-3 border-b border-border/80 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-lg font-semibold text-foreground">States</h1>
-            <p className="mt-0.5 text-xs text-muted-foreground">Manage states and provinces for each country.</p>
+            <h1 className="text-lg font-semibold text-foreground">{t("statesTitle")}</h1>
+            <p className="mt-0.5 text-xs text-muted-foreground">{t("statesSubtitle")}</p>
           </div>
           <div className="flex items-center gap-2">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 id="admin-states-search"
-                placeholder="Search states…"
+                placeholder={t("searchStates")}
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); resetPage(); }}
                 className="h-9 w-48 rounded-lg border-border bg-secondary/65 pl-8 text-sm shadow-none sm:w-56"
@@ -199,7 +200,7 @@ export default function StatesPage() {
               className={`h-9 gap-1.5 rounded-lg border-border px-3 text-sm font-medium ${showFilters ? "bg-primary/10 text-primary border-primary/30" : "bg-card text-foreground hover:bg-secondary"}`}
             >
               <SlidersHorizontal className="h-3.5 w-3.5" />
-              Filter
+              {t("filter")}
               {hasActiveFilters && <span className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">!</span>}
             </Button>
             {can("location_data", "create") && (
@@ -208,7 +209,7 @@ export default function StatesPage() {
                 size="sm"
                 className="h-9 gap-1.5 rounded-lg bg-sky-600 px-3 text-sm font-semibold text-white hover:bg-sky-700"
               >
-                <Plus className="h-3.5 w-3.5" /> Add New
+                <Plus className="h-3.5 w-3.5" /> {t("addNew")}
               </Button>
             )}
           </div>
@@ -217,27 +218,27 @@ export default function StatesPage() {
         {/* Collapsible filter panel */}
         {showFilters && (
           <div className="flex flex-wrap items-center gap-3 border-b border-border/60 bg-secondary/30 px-5 py-3">
-            <label htmlFor="admin-states-country" className="text-xs font-medium text-muted-foreground">Country</label>
+            <label htmlFor="admin-states-country" className="text-xs font-medium text-muted-foreground">{t("colCountry")}</label>
             <SearchableSelect
               id="admin-states-country"
               className="h-8 w-[180px] rounded-lg border-border bg-card text-sm"
-              options={[{ value: "all", label: "All Countries" }, ...countries.map((c) => ({ value: c._id, label: c.name }))]}
+              options={[{ value: "all", label: t("allCountries") }, ...countries.map((c) => ({ value: c._id, label: c.name }))]}
               value={countryFilter}
               onValueChange={(v) => { setCountryFilter(v); resetPage(); }}
-              placeholder="Select Country"
+              placeholder={t("colCountry")}
             />
-            <label htmlFor="admin-states-status" className="text-xs font-medium text-muted-foreground">Status</label>
+            <label htmlFor="admin-states-status" className="text-xs font-medium text-muted-foreground">{t("status")}</label>
             <SearchableSelect
               id="admin-states-status"
               className="h-8 w-[140px] rounded-lg border-border bg-card text-sm"
               options={[
-                { value: "all", label: "All" },
-                { value: "active", label: "Active" },
-                { value: "inactive", label: "Inactive" },
+                { value: "all", label: t("all") },
+                { value: "active", label: t("active") },
+                { value: "inactive", label: t("inactive") },
               ]}
               value={statusFilter}
               onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
-              placeholder="Status"
+              placeholder={t("status")}
             />
             {hasActiveFilters && (
               <Button
@@ -247,7 +248,7 @@ export default function StatesPage() {
                 onClick={() => { setSearch(""); setStatusFilter("all"); setCountryFilter("all"); resetPage(); }}
                 className="h-8 gap-1 rounded-lg px-2 text-xs text-muted-foreground hover:text-foreground"
               >
-                <RotateCcw className="h-3 w-3" /> Clear
+                <RotateCcw className="h-3 w-3" /> {t("clear")}
               </Button>
             )}
           </div>
@@ -258,11 +259,11 @@ export default function StatesPage() {
           <Table>
             <TableHeader>
               <TableRow className="border-border/80 bg-secondary/72 hover:bg-secondary/72">
-                <TableHead>Country</TableHead>
-                <TableHead>State</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t("colCountry")}</TableHead>
+                <TableHead>{t("colState")}</TableHead>
+                <TableHead>{t("status")}</TableHead>
                 {(can("location_data", "update") || can("location_data", "delete")) && (
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="text-right">{t("actions")}</TableHead>
                 )}
               </TableRow>
             </TableHeader>
@@ -282,8 +283,8 @@ export default function StatesPage() {
                   <TableCell colSpan={4} className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center gap-2">
                       <Inbox className="h-6 w-6 text-muted-foreground/50" />
-                      <p className="text-sm font-medium text-foreground">No states found</p>
-                      <p className="text-xs text-muted-foreground">Adjust the filters or add a new state.</p>
+                      <p className="text-sm font-medium text-foreground">{t("noStatesFound")}</p>
+                      <p className="text-xs text-muted-foreground">{t("adjustFiltersState")}</p>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -297,12 +298,12 @@ export default function StatesPage() {
                       <TableCell>
                         <div className="flex justify-end gap-1.5">
                           {can("location_data", "update") && (
-                            <Button variant="ghost" size="xs" onClick={() => setEditItem(item)} title="Edit" aria-label={`Edit ${item.name}`}>
+                            <Button variant="ghost" size="xs" onClick={() => setEditItem(item)} title={t("edit")} aria-label={t("editItem", { name: item.name })}>
                               <Pencil className="h-3.5 w-3.5 text-primary" />
                             </Button>
                           )}
                           {can("location_data", "delete") && (
-                            <Button variant="ghost" size="xs" onClick={() => handleDelete(item._id)} title="Delete" aria-label={`Delete ${item.name}`}>
+                            <Button variant="ghost" size="xs" onClick={() => handleDelete(item._id)} title={t("delete")} aria-label={t("deleteItem", { name: item.name })}>
                               <Trash2 className="h-3.5 w-3.5 text-destructive" />
                             </Button>
                           )}
@@ -324,7 +325,7 @@ export default function StatesPage() {
       <CrudModal
         open={showAdd}
         onClose={() => setShowAdd(false)}
-        title="Add New State"
+        title={t("addStateTitle")}
         fields={getFields()}
         onSubmit={handleCreate}
       />
@@ -332,7 +333,7 @@ export default function StatesPage() {
       <CrudModal
         open={!!editItem}
         onClose={() => setEditItem(null)}
-        title="Edit State"
+        title={t("editStateTitle")}
         fields={getFields()}
         initialValues={
           editItem

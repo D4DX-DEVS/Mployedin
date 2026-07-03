@@ -37,7 +37,7 @@ const mockJobData = {
 };
 
 const mockJobSave = jest.fn().mockResolvedValue({ ...mockJobData, _id: "job_new" });
-const chainable = { populate: jest.fn(), sort: jest.fn(), skip: jest.fn(), limit: jest.fn(), lean: jest.fn() };
+const chainable = { populate: jest.fn(), sort: jest.fn(), skip: jest.fn(), limit: jest.fn(), select: jest.fn(), lean: jest.fn() };
 // Make each method return `chainable` itself for fluent API
 Object.values(chainable).forEach(fn => (fn as jest.Mock).mockReturnThis());
 (chainable.lean as jest.Mock).mockResolvedValue([mockJobData]);
@@ -50,6 +50,7 @@ jest.mock("@/models/Job", () => {
     find: jest.fn().mockReturnValue(chainable),
     findById: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue(mockJobData) }),
     countDocuments: jest.fn().mockResolvedValue(1),
+    aggregate: jest.fn().mockResolvedValue([]),
     findByIdAndUpdate: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue({ ...mockJobData, status: "closed" }) }),
   });
   return MockJob;
@@ -63,6 +64,9 @@ jest.mock("@/models/Application", () => {
     findOne: jest.fn().mockResolvedValue(null),
     find: jest.fn().mockReturnValue(chainable),
     countDocuments: jest.fn().mockResolvedValue(0),
+    aggregate: jest.fn().mockResolvedValue([]),
+    // jobs/route.ts uses the named import `{ Application }`
+    Application: MockApp,
   });
   return MockApp;
 });

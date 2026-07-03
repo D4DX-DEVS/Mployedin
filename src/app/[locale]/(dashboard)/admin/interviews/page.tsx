@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import {
   Search, Inbox, Calendar, Video, MapPin, Blend, Sparkles,
   TrendingUp, AlertTriangle, Clock, BarChart3, RotateCcw, CheckCircle2,
@@ -43,7 +44,7 @@ interface AiInsight {
   color: string;
 }
 
-function computeAiInsights(interviews: Interview[]): AiInsight[] {
+function computeAiInsights(interviews: Interview[], t: ReturnType<typeof useTranslations>): AiInsight[] {
   if (interviews.length === 0) return [];
 
   const insights: AiInsight[] = [];
@@ -56,8 +57,13 @@ function computeAiInsights(interviews: Interview[]): AiInsight[] {
   const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
   insights.push({
     icon: "chart",
-    title: "Completion Rate",
-    body: `${completionRate}% of interviews completed (${completed}/${total}). ${completionRate >= 70 ? "Good performance." : "Consider follow-ups to improve attendance."}`,
+    title: t("completionRate"),
+    body: t("completionRateBody", {
+      rate: completionRate,
+      completed,
+      total,
+      performance: completionRate >= 70 ? t("goodPerformance") : t("considerFollowUps"),
+    }),
     color: completionRate >= 70 ? "text-emerald-600" : "text-amber-600",
   });
 
@@ -65,19 +71,29 @@ function computeAiInsights(interviews: Interview[]): AiInsight[] {
     const noShowRate = Math.round((noShow / total) * 100);
     insights.push({
       icon: "warning",
-      title: "No-Show Alert",
-      body: `${noShow} no-show${noShow > 1 ? "s" : ""} detected (${noShowRate}%). ${noShowRate > 15 ? "High rate — consider reminder notifications." : "Within acceptable range."}`,
+      title: t("noShowAlert"),
+      body: t("noShowAlertBody", {
+        count: noShow,
+        plural: noShow > 1 ? t("noShowPlural") : "",
+        rate: noShowRate,
+        message: noShowRate > 15 ? t("noShowHighRate") : t("noShowAcceptable"),
+      }),
       color: noShowRate > 15 ? "text-destructive" : "text-amber-600",
     });
   }
 
   if (scheduled > 0) {
     const upcoming = interviews.filter((i) => i.status === "scheduled" && new Date(i.scheduledAt) > new Date());
+    const overdueCount = scheduled - upcoming.length;
     insights.push({
       icon: "clock",
-      title: "Upcoming Interviews",
-      body: `${upcoming.length} interview${upcoming.length !== 1 ? "s" : ""} scheduled ahead. ${scheduled - upcoming.length > 0 ? `${scheduled - upcoming.length} overdue.` : "All on track."}`,
-      color: scheduled - upcoming.length > 0 ? "text-amber-600" : "text-blue-600",
+      title: t("upcomingInterviews"),
+      body: t("upcomingInterviewsBody", {
+        upcoming: upcoming.length,
+        plural: upcoming.length !== 1 ? t("upcomingPlural") : "",
+        overdue: overdueCount > 0 ? t("overdueMessage", { count: overdueCount }) : t("allOnTrack"),
+      }),
+      color: overdueCount > 0 ? "text-amber-600" : "text-blue-600",
     });
   }
 
@@ -85,8 +101,12 @@ function computeAiInsights(interviews: Interview[]): AiInsight[] {
     const cancelRate = Math.round((cancelled / total) * 100);
     insights.push({
       icon: "trend",
-      title: "Cancellation Trend",
-      body: `${cancelled} cancelled (${cancelRate}%). ${cancelRate > 20 ? "High cancellation rate — investigate scheduling conflicts." : "Cancellation rate is manageable."}`,
+      title: t("cancellationTrend"),
+      body: t("cancellationTrendBody", {
+        count: cancelled,
+        rate: cancelRate,
+        message: cancelRate > 20 ? t("highCancellationRate") : t("cancellationManageable"),
+      }),
       color: cancelRate > 20 ? "text-destructive" : "text-muted-foreground",
     });
   }
@@ -106,6 +126,7 @@ const TYPE_ICON = { video: Video, offline: MapPin, hybrid: Blend } as const;
 /* ---------- Page ---------- */
 
 export default function AdminInterviewOversightPage() {
+  const t = useTranslations("adminInterviews");
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [loading, setLoading] = useState(true);
@@ -123,7 +144,7 @@ export default function AdminInterviewOversightPage() {
 
   const [showFilters, setShowFilters] = useState(false);
   const [showInsights, setShowInsights] = useState(false);
-  const aiInsights = useMemo(() => computeAiInsights(interviews), [interviews]);
+  const aiInsights = useMemo(() => computeAiInsights(interviews, t), [interviews, t]);
 
   useEffect(() => {
     (async () => {
@@ -237,21 +258,21 @@ export default function AdminInterviewOversightPage() {
           <div className="max-w-3xl">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
               <Sparkles className="h-3.5 w-3.5" />
-              Recruitment Control
+              {t("recruitmentControl")}
             </div>
             <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-              Interview Oversight
+              {t("interviewOversight")}
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Monitor all interviews across the platform — track completion rates, no-shows, and scheduling trends.
+              {t("monitorAllInterviews")}
             </p>
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Platform total</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">{total} interviews</p>
-              <p className="text-xs text-muted-foreground">Across all employers</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("platformTotal")}</p>
+              <p className="mt-1 text-lg font-semibold text-foreground">{t("interviewsCount", { count: total })}</p>
+              <p className="text-xs text-muted-foreground">{t("acrossAllEmployers")}</p>
             </div>
             <Button
               variant={showInsights ? "default" : "outline"}
@@ -259,7 +280,7 @@ export default function AdminInterviewOversightPage() {
               className="h-11 gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700 border-0"
             >
               <Sparkles className="h-4 w-4" />
-              AI Insights
+              {t("aiInsights")}
             </Button>
           </div>
         </div>
@@ -267,22 +288,22 @@ export default function AdminInterviewOversightPage() {
         {/* Stats Row */}
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {([
-            { label: "Scheduled", value: scheduledCount, note: "Upcoming", icon: Calendar, tone: "text-sky-600", chip: "bg-sky-50 dark:bg-sky-950/30" },
-            { label: "Completed", value: completedCount, note: "Finished", icon: CheckCircle2, tone: "text-emerald-600", chip: "bg-emerald-50 dark:bg-emerald-950/30" },
-            { label: "Cancelled", value: cancelledCount, note: "Called off", icon: RotateCcw, tone: "text-amber-600", chip: "bg-amber-50 dark:bg-amber-950/30" },
-            { label: "No Shows", value: noShowCount, note: "Missed", icon: AlertTriangle, tone: "text-red-500", chip: "bg-red-50 dark:bg-red-950/30" },
-          ] as const).map(({ label, value, note, icon: Icon, tone, chip }) => (
-            <div key={label} className="workspace-glass-panel rounded-2xl p-4">
+            { labelKey: "scheduled", value: scheduledCount, noteKey: "upcoming", icon: Calendar, tone: "text-sky-600", chip: "bg-sky-50 dark:bg-sky-950/30" },
+            { labelKey: "completed", value: completedCount, noteKey: "finished", icon: CheckCircle2, tone: "text-emerald-600", chip: "bg-emerald-50 dark:bg-emerald-950/30" },
+            { labelKey: "cancelled", value: cancelledCount, noteKey: "calledOff", icon: RotateCcw, tone: "text-amber-600", chip: "bg-amber-50 dark:bg-amber-950/30" },
+            { labelKey: "noShows", value: noShowCount, noteKey: "missed", icon: AlertTriangle, tone: "text-red-500", chip: "bg-red-50 dark:bg-red-950/30" },
+          ] as const).map(({ labelKey, value, noteKey, icon: Icon, tone, chip }) => (
+            <div key={labelKey} className="workspace-glass-panel rounded-2xl p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t(labelKey as any)}</p>
                   <p className="mt-3 text-4xl font-semibold tracking-tight text-foreground">{value}</p>
                 </div>
                 <span className={`flex h-12 w-12 items-center justify-center rounded-2xl ${chip}`}>
                   <Icon className={`h-5 w-5 ${tone}`} />
                 </span>
               </div>
-              <p className="mt-3 text-sm leading-5 text-muted-foreground">{note}</p>
+              <p className="mt-3 text-sm leading-5 text-muted-foreground">{t(noteKey as any)}</p>
             </div>
           ))}
         </div>
@@ -292,7 +313,7 @@ export default function AdminInterviewOversightPage() {
           <div className="mt-6 rounded-[20px] border border-border/30 bg-background/40 p-5 backdrop-blur-sm dark:bg-background/20">
             <div className="mb-4 flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-sky-500" />
-              <h3 className="text-lg font-semibold">AI Interview Insights</h3>
+              <h3 className="text-lg font-semibold">{t("aiInterviewInsights")}</h3>
             </div>
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {loading ? (
@@ -317,7 +338,7 @@ export default function AdminInterviewOversightPage() {
                 })
               ) : (
                 <div className="workspace-glass-panel col-span-full rounded-2xl p-4 text-center">
-                  <p className="text-sm text-muted-foreground">No interview data to analyze yet.</p>
+                  <p className="text-sm text-muted-foreground">{t("noInterviewDataYet")}</p>
                 </div>
               )}
             </div>
@@ -332,15 +353,15 @@ export default function AdminInterviewOversightPage() {
             className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-white/10 dark:hover:bg-white/5"
           >
             <Filter className="h-4 w-4 text-muted-foreground" />
-            {showFilters ? "Hide Filters" : "Show Filters"}
-            {activeFilterCount > 0 && <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">{activeFilterCount} active</Badge>}
+            {showFilters ? t("hideFilters") : t("showFilters")}
+            {activeFilterCount > 0 && <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">{t("activeFilters", { count: activeFilterCount })}</Badge>}
             {showFilters ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
           </button>
           <div className="flex items-center gap-2">
             {activeFilterCount > 0 && (
               <Button variant="ghost" size="sm" onClick={clearAllFilters} className="gap-1.5 text-xs text-muted-foreground">
                 <RotateCcw className="h-3 w-3" />
-                Clear {activeFilterCount} filter{activeFilterCount > 1 ? "s" : ""}
+                {t("clearActiveFilters", { count: activeFilterCount, plural: activeFilterCount > 1 ? t("clearFilterPlural") : "" })}
               </Button>
             )}
             <TableToolbar
@@ -359,7 +380,7 @@ export default function AdminInterviewOversightPage() {
               <input
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-                placeholder="Search candidate or company…"
+                placeholder={t("searchCandidateOrCompany")}
                 className="h-11 w-full rounded-xl border border-border bg-card pl-9 pr-4 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2"
               />
             </div>
@@ -369,44 +390,44 @@ export default function AdminInterviewOversightPage() {
                 id="admin-interviews-status"
                 className="h-11 w-full rounded-xl border-border bg-card"
                 options={[
-                  { value: "all", label: "All statuses" },
-                  { value: "scheduled", label: "Scheduled" },
-                  { value: "completed", label: "Completed" },
-                  { value: "cancelled", label: "Cancelled" },
-                  { value: "no_show", label: "No Show" },
+                  { value: "all", label: t("allStatuses") },
+                  { value: "scheduled", label: t("statusScheduled") },
+                  { value: "completed", label: t("statusCompleted") },
+                  { value: "cancelled", label: t("statusCancelled") },
+                  { value: "no_show", label: t("statusNoShow") },
                 ]}
                 value={statusFilter}
                 onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
-                placeholder="All statuses"
+                placeholder={t("allStatuses")}
               />
               <SearchableSelect
                 id="admin-interviews-type"
                 className="h-11 w-full rounded-xl border-border bg-card"
                 options={[
-                  { value: "all", label: "All types" },
-                  { value: "video", label: "Video" },
-                  { value: "offline", label: "Offline" },
-                  { value: "hybrid", label: "Hybrid" },
+                  { value: "all", label: t("allTypes") },
+                  { value: "video", label: t("typeVideo") },
+                  { value: "offline", label: t("typeOffline") },
+                  { value: "hybrid", label: t("typeHybrid") },
                 ]}
                 value={typeFilter}
                 onValueChange={(v) => { setTypeFilter(v); resetPage(); }}
-                placeholder="All types"
+                placeholder={t("allTypes")}
               />
               <SearchableSelect
                 id="admin-interviews-daterange"
                 className="h-11 w-full rounded-xl border-border bg-card"
                 options={[
-                  { value: "all", label: "All dates" },
-                  { value: "today", label: "Today" },
-                  { value: "3days", label: "Last 3 days" },
-                  { value: "7days", label: "Last 7 days" },
-                  { value: "30days", label: "Last 30 days" },
-                  { value: "90days", label: "Last 90 days" },
-                  { value: "upcoming", label: "Upcoming only" },
+                  { value: "all", label: t("allDates") },
+                  { value: "today", label: t("today") },
+                  { value: "3days", label: t("last3Days") },
+                  { value: "7days", label: t("last7Days") },
+                  { value: "30days", label: t("last30Days") },
+                  { value: "90days", label: t("last90Days") },
+                  { value: "upcoming", label: t("upcomingOnly") },
                 ]}
                 value={dateRange}
                 onValueChange={(v) => { setDateRange(v); resetPage(); }}
-                placeholder="All dates"
+                placeholder={t("allDates")}
               />
               {employers.length > 1 && (
                 <SearchableSelect
@@ -415,7 +436,7 @@ export default function AdminInterviewOversightPage() {
                   options={employers}
                   value={selectedEmployer}
                   onValueChange={(v) => { setSelectedEmployer(v); resetPage(); }}
-                  placeholder="All employers"
+                  placeholder={t("allEmployers")}
                 />
               )}
               {agents.length > 1 && (
@@ -425,7 +446,7 @@ export default function AdminInterviewOversightPage() {
                   options={agents}
                   value={selectedAgent}
                   onValueChange={(v) => { setSelectedAgent(v); resetPage(); }}
-                  placeholder="All agents"
+                  placeholder={t("allAgents")}
                 />
               )}
               {superAgents.length > 1 && (
@@ -435,7 +456,7 @@ export default function AdminInterviewOversightPage() {
                   options={superAgents}
                   value={selectedSuperAgent}
                   onValueChange={(v) => { setSelectedSuperAgent(v); resetPage(); }}
-                  placeholder="All super agents"
+                  placeholder={t("allSuperAgents")}
                 />
               )}
             </div>
@@ -449,13 +470,13 @@ export default function AdminInterviewOversightPage() {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
-                <TableHead className="md:min-w-[160px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">Candidate</TableHead>
-                <TableHead className="md:min-w-[180px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">Role</TableHead>
-                <TableHead className="md:min-w-[140px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">Company</TableHead>
-                <TableHead className="md:min-w-[80px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">Type</TableHead>
-                <TableHead className="md:min-w-[100px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">Agent</TableHead>
-                <TableHead className="md:min-w-[110px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">Date</TableHead>
-                <TableHead className="md:min-w-[100px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">Status</TableHead>
+                <TableHead className="md:min-w-[160px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">{t("candidate")}</TableHead>
+                <TableHead className="md:min-w-[180px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">{t("role")}</TableHead>
+                <TableHead className="md:min-w-[140px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">{t("company")}</TableHead>
+                <TableHead className="md:min-w-[80px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">{t("type")}</TableHead>
+                <TableHead className="md:min-w-[100px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">{t("agent")}</TableHead>
+                <TableHead className="md:min-w-[110px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">{t("date")}</TableHead>
+                <TableHead className="md:min-w-[100px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">{t("status")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -477,14 +498,14 @@ export default function AdminInterviewOversightPage() {
                         <Inbox className="h-7 w-7 opacity-40" />
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-foreground">No interviews found</p>
+                        <p className="text-sm font-semibold text-foreground">{t("noInterviewsFound")}</p>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          {activeFilterCount > 0 ? "Try adjusting the filters above." : "Interviews will appear here once they are scheduled."}
+                          {activeFilterCount > 0 ? t("noInterviewsEmptyFiltered") : t("noInterviewsEmptyDefault")}
                         </p>
                       </div>
                       {activeFilterCount > 0 && (
                         <Button variant="outline" size="sm" onClick={clearAllFilters} className="mt-1 h-8 rounded-lg text-xs">
-                          Clear filters
+                          {t("clearFilters")}
                         </Button>
                       )}
                     </div>

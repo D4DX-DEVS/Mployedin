@@ -12,6 +12,7 @@ const useVoiceInputMock = jest.fn();
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock }),
   useParams: () => ({ locale: "en" }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 jest.mock("sonner", () => ({

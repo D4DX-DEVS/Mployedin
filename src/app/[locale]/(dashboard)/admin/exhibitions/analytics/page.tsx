@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
   Activity,
@@ -127,6 +128,7 @@ const DEFAULT_PERFORMANCE: PerformanceData = {
 };
 
 export default function AdminExhibitionAnalyticsPage() {
+  const t = useTranslations("adminExhibitionsAnalytics");
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [year, setYear] = useState(String(new Date().getFullYear()));
@@ -153,7 +155,7 @@ export default function AdminExhibitionAnalyticsPage() {
           return;
         }
 
-        toast.error("Failed to load admin settings. Using the default currency.");
+        toast.error(t("errorLoadingSettings"));
       });
 
     return () => controller.abort();
@@ -166,7 +168,7 @@ export default function AdminExhibitionAnalyticsPage() {
     if (!Number.isInteger(parsedYear) || parsedYear < 2020 || parsedYear > new Date().getFullYear() + 1) {
       setData(null);
       setLoading(false);
-      toast.error("Invalid year selected.");
+      toast.error(t("errorInvalidYear"));
       return () => controller.abort();
     }
 
@@ -189,7 +191,7 @@ export default function AdminExhibitionAnalyticsPage() {
         }
 
         setData(null);
-        toast.error("Failed to load exhibition analytics.");
+        toast.error(t("errorLoadingAnalytics"));
       })
       .finally(() => {
         if (!controller.signal.aborted) {
@@ -206,13 +208,13 @@ export default function AdminExhibitionAnalyticsPage() {
     }
 
     return [
-      { key: "submitted", label: "Submitted", value: data.kpis.submitted, color: "bg-sky-500" },
-      { key: "underReview", label: "Under review", value: data.kpis.underReview, color: "bg-amber-500" },
-      { key: "approved", label: "Approved", value: data.kpis.approved, color: "bg-emerald-500" },
-      { key: "completed", label: "Completed", value: data.kpis.completed, color: "bg-teal-500" },
-      { key: "rejected", label: "Rejected", value: data.kpis.rejected, color: "bg-rose-500" },
+      { key: "submitted", label: t("statusSubmitted"), value: data.kpis.submitted, color: "bg-sky-500" },
+      { key: "underReview", label: t("statusUnderReview"), value: data.kpis.underReview, color: "bg-amber-500" },
+      { key: "approved", label: t("statusApproved"), value: data.kpis.approved, color: "bg-emerald-500" },
+      { key: "completed", label: t("statusCompleted"), value: data.kpis.completed, color: "bg-teal-500" },
+      { key: "rejected", label: t("statusRejected"), value: data.kpis.rejected, color: "bg-rose-500" },
     ];
-  }, [data]);
+  }, [data, t]);
 
   if (loading) {
     return (
@@ -243,7 +245,7 @@ export default function AdminExhibitionAnalyticsPage() {
   }
 
   if (!data) {
-    return <div className="p-6 text-muted-foreground">Failed to load analytics.</div>;
+    return <div className="p-6 text-muted-foreground">{t("errorLoadingAnalytics")}</div>;
   }
 
   const { kpis, monthly, participation, topAgents } = data;
@@ -257,33 +259,33 @@ export default function AdminExhibitionAnalyticsPage() {
         <div className="grid gap-6 lg:grid-cols-[1.4fr_0.9fr]">
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge className="border-primary/20 bg-primary/10 text-primary hover:bg-primary/10">Admin Analytics</Badge>
-              <Badge className="border-sky-500/20 bg-sky-500/10 text-sky-700 dark:text-sky-300 hover:bg-sky-500/10">Year {data.year}</Badge>
+              <Badge className="border-primary/20 bg-primary/10 text-primary hover:bg-primary/10">{t("adminAnalyticsBadge")}</Badge>
+              <Badge className="border-sky-500/20 bg-sky-500/10 text-sky-700 dark:text-sky-300 hover:bg-sky-500/10">{t("yearBadge", { year: data.year })}</Badge>
             </div>
             <div>
               <h1 className="flex items-center gap-2 text-3xl font-semibold tracking-tight text-foreground">
                 <BarChart3 className="h-7 w-7 text-primary" />
-                Exhibition performance across the platform
+                {t("pageTitle")}
               </h1>
               <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-                Monitor exhibition demand, approval flow, spend, and hiring outcomes across all agents from one operations view.
+                {t("pageDescription")}
               </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
               <HeroStat
-                label="Requests"
+                label={t("requestsLabel")}
                 value={kpis.totalRequests}
-                sub={strongestMonth ? `${strongestMonth.month} is the busiest month` : "No monthly data yet"}
+                sub={strongestMonth ? t("requestsBusiestMonth", { month: strongestMonth.month }) : t("requestsNoData")}
               />
               <HeroStat
-                label="Approval rate"
+                label={t("approvalRateLabel")}
                 value={`${kpis.approvalRate}%`}
-                sub={`${kpis.approved} approved vs ${kpis.rejected} rejected`}
+                sub={t("approvalRateSub", { approved: kpis.approved, rejected: kpis.rejected })}
               />
               <HeroStat
-                label="ROI"
+                label={t("roiLabel")}
                 value={`${performance.roi}%`}
-                sub={performance.eventsReported > 0 ? `${performance.eventsReported} events reported` : "Awaiting performance reports"}
+                sub={performance.eventsReported > 0 ? t("roiEventsReported", { eventsReported: performance.eventsReported }) : t("roiAwaitingReports")}
               />
             </div>
           </div>
@@ -291,31 +293,31 @@ export default function AdminExhibitionAnalyticsPage() {
           <div className="workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Scope</p>
-                <p className="mt-1 text-lg font-semibold text-foreground">Platform summary</p>
+                <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">{t("scopeLabel")}</p>
+                <p className="mt-1 text-lg font-semibold text-foreground">{t("platformSummary")}</p>
               </div>
               <div className="min-w-[10rem]">
                 <SearchableSelect
                   options={YEAR_OPTIONS}
                   value={year}
                   onValueChange={setYear}
-                  placeholder="Select year"
+                  placeholder={t("selectYearPlaceholder")}
                 />
               </div>
             </div>
             <div className="mt-5 space-y-4">
               <div className="rounded-2xl border border-border/60 bg-muted/40 p-4">
-                <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Approved budget</p>
+                <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">{t("approvedBudgetLabel")}</p>
                 <p className="mt-2 text-2xl font-semibold text-foreground">{formatCurrency(kpis.totalApprovedBudget, currencyCode)}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Actual spend {formatCurrency(kpis.totalActualSpend, currencyCode)}
+                  {t("actualSpendLabel", { amount: formatCurrency(kpis.totalActualSpend, currencyCode) })}
                 </p>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <MiniMetric label="Leads generated" value={performance.totalLeads} />
-                <MiniMetric label="Employers engaged" value={performance.totalEmployers} />
-                <MiniMetric label="Candidates sourced" value={performance.totalCandidates} />
-                <MiniMetric label="Hires generated" value={performance.totalHires} />
+                <MiniMetric label={t("leadsGeneratedLabel")} value={performance.totalLeads} />
+                <MiniMetric label={t("employersEngagedLabel")} value={performance.totalEmployers} />
+                <MiniMetric label={t("candidatesSourchedLabel")} value={performance.totalCandidates} />
+                <MiniMetric label={t("hiresGeneratedLabel")} value={performance.totalHires} />
               </div>
             </div>
           </div>
@@ -324,28 +326,28 @@ export default function AdminExhibitionAnalyticsPage() {
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
-          label="Total requests"
+          label={t("totalRequestsLabel")}
           value={kpis.totalRequests}
           icon={<CalendarDays className="h-5 w-5" />}
-          sub={`${kpis.submitted} newly submitted`}
+          sub={t("totalRequestsSub", { submitted: kpis.submitted })}
         />
         <MetricCard
-          label="Avg. request budget"
+          label={t("avgBudgetLabel")}
           value={formatCurrency(kpis.avgBudget, currencyCode)}
           icon={<DollarSign className="h-5 w-5" />}
-          sub={`Estimated total ${formatCurrency(kpis.totalEstimatedBudget, currencyCode)}`}
+          sub={t("avgBudgetSub", { total: formatCurrency(kpis.totalEstimatedBudget, currencyCode) })}
         />
         <MetricCard
-          label="Budget variance"
+          label={t("budgetVarianceLabel")}
           value={formatCurrency(kpis.budgetVariance, currencyCode)}
           icon={<TrendingUp className="h-5 w-5" />}
-          sub={kpis.budgetVariance >= 0 ? "Underspend against approved budget" : "Overspend vs approved budget"}
+          sub={kpis.budgetVariance >= 0 ? t("budgetVarianceUnderspend") : t("budgetVarianceOverspend")}
         />
         <MetricCard
-          label="Completion rate"
+          label={t("completionRateLabel")}
           value={`${kpis.totalRequests > 0 ? Math.round((kpis.completed / kpis.totalRequests) * 100) : 0}%`}
           icon={<CheckCircle2 className="h-5 w-5" />}
-          sub={`${kpis.completed} completed exhibitions`}
+          sub={t("completionRateSub", { completed: kpis.completed })}
         />
       </section>
 
@@ -353,10 +355,10 @@ export default function AdminExhibitionAnalyticsPage() {
         <div className="workspace-panel-surface min-w-0 rounded-[28px] p-5 sm:p-6">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold tracking-tight">Monthly request flow</h2>
-              <p className="text-sm text-muted-foreground">Compare submissions, approvals, completions, and rejections month by month.</p>
+              <h2 className="text-lg font-semibold tracking-tight">{t("monthlyRequestFlowTitle")}</h2>
+              <p className="text-sm text-muted-foreground">{t("monthlyRequestFlowDescription")}</p>
             </div>
-            <Badge variant="outline">12 months</Badge>
+            <Badge variant="outline">{t("monthlyRequestFlowBadge")}</Badge>
           </div>
           <div className="h-[22rem]">
             <ResponsiveContainer width="100%" height="100%" minWidth={0}>
@@ -369,10 +371,10 @@ export default function AdminExhibitionAnalyticsPage() {
                   contentStyle={{ borderRadius: "16px", borderColor: "rgba(148, 163, 184, 0.18)" }}
                 />
                 <Legend />
-                <Bar dataKey="submitted" fill="#0ea5e9" name="Submitted" radius={[8, 8, 0, 0]} />
-                <Bar dataKey="approved" fill="#10b981" name="Approved" radius={[8, 8, 0, 0]} />
-                <Bar dataKey="completed" fill="#14b8a6" name="Completed" radius={[8, 8, 0, 0]} />
-                <Bar dataKey="rejected" fill="#f43f5e" name="Rejected" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="submitted" fill="#0ea5e9" name={t("barChartSubmitted")} radius={[8, 8, 0, 0]} />
+                <Bar dataKey="approved" fill="#10b981" name={t("barChartApproved")} radius={[8, 8, 0, 0]} />
+                <Bar dataKey="completed" fill="#14b8a6" name={t("barChartCompleted")} radius={[8, 8, 0, 0]} />
+                <Bar dataKey="rejected" fill="#f43f5e" name={t("barChartRejected")} radius={[8, 8, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -381,8 +383,8 @@ export default function AdminExhibitionAnalyticsPage() {
         <div className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold tracking-tight">Request pipeline</h2>
-              <p className="text-sm text-muted-foreground">Current distribution across the decision flow.</p>
+              <h2 className="text-lg font-semibold tracking-tight">{t("requestPipelineTitle")}</h2>
+              <p className="text-sm text-muted-foreground">{t("requestPipelineDescription")}</p>
             </div>
             <Activity className="h-5 w-5 text-primary" />
           </div>
@@ -407,8 +409,8 @@ export default function AdminExhibitionAnalyticsPage() {
         <div className="workspace-panel-surface min-w-0 rounded-[28px] p-5 sm:p-6">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold tracking-tight">Participation mix</h2>
-              <p className="text-sm text-muted-foreground">See which exhibition participation styles are requested most often across the platform.</p>
+              <h2 className="text-lg font-semibold tracking-tight">{t("participationMixTitle")}</h2>
+              <p className="text-sm text-muted-foreground">{t("participationMixDescription")}</p>
             </div>
             <Target className="h-5 w-5 text-primary" />
           </div>
@@ -429,7 +431,7 @@ export default function AdminExhibitionAnalyticsPage() {
                         <Cell key={item.type} fill={PARTICIPATION_COLORS[index % PARTICIPATION_COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value) => [Number(value ?? 0), "Requests"]} />
+                    <Tooltip formatter={(value) => [Number(value ?? 0), t("participationTooltip")]} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -458,7 +460,7 @@ export default function AdminExhibitionAnalyticsPage() {
             </>
           ) : (
             <div className="rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">
-              No participation data yet for the selected year.
+              {t("participationNoData")}
             </div>
           )}
         </div>
@@ -466,18 +468,18 @@ export default function AdminExhibitionAnalyticsPage() {
         <div className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold tracking-tight">Top exhibiting agents</h2>
-              <p className="text-sm text-muted-foreground">Ranked by submitted volume with approval and budget context.</p>
+              <h2 className="text-lg font-semibold tracking-tight">{t("topAgentsTitle")}</h2>
+              <p className="text-sm text-muted-foreground">{t("topAgentsDescription")}</p>
             </div>
             <Trophy className="h-5 w-5 text-primary" />
           </div>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Agent</TableHead>
-                <TableHead className="text-center">Requests</TableHead>
-                <TableHead className="text-center">Approval</TableHead>
-                <TableHead className="text-right">Budget</TableHead>
+                <TableHead>{t("tableHeaderAgent")}</TableHead>
+                <TableHead className="text-center">{t("tableHeaderRequests")}</TableHead>
+                <TableHead className="text-center">{t("tableHeaderApproval")}</TableHead>
+                <TableHead className="text-right">{t("tableHeaderBudget")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -490,7 +492,7 @@ export default function AdminExhibitionAnalyticsPage() {
                       </div>
                       <div className="min-w-0">
                         <p className="truncate font-medium">{agent.name}</p>
-                        <p className="truncate text-xs text-muted-foreground">{agent.approved} approved</p>
+                        <p className="truncate text-xs text-muted-foreground">{t("tableApprovedSub", { count: agent.approved })}</p>
                       </div>
                     </div>
                   </TableCell>
@@ -506,7 +508,7 @@ export default function AdminExhibitionAnalyticsPage() {
               {topAgents.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
-                    No exhibition activity found for the selected year.
+                    {t("tableNoActivity")}
                   </TableCell>
                 </TableRow>
               )}
@@ -515,17 +517,17 @@ export default function AdminExhibitionAnalyticsPage() {
 
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
             <MiniSummaryCard
-              label="Revenue"
+              label={t("revenueLabel")}
               value={formatCurrency(performance.totalRevenue, currencyCode)}
               icon={<DollarSign className="h-4 w-4" />}
             />
             <MiniSummaryCard
-              label="Cost"
+              label={t("costLabel")}
               value={formatCurrency(performance.totalCost, currencyCode)}
               icon={<Percent className="h-4 w-4" />}
             />
             <MiniSummaryCard
-              label="Team reach"
+              label={t("teamReachLabel")}
               value={performance.totalEmployers + performance.totalCandidates}
               icon={<Users className="h-4 w-4" />}
             />

@@ -11,7 +11,7 @@ import Application from "@/models/Application";
 import Placement from "@/models/Placement";
 import Lead from "@/models/Lead";
 import { formatCurrency } from "@/lib/currency";
-import { getTranslations } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import {
   ArrowRight,
   BriefcaseBusiness,
@@ -30,6 +30,7 @@ import {
 export default async function SuperAgentDashboard({ params }: { params: Promise<{ locale: string }> }) {
   const session = await auth();
   const { locale } = await params;
+  setRequestLocale(locale);
   const t = await getTranslations("superAgentDashboard");
   if (!session?.user) redirect(`/${locale}/login`);
 

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useCallback, Fragment } from "react";
+import { useTranslations } from "next-intl";
 import {
   Search, Crown, ArrowUpRight, ArrowDownRight, RotateCcw, X, Loader2,
   Clock, CheckCircle, XCircle, AlertTriangle, User, Briefcase,
@@ -63,16 +64,6 @@ const STATUS_CONFIG: Record<string, { color: string; icon: typeof CheckCircle }>
   suspended: { color: "bg-orange-500/10 text-orange-400 border-orange-500/30", icon: AlertTriangle },
 };
 
-const ACTION_LABELS: Record<string, string> = {
-  assigned: "Assigned",
-  upgraded: "Upgraded",
-  downgraded: "Downgraded",
-  renewed: "Renewed",
-  cancelled: "Cancelled",
-  expired: "Expired",
-  suspended: "Suspended",
-  reactivated: "Reactivated",
-};
 
 // ── KPI Fetch ─────────────────────────────────────────────────────────────────
 
@@ -98,6 +89,7 @@ async function fetchStats(): Promise<StatsData> {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function AdminSubscriptionsPage() {
+  const t = useTranslations("adminSubscriptions");
   const [activeTab, setActiveTab] = useState<"table" | "manage">("table");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedUser, setSelectedUser] = useState<SearchUser | null>(null);
@@ -135,17 +127,17 @@ export default function AdminSubscriptionsPage() {
     <div className="page-container space-y-6">
       <PageHero
         icon={Crown}
-        title="Subscription Management"
-        description="View all subscribers, track plans, and manage user subscriptions"
+        title={t("subscriptionManagementTitle")}
+        description={t("subscriptionManagementDesc")}
       />
 
       {/* ── KPI Cards ── */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {[
-          { label: "Total Subscribers", value: overview?.total ?? 0, icon: Users, color: "text-sky-500 bg-sky-500/10" },
-          { label: "Active", value: overview?.active ?? 0, icon: CheckCircle, color: "text-emerald-500 bg-emerald-500/10" },
-          { label: "Expiring Soon", value: expiringSoonCount, icon: AlertTriangle, color: "text-amber-500 bg-amber-500/10" },
-          { label: "Cancelled", value: overview?.cancelled ?? 0, icon: XCircle, color: "text-red-500 bg-red-500/10" },
+          { label: t("totalSubscribersLabel"), value: overview?.total ?? 0, icon: Users, color: "text-sky-500 bg-sky-500/10" },
+          { label: t("activeLabel"), value: overview?.active ?? 0, icon: CheckCircle, color: "text-emerald-500 bg-emerald-500/10" },
+          { label: t("expiringLabel"), value: expiringSoonCount, icon: AlertTriangle, color: "text-amber-500 bg-amber-500/10" },
+          { label: t("cancelledLabel"), value: overview?.cancelled ?? 0, icon: XCircle, color: "text-red-500 bg-red-500/10" },
         ].map((kpi) => (
           <div key={kpi.label} className="rounded-2xl border border-border/60 bg-card p-4 flex items-center gap-3">
             <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${kpi.color}`}>
@@ -168,7 +160,7 @@ export default function AdminSubscriptionsPage() {
           onClick={() => setActiveTab("table")}
         >
           <Users className="h-3.5 w-3.5 mr-1.5" />
-          All Subscribers
+          {t("allSubscribersTab")}
         </Button>
         <Button
           size="sm"
@@ -177,7 +169,7 @@ export default function AdminSubscriptionsPage() {
           onClick={() => setActiveTab("manage")}
         >
           <Search className="h-3.5 w-3.5 mr-1.5" />
-          Search &amp; Manage
+          {t("searchManageTab")}
         </Button>
       </div>
 
@@ -189,12 +181,12 @@ export default function AdminSubscriptionsPage() {
         <>
           <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-4">
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-              Search User
+              {t("searchUserLabel")}
             </h3>
             <TableToolbar
               search={searchQuery}
               onSearchChange={(v) => setSearchQuery(v)}
-              searchPlaceholder="Search by name or email…"
+              searchPlaceholder={t("searchPlaceholder")}
               onExportCsv={handleExportCsv}
               onExportExcel={handleExportExcel}
               onExportPdf={handleExportPdf}
@@ -213,12 +205,12 @@ export default function AdminSubscriptionsPage() {
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">{user.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {user.role === "employer" ? "Employer" : "Job Seeker"}
+                        {user.role === "employer" ? t("employerBadge") : t("jobSeekerBadge")}
                         {user.companyName ? ` · ${user.companyName}` : ""}
                       </p>
                     </div>
                     <Badge variant="outline" className="text-xs shrink-0">
-                      {user.role === "employer" ? "Employer" : "Job Seeker"}
+                      {user.role === "employer" ? t("employerBadge") : t("jobSeekerBadge")}
                     </Badge>
                   </button>
                 ))}
@@ -238,6 +230,7 @@ export default function AdminSubscriptionsPage() {
 // ── Subscribers Table ────────────────────────────────────────────────────────
 
 function SubscribersTable() {
+  const t = useTranslations("adminSubscriptions");
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [filters, setFilters] = useState<AdminSubscriptionsFilters>({
     sortBy: "createdAt", sortOrder: "desc",
@@ -279,19 +272,19 @@ function SubscribersTable() {
 
   // Export columns
   const subExportColumns: ExportColumn<AdminSubscriptionItem>[] = useMemo(() => [
-    { header: "Name", key: "userId" as keyof AdminSubscriptionItem, formatter: (_v, r) => (r as unknown as AdminSubscriptionItem).userId?.name ?? "—" },
+    { header: t("tableHeaderUser"), key: "userId" as keyof AdminSubscriptionItem, formatter: (_v, r) => (r as unknown as AdminSubscriptionItem).userId?.name ?? "—" },
     { header: "Email", key: "userId" as keyof AdminSubscriptionItem, formatter: (_v, r) => (r as unknown as AdminSubscriptionItem).userId?.email ?? "—" },
-    { header: "Role", key: "targetRole" as keyof AdminSubscriptionItem, formatter: (v) => v === "employer" ? "Employer" : "Job Seeker" },
-    { header: "Plan", key: "planSnapshot" as keyof AdminSubscriptionItem, formatter: (_v, r) => (r as unknown as AdminSubscriptionItem).planSnapshot?.name ?? "—" },
-    { header: "Tier", key: "planSnapshot" as keyof AdminSubscriptionItem, formatter: (_v, r) => String((r as unknown as AdminSubscriptionItem).planSnapshot?.tier ?? 0) },
-    { header: "Price", key: "planSnapshot" as keyof AdminSubscriptionItem, formatter: (_v, r) => { const s = (r as unknown as AdminSubscriptionItem).planSnapshot; return s?.price > 0 ? `${s.price} ${s.currency}` : "Free"; } },
+    { header: t("tableHeaderRole"), key: "targetRole" as keyof AdminSubscriptionItem, formatter: (v) => v === "employer" ? t("employerBadge") : t("jobSeekerBadge") },
+    { header: t("tableHeaderPlan"), key: "planSnapshot" as keyof AdminSubscriptionItem, formatter: (_v, r) => (r as unknown as AdminSubscriptionItem).planSnapshot?.name ?? "—" },
+    { header: t("tierLabel"), key: "planSnapshot" as keyof AdminSubscriptionItem, formatter: (_v, r) => String((r as unknown as AdminSubscriptionItem).planSnapshot?.tier ?? 0) },
+    { header: t("tableHeaderPrice"), key: "planSnapshot" as keyof AdminSubscriptionItem, formatter: (_v, r) => { const s = (r as unknown as AdminSubscriptionItem).planSnapshot; return s?.price > 0 ? `${s.price} ${s.currency}` : t("priceFreeLabel"); } },
     { header: "Billing Cycle", key: "planSnapshot" as keyof AdminSubscriptionItem, formatter: (_v, r) => (r as unknown as AdminSubscriptionItem).planSnapshot?.billingCycle ?? "—" },
-    { header: "Status", key: "status" as keyof AdminSubscriptionItem },
+    { header: t("tableHeaderStatus"), key: "status" as keyof AdminSubscriptionItem },
     { header: "Start Date", key: "startDate" as keyof AdminSubscriptionItem, formatter: (v) => formatDate(v as string) },
     { header: "End Date", key: "endDate" as keyof AdminSubscriptionItem, formatter: (v) => formatDate(v as string) },
-    { header: "Auto-Renew", key: "autoRenew" as keyof AdminSubscriptionItem, formatter: (v) => v ? "Yes" : "No" },
-    { header: "Days Left", key: "endDate" as keyof AdminSubscriptionItem, formatter: (v, r) => (r as unknown as AdminSubscriptionItem).status === "active" ? String(daysUntil(v as string)) : "—" },
-  ], []);
+    { header: t("tableHeaderAutoRenew"), key: "autoRenew" as keyof AdminSubscriptionItem, formatter: (v) => v ? t("autoRenewYes") : t("autoRenewNo") },
+    { header: t("tableHeaderDaysLeft"), key: "endDate" as keyof AdminSubscriptionItem, formatter: (v, r) => (r as unknown as AdminSubscriptionItem).status === "active" ? String(daysUntil(v as string)) : "—" },
+  ], [t]);
 
   const { handleExportCsv: exportCsv, handleExportExcel: exportExcel, handleExportPdf: exportPdf } = useTableExport({
     data: subscriptions as unknown as Record<string, unknown>[],
@@ -305,9 +298,9 @@ function SubscribersTable() {
       {/* ── Role Toggle ── */}
       <div className="flex gap-2">
         {([
-          { value: undefined, label: "All", icon: Users },
-          { value: "employer", label: "Employers", icon: Briefcase },
-          { value: "job_seeker", label: "Job Seekers", icon: User },
+          { value: undefined, label: t("allRoleOption"), icon: Users },
+          { value: "employer", label: t("employersRoleOption"), icon: Briefcase },
+          { value: "job_seeker", label: t("jobSeekersRoleOption"), icon: User },
         ] as const).map((opt) => (
           <button
             key={opt.label}
@@ -329,7 +322,7 @@ function SubscribersTable() {
         <TableToolbar
           search={searchInput}
           onSearchChange={(v) => { setSearchInput(v); }}
-          searchPlaceholder="Search by name or email…"
+          searchPlaceholder={t("searchPlaceholder")}
           onExportCsv={exportCsv}
           onExportExcel={exportExcel}
           onExportPdf={exportPdf}
@@ -339,32 +332,32 @@ function SubscribersTable() {
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                 {/* Status */}
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Status</label>
+                  <label className="text-xs text-muted-foreground mb-1 block">{t("planLabel")}</label>
                   <Select
                     value={filters.status ?? "all"}
                     onValueChange={(v) => { setFilters((f) => ({ ...f, status: v === "all" ? undefined : v })); resetPage(); }}
                   >
                     <SelectTrigger className="rounded-xl h-9"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Statuses</SelectItem>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="expired">Expired</SelectItem>
-                      <SelectItem value="cancelled">Cancelled</SelectItem>
-                      <SelectItem value="suspended">Suspended</SelectItem>
+                      <SelectItem value="all">{t("allStatusesOption")}</SelectItem>
+                      <SelectItem value="active">{t("statusActiveOption")}</SelectItem>
+                      <SelectItem value="expired">{t("statusExpiredOption")}</SelectItem>
+                      <SelectItem value="cancelled">{t("statusCancelledOption")}</SelectItem>
+                      <SelectItem value="suspended">{t("statusSuspendedOption")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 {/* Plan */}
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Plan</label>
+                  <label className="text-xs text-muted-foreground mb-1 block">{t("planLabel")}</label>
                   <Select
                     value={filters.planId ?? "all"}
                     onValueChange={(v) => { setFilters((f) => ({ ...f, planId: v === "all" ? undefined : v })); resetPage(); }}
                   >
                     <SelectTrigger className="rounded-xl h-9"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Plans</SelectItem>
+                      <SelectItem value="all">{t("allPlansOption")}</SelectItem>
                       {allPlans.map((p) => (
                         <SelectItem key={p._id} value={p._id}>{p.name}</SelectItem>
                       ))}
@@ -374,23 +367,23 @@ function SubscribersTable() {
 
                 {/* Auto-Renew */}
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Auto-Renew</label>
+                  <label className="text-xs text-muted-foreground mb-1 block">{t("autoRenewLabel")}</label>
                   <Select
                     value={filters.autoRenew ?? "all"}
                     onValueChange={(v) => { setFilters((f) => ({ ...f, autoRenew: v === "all" ? undefined : v })); resetPage(); }}
                   >
                     <SelectTrigger className="rounded-xl h-9"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All</SelectItem>
-                      <SelectItem value="true">Yes</SelectItem>
-                      <SelectItem value="false">No</SelectItem>
+                      <SelectItem value="all">{t("allFilter")}</SelectItem>
+                      <SelectItem value="true">{t("autoRenewYesOption")}</SelectItem>
+                      <SelectItem value="false">{t("autoRenewNoOption")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 {/* Date Range */}
                 <div className="xl:col-span-2">
-                  <label className="text-xs text-muted-foreground mb-1 block">Date Range</label>
+                  <label className="text-xs text-muted-foreground mb-1 block">{t("dateRangeLabel")}</label>
                   <div className="flex items-center gap-2">
                     <div className="relative flex-1">
                       <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
@@ -401,7 +394,7 @@ function SubscribersTable() {
                         className="rounded-xl h-9 pl-9"
                       />
                     </div>
-                    <span className="text-xs text-muted-foreground">to</span>
+                    <span className="text-xs text-muted-foreground">{t("dateRangeToLabel")}</span>
                     <div className="relative flex-1">
                       <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
                       <Input
@@ -421,20 +414,20 @@ function SubscribersTable() {
                   disabled={!hasActiveFilters}
                   className="gap-1.5"
                 >
-                  <RotateCcw className="h-3.5 w-3.5" /> Clear Filters
+                  <RotateCcw className="h-3.5 w-3.5" /> {t("clearFiltersBtn")}
                 </Button>
                 <Button
                   size="sm" className="bg-sky-600 hover:bg-sky-700 gap-1.5"
                   onClick={() => { setFilters((f) => ({ ...f, search: searchInput || undefined })); resetPage(); }}
                 >
-                  <Search className="h-3.5 w-3.5" /> Apply
+                  <Search className="h-3.5 w-3.5" /> {t("applyFiltersBtn")}
                 </Button>
               </div>
             </div>
           }
           right={
             <span className="text-xs text-muted-foreground">
-              {total} subscriber{total !== 1 ? "s" : ""}
+              {total} {total !== 1 ? t("subscriberCountPlural") : t("subscriberCountLabel")}
             </span>
           }
         />
@@ -445,15 +438,15 @@ function SubscribersTable() {
             <thead>
               <tr className="border-b border-border/40 text-left text-xs text-muted-foreground uppercase tracking-wider">
                 <th className="px-4 py-3 font-medium w-8" />
-                <th className="px-4 py-3 font-medium">User</th>
-                <th className="px-4 py-3 font-medium">Role</th>
-                <th className="px-4 py-3 font-medium">Plan</th>
-                <th className="px-4 py-3 font-medium">Price</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Start</th>
-                <th className="px-4 py-3 font-medium">End</th>
-                <th className="px-4 py-3 font-medium">Auto-Renew</th>
-                <th className="px-4 py-3 font-medium">Days Left</th>
+                <th className="px-4 py-3 font-medium">{t("tableHeaderUser")}</th>
+                <th className="px-4 py-3 font-medium">{t("tableHeaderRole")}</th>
+                <th className="px-4 py-3 font-medium">{t("tableHeaderPlan")}</th>
+                <th className="px-4 py-3 font-medium">{t("tableHeaderPrice")}</th>
+                <th className="px-4 py-3 font-medium">{t("tableHeaderStatus")}</th>
+                <th className="px-4 py-3 font-medium">{t("tableHeaderStart")}</th>
+                <th className="px-4 py-3 font-medium">{t("tableHeaderEnd")}</th>
+                <th className="px-4 py-3 font-medium">{t("tableHeaderAutoRenew")}</th>
+                <th className="px-4 py-3 font-medium">{t("tableHeaderDaysLeft")}</th>
               </tr>
             </thead>
             <tbody>
@@ -469,7 +462,7 @@ function SubscribersTable() {
                 <tr>
                   <td colSpan={10} className="px-4 py-12 text-center text-muted-foreground">
                     <Crown className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                    No subscriptions found
+                    {t("noSubscriptionsFound")}
                   </td>
                 </tr>
               ) : (
@@ -511,6 +504,7 @@ function ExpandableRow({
   isExpanded: boolean;
   onToggle: () => void;
 }) {
+  const t = useTranslations("adminSubscriptions");
   const user = sub.userId;
   const snap = sub.planSnapshot;
   const days = daysUntil(sub.endDate);
@@ -539,16 +533,16 @@ function ExpandableRow({
         </td>
         <td className="px-4 py-3">
           <Badge variant="outline" className="text-xs">
-            {sub.targetRole === "employer" ? "Employer" : "Job Seeker"}
+            {sub.targetRole === "employer" ? t("employerBadge") : t("jobSeekerBadge")}
           </Badge>
         </td>
         <td className="px-4 py-3">
           <p className="font-medium">{snap?.name ?? "—"}</p>
-          <p className="text-xs text-muted-foreground">Tier {snap?.tier ?? 0}</p>
+          <p className="text-xs text-muted-foreground">{t("tierLabel")} {snap?.tier ?? 0}</p>
         </td>
         <td className="px-4 py-3 text-sm">
-          {snap?.price > 0 ? `${snap.price} ${snap.currency}` : "Free"}
-          {snap?.price > 0 && <span className="text-xs text-muted-foreground">/{snap.billingCycle}</span>}
+          {snap?.price > 0 ? `${snap.price} ${snap.currency}` : t("priceFreeLabel")}
+          {snap?.price > 0 && <span className="text-xs text-muted-foreground">{t("pricePerLabel")}{snap.billingCycle}</span>}
         </td>
         <td className="px-4 py-3">
           <Badge className={`${sCfg.color} border text-xs`}>
@@ -560,13 +554,13 @@ function ExpandableRow({
         <td className="px-4 py-3 text-xs text-muted-foreground">{formatDate(sub.endDate)}</td>
         <td className="px-4 py-3">
           <Badge variant="outline" className={`text-xs ${sub.autoRenew ? "text-emerald-500 border-emerald-500/30" : "text-muted-foreground"}`}>
-            {sub.autoRenew ? "Yes" : "No"}
+            {sub.autoRenew ? t("autoRenewYes") : t("autoRenewNo")}
           </Badge>
         </td>
         <td className="px-4 py-3">
           {sub.status === "active" ? (
             <span className={`text-sm font-medium ${days <= 7 ? "text-red-400" : days <= 30 ? "text-amber-400" : "text-foreground"}`}>
-              {days > 0 ? `${days}d` : "Today"}
+              {days > 0 ? `${days}${t("daysLabelShort")}` : t("todayLabel")}
             </span>
           ) : (
             <span className="text-xs text-muted-foreground">—</span>
@@ -589,6 +583,7 @@ function ExpandableRow({
 // ── Expanded Detail Panel ───────────────────────────────────────────────────
 
 function ExpandedDetail({ sub }: { sub: AdminSubscriptionItem }) {
+  const t = useTranslations("adminSubscriptions");
   const userId = sub.userId?._id;
   const [activeSection, setActiveSection] = useState<"details" | "history" | "invoices">("details");
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
@@ -603,9 +598,9 @@ function ExpandedDetail({ sub }: { sub: AdminSubscriptionItem }) {
       {/* ── Section Tabs ── */}
       <div className="flex gap-2">
         {([
-          { key: "details" as const, label: "Details", icon: Eye },
-          { key: "history" as const, label: "History", icon: Clock, count: history?.length },
-          { key: "invoices" as const, label: "Invoices", icon: FileText, count: (invoices as InvoiceItem[] | undefined)?.length },
+          { key: "details" as const, label: t("detailsTab"), icon: Eye },
+          { key: "history" as const, label: t("historyTab"), icon: Clock, count: history?.length },
+          { key: "invoices" as const, label: t("invoicesTab"), icon: FileText, count: (invoices as InvoiceItem[] | undefined)?.length },
         ]).map((tab) => (
           <button
             key={tab.key}
@@ -632,10 +627,10 @@ function ExpandedDetail({ sub }: { sub: AdminSubscriptionItem }) {
       {/* ── Details Section ── */}
       {activeSection === "details" && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <DetailCard label="Plan" value={snap?.name ?? "—"} sub={`Tier ${snap?.tier ?? 0}`} />
-          <DetailCard label="Price" value={snap?.price > 0 ? `${snap.price} ${snap.currency}` : "Free"} sub={snap?.billingCycle ?? "monthly"} />
-          <DetailCard label="Period" value={`${formatDate(sub.startDate)} — ${formatDate(sub.endDate)}`} sub={sub.status === "active" ? `${daysUntil(sub.endDate)} days remaining` : sub.status} />
-          <DetailCard label="Auto-Renew" value={sub.autoRenew ? "Enabled" : "Disabled"} sub={`Created ${formatDate(sub.createdAt)}`} />
+          <DetailCard label={t("detailCardPlanLabel")} value={snap?.name ?? "—"} sub={`${t("tierLabel")} ${snap?.tier ?? 0}`} />
+          <DetailCard label={t("detailCardPriceLabel")} value={snap?.price > 0 ? `${snap.price} ${snap.currency}` : t("priceFreeLabel")} sub={snap?.billingCycle ?? "monthly"} />
+          <DetailCard label={t("detailCardPeriodLabel")} value={`${formatDate(sub.startDate)} — ${formatDate(sub.endDate)}`} sub={sub.status === "active" ? `${daysUntil(sub.endDate)} ${t("daysRemainingLabel")}` : sub.status} />
+          <DetailCard label={t("detailCardAutoRenewLabel")} value={sub.autoRenew ? t("autoRenewEnabledLabel") : t("autoRenewDisabledLabel")} sub={`${t("createdDatePrefix")} ${formatDate(sub.createdAt)}`} />
         </div>
       )}
 
@@ -643,30 +638,41 @@ function ExpandedDetail({ sub }: { sub: AdminSubscriptionItem }) {
       {activeSection === "history" && (
         <div className="space-y-2">
           {!history?.length ? (
-            <p className="text-sm text-muted-foreground text-center py-4">No history yet</p>
+            <p className="text-sm text-muted-foreground text-center py-4">{t("noHistoryYet")}</p>
           ) : (
             <div className="relative pl-6 space-y-3 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-px before:bg-border/60">
-              {history.map((item: HistoryItem) => (
-                <div key={item._id} className="relative">
-                  <div className="absolute -left-[19px] top-1 h-3 w-3 rounded-full border-2 border-background bg-sky-500" />
-                  <div className="rounded-xl border border-border/40 p-3">
-                    <div className="flex items-center justify-between mb-1">
-                      <Badge variant="outline" className="text-xs">
-                        {ACTION_LABELS[item.action] ?? item.action}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">{formatDate(item.createdAt)}</span>
+              {history.map((item: HistoryItem) => {
+                const actionLabel = item.action === "assigned" ? t("actionLabelAssigned")
+                  : item.action === "upgraded" ? t("actionLabelUpgraded")
+                  : item.action === "downgraded" ? t("actionLabelDowngraded")
+                  : item.action === "renewed" ? t("actionLabelRenewed")
+                  : item.action === "cancelled" ? t("actionLabelCancelled")
+                  : item.action === "expired" ? t("actionLabelExpired")
+                  : item.action === "suspended" ? t("actionLabelSuspended")
+                  : item.action === "reactivated" ? t("actionLabelReactivated")
+                  : item.action;
+                return (
+                  <div key={item._id} className="relative">
+                    <div className="absolute -left-[19px] top-1 h-3 w-3 rounded-full border-2 border-background bg-sky-500" />
+                    <div className="rounded-xl border border-border/40 p-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <Badge variant="outline" className="text-xs">
+                          {actionLabel}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">{formatDate(item.createdAt)}</span>
+                      </div>
+                      {item.fromPlanName && item.toPlanName && (
+                        <p className="text-sm text-muted-foreground">{item.fromPlanName} {t("historyTransitionSeparator")} {item.toPlanName}</p>
+                      )}
+                      {!item.fromPlanName && item.toPlanName && (
+                        <p className="text-sm text-muted-foreground">{t("historyAssignedPrefix")} {item.toPlanName}</p>
+                      )}
+                      {item.reason && <p className="text-xs text-muted-foreground/70 mt-1">{t("historyReasonPrefix")}: {item.reason}</p>}
+                      <p className="text-xs text-muted-foreground/50 mt-1">{t("historyPerformedByPrefix")} {item.performedByRole}</p>
                     </div>
-                    {item.fromPlanName && item.toPlanName && (
-                      <p className="text-sm text-muted-foreground">{item.fromPlanName} → {item.toPlanName}</p>
-                    )}
-                    {!item.fromPlanName && item.toPlanName && (
-                      <p className="text-sm text-muted-foreground">Assigned: {item.toPlanName}</p>
-                    )}
-                    {item.reason && <p className="text-xs text-muted-foreground/70 mt-1">Reason: {item.reason}</p>}
-                    <p className="text-xs text-muted-foreground/50 mt-1">By {item.performedByRole}</p>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -676,19 +682,19 @@ function ExpandedDetail({ sub }: { sub: AdminSubscriptionItem }) {
       {activeSection === "invoices" && (
         <div className="space-y-2">
           {!(invoices as InvoiceItem[] | undefined)?.length ? (
-            <p className="text-sm text-muted-foreground text-center py-4">No invoices yet</p>
+            <p className="text-sm text-muted-foreground text-center py-4">{t("noInvoicesYet")}</p>
           ) : (
             <>
               <div className="overflow-x-auto rounded-xl border border-border/40">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border/40 text-left text-xs text-muted-foreground uppercase">
-                      <th className="px-3 py-2 font-medium">Invoice #</th>
-                      <th className="px-3 py-2 font-medium">Plan</th>
-                      <th className="px-3 py-2 font-medium">Amount</th>
-                      <th className="px-3 py-2 font-medium">Status</th>
-                      <th className="px-3 py-2 font-medium">Issued</th>
-                      <th className="px-3 py-2 font-medium">Paid</th>
+                      <th className="px-3 py-2 font-medium">{t("invoiceHeaderNumber")}</th>
+                      <th className="px-3 py-2 font-medium">{t("invoiceHeaderPlan")}</th>
+                      <th className="px-3 py-2 font-medium">{t("invoiceHeaderAmount")}</th>
+                      <th className="px-3 py-2 font-medium">{t("invoiceHeaderStatus")}</th>
+                      <th className="px-3 py-2 font-medium">{t("invoiceHeaderIssued")}</th>
+                      <th className="px-3 py-2 font-medium">{t("invoiceHeaderPaid")}</th>
                       <th className="px-3 py-2 font-medium" />
                     </tr>
                   </thead>
@@ -758,6 +764,7 @@ function UserSubscriptionPanel({
   user: SearchUser;
   onClear: () => void;
 }) {
+  const t = useTranslations("adminSubscriptions");
   const [showAssignForm, setShowAssignForm] = useState(false);
   const [showChangeForm, setShowChangeForm] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -794,7 +801,7 @@ function UserSubscriptionPanel({
             <div>
               <h3 className="text-lg font-semibold">{user.name}</h3>
               <p className="text-sm text-muted-foreground">
-                {user.role === "employer" ? "Employer" : "Job Seeker"}
+                {user.role === "employer" ? t("employerBadge") : t("jobSeekerBadge")}
                 {user.companyName ? ` · ${user.companyName}` : ""}
               </p>
             </div>
@@ -813,7 +820,7 @@ function UserSubscriptionPanel({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Crown className="h-5 w-5 text-amber-500" />
-              <h4 className="font-semibold">Current Subscription</h4>
+              <h4 className="font-semibold">{t("currentSubscriptionTitle")}</h4>
             </div>
             <Badge className={`${statusCfg?.color} border`}>
               <StatusIcon className="h-3 w-3 mr-1" />
@@ -823,25 +830,25 @@ function UserSubscriptionPanel({
 
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="rounded-xl border border-border/40 p-4">
-              <p className="text-xs text-muted-foreground mb-1">Plan</p>
+              <p className="text-xs text-muted-foreground mb-1">{t("detailCardPlanLabel")}</p>
               <p className="font-semibold text-lg">{subscription.planSnapshot?.name ?? "Unknown"}</p>
               <p className="text-xs text-muted-foreground">
-                Tier {subscription.planSnapshot?.tier ?? 0} ·{" "}
-                {subscription.planSnapshot?.price ?? 0} {subscription.planSnapshot?.currency ?? "AED"}/{subscription.planSnapshot?.billingCycle ?? "monthly"}
+                {t("tierLabel")} {subscription.planSnapshot?.tier ?? 0} ·{" "}
+                {subscription.planSnapshot?.price ?? 0} {subscription.planSnapshot?.currency ?? "AED"}{t("pricePerLabel")}{subscription.planSnapshot?.billingCycle ?? "monthly"}
               </p>
             </div>
             <div className="rounded-xl border border-border/40 p-4">
-              <p className="text-xs text-muted-foreground mb-1">Period</p>
+              <p className="text-xs text-muted-foreground mb-1">{t("detailCardPeriodLabel")}</p>
               <p className="font-medium">{formatDate(subscription.startDate)} — {formatDate(subscription.endDate)}</p>
               <p className="text-xs text-muted-foreground">
                 {daysUntil(subscription.endDate) > 0
-                  ? `${daysUntil(subscription.endDate)} days remaining`
-                  : "Expired"}
+                  ? `${daysUntil(subscription.endDate)} ${t("daysRemainingLabel")}`
+                  : t("statusExpired")}
               </p>
             </div>
             <div className="rounded-xl border border-border/40 p-4">
-              <p className="text-xs text-muted-foreground mb-1">Auto-Renew</p>
-              <p className="font-medium">{subscription.autoRenew ? "Yes" : "No"}</p>
+              <p className="text-xs text-muted-foreground mb-1">{t("detailCardAutoRenewLabel")}</p>
+              <p className="font-medium">{subscription.autoRenew ? t("autoRenewYes") : t("autoRenewNo")}</p>
               <p className="text-xs text-muted-foreground">
                 Assigned by {subscription.assignedByRole}
               </p>
@@ -860,7 +867,7 @@ function UserSubscriptionPanel({
               onClick={() => { setShowChangeForm(!showChangeForm); setShowAssignForm(false); }}
             >
               <ArrowUpRight className="h-3.5 w-3.5" />
-              Change Plan
+              {t("changePlanBtn")}
             </Button>
             <Button
               variant="outline"
@@ -870,7 +877,7 @@ function UserSubscriptionPanel({
               disabled={isMutating}
             >
               <RotateCcw className="h-3.5 w-3.5" />
-              Renew
+              {t("renewBtn")}
             </Button>
             <Button
               variant="outline"
@@ -880,7 +887,7 @@ function UserSubscriptionPanel({
               disabled={isMutating}
             >
               <XCircle className="h-3.5 w-3.5" />
-              Cancel
+              {t("cancelBtn")}
             </Button>
             <Button
               variant="ghost"
@@ -889,7 +896,7 @@ function UserSubscriptionPanel({
               onClick={() => setShowHistory(!showHistory)}
             >
               <Clock className="h-3.5 w-3.5" />
-              History
+              {t("historyBtn")}
               {showHistory ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
             </Button>
           </div>
@@ -897,9 +904,9 @@ function UserSubscriptionPanel({
           {/* ── Cancel Confirm ── */}
           {confirmCancel && (
             <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-4 space-y-3">
-              <p className="text-sm font-medium text-red-400">Confirm Cancellation</p>
+              <p className="text-sm font-medium text-red-400">{t("confirmCancellationTitle")}</p>
               <Input
-                placeholder="Reason for cancellation (optional)..."
+                placeholder={t("cancelReasonPlaceholder")}
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
               />
@@ -917,10 +924,10 @@ function UserSubscriptionPanel({
                     setCancelReason("");
                   }}
                 >
-                  {cancelMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Cancel Subscription"}
+                  {cancelMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : t("cancelSubscriptionBtn")}
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => setConfirmCancel(false)}>
-                  Never mind
+                  {t("neverMindBtn")}
                 </Button>
               </div>
             </div>
@@ -942,9 +949,9 @@ function UserSubscriptionPanel({
         <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-4">
           <div className="text-center py-6">
             <Crown className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="font-medium text-muted-foreground">No Active Subscription</p>
+            <p className="font-medium text-muted-foreground">{t("noActiveSubscriptionMsg")}</p>
             <p className="text-sm text-muted-foreground/70 mt-1">
-              Assign a plan to enable premium features for this user
+              {t("noActiveSubscriptionDesc")}
             </p>
           </div>
 
@@ -953,7 +960,7 @@ function UserSubscriptionPanel({
             onClick={() => setShowAssignForm(!showAssignForm)}
           >
             <Crown className="h-4 w-4" />
-            Assign Subscription Plan
+            {t("assignSubscriptionBtn")}
           </Button>
         </section>
       )}
@@ -994,6 +1001,7 @@ function UsageSummary({
   subscription: SubscriptionItem;
   targetRole: string;
 }) {
+  const t = useTranslations("adminSubscriptions");
   const limits =
     targetRole === "employer"
       ? subscription.planSnapshot?.employerLimits
@@ -1008,19 +1016,19 @@ function UsageSummary({
 
   if (targetRole === "employer") {
     numericItems.push(
-      { label: "Active Jobs", used: usage.activeJobs ?? 0, max: snapshot.maxActiveJobs as number ?? 0 },
-      { label: "Applications Viewed", used: usage.applicationsViewed ?? 0, max: snapshot.maxApplicationsViewPerMonth as number ?? 0 },
-      { label: "Team Members", used: 0, max: snapshot.maxTeamMembers as number ?? 0 },
+      { label: t("usageActiveJobsLabel"), used: usage.activeJobs ?? 0, max: snapshot.maxActiveJobs as number ?? 0 },
+      { label: t("usageApplicationsViewedLabel"), used: usage.applicationsViewed ?? 0, max: snapshot.maxApplicationsViewPerMonth as number ?? 0 },
+      { label: t("usageTeamMembersLabel"), used: 0, max: snapshot.maxTeamMembers as number ?? 0 },
     );
   } else {
     numericItems.push(
-      { label: "Applications", used: usage.applicationsSubmitted ?? 0, max: snapshot.maxApplicationsPerMonth as number ?? 0 },
+      { label: t("usageApplicationsLabel"), used: usage.applicationsSubmitted ?? 0, max: snapshot.maxApplicationsPerMonth as number ?? 0 },
     );
   }
 
   return (
     <div className="space-y-3">
-      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Usage</p>
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("usageLabel")}</p>
       <div className="grid gap-2 sm:grid-cols-3">
         {numericItems.map((item) => {
           const unlimited = item.max === -1;
@@ -1029,7 +1037,7 @@ function UsageSummary({
             <div key={item.label} className="rounded-xl border border-border/40 p-3">
               <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
                 <span>{item.label}</span>
-                <span>{unlimited ? `${item.used} / ∞` : `${item.used} / ${item.max}`}</span>
+                <span>{unlimited ? `${item.used} / ${t("unlimitedSymbol")}` : `${item.used} / ${item.max}`}</span>
               </div>
               <div className="h-1.5 rounded-full bg-muted">
                 <div
@@ -1058,6 +1066,7 @@ function AssignPlanForm({
   onClose: () => void;
   assignMut: ReturnType<typeof useAssignSubscription>;
 }) {
+  const t = useTranslations("adminSubscriptions");
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [autoRenew, setAutoRenew] = useState(false);
   const [notes, setNotes] = useState("");
@@ -1080,7 +1089,7 @@ function AssignPlanForm({
       <div className="flex items-center justify-between">
         <h4 className="font-semibold flex items-center gap-2">
           <CreditCard className="h-4 w-4 text-sky-500" />
-          Assign Plan
+          {t("assignPlanTitle")}
         </h4>
         <Button variant="ghost" size="sm" onClick={onClose}>
           <X className="h-4 w-4" />
@@ -1101,12 +1110,12 @@ function AssignPlanForm({
           >
             <div className="flex items-center justify-between mb-2">
               <span className="font-semibold">{plan.name}</span>
-              <Badge variant="outline" className="text-xs">Tier {plan.tier}</Badge>
+              <Badge variant="outline" className="text-xs">{t("tierOptionLabel")} {plan.tier}</Badge>
             </div>
             <p className="text-sm text-muted-foreground mb-2">{plan.description}</p>
             <p className="text-lg font-bold text-sky-500">
-              {plan.price > 0 ? `${plan.price} ${plan.currency}` : "Free"}
-              <span className="text-xs font-normal text-muted-foreground">/{plan.billingCycle}</span>
+              {plan.price > 0 ? `${plan.price} ${plan.currency}` : t("priceFreeLabel")}
+              <span className="text-xs font-normal text-muted-foreground">{t("pricePerLabel")}{plan.billingCycle}</span>
             </p>
           </button>
         ))}
@@ -1115,7 +1124,7 @@ function AssignPlanForm({
       {selectedPlan && (
         <div className="space-y-3 pt-3 border-t border-sky-500/20">
           <div className="flex items-center gap-3">
-            <label className="text-sm text-muted-foreground">Auto-renew</label>
+            <label className="text-sm text-muted-foreground">{t("autoRenewCheckLabel")}</label>
             <input
               type="checkbox"
               checked={autoRenew}
@@ -1124,7 +1133,7 @@ function AssignPlanForm({
             />
           </div>
           <Input
-            placeholder="Admin notes (optional)..."
+            placeholder={t("adminNotesPlaceholder")}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
           />
@@ -1135,9 +1144,9 @@ function AssignPlanForm({
               onClick={handleAssign}
             >
               {assignMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Crown className="h-4 w-4" />}
-              Assign {selectedPlan.name}
+              {t("assignButtonLabel")} {selectedPlan.name}
             </Button>
-            <Button variant="ghost" onClick={onClose}>Cancel</Button>
+            <Button variant="ghost" onClick={onClose}>{t("cancelFormBtn")}</Button>
           </div>
         </div>
       )}
@@ -1160,6 +1169,7 @@ function ChangePlanForm({
   onClose: () => void;
   changeMut: ReturnType<typeof useChangeSubscription>;
 }) {
+  const t = useTranslations("adminSubscriptions");
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [reason, setReason] = useState("");
 
@@ -1180,7 +1190,7 @@ function ChangePlanForm({
 
   return (
     <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 p-4 space-y-3">
-      <p className="text-sm font-semibold">Change to:</p>
+      <p className="text-sm font-semibold">{t("changePlanFormLabel")}</p>
       <div className="flex flex-wrap gap-2">
         {otherPlans.map((plan) => (
           <button
@@ -1192,7 +1202,7 @@ function ChangePlanForm({
                 : "border-border/40 hover:border-sky-500/30"
             }`}
           >
-            {plan.name} ({plan.price > 0 ? `${plan.price} ${plan.currency}` : "Free"})
+            {plan.name} ({plan.price > 0 ? `${plan.price} ${plan.currency}` : t("priceFreeLabel")})
           </button>
         ))}
       </div>
@@ -1201,9 +1211,9 @@ function ChangePlanForm({
         <div className="space-y-2">
           <Badge className={isUpgrade ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30" : "bg-amber-500/10 text-amber-400 border border-amber-500/30"}>
             {isUpgrade ? (
-              <><ArrowUpRight className="h-3 w-3 mr-1" /> Upgrade</>
+              <><ArrowUpRight className="h-3 w-3 mr-1" /> {t("upgradeLabel")}</>
             ) : (
-              <><ArrowDownRight className="h-3 w-3 mr-1" /> Downgrade</>
+              <><ArrowDownRight className="h-3 w-3 mr-1" /> {t("downgradeLabel")}</>
             )}
           </Badge>
           <Input
@@ -1219,9 +1229,9 @@ function ChangePlanForm({
               onClick={handleChange}
             >
               {changeMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Confirm {isUpgrade ? "Upgrade" : "Downgrade"}
+              {isUpgrade ? t("confirmUpgradeLabel") : t("confirmDowngradeLabel")}
             </Button>
-            <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
+            <Button variant="ghost" size="sm" onClick={onClose}>{t("cancelFormBtn")}</Button>
           </div>
         </div>
       )}
@@ -1232,11 +1242,12 @@ function ChangePlanForm({
 // ── History Timeline ─────────────────────────────────────────────────────────
 
 function HistoryTimeline({ history }: { history: HistoryItem[] }) {
+  const t = useTranslations("adminSubscriptions");
   if (!history.length) {
     return (
       <section className="rounded-2xl border border-border/60 bg-card p-6 text-center">
         <Clock className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-        <p className="text-sm text-muted-foreground">No history yet</p>
+        <p className="text-sm text-muted-foreground">{t("noHistoryYet")}</p>
       </section>
     );
   }
@@ -1245,41 +1256,52 @@ function HistoryTimeline({ history }: { history: HistoryItem[] }) {
     <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-4">
       <h4 className="font-semibold flex items-center gap-2">
         <Clock className="h-4 w-4 text-muted-foreground" />
-        Subscription History
+        {t("subscriptionHistoryTitle")}
       </h4>
 
       <div className="relative pl-6 space-y-4 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-px before:bg-border/60">
-        {history.map((item) => (
-          <div key={item._id} className="relative">
-            <div className="absolute -left-[19px] top-1 h-3 w-3 rounded-full border-2 border-background bg-sky-500" />
-            <div className="rounded-xl border border-border/40 p-3">
-              <div className="flex items-center justify-between mb-1">
-                <Badge variant="outline" className="text-xs">
-                  {ACTION_LABELS[item.action] ?? item.action}
-                </Badge>
-                <span className="text-xs text-muted-foreground">{formatDate(item.createdAt)}</span>
+        {history.map((item) => {
+          const actionLabel = item.action === "assigned" ? t("actionLabelAssigned")
+            : item.action === "upgraded" ? t("actionLabelUpgraded")
+            : item.action === "downgraded" ? t("actionLabelDowngraded")
+            : item.action === "renewed" ? t("actionLabelRenewed")
+            : item.action === "cancelled" ? t("actionLabelCancelled")
+            : item.action === "expired" ? t("actionLabelExpired")
+            : item.action === "suspended" ? t("actionLabelSuspended")
+            : item.action === "reactivated" ? t("actionLabelReactivated")
+            : item.action;
+          return (
+            <div key={item._id} className="relative">
+              <div className="absolute -left-[19px] top-1 h-3 w-3 rounded-full border-2 border-background bg-sky-500" />
+              <div className="rounded-xl border border-border/40 p-3">
+                <div className="flex items-center justify-between mb-1">
+                  <Badge variant="outline" className="text-xs">
+                    {actionLabel}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">{formatDate(item.createdAt)}</span>
+                </div>
+                {item.fromPlanName && item.toPlanName && (
+                  <p className="text-sm text-muted-foreground">
+                    {item.fromPlanName} {t("historyTransitionSeparator")} {item.toPlanName}
+                  </p>
+                )}
+                {!item.fromPlanName && item.toPlanName && (
+                  <p className="text-sm text-muted-foreground">
+                    {t("historyAssignedPrefix")} {item.toPlanName}
+                  </p>
+                )}
+                {item.reason && (
+                  <p className="text-xs text-muted-foreground/70 mt-1">
+                    {t("historyReasonPrefix")}: {item.reason}
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground/50 mt-1">
+                  {t("historyPerformedByPrefix")} {item.performedByRole}
+                </p>
               </div>
-              {item.fromPlanName && item.toPlanName && (
-                <p className="text-sm text-muted-foreground">
-                  {item.fromPlanName} → {item.toPlanName}
-                </p>
-              )}
-              {!item.fromPlanName && item.toPlanName && (
-                <p className="text-sm text-muted-foreground">
-                  Assigned: {item.toPlanName}
-                </p>
-              )}
-              {item.reason && (
-                <p className="text-xs text-muted-foreground/70 mt-1">
-                  Reason: {item.reason}
-                </p>
-              )}
-              <p className="text-xs text-muted-foreground/50 mt-1">
-                By {item.performedByRole}
-              </p>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </section>
   );
@@ -1288,6 +1310,7 @@ function HistoryTimeline({ history }: { history: HistoryItem[] }) {
 // ── Bulk Assign Section ──────────────────────────────────────────────────────
 
 function BulkAssignSection() {
+  const t = useTranslations("adminSubscriptions");
   const [expanded, setExpanded] = useState(false);
   const [targetRole, setTargetRole] = useState<"employer" | "job_seeker">("employer");
   const [selectedPlanId, setSelectedPlanId] = useState("");
@@ -1319,7 +1342,7 @@ function BulkAssignSection() {
         <div className="flex items-center gap-2">
           <Users className="h-4 w-4 text-muted-foreground" />
           <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-            Bulk Assign
+            {t("bulkAssignTitle")}
           </h3>
         </div>
         {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -1336,23 +1359,23 @@ function BulkAssignSection() {
                 variant={targetRole === r ? "default" : "outline"}
                 onClick={() => { setTargetRole(r); setSelectedPlanId(""); }}
               >
-                {r === "employer" ? "Employer" : "Job Seeker"}
+                {r === "employer" ? t("bulkRoleLabel") : t("bulkJobSeekerLabel")}
               </Button>
             ))}
           </div>
 
           {/* Plan select */}
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Select Plan</label>
+            <label className="text-xs text-muted-foreground mb-1 block">{t("bulkPlanLabel")}</label>
             <select
               value={selectedPlanId}
               onChange={(e) => setSelectedPlanId(e.target.value)}
               className="w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-sm"
             >
-              <option value="">Choose a plan...</option>
+              <option value="">{t("bulkChoosePlanOption")}</option>
               {(plans ?? []).map((p: SubscriptionPlanItem) => (
                 <option key={p._id} value={p._id}>
-                  {p.name} — Tier {p.tier} ({p.price} {p.currency}/{p.billingCycle})
+                  {p.name} — {t("tierLabel")} {p.tier} ({p.price} {p.currency}{t("pricePerLabel")}{p.billingCycle})
                 </option>
               ))}
             </select>
@@ -1361,7 +1384,7 @@ function BulkAssignSection() {
           {/* User IDs textarea */}
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">
-              User IDs (one per line or comma-separated) — max 100
+              {t("bulkUserIdsLabel")}
             </label>
             <textarea
               value={userIdsText}
@@ -1370,7 +1393,7 @@ function BulkAssignSection() {
               className="w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-sm font-mono resize-y"
               placeholder={"60f1b2c3d4e5f6a7b8c9d0e1\n60f1b2c3d4e5f6a7b8c9d0e2"}
             />
-            <p className="text-xs text-muted-foreground mt-1">{userIds.length} user(s) entered</p>
+            <p className="text-xs text-muted-foreground mt-1">{userIds.length} {t("bulkUserCountLabel")}</p>
           </div>
 
           {/* Assign button */}
@@ -1380,9 +1403,9 @@ function BulkAssignSection() {
             className="bg-sky-600 hover:bg-sky-700"
           >
             {bulkMut.isPending ? (
-              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Assigning...</>
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t("bulkAssigningLabel")}</>
             ) : (
-              <>Assign to {userIds.length} User(s)</>
+              <>{t("bulkAssignButtonLabel")} {userIds.length} User(s)</>
             )}
           </Button>
 
@@ -1390,25 +1413,31 @@ function BulkAssignSection() {
           {bulkResult && (
             <div className="rounded-xl border border-border/40 p-4 space-y-2">
               <p className="text-sm font-medium">
-                Results: {bulkResult.assigned}/{bulkResult.total} assigned
+                {t("bulkResultsLabel")} {bulkResult.assigned}/{bulkResult.total} {t("bulkAssignedLabel")}
               </p>
               <div className="max-h-40 overflow-y-auto space-y-1">
-                {bulkResult.results.map((r, i) => (
-                  <div key={i} className="flex items-center gap-2 text-xs">
-                    {r.status === "assigned" && <CheckCircle className="h-3 w-3 text-emerald-500" />}
-                    {r.status === "skipped" && <AlertTriangle className="h-3 w-3 text-amber-500" />}
-                    {r.status === "error" && <XCircle className="h-3 w-3 text-red-500" />}
-                    <span className="font-mono">{r.userId.slice(0, 12)}...</span>
-                    <Badge variant="outline" className="text-[10px]">{r.status}</Badge>
-                    {r.reason && <span className="text-muted-foreground">{r.reason}</span>}
-                  </div>
-                ))}
+                {bulkResult.results.map((r, i) => {
+                  const statusLabel = r.status === "assigned" ? t("bulkStatusAssignedBadge")
+                    : r.status === "skipped" ? t("bulkStatusSkippedBadge")
+                    : r.status === "error" ? t("bulkStatusErrorBadge")
+                    : r.status;
+                  return (
+                    <div key={i} className="flex items-center gap-2 text-xs">
+                      {r.status === "assigned" && <CheckCircle className="h-3 w-3 text-emerald-500" />}
+                      {r.status === "skipped" && <AlertTriangle className="h-3 w-3 text-amber-500" />}
+                      {r.status === "error" && <XCircle className="h-3 w-3 text-red-500" />}
+                      <span className="font-mono">{r.userId.slice(0, 12)}...</span>
+                      <Badge variant="outline" className="text-[10px]">{statusLabel}</Badge>
+                      {r.reason && <span className="text-muted-foreground">{r.reason}</span>}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
 
           {bulkMut.isError && (
-            <p className="text-sm text-red-400">Error: {bulkMut.error?.message}</p>
+            <p className="text-sm text-red-400">{t("bulkErrorLabel")} {bulkMut.error?.message}</p>
           )}
         </div>
       )}

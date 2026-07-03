@@ -44,6 +44,7 @@ jest.mock("@/hooks/useCandidates", () => ({
   useAiMatch: () => ({ mutateAsync: mutateAsyncAiMatchMock }),
   useScreenCandidates: () => ({ mutateAsync: jest.fn().mockResolvedValue({}) }),
   useInviteToApply: () => ({ mutateAsync: jest.fn().mockResolvedValue({}) }),
+  useCandidateDetail: () => ({ data: undefined, isLoading: false }),
 }));
 
 jest.mock("@/components/ui/button", () => ({
@@ -153,6 +154,7 @@ describe("EmployerCandidatesPage", () => {
 
     render(<EmployerCandidatesPage />);
 
+    await user.click(screen.getByRole("button", { name: /^filters$/i }));
     await user.type(screen.getByPlaceholderText("Search candidates, skills, role, or company"), "React");
 
     await waitFor(() => expect(useCandidatesMock).toHaveBeenLastCalledWith(expect.objectContaining({
@@ -166,6 +168,7 @@ describe("EmployerCandidatesPage", () => {
 
     render(<EmployerCandidatesPage />);
 
+    await user.click(screen.getByRole("button", { name: /^filters$/i }));
     expect(screen.queryByPlaceholderText("Skills, comma separated")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /advanced/i }));
@@ -280,6 +283,7 @@ describe("EmployerCandidatesPage", () => {
 
     render(<EmployerCandidatesPage />);
 
+    await user.click(screen.getByRole("button", { name: /^filters$/i }));
     await user.type(
       screen.getByPlaceholderText("AI search: e.g. high match React candidates in Dubai ready now"),
       "ready-now frontend candidates in Dubai"
@@ -388,7 +392,10 @@ describe("EmployerCandidatesPage", () => {
       search: "",
       jobId: "job-frontend",
     })));
-    expect(screen.getByLabelText("Compare against job")).toHaveValue("job-frontend");
+    await user.click(screen.getByRole("button", { name: /^filters$/i }));
+    // The job selector now doubles as the AI-match comparison target; its
+    // accessible name is its placeholder ("All"), not a dedicated label
+    expect(screen.getByLabelText("All")).toHaveValue("job-frontend");
 
     await user.click(screen.getByRole("button", { name: /^save for review$/i }));
 
@@ -405,7 +412,8 @@ describe("EmployerCandidatesPage", () => {
   it("keeps the first-view candidate card compact while still exposing the details action", () => {
     render(<EmployerCandidatesPage />);
 
-    expect(screen.getByRole("button", { name: /view details/i })).toBeInTheDocument();
+    // The whole row is the details action now (role="button", aria-label="Open details for <name>")
+    expect(screen.getByRole("button", { name: /open details for/i })).toBeInTheDocument();
     expect(screen.queryByText("Current role")).not.toBeInTheDocument();
     expect(screen.queryByText("Skill snapshot")).not.toBeInTheDocument();
     expect(screen.queryByText("Match snapshot")).not.toBeInTheDocument();
@@ -484,7 +492,8 @@ describe("EmployerCandidatesPage", () => {
 
     render(<EmployerCandidatesPage />);
 
-    await user.selectOptions(screen.getByLabelText("Compare against job"), "job-frontend");
+    await user.click(screen.getByRole("button", { name: /^filters$/i }));
+    await user.selectOptions(screen.getByLabelText("All"), "job-frontend");
     await waitFor(() => expect(useCandidatesMock).toHaveBeenLastCalledWith(expect.objectContaining({
       search: "",
       jobId: "job-frontend",
@@ -509,7 +518,12 @@ describe("EmployerCandidatesPage", () => {
 
     await waitFor(() => expect(screen.getByText("Scored 1 candidate(s). 1 candidate(s) could not be scored.")).toBeInTheDocument());
     expect(screen.getByRole("button", { name: /run ai match/i })).toBeEnabled();
-    expect(screen.getByText("91% AI match")).toBeInTheDocument();
+    // The combined "91% AI match" phrase now only appears inside the detail
+    // dialog; the compact row shows the score via ScoreRing, whose "91%" is
+    // split into a number + literal "%" text node under one <span>
+    expect(screen.getByText((_content, element) =>
+      element?.tagName.toLowerCase() === "span" && element.textContent === "91%"
+    )).toBeInTheDocument();
   });
 
   it("opens candidate details in a dialog from the compact card", async () => {
@@ -546,7 +560,7 @@ describe("EmployerCandidatesPage", () => {
 
   expect(screen.queryByText("Strong frontend fit with strong delivery evidence.")).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /view details/i }));
+    await user.click(screen.getByRole("button", { name: /open details for/i }));
 
     const dialog = await screen.findByRole("dialog");
 

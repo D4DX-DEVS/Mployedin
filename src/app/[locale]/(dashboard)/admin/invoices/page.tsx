@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -106,9 +106,49 @@ const TYPE_OPTIONS = [
 
 // ── Component ────────────────────────────────────────────────────────────────
 export default function AdminInvoicesPage() {
+  const t = useTranslations("adminInvoices");
   const { can } = usePermissions();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [activeView, setActiveView] = useState<"queue" | "table" | "analytics">("queue");
+
+  const STATUS_OPTIONS = [
+    { value: "all", label: t("statusAllStatuses") },
+    { value: "draft", label: t("statusDraft") },
+    { value: "issued", label: t("statusIssued") },
+    { value: "sent", label: t("statusSent") },
+    { value: "paid", label: t("statusPaid") },
+    { value: "partially_paid", label: t("statusPartiallyPaid") },
+    { value: "overdue", label: t("statusOverdue") },
+    { value: "void", label: t("statusVoid") },
+    { value: "cancelled", label: t("statusCancelled") },
+    { value: "refunded", label: t("statusRefunded") },
+    { value: "credit_note", label: t("statusCreditNote") },
+  ];
+
+  const CATEGORY_OPTIONS = [
+    { value: "all", label: t("categoryAllCategories") },
+    { value: "recruitment", label: t("categoryRecruitment") },
+    { value: "subscription", label: t("categorySubscription") },
+    { value: "premium_posting", label: t("categoryPremiumPosting") },
+    { value: "featured_promotion", label: t("categoryFeaturedPromotion") },
+    { value: "exhibition", label: t("categoryExhibition") },
+    { value: "bulk_hiring", label: t("categoryBulkHiring") },
+    { value: "consulting", label: t("categoryConsulting") },
+    { value: "custom_enterprise", label: t("categoryCustomEnterprise") },
+  ];
+
+  const TYPE_OPTIONS = [
+    { value: "all", label: t("typeAllTypes") },
+    { value: "new", label: t("typeNew") },
+    { value: "renewal", label: t("typeRenewal") },
+    { value: "recruitment", label: t("typeRecruitment") },
+    { value: "premium_posting", label: t("typePremiumPosting") },
+    { value: "featured_promotion", label: t("typeFeaturedPromotion") },
+    { value: "exhibition", label: t("typeExhibition") },
+    { value: "bulk_hiring", label: t("typeBulkHiring") },
+    { value: "consulting", label: t("typeConsulting") },
+    { value: "custom", label: t("typeCustom") },
+  ];
 
   // Table data
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -134,7 +174,6 @@ export default function AdminInvoicesPage() {
 
   // Invoice Builder & Detail View
   const router = useRouter();
-  const locale = useLocale();
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
 
   // Analytics
@@ -160,13 +199,13 @@ export default function AdminInvoicesPage() {
       if (dateTo) params.set("dateTo", dateTo);
 
       const res = await fetch(`/api/invoices?${params}`);
-      if (!res.ok) throw new Error("Failed to load invoices");
+      if (!res.ok) throw new Error(t("failedToLoadInvoices"));
       const data = await res.json();
       setInvoices(data.invoices ?? []);
       updateTotal(data.total ?? 0);
       if (data.summary) setSummary(data.summary);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to load invoices";
+      const msg = err instanceof Error ? err.message : t("failedToLoadInvoices");
       setErrorMessage(msg);
       toast.error(msg);
     } finally {
@@ -186,10 +225,10 @@ export default function AdminInvoicesPage() {
         body: JSON.stringify({ status: newStatus }),
       });
       if (!res.ok) { const e = await res.json().catch(() => null); throw new Error(e?.error ?? "Failed"); }
-      toast.success(`Invoice ${newStatus}`);
+      toast.success(t("invoiceStatusUpdated", { status: newStatus }));
       await fetchInvoices();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed");
+      toast.error(err instanceof Error ? err.message : t("failed"));
     }
   };
 
@@ -237,40 +276,40 @@ export default function AdminInvoicesPage() {
 
       {/* Header Toolbar */}
       <TableToolbar
-        title="Finance & Revenue Operations"
-        description="Enterprise invoice management, commission engine, tax compliance, and revenue intelligence dashboard."
+        title={t("title")}
+        description={t("description")}
         search={searchTerm}
         onSearchChange={(v) => { setSearchTerm(v); resetPage(); }}
-        searchPlaceholder="Search invoices by number…"
+        searchPlaceholder={t("searchPlaceholder")}
         left={
           <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
             <Sparkles className="h-3.5 w-3.5" />
-            Finance workspace
+            {t("workspaceLabel")}
           </div>
         }
         right={
           <div className="flex items-center gap-2">
             <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">
               <ArrowRight className="h-3.5 w-3.5 text-primary" />
-              {total.toLocaleString()} invoices
+              {t("invoiceCount", { count: total.toLocaleString() })}
             </div>
             {/* View Toggle */}
             <div className="inline-flex rounded-lg border border-border/70 bg-card">
               <button onClick={() => setActiveView("queue")} className={`rounded-l-lg px-3 py-1.5 text-xs font-medium transition-colors ${activeView === "queue" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-                <ClipboardList className="mr-1 inline-block h-3.5 w-3.5" /> Queue
+                <ClipboardList className="mr-1 inline-block h-3.5 w-3.5" /> {t("queueTab")}
               </button>
               <button onClick={() => setActiveView("table")} className={`px-3 py-1.5 text-xs font-medium transition-colors ${activeView === "table" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-                <FileText className="mr-1 inline-block h-3.5 w-3.5" /> Invoices
+                <FileText className="mr-1 inline-block h-3.5 w-3.5" /> {t("invoicesTab")}
               </button>
               <button onClick={() => setActiveView("analytics")} className={`rounded-r-lg px-3 py-1.5 text-xs font-medium transition-colors ${activeView === "analytics" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-                <BarChart3 className="mr-1 inline-block h-3.5 w-3.5" /> Analytics
+                <BarChart3 className="mr-1 inline-block h-3.5 w-3.5" /> {t("analyticsTab")}
               </button>
             </div>
           </div>
         }
         actions={can("subscriptions", "create") ? (
-          <Button onClick={() => router.push(`/${locale}/admin/invoices/new`)} className="h-9 gap-2 rounded-lg bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700">
-            <Plus className="h-4 w-4" /> Create Invoice
+          <Button onClick={() => router.push("/admin/invoices/new")} className="h-9 gap-2 rounded-lg bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700">
+            <Plus className="h-4 w-4" /> {t("createInvoice")}
           </Button>
         ) : undefined}
         onExportCsv={handleExportCsv}
@@ -284,13 +323,13 @@ export default function AdminInvoicesPage() {
               <SearchableSelect id="adm-inv-type" className="h-11 w-full rounded-xl border-border bg-card" options={TYPE_OPTIONS} value={typeFilter || "all"} onValueChange={v => { setTypeFilter(v === "all" ? "" : v); resetPage(); }} placeholder="All Types" />
               <div className="flex items-center gap-2 xl:col-span-2">
                 <div className="relative flex-1"><CalendarDays className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input type="date" className="h-11 rounded-xl border-border bg-card pl-9 text-sm" value={dateFrom} onChange={e => { setDateFrom(e.target.value); resetPage(); }} /></div>
-                <span className="text-xs text-muted-foreground">to</span>
+                <span className="text-xs text-muted-foreground">{t("dateRangeSeparator")}</span>
                 <div className="relative flex-1"><Input type="date" className="h-11 rounded-xl border-border bg-card text-sm" value={dateTo} onChange={e => { setDateTo(e.target.value); resetPage(); }} /></div>
               </div>
             </div>
             <div className="flex justify-end">
               <Button type="button" variant="outline" onClick={() => { setStatusFilter(""); setCategoryFilter(""); setTypeFilter(""); setSearchTerm(""); setDateFrom(""); setDateTo(""); resetPage(); }} disabled={!hasActiveFilters} className="h-11 rounded-xl">
-                <RotateCcw className="mr-2 h-4 w-4" /> Clear Filters
+                <RotateCcw className="mr-2 h-4 w-4" /> {t("clearFilters")}
               </Button>
             </div>
           </div>
@@ -317,15 +356,15 @@ export default function AdminInvoicesPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               {(["7d", "30d", "90d", "1y"] as const).map(p => (
-                <button key={p} onClick={() => setAnalyticsPeriod(p)} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${analyticsPeriod === p ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}>{p === "1y" ? "1 Year" : p}</button>
+                <button key={p} onClick={() => setAnalyticsPeriod(p)} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${analyticsPeriod === p ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}>{p === "1y" ? t("oneYear") : p}</button>
               ))}
             </div>
             <Button variant="outline" size="sm" onClick={refreshAnalytics} className="h-8 gap-1.5 rounded-lg text-xs">
-              <RefreshCw className="h-3.5 w-3.5" /> Refresh
+              <RefreshCw className="h-3.5 w-3.5" /> {t("refreshAnalytics")}
             </Button>
           </div>
           {analyticsData && <RevenueAnalyticsPanel data={analyticsData} currency={displayCurrency} />}
-          {analyticsLoading && <div className="py-12 text-center text-sm text-muted-foreground">Loading analytics...</div>}
+          {analyticsLoading && <div className="py-12 text-center text-sm text-muted-foreground">{t("loadingAnalytics")}</div>}
         </div>
       )}
 
@@ -338,10 +377,10 @@ export default function AdminInvoicesPage() {
 
           <section className="workspace-panel-surface overflow-hidden rounded-[24px]">
             <div className="flex flex-col gap-2 border-b border-border/80 px-4 py-4 sm:px-5">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Invoice Ledger</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("invoiceLedger")}</p>
               <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                <h3 className="text-lg font-semibold text-foreground">All Invoices</h3>
-                <p className="text-sm text-muted-foreground">{invoices.length} of {total.toLocaleString()} records</p>
+                <h3 className="text-lg font-semibold text-foreground">{t("allInvoices")}</h3>
+                <p className="text-sm text-muted-foreground">{t("recordsCount", { shown: invoices.length, total: total.toLocaleString() })}</p>
               </div>
             </div>
 
@@ -349,18 +388,18 @@ export default function AdminInvoicesPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="border-border/80 bg-secondary/72 hover:bg-secondary/72">
-                    <TableHead className="md:min-w-[120px]">Invoice #</TableHead>
-                    <TableHead className="md:min-w-[140px]">Employer</TableHead>
-                    <TableHead className="md:min-w-[130px]">Job</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    <TableHead className="text-right">Paid</TableHead>
-                    <TableHead className="text-right">Balance</TableHead>
-                    <TableHead className="text-right">Tax</TableHead>
-                    <TableHead>Commission</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Due Date</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="md:min-w-[120px]">{t("tableHeaderInvoiceNumber")}</TableHead>
+                    <TableHead className="md:min-w-[140px]">{t("tableHeaderEmployer")}</TableHead>
+                    <TableHead className="md:min-w-[130px]">{t("tableHeaderJob")}</TableHead>
+                    <TableHead>{t("tableHeaderCategory")}</TableHead>
+                    <TableHead className="text-right">{t("tableHeaderTotal")}</TableHead>
+                    <TableHead className="text-right">{t("tableHeaderPaid")}</TableHead>
+                    <TableHead className="text-right">{t("tableHeaderBalance")}</TableHead>
+                    <TableHead className="text-right">{t("tableHeaderTax")}</TableHead>
+                    <TableHead>{t("tableHeaderCommission")}</TableHead>
+                    <TableHead>{t("tableHeaderStatus")}</TableHead>
+                    <TableHead>{t("tableHeaderDueDate")}</TableHead>
+                    <TableHead className="text-right">{t("tableHeaderActions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -375,7 +414,7 @@ export default function AdminInvoicesPage() {
                   ) : invoices.length === 0 ? (
                     <TableRow className="border-border/70 hover:bg-transparent">
                       <TableCell colSpan={12} className="px-6 py-14 text-center">
-                        <div className="flex flex-col items-center gap-3"><div className="workspace-muted-pill rounded-[20px] p-3"><Inbox className="h-6 w-6" /></div><div><p className="text-sm font-semibold">No invoices found</p><p className="mt-1 text-sm text-muted-foreground">Create a new invoice or adjust filters.</p></div></div>
+                        <div className="flex flex-col items-center gap-3"><div className="workspace-muted-pill rounded-[20px] p-3"><Inbox className="h-6 w-6" /></div><div><p className="text-sm font-semibold">{t("noInvoicesFound")}</p><p className="mt-1 text-sm text-muted-foreground">{t("noInvoicesDescription")}</p></div></div>
                       </TableCell>
                     </TableRow>
                   ) : invoices.map((inv) => {
@@ -396,8 +435,8 @@ export default function AdminInvoicesPage() {
                         <TableCell>
                           {totalComm > 0 ? (
                             <div className="text-xs">
-                              {agentComm && <p className="text-sky-600">A: {agentComm.rate}%</p>}
-                              {saComm && <p className="text-indigo-600">SA: {saComm.rate}%</p>}
+                              {agentComm && <p className="text-sky-600">{t("agentCommissionLabel")}: {agentComm.rate}%</p>}
+                              {saComm && <p className="text-indigo-600">{t("superAgentCommissionLabel")}: {saComm.rate}%</p>}
                             </div>
                           ) : <span className="text-xs text-muted-foreground">—</span>}
                         </TableCell>
@@ -405,12 +444,12 @@ export default function AdminInvoicesPage() {
                         <TableCell className="text-xs text-muted-foreground">{inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : "—"}</TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-1" onClick={e => e.stopPropagation()}>
-                            <Button variant="ghost" size="sm" onClick={() => setSelectedInvoiceId(inv._id)} className="h-7 w-7 p-0" title="View details"><Eye className="h-3.5 w-3.5" /></Button>
+                            <Button variant="ghost" size="sm" onClick={() => setSelectedInvoiceId(inv._id)} className="h-7 w-7 p-0" title={t("viewDetails")}><Eye className="h-3.5 w-3.5" /></Button>
                             {["issued", "sent", "paid", "partially_paid", "overdue"].includes(inv.status) && (
-                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Download PDF" onClick={async () => {
+                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title={t("downloadPdf")} onClick={async () => {
                                 try {
                                   const res = await fetch(`/api/invoices/${inv._id}/pdf`);
-                                  if (!res.ok) throw new Error("Failed to download");
+                                  if (!res.ok) throw new Error(t("failedToDownloadInvoice"));
                                   const blob = await res.blob();
                                   const url = URL.createObjectURL(blob);
                                   const a = document.createElement("a");
@@ -418,20 +457,20 @@ export default function AdminInvoicesPage() {
                                   a.download = `${inv.invoiceNumber}.pdf`;
                                   a.click();
                                   URL.revokeObjectURL(url);
-                                } catch { toast.error("Failed to download PDF"); }
+                                } catch { toast.error(t("failedToDownloadPdf")); }
                               }}><Download className="h-3.5 w-3.5" /></Button>
                             )}
                             {can("subscriptions", "update") && inv.status === "draft" && (
-                              <Button variant="ghost" size="sm" onClick={() => updateStatus(inv._id, "issued")} className="h-7 px-2 text-[10px] text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/30">Issue</Button>
+                              <Button variant="ghost" size="sm" onClick={() => updateStatus(inv._id, "issued")} className="h-7 px-2 text-[10px] text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/30">{t("issue")}</Button>
                             )}
                             {can("subscriptions", "update") && ["issued", "sent"].includes(inv.status) && (
-                              <Button variant="ghost" size="sm" onClick={() => updateStatus(inv._id, "paid")} className="h-7 px-2 text-[10px] text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30">Paid</Button>
+                              <Button variant="ghost" size="sm" onClick={() => updateStatus(inv._id, "paid")} className="h-7 px-2 text-[10px] text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30">{t("markAsPaid")}</Button>
                             )}
                             {can("subscriptions", "update") && !["void", "cancelled", "refunded", "paid", "credit_note"].includes(inv.status) && (
                               <Button variant="ghost" size="sm" onClick={async () => {
-                                const ok = await confirmDialog("Void this invoice? This cannot be undone.");
+                                const ok = await confirmDialog(t("confirmVoidMessage"));
                                 if (ok) updateStatus(inv._id, "void");
-                              }} className="h-7 px-2 text-[10px] text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30">Void</Button>
+                              }} className="h-7 px-2 text-[10px] text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30">{t("void")}</Button>
                             )}
                           </div>
                         </TableCell>

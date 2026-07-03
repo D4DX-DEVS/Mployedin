@@ -109,7 +109,6 @@ describe("AdminDashboardPage", () => {
       ]);
 
     jobAggregateMock
-      .mockResolvedValueOnce([{ count: 3 }])
       .mockResolvedValueOnce([
         { _id: { year: 2026, month: 1 }, count: 1 },
         { _id: { year: 2026, month: 2 }, count: 2 },
@@ -143,13 +142,15 @@ describe("AdminDashboardPage", () => {
 
     // Key sections exist
     expect(screen.getByRole("heading", { name: /quick actions/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /jobs vs applications/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /platform insights/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /recent activity/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /hiring funnel/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /jobs vs applications/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /users by role/i })).toBeInTheDocument();
 
-    // Data from mocks renders
-    expect(screen.getByText(/3 active roles still have zero applications/i)).toBeInTheDocument();
+    // Data from mocks renders (dominant role is computed inline from usersByRole;
+    // the "zero applications" KPI insight now streams from its own Suspense
+    // subcomponent with a separate data source, so it isn't asserted here)
+    expect(screen.getByText(/employer is still the dominant cohort/i)).toBeInTheDocument();
     expect(screen.getByText(/sara ahmed joined as employer/i)).toBeInTheDocument();
   });
 });

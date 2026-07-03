@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Eye, EyeOff, Mail, Send, Globe, Plus, Trash2, Percent } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,7 @@ interface SystemSettings {
 }
 
 export default function AdminSettingsPage() {
+  const t = useTranslations("adminSettings");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -107,9 +109,9 @@ export default function AdminSettingsPage() {
         body: JSON.stringify({ smtp: settings.smtp }),
       });
       const data = await res.json();
-      setTestResult({ ok: res.ok, message: data.message ?? (res.ok ? "Test email sent!" : "Failed to send") });
+      setTestResult({ ok: res.ok, message: data.message ?? (res.ok ? t("testEmailSuccess") : t("testEmailFailure")) });
     } catch {
-      setTestResult({ ok: false, message: "Network error" });
+      setTestResult({ ok: false, message: t("networkError") });
     } finally {
       setTestingEmail(false);
     }
@@ -122,7 +124,7 @@ export default function AdminSettingsPage() {
   if (loading) {
     return (
       <div className="page-container">
-        <PageHeader title="Settings" description="Configure platform-wide settings and preferences" />
+        <PageHeader title={t("pageTitle")} description={t("pageDescription")} />
         <div className="bg-card rounded-xl border animate-pulse h-48" />
       </div>
     );
@@ -130,21 +132,21 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="page-container">
-      <PageHeader title="Settings" description="Configure platform-wide settings and preferences" />
+      <PageHeader title={t("pageTitle")} description={t("pageDescription")} />
 
       <div className="bg-card rounded-xl shadow-sm border divide-y">
         {/* General */}
         <div className="p-5 space-y-4">
-          <h3 className="font-semibold text-gray-800">General</h3>
+          <h3 className="font-semibold text-gray-800">{t("generalSectionTitle")}</h3>
           <div className="space-y-1">
-            <label className="text-sm text-muted-foreground">Platform Name</label>
+            <label className="text-sm text-muted-foreground">{t("platformNameLabel")}</label>
             <Input
               value={settings.platformName}
               onChange={(e) => setSettings((s) => ({ ...s, platformName: e.target.value }))}
             />
           </div>
           <div className="space-y-1">
-            <label className="text-sm text-muted-foreground">Support Email</label>
+            <label className="text-sm text-muted-foreground">{t("supportEmailLabel")}</label>
             <Input
               type="email"
               value={settings.supportEmail}
@@ -153,16 +155,16 @@ export default function AdminSettingsPage() {
           </div>
           <div className="space-y-1">
             <label className="text-sm text-muted-foreground flex items-center gap-1.5">
-              <Globe className="h-3.5 w-3.5" /> Default Currency
+              <Globe className="h-3.5 w-3.5" /> {t("defaultCurrencyLabel")}
             </label>
             <CurrencySelect
               value={settings.defaultCurrency}
               onValueChange={(v) => setSettings((s) => ({ ...s, defaultCurrency: v }))}
-              placeholder="Select currency..."
+              placeholder={t("defaultCurrencyPlaceholder")}
               className="max-w-xs"
             />
             <p className="text-xs text-muted-foreground">
-              Sets the default currency for new commissions and finance summaries.
+              {t("defaultCurrencyHelp")}
             </p>
           </div>
         </div>
@@ -170,8 +172,8 @@ export default function AdminSettingsPage() {
         {/* Maintenance */}
         <div className="p-5 flex items-center justify-between">
           <div>
-            <div className="font-medium text-gray-800">Maintenance Mode</div>
-            <div className="text-sm text-muted-foreground">Prevent non-admin users from accessing the platform</div>
+            <div className="font-medium text-gray-800">{t("maintenanceModeLabel")}</div>
+            <div className="text-sm text-muted-foreground">{t("maintenanceModeDescription")}</div>
           </div>
           <button
             onClick={() => setSettings((s) => ({ ...s, maintenanceMode: !s.maintenanceMode }))}
@@ -193,10 +195,10 @@ export default function AdminSettingsPage() {
             <div>
               <h3 className="font-semibold text-gray-800 flex items-center gap-2">
                 <Percent className="h-4 w-4 text-blue-600" />
-                Country Commission Overrides
+                {t("commissionOverridesTitle")}
               </h3>
               <p className="text-sm text-muted-foreground mt-0.5">
-                Override default agent/super-agent commission rates per country. When an invoice is created for an employer in a listed country, the override rate takes precedence.
+                {t("commissionOverridesDescription")}
               </p>
             </div>
             <Button
@@ -209,22 +211,22 @@ export default function AdminSettingsPage() {
                 }))
               }
             >
-              <Plus className="h-4 w-4 mr-1" /> Add
+              <Plus className="h-4 w-4 mr-1" /> {t("addCommissionButton")}
             </Button>
           </div>
 
           {settings.commissionOverrides.length > 0 ? (
             <div className="space-y-2">
               <div className="grid grid-cols-2 sm:grid-cols-[1fr_80px_1fr_40px] gap-2 text-xs font-medium text-muted-foreground px-1">
-                <span>Country Code</span>
-                <span>Rate (%)</span>
-                <span className="hidden sm:inline">Label</span>
+                <span>{t("countryCodeHeader")}</span>
+                <span>{t("rateHeader")}</span>
+                <span className="hidden sm:inline">{t("labelHeader")}</span>
                 <span />
               </div>
               {settings.commissionOverrides.map((ov, idx) => (
                 <div key={idx} className="grid grid-cols-2 sm:grid-cols-[1fr_80px_1fr_40px] gap-2 items-center">
                   <Input
-                    placeholder="e.g. AE"
+                    placeholder={t("countryCodePlaceholder")}
                     value={ov.countryCode}
                     maxLength={2}
                     onChange={(e) => {
@@ -246,7 +248,7 @@ export default function AdminSettingsPage() {
                     }}
                   />
                   <Input
-                    placeholder="e.g. UAE Rate"
+                    placeholder={t("labelPlaceholder")}
                     value={ov.label}
                     onChange={(e) => {
                       const updated = [...settings.commissionOverrides];
@@ -270,17 +272,17 @@ export default function AdminSettingsPage() {
             </div>
           ) : (
             <p className="text-sm text-muted-foreground italic">
-              No overrides configured. The default commission rates from agent/super-agent profiles will be used.
+              {t("noOverridesMessage")}
             </p>
           )}
         </div>
 
         {/* GDPR */}
         <div className="p-5 space-y-2">
-          <h3 className="font-semibold text-gray-800">GDPR & Data</h3>
-          <p className="text-sm text-muted-foreground">Data retention, export, and deletion policies are managed via the GDPR API endpoints.</p>
+          <h3 className="font-semibold text-gray-800">{t("gdprSectionTitle")}</h3>
+          <p className="text-sm text-muted-foreground">{t("gdprDescription")}</p>
           <a href="/api/gdpr" target="_blank" className="text-sm text-blue-600 hover:underline">
-            View GDPR endpoints →
+            {t("gdprLink")}
           </a>
         </div>
 
@@ -288,29 +290,28 @@ export default function AdminSettingsPage() {
         <div className="p-5 space-y-4">
           <div className="flex items-center gap-2">
             <Mail className="h-4 w-4 text-blue-600" />
-            <h3 className="font-semibold text-gray-800">Email Configuration (SMTP)</h3>
+            <h3 className="font-semibold text-gray-800">{t("emailConfigTitle")}</h3>
           </div>
           <p className="text-sm text-muted-foreground">
-            Configure the platform-wide SMTP settings for sending emails via Nodemailer.
-            Use a G Suite / Gmail email with an App Password. Employers can optionally override this with their own SMTP in their settings.
+            {t("emailConfigDescription")}
           </p>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
-              <label className="text-sm text-muted-foreground">SMTP Email (From address)</label>
+              <label className="text-sm text-muted-foreground">{t("smtpEmailLabel")}</label>
               <Input
                 type="email"
-                placeholder="noreply@yourcompany.com"
+                placeholder={t("smtpEmailPlaceholder")}
                 value={settings.smtp.smtpEmail}
                 onChange={(e) => updateSmtp("smtpEmail", e.target.value)}
               />
             </div>
             <div className="space-y-1">
-              <label className="text-sm text-muted-foreground">App Password</label>
+              <label className="text-sm text-muted-foreground">{t("appPasswordLabel")}</label>
               <div className="relative">
                 <Input
                   type={showPassword ? "text" : "password"}
-                  placeholder="••••••••••••••••"
+                  placeholder={t("appPasswordPlaceholder")}
                   value={settings.smtp.smtpAppPassword}
                   onChange={(e) => updateSmtp("smtpAppPassword", e.target.value)}
                   className="pr-10"
@@ -324,25 +325,25 @@ export default function AdminSettingsPage() {
                 </button>
               </div>
               <p className="text-xs text-muted-foreground">
-                For Gmail: Enable 2FA → Generate App Password at myaccount.google.com/apppasswords
+                {t("appPasswordHelp")}
               </p>
             </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-1">
-              <label className="text-sm text-muted-foreground">SMTP Host</label>
+              <label className="text-sm text-muted-foreground">{t("smtpHostLabel")}</label>
               <Input
-                placeholder="smtp.gmail.com"
+                placeholder={t("smtpHostPlaceholder")}
                 value={settings.smtp.smtpHost}
                 onChange={(e) => updateSmtp("smtpHost", e.target.value)}
               />
             </div>
             <div className="space-y-1">
-              <label className="text-sm text-muted-foreground">SMTP Port</label>
+              <label className="text-sm text-muted-foreground">{t("smtpPortLabel")}</label>
               <Input
                 type="number"
-                placeholder="587"
+                placeholder={t("smtpPortPlaceholder")}
                 value={settings.smtp.smtpPort}
                 onChange={(e) => updateSmtp("smtpPort", parseInt(e.target.value) || 587)}
               />
@@ -355,7 +356,7 @@ export default function AdminSettingsPage() {
                   onChange={(e) => updateSmtp("smtpSecure", e.target.checked)}
                   className="h-4 w-4 rounded border-border"
                 />
-                Use SSL/TLS (port 465)
+                {t("sslTlsLabel")}
               </label>
             </div>
           </div>
@@ -368,7 +369,7 @@ export default function AdminSettingsPage() {
               disabled={testingEmail || !settings.smtp.smtpEmail || !settings.smtp.smtpAppPassword}
             >
               <Send className="mr-2 h-3.5 w-3.5" />
-              {testingEmail ? "Sending…" : "Send Test Email"}
+              {testingEmail ? t("testEmailSending") : t("testEmailButton")}
             </Button>
             {testResult && (
               <span className={`text-sm ${testResult.ok ? "text-green-600" : "text-red-600"}`}>
@@ -385,9 +386,9 @@ export default function AdminSettingsPage() {
 
       <div className="flex items-center gap-3">
         <Button onClick={handleSave} disabled={saving}>
-          {saving ? "Saving…" : "Save Changes"}
+          {saving ? t("savingSaving") : t("saveButton")}
         </Button>
-        {saved && <span className="text-sm text-green-600">✓ Saved</span>}
+        {saved && <span className="text-sm text-green-600">{t("saveSuccess")}</span>}
       </div>
     </div>
   );
