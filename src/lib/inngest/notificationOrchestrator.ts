@@ -21,6 +21,7 @@ import {
 } from "@/models/NotificationPreference";
 import { sendEmail } from "@/lib/communications/email";
 import { sendWhatsApp } from "@/lib/communications/whatsapp";
+import { sendPushToUser, isPushEnabled } from "@/lib/push";
 import { getSystemConfig, getUserOverride } from "@/models/SystemConfig";
 import type { NotificationInstantEvent } from "./events";
 
@@ -125,6 +126,15 @@ export const notificationOrchestrator = inngest.createFunction(
         });
       });
       deliveredChannels.push("whatsapp");
+    }
+
+    // 6. Web Push delivery — mirrors the in-app notification. Only runs when
+    // VAPID keys are configured AND the user's category is enabled (checked above).
+    if (isPushEnabled()) {
+      await step.run("send-push", () =>
+        sendPushToUser(userId, { title, body: message, link })
+      );
+      deliveredChannels.push("push");
     }
 
     return { delivered: deliveredChannels, type, userId };

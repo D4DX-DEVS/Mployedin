@@ -37,6 +37,8 @@ export async function ensureIndexes() {
     { key: { role: 1 } },
     { key: { locale: 1 } },
     { key: { createdAt: -1 } },
+    // Admin user list: filter by role, sort newest first
+    { key: { role: 1, createdAt: -1 } },
   ]);
 
   // ── JobSeekers ─────────────────────────────────────────────────────────────
@@ -129,7 +131,8 @@ export async function ensureIndexes() {
       key: { applicationId: 1, interviewRound: 1 },
       unique: true,
       name: "unique_active_interview_round_per_application",
-      partialFilterExpression: { status: { $in: ["scheduled", "confirmed", "completed", "rescheduled"] } },
+      // Active only — completed/rescheduled rounds can legitimately repeat
+      partialFilterExpression: { status: { $in: ["scheduled", "confirmed"] } },
     },
   ]);
 
@@ -163,6 +166,9 @@ export async function ensureIndexes() {
     // Agent/super-agent earnings breakdown by status
     { key: { agentId: 1, status: 1 } },
     { key: { superAgentId: 1, status: 1 } },
+    // Commission lists: filter by owner, sort newest first
+    { key: { agentId: 1, createdAt: -1 } },
+    { key: { superAgentId: 1, createdAt: -1 } },
   ]);
 
   // ── Notifications ──────────────────────────────────────────────────────────

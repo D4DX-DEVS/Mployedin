@@ -88,7 +88,7 @@ export default function AgentChatPage() {
   };
 
   return (
-    <div className="page-container agent-legacy-surface space-y-6">
+    <div className="page-container agent-legacy-surface flex flex-col space-y-6">
       <section className="workspace-hero-surface agent-legacy-hero overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
@@ -110,7 +110,7 @@ export default function AgentChatPage() {
         </div>
       </section>
 
-      <div className="workspace-panel-surface flex h-[calc(100vh-240px)] min-h-96 gap-0 overflow-hidden rounded-[28px]">
+      <div className="workspace-panel-surface flex min-h-96 flex-1 gap-0 overflow-hidden rounded-[28px]">
         <aside className={`${showChannels ? "flex" : "hidden"} workspace-subtle-surface sm:flex w-full sm:w-60 shrink-0 flex-col border-r border-border`}>
           <div className="border-b border-border p-4">
             <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Channels</p>

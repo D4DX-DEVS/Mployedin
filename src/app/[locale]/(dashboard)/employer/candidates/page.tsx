@@ -10,6 +10,7 @@ import { SaveToPoolDialog } from "@/components/features/employer/SaveToPoolDialo
 import { ScoreRing } from "@/components/features/employer/candidates/ScoreRing";
 import { CandidateDetailPanel } from "@/components/features/employer/candidates/CandidateDetailPanel";
 import { TableToolbar } from "@/components/shared/TableToolbar";
+import { PageHero } from "@/components/shared/PageHero";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";

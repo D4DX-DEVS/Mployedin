@@ -18,7 +18,7 @@ interface AuthCtx {
 }
 
 function generateCode(): string {
-  return `MPL-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
+  return `MPL-${crypto.randomBytes(8).toString("hex").toUpperCase()}`;
 }
 
 /**

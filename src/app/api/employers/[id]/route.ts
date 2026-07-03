@@ -90,6 +90,17 @@ async function deleteHandler(req: NextRequest, ctx: AuthCtx, params?: Record<str
 
   const permanent = new URL(req.url).searchParams.get("permanent") === "true";
 
+  // Employers may only soft-deactivate their OWN account. Hard deletion
+  // (cascade) stays admin-only.
+  if (ctx.role === "employer") {
+    if (ctx.userId !== params?.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    if (permanent) {
+      return NextResponse.json({ error: "Permanent deletion requires an administrator" }, { status: 403 });
+    }
+  }
+
   if (permanent) {
     const { Employer } = await import("@/models/Employer");
     const { cascadeDeleteEmployer } = await import("@/lib/db/cascade");

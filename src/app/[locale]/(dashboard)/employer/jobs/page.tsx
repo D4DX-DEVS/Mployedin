@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { TableToolbar } from "@/components/shared/TableToolbar";
+import { PageHero } from "@/components/shared/PageHero";
 import { DraftExtractionsCard, DraftJobsCard } from "@/components/features/employer/dashboard";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useTableExport } from "@/hooks/useTableExport";
@@ -105,7 +106,7 @@ export default function EmployerJobsPage() {
   useEffect(() => { document.title = t("pageTitle"); }, [t]);
 
   // ── React Query ────────────────────────────────────────────────
-  const { data, isLoading } = useJobs({
+  const { data, isLoading, isError, refetch } = useJobs({
     page,
     limit,
     status: statusFilter,
@@ -216,6 +217,7 @@ export default function EmployerJobsPage() {
 
     try {
       await updateStatus.mutateAsync({ jobId: job._id, status: "closed" });
+      toast.success(t("toastJobDeactivated"));
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : t("toastFailedDeactivate"));
     } finally {
@@ -402,17 +404,17 @@ export default function EmployerJobsPage() {
   return (
     <div className="page-container employer-legacy-surface space-y-6">
       {ConfirmDialogNode}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
+        <div className="flex flex-col gap-4 sm:gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+            <div className="workspace-glass-panel hidden items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary sm:inline-flex">
               <Sparkles className="h-3.5 w-3.5" />
               {t("heroBadge")}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
+            <h1 className="text-xl font-semibold tracking-tight text-foreground sm:mt-4 sm:text-3xl md:text-[2rem]">
               {t("heroTitle")}
             </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+            <p className="mt-1.5 max-w-2xl text-sm leading-6 text-muted-foreground line-clamp-2 sm:mt-3 sm:line-clamp-none">
               {t("heroSubtitle")}
             </p>
           </div>
@@ -435,7 +437,7 @@ export default function EmployerJobsPage() {
           ) : null}
         </div>
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:mt-6 sm:gap-3 xl:grid-cols-4">
           <div className="workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -645,7 +647,14 @@ export default function EmployerJobsPage() {
       </section>
       )}
 
-      {isLoading ? (
+      {isError ? (
+        <div className="workspace-panel-surface rounded-[28px] px-6 py-12 text-center">
+          <p className="text-sm font-semibold text-destructive">{t("loadError")}</p>
+          <Button onClick={() => refetch()} variant="outline" className="mt-4 h-10 rounded-xl px-4 text-sm">
+            {t("retry")}
+          </Button>
+        </div>
+      ) : isLoading ? (
         <div className="space-y-4">
           {Array.from({ length: 5 }).map((_, i) => (
             <div
@@ -813,7 +822,12 @@ export default function EmployerJobsPage() {
                         </Button>
                       )}
 
-                      {/* Secondary actions collapsed into a menu to keep each card compact */}
+                      {/* Secondary actions collapsed into a menu to keep each card compact.
+                          Every item is permission-gated — hide the trigger when the menu
+                          would open empty (renders as a bare white sliver otherwise). */}
+                      {((can("jobs", "update") && !isUnpublished) ||
+                        can("jobs", "create") ||
+                        (can("jobs", "delete") && ["draft", "pending_approval", "paused", "closed", "expired"].includes(job.status))) && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button size="sm" variant="outline" title={t("moreActionsButton")} className="h-9 gap-2 rounded-xl border-border bg-background/80 px-3 text-sm text-foreground">
@@ -869,6 +883,7 @@ export default function EmployerJobsPage() {
                           )}
                         </DropdownMenuContent>
                       </DropdownMenu>
+                      )}
                     </div>
                   </div>
                 </div>

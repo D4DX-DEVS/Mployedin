@@ -471,6 +471,7 @@ export default function SuperAgentReferralLinksPage() {
                             onClick={(e) => { e.stopPropagation(); handleCopy(link.code); }}
                             className="inline-flex h-7 items-center gap-1 rounded-md border border-border px-2 text-[11px] font-medium text-muted-foreground hover:text-primary"
                             title="Copy referral URL"
+                            aria-label="Copy referral URL"
                           >
                             {copyMap[link.code] ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                             {copyMap[link.code] ? "Copied" : "Copy"}
@@ -483,6 +484,7 @@ export default function SuperAgentReferralLinksPage() {
                             disabled={updateMutation.isPending}
                             className={`inline-flex h-7 items-center gap-1 rounded-md border px-2 text-[11px] font-medium transition-colors ${link.isActive ? "border-amber-300 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30" : "border-emerald-300 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"}`}
                             title={link.isActive ? "Deactivate this link" : "Reactivate this link"}
+                            aria-label={link.isActive ? "Deactivate referral link" : "Reactivate referral link"}
                           >
                             {link.isActive ? <PowerOff className="h-3 w-3" /> : <Power className="h-3 w-3" />}
                             {link.isActive ? "Disable" : "Enable"}
@@ -491,6 +493,7 @@ export default function SuperAgentReferralLinksPage() {
                             onClick={(e) => { e.stopPropagation(); setExpandedId(isExpanded ? null : link._id); }}
                             className="inline-flex h-7 items-center rounded-md border border-border px-1.5 text-muted-foreground hover:text-foreground"
                             title="View registrations"
+                            aria-label={isExpanded ? "Collapse registrations" : "Expand registrations"}
                           >
                             {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                           </button>

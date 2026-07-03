@@ -166,6 +166,24 @@ export default function SuperAgentInterviewsPage() {
               placeholder="All types"
               className="h-11 w-[180px] rounded-xl border-border bg-card"
             />
+            <input
+              type="date"
+              value={filters.dateFrom}
+              onChange={(e) => updateFilter("dateFrom", e.target.value)}
+              className="h-11 rounded-xl border border-border bg-card px-3 text-sm"
+              placeholder="From date"
+              title="Filter from date"
+              aria-label="Filter interviews from date"
+            />
+            <input
+              type="date"
+              value={filters.dateTo}
+              onChange={(e) => updateFilter("dateTo", e.target.value)}
+              className="h-11 rounded-xl border border-border bg-card px-3 text-sm"
+              placeholder="To date"
+              title="Filter to date"
+              aria-label="Filter interviews to date"
+            />
           </div>
         }
       />

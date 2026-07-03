@@ -58,7 +58,7 @@ jest.mock("@/models/Job", () => ({
 jest.mock("@/models/Employer", () => ({
   __esModule: true,
   default: {
-    findById: jest.fn(() => ({ lean: employerFindByIdLean })),
+    findById: jest.fn(() => ({ select: jest.fn(() => ({ lean: employerFindByIdLean })) })),
   },
 }));
 
@@ -89,6 +89,7 @@ jest.mock("@/models/Invoice", () => ({
   default: {
     findOne: jest.fn(() => ({ select: jest.fn(() => ({ lean: invoiceFindOneLean })) })),
     create: jest.fn((payload) => invoiceCreate(payload)),
+    deleteOne: jest.fn().mockResolvedValue({}),
   },
 }));
 
@@ -100,6 +101,7 @@ jest.mock("@/models/Commission", () => ({
       return [{ _id: "comm_rec" }];
     }),
     countDocuments: jest.fn(() => ({ session: jest.fn().mockResolvedValue(0) })),
+    deleteMany: jest.fn().mockResolvedValue({}),
   },
 }));
 

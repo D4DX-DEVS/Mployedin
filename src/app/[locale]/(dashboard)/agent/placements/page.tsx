@@ -8,7 +8,8 @@ import { usePermissions } from "@/hooks/usePermissions";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { ArrowRight, BriefcaseBusiness, CircleDollarSign, Inbox, Sparkles, UserCheck } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, CircleDollarSign, Filter, Inbox, RotateCcw, Search, Sparkles, UserCheck, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
@@ -25,15 +26,40 @@ interface Placement {
   createdAt: string;
 }
 
+const STATUS_OPTIONS = [
+  { value: "", label: "All Statuses" },
+  { value: "pending", label: "Pending" },
+  { value: "offer", label: "Offer" },
+  { value: "completed", label: "Completed" },
+  { value: "hired", label: "Hired" },
+  { value: "rejected", label: "Rejected" },
+];
+
+const selectClass = "h-10 w-full rounded-xl border border-border bg-background/70 px-3 text-sm text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20";
+
 export default function AgentPlacementsPage() {
   const { can } = usePermissions();
   const pagination = usePagination();
   const [placements, setPlacements] = useState<Placement[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 400);
+    return () => clearTimeout(t);
+  }, [search]);
 
   const fetchPlacements = useCallback(async () => {
     setLoading(true);
     const params = pagination.paginationParams();
+    if (statusFilter) params.set("status", statusFilter);
+    if (debouncedSearch) params.set("search", debouncedSearch);
+    if (dateFrom) params.set("dateFrom", dateFrom);
+    if (dateTo) params.set("dateTo", dateTo);
     const res = await fetch(`/api/placements?${params}`);
     if (res.ok) {
       const data = await res.json();
@@ -41,9 +67,19 @@ export default function AgentPlacementsPage() {
       pagination.updateTotal(data.total ?? 0);
     }
     setLoading(false);
-  }, [pagination.page, pagination.limit]);
+  }, [pagination.page, pagination.limit, statusFilter, debouncedSearch, dateFrom, dateTo]);
 
   useEffect(() => { fetchPlacements(); }, [fetchPlacements]);
+  useEffect(() => { pagination.resetPage(); }, [statusFilter, debouncedSearch, dateFrom, dateTo]);
+
+  const clearAllFilters = () => {
+    setStatusFilter("");
+    setSearch("");
+    setDateFrom("");
+    setDateTo("");
+  };
+
+  const hasActiveFilters = statusFilter || debouncedSearch || dateFrom || dateTo;
 
   const completedPlacements = placements.filter((placement) => placement.status === "completed" || placement.status === "hired").length;
   const signedOffers = placements.filter((placement) => placement.status === "offer" || placement.status === "signed").length;
@@ -84,6 +120,74 @@ export default function AgentPlacementsPage() {
           <div className="workspace-glass-panel rounded-2xl p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Start dates</p><p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{startedCount}</p><p className="mt-1 text-xs text-muted-foreground">Placements with a confirmed onboarding date.</p></div><div className="workspace-tone-indigo rounded-2xl p-2.5"><ArrowRight className="h-5 w-5" /></div></div></div>
           <div className="workspace-glass-panel rounded-2xl p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Salary value</p><p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{totalCompensation.toLocaleString()}</p><p className="mt-1 text-xs text-muted-foreground">Combined visible compensation across current results.</p></div><div className="workspace-tone-amber rounded-2xl p-2.5"><CircleDollarSign className="h-5 w-5" /></div></div></div>
         </div>
+      </section>
+
+      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Filter placements</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Narrow down to what matters</h2>
+          </div>
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" onClick={clearAllFilters} className="gap-1.5 text-xs text-muted-foreground hover:text-foreground">
+              <X className="h-3.5 w-3.5" />Clear all
+            </Button>
+          )}
+        </div>
+
+        <div className="relative mt-5 max-w-md">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search candidate, company, or job..."
+            className="h-10 w-full rounded-xl border border-border bg-background/70 pl-10 pr-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground/60 focus:border-ring focus:ring-2 focus:ring-ring/20"
+          />
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Status</label>
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={selectClass}>
+              {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:max-w-md">
+          <div>
+            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">From date</label>
+            <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className={selectClass} />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">To date</label>
+            <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className={selectClass} />
+          </div>
+        </div>
+
+        {hasActiveFilters && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {statusFilter && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                <Filter className="h-3 w-3" />Status: {STATUS_OPTIONS.find(o => o.value === statusFilter)?.label}
+                <button type="button" onClick={() => setStatusFilter("")} className="ml-0.5 hover:text-primary/70"><X className="h-3 w-3" /></button>
+              </span>
+            )}
+            {(dateFrom || dateTo) && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                <Filter className="h-3 w-3" />Date: {dateFrom || "..."} – {dateTo || "..."}
+                <button type="button" onClick={() => { setDateFrom(""); setDateTo(""); }} className="ml-0.5 hover:text-primary/70"><X className="h-3 w-3" /></button>
+              </span>
+            )}
+            {debouncedSearch && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                <Search className="h-3 w-3" />Search: &quot;{debouncedSearch}&quot;
+                <button type="button" onClick={() => setSearch("")} className="ml-0.5 hover:text-primary/70"><X className="h-3 w-3" /></button>
+              </span>
+            )}
+          </div>
+        )}
       </section>
 
       <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">

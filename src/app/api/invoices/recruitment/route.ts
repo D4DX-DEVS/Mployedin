@@ -19,6 +19,7 @@ import { dispatchWebhook } from "@/lib/integrations/webhookDispatcher";
 import logger from "@/lib/logger";
 import connectDB from "@/lib/db/mongoose";
 import Invoice from "@/models/Invoice";
+import Commission from "@/models/Commission";
 import Job from "@/models/Job";
 import Employer from "@/models/Employer";
 import Agent from "@/models/Agent";
@@ -280,11 +281,24 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   }
 
   if (finalInvoiceStatus === "issued") {
-    externalCommissions.push(...await createCommissionRecordsForInvoice({
-      invoiceId: invoice._id,
-      commissions: invoice.commissions ?? [],
-      currency: invoiceCurrency,
-    }));
+    try {
+      externalCommissions.push(...await createCommissionRecordsForInvoice({
+        invoiceId: invoice._id,
+        commissions: invoice.commissions ?? [],
+        currency: invoiceCurrency,
+      }));
+    } catch (err) {
+      // ponytail: compensating cleanup instead of a multi-doc transaction —
+      // works on standalone Mongo too; move to session transactions if this
+      // window ever proves insufficient
+      await Commission.deleteMany({ invoiceId: invoice._id }).catch(() => {});
+      await Invoice.deleteOne({ _id: invoice._id }).catch(() => {});
+      logger.error({ err }, "Recruitment invoice rolled back: commission creation failed");
+      return NextResponse.json(
+        { error: "Failed to create commission records; invoice was not issued" },
+        { status: 500 },
+      );
+    }
   }
 
   // Audit log

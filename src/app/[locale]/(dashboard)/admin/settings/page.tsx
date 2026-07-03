@@ -215,14 +215,14 @@ export default function AdminSettingsPage() {
 
           {settings.commissionOverrides.length > 0 ? (
             <div className="space-y-2">
-              <div className="grid grid-cols-[1fr_80px_1fr_40px] gap-2 text-xs font-medium text-muted-foreground px-1">
+              <div className="grid grid-cols-2 sm:grid-cols-[1fr_80px_1fr_40px] gap-2 text-xs font-medium text-muted-foreground px-1">
                 <span>Country Code</span>
                 <span>Rate (%)</span>
-                <span>Label</span>
+                <span className="hidden sm:inline">Label</span>
                 <span />
               </div>
               {settings.commissionOverrides.map((ov, idx) => (
-                <div key={idx} className="grid grid-cols-[1fr_80px_1fr_40px] gap-2 items-center">
+                <div key={idx} className="grid grid-cols-2 sm:grid-cols-[1fr_80px_1fr_40px] gap-2 items-center">
                   <Input
                     placeholder="e.g. AE"
                     value={ov.countryCode}

@@ -504,6 +504,7 @@ export default function SuperAgentEmployersPage() {
                       disabled={switchingEmployerId === em._id || !em.isActive}
                       className="inline-flex items-center gap-1 rounded-lg border border-sky-400/50 bg-sky-50 px-2.5 py-1.5 text-xs font-semibold text-sky-700 transition-colors hover:bg-sky-100 disabled:opacity-50 dark:bg-sky-950/20 dark:text-sky-400 dark:hover:bg-sky-900/30"
                       title="Switch to employer workspace"
+                      aria-label={`Switch to ${em.companyName ?? em.name} workspace`}
                     >
                       {switchingEmployerId === em._id ? (
                         <><span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-sky-600 border-t-transparent" /></>

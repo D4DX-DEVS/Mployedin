@@ -4,6 +4,7 @@
     "tagline": "منصة التوظيف المدعومة بالذكاء الاصطناعي"
   },
   "nav": {
+    "back": "رجوع",
     "home": "الرئيسية",
     "dashboard": "لوحة التحكم",
     "jobs": "الوظائف",
@@ -790,6 +791,7 @@
       "year": "سنة"
     },
     "status": {
+      "all": "الكل",
       "pending": "قيد الانتظار",
       "accepted": "مقبول",
       "declined": "مرفوض",
@@ -947,8 +949,22 @@
     "interviewFallback": "مقابلة",
     "loadFailed": "فشل تحميل أحداث التقويم"
   },
+  "calendarFeed": {
+    "label": "التقويم",
+    "title": "مزامنة التقويم",
+    "description": "اشترك من تقويم Google أو Apple أو Outlook. تبقى مقابلاتك محدّثة تلقائيًا — بما في ذلك إعادة الجدولة.",
+    "loading": "جارٍ تحميل رابط التغذية…",
+    "copy": "نسخ",
+    "copied": "تم النسخ",
+    "resetLink": "إعادة تعيين الرابط",
+    "instructions": "تقويم Google: تقاويم أخرى ← من عنوان URL. تقويم Apple: ملف ← اشتراك تقويم جديد. أي شخص لديه هذا الرابط يمكنه رؤية جدول مقابلاتك — استخدم إعادة تعيين الرابط إذا تسرّب.",
+    "loadFailed": "تعذّر تحميل رابط التغذية. حدّث الصفحة للمحاولة مرة أخرى.",
+    "urlAria": "رابط تغذية التقويم"
+  },
   "jobSeekerCompanies": {
     "title": "الشركات",
+    "filterByIndustry": "تصفية حسب القطاع",
+    "allIndustries": "جميع القطاعات",
     "description": "استكشف أصحاب العمل الذين يوظفون عبر المنصة واكتشف مكان عملك القادم",
     "searchPlaceholder": "ابحث عن الشركات بالاسم أو القطاع أو الموقع...",
     "reset": "إعادة ضبط",
@@ -994,6 +1010,15 @@
     }
   },
   "jobSeekerInterviews": {
+    "status": {
+      "all": "الكل",
+      "scheduled": "مجدولة",
+      "confirmed": "مؤكدة",
+      "declined": "مرفوضة",
+      "completed": "مكتملة",
+      "cancelled": "ملغاة"
+    },
+    "round": "الجولة {round}",
     "documentTitle": "المقابلات · MPLOYEDIN",
     "title": "المقابلات",
     "summary": "{upcoming} قادمة · {past} مكتملة",
@@ -1108,6 +1133,7 @@
       "network": "خطأ في الشبكة"
     },
     "savedSearches": {
+      "searchPlaceholder": "ابحث في عمليات البحث المحفوظة...",
       "title": "عمليات البحث المحفوظة",
       "description": "احفظ عمليات البحث وتلقَّ تنبيهات بريدية عند ظهور مطابقات جديدة",
       "newAlert": "تنبيه بحث جديد",
@@ -1184,6 +1210,7 @@
       "deleteFailed": "فشل الحذف"
     },
     "documents": {
+      "searchPlaceholder": "ابحث في المستندات...",
       "documentTitle": "المستندات · MPLOYEDIN",
       "title": "المستندات",
       "description": "ارفع سيرتك الذاتية والشهادات والمستندات الأخرى",
@@ -2019,6 +2046,9 @@
     }
   },
   "ai": {
+    "bulkSuccess": "تم إنشاء {count} وظيفة بنجاح",
+    "bulkPartial": "تم إنشاء {created} من {total} وظيفة ({failed} فشلت)",
+    "bulkPreview": "تم اكتشاف {count} وظيفة",
     "assistant": "المساعد الذكي",
     "thinking": "يفكر…",
     "readyToHelp": "جاهز للمساعدة",
@@ -3418,6 +3448,14 @@
     "homepage": "الصفحة الرئيسية"
   },
   "profileDropdown": {
+    "quickLinks": "روابط سريعة",
+    "interviews": "المقابلات",
+    "offers": "العروض",
+    "calendar": "التقويم",
+    "savedSearches": "عمليات البحث المحفوظة",
+    "documents": "المستندات",
+    "cvBuilder": "منشئ السيرة الذاتية",
+    "companies": "الشركات",
     "role": "الدور",
     "lastLogin": "آخر تسجيل دخول",
     "notAvailable": "غير متوفر",
@@ -3576,6 +3614,9 @@
     "toastFailedActivate": "فشل في تفعيل الوظيفة",
     "confirmDeactivate": "إلغاء تفعيل هذه الوظيفة؟ ستتوقف عن قبول طلبات جديدة، لكن الطلبات الحالية ستبقى متاحة.",
     "toastFailedDeactivate": "فشل في إلغاء تفعيل الوظيفة",
+    "toastJobDeactivated": "تم إلغاء تفعيل الوظيفة",
+    "loadError": "تعذر تحميل وظائفك. تحقق من اتصالك وحاول مرة أخرى.",
+    "retry": "إعادة المحاولة",
     "confirmPause": "إيقاف هذه الوظيفة مؤقتاً؟ ستتوقف عن قبول طلبات جديدة مؤقتاً. يمكنك استئنافها في أي وقت.",
     "toastJobPaused": "تم إيقاف الوظيفة مؤقتاً بنجاح!",
     "toastFailedPause": "فشل في إيقاف الوظيفة مؤقتاً",
@@ -4003,6 +4044,41 @@
         "delete": "فشل حذف المحادثة."
       }
     }
+  },
+  "posterCreate": {
+    "title": "إنشاء ملصق وظيفة",
+    "subtitle": "أنشئ ملصقات جذابة لاستقطاب المرشحين المناسبين",
+    "generateNow": "أنشئ الآن",
+    "generating": "جارٍ الإنشاء…",
+    "typeTitle": "اختر النوع",
+    "typeDesc": "اختر نوع الملصق",
+    "customizeTitle": "التخصيص",
+    "customizeDesc": "أضف التفاصيل والتفضيلات",
+    "resultsTitle": "منشأ بالذكاء الاصطناعي",
+    "resultsDesc": "اختر المفضل لديك أو أنشئ المزيد",
+    "downloadTitle": "المعاينة والتنزيل",
+    "downloadDesc": "عاين ملصقك وقم بتنزيله",
+    "valueAiTitle": "مدعوم بالذكاء الاصطناعي",
+    "valueAiDesc": "الذكاء الاصطناعي ينشئ خلفيات فريدة لملصقاتك",
+    "valueBrandTitle": "علامتك حاضرة دائماً",
+    "valueBrandDesc": "شعار Mployedin ورمز QR يُضافان إلى كل ملصق",
+    "valueLinkTitle": "المزيد من طلبات التوظيف",
+    "valueLinkDesc": "كل ملصق يرتبط بصفحة وظيفتك على Mployedin"
+  },
+  "myPosters": {
+    "title": "ملصقاتي",
+    "eyebrow": "التسويق التوظيفي بالذكاء الاصطناعي",
+    "description": "جميع ملصقات التوظيف المُنشأة بالذكاء الاصطناعي. شاركها على وسائل التواصل الاجتماعي أو اطبعها أو استخدم رموز QR لجذب أفضل المواهب.",
+    "createCta": "إنشاء ملصق من وظيفة",
+    "emptyTitle": "لا توجد ملصقات بعد",
+    "emptyHint": "أنشئ أول ملصق توظيف بالذكاء الاصطناعي من أي وظيفة.",
+    "deleteConfirm": "حذف هذا الملصق؟ لا يمكن التراجع عن هذا الإجراء.",
+    "deleteLabel": "حذف الملصق",
+    "deleteError": "فشل حذف الملصق. يرجى المحاولة مرة أخرى.",
+    "untitledJob": "وظيفة بدون عنوان",
+    "previous": "السابق",
+    "next": "التالي",
+    "pageOf": "صفحة {page} من {pages}"
   },
   "employerMessages": {
     "title": "الرسائل",
@@ -4539,6 +4615,8 @@
     "deactivateAccount": "إلغاء تنشيط الحساب",
     "deactivateAccountDesc": "يخفي ملفك الشخصي ويلغي نشر جميع الوظائف. قابل للاسترجاع عبر الدعم.",
     "deactivateConfirm": "هل أنت متأكد أنك تريد إلغاء تنشيط حسابك؟ سيتم إلغاء نشر جميع الوظائف النشطة.",
+    "deactivateSuccess": "تم إلغاء تنشيط حسابك.",
+    "deactivateFailed": "فشل إلغاء تنشيط الحساب. يرجى المحاولة مرة أخرى أو التواصل مع الدعم.",
     "processing": "جارٍ المعالجة…",
     "deactivate": "إلغاء التنشيط",
     "emailFrequency": "تكرار البريد الإلكتروني",
@@ -5370,6 +5448,18 @@
     "pendingInvite": "دعوة معلقة",
     "invited": "تمت الدعوة {date}",
     "failedToSendInvite": "فشل في إرسال الدعوة",
+    "pendingInvites": "دعوات معلقة",
+    "accept": {
+      "accepting": "جارٍ قبول الدعوة…",
+      "acceptingDescription": "يرجى الانتظار بينما نؤكد دعوتك.",
+      "successTitle": "تم قبول الدعوة",
+      "successDescription": "لقد انضممت إلى {companyName}. لديك الآن حق الوصول إلى مساحة عمل الفريق.",
+      "goToDashboard": "الذهاب إلى لوحة التحكم",
+      "errorTitle": "تعذر قبول الدعوة",
+      "errorHint": "تأكد من تسجيل الدخول بعنوان البريد الإلكتروني الذي أُرسلت إليه الدعوة، ثم افتح الرابط مرة أخرى.",
+      "missingToken": "رابط الدعوة غير صالح.",
+      "genericError": "حدث خطأ ما. يرجى المحاولة مرة أخرى."
+    },
     "pageTitle": "إدارة الفريق · MPLOYEDIN",
     "descriptionActiveOnly": "{activeCount} أعضاء نشطون",
     "descriptionWithPending": "{activeCount} أعضاء نشطون · {pendingCount} دعوات معلقة",
@@ -5453,6 +5543,7 @@
     "onThisPage": "في هذه الصفحة"
   },
   "employerInterviews": {
+    "priorRounds": "{count} جولة/جولات سابقة",
     "title": "مساحة عمل المقابلات",
     "description": "حافظ على زخم المقابلات مرئيًا عبر كل نقطة تواصل مع المرشحين.",
     "subtitle": "راجع الجلسات القادمة وإعادة الجدولة والمكتملة في عرض مركّز واحد.",
@@ -5646,6 +5737,7 @@
     "downloadLetter": "تنزيل خطاب العرض (PDF)"
   },
   "employerBackgroundChecks": {
+    "searchPlaceholder": "ابحث باسم المرشح...",
     "title": "فحوصات الخلفية",
     "description": "أجرِ التحقق من المراجع والخلفية للمرشحين المختارين.",
     "newCheck": "فحص جديد",
@@ -5707,6 +5799,29 @@
     }
   },
   "employerPlacements": {
+    "backToPlacements": "العودة إلى التعيينات",
+    "detailLoadError": "تعذر تحميل هذا التعيين. يرجى المحاولة مرة أخرى.",
+    "retry": "إعادة المحاولة",
+    "candidate": "المرشح",
+    "status_active": "نشط",
+    "status_completed": "مكتمل",
+    "status_terminated": "منتهي",
+    "markCompleted": "وضع علامة مكتمل",
+    "markTerminated": "إنهاء",
+    "confirmComplete": "وضع علامة مكتمل على هذا التعيين؟ لا يمكن التراجع عن هذا الإجراء.",
+    "confirmTerminate": "إنهاء هذا التعيين؟ لا يمكن التراجع عن هذا الإجراء.",
+    "statusUpdated": "تم تحديث حالة التعيين.",
+    "statusUpdateFailed": "فشل تحديث حالة التعيين.",
+    "jobCol": "الوظيفة",
+    "salaryCol": "الراتب",
+    "locationLabel": "الموقع",
+    "placedAtLabel": "تاريخ التعيين",
+    "startDateLabel": "تاريخ البدء",
+    "visaStatusLabel": "حالة التأشيرة",
+    "notesLabel": "ملاحظات",
+    "onboardingLinkTitle": "قائمة التهيئة",
+    "onboardingLinkDesc": "المهام والمستندات وتتبع فترة التجربة لهذا الموظف",
+    "viewDetails": "عرض التفاصيل",
     "workspace": "مساحة عمل التعيينات",
     "title": "تتبع نتائج التوظيف في لوحة تعيينات أوضح.",
     "description": "حافظ على ظهور التعيينات المكتملة والنشطة والإنجازات الأخيرة دون إخفاء بيانات النتائج في جدول تقارير عادي.",
@@ -6895,6 +7010,9 @@
     "to": "إلى"
   },
   "notificationsPage": {
+    "enablePush": "تفعيل الإشعارات الفورية",
+    "pushEnabled": "تم تفعيل الإشعارات الفورية على هذا الجهاز.",
+    "pushEnableFailed": "تعذر تفعيل الإشعارات الفورية. يرجى المحاولة مرة أخرى.",
     "title": "الإشعارات",
     "description": "ابقَ على اطلاع بطلباتك ومقابلاتك وتنبيهاتك",
     "markAllRead": "تحديد الكل كمقروء",
@@ -6954,7 +7072,9 @@
     "saPlacementTitle": "تم إكمال تعيين جديد",
     "saPlacementBody": "تم تعيين {candidateName} كـ \"{jobTitle}\" في {companyName}.",
     "stageChangedTitle": "تغيّرت مرحلة الطلب",
-    "stageChangedBody": "تم نقل طلب لوظيفة \"{jobTitle}\" إلى {status}."
+    "stageChangedBody": "تم نقل طلب لوظيفة \"{jobTitle}\" إلى {status}.",
+    "bulkActionTitle": "تحديث جماعي للطلبات",
+    "bulkActionBody": "تم تحديث {count} طلب/طلبات عبر إجراء جماعي: {action}."
   },
   "publicPages": {
     "jobsTitle": "البحث عن وظائف",
@@ -7096,6 +7216,9 @@
     }
   },
   "emailSequences": {
+    "searchPlaceholder": "ابحث في التسلسلات...",
+    "allStatuses": "جميع الحالات",
+    "noResults": "لا توجد تسلسلات تطابق عوامل التصفية",
     "title": "تسلسلات البريد الإلكتروني",
     "subtitle": "أنشئ حملات بريد إلكتروني تلقائية لرعاية المرشحين بمرور الوقت.",
     "create": "إنشاء تسلسل",
@@ -7430,6 +7553,8 @@
     "questionType": "نوع السؤال"
   },
   "employerJobTemplates": {
+    "loadError": "تعذر تحميل القوالب. يرجى المحاولة مرة أخرى.",
+    "retry": "إعادة المحاولة",
     "title": "قوالب الوظائف",
     "description": "احفظ قوالب إعلانات وظائف قابلة لإعادة الاستخدام لتسريع التوظيف",
     "newTemplate": "قالب جديد",
@@ -7678,6 +7803,11 @@
     "toastDraftUnavailable": "مسودة الاستخراج هذه لم تعد متاحة — ربما انتهت صلاحيتها أو تم تجاهلها."
   },
   "employerJobDetail": {
+    "loadError": "تعذر تحميل هذه الوظيفة. يرجى المحاولة مرة أخرى.",
+    "retry": "إعادة المحاولة",
+    "confirmCloseJob": "إغلاق هذه الوظيفة؟ لن يتمكن المرشحون من التقديم بعد الآن.",
+    "statusUpdateSuccess": "تم تحديث حالة الوظيفة.",
+    "statusUpdateFailed": "فشل تحديث حالة الوظيفة. يرجى المحاولة مرة أخرى.",
     "notFound": "الوظيفة غير موجودة",
     "notFoundDesc": "ربما تم إزالة هذه الوظيفة.",
     "backToJobs": "العودة للوظائف",

@@ -15,6 +15,7 @@ import {
 import { PageHero } from "@/components/shared/PageHero";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { toast } from "sonner";
+import { Search } from "lucide-react";
 import { csrfFetch } from "@/lib/security/csrf-client";
 
 type CheckType = "background" | "reference" | "both";
@@ -74,6 +75,9 @@ export default function BackgroundChecksPage() {
   const [refs, setRefs] = useState<NewReferenceRow[]>([{ name: "", relationship: "", company: "", email: "" }]);
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [search, setSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   useEffect(() => {
     document.title = `${t("title")} · MPLOYEDIN`;
@@ -241,8 +245,55 @@ export default function BackgroundChecksPage() {
           <p className="mt-3 text-sm text-muted-foreground">{t("empty")}</p>
         </div>
       ) : (
-        <div className="grid gap-3">
-          {checks.map((c) => (
+        <>
+          <div className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder={t("searchPlaceholder")}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9 h-10 rounded-xl border-border bg-background"
+                />
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="h-10 rounded-xl border border-border bg-background px-3 text-sm focus:border-primary focus:outline-none"
+                  title="From date"
+                />
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="h-10 rounded-xl border border-border bg-background px-3 text-sm focus:border-primary focus:outline-none"
+                  title="To date"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-3">
+          {checks
+            .filter((c) => {
+              if (search.trim()) {
+                const q = search.toLowerCase();
+                if (!candidateName(c).toLowerCase().includes(q)) return false;
+              }
+              if (dateFrom) {
+                const checkDate = new Date(c.createdAt);
+                if (checkDate < new Date(dateFrom)) return false;
+              }
+              if (dateTo) {
+                const checkDate = new Date(c.createdAt);
+                if (checkDate > new Date(dateTo)) return false;
+              }
+              return true;
+            })
+            .map((c) => (
             <button
               key={c._id}
               onClick={() => setDetail(c)}
@@ -265,7 +316,8 @@ export default function BackgroundChecksPage() {
               </div>
             </button>
           ))}
-        </div>
+          </div>
+        </>
       )}
 
       {/* Create dialog */}

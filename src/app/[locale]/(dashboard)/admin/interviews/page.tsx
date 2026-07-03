@@ -449,13 +449,13 @@ export default function AdminInterviewOversightPage() {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
-                <TableHead className="min-w-[160px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">Candidate</TableHead>
-                <TableHead className="min-w-[180px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">Role</TableHead>
-                <TableHead className="min-w-[140px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">Company</TableHead>
-                <TableHead className="min-w-[80px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">Type</TableHead>
-                <TableHead className="min-w-[100px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">Agent</TableHead>
-                <TableHead className="min-w-[110px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">Date</TableHead>
-                <TableHead className="min-w-[100px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">Status</TableHead>
+                <TableHead className="md:min-w-[160px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">Candidate</TableHead>
+                <TableHead className="md:min-w-[180px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">Role</TableHead>
+                <TableHead className="md:min-w-[140px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">Company</TableHead>
+                <TableHead className="md:min-w-[80px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">Type</TableHead>
+                <TableHead className="md:min-w-[100px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">Agent</TableHead>
+                <TableHead className="md:min-w-[110px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">Date</TableHead>
+                <TableHead className="md:min-w-[100px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

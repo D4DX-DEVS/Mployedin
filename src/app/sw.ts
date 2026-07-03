@@ -41,3 +41,41 @@ const serwist = new Serwist({
 });
 
 serwist.addEventListeners();
+
+// ── Web Push ────────────────────────────────────────────────────────────────
+// Payload shape comes from src/lib/push.ts: { title, body, link }
+self.addEventListener("push", (event: any) => {
+  let payload: { title?: string; body?: string; link?: string };
+  try {
+    payload = event.data?.json() ?? {};
+  } catch {
+    payload = { body: event.data?.text?.() };
+  }
+  event.waitUntil(
+    (self.registration as ServiceWorkerRegistration).showNotification(
+      payload.title ?? "Mployedin",
+      {
+        body: payload.body ?? "",
+        icon: "/logo.png",
+        badge: "/logo.png",
+        data: { link: payload.link ?? "/" },
+      }
+    )
+  );
+});
+
+self.addEventListener("notificationclick", (event: any) => {
+  event.notification.close();
+  const link: string = event.notification.data?.link ?? "/";
+  event.waitUntil(
+    (self.clients as Clients).matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      for (const client of clients) {
+        if ("focus" in client) {
+          (client as WindowClient).navigate(link);
+          return (client as WindowClient).focus();
+        }
+      }
+      return (self.clients as Clients).openWindow(link);
+    })
+  );
+});

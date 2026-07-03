@@ -11,11 +11,13 @@ import {
   Pencil,
   Plus,
   Radio,
+  Search,
   Send,
   Sparkles,
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
 const USER_ROLES = ["all", "job_seeker", "employer", "agent", "super_agent", "admin"];
@@ -85,6 +87,7 @@ export default function AdminCommunicationsPage() {
   const [error, setError] = useState("");
   const [history, setHistory] = useState<BroadcastRecord[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [historySearch, setHistorySearch] = useState("");
   const [templates, setTemplates] = useState<BroadcastTemplate[]>([]);
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
@@ -749,17 +752,22 @@ export default function AdminCommunicationsPage() {
             <p className="mt-1 text-sm text-slate-500">Review what was sent, when it was delivered, and which primary channel was used.</p>
           </div>
 
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input placeholder="Search broadcasts..." value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} className="pl-9 h-9 text-sm border-slate-200 bg-white" />
+          </div>
+
           {historyLoading ? (
             Array.from({ length: 4 }).map((_, index) => (
               <div key={index} className="h-24 animate-pulse rounded-2xl bg-slate-100" />
             ))
-          ) : history.length === 0 ? (
+          ) : history.filter((r) => r.title.toLowerCase().includes(historySearch.toLowerCase()) || r.body?.toLowerCase().includes(historySearch.toLowerCase())).length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-14 text-center text-sm text-slate-500">
               <History className="mx-auto mb-3 h-8 w-8 text-slate-300" />
-              No broadcasts sent yet. Messages sent from the Broadcast tab will appear here.
+              {history.length === 0 ? "No broadcasts sent yet. Messages sent from the Broadcast tab will appear here." : "No broadcasts match your search."}
             </div>
           ) : (
-            history.map((record) => (
+            history.filter((r) => r.title.toLowerCase().includes(historySearch.toLowerCase()) || r.body?.toLowerCase().includes(historySearch.toLowerCase())).map((record) => (
               <article key={record._id} className="rounded-3xl border border-slate-200 bg-slate-50/50 p-5">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="space-y-2">

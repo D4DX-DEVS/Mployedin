@@ -218,25 +218,25 @@ export default function AgentInvoicesPage() {
                   <TableRow className="border-border/80 bg-secondary/72 hover:bg-secondary/72">
                     <TableHead>Invoice #</TableHead>
                     <TableHead>Employer</TableHead>
-                    <TableHead>Job</TableHead>
-                    <TableHead>Category</TableHead>
+                    <TableHead className="hidden md:table-cell">Job</TableHead>
+                    <TableHead className="hidden lg:table-cell">Category</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead className="text-right">Paid</TableHead>
                     <TableHead className="text-right">Balance</TableHead>
-                    <TableHead>My Commission</TableHead>
+                    <TableHead className="hidden xl:table-cell">My Commission</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Due Date</TableHead>
+                    <TableHead className="hidden md:table-cell">Due Date</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? Array.from({ length: 5 }).map((_, i) => (
                     <TableRow key={i} className="border-border/70 hover:bg-transparent">
-                      {Array.from({ length: 11 }).map((_, j) => <TableCell key={j}><div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" /></TableCell>)}
+                      {Array.from({ length: 10 }).map((_, j) => <TableCell key={j}><div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" /></TableCell>)}
                     </TableRow>
                   )) : invoices.length === 0 ? (
                     <TableRow className="border-border/70 hover:bg-transparent">
-                      <TableCell colSpan={11} className="px-6 py-14 text-center">
+                      <TableCell colSpan={10} className="px-6 py-14 text-center">
                         <div className="flex flex-col items-center gap-3"><div className="workspace-muted-pill rounded-[20px] p-3"><Inbox className="h-6 w-6" /></div><div><p className="text-sm font-semibold">No invoices yet</p><p className="mt-1 text-sm text-muted-foreground">Create your first invoice to start tracking commissions.</p></div></div>
                       </TableCell>
                     </TableRow>
@@ -246,12 +246,12 @@ export default function AgentInvoicesPage() {
                       <TableRow key={inv._id} className="border-border/70 cursor-pointer hover:bg-secondary/30" onClick={() => setSelectedInvoiceId(inv._id)}>
                         <TableCell><p className="font-mono text-sm font-medium">{inv.invoiceNumber}</p></TableCell>
                         <TableCell><p className="max-w-[130px] truncate font-medium">{inv.employerId?.companyName ?? "—"}</p></TableCell>
-                        <TableCell><p className="max-w-[120px] truncate text-sm text-muted-foreground">{inv.jobId?.title ?? "—"}</p></TableCell>
-                        <TableCell><span className="text-[10px] capitalize text-muted-foreground">{inv.category?.replace(/_/g, " ")}</span></TableCell>
+                        <TableCell className="hidden md:table-cell"><p className="max-w-[120px] truncate text-sm text-muted-foreground">{inv.jobId?.title ?? "—"}</p></TableCell>
+                        <TableCell className="hidden lg:table-cell"><span className="text-[10px] capitalize text-muted-foreground">{inv.category?.replace(/_/g, " ")}</span></TableCell>
                         <TableCell className="text-right font-semibold">{inv.currency} {(inv.totalAmount ?? 0).toLocaleString()}</TableCell>
                         <TableCell className="text-right text-sm text-emerald-600 dark:text-emerald-400">{inv.currency} {(inv.paidAmount ?? 0).toLocaleString()}</TableCell>
                         <TableCell className="text-right text-sm text-amber-600 dark:text-amber-400">{inv.currency} {(inv.balanceDue ?? 0).toLocaleString()}</TableCell>
-                        <TableCell>
+                        <TableCell className="hidden xl:table-cell">
                           {myComm ? (
                             <div className="text-xs">
                               <p className="font-medium text-sky-600 dark:text-sky-400">{myComm.rate}% = {inv.currency} {myComm.amount.toLocaleString()}</p>
@@ -260,7 +260,7 @@ export default function AgentInvoicesPage() {
                           ) : <span className="text-xs text-muted-foreground">—</span>}
                         </TableCell>
                         <TableCell><StatusBadge status={inv.status} /></TableCell>
-                        <TableCell className="text-xs text-muted-foreground">{inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : "—"}</TableCell>
+                        <TableCell className="hidden md:table-cell text-xs text-muted-foreground">{inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : "—"}</TableCell>
                         <TableCell>
                           <div className="flex justify-end" onClick={e => e.stopPropagation()}>
                             <Button variant="ghost" size="sm" onClick={() => setSelectedInvoiceId(inv._id)} className="h-7 w-7 p-0"><Eye className="h-3.5 w-3.5" /></Button>

@@ -138,6 +138,7 @@ export interface IJob extends Document {
   locations?: IJobLocation[];
   clonedFrom?: mongoose.Types.ObjectId;
   deletedAt?: Date;
+  preDeletionStatus?: JobStatus;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -266,6 +267,11 @@ const JobSchema = new Schema<IJob>(
     }],
     clonedFrom: { type: Schema.Types.ObjectId, ref: "Job" },
     deletedAt: { type: Date, default: null },
+    // Status at soft-delete time, so restore can put the job back as it was
+    preDeletionStatus: {
+      type: String,
+      enum: ["draft", "pending_approval", "active", "paused", "closed", "expired"],
+    },
   },
   { timestamps: true }
 );

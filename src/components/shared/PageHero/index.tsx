@@ -31,27 +31,30 @@ export function PageHero({
   return (
     <section
       className={cn(
-        "workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7",
+        "workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7",
         className
       )}
     >
-      <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
+      <div className="flex flex-col gap-4 sm:gap-6 xl:flex-row xl:items-start xl:justify-between">
         <div className="max-w-3xl">
-          <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
+          {/* Eyebrow badge is decorative — hidden on mobile to save viewport height */}
+          <div className="workspace-glass-panel hidden items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300 sm:inline-flex">
             <Icon className="h-3.5 w-3.5" />
             {eyebrow ?? title}
           </div>
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
+          <h1 className="text-xl font-semibold tracking-tight text-foreground sm:mt-4 sm:text-3xl md:text-[2rem]">
             {title}
           </h1>
           {description && (
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+            <p className="mt-1.5 max-w-2xl text-sm leading-6 text-muted-foreground line-clamp-2 sm:mt-3 sm:line-clamp-none">
               {description}
             </p>
           )}
         </div>
         {actions && (
-          <div className="flex shrink-0 flex-wrap items-center gap-3">{actions}</div>
+          <div className="-mx-4 flex shrink-0 items-center gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0 [&>*]:shrink-0">
+            {actions}
+          </div>
         )}
       </div>
     </section>

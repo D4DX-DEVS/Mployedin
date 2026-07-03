@@ -30,7 +30,17 @@ interface Interview {
   candidateResponse?: "pending" | "confirmed" | "declined" | "reschedule_requested";
   candidateResponseAt?: string;
   candidateRescheduleNote?: string;
+  interviewRound?: number;
 }
+
+const STATUS_TABS = [
+  "all",
+  "scheduled",
+  "confirmed",
+  "declined",
+  "completed",
+  "cancelled",
+] as const;
 
 export default function InterviewsPage() {
   const t = useTranslations("jobSeekerInterviews");
@@ -39,6 +49,7 @@ export default function InterviewsPage() {
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const debouncedSearch = useDebounce(searchTerm, 400);
   const pagination = usePagination();
 
@@ -51,6 +62,7 @@ export default function InterviewsPage() {
     try {
       const params = pagination.paginationParams();
       if (debouncedSearch) params.set("search", debouncedSearch);
+      if (statusFilter !== "all") params.set("status", statusFilter);
       const res = await fetch(`/api/interviews?${params}`);
       if (res.ok) {
         const data = await res.json();
@@ -61,7 +73,7 @@ export default function InterviewsPage() {
     } finally {
       setLoading(false);
     }
-  }, [pagination.page, pagination.limit, debouncedSearch]);
+  }, [pagination.page, pagination.limit, debouncedSearch, statusFilter]);
 
   useEffect(() => { fetchInterviews(); }, [fetchInterviews]);
 
@@ -118,6 +130,21 @@ export default function InterviewsPage() {
         className="mb-4"
       />
 
+      {/* Status filter tabs */}
+      <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2">
+        {STATUS_TABS.map((status) => (
+          <Button
+            key={status}
+            variant={statusFilter === status ? "default" : "outline"}
+            size="sm"
+            onClick={() => { setStatusFilter(status); pagination.resetPage(); }}
+            className="whitespace-nowrap"
+          >
+            {t(`status.${status}`)}
+          </Button>
+        ))}
+      </div>
+
       {loading ? (
         <div className="space-y-3 sm:space-y-4">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -173,7 +200,7 @@ function InterviewCard({ interview: iv, upcoming, onRefresh }: { interview: Inte
   const dateStr = dt.toLocaleDateString(numberLocale, { weekday: "short", month: "short", day: "numeric", year: "numeric" });
   const timeStr = dt.toLocaleTimeString(numberLocale, { hour: "2-digit", minute: "2-digit" });
 
-  const typeIcon = iv.type === "video" ? Video : MapPin;
+  const typeIcon = iv.type === "offline" ? MapPin : Video;
   const TypeIcon = typeIcon;
 
   const isToday = new Date().toDateString() === dt.toDateString();
@@ -221,6 +248,11 @@ function InterviewCard({ interview: iv, upcoming, onRefresh }: { interview: Inte
             <Badge variant={iv.type === "video" ? "secondary" : "outline"} className="text-xs capitalize">
               <TypeIcon className="w-3 h-3 me-1" /> {t(`type.${iv.type}`)}
             </Badge>
+            {(iv.interviewRound ?? 1) > 1 && (
+              <Badge variant="outline" className="text-xs border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/40 dark:text-indigo-300">
+                {t("round", { round: (iv.interviewRound ?? 1).toLocaleString(numberLocale) })}
+              </Badge>
+            )}
             {responseLabel && (
               <Badge variant="outline" className={`text-xs ${responseColor}`}>
                 {responseLabel}

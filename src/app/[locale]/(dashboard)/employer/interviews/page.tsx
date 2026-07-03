@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
+import { PageHero } from "@/components/shared/PageHero";
 import { usePermissions } from "@/hooks/usePermissions";
 import { AIInterviewQuestionsPanel } from "@/components/features/employer/AIInterviewQuestionsPanel";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -125,11 +126,14 @@ export default function EmployerInterviewsPage() {
   const totalPages = Math.max(1, Math.ceil(total / limit));
   const statusCounts = data?.statusCounts ?? {};
 
-  // Deduplicate: per application show only the latest actionable interview
-  const deduplicatedInterviews = (() => {
+  // Deduplicate: per application show only the latest actionable interview,
+  // but keep the earlier rounds so the row can expand into a round history.
+  const { deduplicatedInterviews, historyByApp } = (() => {
     const bestByApp = new Map<string, Interview>();
+    const allByApp = new Map<string, Interview[]>();
     for (const iv of interviews) {
       const appKey = iv.applicationId ?? iv._id;
+      allByApp.set(appKey, [...(allByApp.get(appKey) ?? []), iv]);
       const existing = bestByApp.get(appKey);
       if (!existing) {
         bestByApp.set(appKey, iv);
@@ -149,7 +153,17 @@ export default function EmployerInterviewsPage() {
         }
       }
     }
-    return [...bestByApp.values()].filter((iv) => iv.status !== "rescheduled");
+    const history = new Map<string, Interview[]>();
+    for (const [appKey, best] of bestByApp) {
+      const prior = (allByApp.get(appKey) ?? [])
+        .filter((iv) => iv._id !== best._id && iv.status !== "rescheduled")
+        .sort((a, b) => (a.interviewRound ?? 1) - (b.interviewRound ?? 1));
+      if (prior.length) history.set(appKey, prior);
+    }
+    return {
+      deduplicatedInterviews: [...bestByApp.values()].filter((iv) => iv.status !== "rescheduled"),
+      historyByApp: history,
+    };
   })();
 
   // Stats from API statusCounts (covers ALL records, not just current page)
@@ -657,6 +671,27 @@ export default function EmployerInterviewsPage() {
                       <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700 border border-indigo-200">
                         R{round}
                       </span>
+                      {(() => {
+                        const prior = historyByApp.get(iv.applicationId ?? iv._id);
+                        if (!prior?.length) return null;
+                        return (
+                          <details className="mt-1.5">
+                            <summary className="cursor-pointer select-none text-[11px] font-medium text-muted-foreground hover:text-foreground">
+                              {t("priorRounds", { count: prior.length })}
+                            </summary>
+                            <ul className="mt-1 space-y-1">
+                              {prior.map((p) => {
+                                const pOutcome = getOutcomeLabel(p.outcome);
+                                return (
+                                  <li key={p._id} className="text-[11px] text-muted-foreground">
+                                    R{p.interviewRound ?? 1} · {formatDateTime(p.scheduledAt).date} · {pOutcome?.label ?? p.status}
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          </details>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell className="capitalize text-muted-foreground">{iv.type ?? "in-person"}</TableCell>
                     <TableCell>

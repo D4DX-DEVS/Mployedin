@@ -200,7 +200,7 @@ export default function TeamManagementPage() {
 
   const stats = [
     { label: t("activeMembers", { count: activeCount }), value: activeCount, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-background border-border/60 dark:bg-card" },
-    { label: t("inviteMember"), value: pendingCount, icon: Clock, color: "text-amber-600", bg: "bg-background border-border/60 dark:bg-card" },
+    { label: t("pendingInvites"), value: pendingCount, icon: Clock, color: "text-amber-600", bg: "bg-background border-border/60 dark:bg-card" },
     { label: t("teamMembers"), value: totalCount, icon: Users, color: "text-primary", bg: "bg-background border-border/60 dark:bg-card" },
   ];
 

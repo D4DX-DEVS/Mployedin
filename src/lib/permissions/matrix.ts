@@ -96,7 +96,9 @@ const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
     applications: ["read", "update"],
     interviews: ["create", "read", "update"],
     placements: ["read", "update"],
-    employers: ["read", "update"],
+    // "delete" here is self-deactivation only — the route handler restricts
+    // employers to soft-deactivating their own account.
+    employers: ["read", "update", "delete"],
     job_seekers: ["read"],
     notifications: ["read"],
     ai_assistant: ["read"],

@@ -49,6 +49,7 @@ export default function SavedSearchesPage() {
   const [searches, setSearches] = useState<SavedSearch[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const [form, setForm] = useState({
     name: "", query: "", location: "", jobType: "", experienceLevel: "",
     frequency: "weekly",
@@ -197,6 +198,17 @@ export default function SavedSearchesPage() {
       )}
 
       <section className="workspace-panel-surface rounded-[28px] p-5">
+        {searches.length > 0 && (
+          <div className="mb-4 flex gap-2">
+            <input
+              type="text"
+              placeholder={t("searchPlaceholder") ?? "Search saved searches..."}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="flex-1 px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+        )}
         {loading ? (
           <div className="space-y-3">
             {Array.from({ length: 4 }).map((_, i) => (
@@ -219,7 +231,7 @@ export default function SavedSearchesPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {searches.map((s) => (
+            {searches.filter((s) => s.name.toLowerCase().includes(searchTerm.toLowerCase())).map((s) => (
               <div key={s._id} className="workspace-glass-panel rounded-2xl p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>

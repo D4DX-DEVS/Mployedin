@@ -43,6 +43,15 @@ interface Offer {
   };
 }
 
+const STATUS_TABS = [
+  "all",
+  "pending",
+  "accepted",
+  "declined",
+  "expired",
+  "countered",
+] as const;
+
 export default function OffersPage() {
   const t = useTranslations("jobSeekerOffers");
   const locale = useLocale();
@@ -55,6 +64,7 @@ export default function OffersPage() {
   const [signatureName, setSignatureName] = useState("");
   const [declineReason, setDeclineReason] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const debouncedSearch = useDebounce(searchTerm, 400);
   const pagination = usePagination();
   const { paginationParams, updateTotal } = pagination;
@@ -70,6 +80,7 @@ export default function OffersPage() {
     try {
       const params = paginationParams();
       if (debouncedSearch) params.set("search", debouncedSearch);
+      if (statusFilter !== "all") params.set("status", statusFilter);
       const res = await fetch(`/api/offers?${params}`);
       if (!res.ok) {
         throw new Error("Failed to fetch offers");
@@ -80,14 +91,13 @@ export default function OffersPage() {
       setOffers(nextOffers);
       updateTotal(data.pagination?.total ?? data.total ?? nextOffers.length);
     } catch (err) {
-      console.error("Error fetching offers:", err);
       setOffers([]);
       updateTotal(0);
       toast.error(t("errors.fetchFailed"));
     } finally {
       setLoading(false);
     }
-  }, [paginationParams, updateTotal, debouncedSearch, t]);
+  }, [paginationParams, updateTotal, debouncedSearch, statusFilter, t]);
 
   useEffect(() => {
     fetchOffers();
@@ -254,6 +264,21 @@ export default function OffersPage() {
         onExportPdf={handleExportPdf}
         className="mb-4"
       />
+
+      {/* Status filter tabs */}
+      <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2">
+        {STATUS_TABS.map((status) => (
+          <Button
+            key={status}
+            variant={statusFilter === status ? "default" : "outline"}
+            size="sm"
+            onClick={() => { setStatusFilter(status); pagination.resetPage(); }}
+            className="whitespace-nowrap"
+          >
+            {t(`status.${status}`)}
+          </Button>
+        ))}
+      </div>
 
       {loading ? (
         <div className="space-y-3">

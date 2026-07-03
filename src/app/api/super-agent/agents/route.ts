@@ -245,6 +245,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     });
 
     // Send welcome email with a password-setup link instead of the plaintext password
+    let emailSent = true;
     const saUser = await User.findById(ctx.userId).select("name").lean();
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? process.env.NEXTAUTH_URL ?? "https://mployedin.com";
     const rawSetupToken = crypto.randomBytes(32).toString("hex");
@@ -254,17 +255,20 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       passwordResetExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000),
     });
     const setupUrl = `${baseUrl}/en/reset-password?token=${rawSetupToken}`;
-    sendEmail({
-      to: email,
-      ...EmailTemplates.agentWelcome(name, email, setupUrl, saUser?.name ?? "Your Super Agent", setupUrl),
-      source: "agent-creation",
-      category: "system",
-    }).catch((err) =>
-      logger.error({ err }, "[super-agent/agents] Failed to send welcome email")
-    );
+    try {
+      await sendEmail({
+        to: email,
+        ...EmailTemplates.agentWelcome(name, email, setupUrl, saUser?.name ?? "Your Super Agent", setupUrl),
+        source: "agent-creation",
+        category: "system",
+      });
+    } catch (err) {
+      logger.error({ err }, "[super-agent/agents] Failed to send welcome email");
+      emailSent = false;
+    }
 
     return NextResponse.json(
-      { success: true, userId: user._id, agentId: agentDoc._id },
+      { success: true, userId: user._id, agentId: agentDoc._id, emailSent },
       { status: 201 }
     );
   } catch (err) {

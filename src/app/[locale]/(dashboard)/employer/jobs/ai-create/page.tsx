@@ -53,12 +53,6 @@ interface ExtractedJob {
   visibility?: string;
 }
 
-const INITIAL_MESSAGE = `Hello! I can draft this job with a few basics first.
-
-Tell me the role, location, top skills, and any salary or openings if you want to share them. You can type or use voice.
-
-For example: "Senior React developer in Dubai, hybrid, Node and React, salary optional, 2 openings."`;
-
 const AI_PREFILL_STORAGE_KEY = "job-ai-prefill";
 const AI_CHAT_STORAGE_KEY = "job-ai-chat-session";
 

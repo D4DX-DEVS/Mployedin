@@ -7,7 +7,7 @@ import Agent from "@/models/Agent";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
 import { applicationUpdateSchema } from "@/lib/validators/applications";
-import { notify, notifyInterviewSelected, notifyOfferMade, notifyRejected } from "@/lib/notifications/trigger";
+import { notify, notifyInterviewSelected, notifyOfferMade, notifyRejected, notifyStatusChange } from "@/lib/notifications/trigger";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import type { UserRole } from "@/models/User";
@@ -217,8 +217,11 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
         notifyOfferMade(seekerUserId, jobTitle, companyName, appId).catch((err) => { logger.error({ err, applicationId: appId, userId: seekerUserId }, "failed to notify applicant of offer"); });
       } else if (effectiveStatus === "rejected") {
         notifyRejected(seekerUserId, jobTitle, appId).catch((err) => { logger.error({ err, applicationId: appId, userId: seekerUserId }, "failed to notify applicant of rejection"); });
+      } else if (["shortlisted", "screening", "interview", "selected"].includes(effectiveStatus)) {
+        // Interim pipeline movements — candidates should see progress, not silence.
+        notifyStatusChange(seekerUserId, jobTitle, effectiveStatus, appId).catch((err) => { logger.error({ err, applicationId: appId, userId: seekerUserId }, "failed to notify applicant of status change"); });
       }
-      // shortlisted, screening, interview, selected, withdrawn — silent
+      // withdrawn — silent (candidate-initiated; notifying them about their own action is noise)
     }
   }
 

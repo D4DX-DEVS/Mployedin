@@ -92,6 +92,7 @@ export default function JobSeekerDocumentsPage() {
   const [uploading, setUploading] = useState(false);
   const [documents, setDocuments] = useState<UploadedDocument[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   const ALLOWED_TYPES = [
@@ -481,7 +482,7 @@ export default function JobSeekerDocumentsPage() {
 
         {/* ── Uploaded Documents List ── */}
         <div className="card-base">
-          <div className="flex items-center justify-between p-4 border-b">
+          <div className="flex items-center justify-between gap-4 p-4 border-b flex-col sm:flex-row">
             <h3 className="font-semibold flex items-center gap-2">
               <FolderOpen className="h-4 w-4" />
               {t("myDocuments")}
@@ -489,6 +490,17 @@ export default function JobSeekerDocumentsPage() {
                 <span className="text-xs bg-muted px-2 py-0.5 rounded-full">{documents.length.toLocaleString(numberLocale)}</span>
               )}
             </h3>
+            {documents.length > 0 && (
+              <div className="w-full sm:w-56">
+                <input
+                  type="text"
+                  placeholder={t("searchPlaceholder") ?? "Search documents..."}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full h-9 px-3 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+            )}
           </div>
 
           {loadingDocs ? (
@@ -503,7 +515,7 @@ export default function JobSeekerDocumentsPage() {
             </div>
           ) : (
             <div className="divide-y">
-              {documents.map((doc) => {
+              {documents.filter((doc) => doc.name.toLowerCase().includes(searchTerm.toLowerCase())).map((doc) => {
                 const catConfig = getCategoryConfig(doc.category);
                 const CatIcon = catConfig.icon;
                 return (

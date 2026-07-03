@@ -26,7 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { PageHero } from "@/components/shared/PageHero";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { usePagination } from "@/hooks/usePagination";
@@ -200,9 +200,10 @@ export default function TeamActivityLogsPage() {
   return (
     <div className="page-container employer-legacy-surface">
       {/* Header */}
-      <PageHeader
+      <PageHero
         title={t("title")}
         description={t("description", { activities: total.toLocaleString(), members: members.length })}
+        icon={Activity}
         actions={
           <Link href={`/${locale}/employer/team`}>
             <Button variant="outline" size="sm">

@@ -9,6 +9,7 @@ import { validateBody } from "@/lib/validators";
 import { bulkActionSchema } from "@/lib/validators/applications";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import {
+  notify,
   notifyRejected,
   notifyStatusChange,
   notifyOfferMade,
@@ -226,6 +227,27 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       successCount++;
     } catch (err) {
       errors.push(`Application ${app._id}: ${err instanceof Error ? err.message : "Unknown"}`);
+    }
+  }
+
+  // When an agent/super-agent/admin runs the bulk action, the owning employer(s)
+  // never see it happen — send each one a summary. (Employer actors get a UI toast.)
+  if (ctx.role !== "employer" && successCount > 0) {
+    const employerIds = [...new Set(applications.map((a) => String(a.employerId)).filter(Boolean))];
+    const owners = await Employer.find({ _id: { $in: employerIds } }).select("userId").lean() as { userId?: unknown }[];
+    for (const owner of owners) {
+      if (!owner.userId) continue;
+      notify({
+        userId: String(owner.userId),
+        type: "system",
+        title: "Bulk application update",
+        message: `${successCount} application(s) were updated via bulk action: ${action}.`,
+        link: `/employer/applications`,
+        sendEmail: false,
+        titleKey: "bulkActionTitle",
+        bodyKey: "bulkActionBody",
+        params: { count: String(successCount), action },
+      }).catch((err) => logger.error({ err }, "failed to notify employer of bulk action"));
     }
   }
 

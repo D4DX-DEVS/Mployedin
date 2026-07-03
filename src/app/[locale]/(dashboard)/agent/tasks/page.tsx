@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { PaginationControls } from "@/components/shared/PaginationControls";
+import { usePagination } from "@/hooks/usePagination";
 import {
   CheckSquare, Plus, Clock, AlertCircle, CheckCircle2,
   Trash2, Edit, Calendar, RotateCcw, Search, Inbox, Star,
@@ -64,7 +66,8 @@ const PRIORITY_OPTIONS = [
 /* ------------------------------------------------------------------ */
 
 export default function AgentTasksPage() {
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const pagination = usePagination();
+  const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
@@ -86,16 +89,24 @@ export default function AgentTasksPage() {
       const res = await fetch(`/api/agent/tasks?${params}`);
       if (res.ok) {
         const data = await res.json();
-        setTasks(data.items ?? []);
+        const tasks = data.items ?? [];
+        setAllTasks(tasks);
+        pagination.updateTotal(tasks.length);
       }
     } catch {
       toast.error("Failed to load tasks");
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, search]);
+  }, [statusFilter, search, pagination]);
 
   useEffect(() => { fetchTasks(); }, [fetchTasks]);
+  useEffect(() => { pagination.resetPage(); }, [statusFilter, search]);
+
+  const paginatedTasks = allTasks.slice(
+    (pagination.page - 1) * pagination.limit,
+    pagination.page * pagination.limit
+  );
 
   const createTask = async () => {
     if (!newTask.title.trim()) {
@@ -163,10 +174,10 @@ export default function AgentTasksPage() {
     }
   };
 
-  const pending = tasks.filter((t) => t.status === "pending").length;
-  const inProgress = tasks.filter((t) => t.status === "in_progress").length;
-  const completed = tasks.filter((t) => t.status === "completed").length;
-  const overdue = tasks.filter((t) => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== "completed").length;
+  const pending = allTasks.filter((t) => t.status === "pending").length;
+  const inProgress = allTasks.filter((t) => t.status === "in_progress").length;
+  const completed = allTasks.filter((t) => t.status === "completed").length;
+  const overdue = allTasks.filter((t) => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== "completed").length;
 
   return (
     <div className="page-container space-y-6">
@@ -250,7 +261,7 @@ export default function AgentTasksPage() {
               </div>
             ))}
           </div>
-        ) : tasks.length === 0 ? (
+        ) : allTasks.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Inbox className="h-12 w-12 text-muted-foreground/40" />
             <p className="mt-4 text-sm font-medium text-muted-foreground">No tasks yet</p>
@@ -258,7 +269,7 @@ export default function AgentTasksPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {tasks.map((task) => (
+            {paginatedTasks.map((task) => (
               <div
                 key={task._id}
                 className={`workspace-glass-panel rounded-2xl p-4 transition-all ${
@@ -320,6 +331,17 @@ export default function AgentTasksPage() {
           </div>
         )}
       </section>
+
+      {allTasks.length > 0 && (
+        <PaginationControls
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          total={pagination.total}
+          limit={pagination.limit}
+          onPageChange={pagination.setPage}
+          onLimitChange={pagination.setLimit}
+        />
+      )}
     </div>
   );
 }

@@ -8,7 +8,7 @@ import { usePagination } from "@/hooks/usePagination";
 import { useCurrencyPreference } from "@/hooks/useCurrencyPreference";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
-  RotateCcw, CalendarDays, ArrowRight, Inbox,
+  RotateCcw, CalendarDays, Inbox,
   Eye, FileText, Download, Building2,
   CreditCard, CheckCircle2, Clock, AlertTriangle, Send,
   Banknote, Receipt, ExternalLink,
@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/table";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
+import { PageHero } from "@/components/shared/PageHero";
 import type { ExportColumn } from "@/lib/export";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
@@ -857,23 +858,21 @@ export default function EmployerInvoicesPage() {
   });
 
   return (
-    <div className="page-container space-y-6">
-      <TableToolbar
+    <div className="page-container employer-legacy-surface space-y-6">
+      <PageHero
         title={t("title")}
         description={t("description")}
+        eyebrow={t("employerBilling")}
+        icon={Building2}
+        actions={
+          <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("employerBilling")}</p>
+            <p className="mt-1 text-lg font-semibold text-foreground">{t("invoiceCount", { count: total })}</p>
+          </div>
+        }
+      />
+      <TableToolbar
         search="" onSearchChange={() => {}} searchPlaceholder={t("searchPlaceholder")}
-        left={
-          <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
-            <Building2 className="h-3.5 w-3.5" /> {t("employerBilling")}
-          </div>
-        }
-        right={
-          <div className="flex items-center gap-2">
-            <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">
-              <ArrowRight className="h-3.5 w-3.5 text-primary" /> {t("invoiceCount", { count: total })}
-            </div>
-          </div>
-        }
         onExportCsv={handleExportCsv} onExportExcel={handleExportExcel} onExportPdf={handleExportPdf}
         filterContent={
           <div className="space-y-3">
@@ -923,7 +922,40 @@ export default function EmployerInvoicesPage() {
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("billingHistory")}</p>
           <h3 className="text-lg font-semibold text-foreground">{t("yourInvoices")}</h3>
         </div>
-        <div className="overflow-x-auto">
+        {/* Mobile card list (<sm) — 9-column table doesn't fit a phone */}
+        <div className="space-y-3 p-4 sm:hidden">
+          {loading ? Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="space-y-3 rounded-xl border border-border/70 bg-card p-4">
+              {Array.from({ length: 3 }).map((_, j) => <div key={j} className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />)}
+            </div>
+          )) : invoices.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 py-10 text-center">
+              <div className="workspace-muted-pill rounded-[20px] p-3"><Inbox className="h-6 w-6" /></div>
+              <div><p className="text-sm font-semibold">{t("noInvoices")}</p><p className="mt-1 text-sm text-muted-foreground">{t("noInvoicesDesc")}</p></div>
+            </div>
+          ) : invoices.map((inv) => (
+            <button
+              key={inv._id}
+              type="button"
+              onClick={() => setSelectedInvoice(inv)}
+              className="w-full space-y-2 rounded-xl border border-border/70 bg-card p-4 text-start active:bg-secondary/30"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <p className="font-mono text-sm font-medium">{inv.invoiceNumber}</p>
+                <StatusBadge status={inv.status} />
+              </div>
+              {inv.jobId?.title && <p className="truncate text-sm text-muted-foreground">{inv.jobId.title}</p>}
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <span className="font-semibold">{inv.currency} {(inv.totalAmount ?? 0).toLocaleString()}</span>
+                {(inv.balanceDue ?? 0) > 0 && (
+                  <span className="text-amber-600 dark:text-amber-400">{t("balance")}: {inv.currency} {(inv.balanceDue ?? 0).toLocaleString()}</span>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">{t("dueDate")}: {inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : "—"}</p>
+            </button>
+          ))}
+        </div>
+        <div className="hidden overflow-x-auto sm:block">
           <Table>
             <TableHeader>
               <TableRow className="border-border/80 bg-secondary/72 hover:bg-secondary/72">

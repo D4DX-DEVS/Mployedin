@@ -400,15 +400,21 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
       );
     }
 
-    // Propagate region to agents under this super agent when SA region changes
+    // When SA region changes, prune agents' out-of-territory regions.
+    // $pull-with-$nin intersects: agents keep their narrower assignments
+    // instead of being force-expanded to the SA's full territory.
     if (assignedCityIds !== undefined || assignedStateIds !== undefined) {
-      const regionUpdate: Record<string, unknown> = {};
-      if (assignedCityIds !== undefined) regionUpdate.assignedCityIds = assignedCityIds;
-      if (assignedStateIds !== undefined) regionUpdate.assignedStateIds = assignedStateIds;
+      const regionPrune: Record<string, unknown> = {};
+      if (assignedCityIds !== undefined) {
+        regionPrune.assignedCityIds = { $nin: assignedCityIds };
+      }
+      if (assignedStateIds !== undefined) {
+        regionPrune.assignedStateIds = { $nin: assignedStateIds };
+      }
 
       await Agent.updateMany(
         { superAgentId: saDoc._id },
-        { $set: regionUpdate }
+        { $pull: regionPrune }
       );
     }
   }

@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Bell, CheckCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePageNotifications, useMarkAllRead, useMarkOneRead } from "@/hooks/useNotifications";
+import { EnablePushButton } from "@/components/shared/EnablePushButton";
 import { resolveNotificationText } from "@/lib/notifications/resolve";
 
 export default function NotificationsPage() {
@@ -36,12 +37,15 @@ export default function NotificationsPage() {
           title={`${t("title")} ${unreadCount > 0 ? `(${unreadCount})` : ""}`}
           description={t("description")}
         />
-        {unreadCount > 0 && (
-          <Button variant="ghost" size="sm" onClick={() => markAllReadMutation.mutate()}
-            className="flex items-center gap-1.5 text-xs text-primary hover:bg-primary/10 font-medium">
-            <CheckCheck className="h-3.5 w-3.5" /> {t("markAllRead")}
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          <EnablePushButton />
+          {unreadCount > 0 && (
+            <Button variant="ghost" size="sm" onClick={() => markAllReadMutation.mutate()}
+              className="flex items-center gap-1.5 text-xs text-primary hover:bg-primary/10 font-medium">
+              <CheckCheck className="h-3.5 w-3.5" /> {t("markAllRead")}
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="flex gap-2">

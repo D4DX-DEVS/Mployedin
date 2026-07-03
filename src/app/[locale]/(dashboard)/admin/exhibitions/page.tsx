@@ -1065,7 +1065,7 @@ function DetailDrawer({
   return (
     <aside
       aria-label="Exhibition request inspector"
-      className="fixed bottom-0 right-0 top-[72px] z-[70] flex w-full max-w-[700px] animate-in slide-in-from-right-8 flex-col border-l border-t border-border bg-background shadow-2xl shadow-black/15 duration-200"
+      className="fixed bottom-0 right-0 top-[72px] z-[70] flex w-full md:max-w-[700px] animate-in slide-in-from-right-8 flex-col border-l border-t border-border bg-background shadow-2xl shadow-black/15 duration-200"
     >
       <div className="border-b bg-background px-6 py-3">
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-border/60 pb-3">
@@ -1098,7 +1098,7 @@ function DetailDrawer({
           </p>
         </div>
 
-        <div className="mt-3 grid grid-cols-3 gap-3 text-xs">
+        <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
           <InfoChip icon={<Flag className="h-3.5 w-3.5" />} label="Priority" value={item.priority} />
           <InfoChip icon={<Clock className="h-3.5 w-3.5" />} label="SLA" value={getSla(item).label} />
           <InfoChip icon={<CalendarDays className="h-3.5 w-3.5" />} label="Submitted" value={formatDate(item.createdAt)} />
@@ -1114,7 +1114,7 @@ function DetailDrawer({
           </SectionBlock>
 
           <SectionBlock title="Overview">
-            <div className="grid grid-cols-2 overflow-hidden rounded-xl border border-border/60 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 overflow-hidden rounded-xl border border-border/60 text-sm">
               <DetailCell label="Location" value={item.eventLocation || "-"} />
               <DetailCell label="Organizer" value={item.organizerName || item.agentId?.name || "-"} />
               <DetailCell label="Dates" value={`${formatDate(item.eventStartDate)} - ${formatDate(item.eventEndDate)}`} />
@@ -1240,7 +1240,7 @@ function DetailDrawer({
       </div>
 
       <div className="border-t bg-background px-4 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.06)]">
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <Button className="h-9 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700" onClick={() => onAction(item, item.status === "approved" ? "budget_approved" : "approved")}>
             <CheckCircle2 className="h-4 w-4" />
             Approve

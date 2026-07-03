@@ -336,7 +336,7 @@ function EmailLogsTab() {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {(["sent", "delivered", "failed", "bounced"] as const).map((s) => (
           <div key={s} className={`text-center py-2 rounded-lg border ${s === "failed" || s === "bounced" ? "border-red-200 bg-red-50" : "border-green-200 bg-green-50"}`}>
             <div className={`text-lg font-bold ${s === "failed" || s === "bounced" ? "text-red-600" : "text-green-600"}`}>{stats24h[s] ?? 0}</div>

@@ -4,6 +4,7 @@
     "tagline": "AI-Powered Recruitment Platform"
   },
   "nav": {
+    "back": "Back",
     "home": "Home",
     "dashboard": "Dashboard",
     "jobs": "Jobs",
@@ -790,6 +791,7 @@
       "year": "year"
     },
     "status": {
+      "all": "All",
       "pending": "Pending",
       "accepted": "Accepted",
       "declined": "Declined",
@@ -947,8 +949,22 @@
     "interviewFallback": "Interview",
     "loadFailed": "Failed to load calendar events"
   },
+  "calendarFeed": {
+    "label": "Calendar",
+    "title": "Calendar sync",
+    "description": "Subscribe from Google Calendar, Apple Calendar or Outlook. Your interviews stay up to date automatically — including reschedules.",
+    "loading": "Loading feed link…",
+    "copy": "Copy",
+    "copied": "Copied",
+    "resetLink": "Reset link",
+    "instructions": "Google Calendar: Other calendars → From URL. Apple Calendar: File → New Calendar Subscription. Anyone with this link can see your interview schedule — use Reset link if it leaks.",
+    "loadFailed": "Could not load the feed link. Refresh the page to try again.",
+    "urlAria": "Calendar feed URL"
+  },
   "jobSeekerCompanies": {
     "title": "Companies",
+    "filterByIndustry": "Filter by Industry",
+    "allIndustries": "All Industries",
     "description": "Explore employers hiring on the platform and discover your next workplace",
     "searchPlaceholder": "Search companies by name, industry, or location...",
     "reset": "Reset",
@@ -994,6 +1010,15 @@
     }
   },
   "jobSeekerInterviews": {
+    "status": {
+      "all": "All",
+      "scheduled": "Scheduled",
+      "confirmed": "Confirmed",
+      "declined": "Declined",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    },
+    "round": "Round {round}",
     "documentTitle": "Interviews · MPLOYEDIN",
     "title": "Interviews",
     "summary": "{upcoming} upcoming · {past} completed",
@@ -1108,6 +1133,7 @@
       "network": "Network error"
     },
     "savedSearches": {
+      "searchPlaceholder": "Search saved searches...",
       "title": "Saved Searches",
       "description": "Save your job searches and get email alerts when new matches appear",
       "newAlert": "New Search Alert",
@@ -1184,6 +1210,7 @@
       "deleteFailed": "Failed to delete"
     },
     "documents": {
+      "searchPlaceholder": "Search documents...",
       "documentTitle": "Documents · MPLOYEDIN",
       "title": "Documents",
       "description": "Upload your CV, certificates, and other documents",
@@ -2019,6 +2046,9 @@
     }
   },
   "ai": {
+    "bulkSuccess": "{count} jobs created successfully",
+    "bulkPartial": "{created} of {total} jobs created ({failed} failed)",
+    "bulkPreview": "{count} jobs detected",
     "assistant": "AI Assistant",
     "thinking": "Thinking…",
     "readyToHelp": "Ready to help",
@@ -3418,6 +3448,14 @@
     "homepage": "Homepage"
   },
   "profileDropdown": {
+    "quickLinks": "Quick Links",
+    "interviews": "Interviews",
+    "offers": "Offers",
+    "calendar": "Calendar",
+    "savedSearches": "Saved Searches",
+    "documents": "Documents",
+    "cvBuilder": "CV Builder",
+    "companies": "Companies",
     "role": "Role",
     "lastLogin": "Last Login",
     "notAvailable": "N/A",
@@ -3576,6 +3614,10 @@
     "toastFailedActivate": "Failed to activate job",
     "confirmDeactivate": "Deactivate this job? It will stop accepting new applications, but existing applications stay available.",
     "toastFailedDeactivate": "Failed to deactivate job",
+    "toastJobDeactivated": "Job deactivated",
+    "loadError": "Couldn't load your jobs. Check your connection and try again.",
+    "retry": "Retry",
+    "toastJobDeactivated": "Job deactivated",
     "confirmPause": "Pause this job? It will temporarily stop accepting new applications. You can resume it at any time.",
     "toastJobPaused": "Job paused successfully!",
     "toastFailedPause": "Failed to pause job",
@@ -4003,6 +4045,41 @@
         "delete": "Failed to delete conversation."
       }
     }
+  },
+  "posterCreate": {
+    "title": "Create Job Poster",
+    "subtitle": "Generate eye-catching posters to attract the right candidates",
+    "generateNow": "Generate now",
+    "generating": "Generating…",
+    "typeTitle": "Choose Type",
+    "typeDesc": "Select a poster type",
+    "customizeTitle": "Customize",
+    "customizeDesc": "Add details & preferences",
+    "resultsTitle": "AI Generated",
+    "resultsDesc": "Choose your favorite or generate more",
+    "downloadTitle": "Preview & Download",
+    "downloadDesc": "Preview your poster and download",
+    "valueAiTitle": "Powered by AI",
+    "valueAiDesc": "AI generates unique backgrounds for your posters",
+    "valueBrandTitle": "Brand Always On",
+    "valueBrandDesc": "Mployedin branding and QR code added to every poster",
+    "valueLinkTitle": "Drive More Applications",
+    "valueLinkDesc": "Every poster links back to your job page on Mployedin"
+  },
+  "myPosters": {
+    "title": "My Posters",
+    "eyebrow": "AI Recruitment Marketing",
+    "description": "All your AI-generated recruitment posters. Share on social media, print, or use QR codes to attract top talent.",
+    "createCta": "Create Poster from Job",
+    "emptyTitle": "No posters yet",
+    "emptyHint": "Create your first AI recruitment poster from any job listing.",
+    "deleteConfirm": "Delete this poster? This cannot be undone.",
+    "deleteLabel": "Delete poster",
+    "deleteError": "Failed to delete poster. Please try again.",
+    "untitledJob": "Untitled Job",
+    "previous": "Previous",
+    "next": "Next",
+    "pageOf": "Page {page} of {pages}"
   },
   "employerMessages": {
     "title": "Messages",
@@ -4539,6 +4616,8 @@
     "deactivateAccount": "Deactivate Account",
     "deactivateAccountDesc": "Hides your profile and unpublishes all jobs. Reversible via support.",
     "deactivateConfirm": "Are you sure you want to deactivate your account? All active jobs will be unpublished.",
+    "deactivateSuccess": "Your account has been deactivated.",
+    "deactivateFailed": "Failed to deactivate account. Please try again or contact support.",
     "processing": "Processing…",
     "deactivate": "Deactivate",
     "emailFrequency": "Email Frequency",
@@ -5370,6 +5449,18 @@
     "pendingInvite": "Pending Invite",
     "invited": "Invited {date}",
     "failedToSendInvite": "Failed to send invite",
+    "pendingInvites": "Pending Invites",
+    "accept": {
+      "accepting": "Accepting invitation…",
+      "acceptingDescription": "Please wait while we confirm your invitation.",
+      "successTitle": "Invitation accepted",
+      "successDescription": "You've joined {companyName}. You now have access to the team workspace.",
+      "goToDashboard": "Go to Dashboard",
+      "errorTitle": "Couldn't accept invitation",
+      "errorHint": "Make sure you're signed in with the email address the invitation was sent to, then open the link again.",
+      "missingToken": "This invitation link is invalid.",
+      "genericError": "Something went wrong. Please try again."
+    },
     "pageTitle": "Team Management · MPLOYEDIN",
     "descriptionActiveOnly": "{activeCount} active members",
     "descriptionWithPending": "{activeCount} active members · {pendingCount} pending invites",
@@ -5453,6 +5544,7 @@
     "onThisPage": "on this page"
   },
   "employerInterviews": {
+    "priorRounds": "{count} earlier round(s)",
     "title": "Interview workspace",
     "description": "Keep interview momentum visible across every candidate touchpoint.",
     "subtitle": "Review upcoming sessions, reschedules, and completions in one focused view.",
@@ -5646,6 +5738,7 @@
     "downloadLetter": "Download offer letter (PDF)"
   },
   "employerBackgroundChecks": {
+    "searchPlaceholder": "Search by candidate name...",
     "title": "Background Checks",
     "description": "Run reference and background verification for your shortlisted candidates.",
     "newCheck": "New check",
@@ -5707,6 +5800,29 @@
     }
   },
   "employerPlacements": {
+    "backToPlacements": "Back to Placements",
+    "detailLoadError": "Couldn't load this placement. Please try again.",
+    "retry": "Retry",
+    "candidate": "Candidate",
+    "status_active": "Active",
+    "status_completed": "Completed",
+    "status_terminated": "Terminated",
+    "markCompleted": "Mark Completed",
+    "markTerminated": "Terminate",
+    "confirmComplete": "Mark this placement as completed? This cannot be undone.",
+    "confirmTerminate": "Terminate this placement? This cannot be undone.",
+    "statusUpdated": "Placement status updated.",
+    "statusUpdateFailed": "Failed to update placement status.",
+    "jobCol": "Job",
+    "salaryCol": "Salary",
+    "locationLabel": "Location",
+    "placedAtLabel": "Placed on",
+    "startDateLabel": "Start date",
+    "visaStatusLabel": "Visa status",
+    "notesLabel": "Notes",
+    "onboardingLinkTitle": "Onboarding checklist",
+    "onboardingLinkDesc": "Tasks, documents and probation tracking for this hire",
+    "viewDetails": "View Details",
     "workspace": "Placement workspace",
     "title": "Track hiring outcomes in a cleaner placement dashboard.",
     "description": "Keep completed hires, active placements, and recent wins visible without burying the result data inside a plain reporting table.",
@@ -6895,6 +7011,9 @@
     "to": "To"
   },
   "notificationsPage": {
+    "enablePush": "Enable push notifications",
+    "pushEnabled": "Push notifications enabled on this device.",
+    "pushEnableFailed": "Couldn't enable push notifications. Please try again.",
     "title": "Notifications",
     "description": "Stay up to date with your applications, interviews and alerts",
     "markAllRead": "Mark all read",
@@ -6954,7 +7073,9 @@
     "saPlacementTitle": "New Placement Completed",
     "saPlacementBody": "{candidateName} was placed as \"{jobTitle}\" at {companyName}.",
     "stageChangedTitle": "Application stage changed",
-    "stageChangedBody": "An application for \"{jobTitle}\" moved to {status}."
+    "stageChangedBody": "An application for \"{jobTitle}\" moved to {status}.",
+    "bulkActionTitle": "Bulk application update",
+    "bulkActionBody": "{count} application(s) were updated via bulk action: {action}."
   },
   "publicPages": {
     "jobsTitle": "Find Jobs",
@@ -7096,6 +7217,9 @@
     }
   },
   "emailSequences": {
+    "searchPlaceholder": "Search sequences...",
+    "allStatuses": "All Statuses",
+    "noResults": "No sequences match your filters",
     "title": "Email Sequences",
     "subtitle": "Build automated email drip campaigns to nurture candidates over time.",
     "create": "Create Sequence",
@@ -7430,6 +7554,8 @@
     "questionType": "Question type"
   },
   "employerJobTemplates": {
+    "loadError": "Couldn't load templates. Please try again.",
+    "retry": "Retry",
     "title": "Job Templates",
     "description": "Save reusable job posting templates to speed up hiring",
     "newTemplate": "New Template",
@@ -7678,6 +7804,11 @@
     "toastDraftUnavailable": "This extraction draft is no longer available — it may have expired or been discarded."
   },
   "employerJobDetail": {
+    "loadError": "Couldn't load this job. Please try again.",
+    "retry": "Retry",
+    "confirmCloseJob": "Close this job? Candidates will no longer be able to apply.",
+    "statusUpdateSuccess": "Job status updated.",
+    "statusUpdateFailed": "Failed to update job status. Please try again.",
     "notFound": "Job not found",
     "notFoundDesc": "This job may have been removed.",
     "backToJobs": "Back to Jobs",

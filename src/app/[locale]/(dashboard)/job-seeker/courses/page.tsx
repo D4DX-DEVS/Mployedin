@@ -1,7 +1,8 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { ArrowUpRight, BarChart3, Clock } from "lucide-react";
+import { ArrowUpRight, BarChart3, Clock, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 
 const FEATURED_COURSES = [
@@ -76,8 +77,52 @@ const CATEGORY_COLORS: Record<string, string> = {
   safety: "bg-red-100 text-red-700",
 };
 
+interface ApiCourse {
+  _id: string;
+  title: string;
+  provider: string;
+  url: string;
+  description?: string;
+  duration?: string;
+  level?: string;
+  category?: string;
+  free?: boolean;
+  featured?: boolean;
+}
+
 export default function JobSeekerCoursesPage() {
   const t = useTranslations("jobSeekerCourses");
+  const [courses, setCourses] = useState(FEATURED_COURSES);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchCourses = async () => {
+      try {
+        const res = await fetch("/api/courses?limit=50");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.items && data.items.length > 0) {
+            const apiCourses = (data.items as ApiCourse[]).map((c) => ({
+              id: c._id,
+              titleKey: c.title,
+              provider: c.provider,
+              durationKey: c.duration ?? "unknown",
+              levelKey: c.level ?? "beginner",
+              categoryKey: c.category ?? "technology",
+              url: c.url,
+              free: c.free !== false,
+            }));
+            setCourses(apiCourses);
+          }
+        }
+      } catch {
+        // Silently fallback to static courses
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCourses();
+  }, []);
 
   return (
     <div className="page-container">
@@ -86,8 +131,16 @@ export default function JobSeekerCoursesPage() {
         description={t("description")}
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {FEATURED_COURSES.map((course) => (
+      {loading && (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      )}
+
+      {!loading && (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {courses.map((course) => (
           <div
             key={course.id}
             className="bg-card rounded-xl border shadow-sm p-5 flex flex-col gap-3 hover:shadow-md transition-shadow"
@@ -126,15 +179,17 @@ export default function JobSeekerCoursesPage() {
               {t("startCourse")} <ArrowUpRight className="h-4 w-4" />
             </a>
           </div>
-        ))}
-      </div>
+            ))}
+          </div>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-5">
-        <h3 className="font-semibold text-blue-800">{t("recommendationsTitle")}</h3>
-        <p className="text-sm text-blue-600 mt-1">
-          {t("recommendationsDescription")}
-        </p>
-      </div>
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-5">
+            <h3 className="font-semibold text-blue-800">{t("recommendationsTitle")}</h3>
+            <p className="text-sm text-blue-600 mt-1">
+              {t("recommendationsDescription")}
+            </p>
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -69,10 +69,12 @@ async function postHandler(req: NextRequest, ctx: AuthContext) {
     body.paymentRef ??
     `PAYOUT-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-${Date.now().toString(36).toUpperCase()}`;
 
-  // Mark all matching commissions as paid
+  // Mark all matching commissions as paid.
+  // status guard makes this idempotent: a concurrent batch that already paid
+  // a commission won't match it again, so no double payout.
   const ids = commissions.map((c) => c._id);
-  await Commission.updateMany(
-    { _id: { $in: ids } },
+  const updateResult = await Commission.updateMany(
+    { _id: { $in: ids }, status: "approved" },
     {
       $set: {
         status: "paid",
@@ -82,13 +84,24 @@ async function postHandler(req: NextRequest, ctx: AuthContext) {
     },
   );
 
+  if ((updateResult.modifiedCount ?? 0) === 0) {
+    return NextResponse.json(
+      { error: "Commissions were already paid by another batch" },
+      { status: 409 },
+    );
+  }
+
+  // Summarize only what THIS batch actually paid — the pre-read list may
+  // include commissions grabbed by a concurrent batch
+  const paidCommissions = await Commission.find({ paymentRef: batchRef }).lean();
+
   // Build per-user summary
   const userSummary: Record<
     string,
     { userId: string; role: string; total: number; currency: string; count: number }
   > = {};
 
-  for (const c of commissions) {
+  for (const c of paidCommissions) {
     const uid = (c.agentId ?? c.superAgentId ?? "unknown").toString();
     const role = c.agentId ? "agent" : "super_agent";
     const key = `${uid}:${c.currency}`;
@@ -105,8 +118,8 @@ async function postHandler(req: NextRequest, ctx: AuthContext) {
     resource: "commissions",
     meta: {
       batchRef,
-      commissionCount: commissions.length,
-      totalAmount: commissions.reduce((s, c) => s + c.amount, 0),
+      commissionCount: paidCommissions.length,
+      totalAmount: paidCommissions.reduce((s, c) => s + c.amount, 0),
       periodStart: body.periodStart,
       periodEnd: body.periodEnd,
     },
@@ -116,8 +129,8 @@ async function postHandler(req: NextRequest, ctx: AuthContext) {
   return NextResponse.json({
     success: true,
     batchRef,
-    commissionCount: commissions.length,
-    totalAmount: commissions.reduce((s, c) => s + c.amount, 0),
+    commissionCount: paidCommissions.length,
+    totalAmount: paidCommissions.reduce((s, c) => s + c.amount, 0),
     users: Object.values(userSummary),
   });
 }

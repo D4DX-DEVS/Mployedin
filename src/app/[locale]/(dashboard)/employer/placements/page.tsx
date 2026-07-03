@@ -312,12 +312,19 @@ export default function EmployerPlacementsPage() {
                   <TableCell className="font-medium text-foreground">{formatSalary(placement)}</TableCell>
                   <TableCell><StatusBadge status={placement.status} /></TableCell>
                   <TableCell className="text-right">
-                    <Button asChild variant="outline" size="sm" className="rounded-xl">
-                      <Link href={`/${locale}/employer/placements/${placement._id}/onboarding`}>
-                        <ClipboardList className="mr-2 h-4 w-4" />
-                        {t("onboardingColumn")}
-                      </Link>
-                    </Button>
+                    <div className="flex justify-end gap-2">
+                      <Button asChild variant="outline" size="sm" className="rounded-xl">
+                        <Link href={`/${locale}/employer/placements/${placement._id}`}>
+                          {t("viewDetails")}
+                        </Link>
+                      </Button>
+                      <Button asChild variant="outline" size="sm" className="rounded-xl">
+                        <Link href={`/${locale}/employer/placements/${placement._id}/onboarding`}>
+                          <ClipboardList className="mr-2 h-4 w-4" />
+                          {t("onboardingColumn")}
+                        </Link>
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

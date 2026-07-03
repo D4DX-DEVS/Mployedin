@@ -151,6 +151,45 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
   const customPerms = rawBody.permissions;
   const primaryRole = getPrimaryRole(resolvedRoles);
 
+  // Locale for invite links: derive from the inviting page's URL, fallback en
+  const locale = req.headers.get("referer")?.match(/\/(en|ar)(\/|$)/)?.[1] ?? "en";
+  const roleName = resolvedRoles.map((r) => r.replace("_", " ")).join(", ");
+  const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+  const sendInviteComms = async (inviteToken: string) => {
+    const acceptPath = `/${locale}/employer/team/accept?token=${inviteToken}`;
+    const acceptUrl = `${baseUrl}${acceptPath}`;
+    const invitedUser = await User.findOne({ email }).select("_id").lean();
+    if (invitedUser) {
+      await notify({
+        userId: String(invitedUser._id),
+        type: "system",
+        title: "Team Invitation",
+        message: `You've been invited to join ${employer.companyName} as ${roleName}`,
+        link: acceptPath,
+        sendEmail: true,
+      });
+    } else {
+      try {
+        await sendEmail({
+          to: email,
+          subject: `You're invited to join ${employer.companyName} on mployedin`,
+          html: `
+            <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto;">
+              <h2>Team Invitation</h2>
+              <p>You've been invited to join <strong>${employer.companyName}</strong> as a <strong>${roleName}</strong> on mployedin.</p>
+              <p>This invitation expires in 48 hours.</p>
+              <a href="${acceptUrl}" style="display: inline-block; background: #2563eb; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">Accept Invitation</a>
+              <p style="color: #6b7280; font-size: 13px; margin-top: 24px;">If you didn't expect this invitation, you can safely ignore this email.</p>
+            </div>
+          `,
+        });
+      } catch (err) {
+        logger.error({ err }, "[team.invite] Email send failed");
+      }
+    }
+  };
+
   // Check if already a member
   const existing = await CompanyUser.findOne({ companyId: employer._id, email });
   if (existing) {
@@ -164,6 +203,8 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
       existing.invitedBy = ctx.userId as unknown as typeof existing.invitedBy;
       existing.invitedAt = new Date();
       await existing.save();
+
+      await sendInviteComms(existing.inviteToken);
 
       return NextResponse.json({ member: existing, reactivated: true }, { status: 200 });
     }
@@ -206,39 +247,7 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
   });
 
   // Send invite notification/email
-  const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  const acceptUrl = `${baseUrl}/en/employer/team/accept?token=${inviteToken}`;
-  const roleName = resolvedRoles.map((r) => r.replace("_", " ")).join(", ");
-
-  if (existingUser) {
-    await notify({
-      userId: String(existingUser._id),
-      type: "system",
-      title: "Team Invitation",
-      message: `You've been invited to join ${employer.companyName} as ${roleName}`,
-      link: `/en/employer/team/accept?token=${inviteToken}`,
-      sendEmail: true,
-    });
-  } else {
-    // Send email directly to non-registered invitee
-    try {
-      await sendEmail({
-        to: email,
-        subject: `You're invited to join ${employer.companyName} on mployedin`,
-        html: `
-          <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto;">
-            <h2>Team Invitation</h2>
-            <p>You've been invited to join <strong>${employer.companyName}</strong> as a <strong>${roleName}</strong> on mployedin.</p>
-            <p>This invitation expires in 48 hours.</p>
-            <a href="${acceptUrl}" style="display: inline-block; background: #2563eb; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">Accept Invitation</a>
-            <p style="color: #6b7280; font-size: 13px; margin-top: 24px;">If you didn't expect this invitation, you can safely ignore this email.</p>
-          </div>
-        `,
-      });
-    } catch (err) {
-      logger.error({ err }, "[team.invite] Email send failed");
-    }
-  }
+  await sendInviteComms(inviteToken);
 
   await logActivity({
     ...actorFromCtx(ctx),

@@ -67,6 +67,12 @@ jest.mock("@/models/Interview", () => {
         lean: jest.fn(async () => interviewFindOneResult),
       })),
     })),
+    // Collision guard scans nearby interviews; empty = no clashes
+    find: jest.fn(() => ({
+      select: jest.fn(() => ({
+        lean: jest.fn(async () => []),
+      })),
+    })),
   };
   return MockInterview;
 });

@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Bot, RotateCcw, Trash2, ChevronRight, Loader2, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/hooks/useConfirm";
+import { relativeTime } from "@/lib/relativeTime";
 
 interface ChatThreadSummary {
   _id: string;
@@ -21,21 +22,6 @@ interface ChatThreadSummary {
 interface AIChatDraftsCardProps {
   locale: string;
   variant?: "card" | "banner";
-}
-
-function relativeTime(iso: string, locale: string): string {
-  try {
-    const diffMs = Date.now() - new Date(iso).getTime();
-    const mins = Math.floor(diffMs / 60_000);
-    if (mins < 1) return locale === "ar" ? "الآن" : "just now";
-    if (mins < 60) return locale === "ar" ? `قبل ${mins} دقيقة` : `${mins}m ago`;
-    const hours = Math.floor(mins / 60);
-    if (hours < 24) return locale === "ar" ? `قبل ${hours} ساعة` : `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    return locale === "ar" ? `قبل ${days} يوم` : `${days}d ago`;
-  } catch {
-    return "";
-  }
 }
 
 /**

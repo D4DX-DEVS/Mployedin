@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
+import { Sparkles, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { PosterTypeSelector } from "./PosterTypeSelector";
 import { PosterCustomizer } from "./PosterCustomizer";
 import { PosterVariationsGrid } from "./PosterVariationsGrid";
@@ -22,6 +25,8 @@ async function fetchJob(jobId: string) {
 }
 
 export function CreatePosterPage({ jobId }: CreatePosterPageProps) {
+  const t = useTranslations("posterCreate");
+
   // Job data
   const { data: jobData, isLoading: jobLoading } = useQuery({
     queryKey: ["employer-job", jobId],
@@ -32,7 +37,7 @@ export function CreatePosterPage({ jobId }: CreatePosterPageProps) {
   const poster = usePosterGenerate();
   const { credits } = usePosterCredits();
 
-  // Form state
+  // Form state — defaults are production-smart, so "Generate now" works with zero setup.
   const [selectedType, setSelectedType] = useState<PosterType>("single-job");
   const [description, setDescription] = useState("");
   const [style, setStyle] = useState<DesignStyle>("professional");
@@ -64,44 +69,42 @@ export function CreatePosterPage({ jobId }: CreatePosterPageProps) {
   }
 
   const job = jobData?.job || jobData;
+  const hasResults = poster.variations.length > 0;
+  const showResults = hasResults || poster.isGenerating;
+  const canGenerate = (credits?.remaining ?? 0) > 0 && !poster.isGenerating;
 
   return (
     <div className="page-container space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      {/* Header — primary CTA lives here so the default poster is one tap away.
+          Generation spends a paid credit, so it stays an explicit button press. */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Create Job Poster</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Generate eye-catching posters to attract the right candidates
+          <h1 className="text-xl font-bold text-foreground sm:text-2xl">{t("title")}</h1>
+          <p className="text-sm text-muted-foreground mt-1 line-clamp-2 sm:line-clamp-none">
+            {t("subtitle")}
           </p>
         </div>
-        <CreditsBadge credits={credits} />
+        <div className="flex items-center gap-3">
+          <CreditsBadge credits={credits} />
+          <Button onClick={handleGenerate} disabled={!canGenerate} className="h-10 gap-2 rounded-xl px-5 font-semibold">
+            {poster.isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            {poster.isGenerating ? t("generating") : t("generateNow")}
+          </Button>
+        </div>
       </div>
 
-      {/* Stepper indicator */}
-      <div className="flex items-center gap-2 text-sm">
-        <Step number={1} label="Select Type" active />
-        <StepArrow />
-        <Step number={2} label="Customize" active={!!selectedType} />
-        <StepArrow />
-        <Step number={3} label="Generate" active={poster.variations.length > 0} />
-        <StepArrow />
-        <Step number={4} label="Download" active={poster.variations.length > 0} />
-      </div>
-
-      {/* Main 4-section grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Section 1: Choose Type */}
-        <div className="rounded-xl border bg-card p-5">
-          <h2 className="text-base font-semibold mb-1">1. Choose Type</h2>
-          <p className="text-xs text-muted-foreground mb-4">Select a poster type</p>
+      {/* Options + results. Result sections only appear once generation starts —
+          empty boxes before that are noise, especially on mobile. */}
+      <div className={`grid grid-cols-1 gap-4 sm:gap-6 ${showResults ? "lg:grid-cols-4" : "lg:grid-cols-2"}`}>
+        <div className="rounded-xl border bg-card p-4 sm:p-5">
+          <h2 className="text-base font-semibold mb-1">{t("typeTitle")}</h2>
+          <p className="text-xs text-muted-foreground mb-4">{t("typeDesc")}</p>
           <PosterTypeSelector selected={selectedType} onSelect={setSelectedType} />
         </div>
 
-        {/* Section 2: Customize */}
-        <div className="rounded-xl border bg-card p-5">
-          <h2 className="text-base font-semibold mb-1">2. Customize</h2>
-          <p className="text-xs text-muted-foreground mb-4">Add details & preferences</p>
+        <div className="rounded-xl border bg-card p-4 sm:p-5">
+          <h2 className="text-base font-semibold mb-1">{t("customizeTitle")}</h2>
+          <p className="text-xs text-muted-foreground mb-4">{t("customizeDesc")}</p>
           <PosterCustomizer
             job={job}
             description={description}
@@ -118,73 +121,53 @@ export function CreatePosterPage({ jobId }: CreatePosterPageProps) {
           />
         </div>
 
-        {/* Section 3: AI Generated Variations */}
-        <div className="rounded-xl border bg-card p-5">
-          <h2 className="text-base font-semibold mb-1">3. AI Generated{poster.variations.length > 0 ? ` (${poster.variations.length} Variations)` : ""}</h2>
-          <p className="text-xs text-muted-foreground mb-4">Choose your favorite or generate more</p>
-          <PosterVariationsGrid
-            variations={poster.variations}
-            selectedIndex={poster.selectedIndex}
-            onSelect={poster.setSelectedIndex}
-            onGenerateMore={poster.generateMore}
-            isGeneratingMore={poster.isGeneratingMore}
-            job={job}
-            posterType={selectedType}
-            showFields={showFields}
-          />
-          {poster.error && (
-            <p className="text-xs text-destructive mt-2">{poster.error}</p>
-          )}
-        </div>
+        {showResults && (
+          <div className="rounded-xl border bg-card p-4 sm:p-5 order-first lg:order-none">
+            <h2 className="text-base font-semibold mb-1">
+              {t("resultsTitle")}{hasResults ? ` (${poster.variations.length})` : ""}
+            </h2>
+            <p className="text-xs text-muted-foreground mb-4">{t("resultsDesc")}</p>
+            <PosterVariationsGrid
+              variations={poster.variations}
+              selectedIndex={poster.selectedIndex}
+              onSelect={poster.setSelectedIndex}
+              onGenerateMore={poster.generateMore}
+              isGeneratingMore={poster.isGeneratingMore}
+              job={job}
+              posterType={selectedType}
+              showFields={showFields}
+            />
+            {poster.error && (
+              <p className="text-xs text-destructive mt-2">{poster.error}</p>
+            )}
+          </div>
+        )}
 
-        {/* Section 4: Preview & Download */}
-        <div className="rounded-xl border bg-card p-5">
-          <h2 className="text-base font-semibold mb-1">4. Preview & Download</h2>
-          <p className="text-xs text-muted-foreground mb-4">Preview your poster and download</p>
-          <PosterPreviewPanel
-            variation={poster.variations[poster.selectedIndex] ?? null}
-            job={job}
-            posterType={selectedType}
-            showFields={showFields}
-            formats={formats}
-            shareSlug={poster.shareSlug}
-            generationId={poster.generationId}
-          />
-        </div>
+        {hasResults && (
+          <div className="rounded-xl border bg-card p-4 sm:p-5 order-first lg:order-none">
+            <h2 className="text-base font-semibold mb-1">{t("downloadTitle")}</h2>
+            <p className="text-xs text-muted-foreground mb-4">{t("downloadDesc")}</p>
+            <PosterPreviewPanel
+              variation={poster.variations[poster.selectedIndex] ?? null}
+              job={job}
+              posterType={selectedType}
+              showFields={showFields}
+              formats={formats}
+              shareSlug={poster.shareSlug}
+              generationId={poster.generationId}
+            />
+          </div>
+        )}
       </div>
 
       {/* Footer value props */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
-        <ValueProp
-          title="Powered by AI"
-          desc="GPT-image-1 generates unique backgrounds for your posters"
-        />
-        <ValueProp
-          title="Brand Always On"
-          desc="Mployedin branding and QR code added to every poster"
-        />
-        <ValueProp
-          title="Drive More Applications"
-          desc="Every poster links back to your job page on Mployedin"
-        />
+        <ValueProp title={t("valueAiTitle")} desc={t("valueAiDesc")} />
+        <ValueProp title={t("valueBrandTitle")} desc={t("valueBrandDesc")} />
+        <ValueProp title={t("valueLinkTitle")} desc={t("valueLinkDesc")} />
       </div>
     </div>
   );
-}
-
-function Step({ number, label, active }: { number: number; label: string; active: boolean }) {
-  return (
-    <div className="flex items-center gap-2">
-      <div className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-        {number}
-      </div>
-      <span className={`text-xs font-medium ${active ? "text-foreground" : "text-muted-foreground"}`}>{label}</span>
-    </div>
-  );
-}
-
-function StepArrow() {
-  return <span className="text-muted-foreground text-xs">→</span>;
 }
 
 function ValueProp({ title, desc }: { title: string; desc: string }) {

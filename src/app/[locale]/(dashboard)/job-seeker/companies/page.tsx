@@ -44,6 +44,8 @@ export default function CompaniesListPage() {
   const [companies, setCompanies] = useState<CompanyItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [industryFilter, setIndustryFilter] = useState("");
+  const [industries, setIndustries] = useState<string[]>([]);
   const pagination = usePagination();
 
   const fetchCompanies = useCallback(async () => {
@@ -51,18 +53,25 @@ export default function CompaniesListPage() {
     try {
       const params = pagination.paginationParams();
       if (search) params.set("search", search);
+      if (industryFilter) params.set("industry", industryFilter);
       const res = await fetch(`/api/companies?${params}`);
       if (res.ok) {
         const data = await res.json();
         setCompanies(data.items ?? []);
         pagination.updateTotal(data.total ?? 0);
+        if (!industryFilter && data.items) {
+          const uniqueIndustries = Array.from(new Set(
+            (data.items as CompanyItem[]).filter((c) => c.industry).map((c) => c.industry as string)
+          )).sort();
+          setIndustries(uniqueIndustries);
+        }
       }
     } catch {
       toast.error(t("loadFailed"));
     } finally {
       setLoading(false);
     }
-  }, [search, pagination.page, pagination.limit, t]);
+  }, [search, industryFilter, pagination.page, pagination.limit, t]);
 
   useEffect(() => { fetchCompanies(); }, [fetchCompanies]);
 
@@ -75,7 +84,7 @@ export default function CompaniesListPage() {
         </p>
       </section>
 
-      <section className="workspace-panel-surface rounded-[28px] p-5">
+      <section className="workspace-panel-surface rounded-[28px] p-5 space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -86,10 +95,25 @@ export default function CompaniesListPage() {
               className="ps-9"
             />
           </div>
-          <Button variant="ghost" size="sm" onClick={() => { setSearch(""); pagination.resetPage(); }}>
+          <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setIndustryFilter(""); pagination.resetPage(); }}>
             <RotateCcw className="me-1 h-4 w-4" /> {t("reset")}
           </Button>
         </div>
+        {industries.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-medium text-muted-foreground">{t("filterByIndustry") ?? "Industry"}</label>
+            <select
+              value={industryFilter}
+              onChange={(e) => { setIndustryFilter(e.target.value); pagination.resetPage(); }}
+              className="w-full sm:w-48 px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="">{t("allIndustries") ?? "All Industries"}</option>
+              {industries.map((ind) => (
+                <option key={ind} value={ind}>{ind}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </section>
 
       <section className="workspace-panel-surface rounded-[28px] p-5">

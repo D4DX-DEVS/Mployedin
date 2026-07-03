@@ -75,6 +75,26 @@ export default function EmployerCampaignsPage() {
   const { data: sequences = [], isLoading, isError } = useEmailSequences();
   const [createOpen, setCreateOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+
+  const filteredSequences = sequences.filter((seq) => {
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      if (!seq.name.toLowerCase().includes(q) && !(seq.description?.toLowerCase().includes(q))) {
+        return false;
+      }
+    }
+    if (statusFilter && seq.status !== statusFilter) {
+      return false;
+    }
+    return true;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(filteredSequences.length / limit));
+  const pagedSequences = filteredSequences.slice((page - 1) * limit, page * limit);
 
   return (
     <div className="page-container space-y-6">
@@ -91,6 +111,30 @@ export default function EmployerCampaignsPage() {
           ) : undefined
         }
       />
+
+      {sequences.length > 0 && (
+        <div className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <Input
+              placeholder={t("searchPlaceholder") || "Search campaigns..."}
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              className="h-10 rounded-xl border-border bg-background sm:flex-1"
+            />
+            <select
+              value={statusFilter || ""}
+              onChange={(e) => { setStatusFilter(e.target.value || null); setPage(1); }}
+              className="h-10 rounded-xl border border-border bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              <option value="">{t("allStatuses") || "All statuses"}</option>
+              <option value="draft">{t("draft")}</option>
+              <option value="active">{t("active")}</option>
+              <option value="paused">{t("paused")}</option>
+              <option value="completed">{t("completed")}</option>
+            </select>
+          </div>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -109,21 +153,50 @@ export default function EmployerCampaignsPage() {
         <div className="rounded-2xl border border-border bg-card p-10 text-center text-sm text-muted-foreground">
           {t("loadError")}
         </div>
-      ) : sequences.length === 0 ? (
+      ) : filteredSequences.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
           <Mail className="mx-auto h-10 w-10 text-muted-foreground/60" />
-          <p className="mt-4 text-sm text-muted-foreground">{t("noSequences")}</p>
-          <Button onClick={() => setCreateOpen(true)} className="mt-5">
-            <Plus className="mr-2 h-4 w-4" />
-            {t("create")}
-          </Button>
+          <p className="mt-4 text-sm text-muted-foreground">{search || statusFilter ? t("noResults") || "No campaigns match your filters." : t("noSequences")}</p>
+          {!search && !statusFilter ? (
+            <Button onClick={() => setCreateOpen(true)} className="mt-5">
+              <Plus className="mr-2 h-4 w-4" />
+              {t("create")}
+            </Button>
+          ) : null}
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {sequences.map((seq) => (
-            <SequenceCard key={seq._id} sequence={seq} onOpen={() => setActiveId(seq._id)} />
-          ))}
-        </div>
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {pagedSequences.map((seq) => (
+              <SequenceCard key={seq._id} sequence={seq} onOpen={() => setActiveId(seq._id)} />
+            ))}
+          </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 pt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page === 1}
+                onClick={() => setPage(page - 1)}
+                className="h-9 rounded-xl"
+              >
+                Previous
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                Page {page} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page === totalPages}
+                onClick={() => setPage(page + 1)}
+                className="h-9 rounded-xl"
+              >
+                Next
+              </Button>
+            </div>
+          )}
+        </>
       )}
 
       <CreateSequenceDialog open={createOpen} onOpenChange={setCreateOpen} />

@@ -16,6 +16,7 @@ export const placementCreateSchema = z.object({
 });
 
 export const placementUpdateSchema = z.object({
+  status: z.enum(["active", "completed", "terminated"]).optional(),
   startDate: z.string().datetime().optional(),
   salary: z.number().min(0).optional(),
   currency: z.string().length(3).optional(),

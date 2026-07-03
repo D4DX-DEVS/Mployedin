@@ -855,6 +855,14 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 descriptionAr: "رؤى واتجاهات السوق",
               },
               {
+                title: "Insights",
+                titleAr: "الرؤى",
+                href: p("/super-agent/insights"),
+                icon: "Lightbulb",
+                description: "AI alerts & opportunities",
+                descriptionAr: "تنبيهات وفرص مدعومة بالذكاء الاصطناعي",
+              },
+              {
                 title: "Reports",
                 titleAr: "التقارير",
                 href: p("/super-agent/reports"),
@@ -1277,8 +1285,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 descriptionAr: "قوالب البريد الإلكتروني للمرشحين",
               },
               {
-                title: "Campaigns",
-                titleAr: "الحملات",
+                title: "Email Sequences",
+                titleAr: "تسلسلات البريد الإلكتروني",
                 href: p("/employer/campaigns"),
                 icon: "Mail",
                 description: "Automated email nurture sequences",

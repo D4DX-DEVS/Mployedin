@@ -25,6 +25,7 @@ import {
   Gift,
   Inbox,
   Loader2,
+  Search,
   Sparkles,
   Star,
   Users,
@@ -85,6 +86,13 @@ export default function AgentCandidatesPage() {
   const [statusFilter, setStatusFilter] = useState(initialStatus);
   const [jobIdFilter, setJobIdFilter] = useState(initialJobId);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 400);
+    return () => clearTimeout(t);
+  }, [search]);
 
   const loadApplications = useCallback(async () => {
     setLoading(true);
@@ -92,6 +100,7 @@ export default function AgentCandidatesPage() {
       const params = pagination.paginationParams();
       if (statusFilter) params.set("status", statusFilter);
       if (jobIdFilter) params.set("jobId", jobIdFilter);
+      if (debouncedSearch) params.set("search", debouncedSearch);
       const res = await fetch(`/api/applications?${params}`);
       if (res.ok) {
         const data = await res.json();
@@ -101,14 +110,14 @@ export default function AgentCandidatesPage() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, jobIdFilter, pagination.page, pagination.limit]);
+  }, [statusFilter, jobIdFilter, debouncedSearch, pagination.page, pagination.limit]);
 
   useEffect(() => {
     const t = setTimeout(loadApplications, 300);
     return () => clearTimeout(t);
   }, [loadApplications]);
 
-  useEffect(() => { pagination.resetPage(); }, [statusFilter, jobIdFilter]);
+  useEffect(() => { pagination.resetPage(); }, [statusFilter, jobIdFilter, debouncedSearch]);
 
   // Scheduling dialog state
   const [scheduleApp, setScheduleApp] = useState<ApplicationItem | null>(null);
@@ -362,6 +371,16 @@ export default function AgentCandidatesPage() {
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Filter candidates</p>
           <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Focus on the stage that needs action</h2>
           <p className="mt-1 text-sm text-muted-foreground">Switch between application states or clear the active job constraint when you want the full queue again.</p>
+        </div>
+        <div className="relative mt-5 max-w-md">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search candidate name, email, or job..."
+            className="h-10 w-full rounded-xl border border-border bg-background/70 pl-10 pr-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground/60 focus:border-ring focus:ring-2 focus:ring-ring/20"
+          />
         </div>
         <div className="mt-5 flex flex-wrap gap-2">
           {jobIdFilter && (

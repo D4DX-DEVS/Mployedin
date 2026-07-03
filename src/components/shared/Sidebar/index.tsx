@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
-import { ChevronDown, Menu, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { NavGroup, NavItem } from "@/lib/nav/menuConfig";
 import { getIcon } from "@/lib/nav/iconRegistry";
@@ -607,6 +607,18 @@ export function Sidebar({
               ? "h-20 border-b border-border/50 bg-[linear-gradient(180deg,_hsl(var(--card)/0.72),_hsl(var(--card)/0.24))] backdrop-blur-sm"
               : "h-20 border-b border-sidebar-border/50 bg-background/50 backdrop-blur-sm"
           )}>
+            {/* Mobile drill-down: back to the primary menu (drawer shows one tier at a time) */}
+            <button
+              type="button"
+              onClick={() => setSubmenuExpanded(false)}
+              aria-label={t("back")}
+              className={cn(
+                "lg:hidden flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted",
+                isRtl ? "ml-2" : "mr-2"
+              )}
+            >
+              {isRtl ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
+            </button>
             <h2 className={cn(
               "text-[15px] font-bold tracking-tight",
               usesDualTierLayout ? "text-foreground" : "text-sidebar-fg"
@@ -699,8 +711,9 @@ export function Sidebar({
               isRtl ? "right-0 left-auto slide-in-from-right" : "slide-in-from-left"
             )}
           >
-            {primarySidebar}
-            {secondarySidebar}
+            {/* Drill-down: one tier at a time on mobile (both tiers side by side
+                overflow a phone). Back button in the submenu header returns. */}
+            {hasSubmenu && submenuExpanded ? secondarySidebar : primarySidebar}
           </aside>
         </div>
       )}

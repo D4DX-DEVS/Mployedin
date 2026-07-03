@@ -40,9 +40,10 @@ interface Filters {
   search: string;
   country: string;
   experienceMin: string;
+  availability: string;
 }
 
-const INITIAL_FILTERS: Filters = { search: "", country: "all", experienceMin: "all" };
+const INITIAL_FILTERS: Filters = { search: "", country: "all", experienceMin: "all", availability: "all" };
 
 const EXPERIENCE_OPTIONS = [
   { value: "all", label: "All experience" },
@@ -51,6 +52,13 @@ const EXPERIENCE_OPTIONS = [
   { value: "3", label: "3+ years" },
   { value: "5", label: "5+ years" },
   { value: "10", label: "10+ years" },
+];
+
+const AVAILABILITY_OPTIONS = [
+  { value: "all", label: "All availability" },
+  { value: "immediate", label: "Available immediately" },
+  { value: "notice_period", label: "Has notice period" },
+  { value: "unavailable", label: "Not available" },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -65,6 +73,11 @@ export default function SuperAgentJobSeekersPage() {
   const [totalStats, setTotalStats] = useState({ total: 0, active: 0, avgCompletion: 0, withExperience: 0 });
   const pagination = usePagination();
 
+  const handleClearFilters = () => {
+    setFilters(INITIAL_FILTERS);
+    pagination.resetPage();
+  };
+
   const fetchSeekers = useCallback(async () => {
     setLoading(true);
     try {
@@ -72,6 +85,7 @@ export default function SuperAgentJobSeekersPage() {
       if (filters.search) params.set("search", filters.search);
       if (filters.country !== "all") params.set("country", filters.country);
       if (filters.experienceMin !== "all") params.set("experienceMin", filters.experienceMin);
+      if (filters.availability !== "all") params.set("availability", filters.availability);
 
       const res = await fetch(`/api/super-agent/job-seekers?${params}`);
       if (res.ok) {
@@ -118,16 +132,16 @@ export default function SuperAgentJobSeekersPage() {
 
       <TableToolbar
         title="Browse regional candidates"
-        description="Search by name, email, or skills. Filter by country and experience level."
+        description="Search by name, email, or skills. Filter by country, experience level, and availability."
         search={filters.search}
         onSearchChange={(v) => updateFilter("search", v)}
         searchPlaceholder="Search by name, email, or skills..."
-        hasActiveFilters={filters.country !== "all" || filters.experienceMin !== "all"}
+        hasActiveFilters={filters.country !== "all" || filters.experienceMin !== "all" || filters.availability !== "all"}
         actions={
-          (filters.search || filters.country !== "all" || filters.experienceMin !== "all") ? (
+          (filters.search || filters.country !== "all" || filters.experienceMin !== "all" || filters.availability !== "all") ? (
             <button
               type="button"
-              onClick={() => { setFilters(INITIAL_FILTERS); pagination.resetPage(); }}
+              onClick={handleClearFilters}
               className="flex h-9 items-center gap-2 rounded-lg border border-border/70 bg-card px-3 text-sm text-muted-foreground hover:bg-secondary/80 transition-all"
             >
               <RotateCcw className="h-3.5 w-3.5" />
@@ -149,6 +163,13 @@ export default function SuperAgentJobSeekersPage() {
               value={filters.experienceMin}
               onValueChange={(v) => updateFilter("experienceMin", v)}
               placeholder="All experience"
+              className="h-11 w-[180px] rounded-xl border-border bg-card"
+            />
+            <SearchableSelect
+              options={AVAILABILITY_OPTIONS}
+              value={filters.availability}
+              onValueChange={(v) => updateFilter("availability", v)}
+              placeholder="All availability"
               className="h-11 w-[180px] rounded-xl border-border bg-card"
             />
           </div>

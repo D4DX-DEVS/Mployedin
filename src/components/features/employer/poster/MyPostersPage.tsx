@@ -2,13 +2,15 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Image, Trash2, ExternalLink, Eye, Download, QrCode, Sparkles, Plus } from "lucide-react";
+import { Image, Trash2, ExternalLink, Eye, Download, QrCode, Plus } from "lucide-react";
 import Link from "next/link";
-import { useLocale } from "next-intl";
-import { useRouter } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { buildPosterShareUrl } from "@/lib/composer/branding";
 import { CreditsBadge } from "./CreditsBadge";
 import { usePosterCredits } from "@/hooks/usePosterCredits";
+import { useConfirm } from "@/hooks/useConfirm";
+import { PageHero } from "@/components/shared/PageHero";
 
 interface PosterItem {
   _id: string;
@@ -24,9 +26,10 @@ interface PosterItem {
 
 export function MyPostersPage() {
   const locale = useLocale();
-  const router = useRouter();
+  const t = useTranslations("myPosters");
   const queryClient = useQueryClient();
   const { credits } = usePosterCredits();
+  const { confirm, ConfirmDialogNode } = useConfirm();
   const [page, setPage] = useState(1);
 
   const { data, isLoading } = useQuery({
@@ -44,48 +47,29 @@ export function MyPostersPage() {
       if (!res.ok) throw new Error("Failed to delete");
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["employer-posters"] }),
+    onError: () => toast.error(t("deleteError")),
   });
 
   return (
     <div className="page-container space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">My Posters</h1>
-          <p className="text-sm text-muted-foreground">
-            All your AI-generated recruitment posters
-          </p>
-        </div>
-        <CreditsBadge credits={credits} />
-      </div>
-
-      {/* Hero CTA Card */}
-      <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 p-6 md:p-8">
-        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-              <Sparkles className="h-6 w-6 text-primary" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold text-foreground">AI Recruitment Marketing Engine</h2>
-              <p className="text-sm text-muted-foreground mt-1 max-w-md">
-                Create eye-catching AI-generated posters for your jobs. Share on social media, print, or use QR codes to attract top talent.
-              </p>
-            </div>
+      {ConfirmDialogNode}
+      <PageHero
+        title={t("title")}
+        description={t("description")}
+        eyebrow={t("eyebrow")}
+        actions={
+          <div className="flex flex-wrap items-center gap-3">
+            <CreditsBadge credits={credits} />
+            <Link
+              href={`/${locale}/employer/jobs`}
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow hover:bg-primary/90 transition-colors shrink-0"
+            >
+              <Plus className="h-4 w-4" />
+              {t("createCta")}
+            </Link>
           </div>
-          <Link
-            href={`/${locale}/employer/jobs`}
-            className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow hover:bg-primary/90 transition-colors shrink-0"
-          >
-            <Plus className="h-4 w-4" />
-            Create Poster from Job
-          </Link>
-        </div>
-        {/* Decorative background */}
-        <div className="absolute top-0 right-0 w-64 h-64 opacity-5">
-          <Image className="w-full h-full" />
-        </div>
-      </div>
+        }
+      />
 
       {/* Grid */}
       {isLoading ? (
@@ -99,9 +83,9 @@ export function MyPostersPage() {
           <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
             <Image className="w-8 h-8 text-muted-foreground" />
           </div>
-          <h3 className="text-lg font-semibold">No posters yet</h3>
+          <h3 className="text-lg font-semibold">{t("emptyTitle")}</h3>
           <p className="text-sm text-muted-foreground mt-1">
-            Create your first AI recruitment poster from any job listing.
+            {t("emptyHint")}
           </p>
         </div>
       ) : (
@@ -141,11 +125,14 @@ export function MyPostersPage() {
                       )}
                       <button
                         type="button"
-                        onClick={() => {
-                          if (confirm("Delete this poster? This cannot be undone.")) {
-                            deleteMutation.mutate(poster._id);
-                          }
+                        onClick={async () => {
+                          const ok = await confirm({
+                            message: t("deleteConfirm"),
+                            variant: "destructive",
+                          });
+                          if (ok) deleteMutation.mutate(poster._id);
                         }}
+                        aria-label={t("deleteLabel")}
                         className="p-2 rounded-full bg-white/20 hover:bg-red-500/50"
                       >
                         <Trash2 className="w-4 h-4 text-white" />
@@ -156,7 +143,7 @@ export function MyPostersPage() {
                   {/* Info */}
                   <div className="p-3 space-y-1.5">
                     <p className="text-sm font-medium truncate">
-                      {poster.jobId?.title || "Untitled Job"}
+                      {poster.jobId?.title || t("untitledJob")}
                     </p>
                     <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
                       <span className="capitalize">{poster.type.replace("-", " ")}</span>
@@ -190,10 +177,10 @@ export function MyPostersPage() {
                 onClick={() => setPage((p) => p - 1)}
                 className="px-3 py-1.5 rounded-md border text-sm disabled:opacity-50"
               >
-                Previous
+                {t("previous")}
               </button>
               <span className="text-sm text-muted-foreground">
-                Page {page} of {data.pagination.pages}
+                {t("pageOf", { page, pages: data.pagination.pages })}
               </span>
               <button
                 type="button"
@@ -201,7 +188,7 @@ export function MyPostersPage() {
                 onClick={() => setPage((p) => p + 1)}
                 className="px-3 py-1.5 rounded-md border text-sm disabled:opacity-50"
               >
-                Next
+                {t("next")}
               </button>
             </div>
           )}

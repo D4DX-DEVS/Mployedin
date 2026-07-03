@@ -158,7 +158,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       const job = application.jobId as { _id?: unknown; title?: string };
 
       // Auto-calculate next available time slot (respects working hours + breaks)
-      const candidateTime = nextAvailableSlot(slotCursor, slotDuration);
+      let candidateTime = nextAvailableSlot(slotCursor, slotDuration);
 
       // ── Duplicate guard: skip if candidate already has active interview for same job ──
       const existingInterview = await Interview.findOne({
@@ -170,6 +170,28 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         failed.push(candidate.applicationId);
         slotCursor = new Date(candidateTime.getTime() + (slotDuration + gapMinutes) * 60_000);
         continue;
+      }
+
+      // ── Collision guard: don't double-book the employer's calendar. Slide the
+      // slot forward until it doesn't overlap any existing active interview.
+      // ponytail: 4h lookback covers realistic durations; 20 tries caps the loop.
+      for (let attempts = 0; attempts < 20; attempts++) {
+        const slotEnd = new Date(candidateTime.getTime() + slotDuration * 60_000);
+        const nearby = await Interview.find({
+          employerId: application.employerId,
+          status: { $in: ["scheduled", "confirmed"] },
+          scheduledAt: { $gte: new Date(candidateTime.getTime() - 4 * 60 * 60_000), $lt: slotEnd },
+        }).select("scheduledAt duration").lean() as { scheduledAt: Date; duration?: number }[];
+        const clash = nearby.some((n) => {
+          const nStart = new Date(n.scheduledAt).getTime();
+          const nEnd = nStart + (n.duration ?? 60) * 60_000;
+          return nStart < slotEnd.getTime() && nEnd > candidateTime.getTime();
+        });
+        if (!clash) break;
+        candidateTime = nextAvailableSlot(
+          new Date(candidateTime.getTime() + (slotDuration + gapMinutes) * 60_000),
+          slotDuration
+        );
       }
 
       const interview = await Interview.create({

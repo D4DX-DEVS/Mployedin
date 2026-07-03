@@ -128,6 +128,7 @@ async function deleteHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<st
   // Soft delete: mark as deleted instead of removing from DB
   job.deletedAt = new Date();
   if (job.status === "active" || job.status === "paused") {
+    job.preDeletionStatus = job.status;
     job.status = "closed";
   }
   await job.save();

@@ -215,8 +215,55 @@ export function DataTable<TData, TValue>({
         </div>
       </div>
 
-      {/* Table */}
-      <div className="rounded-xl border border-border/50 overflow-x-auto bg-card shadow-sm shadow-black/[0.03]">
+      {/* Mobile card list (<sm) — tables don't fit a phone; each row becomes a
+          label/value card built from the same column defs. */}
+      <div className="space-y-3 sm:hidden">
+        {isLoading ? (
+          Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="rounded-xl border border-border/50 bg-card p-4 shadow-sm space-y-3">
+              {Array.from({ length: 3 }).map((_, j) => (
+                <div key={j} className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
+              ))}
+            </div>
+          ))
+        ) : table.getRowModel().rows.length ? (
+          table.getRowModel().rows.map((row) => (
+            <div
+              key={row.id}
+              onClick={() => onRowClick?.(row.original)}
+              className={cn(
+                "rounded-xl border border-border/50 bg-card p-4 shadow-sm shadow-black/[0.03] space-y-2.5",
+                onRowClick && "cursor-pointer active:bg-muted/40"
+              )}
+            >
+              {row.getVisibleCells().map((cell) => {
+                const header = cell.column.columnDef.header;
+                const label = typeof header === "string" ? header : null;
+                return (
+                  <div key={cell.id} className="flex items-start justify-between gap-3">
+                    {label && (
+                      <span className="shrink-0 pt-0.5 text-xs font-medium text-muted-foreground">
+                        {label}
+                      </span>
+                    )}
+                    <div className="min-w-0 text-sm text-end [overflow-wrap:anywhere]">
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ))
+        ) : (
+          <div className="flex h-32 flex-col items-center justify-center gap-2 rounded-xl border border-border/50 bg-card text-muted-foreground">
+            <Inbox className="h-8 w-8 opacity-40" />
+            <span className="text-sm">No results found.</span>
+          </div>
+        )}
+      </div>
+
+      {/* Table (≥sm) */}
+      <div className="hidden rounded-xl border border-border/50 overflow-x-auto bg-card shadow-sm shadow-black/[0.03] sm:block">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (

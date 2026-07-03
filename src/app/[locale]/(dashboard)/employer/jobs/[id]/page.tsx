@@ -19,6 +19,7 @@ import { useJobDetail, useUpdateJobStatus, useCloneJob, useDeleteJob } from "@/h
 import { useConfirm } from "@/hooks/useConfirm";
 import SocialShare from "@/components/features/public/SocialShare";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 
 interface Job {
   _id: string;
@@ -73,7 +74,7 @@ export default function JobDetailPage() {
   const searchParams = useSearchParams();
   const initialTab = searchParams.get("tab") ?? "overview";
   const { can } = usePermissions();
-  const { data: job, isLoading: loading } = useJobDetail(id);
+  const { data: job, isLoading: loading, isError, refetch } = useJobDetail(id);
   const updateStatusMutation = useUpdateJobStatus();
   const cloneMutation = useCloneJob();
   const deleteMutation = useDeleteJob();
@@ -92,7 +93,16 @@ export default function JobDetailPage() {
   }, [searchParams, job]);
 
   async function updateStatus(status: string) {
-    updateStatusMutation.mutate({ jobId: id, status });
+    if (status === "closed") {
+      const ok = await confirmDialog({ message: t("confirmCloseJob"), variant: "destructive" });
+      if (!ok) return;
+    }
+    try {
+      await updateStatusMutation.mutateAsync({ jobId: id, status });
+      toast.success(t("statusUpdateSuccess"));
+    } catch {
+      toast.error(t("statusUpdateFailed"));
+    }
   }
 
   async function handleSubmitForApproval() {
@@ -149,6 +159,17 @@ export default function JobDetailPage() {
         <div className="card-base p-5 sm:p-6 h-52 animate-pulse bg-muted/40" />
         <div className="card-base p-5 sm:p-6 h-36 animate-pulse bg-muted/40" />
         <div className="card-base p-5 sm:p-6 h-28 animate-pulse bg-muted/40" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="page-container">
+        <div className="card-base p-8 text-center py-20">
+          <h2 className="text-lg font-semibold mb-2">{t("loadError")}</h2>
+          <Button variant="outline" onClick={() => refetch()}>{t("retry")}</Button>
+        </div>
       </div>
     );
   }

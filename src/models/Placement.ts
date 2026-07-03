@@ -8,6 +8,8 @@ export interface IPlacement extends Document {
   employerId: mongoose.Types.ObjectId;
   agentId?: mongoose.Types.ObjectId;
   superAgentId?: mongoose.Types.ObjectId;
+  /** Lifecycle: active → completed | terminated (one-way, enforced in the PATCH route). */
+  status: "active" | "completed" | "terminated";
   placedAt: Date;
   startDate?: Date;
   salary?: number;
@@ -46,6 +48,11 @@ const PlacementSchema = new Schema<IPlacement>(
     },
     agentId: { type: Schema.Types.ObjectId, ref: "Agent" },
     superAgentId: { type: Schema.Types.ObjectId, ref: "SuperAgent" },
+    status: {
+      type: String,
+      enum: ["active", "completed", "terminated"],
+      default: "active",
+    },
     placedAt: { type: Date, default: Date.now },
     startDate: Date,
     salary: Number,
@@ -73,6 +80,7 @@ PlacementSchema.index({ employerId: 1 });
 PlacementSchema.index({ agentId: 1 });
 PlacementSchema.index({ superAgentId: 1 });
 PlacementSchema.index({ placedAt: -1 });
+PlacementSchema.index({ status: 1 });
 
 export const Placement =
   mongoose.models.Placement ||

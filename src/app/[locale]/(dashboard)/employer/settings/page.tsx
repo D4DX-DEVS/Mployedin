@@ -8,6 +8,8 @@ import {
   MapPin, Calendar, Users, Eye, EyeOff, Link2, CheckCircle2, Clock, Sparkles,
   ChevronRight, Camera, X, Upload, Trash2, Send,
 } from "lucide-react";
+import { toast } from "sonner";
+import { useSession, signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -197,6 +199,7 @@ export default function CompanySettingsPageWrapper() {
 
 function CompanySettingsPage() {
   const { locale } = useParams<{ locale: string }>();
+  const { data: session } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState("");
@@ -1017,14 +1020,20 @@ function CompanySettingsPage() {
                       className="border-destructive/40 text-destructive hover:bg-destructive hover:text-white shrink-0 ms-4"
                       disabled={deactivating}
                       onClick={async () => {
-                        const ok = await confirmDialog(t("deactivateConfirm"));
+                        const ok = await confirmDialog({ message: t("deactivateConfirm"), variant: "destructive" });
                         if (!ok) return;
+                        const userId = (session?.user as { id?: string } | undefined)?.id;
+                        if (!userId) { toast.error(t("deactivateFailed")); return; }
                         setDeactivating(true);
-                        fetch("/api/employers/me", {
-                          method: "PATCH",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ workflowMode: "manual" }),
-                        }).finally(() => setDeactivating(false));
+                        try {
+                          const res = await fetch(`/api/employers/${userId}`, { method: "DELETE" });
+                          if (!res.ok) throw new Error();
+                          toast.success(t("deactivateSuccess"));
+                          await signOut({ callbackUrl: `/${locale}/login` });
+                        } catch {
+                          toast.error(t("deactivateFailed"));
+                          setDeactivating(false);
+                        }
                       }}
                     >
                       {deactivating ? t("processing") : t("deactivate")}

@@ -15,6 +15,14 @@ import {
   Mail,
   Loader2,
   AlertTriangle,
+  Video,
+  Gift,
+  Calendar,
+  Search,
+  FileText,
+  BookOpen,
+  Building2,
+  MoreHorizontal,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -206,6 +214,64 @@ export function UserProfileDropdown({
           </div>
 
           <DropdownMenuSeparator />
+
+          {userRole === "job_seeker" && (
+            <>
+              <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                {t("quickLinks")}
+              </div>
+              <DropdownMenuItem
+                className="cursor-pointer gap-2 rounded-md hover:bg-muted/50 transition-colors"
+                onSelect={() => router.push(`/${locale}/job-seeker/interviews`)}
+              >
+                <Video className="h-4 w-4" />
+                <span className="text-sm">{t("interviews")}</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="cursor-pointer gap-2 rounded-md hover:bg-muted/50 transition-colors"
+                onSelect={() => router.push(`/${locale}/job-seeker/offers`)}
+              >
+                <Gift className="h-4 w-4" />
+                <span className="text-sm">{t("offers")}</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="cursor-pointer gap-2 rounded-md hover:bg-muted/50 transition-colors"
+                onSelect={() => router.push(`/${locale}/job-seeker/calendar`)}
+              >
+                <Calendar className="h-4 w-4" />
+                <span className="text-sm">{t("calendar")}</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="cursor-pointer gap-2 rounded-md hover:bg-muted/50 transition-colors"
+                onSelect={() => router.push(`/${locale}/job-seeker/saved-searches`)}
+              >
+                <Search className="h-4 w-4" />
+                <span className="text-sm">{t("savedSearches")}</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="cursor-pointer gap-2 rounded-md hover:bg-muted/50 transition-colors"
+                onSelect={() => router.push(`/${locale}/job-seeker/documents`)}
+              >
+                <FileText className="h-4 w-4" />
+                <span className="text-sm">{t("documents")}</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="cursor-pointer gap-2 rounded-md hover:bg-muted/50 transition-colors"
+                onSelect={() => router.push(`/${locale}/job-seeker/cv`)}
+              >
+                <BookOpen className="h-4 w-4" />
+                <span className="text-sm">{t("cvBuilder")}</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="cursor-pointer gap-2 rounded-md hover:bg-muted/50 transition-colors"
+                onSelect={() => router.push(`/${locale}/job-seeker/companies`)}
+              >
+                <Building2 className="h-4 w-4" />
+                <span className="text-sm">{t("companies")}</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          )}
 
           {(userRole === "job_seeker" || userRole === "employer" || userRole === "super_agent" || userRole === "agent") && (
             <DropdownMenuItem

@@ -349,9 +349,9 @@ export default function AdminInvoicesPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="border-border/80 bg-secondary/72 hover:bg-secondary/72">
-                    <TableHead className="min-w-[120px]">Invoice #</TableHead>
-                    <TableHead className="min-w-[140px]">Employer</TableHead>
-                    <TableHead className="min-w-[130px]">Job</TableHead>
+                    <TableHead className="md:min-w-[120px]">Invoice #</TableHead>
+                    <TableHead className="md:min-w-[140px]">Employer</TableHead>
+                    <TableHead className="md:min-w-[130px]">Job</TableHead>
                     <TableHead>Category</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead className="text-right">Paid</TableHead>

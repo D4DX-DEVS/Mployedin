@@ -71,9 +71,12 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     ];
   }
 
-  // Filter: placement lifecycle status (active/completed/terminated)
+  // Filter: placement lifecycle status (active/completed/terminated).
+  // Docs created before the status field existed count as "active".
   if (lifecycleStatus && lifecycleStatus !== "all") {
-    query.status = lifecycleStatus;
+    query.status = lifecycleStatus === "active"
+      ? { $in: ["active", null] }
+      : lifecycleStatus;
   }
 
   // Filter: visa status (GCC) — separate from lifecycle status
@@ -136,7 +139,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     // Aggregate status counts (excludes the lifecycle-status filter for accurate totals)
     Placement.aggregate([
       { $match: statusAggQuery },
-      { $group: { _id: "$status", count: { $sum: 1 } } },
+      { $group: { _id: { $ifNull: ["$status", "active"] }, count: { $sum: 1 } } },
     ]),
   ]);
 
@@ -180,7 +183,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       placedAt: p.placedAt,
       salary: p.salary != null ? { amount: p.salary, currency: p.currency ?? "AED" } : undefined,
       currency: p.currency ?? "AED",
-      status: (p as { status?: string }).status ?? p.visaStatus ?? "active",
+      status: (p as { status?: string }).status ?? "active",
       visaStatus: p.visaStatus ?? "pending",
       commissionPaid: p.commissionPaid,
       commissionAmount: p.commissionAmount,

@@ -34,7 +34,7 @@ export default function EmployerJobTemplatesPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
-  const { data, isLoading: loading } = useJobTemplateLibrary({ search, page, limit });
+  const { data, isLoading: loading, isError, refetch } = useJobTemplateLibrary({ search, page, limit });
   const templates = data?.templates ?? [];
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -130,7 +130,12 @@ export default function EmployerJobTemplatesPage() {
 
       {/* Template Grid */}
       <section className="workspace-panel-surface rounded-[28px] p-5">
-        {loading ? (
+        {isError ? (
+          <div className="flex flex-col items-center justify-center gap-4 py-12 text-center">
+            <p className="text-sm font-semibold text-destructive">{t("loadError")}</p>
+            <Button variant="outline" onClick={() => refetch()}>{t("retry")}</Button>
+          </div>
+        ) : loading ? (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="workspace-glass-panel rounded-2xl p-5 space-y-3">

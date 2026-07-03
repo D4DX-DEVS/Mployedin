@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -181,10 +182,16 @@ export default function SuperAgentAgentsPage() {
         setCreateError(e.error ?? "Failed to create agent");
         return;
       }
+      const data = await res.json();
       setShowCreate(false);
       setCreateForm({ name: "", email: "", password: "", commissionRate: "0" });
       setCreateCityIds([]);
       setCreateStateIds([]);
+      if (data.emailSent === false) {
+        toast.warning("Agent created, but welcome email could not be sent");
+      } else {
+        toast.success("Agent created successfully");
+      }
       fetchAgents();
     } catch {
       setCreateError("Network error");

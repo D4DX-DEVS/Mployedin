@@ -77,6 +77,22 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const forbidden = await verifyOwnership(placement, ctx);
   if (forbidden) return forbidden;
 
+  // Lifecycle is one-way: active → completed | terminated. No resurrection.
+  if (body.status && body.status !== placement.status) {
+    const current = placement.status ?? "active";
+    const allowed: Record<string, string[]> = {
+      active: ["completed", "terminated"],
+      completed: [],
+      terminated: [],
+    };
+    if (!allowed[current]?.includes(body.status)) {
+      return NextResponse.json(
+        { error: `Cannot change placement status from "${current}" to "${body.status}"` },
+        { status: 400 }
+      );
+    }
+  }
+
   Object.assign(placement, body);
   await placement.save();
 
