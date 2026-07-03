@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -64,6 +65,8 @@ function statusLabel(s: ReturnType<typeof linkStatus>): string {
 
 export default function AgentReferralLinksPage() {
   const { locale } = useParams<{ locale: string }>();
+  const t = useTranslations("agentReferralLinks");
+  const tc = useTranslations("common");
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const pagination = usePagination();
   const [search, setSearch] = useState("");
@@ -115,7 +118,7 @@ export default function AgentReferralLinksPage() {
   };
 
   const handleDelete = async (id: string) => {
-    const ok = await confirmDialog("Permanently delete this referral link? This cannot be undone.");
+    const ok = await confirmDialog(t("deleteConfirmMessage"));
     if (!ok) return;
     await deleteMutation.mutateAsync(id);
   };
@@ -125,20 +128,20 @@ export default function AgentReferralLinksPage() {
   const totalRegistrations = links.reduce((s, l) => s + l.usedCount, 0);
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
-    { header: "Code", key: "code" },
-    { header: "Label", key: "label" },
-    { header: "Active", key: "isActive", formatter: (v) => v ? "Yes" : "No" },
-    { header: "Used", key: "usedCount" },
-    { header: "Max Uses", key: "maxUses" },
-    { header: "Created", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
-    { header: "Expires", key: "expiresAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: t("tableHeaderCode"), key: "code" },
+    { header: t("tableHeaderLabel"), key: "label" },
+    { header: tc("active"), key: "isActive", formatter: (v) => v ? t("exportYes") : t("exportNo") },
+    { header: t("tableHeaderUsed"), key: "usedCount" },
+    { header: t("tableHeaderMaxUses"), key: "maxUses" },
+    { header: tc("date"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: t("tableHeaderExpires"), key: "expiresAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: links as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "agent-referral-links",
-    title: "Agent Referral Links",
+    title: t("pageTitle"),
   });
 
   return (
@@ -151,28 +154,28 @@ export default function AgentReferralLinksPage() {
           <div className="max-w-3xl">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
               <Sparkles className="h-3.5 w-3.5" />
-              Agent workspace
+              {t("agentWorkspaceBadge")}
             </div>
             <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-              Referral Links
+              {t("pageTitle")}
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Create and manage referral links to onboard new employers. Track who registered through each link and monitor usage.
+              {t("heroDescription")}
             </p>
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Overview</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">{total} referral links</p>
-              <p className="text-xs text-muted-foreground">{totalRegistrations} total registrations</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("overviewLabel")}</p>
+              <p className="mt-1 text-lg font-semibold text-foreground">{t("linksCount", { count: total })}</p>
+              <p className="text-xs text-muted-foreground">{t("registrationsCount", { count: totalRegistrations })}</p>
             </div>
             <button
               onClick={() => setCreateOpen(true)}
               className="inline-flex h-11 items-center gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-sky-700"
             >
               <Plus className="h-4 w-4" />
-              New Referral Link
+              {t("newReferralLinkButton")}
             </button>
           </div>
         </div>
@@ -182,9 +185,9 @@ export default function AgentReferralLinksPage() {
           <div className="workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Total Links</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statTotalLinks")}</p>
                 <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{total}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Links created overall</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t("statTotalLinksDesc")}</p>
               </div>
               <div className="workspace-tone-sky rounded-2xl p-2.5"><Link2 className="h-5 w-5" /></div>
             </div>
@@ -192,9 +195,9 @@ export default function AgentReferralLinksPage() {
           <div className="workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Active</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tc("active")}</p>
                 <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{activeLinks}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Currently accepting registrations</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t("statActiveDesc")}</p>
               </div>
               <div className="workspace-tone-emerald rounded-2xl p-2.5"><Check className="h-5 w-5" /></div>
             </div>
@@ -202,9 +205,9 @@ export default function AgentReferralLinksPage() {
           <div className="workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Registrations</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statRegistrations")}</p>
                 <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{totalRegistrations}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Employers onboarded via your links</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t("statRegistrationsDesc")}</p>
               </div>
               <div className="workspace-tone-indigo rounded-2xl p-2.5"><Users className="h-5 w-5" /></div>
             </div>
@@ -212,9 +215,9 @@ export default function AgentReferralLinksPage() {
           <div className="workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Conversion</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statConversion")}</p>
                 <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{total > 0 ? Math.round((totalRegistrations / total) * 10) / 10 : 0}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Avg registrations per link</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t("statConversionDesc")}</p>
               </div>
               <div className="workspace-tone-amber rounded-2xl p-2.5"><Hash className="h-5 w-5" /></div>
             </div>
@@ -226,20 +229,20 @@ export default function AgentReferralLinksPage() {
       {createOpen && (
         <section className="workspace-panel-surface rounded-[28px] p-5">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground">Create Referral Link</h2>
+            <h2 className="text-lg font-semibold text-foreground">{t("createModalTitle")}</h2>
             <button onClick={() => setCreateOpen(false)} className="rounded-lg p-1 hover:bg-secondary/80"><X className="h-4 w-4" /></button>
           </div>
           <div className="mt-4 grid gap-4 sm:grid-cols-3">
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Label (optional)</label>
-              <Input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} placeholder="e.g. LinkedIn Campaign" className="h-10 rounded-xl" />
+              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("formLabelLabel")}</label>
+              <Input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} placeholder={t("formLabelPlaceholder")} className="h-10 rounded-xl" />
             </div>
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Max Registrations (0 = unlimited)</label>
+              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("formMaxRegistrationsLabel")}</label>
               <Input type="number" value={newMaxUses} onChange={(e) => setNewMaxUses(e.target.value)} placeholder="0" min={0} className="h-10 rounded-xl" />
             </div>
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Expiry Date (optional)</label>
+              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("formExpiryDateLabel")}</label>
               <Input type="date" value={newExpiresAt} onChange={(e) => setNewExpiresAt(e.target.value)} className="h-10 rounded-xl" />
             </div>
           </div>
@@ -250,7 +253,7 @@ export default function AgentReferralLinksPage() {
               className="inline-flex h-10 items-center gap-2 rounded-xl bg-sky-600 px-5 text-sm font-semibold text-white transition-colors hover:bg-sky-700 disabled:opacity-50"
             >
               {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-              Create Link
+              {t("createLinkButton")}
             </button>
           </div>
         </section>
@@ -262,7 +265,7 @@ export default function AgentReferralLinksPage() {
           <TableToolbar
             search={search}
             onSearchChange={(v) => { setSearch(v); pagination.resetPage(); }}
-            searchPlaceholder="Search by code or label..."
+            searchPlaceholder={t("searchPlaceholder")}
             onExportCsv={handleExportCsv}
             onExportExcel={handleExportExcel}
             onExportPdf={handleExportPdf}
@@ -288,8 +291,8 @@ export default function AgentReferralLinksPage() {
       ) : links.length === 0 ? (
         <section className="workspace-empty-state rounded-[28px] p-10 text-center">
           <Link2 className="mx-auto mb-3 h-10 w-10 text-muted-foreground/55" />
-          <p className="text-sm font-medium text-foreground">No referral links yet</p>
-          <p className="mt-1 text-sm text-muted-foreground">Create your first referral link to start onboarding employers.</p>
+          <p className="text-sm font-medium text-foreground">{t("emptyStateTitle")}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{t("emptyStateDescription")}</p>
         </section>
       ) : (
         <section className="space-y-4">
@@ -310,9 +313,9 @@ export default function AgentReferralLinksPage() {
                         {link.label && <span className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary"><Tag className="h-2.5 w-2.5" />{link.label}</span>}
                       </div>
                       <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> Created {formatDate(link.createdAt)}</span>
-                        {link.expiresAt && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> Expires {formatDate(link.expiresAt)}</span>}
-                        <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {link.usedCount}{link.maxUses > 0 ? `/${link.maxUses}` : ""} used</span>
+                        <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {t("labelCreated")} {formatDate(link.createdAt)}</span>
+                        {link.expiresAt && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {t("labelExpires")} {formatDate(link.expiresAt)}</span>}
+                        <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {link.usedCount}{link.maxUses > 0 ? `/${link.maxUses}` : ""} {t("labelUsed")}</span>
                       </div>
                     </div>
                   </div>
@@ -323,19 +326,19 @@ export default function AgentReferralLinksPage() {
                       className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-2.5 text-xs font-medium text-muted-foreground hover:border-primary/25 hover:text-primary"
                     >
                       {copyMap[link.code] ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                      {copyMap[link.code] ? "Copied!" : "Copy Link"}
+                      {copyMap[link.code] ? t("copiedFeedback") : t("copyLinkButton")}
                     </button>
                     <button
                       onClick={() => handleToggleActive(link)}
                       className={`inline-flex h-8 items-center rounded-lg border px-2.5 text-xs font-medium ${link.isActive ? "border-amber-200 text-amber-600 hover:bg-amber-50" : "border-green-200 text-green-600 hover:bg-green-50"}`}
                     >
-                      {link.isActive ? "Disable" : "Enable"}
+                      {link.isActive ? t("disableButton") : t("enableButton")}
                     </button>
                     {link.usedCount === 0 && link.registrations.length === 0 && (
                       <button
                         onClick={() => handleDelete(link._id)}
                         disabled={deleteMutation.isPending}
-                        title="Delete link"
+                        title={t("deleteButtonTitle")}
                         className="inline-flex h-8 items-center rounded-lg border border-red-200 px-2.5 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -353,9 +356,9 @@ export default function AgentReferralLinksPage() {
                 {/* Expanded: registrations */}
                 {isExpanded && (
                   <div className="mt-5 border-t border-border pt-5">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Registrations ({link.registrations.length})</p>
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("registrationsLabel", { count: link.registrations.length })}</p>
                     {link.registrations.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">No registrations yet for this link.</p>
+                      <p className="text-sm text-muted-foreground">{t("noRegistrationsYet")}</p>
                     ) : (
                       <div className="space-y-2">
                         {link.registrations.map((reg, i) => (

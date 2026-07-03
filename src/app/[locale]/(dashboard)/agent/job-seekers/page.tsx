@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { usePagination } from "@/hooks/usePagination";
@@ -38,35 +39,12 @@ function getCurrentTitle(s: JobSeeker): string | undefined {
   return s.experience?.find((e) => e.isCurrent)?.jobTitle;
 }
 
-const AVAILABILITY_OPTIONS = [
-  { value: "immediately", label: "Immediately" },
-  { value: "within_month", label: "Within 1 month" },
-  { value: "within_3_months", label: "Within 3 months" },
-  { value: "not_available", label: "Not available" },
-];
-
-const JOB_TYPE_OPTIONS = [
-  { value: "remote", label: "Remote" },
-  { value: "hybrid", label: "Hybrid" },
-  { value: "onsite", label: "On-site" },
-  { value: "any", label: "Any" },
-];
-
-const SORT_OPTIONS = [
-  { value: "newest", label: "Newest first" },
-  { value: "oldest", label: "Oldest first" },
-  { value: "profile_high", label: "Profile % (high to low)" },
-  { value: "profile_low", label: "Profile % (low to high)" },
-];
-
-const EDIT_FIELDS: CrudField[] = [
-  { name: "currentLocation", label: "Location", type: "text" },
-  { name: "nationality", label: "Nationality", type: "text" },
-  { name: "summary", label: "Summary", type: "textarea" },
-  { name: "skills", label: "Skills (comma-separated)", type: "text" },
-];
+// These will be built inside the component to use translations
 
 export default function AgentJobSeekersPage() {
+  const t = useTranslations("agentJobSeekers");
+  const tc = useTranslations("common");
+  const tt = useTranslations("table");
   const { can } = usePermissions();
   const pagination = usePagination();
   const [seekers, setSeekers] = useState<JobSeeker[]>([]);
@@ -74,6 +52,35 @@ export default function AgentJobSeekersPage() {
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editSeeker, setEditSeeker] = useState<JobSeeker | null>(null);
+
+  // Build options with translations
+  const AVAILABILITY_OPTIONS = [
+    { value: "immediately", label: t("availabilityImmediately") },
+    { value: "within_month", label: t("availabilityWithinMonth") },
+    { value: "within_3_months", label: t("availabilityWithin3Months") },
+    { value: "not_available", label: t("availabilityNotAvailable") },
+  ];
+
+  const JOB_TYPE_OPTIONS = [
+    { value: "remote", label: t("jobTypeRemote") },
+    { value: "hybrid", label: t("jobTypeHybrid") },
+    { value: "onsite", label: t("jobTypeOnsite") },
+    { value: "any", label: t("jobTypeAny") },
+  ];
+
+  const SORT_OPTIONS = [
+    { value: "newest", label: t("sortNewest") },
+    { value: "oldest", label: t("sortOldest") },
+    { value: "profile_high", label: t("sortProfileHigh") },
+    { value: "profile_low", label: t("sortProfileLow") },
+  ];
+
+  const EDIT_FIELDS: CrudField[] = [
+    { name: "currentLocation", label: t("fieldLocation"), type: "text" },
+    { name: "nationality", label: t("fieldNationality"), type: "text" },
+    { name: "summary", label: t("fieldSummary"), type: "textarea" },
+    { name: "skills", label: t("fieldSkillsCommaSeparated"), type: "text" },
+  ];
 
   // Filter state
   const [showFilters, setShowFilters] = useState(false);
@@ -155,20 +162,20 @@ export default function AgentJobSeekersPage() {
   };
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
-    { header: "Name", key: "userId", formatter: (_v, row) => (row.userId as { name?: string })?.name ?? "" },
-    { header: "Email", key: "userId", formatter: (_v, row) => (row.userId as { email?: string })?.email ?? "" },
-    { header: "Location", key: "currentLocation" },
-    { header: "Skills", key: "skills", formatter: (v) => Array.isArray(v) ? (v as string[]).join(", ") : "" },
-    { header: "Availability", key: "availabilityStatus" },
-    { header: "Profile %", key: "profileCompleteness" },
-    { header: "Joined", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: tc("name"), key: "userId", formatter: (_v, row) => (row.userId as { name?: string })?.name ?? "" },
+    { header: tc("email"), key: "userId", formatter: (_v, row) => (row.userId as { email?: string })?.email ?? "" },
+    { header: tc("country"), key: "currentLocation" },
+    { header: t("tableHeaderTopSkills"), key: "skills", formatter: (v) => Array.isArray(v) ? (v as string[]).join(", ") : "" },
+    { header: t("tableHeaderAvailability"), key: "availabilityStatus" },
+    { header: t("tableHeaderProfile"), key: "profileCompleteness" },
+    { header: t("tableHeaderJoined"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: seekers as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "agent-job-seekers",
-    title: "Agent Job Seekers",
+    title: t("exportTitle"),
   });
 
   const completenessColor = (pct: number) =>
@@ -190,33 +197,33 @@ export default function AgentJobSeekersPage() {
           <div className="max-w-3xl">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
               <Sparkles className="h-3.5 w-3.5" />
-              Agent workspace
+              {t("heroAgentWorkspace")}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">Job Seekers</h1>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("heroTitle")}</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Review candidate profiles, gauge profile readiness, and update key details before matching them into active roles.
+              {t("heroDescription")}
             </p>
           </div>
 
           <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:min-w-[260px]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Talent pool</p>
-            <p className="mt-1 text-lg font-semibold text-foreground">{pagination.total} profiles</p>
-            <p className="text-xs text-muted-foreground">Candidate accounts currently available in your pipeline scope.</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("talentPoolLabel")}</p>
+            <p className="mt-1 text-lg font-semibold text-foreground">{pagination.total} {t("talentPoolProfiles")}</p>
+            <p className="text-xs text-muted-foreground">{t("talentPoolDescription")}</p>
           </div>
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <div className="workspace-glass-panel rounded-2xl p-4">
-            <div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Complete</p><p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{completeProfiles}</p><p className="mt-1 text-xs text-muted-foreground">Profiles at 80% completeness or above.</p></div><div className="workspace-tone-emerald rounded-2xl p-2.5"><UserRoundSearch className="h-5 w-5" /></div></div>
+            <div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("cardCompleteLabel")}</p><p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{completeProfiles}</p><p className="mt-1 text-xs text-muted-foreground">{t("cardCompleteDescription")}</p></div><div className="workspace-tone-emerald rounded-2xl p-2.5"><UserRoundSearch className="h-5 w-5" /></div></div>
           </div>
           <div className="workspace-glass-panel rounded-2xl p-4">
-            <div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Avg. profile</p><p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{averageCompleteness}%</p><p className="mt-1 text-xs text-muted-foreground">Average readiness across current results.</p></div><div className="workspace-tone-sky rounded-2xl p-2.5"><ArrowRight className="h-5 w-5" /></div></div>
+            <div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("cardAvgProfileLabel")}</p><p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{averageCompleteness}%</p><p className="mt-1 text-xs text-muted-foreground">{t("cardAvgProfileDescription")}</p></div><div className="workspace-tone-sky rounded-2xl p-2.5"><ArrowRight className="h-5 w-5" /></div></div>
           </div>
           <div className="workspace-glass-panel rounded-2xl p-4">
-            <div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">With titles</p><p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{withTitles}</p><p className="mt-1 text-xs text-muted-foreground">Profiles that already include current job titles.</p></div><div className="workspace-tone-indigo rounded-2xl p-2.5"><BriefcaseBusiness className="h-5 w-5" /></div></div>
+            <div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("cardWithTitlesLabel")}</p><p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{withTitles}</p><p className="mt-1 text-xs text-muted-foreground">{t("cardWithTitlesDescription")}</p></div><div className="workspace-tone-indigo rounded-2xl p-2.5"><BriefcaseBusiness className="h-5 w-5" /></div></div>
           </div>
           <div className="workspace-glass-panel rounded-2xl p-4">
-            <div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Active filters</p><p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{activeFilterCount}</p><p className="mt-1 text-xs text-muted-foreground">Filters currently narrowing your results.</p></div><div className="workspace-tone-amber rounded-2xl p-2.5"><Filter className="h-5 w-5" /></div></div>
+            <div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("cardActiveFiltersLabel")}</p><p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{activeFilterCount}</p><p className="mt-1 text-xs text-muted-foreground">{t("cardActiveFiltersDescription")}</p></div><div className="workspace-tone-amber rounded-2xl p-2.5"><Filter className="h-5 w-5" /></div></div>
           </div>
         </div>
       </section>
@@ -224,16 +231,16 @@ export default function AgentJobSeekersPage() {
       {/* Search and Filters */}
       <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Browse profiles</p>
-          <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Search by candidate details or skill context</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Find the right subset of job seekers before making profile updates or shortlisting them for roles.</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("browseProfilesLabel")}</p>
+          <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("searchTitle")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t("searchDescription")}</p>
         </div>
 
         <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
           <TableToolbar
             search={search}
             onSearchChange={setSearch}
-            searchPlaceholder="Search by name, email or skill"
+            searchPlaceholder={t("searchPlaceholder")}
             onExportCsv={handleExportCsv}
             onExportExcel={handleExportExcel}
             onExportPdf={handleExportPdf}
@@ -247,7 +254,7 @@ export default function AgentJobSeekersPage() {
             onClick={() => setShowFilters((v) => !v)}
           >
             <Filter className="h-3.5 w-3.5" />
-            Filters
+            {tc("filter")}
             {activeFilterCount > 0 && (
               <Badge variant="secondary" className="ml-1 rounded-full px-1.5 py-0 text-[10px]">{activeFilterCount}</Badge>
             )}
@@ -256,7 +263,7 @@ export default function AgentJobSeekersPage() {
 
           {activeFilterCount > 0 && (
             <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-muted-foreground" onClick={clearFilters}>
-              <X className="h-3 w-3" /> Clear all
+              <X className="h-3 w-3" /> {t("clearAllFilters")}
             </Button>
           )}
         </div>
@@ -266,10 +273,10 @@ export default function AgentJobSeekersPage() {
           <div className="mt-4 grid gap-3 rounded-2xl border border-border/50 bg-background/50 p-4 sm:grid-cols-2 lg:grid-cols-4">
             {/* Availability */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Availability</label>
+              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("filterAvailabilityLabel")}</label>
               <Select value={availability} onValueChange={setAvailability}>
                 <SelectTrigger className="h-9 rounded-xl text-sm">
-                  <SelectValue placeholder="Any availability" />
+                  <SelectValue placeholder={t("filterAvailabilityPlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
                   {AVAILABILITY_OPTIONS.map((o) => (
@@ -278,16 +285,16 @@ export default function AgentJobSeekersPage() {
                 </SelectContent>
               </Select>
               {availability && (
-                <button className="text-[10px] text-muted-foreground underline" onClick={() => setAvailability("")}>Clear</button>
+                <button className="text-[10px] text-muted-foreground underline" onClick={() => setAvailability("")}>{tc("close")}</button>
               )}
             </div>
 
             {/* Job type preference */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Job type</label>
+              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("filterJobTypeLabel")}</label>
               <Select value={jobType} onValueChange={setJobType}>
                 <SelectTrigger className="h-9 rounded-xl text-sm">
-                  <SelectValue placeholder="Any type" />
+                  <SelectValue placeholder={t("filterJobTypePlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
                   {JOB_TYPE_OPTIONS.map((o) => (
@@ -296,17 +303,17 @@ export default function AgentJobSeekersPage() {
                 </SelectContent>
               </Select>
               {jobType && (
-                <button className="text-[10px] text-muted-foreground underline" onClick={() => setJobType("")}>Clear</button>
+                <button className="text-[10px] text-muted-foreground underline" onClick={() => setJobType("")}>{tc("close")}</button>
               )}
             </div>
 
             {/* Location */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Location</label>
+              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{tc("country")}</label>
               <div className="relative">
                 <MapPin className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder="City or country"
+                  placeholder={t("filterLocationPlaceholder")}
                   value={locationFilter}
                   onChange={(e) => setLocationFilter(e.target.value)}
                   className="h-9 rounded-xl pl-8 text-sm"
@@ -316,19 +323,19 @@ export default function AgentJobSeekersPage() {
 
             {/* Skills */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Skills</label>
+              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("filterSkillsLabel")}</label>
               <Input
-                placeholder="React, Node.js, Python..."
+                placeholder={t("filterSkillsPlaceholder")}
                 value={skillsFilter}
                 onChange={(e) => setSkillsFilter(e.target.value)}
                 className="h-9 rounded-xl text-sm"
               />
-              <p className="text-[10px] text-muted-foreground">Comma-separated</p>
+              <p className="text-[10px] text-muted-foreground">{t("filterSkillsHint")}</p>
             </div>
 
             {/* Profile completeness range */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Profile %</label>
+              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("filterProfileLabel")}</label>
               <div className="flex items-center gap-2">
                 <Input
                   type="number"
@@ -337,7 +344,7 @@ export default function AgentJobSeekersPage() {
                   onChange={(e) => setMinProfile(Math.max(0, Math.min(100, Number(e.target.value))))}
                   className="h-9 w-20 rounded-xl text-sm text-center"
                 />
-                <span className="text-xs text-muted-foreground">to</span>
+                <span className="text-xs text-muted-foreground">{t("filterProfileTo")}</span>
                 <Input
                   type="number"
                   min={0} max={100}
@@ -350,7 +357,7 @@ export default function AgentJobSeekersPage() {
 
             {/* Has CV */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Has CV</label>
+              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("filterHasCVLabel")}</label>
               <Button
                 variant={hasCV ? "default" : "outline"}
                 size="sm"
@@ -358,13 +365,13 @@ export default function AgentJobSeekersPage() {
                 onClick={() => setHasCV((v) => !v)}
               >
                 <FileText className="h-3.5 w-3.5" />
-                {hasCV ? "CV uploaded only" : "Any"}
+                {hasCV ? t("filterCVUploadedOnly") : tc("all")}
               </Button>
             </div>
 
             {/* Sort */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Sort by</label>
+              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("filterSortLabel")}</label>
               <Select value={sortBy} onValueChange={setSortBy}>
                 <SelectTrigger className="h-9 rounded-xl text-sm">
                   <SelectValue />
@@ -384,25 +391,25 @@ export default function AgentJobSeekersPage() {
       <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Current results</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Review profile strength before the next match</h2>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("resultsLabel")}</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("resultsTitle")}</h2>
           </div>
-          <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium"><ArrowRight className="h-3.5 w-3.5 text-primary" />{pagination.total} profiles across {pagination.totalPages} page{pagination.totalPages === 1 ? "" : "s"}</div>
+          <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium"><ArrowRight className="h-3.5 w-3.5 text-primary" />{t("resultsPagination", { total: pagination.total, pages: pagination.totalPages })}</div>
         </div>
 
         <div className="workspace-subtle-surface mt-5 overflow-hidden rounded-[24px]">
         <Table>
           <TableHeader>
             <TableRow className="workspace-subtle-surface hover:bg-secondary/70">
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Title</TableHead>
-              <TableHead>Location</TableHead>
-              <TableHead>Top Skills</TableHead>
-              <TableHead>Availability</TableHead>
-              <TableHead>Profile</TableHead>
-              <TableHead>Joined</TableHead>
-              {can("job_seekers", "update") && <TableHead>Actions</TableHead>}
+              <TableHead>{tc("name")}</TableHead>
+              <TableHead>{tc("email")}</TableHead>
+              <TableHead>{t("tableHeaderTitle")}</TableHead>
+              <TableHead>{tc("country")}</TableHead>
+              <TableHead>{t("tableHeaderTopSkills")}</TableHead>
+              <TableHead>{t("tableHeaderAvailability")}</TableHead>
+              <TableHead>{t("tableHeaderProfile")}</TableHead>
+              <TableHead>{t("tableHeaderJoined")}</TableHead>
+              {can("job_seekers", "update") && <TableHead>{tc("actions")}</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -421,9 +428,9 @@ export default function AgentJobSeekersPage() {
                 <TableCell colSpan={9} className="h-32 text-center">
                   <div className="flex flex-col items-center gap-2 text-muted-foreground">
                     <Inbox className="h-8 w-8 text-muted-foreground" />
-                    <span className="text-sm">No job seekers found</span>
+                    <span className="text-sm">{t("noJobSeekersFound")}</span>
                     {activeFilterCount > 0 && (
-                      <Button variant="ghost" size="sm" className="mt-1 text-xs" onClick={clearFilters}>Clear filters</Button>
+                      <Button variant="ghost" size="sm" className="mt-1 text-xs" onClick={clearFilters}>{t("clearAllFilters")}</Button>
                     )}
                   </div>
                 </TableCell>
@@ -474,7 +481,7 @@ export default function AgentJobSeekersPage() {
                 </TableCell>
                 {can("job_seekers", "update") && (
                   <TableCell>
-                    <Button variant="ghost" size="xs" onClick={() => { setEditSeeker(s); setModalOpen(true); }} title="Edit" aria-label={`Edit ${s.userId?.name ?? "job seeker"}`}>
+                    <Button variant="ghost" size="xs" onClick={() => { setEditSeeker(s); setModalOpen(true); }} title={tc("edit")} aria-label={t("editJobSeeker", { name: s.userId?.name ?? "job seeker" })}>
                       <Edit2 className="h-3.5 w-3.5 text-primary" />
                     </Button>
                   </TableCell>
@@ -498,7 +505,7 @@ export default function AgentJobSeekersPage() {
       <CrudModal
         open={modalOpen}
         onClose={() => { setModalOpen(false); setEditSeeker(null); }}
-        title="Edit Job Seeker"
+        title={t("modalEditTitle")}
         fields={EDIT_FIELDS}
         initialValues={editSeeker ? {
           currentLocation: editSeeker.currentLocation ?? "",

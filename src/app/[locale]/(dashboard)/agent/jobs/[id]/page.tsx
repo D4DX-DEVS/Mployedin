@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter, useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   ArrowLeft, MapPin, Briefcase, DollarSign, Users, Eye,
   Calendar, Tag, Clock,
@@ -24,6 +25,8 @@ export default function AgentJobDetailPage() {
   const router = useRouter();
   const { locale, id } = useParams<{ locale: string; id: string }>();
   const { data: job, isLoading: loading } = useJobDetail(id);
+  const t = useTranslations("agentJobDetail");
+  const tc = useTranslations("common");
 
   if (loading) {
     return (
@@ -39,10 +42,10 @@ export default function AgentJobDetailPage() {
     return (
       <div className="page-container">
         <div className="card-base p-8 text-center py-20">
-          <h2 className="text-lg font-semibold mb-2">Job not found</h2>
-          <p className="text-sm text-muted-foreground mb-5">This job may have been removed.</p>
+          <h2 className="text-lg font-semibold mb-2">{t("jobNotFound")}</h2>
+          <p className="text-sm text-muted-foreground mb-5">{t("jobMayHaveBeenRemoved")}</p>
           <Button variant="outline" onClick={() => router.push(`/${locale}/agent/jobs`)}>
-            <ArrowLeft className="w-4 h-4 me-2" /> Back to Jobs
+            <ArrowLeft className="w-4 h-4 me-2" /> {t("backToJobs")}
           </Button>
         </div>
       </div>
@@ -52,7 +55,7 @@ export default function AgentJobDetailPage() {
   const loc = typeof job.location === "string"
     ? job.location
     : job.location
-      ? `${job.location.city ?? ""}${job.location.city && job.location.country ? ", " : ""}${job.location.country ?? ""}${job.location.isRemote ? " (Remote)" : ""}`
+      ? `${job.location.city ?? ""}${job.location.city && job.location.country ? ", " : ""}${job.location.country ?? ""}${job.location.isRemote ? ` (${t("remote")})` : ""}`
       : null;
 
   const posted = new Date(job.createdAt).toLocaleDateString("en-US", {
@@ -67,11 +70,11 @@ export default function AgentJobDetailPage() {
       {/* Back + View Candidates */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <Button variant="ghost" size="sm" className="gap-2 -ml-2 text-muted-foreground hover:text-foreground" onClick={() => router.push(`/${locale}/agent/jobs`)}>
-          <ArrowLeft className="w-4 h-4" /> Back to Jobs
+          <ArrowLeft className="w-4 h-4" /> {t("backToJobs")}
         </Button>
         <Link href={`/${locale}/agent/candidates?jobId=${id}`}>
           <Button size="sm" variant="outline" className="gap-1.5 h-9">
-            <Users className="w-3.5 h-3.5" /> View Candidates
+            <Users className="w-3.5 h-3.5" /> {t("viewCandidates")}
           </Button>
         </Link>
       </div>
@@ -106,7 +109,7 @@ export default function AgentJobDetailPage() {
               <>
                 <span className="text-border">·</span>
                 <span className="flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 shrink-0" /> Posted {posted}
+                  <Calendar className="w-3.5 h-3.5 shrink-0" /> {t("posted", { date: posted })}
                 </span>
               </>
             </div>
@@ -121,13 +124,13 @@ export default function AgentJobDetailPage() {
           <div className="flex flex-col items-center justify-center p-2 sm:p-4 gap-1">
             <div className="text-xl font-bold text-foreground">{job.vacancies ?? 1}</div>
             <div className="text-xs text-muted-foreground flex items-center gap-1">
-              <Users className="w-3 h-3" /> Vacancies
+              <Users className="w-3 h-3" /> {t("vacancies")}
             </div>
           </div>
           <div className="flex flex-col items-center justify-center p-2 sm:p-4 gap-1">
             <div className="text-xl font-bold text-foreground">{job.views ?? 0}</div>
             <div className="text-xs text-muted-foreground flex items-center gap-1">
-              <Eye className="w-3 h-3" /> Views
+              <Eye className="w-3 h-3" /> {t("views")}
             </div>
           </div>
           <div className="flex flex-col items-center justify-center p-2 sm:p-4 gap-1">
@@ -138,13 +141,13 @@ export default function AgentJobDetailPage() {
             </div>
             <div className="text-xs text-muted-foreground flex items-center gap-1">
               <DollarSign className="w-3 h-3" /> {job.salary?.currency ?? "USD"}
-              {job.salary?.isNegotiable && " (Negotiable)"}
+              {job.salary?.isNegotiable && ` (${t("negotiable")})`}
             </div>
           </div>
           <div className="flex flex-col items-center justify-center p-2 sm:p-4 gap-1">
-            <div className="text-base font-bold text-foreground leading-tight text-center">{expires ?? "No expiry"}</div>
+            <div className="text-base font-bold text-foreground leading-tight text-center">{expires ?? t("noExpiry")}</div>
             <div className="text-xs text-muted-foreground flex items-center gap-1">
-              <Clock className="w-3 h-3" /> Expires
+              <Clock className="w-3 h-3" /> {t("expires")}
             </div>
           </div>
         </div>
@@ -152,7 +155,7 @@ export default function AgentJobDetailPage() {
 
       {/* Description */}
       <div className="card-base p-5 sm:p-6">
-        <h2 className="text-base font-semibold text-foreground mb-3">Job Description</h2>
+        <h2 className="text-base font-semibold text-foreground mb-3">{t("jobDescription")}</h2>
         <div className="text-sm leading-relaxed text-foreground/80 whitespace-pre-wrap">
           {job.description}
         </div>
@@ -161,11 +164,11 @@ export default function AgentJobDetailPage() {
       {/* Requirements */}
       {job.requirements && (
         <div className="card-base p-5 sm:p-6">
-          <h2 className="text-base font-semibold text-foreground mb-4">Requirements</h2>
+          <h2 className="text-base font-semibold text-foreground mb-4">{t("requirements")}</h2>
 
           {job.requirements.skills && job.requirements.skills.length > 0 && (
             <div className="mb-5">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2.5">Skills</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2.5">{t("skills")}</p>
               <div className="flex flex-wrap gap-2">
                 {job.requirements.skills.map((s) => (
                   <Badge key={s} variant="secondary" className="text-xs font-medium bg-primary/8 text-primary border-0 px-2.5 py-1">{s}</Badge>
@@ -177,21 +180,21 @@ export default function AgentJobDetailPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
             {(job.requirements.experienceMin !== undefined || job.requirements.experienceMax !== undefined) && (
               <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Experience</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("experience")}</p>
                 <p className="text-sm font-semibold text-foreground">
-                  {job.requirements.experienceMin ?? 0}–{job.requirements.experienceMax ?? 30} years
+                  {job.requirements.experienceMin ?? 0}–{job.requirements.experienceMax ?? 30} {t("years")}
                 </p>
               </div>
             )}
             {job.requirements.education && (
               <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Education</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("education")}</p>
                 <p className="text-sm font-semibold text-foreground">{job.requirements.education}</p>
               </div>
             )}
             {job.requirements.languages && job.requirements.languages.length > 0 && (
               <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Languages</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("languages")}</p>
                 <p className="text-sm font-semibold text-foreground">{job.requirements.languages.join(", ")}</p>
               </div>
             )}
@@ -203,7 +206,7 @@ export default function AgentJobDetailPage() {
       {job.tags && job.tags.length > 0 && (
         <div className="card-base p-5 sm:p-6">
           <h2 className="text-base font-semibold text-foreground mb-3 flex items-center gap-2">
-            <Tag className="w-4 h-4 text-muted-foreground" /> Tags
+            <Tag className="w-4 h-4 text-muted-foreground" /> {t("tags")}
           </h2>
           <div className="flex flex-wrap gap-2">
             {job.tags.map((t) => (

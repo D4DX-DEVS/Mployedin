@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -49,18 +50,22 @@ interface Invoice {
   createdAt: string;
 }
 
-const STATUS_OPTIONS = [
-  { value: "all", label: "All Statuses" },
-  { value: "draft", label: "Draft" },
-  { value: "pending_approval", label: "Pending Approval" },
-  { value: "issued", label: "Issued" },
-  { value: "paid", label: "Paid" },
-  { value: "partially_paid", label: "Partially Paid" },
-  { value: "overdue", label: "Overdue" },
-  { value: "void", label: "Void" },
-];
-
 export default function AgentInvoicesPage() {
+  const t = useTranslations("agentInvoices");
+  const tc = useTranslations("common");
+  const tt = useTranslations("table");
+  const tconf = useTranslations("confirm");
+
+  const STATUS_OPTIONS = [
+    { value: "all", label: t("statusAll") },
+    { value: "draft", label: t("statusDraft") },
+    { value: "pending_approval", label: t("statusPendingApproval") },
+    { value: "issued", label: t("statusIssued") },
+    { value: "paid", label: t("statusPaid") },
+    { value: "partially_paid", label: t("statusPartiallyPaid") },
+    { value: "overdue", label: t("statusOverdue") },
+    { value: "void", label: t("statusVoid") },
+  ];
   const [activeView, setActiveView] = useState<"table" | "analytics">("table");
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -89,13 +94,13 @@ export default function AgentInvoicesPage() {
       if (dateFrom) params.set("dateFrom", dateFrom);
       if (dateTo) params.set("dateTo", dateTo);
       const res = await fetch(`/api/invoices?${params}`);
-      if (!res.ok) throw new Error("Failed to load invoices");
+      if (!res.ok) throw new Error(t("errorFailedToLoad"));
       const data = await res.json();
       setInvoices(data.invoices ?? []);
       updateTotal(data.total ?? 0);
       if (data.summary) setSummary(data.summary);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to load invoices";
+      const msg = err instanceof Error ? err.message : t("errorFailedToLoad");
       setErrorMessage(msg);
       toast.error(msg);
     } finally {
@@ -104,78 +109,78 @@ export default function AgentInvoicesPage() {
   }, [statusFilter, dateFrom, dateTo, page, limit, updateTotal]);
 
   useEffect(() => { fetchInvoices(); }, [fetchInvoices]);
-  useEffect(() => { document.title = "My Invoices · MPLOYEDIN"; }, []);
+  useEffect(() => { document.title = `${t("pageTitle")} · MPLOYEDIN`; }, [t]);
 
   const hasActiveFilters = Boolean(statusFilter || dateFrom || dateTo);
 
   const exportColumns: ExportColumn<Invoice>[] = [
-    { header: "Invoice #", key: "invoiceNumber" },
-    { header: "Employer", key: "employerId" as keyof Invoice, formatter: (_v, r) => (r as unknown as Invoice).employerId?.companyName ?? "—" },
-    { header: "Job", key: "jobId" as keyof Invoice, formatter: (_v, r) => (r as unknown as Invoice).jobId?.title ?? "—" },
-    { header: "Category", key: "category" },
-    { header: "Total", key: "totalAmount", formatter: v => String(v ?? 0) },
-    { header: "Paid", key: "paidAmount", formatter: v => String(v ?? 0) },
-    { header: "Balance", key: "balanceDue", formatter: v => String(v ?? 0) },
-    { header: "My Commission", key: "commissions" as keyof Invoice, formatter: (_v, r) => {
+    { header: t("exportHeaderInvoiceNumber"), key: "invoiceNumber" },
+    { header: t("exportHeaderEmployer"), key: "employerId" as keyof Invoice, formatter: (_v, r) => (r as unknown as Invoice).employerId?.companyName ?? "—" },
+    { header: t("exportHeaderJob"), key: "jobId" as keyof Invoice, formatter: (_v, r) => (r as unknown as Invoice).jobId?.title ?? "—" },
+    { header: t("exportHeaderCategory"), key: "category" },
+    { header: t("exportHeaderTotal"), key: "totalAmount", formatter: v => String(v ?? 0) },
+    { header: t("exportHeaderPaid"), key: "paidAmount", formatter: v => String(v ?? 0) },
+    { header: t("exportHeaderBalance"), key: "balanceDue", formatter: v => String(v ?? 0) },
+    { header: t("exportHeaderMyCommission"), key: "commissions" as keyof Invoice, formatter: (_v, r) => {
       const inv = r as unknown as Invoice;
       const ac = inv.commissions?.find(c => c.role === "agent");
       return ac ? `${ac.rate}% = ${ac.amount}` : "—";
     }},
-    { header: "Status", key: "status" },
-    { header: "Due", key: "dueDate" as keyof Invoice, formatter: v => v ? new Date(String(v)).toLocaleDateString() : "—" },
+    { header: tc("status"), key: "status" },
+    { header: t("exportHeaderDue"), key: "dueDate" as keyof Invoice, formatter: v => v ? new Date(String(v)).toLocaleDateString() : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: invoices as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "my-invoices",
-    title: "My Invoice Report",
+    title: t("exportTitle"),
   });
 
   return (
     <div className="page-container space-y-6">
       <TableToolbar
-        title="My Invoices & Commissions"
-        description="View and create recruitment invoices for your assigned jobs. Track your commission earnings and payment status."
-        search="" onSearchChange={() => {}} searchPlaceholder="Search invoices…"
+        title={t("title")}
+        description={t("description")}
+        search="" onSearchChange={() => {}} searchPlaceholder={t("searchPlaceholder")}
         left={
           <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
-            <Sparkles className="h-3.5 w-3.5" /> Agent workspace
+            <Sparkles className="h-3.5 w-3.5" /> {t("agentWorkspace")}
           </div>
         }
         right={
           <div className="flex items-center gap-2">
             <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">
-              <ArrowRight className="h-3.5 w-3.5 text-primary" /> {total.toLocaleString()} invoices
+              <ArrowRight className="h-3.5 w-3.5 text-primary" /> {total.toLocaleString()} {t("invoicesPill")}
             </div>
             <div className="inline-flex rounded-lg border border-border/70 bg-card">
               <button onClick={() => setActiveView("table")} className={`rounded-l-lg px-3 py-1.5 text-xs font-medium transition-colors ${activeView === "table" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-                <FileText className="mr-1 inline-block h-3.5 w-3.5" /> Invoices
+                <FileText className="mr-1 inline-block h-3.5 w-3.5" /> {t("tabButtonInvoices")}
               </button>
               <button onClick={() => setActiveView("analytics")} className={`rounded-r-lg px-3 py-1.5 text-xs font-medium transition-colors ${activeView === "analytics" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-                <BarChart3 className="mr-1 inline-block h-3.5 w-3.5" /> Analytics
+                <BarChart3 className="mr-1 inline-block h-3.5 w-3.5" /> {t("tabButtonAnalytics")}
               </button>
             </div>
           </div>
         }
         actions={
           <Button onClick={() => setShowBuilder(true)} className="h-9 gap-2 rounded-lg bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700">
-            <Plus className="h-4 w-4" /> Create Invoice
+            <Plus className="h-4 w-4" /> {t("createInvoiceButton")}
           </Button>
         }
         onExportCsv={handleExportCsv} onExportExcel={handleExportExcel} onExportPdf={handleExportPdf}
         filterContent={
           <div className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              <SearchableSelect id="ag-inv-status" className="h-11 w-full rounded-xl border-border bg-card" options={STATUS_OPTIONS} value={statusFilter || "all"} onValueChange={v => { setStatusFilter(v === "all" ? "" : v); resetPage(); }} placeholder="All Statuses" />
+              <SearchableSelect id="ag-inv-status" className="h-11 w-full rounded-xl border-border bg-card" options={STATUS_OPTIONS} value={statusFilter || "all"} onValueChange={v => { setStatusFilter(v === "all" ? "" : v); resetPage(); }} placeholder={t("statusAll")} />
               <div className="flex items-center gap-2 xl:col-span-2">
                 <div className="relative flex-1"><CalendarDays className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input type="date" className="h-11 rounded-xl border-border bg-card pl-9 text-sm" value={dateFrom} onChange={e => { setDateFrom(e.target.value); resetPage(); }} /></div>
-                <span className="text-xs text-muted-foreground">to</span>
+                <span className="text-xs text-muted-foreground">{t("filterDateTo")}</span>
                 <div className="relative flex-1"><Input type="date" className="h-11 rounded-xl border-border bg-card text-sm" value={dateTo} onChange={e => { setDateTo(e.target.value); resetPage(); }} /></div>
               </div>
             </div>
             <div className="flex justify-end">
               <Button type="button" variant="outline" onClick={() => { setStatusFilter(""); setDateFrom(""); setDateTo(""); resetPage(); }} disabled={!hasActiveFilters} className="h-11 rounded-xl">
-                <RotateCcw className="mr-2 h-4 w-4" /> Clear
+                <RotateCcw className="mr-2 h-4 w-4" /> {tc("filter")}
               </Button>
             </div>
           </div>
@@ -192,13 +197,13 @@ export default function AgentInvoicesPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               {(["7d", "30d", "90d", "1y"] as const).map(p => (
-                <button key={p} onClick={() => setAnalyticsPeriod(p)} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${analyticsPeriod === p ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}>{p === "1y" ? "1 Year" : p}</button>
+                <button key={p} onClick={() => setAnalyticsPeriod(p)} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${analyticsPeriod === p ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}>{p === "1y" ? t("periodOneYear") : p}</button>
               ))}
             </div>
-            <Button variant="outline" size="sm" onClick={refreshAnalytics} className="h-8 gap-1.5 rounded-lg text-xs"><RefreshCw className="h-3.5 w-3.5" /> Refresh</Button>
+            <Button variant="outline" size="sm" onClick={refreshAnalytics} className="h-8 gap-1.5 rounded-lg text-xs"><RefreshCw className="h-3.5 w-3.5" /> {t("refreshButton")}</Button>
           </div>
           {analyticsData && <RevenueAnalyticsPanel data={analyticsData} currency={displayCurrency} />}
-          {analyticsLoading && <div className="py-12 text-center text-sm text-muted-foreground">Loading analytics...</div>}
+          {analyticsLoading && <div className="py-12 text-center text-sm text-muted-foreground">{tc("loading")}</div>}
         </div>
       )}
 
@@ -209,24 +214,24 @@ export default function AgentInvoicesPage() {
 
           <section className="workspace-panel-surface overflow-hidden rounded-[24px]">
             <div className="flex flex-col gap-2 border-b border-border/80 px-4 py-4 sm:px-5">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">My Invoice Ledger</p>
-              <h3 className="text-lg font-semibold text-foreground">Your Invoices</h3>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sectionLabel")}</p>
+              <h3 className="text-lg font-semibold text-foreground">{t("sectionHeading")}</h3>
             </div>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="border-border/80 bg-secondary/72 hover:bg-secondary/72">
-                    <TableHead>Invoice #</TableHead>
-                    <TableHead>Employer</TableHead>
-                    <TableHead className="hidden md:table-cell">Job</TableHead>
-                    <TableHead className="hidden lg:table-cell">Category</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    <TableHead className="text-right">Paid</TableHead>
-                    <TableHead className="text-right">Balance</TableHead>
-                    <TableHead className="hidden xl:table-cell">My Commission</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="hidden md:table-cell">Due Date</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{t("tableHeaderInvoiceNumber")}</TableHead>
+                    <TableHead>{t("tableHeaderEmployer")}</TableHead>
+                    <TableHead className="hidden md:table-cell">{t("tableHeaderJob")}</TableHead>
+                    <TableHead className="hidden lg:table-cell">{t("tableHeaderCategory")}</TableHead>
+                    <TableHead className="text-right">{t("tableHeaderTotal")}</TableHead>
+                    <TableHead className="text-right">{t("tableHeaderPaid")}</TableHead>
+                    <TableHead className="text-right">{t("tableHeaderBalance")}</TableHead>
+                    <TableHead className="hidden xl:table-cell">{t("tableHeaderMyCommission")}</TableHead>
+                    <TableHead>{tc("status")}</TableHead>
+                    <TableHead className="hidden md:table-cell">{t("tableHeaderDueDate")}</TableHead>
+                    <TableHead className="text-right">{tc("actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -237,7 +242,7 @@ export default function AgentInvoicesPage() {
                   )) : invoices.length === 0 ? (
                     <TableRow className="border-border/70 hover:bg-transparent">
                       <TableCell colSpan={10} className="px-6 py-14 text-center">
-                        <div className="flex flex-col items-center gap-3"><div className="workspace-muted-pill rounded-[20px] p-3"><Inbox className="h-6 w-6" /></div><div><p className="text-sm font-semibold">No invoices yet</p><p className="mt-1 text-sm text-muted-foreground">Create your first invoice to start tracking commissions.</p></div></div>
+                        <div className="flex flex-col items-center gap-3"><div className="workspace-muted-pill rounded-[20px] p-3"><Inbox className="h-6 w-6" /></div><div><p className="text-sm font-semibold">{t("emptyStateTitle")}</p><p className="mt-1 text-sm text-muted-foreground">{t("emptyStateDescription")}</p></div></div>
                       </TableCell>
                     </TableRow>
                   ) : invoices.map((inv) => {

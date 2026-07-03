@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -93,6 +94,8 @@ export default function LeadDetailPage() {
   const params = useParams();
   const router = useRouter();
   const leadId = params?.id as string;
+  const t = useTranslations("agentLeadDetail");
+  const tc = useTranslations("common");
 
   const [lead, setLead] = useState<Lead | null>(null);
   const [loading, setLoading] = useState(true);
@@ -108,11 +111,11 @@ export default function LeadDetailPage() {
       const data = await res.json();
       setLead(data);
     } else {
-      toast.error("Failed to load lead");
+      toast.error(t("failedToLoadLead"));
       router.back();
     }
     setLoading(false);
-  }, [leadId, router]);
+  }, [leadId, router, t]);
 
   useEffect(() => { fetchLead(); }, [fetchLead]);
 
@@ -126,9 +129,9 @@ export default function LeadDetailPage() {
     if (res.ok) {
       const data = await res.json();
       setLead(data);
-      toast.success(`Moved to ${STAGE_CONFIG[status].label}`);
+      toast.success(t("movedToStatus", { status: STAGE_CONFIG[status].label }));
     } else {
-      toast.error("Failed to update status");
+      toast.error(t("failedToUpdateStatus"));
     }
     setUpdatingStatus(false);
   };
@@ -145,9 +148,9 @@ export default function LeadDetailPage() {
       setActivityForm({ action: "note", note: "" });
       setShowActivityForm(false);
       await fetchLead();
-      toast.success("Activity logged");
+      toast.success(t("activityLogged"));
     } else {
-      toast.error("Failed to add activity");
+      toast.error(t("failedToAddActivity"));
     }
     setAddingActivity(false);
   };
@@ -156,7 +159,7 @@ export default function LeadDetailPage() {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        <span className="ml-2 text-sm text-muted-foreground">Loading lead...</span>
+        <span className="ml-2 text-sm text-muted-foreground">{t("loadingLead")}</span>
       </div>
     );
   }
@@ -178,7 +181,7 @@ export default function LeadDetailPage() {
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-2xl">
             <Link href="../leads" className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition hover:text-foreground">
-              <ArrowLeft className="h-3.5 w-3.5" />Back to Pipeline
+              <ArrowLeft className="h-3.5 w-3.5" />{t("backToPipeline")}
             </Link>
             <h1 className="mt-3 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
               {lead.companyName}
@@ -201,11 +204,11 @@ export default function LeadDetailPage() {
               </span>
             )}
             <div className="workspace-glass-panel rounded-xl px-3 py-2 text-center">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Age</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{t("ageLabel")}</p>
               <p className="text-sm font-bold text-foreground">{daysSinceCreated}d</p>
             </div>
             <div className="workspace-glass-panel rounded-xl px-3 py-2 text-center">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Last Touch</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{t("lastTouchLabel")}</p>
               <p className={`text-sm font-bold ${daysSinceLastActivity > 7 ? "text-rose-600" : "text-foreground"}`}>{daysSinceLastActivity}d ago</p>
             </div>
           </div>
@@ -242,7 +245,7 @@ export default function LeadDetailPage() {
               disabled={updatingStatus}
               className="ml-2 inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2.5 py-1.5 text-[11px] font-semibold text-rose-600 transition hover:bg-rose-50 dark:border-rose-500/30 dark:text-rose-400"
             >
-              <XCircle className="h-3.5 w-3.5" />Mark Lost
+              <XCircle className="h-3.5 w-3.5" />{t("markLost")}
             </button>
           )}
           {lead.status === "lost" && (
@@ -251,7 +254,7 @@ export default function LeadDetailPage() {
               disabled={updatingStatus}
               className="ml-2 inline-flex items-center gap-1 rounded-lg border border-sky-200 px-2.5 py-1.5 text-[11px] font-semibold text-sky-600 transition hover:bg-sky-50 dark:border-sky-500/30 dark:text-sky-400"
             >
-              <Sparkles className="h-3.5 w-3.5" />Re-open
+              <Sparkles className="h-3.5 w-3.5" />{t("reopen")}
             </button>
           )}
         </div>
@@ -261,22 +264,22 @@ export default function LeadDetailPage() {
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         {/* Left: Contact & Details */}
         <section className="workspace-panel-surface space-y-5 rounded-[28px] p-5 sm:p-6 lg:col-span-1">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Contact Details</h2>
+          <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">{t("contactDetails")}</h2>
           <div className="space-y-3 text-sm">
-            <InfoRow icon={<User className="h-4 w-4" />} label="Contact" value={lead.contactPerson} />
-            <InfoRow icon={<Mail className="h-4 w-4" />} label="Email" value={lead.contactEmail} isLink />
-            <InfoRow icon={<Phone className="h-4 w-4" />} label="Phone" value={lead.contactPhone} />
-            <InfoRow icon={<MapPin className="h-4 w-4" />} label="Location" value={[lead.city, lead.country].filter(Boolean).join(", ")} />
-            <InfoRow icon={<Building2 className="h-4 w-4" />} label="Industry" value={lead.industry} />
-            <InfoRow icon={<Target className="h-4 w-4" />} label="Source" value={lead.source} />
+            <InfoRow icon={<User className="h-4 w-4" />} label={t("contactLabel")} value={lead.contactPerson} />
+            <InfoRow icon={<Mail className="h-4 w-4" />} label={tc("email")} value={lead.contactEmail} isLink />
+            <InfoRow icon={<Phone className="h-4 w-4" />} label={tc("phone")} value={lead.contactPhone} />
+            <InfoRow icon={<MapPin className="h-4 w-4" />} label={t("locationLabel")} value={[lead.city, lead.country].filter(Boolean).join(", ")} />
+            <InfoRow icon={<Building2 className="h-4 w-4" />} label={t("industryLabel")} value={lead.industry} />
+            <InfoRow icon={<Target className="h-4 w-4" />} label={t("sourceLabel")} value={lead.source} />
             <InfoRow
               icon={<Flame className="h-4 w-4" />}
-              label="Expected Revenue"
+              label={t("expectedRevenueLabel")}
               value={lead.expectedRevenue ? `${lead.expectedRevenueCurrency ?? "AED"} ${lead.expectedRevenue.toLocaleString()}` : undefined}
             />
             <InfoRow
               icon={<Calendar className="h-4 w-4" />}
-              label="Follow-up"
+              label={t("followUpLabel")}
               value={lead.followUpAt ? new Date(lead.followUpAt).toLocaleDateString() : undefined}
               highlight={!!isOverdue}
             />
@@ -285,7 +288,7 @@ export default function LeadDetailPage() {
           {/* Notes */}
           {lead.notes && (
             <div className="mt-4">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Notes</h3>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("notesLabel")}</h3>
               <p className="mt-2 rounded-xl bg-muted/50 p-3 text-sm text-foreground">{lead.notes}</p>
             </div>
           )}
@@ -293,7 +296,7 @@ export default function LeadDetailPage() {
           {/* Lost reason */}
           {lead.lostReason && lead.status === "lost" && (
             <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 dark:border-rose-500/30 dark:bg-rose-500/10">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-rose-700 dark:text-rose-300">Lost Reason</h3>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-rose-700 dark:text-rose-300">{t("lostReasonLabel")}</h3>
               <p className="mt-1 text-sm text-rose-800 dark:text-rose-200">{lead.lostReason}</p>
             </div>
           )}
@@ -302,13 +305,13 @@ export default function LeadDetailPage() {
         {/* Right: Activity Timeline */}
         <section className="workspace-panel-surface space-y-5 rounded-[28px] p-5 sm:p-6 lg:col-span-2">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Activity Timeline</h2>
+            <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">{t("activityTimeline")}</h2>
             <Button
               size="sm"
               onClick={() => setShowActivityForm(!showActivityForm)}
               className="h-8 rounded-lg px-3 text-xs"
             >
-              <Plus className="mr-1 h-3.5 w-3.5" />Log Activity
+              <Plus className="mr-1 h-3.5 w-3.5" />{t("logActivity")}
             </Button>
           </div>
 
@@ -316,22 +319,22 @@ export default function LeadDetailPage() {
           {showActivityForm && (
             <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 dark:bg-primary/10">
               <div className="flex flex-wrap gap-2">
-                {ACTIVITY_TYPES.map((t) => (
+                {ACTIVITY_TYPES.map((activityType) => (
                   <button
-                    key={t.value}
-                    onClick={() => setActivityForm((f) => ({ ...f, action: t.value }))}
+                    key={activityType.value}
+                    onClick={() => setActivityForm((f) => ({ ...f, action: activityType.value }))}
                     className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition ${
-                      activityForm.action === t.value
+                      activityForm.action === activityType.value
                         ? "bg-primary text-primary-foreground shadow-sm"
                         : "bg-background border border-border text-muted-foreground hover:text-foreground"
                     }`}
                   >
-                    {t.icon}{t.label}
+                    {activityType.icon}{activityType.label}
                   </button>
                 ))}
               </div>
               <textarea
-                placeholder="Add notes about this activity..."
+                placeholder={t("activityNotesPlaceholder")}
                 value={activityForm.note}
                 onChange={(e) => setActivityForm((f) => ({ ...f, note: e.target.value }))}
                 rows={3}
@@ -340,10 +343,10 @@ export default function LeadDetailPage() {
               <div className="mt-3 flex gap-2">
                 <Button size="sm" onClick={addActivity} disabled={addingActivity} className="h-8 rounded-lg px-4 text-xs">
                   {addingActivity ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}
-                  Save Activity
+                  {t("saveActivity")}
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => setShowActivityForm(false)} className="h-8 rounded-lg px-3 text-xs">
-                  Cancel
+                  {tc("cancel")}
                 </Button>
               </div>
             </div>
@@ -357,13 +360,13 @@ export default function LeadDetailPage() {
             {lead.activityLog.length === 0 ? (
               <div className="py-10 text-center">
                 <Clock className="mx-auto h-8 w-8 text-muted-foreground/30" />
-                <p className="mt-2 text-sm text-muted-foreground">No activities yet. Log your first interaction above.</p>
+                <p className="mt-2 text-sm text-muted-foreground">{t("noActivitiesYet")}</p>
               </div>
             ) : (
               <div className="space-y-4">
                 {[...lead.activityLog].reverse().map((activity, i) => {
                   const icon = ACTIVITY_ICONS[activity.action] ?? <MessageSquare className="h-3.5 w-3.5" />;
-                  const timeAgo = getTimeAgo(activity.timestamp);
+                  const timeAgo = getTimeAgo(activity.timestamp, t);
                   return (
                     <div key={i} className="relative flex gap-3 pl-2">
                       <div className="z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-background text-muted-foreground">
@@ -421,14 +424,14 @@ function InfoRow({ icon, label, value, isLink, highlight }: {
   );
 }
 
-function getTimeAgo(date: string): string {
+function getTimeAgo(date: string, t: ReturnType<typeof useTranslations>): string {
   const diff = Date.now() - new Date(date).getTime();
   const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return "Just now";
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 1) return t("justNow");
+  if (minutes < 60) return t("minutesAgo", { minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return t("hoursAgo", { hours });
   const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d ago`;
+  if (days < 7) return t("daysAgo", { days });
   return new Date(date).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }

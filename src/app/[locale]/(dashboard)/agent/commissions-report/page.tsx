@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -77,6 +78,7 @@ function fmt(value: number, currency = "AED"): string {
 /* ------------------------------------------------------------------ */
 
 export default function AgentCommissionsReportPage() {
+  const t = useTranslations("agentCommissionsReport");
   const currentYear = new Date().getFullYear();
   const [yearFilter, setYearFilter] = useState(currentYear);
   const [loading, setLoading] = useState(true);
@@ -89,10 +91,10 @@ export default function AgentCommissionsReportPage() {
       if (res.ok) {
         setData(await res.json());
       } else {
-        toast.error("Failed to load commission report");
+        toast.error(t("loadReportError"));
       }
     } catch {
-      toast.error("Failed to load commission report");
+      toast.error(t("loadReportError"));
     } finally {
       setLoading(false);
     }
@@ -121,8 +123,8 @@ export default function AgentCommissionsReportPage() {
       {/* ── Header ── */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">My Commission Report</h1>
-          <p className="text-sm text-muted-foreground">Personal earnings breakdown for {yearFilter}</p>
+          <h1 className="text-2xl font-bold tracking-tight">{t("pageTitle")}</h1>
+          <p className="text-sm text-muted-foreground">{t("pageSubtitle", { year: yearFilter })}</p>
         </div>
         <div className="flex items-center gap-2">
           <Select value={String(yearFilter)} onValueChange={(v) => setYearFilter(Number(v))}>
@@ -146,11 +148,11 @@ export default function AgentCommissionsReportPage() {
       <div className="rounded-xl border bg-gradient-to-br from-indigo-50 to-white p-6">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-sm font-medium text-muted-foreground">Total Earned ({yearFilter})</p>
+            <p className="text-sm font-medium text-muted-foreground">{t("totalEarned", { year: yearFilter })}</p>
             <p className="mt-1 text-4xl font-bold tracking-tight">
               {loading ? <span className="h-9 w-40 animate-pulse rounded bg-indigo-100 inline-block" /> : fmt(ytd?.totalAmount ?? 0, ytd?.currency)}
             </p>
-            <p className="mt-1.5 text-sm text-muted-foreground">{ytd?.totalCount ?? 0} commissions total</p>
+            <p className="mt-1.5 text-sm text-muted-foreground">{t("commissionsTotal", { count: ytd?.totalCount ?? 0 })}</p>
           </div>
           <span className="rounded-full bg-indigo-100 p-3">
             <CircleDollarSign className="h-6 w-6 text-indigo-600" />
@@ -162,30 +164,30 @@ export default function AgentCommissionsReportPage() {
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {[
           {
-            label: "Pending",
+            label: t("statusPending"),
             value: ytd ? fmt(ytd.pendingAmount, ytd.currency) : "—",
-            sub: `${ytd?.pendingCount ?? 0} commissions`,
+            sub: t("commissionsCount", { count: ytd?.pendingCount ?? 0 }),
             icon: Clock,
             color: "text-amber-600 bg-amber-50",
           },
           {
-            label: "Approved",
+            label: t("statusApproved"),
             value: ytd ? fmt(ytd.approvedAmount, ytd.currency) : "—",
-            sub: `${ytd?.approvedCount ?? 0} commissions`,
+            sub: t("commissionsCount", { count: ytd?.approvedCount ?? 0 }),
             icon: CheckCircle2,
             color: "text-blue-600 bg-blue-50",
           },
           {
-            label: "Paid Out",
+            label: t("statusPaidOut"),
             value: ytd ? fmt(ytd.paidAmount, ytd.currency) : "—",
-            sub: `${ytd?.paidCount ?? 0} commissions`,
+            sub: t("commissionsCount", { count: ytd?.paidCount ?? 0 }),
             icon: Wallet,
             color: "text-emerald-600 bg-emerald-50",
           },
           {
-            label: "Est. Next Payment",
+            label: t("estNextPayment"),
             value: ytd ? fmt(ytd.estimatedNextPayment, ytd.currency) : "—",
-            sub: "Based on approved",
+            sub: t("basedOnApproved"),
             icon: TrendingUp,
             color: "text-violet-600 bg-violet-50",
           },
@@ -208,7 +210,7 @@ export default function AgentCommissionsReportPage() {
       {/* ── Monthly Chart + Type Breakdown ── */}
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2 rounded-lg border bg-card p-4">
-          <h2 className="mb-3 text-sm font-semibold">Monthly Breakdown</h2>
+          <h2 className="mb-3 text-sm font-semibold">{t("monthlyBreakdown")}</h2>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -224,7 +226,7 @@ export default function AgentCommissionsReportPage() {
         </div>
 
         <div className="rounded-lg border bg-card p-4">
-          <h2 className="mb-3 text-sm font-semibold">By Type</h2>
+          <h2 className="mb-3 text-sm font-semibold">{t("byType")}</h2>
           {pieData.length > 0 ? (
             <ResponsiveContainer width="100%" height={180}>
               <PieChart>
@@ -238,7 +240,7 @@ export default function AgentCommissionsReportPage() {
               </PieChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex h-36 items-center justify-center text-sm text-muted-foreground">No data</div>
+            <div className="flex h-36 items-center justify-center text-sm text-muted-foreground">{t("noData")}</div>
           )}
           <div className="mt-2 space-y-1.5">
             {data?.typeBreakdown.map((t) => (

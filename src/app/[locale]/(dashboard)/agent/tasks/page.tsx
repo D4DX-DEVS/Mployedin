@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -40,25 +41,25 @@ const PRIORITY_COLORS: Record<string, string> = {
   low: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30",
 };
 
-const STATUS_OPTIONS = [
-  { value: "all", label: "All" },
-  { value: "pending", label: "Pending" },
-  { value: "in_progress", label: "In Progress" },
-  { value: "completed", label: "Completed" },
+const getStatusOptions = (t: any) => [
+  { value: "all", label: t("statusAll") },
+  { value: "pending", label: t("statusPending") },
+  { value: "in_progress", label: t("statusInProgress") },
+  { value: "completed", label: t("statusCompleted") },
 ];
 
-const CATEGORY_OPTIONS = [
-  { value: "follow_up", label: "Follow Up" },
-  { value: "call", label: "Call" },
-  { value: "meeting", label: "Meeting" },
-  { value: "document", label: "Document" },
-  { value: "other", label: "Other" },
+const getCategoryOptions = (t: any) => [
+  { value: "follow_up", label: t("categoryFollowUp") },
+  { value: "call", label: t("categoryCall") },
+  { value: "meeting", label: t("categoryMeeting") },
+  { value: "document", label: t("categoryDocument") },
+  { value: "other", label: t("categoryOther") },
 ];
 
-const PRIORITY_OPTIONS = [
-  { value: "high", label: "High" },
-  { value: "medium", label: "Medium" },
-  { value: "low", label: "Low" },
+const getPriorityOptions = (t: any) => [
+  { value: "high", label: t("priorityHigh") },
+  { value: "medium", label: t("priorityMedium") },
+  { value: "low", label: t("priorityLow") },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -66,6 +67,8 @@ const PRIORITY_OPTIONS = [
 /* ------------------------------------------------------------------ */
 
 export default function AgentTasksPage() {
+  const t = useTranslations("agentTasks");
+  const tc = useTranslations("common");
   const pagination = usePagination();
   const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,11 +97,11 @@ export default function AgentTasksPage() {
         pagination.updateTotal(tasks.length);
       }
     } catch {
-      toast.error("Failed to load tasks");
+      toast.error(t("loadTasksFailed"));
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, search, pagination]);
+  }, [statusFilter, search, pagination, t]);
 
   useEffect(() => { fetchTasks(); }, [fetchTasks]);
   useEffect(() => { pagination.resetPage(); }, [statusFilter, search]);
@@ -110,7 +113,7 @@ export default function AgentTasksPage() {
 
   const createTask = async () => {
     if (!newTask.title.trim()) {
-      toast.error("Task title is required");
+      toast.error(t("taskTitleRequired"));
       return;
     }
 
@@ -126,16 +129,16 @@ export default function AgentTasksPage() {
       });
 
       if (res.ok) {
-        toast.success("Task created");
+        toast.success(t("taskCreatedSuccess"));
         setNewTask({ title: "", description: "", priority: "medium", category: "follow_up", dueDate: "" });
         setShowForm(false);
         fetchTasks();
       } else {
         const err = await res.json().catch(() => null);
-        toast.error(err?.error ?? "Failed to create task");
+        toast.error(err?.error ?? t("createTaskFailed"));
       }
     } catch {
-      toast.error("Failed to create task");
+      toast.error(t("createTaskFailed"));
     }
   };
 
@@ -148,14 +151,14 @@ export default function AgentTasksPage() {
       });
 
       if (res.ok) {
-        toast.success("Task updated");
+        toast.success(t("taskUpdatedSuccess"));
         fetchTasks();
       } else {
         const err = await res.json().catch(() => null);
-        toast.error(err?.error ?? "Failed to update task");
+        toast.error(err?.error ?? t("updateTaskFailed"));
       }
     } catch {
-      toast.error("Failed to update task");
+      toast.error(t("updateTaskFailed"));
     }
   };
 
@@ -163,14 +166,14 @@ export default function AgentTasksPage() {
     try {
       const res = await csrfFetch(`/api/agent/tasks/${id}`, { method: "DELETE" });
       if (res.ok) {
-        toast.success("Task deleted");
+        toast.success(t("taskDeletedSuccess"));
         fetchTasks();
       } else {
         const err = await res.json().catch(() => null);
-        toast.error(err?.error ?? "Failed to delete task");
+        toast.error(err?.error ?? t("deleteTaskFailed"));
       }
     } catch {
-      toast.error("Failed to delete task");
+      toast.error(t("deleteTaskFailed"));
     }
   };
 
@@ -185,25 +188,25 @@ export default function AgentTasksPage() {
       <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Tasks & Follow-ups</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Manage your personal to-do list and follow-up reminders</p>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t("pageTitle")}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{t("pageDescription")}</p>
           </div>
           <Button onClick={() => setShowForm(!showForm)}>
-            <Plus className="mr-1 h-4 w-4" /> New Task
+            <Plus className="mr-1 h-4 w-4" /> {t("newTaskButton")}
           </Button>
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {[
-            { label: "Pending", value: pending, icon: <Clock className="h-5 w-5" />, tone: "workspace-tone-amber" },
-            { label: "In Progress", value: inProgress, icon: <Star className="h-5 w-5" />, tone: "workspace-tone-sky" },
-            { label: "Completed", value: completed, icon: <CheckCircle2 className="h-5 w-5" />, tone: "workspace-tone-emerald" },
-            { label: "Overdue", value: overdue, icon: <AlertCircle className="h-5 w-5" />, tone: "workspace-tone-rose" },
+            { key: "statPending", value: pending, icon: <Clock className="h-5 w-5" />, tone: "workspace-tone-amber" },
+            { key: "statInProgress", value: inProgress, icon: <Star className="h-5 w-5" />, tone: "workspace-tone-sky" },
+            { key: "statCompleted", value: completed, icon: <CheckCircle2 className="h-5 w-5" />, tone: "workspace-tone-emerald" },
+            { key: "statOverdue", value: overdue, icon: <AlertCircle className="h-5 w-5" />, tone: "workspace-tone-rose" },
           ].map((m) => (
-            <div key={m.label} className="workspace-glass-panel rounded-2xl p-4">
+            <div key={m.key} className="workspace-glass-panel rounded-2xl p-4">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{m.label}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t(m.key)}</p>
                   <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{m.value}</p>
                 </div>
                 <div className={`${m.tone} rounded-xl p-2`}>{m.icon}</div>
@@ -216,17 +219,17 @@ export default function AgentTasksPage() {
       {/* New Task Form */}
       {showForm && (
         <section className="workspace-panel-surface rounded-[28px] p-5 space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">Create Task</h2>
+          <h2 className="text-lg font-semibold text-foreground">{t("createTaskHeading")}</h2>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Input placeholder="Task title *" value={newTask.title} onChange={(e) => setNewTask((p) => ({ ...p, title: e.target.value }))} className="sm:col-span-2" />
-            <Input placeholder="Description (optional)" value={newTask.description} onChange={(e) => setNewTask((p) => ({ ...p, description: e.target.value }))} className="sm:col-span-2" />
-            <SearchableSelect options={CATEGORY_OPTIONS} value={newTask.category} onValueChange={(v) => setNewTask((p) => ({ ...p, category: v }))} placeholder="Category" />
-            <SearchableSelect options={PRIORITY_OPTIONS} value={newTask.priority} onValueChange={(v) => setNewTask((p) => ({ ...p, priority: v }))} placeholder="Priority" />
+            <Input placeholder={t("taskTitlePlaceholder")} value={newTask.title} onChange={(e) => setNewTask((p) => ({ ...p, title: e.target.value }))} className="sm:col-span-2" />
+            <Input placeholder={t("taskDescriptionPlaceholder")} value={newTask.description} onChange={(e) => setNewTask((p) => ({ ...p, description: e.target.value }))} className="sm:col-span-2" />
+            <SearchableSelect options={getCategoryOptions(t)} value={newTask.category} onValueChange={(v) => setNewTask((p) => ({ ...p, category: v }))} placeholder={t("categoryPlaceholder")} />
+            <SearchableSelect options={getPriorityOptions(t)} value={newTask.priority} onValueChange={(v) => setNewTask((p) => ({ ...p, priority: v }))} placeholder={t("priorityPlaceholder")} />
             <Input type="date" value={newTask.dueDate} onChange={(e) => setNewTask((p) => ({ ...p, dueDate: e.target.value }))} />
           </div>
           <div className="flex gap-2">
-            <Button onClick={createTask}><Plus className="mr-1 h-4 w-4" /> Create</Button>
-            <Button variant="ghost" onClick={() => setShowForm(false)}>Cancel</Button>
+            <Button onClick={createTask}><Plus className="mr-1 h-4 w-4" /> {tc("create")}</Button>
+            <Button variant="ghost" onClick={() => setShowForm(false)}>{tc("cancel")}</Button>
           </div>
         </section>
       )}
@@ -236,11 +239,11 @@ export default function AgentTasksPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Search tasks..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+            <Input placeholder={t("searchPlaceholder")} value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
           </div>
-          <SearchableSelect options={STATUS_OPTIONS} value={statusFilter} onValueChange={setStatusFilter} placeholder="Status" className="w-36" />
+          <SearchableSelect options={getStatusOptions(t)} value={statusFilter} onValueChange={setStatusFilter} placeholder={tc("status")} className="w-36" />
           <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setStatusFilter("all"); }}>
-            <RotateCcw className="mr-1 h-4 w-4" /> Reset
+            <RotateCcw className="mr-1 h-4 w-4" /> {t("resetButton")}
           </Button>
         </div>
       </section>
@@ -264,8 +267,8 @@ export default function AgentTasksPage() {
         ) : allTasks.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Inbox className="h-12 w-12 text-muted-foreground/40" />
-            <p className="mt-4 text-sm font-medium text-muted-foreground">No tasks yet</p>
-            <p className="mt-1 text-xs text-muted-foreground/70">Create your first task to start tracking follow-ups</p>
+            <p className="mt-4 text-sm font-medium text-muted-foreground">{t("emptyStateTitle")}</p>
+            <p className="mt-1 text-xs text-muted-foreground/70">{t("emptyStateDescription")}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -297,10 +300,10 @@ export default function AgentTasksPage() {
                       )}
                       <div className="mt-2 flex flex-wrap items-center gap-2">
                         <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${PRIORITY_COLORS[task.priority]}`}>
-                          {task.priority}
+                          {t(`priorityLabel${task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}`)}
                         </span>
                         <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium capitalize text-muted-foreground">
-                          {task.category.replace("_", " ")}
+                          {t(`categoryLabel${task.category.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join("")}`)}
                         </span>
                         {task.dueDate && (
                           <span className={`inline-flex items-center gap-1 text-[10px] ${

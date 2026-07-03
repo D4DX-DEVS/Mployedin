@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useTranslations } from "next-intl";
 import { ChevronLeft, Circle, Hash, Loader2, Send, Sparkles, Users } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -14,11 +15,11 @@ interface Message {
   createdAt: string;
 }
 
-const CHANNELS = [
-  { id: "general", label: "# general", icon: Hash, description: "General team discussion" },
-  { id: "employers", label: "# employers", icon: Hash, description: "Employer coordination" },
-  { id: "leads", label: "# leads", icon: Hash, description: "New lead pipeline" },
-  { id: "agents", label: "# agents", icon: Users, description: "Agent-only channel" },
+const CHANNELS = (t: ReturnType<typeof useTranslations>) => [
+  { id: "general", label: "# general", icon: Hash, description: t("generalDescription") },
+  { id: "employers", label: "# employers", icon: Hash, description: t("employersDescription") },
+  { id: "leads", label: "# leads", icon: Hash, description: t("leadsDescription") },
+  { id: "agents", label: "# agents", icon: Users, description: t("agentsDescription") },
 ];
 
 const ROLE_COLORS: Record<string, string> = {
@@ -33,6 +34,8 @@ function formatTime(iso: string) {
 }
 
 export default function AgentChatPage() {
+  const t = useTranslations("agentChat");
+  const channels = CHANNELS(t);
   const [activeChannel, setActiveChannel] = useState("general");
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState("");
@@ -94,18 +97,18 @@ export default function AgentChatPage() {
           <div className="max-w-3xl">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
               <Sparkles className="h-3.5 w-3.5" />
-              Agent workspace
+              {t("agentWorkspaceBadge")}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">Team Channels</h1>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("teamChannelsHeading")}</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Coordinate with agents, employers, and supervisors from the same modern workspace while keeping each conversation in its own channel.
+              {t("teamChannelsDescription")}
             </p>
           </div>
 
           <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:min-w-[260px]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Presence</p>
-            <p className="mt-1 text-lg font-semibold text-foreground">{online} online</p>
-            <p className="text-xs text-muted-foreground">Live channel members currently visible in your workspace.</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("presenceLabel")}</p>
+            <p className="mt-1 text-lg font-semibold text-foreground">{t("onlineCount", { count: online })}</p>
+            <p className="text-xs text-muted-foreground">{t("presenceDescription")}</p>
           </div>
         </div>
       </section>
@@ -113,11 +116,11 @@ export default function AgentChatPage() {
       <div className="workspace-panel-surface flex min-h-96 flex-1 gap-0 overflow-hidden rounded-[28px]">
         <aside className={`${showChannels ? "flex" : "hidden"} workspace-subtle-surface sm:flex w-full sm:w-60 shrink-0 flex-col border-r border-border`}>
           <div className="border-b border-border p-4">
-            <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Channels</p>
+            <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("channelsLabel")}</p>
           </div>
 
           <nav className="flex-1 space-y-0.5 overflow-y-auto p-2">
-            {CHANNELS.map((channel) => (
+            {channels.map((channel) => (
               <button
                 key={channel.id}
                 onClick={() => {
@@ -139,7 +142,7 @@ export default function AgentChatPage() {
           <div className="border-t border-border p-4">
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Circle className="h-2 w-2 fill-emerald-500 text-emerald-500" />
-              {online} online
+              {t("onlineCount", { count: online })}
             </div>
           </div>
         </aside>
@@ -153,7 +156,7 @@ export default function AgentChatPage() {
             <span className="text-sm font-semibold text-foreground">{activeChannel}</span>
             <span className="hidden text-xs text-muted-foreground sm:inline">-</span>
             <span className="hidden text-xs text-muted-foreground sm:inline">
-              {CHANNELS.find((channel) => channel.id === activeChannel)?.description}
+              {channels.find((channel) => channel.id === activeChannel)?.description}
             </span>
           </div>
 
@@ -170,7 +173,7 @@ export default function AgentChatPage() {
               ))
             ) : messages.length === 0 ? (
               <p className="workspace-empty-state rounded-2xl py-8 text-center text-sm text-muted-foreground">
-                No messages yet. Start the conversation!
+                {t("noMessagesEmpty")}
               </p>
             ) : (
               messages.map((message) => (
@@ -200,7 +203,7 @@ export default function AgentChatPage() {
             <input
               value={text}
               onChange={(event) => setText(event.target.value)}
-              placeholder={`Message #${activeChannel}...`}
+              placeholder={t("messageInputPlaceholder", { channel: activeChannel })}
               className="flex-1 rounded-xl border border-border bg-background/80 px-4 py-2.5 text-sm text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20"
             />
             <button

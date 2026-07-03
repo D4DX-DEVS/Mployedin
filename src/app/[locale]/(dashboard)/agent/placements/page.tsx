@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
@@ -26,18 +27,15 @@ interface Placement {
   createdAt: string;
 }
 
-const STATUS_OPTIONS = [
-  { value: "", label: "All Statuses" },
-  { value: "pending", label: "Pending" },
-  { value: "offer", label: "Offer" },
-  { value: "completed", label: "Completed" },
-  { value: "hired", label: "Hired" },
-  { value: "rejected", label: "Rejected" },
-];
+// Status options are built dynamically in component with translations
 
 const selectClass = "h-10 w-full rounded-xl border border-border bg-background/70 px-3 text-sm text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20";
 
 export default function AgentPlacementsPage() {
+  const t = useTranslations("agentPlacements");
+  const tc = useTranslations("common");
+  const tt = useTranslations("table");
+
   const { can } = usePermissions();
   const pagination = usePagination();
   const [placements, setPlacements] = useState<Placement[]>([]);
@@ -47,6 +45,16 @@ export default function AgentPlacementsPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+
+  // Build STATUS_OPTIONS dynamically with translations
+  const STATUS_OPTIONS = [
+    { value: "", label: t("statusAllStatuses") },
+    { value: "pending", label: t("statusPending") },
+    { value: "offer", label: t("statusOffer") },
+    { value: "completed", label: t("statusCompleted") },
+    { value: "hired", label: t("statusHired") },
+    { value: "rejected", label: t("statusRejected") },
+  ];
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 400);
@@ -87,20 +95,20 @@ export default function AgentPlacementsPage() {
   const totalCompensation = placements.reduce((sum, placement) => sum + (placement.salary ?? 0), 0);
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
-    { header: "Candidate", key: "jobSeekerId", formatter: (_v, row) => (row.jobSeekerId as { fullName?: string })?.fullName ?? "" },
-    { header: "Job", key: "jobId", formatter: (_v, row) => (row.jobId as { title?: string })?.title ?? "" },
-    { header: "Employer", key: "employerId", formatter: (_v, row) => (row.employerId as { companyName?: string })?.companyName ?? "" },
-    { header: "Salary", key: "salary" },
-    { header: "Currency", key: "currency" },
-    { header: "Status", key: "status" },
-    { header: "Start Date", key: "startDate", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: t("tableHeaderCandidate"), key: "jobSeekerId", formatter: (_v, row) => (row.jobSeekerId as { fullName?: string })?.fullName ?? "" },
+    { header: t("tableHeaderJob"), key: "jobId", formatter: (_v, row) => (row.jobId as { title?: string })?.title ?? "" },
+    { header: t("tableHeaderEmployer"), key: "employerId", formatter: (_v, row) => (row.employerId as { companyName?: string })?.companyName ?? "" },
+    { header: t("tableHeaderSalary"), key: "salary" },
+    { header: t("tableHeaderCurrency"), key: "currency" },
+    { header: tc("status"), key: "status" },
+    { header: t("tableHeaderStartDate"), key: "startDate", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: placements as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "agent-placements",
-    title: "Agent Placements",
+    title: t("pageTitle"),
   });
 
   return (
@@ -108,29 +116,29 @@ export default function AgentPlacementsPage() {
       <section className="workspace-hero-surface agent-legacy-hero overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary"><Sparkles className="h-3.5 w-3.5" />Agent workspace</div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">Placements</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">Track each hire through to start date and keep a clear view of the compensation value tied to successful placements.</p>
+            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary"><Sparkles className="h-3.5 w-3.5" />{t("workspaceLabel")}</div>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("pageTitle")}</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">{t("pageDescription")}</p>
           </div>
-          <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:min-w-[260px]"><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Placement book</p><p className="mt-1 text-lg font-semibold text-foreground">{pagination.total} records</p><p className="text-xs text-muted-foreground">Confirmed placement activity across your managed roles.</p></div>
+          <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:min-w-[260px]"><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("placementBook")}</p><p className="mt-1 text-lg font-semibold text-foreground">{pagination.total} {t("records")}</p><p className="text-xs text-muted-foreground">{t("placementBookDescription")}</p></div>
         </div>
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="workspace-glass-panel rounded-2xl p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Completed</p><p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{completedPlacements}</p><p className="mt-1 text-xs text-muted-foreground">Placements that reached a finished hiring outcome.</p></div><div className="workspace-tone-emerald rounded-2xl p-2.5"><UserCheck className="h-5 w-5" /></div></div></div>
-          <div className="workspace-glass-panel rounded-2xl p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Offer stage</p><p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{signedOffers}</p><p className="mt-1 text-xs text-muted-foreground">Placements still sitting around offer confirmation.</p></div><div className="workspace-tone-sky rounded-2xl p-2.5"><BriefcaseBusiness className="h-5 w-5" /></div></div></div>
-          <div className="workspace-glass-panel rounded-2xl p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Start dates</p><p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{startedCount}</p><p className="mt-1 text-xs text-muted-foreground">Placements with a confirmed onboarding date.</p></div><div className="workspace-tone-indigo rounded-2xl p-2.5"><ArrowRight className="h-5 w-5" /></div></div></div>
-          <div className="workspace-glass-panel rounded-2xl p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Salary value</p><p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{totalCompensation.toLocaleString()}</p><p className="mt-1 text-xs text-muted-foreground">Combined visible compensation across current results.</p></div><div className="workspace-tone-amber rounded-2xl p-2.5"><CircleDollarSign className="h-5 w-5" /></div></div></div>
+          <div className="workspace-glass-panel rounded-2xl p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statCompleted")}</p><p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{completedPlacements}</p><p className="mt-1 text-xs text-muted-foreground">{t("statCompletedDesc")}</p></div><div className="workspace-tone-emerald rounded-2xl p-2.5"><UserCheck className="h-5 w-5" /></div></div></div>
+          <div className="workspace-glass-panel rounded-2xl p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statOfferStage")}</p><p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{signedOffers}</p><p className="mt-1 text-xs text-muted-foreground">{t("statOfferStageDesc")}</p></div><div className="workspace-tone-sky rounded-2xl p-2.5"><BriefcaseBusiness className="h-5 w-5" /></div></div></div>
+          <div className="workspace-glass-panel rounded-2xl p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statStartDates")}</p><p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{startedCount}</p><p className="mt-1 text-xs text-muted-foreground">{t("statStartDatesDesc")}</p></div><div className="workspace-tone-indigo rounded-2xl p-2.5"><ArrowRight className="h-5 w-5" /></div></div></div>
+          <div className="workspace-glass-panel rounded-2xl p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statSalaryValue")}</p><p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{totalCompensation.toLocaleString()}</p><p className="mt-1 text-xs text-muted-foreground">{t("statSalaryValueDesc")}</p></div><div className="workspace-tone-amber rounded-2xl p-2.5"><CircleDollarSign className="h-5 w-5" /></div></div></div>
         </div>
       </section>
 
       <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Filter placements</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Narrow down to what matters</h2>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("filterLabel")}</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("filterSubtitle")}</h2>
           </div>
           {hasActiveFilters && (
             <Button variant="ghost" size="sm" onClick={clearAllFilters} className="gap-1.5 text-xs text-muted-foreground hover:text-foreground">
-              <X className="h-3.5 w-3.5" />Clear all
+              <X className="h-3.5 w-3.5" />{t("clearAll")}
             </Button>
           )}
         </div>
@@ -141,14 +149,14 @@ export default function AgentPlacementsPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search candidate, company, or job..."
+            placeholder={t("searchPlaceholder")}
             className="h-10 w-full rounded-xl border border-border bg-background/70 pl-10 pr-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground/60 focus:border-ring focus:ring-2 focus:ring-ring/20"
           />
         </div>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <div>
-            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Status</label>
+            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{tc("status")}</label>
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={selectClass}>
               {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
@@ -157,11 +165,11 @@ export default function AgentPlacementsPage() {
 
         <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:max-w-md">
           <div>
-            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">From date</label>
+            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("dateFromLabel")}</label>
             <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className={selectClass} />
           </div>
           <div>
-            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">To date</label>
+            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("dateToLabel")}</label>
             <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className={selectClass} />
           </div>
         </div>
@@ -170,19 +178,19 @@ export default function AgentPlacementsPage() {
           <div className="mt-4 flex flex-wrap gap-2">
             {statusFilter && (
               <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                <Filter className="h-3 w-3" />Status: {STATUS_OPTIONS.find(o => o.value === statusFilter)?.label}
+                <Filter className="h-3 w-3" />{t("filterTagStatus")}: {STATUS_OPTIONS.find(o => o.value === statusFilter)?.label}
                 <button type="button" onClick={() => setStatusFilter("")} className="ml-0.5 hover:text-primary/70"><X className="h-3 w-3" /></button>
               </span>
             )}
             {(dateFrom || dateTo) && (
               <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                <Filter className="h-3 w-3" />Date: {dateFrom || "..."} – {dateTo || "..."}
+                <Filter className="h-3 w-3" />{t("filterTagDate")}: {dateFrom || "..."} – {dateTo || "..."}
                 <button type="button" onClick={() => { setDateFrom(""); setDateTo(""); }} className="ml-0.5 hover:text-primary/70"><X className="h-3 w-3" /></button>
               </span>
             )}
             {debouncedSearch && (
               <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                <Search className="h-3 w-3" />Search: &quot;{debouncedSearch}&quot;
+                <Search className="h-3 w-3" />{t("filterTagSearch")}: &quot;{debouncedSearch}&quot;
                 <button type="button" onClick={() => setSearch("")} className="ml-0.5 hover:text-primary/70"><X className="h-3 w-3" /></button>
               </span>
             )}
@@ -191,7 +199,7 @@ export default function AgentPlacementsPage() {
       </section>
 
       <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Current results</p><h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Review every active and historical placement record</h2></div><div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium"><ArrowRight className="h-3.5 w-3.5 text-primary" />{pagination.total} placements across {pagination.totalPages} page{pagination.totalPages === 1 ? "" : "s"}</div></div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("resultsLabel")}</p><h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("resultsSubtitle")}</h2></div><div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium"><ArrowRight className="h-3.5 w-3.5 text-primary" />{t("resultsPagination", { total: pagination.total, pages: pagination.totalPages, plural: pagination.totalPages === 1 ? "" : "s" })}</div></div>
         <TableToolbar
           onExportCsv={handleExportCsv}
           onExportExcel={handleExportExcel}
@@ -202,12 +210,12 @@ export default function AgentPlacementsPage() {
         <Table>
           <TableHeader>
             <TableRow className="workspace-subtle-surface hover:bg-secondary/70">
-              <TableHead>Candidate</TableHead>
-              <TableHead>Job</TableHead>
-              <TableHead>Employer</TableHead>
-              <TableHead>Salary</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Start Date</TableHead>
+              <TableHead>{t("tableHeaderCandidate")}</TableHead>
+              <TableHead>{t("tableHeaderJob")}</TableHead>
+              <TableHead>{t("tableHeaderEmployer")}</TableHead>
+              <TableHead>{t("tableHeaderSalary")}</TableHead>
+              <TableHead>{tc("status")}</TableHead>
+              <TableHead>{t("tableHeaderStartDate")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -226,7 +234,7 @@ export default function AgentPlacementsPage() {
                 <TableCell colSpan={6} className="h-32 text-center">
                   <div className="flex flex-col items-center gap-2 text-muted-foreground">
                     <Inbox className="h-8 w-8 text-muted-foreground" />
-                    <span className="text-sm">No placements yet</span>
+                    <span className="text-sm">{t("noPlacementsYet")}</span>
                   </div>
                 </TableCell>
               </TableRow>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
@@ -63,10 +64,10 @@ const STATUS_OPTIONS = [
 // Contextual "advance to next stage" action for an agent, keyed by current status.
 // Note: moving a "selected" candidate to "offer" is handled by the Make Offer
 // dialog (which creates a real Offer record), not a plain status change.
-const NEXT_STAGE: Record<string, { value: string; label: string }> = {
-  applied: { value: "shortlisted", label: "Shortlist" },
-  interview_scheduled: { value: "selected", label: "Mark Selected" },
-  offer: { value: "hired", label: "Mark Hired" },
+const NEXT_STAGE_KEYS: Record<string, string> = {
+  applied: "shortlisted",
+  interview_scheduled: "selected",
+  offer: "hired",
 };
 
 const TERMINAL_STATUSES = new Set(["hired", "rejected", "withdrawn"]);
@@ -74,6 +75,10 @@ const TERMINAL_STATUSES = new Set(["hired", "rejected", "withdrawn"]);
 const SCHEDULABLE_STATUSES = new Set(["applied", "shortlisted", "interview_scheduled"]);
 
 export default function AgentCandidatesPage() {
+  const t = useTranslations("agentCandidates");
+  const tc = useTranslations("common");
+  const tt = useTranslations("table");
+  const tconf = useTranslations("confirm");
   const pathname = usePathname();
   const locale = pathname?.split("/")[1] ?? "en";
   const searchParams = useSearchParams();
@@ -174,9 +179,9 @@ export default function AgentCandidatesPage() {
   const submitSchedule = async () => {
     if (!scheduleApp) return;
     setScheduleError("");
-    if (!scheduleForm.scheduledAt) { setScheduleError("Please pick a date and time."); return; }
+    if (!scheduleForm.scheduledAt) { setScheduleError(t("scheduleErrorDateRequired")); return; }
     const iso = new Date(scheduleForm.scheduledAt).toISOString();
-    if (new Date(iso) <= new Date()) { setScheduleError("Interview must be scheduled in the future."); return; }
+    if (new Date(iso) <= new Date()) { setScheduleError(t("scheduleErrorDateInFuture")); return; }
     setScheduling(true);
     try {
       const res = await fetch("/api/interviews", {
@@ -193,7 +198,7 @@ export default function AgentCandidatesPage() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setScheduleError(data.error || "Could not schedule the interview.");
+        setScheduleError(data.error || t("scheduleErrorGeneric"));
         return;
       }
       setScheduleApp(null);
@@ -206,12 +211,12 @@ export default function AgentCandidatesPage() {
   const submitReject = async () => {
     if (!rejectApp) return;
     setRejectError("");
-    if (!rejectReason.trim()) { setRejectError("A rejection reason is required."); return; }
+    if (!rejectReason.trim()) { setRejectError(t("rejectErrorReasonRequired")); return; }
     setRejecting(true);
     try {
       const ok = await handleStatusUpdate(rejectApp._id, "rejected", { rejectionReason: rejectReason.trim() });
       if (ok) { setRejectApp(null); setRejectReason(""); }
-      else setRejectError("Could not reject the application.");
+      else setRejectError(t("rejectErrorGeneric"));
     } finally {
       setRejecting(false);
     }
@@ -239,10 +244,10 @@ export default function AgentCandidatesPage() {
     if (!offerApp) return;
     setOfferError("");
     const amount = Number(offerForm.amount);
-    if (!amount || amount <= 0) { setOfferError("Enter a valid salary amount."); return; }
-    if (!/^[A-Za-z]{3}$/.test(offerForm.currency)) { setOfferError("Currency must be a 3-letter code (e.g. AED)."); return; }
-    if (!offerForm.startDate) { setOfferError("Pick a start date."); return; }
-    if (new Date(offerForm.startDate) <= new Date()) { setOfferError("Start date must be in the future."); return; }
+    if (!amount || amount <= 0) { setOfferError(t("offerErrorAmountInvalid")); return; }
+    if (!/^[A-Za-z]{3}$/.test(offerForm.currency)) { setOfferError(t("offerErrorCurrencyInvalid")); return; }
+    if (!offerForm.startDate) { setOfferError(t("offerErrorStartDateRequired")); return; }
+    if (new Date(offerForm.startDate) <= new Date()) { setOfferError(t("offerErrorStartDateInFuture")); return; }
     setOffering(true);
     try {
       const res = await fetch("/api/offers", {
@@ -259,7 +264,7 @@ export default function AgentCandidatesPage() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setOfferError(data.error || "Could not send the offer.");
+        setOfferError(data.error || t("offerErrorGeneric"));
         return;
       }
       setOfferApp(null);
@@ -286,18 +291,18 @@ export default function AgentCandidatesPage() {
     : null;
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
-    { header: "Candidate", key: "jobSeekerId", formatter: (_v, row) => (row.jobSeekerId as { userId?: { name?: string } })?.userId?.name ?? "" },
-    { header: "Job", key: "jobId", formatter: (_v, row) => (row.jobId as { title?: string })?.title ?? "" },
-    { header: "Status", key: "status" },
-    { header: "AI Match", key: "aiMatchScore", formatter: (v) => v != null ? `${v}%` : "" },
-    { header: "Applied", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: t("tableHeaderCandidate"), key: "jobSeekerId", formatter: (_v, row) => (row.jobSeekerId as { userId?: { name?: string } })?.userId?.name ?? "" },
+    { header: t("tableHeaderJob"), key: "jobId", formatter: (_v, row) => (row.jobId as { title?: string })?.title ?? "" },
+    { header: tc("status"), key: "status" },
+    { header: t("tableHeaderAIMatch"), key: "aiMatchScore", formatter: (v) => v != null ? `${v}%` : "" },
+    { header: t("tableHeaderApplied"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: applications as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "agent-candidates",
-    title: "Agent Candidates",
+    title: t("candidatesPipeline"),
   });
 
   return (
@@ -307,18 +312,18 @@ export default function AgentCandidatesPage() {
           <div className="max-w-3xl">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
               <Sparkles className="h-3.5 w-3.5" />
-              Agent workspace
+              {t("agentWorkspace")}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">Candidates Pipeline</h1>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("candidatesPipeline")}</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Review candidate flow across your managed roles, push strong applicants forward, and keep interview momentum visible in one queue.
+              {t("pipelineDescription")}
             </p>
           </div>
 
           <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:min-w-[260px]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Pipeline</p>
-            <p className="mt-1 text-lg font-semibold text-foreground">{pagination.total} application{pagination.total === 1 ? "" : "s"}</p>
-            <p className="text-xs text-muted-foreground">Candidate activity across the jobs currently in your scope.</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("pipeline")}</p>
+            <p className="mt-1 text-lg font-semibold text-foreground">{pagination.total} {t("application", { count: pagination.total })}</p>
+            <p className="text-xs text-muted-foreground">{t("pipelineSubtext")}</p>
           </div>
         </div>
 
@@ -326,9 +331,9 @@ export default function AgentCandidatesPage() {
           <div className="workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Shortlisted</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("shortlistedLabel")}</p>
                 <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{shortlistedCount}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Candidates moved past the first screen.</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t("shortlistedDesc")}</p>
               </div>
               <div className="workspace-tone-emerald rounded-2xl p-2.5"><Users className="h-5 w-5" /></div>
             </div>
@@ -336,9 +341,9 @@ export default function AgentCandidatesPage() {
           <div className="workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Interviews</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("interviewsLabel")}</p>
                 <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{interviewCount}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Applications already converted into scheduled conversations.</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t("interviewsDesc")}</p>
               </div>
               <div className="workspace-tone-sky rounded-2xl p-2.5"><CalendarCheck2 className="h-5 w-5" /></div>
             </div>
@@ -346,9 +351,9 @@ export default function AgentCandidatesPage() {
           <div className="workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">High match</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("highMatchLabel")}</p>
                 <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{highMatchCount}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Profiles with AI match scores of 80% or higher.</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t("highMatchDesc")}</p>
               </div>
               <div className="workspace-tone-amber rounded-2xl p-2.5"><Star className="h-5 w-5" /></div>
             </div>
@@ -356,9 +361,9 @@ export default function AgentCandidatesPage() {
           <div className="workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Job filter</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("jobFilterLabel")}</p>
                 <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{jobIdFilter ? 1 : 0}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Whether this queue is narrowed to a single job.</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t("jobFilterDesc")}</p>
               </div>
               <div className="workspace-tone-indigo rounded-2xl p-2.5"><BriefcaseBusiness className="h-5 w-5" /></div>
             </div>
@@ -368,9 +373,9 @@ export default function AgentCandidatesPage() {
 
       <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Filter candidates</p>
-          <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Focus on the stage that needs action</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Switch between application states or clear the active job constraint when you want the full queue again.</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("filterCandidatesLabel")}</p>
+          <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("filterCandidatesTitle")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t("filterCandidatesDesc")}</p>
         </div>
         <div className="relative mt-5 max-w-md">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -378,14 +383,14 @@ export default function AgentCandidatesPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search candidate name, email, or job..."
+            placeholder={t("searchPlaceholder")}
             className="h-10 w-full rounded-xl border border-border bg-background/70 pl-10 pr-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground/60 focus:border-ring focus:ring-2 focus:ring-ring/20"
           />
         </div>
         <div className="mt-5 flex flex-wrap gap-2">
           {jobIdFilter && (
             <Button variant="outline" size="sm" onClick={() => setJobIdFilter("")} className="workspace-tone-sky h-10 rounded-xl border-transparent px-4 hover:opacity-90">
-              {filteredJobTitle ? `✕ ${filteredJobTitle}` : "Clear job filter"}
+              {filteredJobTitle ? `✕ ${filteredJobTitle}` : t("clearJobFilter")}
             </Button>
           )}
           {STATUS_OPTIONS.map((status) => {
@@ -403,7 +408,7 @@ export default function AgentCandidatesPage() {
                   : "workspace-muted-pill h-10 rounded-xl px-4 capitalize hover:bg-card"
                 }
               >
-                {status || "All"}
+                {status ? t(`status_${status}`) : tc("all")}
               </Button>
             );
           })}
@@ -413,12 +418,12 @@ export default function AgentCandidatesPage() {
       <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Current results</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Manage each candidate before the next handoff</h2>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("currentResultsLabel")}</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("currentResultsTitle")}</h2>
           </div>
           <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">
             <ArrowRight className="h-3.5 w-3.5 text-primary" />
-            {pagination.total} application{pagination.total === 1 ? "" : "s"} across {pagination.totalPages} page{pagination.totalPages === 1 ? "" : "s"}
+            {t("paginationSummary", { applications: pagination.total, pages: pagination.totalPages })}
           </div>
         </div>
         <TableToolbar
@@ -432,12 +437,12 @@ export default function AgentCandidatesPage() {
             <Table>
               <TableHeader>
                 <TableRow className="workspace-subtle-surface hover:bg-secondary/70">
-                  <TableHead>Candidate</TableHead>
-                  <TableHead>Job Applied To</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>AI Match</TableHead>
-                  <TableHead>Applied</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t("tableHeaderCandidate")}</TableHead>
+                  <TableHead>{t("tableHeaderJob")}</TableHead>
+                  <TableHead>{tc("status")}</TableHead>
+                  <TableHead>{t("tableHeaderAIMatch")}</TableHead>
+                  <TableHead>{t("tableHeaderApplied")}</TableHead>
+                  <TableHead className="text-right">{tc("actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -456,20 +461,20 @@ export default function AgentCandidatesPage() {
             <div className="workspace-empty-state m-4 rounded-[20px] py-12 text-center">
               <div className="flex flex-col items-center gap-2">
                 <Inbox className="h-8 w-8 text-muted-foreground" />
-                <p className="text-sm font-medium text-foreground">No candidates found</p>
-                <p className="text-sm text-muted-foreground">Try another stage filter or clear the current job scope.</p>
+                <p className="text-sm font-medium text-foreground">{t("noCandidatesFound")}</p>
+                <p className="text-sm text-muted-foreground">{t("noCandidatesHint")}</p>
               </div>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow className="workspace-subtle-surface hover:bg-secondary/70">
-                  <TableHead>Candidate</TableHead>
-                  <TableHead>Job Applied To</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>AI Match</TableHead>
-                  <TableHead>Applied</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t("tableHeaderCandidate")}</TableHead>
+                  <TableHead>{t("tableHeaderJob")}</TableHead>
+                  <TableHead>{tc("status")}</TableHead>
+                  <TableHead>{t("tableHeaderAIMatch")}</TableHead>
+                  <TableHead>{t("tableHeaderApplied")}</TableHead>
+                  <TableHead className="text-right">{tc("actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -500,16 +505,16 @@ export default function AgentCandidatesPage() {
                           <span className="text-xs capitalize text-muted-foreground">{app.status}</span>
                         ) : (
                           <>
-                            {NEXT_STAGE[app.status] && (
+                            {NEXT_STAGE_KEYS[app.status] && (
                               <Button
                                 size="sm"
                                 variant="outline"
                                 className="h-8 gap-1 rounded-lg px-2.5 text-xs"
-                                title={NEXT_STAGE[app.status].label}
-                                onClick={() => handleStatusUpdate(app._id, NEXT_STAGE[app.status].value)}
+                                title={t(`actionLabel_${app.status}`)}
+                                onClick={() => handleStatusUpdate(app._id, NEXT_STAGE_KEYS[app.status])}
                               >
                                 {app.status === "applied" ? <Check className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-                                {NEXT_STAGE[app.status].label}
+                                {t(`actionLabel_${app.status}`)}
                               </Button>
                             )}
                             {SCHEDULABLE_STATUSES.has(app.status) && (
@@ -517,8 +522,8 @@ export default function AgentCandidatesPage() {
                                 size="sm"
                                 variant="ghost"
                                 className="h-8 w-8 rounded-lg p-0 text-sky-600 hover:bg-sky-50"
-                                title="Schedule interview"
-                                aria-label="Schedule interview"
+                                title={t("scheduleInterviewTooltip")}
+                                aria-label={t("scheduleInterviewTooltip")}
                                 onClick={() => openSchedule(app)}
                               >
                                 <CalendarPlus className="h-4 w-4" />
@@ -529,19 +534,19 @@ export default function AgentCandidatesPage() {
                                 size="sm"
                                 variant="outline"
                                 className="h-8 gap-1 rounded-lg px-2.5 text-xs text-emerald-700"
-                                title="Make offer"
+                                title={t("makeOfferTooltip")}
                                 onClick={() => openOffer(app)}
                               >
                                 <Gift className="h-3.5 w-3.5" />
-                                Make Offer
+                                {t("makeOfferLabel")}
                               </Button>
                             )}
                             <Button
                               size="sm"
                               variant="ghost"
                               className="h-8 w-8 rounded-lg p-0 text-destructive hover:bg-destructive/10"
-                              title="Reject candidate"
-                              aria-label="Reject candidate"
+                              title={t("rejectCandidateTooltip")}
+                              aria-label={t("rejectCandidateTooltip")}
                               onClick={() => { setRejectError(""); setRejectReason(""); setRejectApp(app); }}
                             >
                               <X className="h-4 w-4" />
@@ -571,9 +576,9 @@ export default function AgentCandidatesPage() {
       <Dialog open={!!scheduleApp} onOpenChange={(o) => { if (!o) setScheduleApp(null); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Schedule interview</DialogTitle>
+            <DialogTitle>{t("scheduleInterviewTitle")}</DialogTitle>
             <DialogDescription>
-              {scheduleApp?.jobSeekerId?.userId?.name ?? "Candidate"} · {scheduleApp?.jobId?.title ?? "Role"}
+              {scheduleApp?.jobSeekerId?.userId?.name ?? t("candidateLabel")} · {scheduleApp?.jobId?.title ?? t("roleLabel")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -581,7 +586,7 @@ export default function AgentCandidatesPage() {
               <p className="rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">{scheduleError}</p>
             )}
             <div className="space-y-2">
-              <Label htmlFor="iv-when">Date &amp; time</Label>
+              <Label htmlFor="iv-when">{t("dateTimeLabel")}</Label>
               <Input
                 id="iv-when"
                 type="datetime-local"
@@ -591,20 +596,20 @@ export default function AgentCandidatesPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="iv-type">Type</Label>
+                <Label htmlFor="iv-type">{t("interviewTypeLabel")}</Label>
                 <select
                   id="iv-type"
                   className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                   value={scheduleForm.type}
                   onChange={(e) => setScheduleForm((f) => ({ ...f, type: e.target.value }))}
                 >
-                  <option value="video">Video</option>
-                  <option value="offline">In-Person</option>
-                  <option value="hybrid">Hybrid</option>
+                  <option value="video">{t("interviewType_video")}</option>
+                  <option value="offline">{t("interviewType_offline")}</option>
+                  <option value="hybrid">{t("interviewType_hybrid")}</option>
                 </select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="iv-dur">Duration (min)</Label>
+                <Label htmlFor="iv-dur">{t("durationLabel")}</Label>
                 <Input
                   id="iv-dur"
                   type="number"
@@ -616,18 +621,18 @@ export default function AgentCandidatesPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="iv-loc">{scheduleForm.type === "video" ? "Meeting link" : "Location"}</Label>
+              <Label htmlFor="iv-loc">{scheduleForm.type === "video" ? t("meetingLinkLabel") : t("locationLabel")}</Label>
               {scheduleForm.type === "video" ? (
                 <Input
                   id="iv-loc"
-                  placeholder="https://meet.google.com/… (auto-generated if blank)"
+                  placeholder={t("meetLinkPlaceholder")}
                   value={scheduleForm.meetLink}
                   onChange={(e) => setScheduleForm((f) => ({ ...f, meetLink: e.target.value }))}
                 />
               ) : (
                 <Input
                   id="iv-loc"
-                  placeholder="Office address / room"
+                  placeholder={t("locationPlaceholder")}
                   value={scheduleForm.location}
                   onChange={(e) => setScheduleForm((f) => ({ ...f, location: e.target.value }))}
                 />
@@ -635,10 +640,10 @@ export default function AgentCandidatesPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setScheduleApp(null)} disabled={scheduling}>Cancel</Button>
+            <Button variant="outline" onClick={() => setScheduleApp(null)} disabled={scheduling}>{tc("cancel")}</Button>
             <Button onClick={submitSchedule} disabled={scheduling}>
               {scheduling ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CalendarPlus className="mr-2 h-4 w-4" />}
-              Schedule
+              {t("scheduleButton")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -648,9 +653,9 @@ export default function AgentCandidatesPage() {
       <Dialog open={!!rejectApp} onOpenChange={(o) => { if (!o) setRejectApp(null); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Reject candidate</DialogTitle>
+            <DialogTitle>{t("rejectCandidateTitle")}</DialogTitle>
             <DialogDescription>
-              {rejectApp?.jobSeekerId?.userId?.name ?? "Candidate"} · {rejectApp?.jobId?.title ?? "Role"}
+              {rejectApp?.jobSeekerId?.userId?.name ?? t("candidateLabel")} · {rejectApp?.jobId?.title ?? t("roleLabel")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -658,10 +663,10 @@ export default function AgentCandidatesPage() {
               <p className="rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">{rejectError}</p>
             )}
             <div className="space-y-2">
-              <Label htmlFor="rej-reason">Reason</Label>
+              <Label htmlFor="rej-reason">{t("reasonLabel")}</Label>
               <Textarea
                 id="rej-reason"
-                placeholder="Why is this candidate not moving forward?"
+                placeholder={t("reasonPlaceholder")}
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}
                 rows={3}
@@ -669,10 +674,10 @@ export default function AgentCandidatesPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRejectApp(null)} disabled={rejecting}>Cancel</Button>
+            <Button variant="outline" onClick={() => setRejectApp(null)} disabled={rejecting}>{tc("cancel")}</Button>
             <Button variant="destructive" onClick={submitReject} disabled={rejecting}>
               {rejecting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <X className="mr-2 h-4 w-4" />}
-              Reject
+              {t("rejectButton")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -682,9 +687,9 @@ export default function AgentCandidatesPage() {
       <Dialog open={!!offerApp} onOpenChange={(o) => { if (!o) setOfferApp(null); }}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Make an offer</DialogTitle>
+            <DialogTitle>{t("makeOfferTitle")}</DialogTitle>
             <DialogDescription>
-              {offerApp?.jobSeekerId?.userId?.name ?? "Candidate"} · {offerApp?.jobId?.title ?? "Role"}
+              {offerApp?.jobSeekerId?.userId?.name ?? t("candidateLabel")} · {offerApp?.jobId?.title ?? t("roleLabel")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -693,18 +698,18 @@ export default function AgentCandidatesPage() {
             )}
             <div className="grid grid-cols-3 gap-3">
               <div className="col-span-2 space-y-2">
-                <Label htmlFor="of-amount">Salary amount</Label>
+                <Label htmlFor="of-amount">{t("salaryAmountLabel")}</Label>
                 <Input
                   id="of-amount"
                   type="number"
                   min={1}
-                  placeholder="e.g. 12000"
+                  placeholder={t("salaryPlaceholder")}
                   value={offerForm.amount}
                   onChange={(e) => setOfferForm((f) => ({ ...f, amount: e.target.value }))}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="of-currency">Currency</Label>
+                <Label htmlFor="of-currency">{t("currencyLabel")}</Label>
                 <Input
                   id="of-currency"
                   maxLength={3}
@@ -715,19 +720,19 @@ export default function AgentCandidatesPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="of-period">Pay period</Label>
+                <Label htmlFor="of-period">{t("payPeriodLabel")}</Label>
                 <select
                   id="of-period"
                   className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                   value={offerForm.period}
                   onChange={(e) => setOfferForm((f) => ({ ...f, period: e.target.value }))}
                 >
-                  <option value="monthly">Monthly</option>
-                  <option value="annually">Annually</option>
+                  <option value="monthly">{t("payPeriod_monthly")}</option>
+                  <option value="annually">{t("payPeriod_annually")}</option>
                 </select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="of-start">Start date</Label>
+                <Label htmlFor="of-start">{t("startDateLabel")}</Label>
                 <Input
                   id="of-start"
                   type="date"
@@ -737,7 +742,7 @@ export default function AgentCandidatesPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="of-expires">Offer expires</Label>
+              <Label htmlFor="of-expires">{t("offerExpiresLabel")}</Label>
               <Input
                 id="of-expires"
                 type="date"
@@ -746,20 +751,20 @@ export default function AgentCandidatesPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="of-benefits">Benefits (optional)</Label>
+              <Label htmlFor="of-benefits">{t("benefitsLabel")}</Label>
               <Textarea
                 id="of-benefits"
-                placeholder="Health insurance, annual flights, bonus…"
+                placeholder={t("benefitsPlaceholder")}
                 value={offerForm.benefits}
                 onChange={(e) => setOfferForm((f) => ({ ...f, benefits: e.target.value }))}
                 rows={2}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="of-notes">Notes (optional)</Label>
+              <Label htmlFor="of-notes">{t("notesLabel")}</Label>
               <Textarea
                 id="of-notes"
-                placeholder="Anything else the candidate should know."
+                placeholder={t("notesPlaceholder")}
                 value={offerForm.notes}
                 onChange={(e) => setOfferForm((f) => ({ ...f, notes: e.target.value }))}
                 rows={2}
@@ -767,10 +772,10 @@ export default function AgentCandidatesPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOfferApp(null)} disabled={offering}>Cancel</Button>
+            <Button variant="outline" onClick={() => setOfferApp(null)} disabled={offering}>{tc("cancel")}</Button>
             <Button onClick={submitOffer} disabled={offering}>
               {offering ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Gift className="mr-2 h-4 w-4" />}
-              Send offer
+              {t("sendOfferButton")}
             </Button>
           </DialogFooter>
         </DialogContent>

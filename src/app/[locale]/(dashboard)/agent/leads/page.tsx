@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -62,56 +63,58 @@ interface Lead {
 
 const STAGES: LeadStatus[] = ["new", "contacted", "interested", "negotiating", "converted", "lost"];
 
-const STAGE_CONFIG: Record<LeadStatus, { label: string; color: string; bgColor: string; borderColor: string; icon: React.ReactNode; description: string }> = {
-  new: {
-    label: "New",
-    color: "text-sky-700 dark:text-sky-300",
-    bgColor: "bg-sky-50 dark:bg-sky-500/10",
-    borderColor: "border-sky-200 dark:border-sky-500/30",
-    icon: <Sparkles className="h-4 w-4" />,
-    description: "Fresh leads awaiting first contact",
-  },
-  contacted: {
-    label: "Contacted",
-    color: "text-indigo-700 dark:text-indigo-300",
-    bgColor: "bg-indigo-50 dark:bg-indigo-500/10",
-    borderColor: "border-indigo-200 dark:border-indigo-500/30",
-    icon: <Phone className="h-4 w-4" />,
-    description: "First outreach completed",
-  },
-  interested: {
-    label: "Interested",
-    color: "text-amber-700 dark:text-amber-300",
-    bgColor: "bg-amber-50 dark:bg-amber-500/10",
-    borderColor: "border-amber-200 dark:border-amber-500/30",
-    icon: <TrendingUp className="h-4 w-4" />,
-    description: "Showing engagement signals",
-  },
-  negotiating: {
-    label: "Negotiating",
-    color: "text-purple-700 dark:text-purple-300",
-    bgColor: "bg-purple-50 dark:bg-purple-500/10",
-    borderColor: "border-purple-200 dark:border-purple-500/30",
-    icon: <Target className="h-4 w-4" />,
-    description: "Deal discussions in progress",
-  },
-  converted: {
-    label: "Won",
-    color: "text-emerald-700 dark:text-emerald-300",
-    bgColor: "bg-emerald-50 dark:bg-emerald-500/10",
-    borderColor: "border-emerald-200 dark:border-emerald-500/30",
-    icon: <Building2 className="h-4 w-4" />,
-    description: "Successfully converted",
-  },
-  lost: {
-    label: "Lost",
-    color: "text-rose-700 dark:text-rose-300",
-    bgColor: "bg-rose-50 dark:bg-rose-500/10",
-    borderColor: "border-rose-200 dark:border-rose-500/30",
-    icon: <XCircle className="h-4 w-4" />,
-    description: "Did not convert",
-  },
-};
+function getStageConfig(t: ReturnType<typeof useTranslations>): Record<LeadStatus, { label: string; color: string; bgColor: string; borderColor: string; icon: React.ReactNode; description: string }> {
+  return {
+    new: {
+      label: t("stageNew"),
+      color: "text-sky-700 dark:text-sky-300",
+      bgColor: "bg-sky-50 dark:bg-sky-500/10",
+      borderColor: "border-sky-200 dark:border-sky-500/30",
+      icon: <Sparkles className="h-4 w-4" />,
+      description: t("stageNewDescription"),
+    },
+    contacted: {
+      label: t("stageContacted"),
+      color: "text-indigo-700 dark:text-indigo-300",
+      bgColor: "bg-indigo-50 dark:bg-indigo-500/10",
+      borderColor: "border-indigo-200 dark:border-indigo-500/30",
+      icon: <Phone className="h-4 w-4" />,
+      description: t("stageContactedDescription"),
+    },
+    interested: {
+      label: t("stageInterested"),
+      color: "text-amber-700 dark:text-amber-300",
+      bgColor: "bg-amber-50 dark:bg-amber-500/10",
+      borderColor: "border-amber-200 dark:border-amber-500/30",
+      icon: <TrendingUp className="h-4 w-4" />,
+      description: t("stageInterestedDescription"),
+    },
+    negotiating: {
+      label: t("stageNegotiating"),
+      color: "text-purple-700 dark:text-purple-300",
+      bgColor: "bg-purple-50 dark:bg-purple-500/10",
+      borderColor: "border-purple-200 dark:border-purple-500/30",
+      icon: <Target className="h-4 w-4" />,
+      description: t("stageNegotiatingDescription"),
+    },
+    converted: {
+      label: t("stageWon"),
+      color: "text-emerald-700 dark:text-emerald-300",
+      bgColor: "bg-emerald-50 dark:bg-emerald-500/10",
+      borderColor: "border-emerald-200 dark:border-emerald-500/30",
+      icon: <Building2 className="h-4 w-4" />,
+      description: t("stageWonDescription"),
+    },
+    lost: {
+      label: t("stageLost"),
+      color: "text-rose-700 dark:text-rose-300",
+      bgColor: "bg-rose-50 dark:bg-rose-500/10",
+      borderColor: "border-rose-200 dark:border-rose-500/30",
+      icon: <XCircle className="h-4 w-4" />,
+      description: t("stageLostDescription"),
+    },
+  };
+}
 
 const TEMP_STYLES: Record<string, string> = {
   hot: "border-rose-300 bg-rose-50 text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-300",
@@ -131,21 +134,23 @@ interface LeadScoreResult {
   riskFactors: string[];
 }
 
-const LEAD_FIELDS: CrudField[] = [
-  { name: "companyName", label: "Company Name", type: "text", required: true },
-  { name: "contactPerson", label: "Contact Person", type: "text", required: true },
-  { name: "contactEmail", label: "Contact Email", type: "email" },
-  { name: "contactPhone", label: "Contact Phone", type: "text" },
-  { name: "country", label: "Country", type: "text" },
-  { name: "industry", label: "Industry", type: "text" },
-  { name: "expectedRevenue", label: "Expected Revenue", type: "number" },
-  { name: "source", label: "Lead Source", type: "text" },
-  { name: "exhibitionId", label: "Exhibition", type: "select", options: [] },
-  { name: "status", label: "Stage", type: "select", options: STAGES.map((s) => ({ value: s, label: s.charAt(0).toUpperCase() + s.slice(1) })) },
-  { name: "lostReason", label: "Lost Reason", type: "text" },
-  { name: "notes", label: "Notes", type: "textarea" },
-  { name: "followUpAt", label: "Follow-up Date", type: "date" },
-];
+function getLeadFields(t: ReturnType<typeof useTranslations>, stageConfig: Record<LeadStatus, { label: string; color: string; bgColor: string; borderColor: string; icon: React.ReactNode; description: string }>): CrudField[] {
+  return [
+    { name: "companyName", label: t("fieldCompanyName"), type: "text", required: true },
+    { name: "contactPerson", label: t("fieldContactPerson"), type: "text", required: true },
+    { name: "contactEmail", label: t("fieldContactEmail"), type: "email" },
+    { name: "contactPhone", label: t("fieldContactPhone"), type: "text" },
+    { name: "country", label: t("fieldCountry"), type: "text" },
+    { name: "industry", label: t("fieldIndustry"), type: "text" },
+    { name: "expectedRevenue", label: t("fieldExpectedRevenue"), type: "number" },
+    { name: "source", label: t("fieldLeadSource"), type: "text" },
+    { name: "exhibitionId", label: t("fieldExhibition"), type: "select", options: [] },
+    { name: "status", label: t("fieldStage"), type: "select", options: STAGES.map((s) => ({ value: s, label: stageConfig[s].label })) },
+    { name: "lostReason", label: t("fieldLostReason"), type: "text" },
+    { name: "notes", label: t("fieldNotes"), type: "textarea" },
+    { name: "followUpAt", label: t("fieldFollowUpDate"), type: "date" },
+  ];
+}
 
 /* ─── Lead Card (Kanban) ────────────────────────────────────────────────── */
 
@@ -158,6 +163,8 @@ function DraggableLeadCard({
   scoring,
   converting,
   exhibitions,
+  t,
+  stageConfig,
 }: {
   lead: Lead;
   onEdit: (lead: Lead) => void;
@@ -167,6 +174,8 @@ function DraggableLeadCard({
   scoring: boolean;
   converting: boolean;
   exhibitions: { _id: string; eventName: string }[];
+  t: ReturnType<typeof useTranslations>;
+  stageConfig: ReturnType<typeof getStageConfig>;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: lead._id,
@@ -189,6 +198,8 @@ function DraggableLeadCard({
         converting={converting}
         exhibitions={exhibitions}
         dragListeners={listeners}
+        t={t}
+        stageConfig={stageConfig}
       />
     </div>
   );
@@ -204,6 +215,8 @@ function LeadCard({
   converting,
   exhibitions,
   dragListeners,
+  t,
+  stageConfig,
 }: {
   lead: Lead;
   onEdit: (lead: Lead) => void;
@@ -214,6 +227,8 @@ function LeadCard({
   converting: boolean;
   exhibitions: { _id: string; eventName: string }[];
   dragListeners?: Record<string, unknown>;
+  t: ReturnType<typeof useTranslations>;
+  stageConfig: ReturnType<typeof getStageConfig>;
 }) {
   const isOverdue = lead.followUpAt && new Date(lead.followUpAt) < new Date();
   const exhibition = lead.exhibitionId ? exhibitions.find((e) => e._id === lead.exhibitionId) : null;
@@ -303,7 +318,7 @@ function LeadCard({
             onClick={() => onScore(lead._id)}
             disabled={scoring}
             className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-amber-100 hover:text-amber-600 dark:hover:bg-amber-500/15"
-            title="AI Score"
+            title={t("aiScore")}
           >
             {scoring ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Flame className="h-3.5 w-3.5" />}
           </button>
@@ -312,7 +327,7 @@ function LeadCard({
               onClick={() => onConvert(lead)}
               disabled={converting}
               className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-emerald-100 hover:text-emerald-600 dark:hover:bg-emerald-500/15"
-              title="Convert to Employer"
+              title={t("convertToEmployer")}
             >
               {converting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Building2 className="h-3.5 w-3.5" />}
             </button>
@@ -322,9 +337,9 @@ function LeadCard({
           <button
             onClick={() => onStatusChange(lead._id, nextStage)}
             className="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary transition hover:bg-primary/20"
-            title={`Move to ${STAGE_CONFIG[nextStage].label}`}
+            title={t("moveToStage", { stage: stageConfig[nextStage].label })}
           >
-            Move to {STAGE_CONFIG[nextStage].label}
+            {t("moveTo")} {stageConfig[nextStage].label}
             <TrendingUp className="h-3 w-3" />
           </button>
         )}
@@ -347,6 +362,8 @@ function DroppableKanbanColumn({
   convertingLeadId,
   exhibitions,
   canCreate,
+  t,
+  stageConfig,
 }: {
   stage: LeadStatus;
   leads: Lead[];
@@ -359,9 +376,11 @@ function DroppableKanbanColumn({
   convertingLeadId: string | null;
   exhibitions: { _id: string; eventName: string }[];
   canCreate: boolean;
+  t: ReturnType<typeof useTranslations>;
+  stageConfig: ReturnType<typeof getStageConfig>;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `column-${stage}` });
-  const config = STAGE_CONFIG[stage];
+  const config = stageConfig[stage];
   const totalRevenue = leads.reduce((sum, l) => sum + (l.expectedRevenue ?? 0), 0);
 
   return (
@@ -386,7 +405,7 @@ function DroppableKanbanColumn({
           <button
             onClick={onAdd}
             className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-background hover:text-foreground"
-            title="Add new lead"
+            title={t("addNewLead")}
           >
             <Plus className="h-4 w-4" />
           </button>
@@ -414,6 +433,8 @@ function DroppableKanbanColumn({
               scoring={scoringLeadId === lead._id}
               converting={convertingLeadId === lead._id}
               exhibitions={exhibitions}
+              t={t}
+              stageConfig={stageConfig}
             />
           ))
         )}
@@ -425,6 +446,10 @@ function DroppableKanbanColumn({
 /* ─── Main Page ─────────────────────────────────────────────────────────── */
 
 export default function AgentLeadsPage() {
+  const t = useTranslations("agentLeads");
+  const tc = useTranslations("common");
+  const tt = useTranslations("table");
+  const tconf = useTranslations("confirm");
   const router = useRouter();
   const { can } = usePermissions();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
@@ -447,6 +472,8 @@ export default function AgentLeadsPage() {
   const [activeDragLead, setActiveDragLead] = useState<Lead | null>(null);
   const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
   const dupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const STAGE_CONFIG = useMemo(() => getStageConfig(t), [t]);
 
   // DnD sensors — require 8px drag distance to avoid accidental drags
   const dndSensors = useSensors(
@@ -476,8 +503,8 @@ export default function AgentLeadsPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: newStatus }),
     }).then((res) => {
-      if (!res.ok) toast.error("Failed to move lead");
-    }).catch(() => toast.error("Failed to move lead"));
+      if (!res.ok) toast.error(t("failedToMoveLead"));
+    }).catch(() => toast.error(t("failedToMoveLead")));
   }, [leads]);
 
   useEffect(() => {
@@ -488,9 +515,10 @@ export default function AgentLeadsPage() {
   }, []);
 
   const leadFields = useMemo<CrudField[]>(() => {
-    const exOpts = [{ value: "", label: "\u2014 None \u2014" }, ...exhibitions.map((e) => ({ value: e._id, label: e.eventName }))];
-    return LEAD_FIELDS.map((f) => f.name === "exhibitionId" ? { ...f, options: exOpts } : f);
-  }, [exhibitions]);
+    const baseFields = getLeadFields(t, STAGE_CONFIG);
+    const exOpts = [{ value: "", label: t("noneOption") }, ...exhibitions.map((e) => ({ value: e._id, label: e.eventName }))];
+    return baseFields.map((f) => f.name === "exhibitionId" ? { ...f, options: exOpts } : f);
+  }, [exhibitions, t, STAGE_CONFIG]);
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
@@ -550,7 +578,7 @@ export default function AgentLeadsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    const ok = await confirmDialog("Delete this lead?");
+    const ok = await confirmDialog(t("confirmDeleteLead"));
     if (!ok) return;
     await fetch(`/api/leads/${id}`, { method: "DELETE" });
     fetchLeads();
@@ -560,27 +588,27 @@ export default function AgentLeadsPage() {
   const openAdd = () => { setEditLead(null); setDuplicates([]); setModalOpen(true); };
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
-    { header: "Company", key: "companyName" },
-    { header: "Contact", key: "contactPerson" },
-    { header: "Email", key: "contactEmail" },
-    { header: "Phone", key: "contactPhone" },
-    { header: "Country", key: "country" },
-    { header: "Industry", key: "industry" },
-    { header: "Stage", key: "status" },
-    { header: "Score", key: "score" },
-    { header: "Qualification", key: "qualificationLevel" },
-    { header: "Expected Revenue", key: "expectedRevenue" },
-    { header: "Source", key: "source" },
-    { header: "Exhibition", key: "exhibitionId", formatter: (v) => v ? exhibitions.find((e) => e._id === String(v))?.eventName ?? "" : "" },
-    { header: "Follow Up", key: "followUpAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
-    { header: "Created", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: t("exportHeaderCompany"), key: "companyName" },
+    { header: t("exportHeaderContact"), key: "contactPerson" },
+    { header: tc("email"), key: "contactEmail" },
+    { header: tc("phone"), key: "contactPhone" },
+    { header: tc("country"), key: "country" },
+    { header: t("exportHeaderIndustry"), key: "industry" },
+    { header: t("exportHeaderStage"), key: "status" },
+    { header: t("exportHeaderScore"), key: "score" },
+    { header: t("exportHeaderQualification"), key: "qualificationLevel" },
+    { header: t("exportHeaderExpectedRevenue"), key: "expectedRevenue" },
+    { header: t("exportHeaderSource"), key: "source" },
+    { header: t("exportHeaderExhibition"), key: "exhibitionId", formatter: (v) => v ? exhibitions.find((e) => e._id === String(v))?.eventName ?? "" : "" },
+    { header: t("exportHeaderFollowUp"), key: "followUpAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: t("exportHeaderCreated"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: leads as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
-    filename: "agent-leads",
-    title: "Agent Leads",
+    filename: t("exportFilename"),
+    title: t("pageTitle"),
   });
 
   const scoreLead = async (leadId: string) => {
@@ -592,14 +620,14 @@ export default function AgentLeadsPage() {
         body: JSON.stringify({ leadId }),
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "Scoring failed" }));
-        throw new Error(err.error ?? "Failed to score lead");
+        const err = await res.json().catch(() => ({ error: t("scoringFailed") }));
+        throw new Error(err.error ?? t("failedToScoreLead"));
       }
       const data: LeadScoreResult = await res.json();
       setScoreResult(data);
-      toast.success(`Lead scored: ${data.temperature} (${data.score}/100)`);
+      toast.success(t("leadScored", { temperature: data.temperature, score: data.score }));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "AI scoring failed");
+      toast.error(err instanceof Error ? err.message : t("aiScoringFailed"));
     } finally {
       setScoringLeadId(null);
     }
@@ -607,11 +635,11 @@ export default function AgentLeadsPage() {
 
   const convertLead = async (lead: Lead) => {
     if (!lead.contactEmail) {
-      toast.error("Cannot convert: lead has no contact email");
+      toast.error(t("cannotConvertNoEmail"));
       return;
     }
     const ok = await confirmDialog(
-      `Convert "${lead.companyName}" into an employer account? A new account will be created for ${lead.contactEmail}.`,
+      t("confirmConvertLead", { company: lead.companyName, email: lead.contactEmail }),
     );
     if (!ok) return;
     setConvertingLeadId(lead._id);
@@ -622,13 +650,13 @@ export default function AgentLeadsPage() {
         body: JSON.stringify({}),
       });
       if (!res.ok) {
-        const data = await res.json().catch(() => ({ error: "Conversion failed" }));
-        throw new Error(data.error ?? "Failed to convert lead");
+        const data = await res.json().catch(() => ({ error: t("conversionFailed") }));
+        throw new Error(data.error ?? t("failedToConvertLead"));
       }
-      toast.success(`"${lead.companyName}" converted to employer successfully`);
+      toast.success(t("leadConvertedSuccess", { company: lead.companyName }));
       fetchLeads();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Lead conversion failed");
+      toast.error(err instanceof Error ? err.message : t("leadConversionFailed"));
     } finally {
       setConvertingLeadId(null);
     }
@@ -665,20 +693,20 @@ export default function AgentLeadsPage() {
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              <Target className="h-3.5 w-3.5" />Lead Pipeline
+              <Target className="h-3.5 w-3.5" />{t("heroBadge")}
             </div>
             <h1 className="mt-3 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-              Employer Lead Management
+              {t("pageTitle")}
             </h1>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Visual pipeline to track employer leads from first contact through conversion. Hover cards to advance stages.
+              {t("heroDescription")}
             </p>
           </div>
 
           {/* KPI chips */}
           <div className="flex flex-wrap items-center gap-3">
             <div className="workspace-glass-panel rounded-2xl px-4 py-3">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Open</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{t("kpiOpen")}</p>
               <p className="mt-1 text-xl font-bold text-foreground">
                 {leads.filter((l) => !["converted", "lost"].includes(l.status)).length}
               </p>
@@ -689,16 +717,16 @@ export default function AgentLeadsPage() {
               )}
             </div>
             <div className="workspace-glass-panel rounded-2xl px-4 py-3">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Won</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{t("kpiWon")}</p>
               <p className="mt-1 text-xl font-bold text-emerald-600 dark:text-emerald-400">{stageCounts.converted}</p>
             </div>
             <div className="workspace-glass-panel rounded-2xl px-4 py-3">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Total</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{t("kpiTotal")}</p>
               <p className="mt-1 text-xl font-bold text-foreground">{pagination.total}</p>
             </div>
             {can("leads", "create") && (
               <Button onClick={openAdd} className="h-11 rounded-xl bg-sky-600 px-5 text-sm font-semibold text-white shadow-sm hover:bg-sky-700">
-                <Plus className="mr-1.5 h-4 w-4" />New Lead
+                <Plus className="mr-1.5 h-4 w-4" />{t("newLead")}
               </Button>
             )}
           </div>
@@ -718,7 +746,7 @@ export default function AgentLeadsPage() {
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <LayoutGrid className="h-3.5 w-3.5" />Board
+              <LayoutGrid className="h-3.5 w-3.5" />{t("viewBoard")}
             </button>
             <button
               onClick={() => setViewMode("table")}
@@ -728,7 +756,7 @@ export default function AgentLeadsPage() {
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <List className="h-3.5 w-3.5" />Table
+              <List className="h-3.5 w-3.5" />{t("viewTable")}
             </button>
           </div>
 
@@ -740,7 +768,7 @@ export default function AgentLeadsPage() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search leads..."
+                placeholder={t("searchPlaceholder")}
                 className="h-10 w-full rounded-xl border border-border bg-background/70 pl-9 pr-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground/60 focus:border-ring focus:ring-2 focus:ring-ring/20"
               />
             </div>
@@ -749,7 +777,7 @@ export default function AgentLeadsPage() {
               onChange={(e) => setStatusFilter(e.target.value)}
               className="h-10 rounded-xl border border-border bg-background/70 px-3 text-sm text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20"
             >
-              <option value="">All stages</option>
+              <option value="">{t("allStages")}</option>
               {STAGES.map((s) => (
                 <option key={s} value={s}>{STAGE_CONFIG[s].label}</option>
               ))}
@@ -759,7 +787,7 @@ export default function AgentLeadsPage() {
               onChange={(e) => setExhibitionFilter(e.target.value)}
               className="h-10 max-w-[180px] truncate rounded-xl border border-border bg-background/70 px-3 text-sm text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20"
             >
-              <option value="">All exhibitions</option>
+              <option value="">{t("allExhibitions")}</option>
               {exhibitions.map((e) => (
                 <option key={e._id} value={e._id}>{e.eventName}</option>
               ))}
@@ -835,6 +863,8 @@ export default function AgentLeadsPage() {
                   convertingLeadId={convertingLeadId}
                   exhibitions={exhibitions}
                   canCreate={can("leads", "create")}
+                  t={t}
+                  stageConfig={STAGE_CONFIG}
                 />
               ))}
             </div>
@@ -857,21 +887,21 @@ export default function AgentLeadsPage() {
                 <div className="rounded-2xl bg-muted/50 p-4">
                   <Inbox className="h-10 w-10 text-muted-foreground/40" />
                 </div>
-                <p className="text-sm font-medium text-muted-foreground">No leads in your pipeline yet</p>
-                <p className="text-xs text-muted-foreground/70">Create your first lead to get started</p>
+                <p className="text-sm font-medium text-muted-foreground">{t("emptyPipelineTitle")}</p>
+                <p className="text-xs text-muted-foreground/70">{t("emptyPipelineDescription")}</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="border-border/40 bg-muted/30 hover:bg-muted/30">
-                      <TableHead className="w-[200px] pl-5 text-[11px] font-semibold uppercase tracking-wider">Company</TableHead>
-                      <TableHead className="text-[11px] font-semibold uppercase tracking-wider">Contact</TableHead>
-                      <TableHead className="hidden text-[11px] font-semibold uppercase tracking-wider md:table-cell">Location</TableHead>
-                      <TableHead className="text-[11px] font-semibold uppercase tracking-wider">Stage</TableHead>
-                      <TableHead className="text-[11px] font-semibold uppercase tracking-wider">Score</TableHead>
-                      <TableHead className="hidden text-[11px] font-semibold uppercase tracking-wider sm:table-cell">Follow-up</TableHead>
-                      <TableHead className="pr-5 text-right text-[11px] font-semibold uppercase tracking-wider">Actions</TableHead>
+                      <TableHead className="w-[200px] pl-5 text-[11px] font-semibold uppercase tracking-wider">{t("tableHeaderCompany")}</TableHead>
+                      <TableHead className="text-[11px] font-semibold uppercase tracking-wider">{t("tableHeaderContact")}</TableHead>
+                      <TableHead className="hidden text-[11px] font-semibold uppercase tracking-wider md:table-cell">{t("tableHeaderLocation")}</TableHead>
+                      <TableHead className="text-[11px] font-semibold uppercase tracking-wider">{t("tableHeaderStage")}</TableHead>
+                      <TableHead className="text-[11px] font-semibold uppercase tracking-wider">{t("tableHeaderScore")}</TableHead>
+                      <TableHead className="hidden text-[11px] font-semibold uppercase tracking-wider sm:table-cell">{t("tableHeaderFollowUp")}</TableHead>
+                      <TableHead className="pr-5 text-right text-[11px] font-semibold uppercase tracking-wider">{tc("actions")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -972,7 +1002,7 @@ export default function AgentLeadsPage() {
                               <button
                                 onClick={() => router.push(`leads/${lead._id}`)}
                                 className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-primary/10 hover:text-primary"
-                                title="View Details"
+                                title={tc("view")}
                               >
                                 <Eye className="h-4 w-4" />
                               </button>
@@ -980,7 +1010,7 @@ export default function AgentLeadsPage() {
                                 onClick={() => scoreLead(lead._id)}
                                 disabled={scoringLeadId === lead._id}
                                 className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-500/10"
-                                title="AI Score"
+                                title={t("aiScore")}
                               >
                                 {scoringLeadId === lead._id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Flame className="h-4 w-4" />}
                               </button>
@@ -989,7 +1019,7 @@ export default function AgentLeadsPage() {
                                   onClick={() => convertLead(lead)}
                                   disabled={convertingLeadId === lead._id}
                                   className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-500/10"
-                                  title="Convert"
+                                  title={t("convertToEmployer")}
                                 >
                                   {convertingLeadId === lead._id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Building2 className="h-4 w-4" />}
                                 </button>
@@ -998,7 +1028,7 @@ export default function AgentLeadsPage() {
                                 <button
                                   onClick={() => openEdit(lead)}
                                   className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-primary/10 hover:text-primary"
-                                  title="Edit"
+                                  title={tc("edit")}
                                 >
                                   <Edit2 className="h-4 w-4" />
                                 </button>
@@ -1007,7 +1037,7 @@ export default function AgentLeadsPage() {
                                 <button
                                   onClick={() => handleDelete(lead._id)}
                                   className="hidden rounded-lg p-1.5 text-muted-foreground transition hover:bg-rose-50 hover:text-rose-600 group-hover:inline-flex dark:hover:bg-rose-500/10"
-                                  title="Delete"
+                                  title={tc("delete")}
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </button>
@@ -1051,45 +1081,45 @@ export default function AgentLeadsPage() {
                 {/* Contact info */}
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Contact</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("detailContact")}</span>
                     <p className="mt-1 font-medium text-foreground">{detailLead.contactPerson}</p>
                   </div>
                   <div>
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Email</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{tc("email")}</span>
                     <p className="mt-1 text-foreground">{detailLead.contactEmail || "\u2014"}</p>
                   </div>
                   <div>
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Phone</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{tc("phone")}</span>
                     <p className="mt-1 text-foreground">{detailLead.contactPhone || "\u2014"}</p>
                   </div>
                   <div>
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Location</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("detailLocation")}</span>
                     <p className="mt-1 text-foreground">{detailLead.country || "\u2014"}</p>
                   </div>
                   <div>
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Industry</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("detailIndustry")}</span>
                     <p className="mt-1 text-foreground">{detailLead.industry || "\u2014"}</p>
                   </div>
                   <div>
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Source</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("detailSource")}</span>
                     <p className="mt-1 text-foreground">{detailLead.source || "\u2014"}</p>
                   </div>
                   <div>
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Revenue</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("detailRevenue")}</span>
                     <p className="mt-1 font-semibold text-emerald-600 dark:text-emerald-400">
                       {detailLead.expectedRevenue ? `${detailLead.expectedRevenueCurrency ?? "AED"} ${detailLead.expectedRevenue.toLocaleString()}` : "\u2014"}
                     </p>
                   </div>
                   <div>
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Exhibition</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("detailExhibition")}</span>
                     <p className="mt-1 text-foreground">{exhibition?.eventName || "\u2014"}</p>
                   </div>
                   <div>
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Follow-up</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("detailFollowUp")}</span>
                     <p className="mt-1 text-foreground">{detailLead.followUpAt ? new Date(detailLead.followUpAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "\u2014"}</p>
                   </div>
                   <div>
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Created</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("detailCreated")}</span>
                     <p className="mt-1 text-foreground">{new Date(detailLead.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</p>
                   </div>
                 </div>
@@ -1097,14 +1127,14 @@ export default function AgentLeadsPage() {
                 {/* Notes */}
                 {detailLead.notes && (
                   <div>
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Notes</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("detailNotes")}</span>
                     <p className="mt-1 rounded-lg bg-muted/50 p-3 text-sm text-foreground">{detailLead.notes}</p>
                   </div>
                 )}
 
                 {/* Pipeline progression */}
                 <div>
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Pipeline Progress</span>
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("pipelineProgress")}</span>
                   <div className="mt-2 flex items-center gap-1">
                     {STAGES.filter((s) => s !== "lost").map((s, i) => {
                       const sConfig = STAGE_CONFIG[s];
@@ -1123,7 +1153,7 @@ export default function AgentLeadsPage() {
                                   ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
                                   : "border border-border/50 text-muted-foreground/50 hover:border-border hover:text-muted-foreground"
                             }`}
-                            title={isActive ? `Current: ${sConfig.label}` : `Move to ${sConfig.label}`}
+                            title={isActive ? t("currentStage", { stage: sConfig.label }) : t("moveToStage", { stage: sConfig.label })}
                           >
                             {sConfig.icon}
                             {sConfig.label}
@@ -1140,7 +1170,7 @@ export default function AgentLeadsPage() {
                 {/* Score */}
                 {detailLead.score != null && (
                   <div className="flex items-center gap-3">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">AI Score</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("aiScoreLabel")}</span>
                     <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-bold ${TEMP_STYLES[detailLead.qualificationLevel ?? "cold"] ?? TEMP_STYLES.cold}`}>
                       <Gauge className="h-3.5 w-3.5" />{detailLead.score}
                     </span>
@@ -1157,7 +1187,7 @@ export default function AgentLeadsPage() {
       <CrudModal
         open={modalOpen}
         onClose={() => { setModalOpen(false); setEditLead(null); }}
-        title={editLead ? "Edit Lead" : "New Lead"}
+        title={editLead ? t("modalTitleEdit") : t("modalTitleNew")}
         fields={leadFields}
         initialValues={editLead ? {
           companyName: editLead.companyName,
@@ -1194,7 +1224,7 @@ export default function AgentLeadsPage() {
           <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <div>
-              <p className="font-semibold">Potential duplicates found</p>
+              <p className="font-semibold">{t("duplicatesFoundWarning")}</p>
               <ul className="mt-1 space-y-0.5 text-xs">
                 {duplicates.map((d) => (
                   <li key={d._id}>
@@ -1207,7 +1237,7 @@ export default function AgentLeadsPage() {
                   </li>
                 ))}
               </ul>
-              <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">You can still save \u2014 this is a warning only.</p>
+              <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">{t("duplicatesWarningOnly")}</p>
             </div>
           </div>
         ) : undefined}
@@ -1232,16 +1262,16 @@ export default function AgentLeadsPage() {
               </DialogHeader>
               <div className="space-y-4 px-6 py-5">
                 <div className="workspace-glass-panel rounded-2xl p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Recommended Next Action</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("recommendedNextAction")}</p>
                   <p className="mt-2 text-sm font-medium text-foreground">{scoreResult.nextAction}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Follow up in <span className="font-semibold text-foreground">{scoreResult.suggestedFollowUpDays}</span> days
+                    {t("followUpIn", { days: scoreResult.suggestedFollowUpDays })}
                   </p>
                 </div>
                 <div className="workspace-glass-panel rounded-2xl p-4">
                   <div className="flex items-center gap-2">
                     <MessageSquare className="h-4 w-4 text-sky-500" />
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Draft Follow-up Message</p>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("draftFollowUpMessage")}</p>
                   </div>
                   <p className="mt-2 text-sm text-muted-foreground leading-6">{scoreResult.draftMessage}</p>
                   <Button
@@ -1250,15 +1280,15 @@ export default function AgentLeadsPage() {
                     className="mt-3 h-8 rounded-lg text-xs"
                     onClick={() => {
                       navigator.clipboard.writeText(scoreResult.draftMessage);
-                      toast.success("Message copied to clipboard");
+                      toast.success(t("messageCopied"));
                     }}
                   >
-                    Copy message
+                    {t("copyMessage")}
                   </Button>
                 </div>
                 {scoreResult.riskFactors.length > 0 && (
                   <div className="workspace-glass-panel rounded-2xl p-4">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Risk Factors</p>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("riskFactors")}</p>
                     <ul className="mt-2 space-y-1.5">
                       {scoreResult.riskFactors.map((risk) => (
                         <li key={risk} className="flex items-start gap-2 text-xs text-muted-foreground">

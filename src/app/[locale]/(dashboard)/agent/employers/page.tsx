@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
@@ -29,25 +29,29 @@ interface Employer {
   isAgentVerified?: boolean;
 }
 
-const EMPLOYER_FIELDS: CrudField[] = [
-  { name: "companyName", label: "Company Name", type: "text", required: true },
-  { name: "industry", label: "Industry", type: "text" },
-  { name: "location", label: "Location", type: "text" },
+const getEmployerFields = (t: ReturnType<typeof useTranslations>): CrudField[] => [
+  { name: "companyName", label: t("fieldCompanyName"), type: "text", required: true },
+  { name: "industry", label: t("fieldIndustry"), type: "text" },
+  { name: "location", label: t("fieldLocation"), type: "text" },
 ];
 
-const ONBOARD_FIELDS: CrudField[] = [
-  { name: "name", label: "Contact Name", type: "text", required: true },
-  { name: "email", label: "Email", type: "text", required: true },
-  { name: "password", label: "Temporary Password", type: "password", required: true },
-  { name: "companyName", label: "Company Name", type: "text", required: true },
-  { name: "industry", label: "Industry", type: "text" },
-  { name: "phone", label: "Phone", type: "text" },
+const getOnboardFields = (t: ReturnType<typeof useTranslations>): CrudField[] => [
+  { name: "name", label: t("fieldContactName"), type: "text", required: true },
+  { name: "email", label: t("fieldEmail"), type: "text", required: true },
+  { name: "password", label: t("fieldTemporaryPassword"), type: "password", required: true },
+  { name: "companyName", label: t("fieldCompanyName"), type: "text", required: true },
+  { name: "industry", label: t("fieldIndustry"), type: "text" },
+  { name: "phone", label: t("fieldPhone"), type: "text" },
 ];
 
 export default function AgentEmployersPage() {
   const { can } = usePermissions();
   const router = useRouter();
   const locale = useLocale();
+  const t = useTranslations("agentEmployers");
+  const tc = useTranslations("common");
+  const tt = useTranslations("table");
+  const tconf = useTranslations("confirm");
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const pagination = usePagination();
   const [employers, setEmployers] = useState<Employer[]>([]);
@@ -88,10 +92,10 @@ export default function AgentEmployersPage() {
         router.refresh();
       } else {
         const data = await res.json().catch(() => ({}));
-        alert(data.error ?? "Failed to switch to employer view");
+        alert(data.error ?? t("switchEmployerViewError"));
       }
     } catch {
-      alert("Network error — please try again");
+      alert(t("switchEmployerNetworkError"));
     } finally {
       setSwitchingEmployerId(null);
     }
@@ -132,7 +136,7 @@ export default function AgentEmployersPage() {
   };
 
   const handleDelete = async (id: string) => {
-    const ok = await confirmDialog("Delete this employer?");
+    const ok = await confirmDialog(t("deleteEmployerConfirm"));
     if (!ok) return;
     await fetch(`/api/employers/${id}`, { method: "DELETE" });
     loadEmployers();
@@ -173,10 +177,10 @@ export default function AgentEmployersPage() {
         });
       } else {
         const data = await res.json().catch(() => ({}));
-        setReferralError(data.error || "Failed to get referral link");
+        setReferralError(data.error || t("referralLinkFetchFailed"));
       }
     } catch {
-      setReferralError("Network error — please try again");
+      setReferralError(t("referralLinkNetworkError"));
     } finally {
       setReferralLoading(false);
     }
@@ -216,18 +220,18 @@ export default function AgentEmployersPage() {
   const industriesCount = new Set(employers.map((employer) => employer.industry).filter(Boolean)).size;
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
-    { header: "Company", key: "companyName", formatter: (_v, row) => String((row as unknown as Employer).companyName ?? (row as unknown as Employer).name ?? "") },
-    { header: "Email", key: "email" },
-    { header: "Industry", key: "industry" },
-    { header: "Location", key: "location" },
-    { header: "Active", key: "isActive", formatter: (v) => v ? "Yes" : "No" },
+    { header: t("exportColumnCompany"), key: "companyName", formatter: (_v, row) => String((row as unknown as Employer).companyName ?? (row as unknown as Employer).name ?? "") },
+    { header: tc("email"), key: "email" },
+    { header: t("exportColumnIndustry"), key: "industry" },
+    { header: t("exportColumnLocation"), key: "location" },
+    { header: tc("active"), key: "isActive", formatter: (v) => v ? tc("yes") : tc("no") },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: employers as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "agent-employers",
-    title: "Agent Employers",
+    title: t("exportTitle"),
   });
 
   return (
@@ -238,21 +242,21 @@ export default function AgentEmployersPage() {
           <div className="max-w-3xl">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
               <Sparkles className="h-3.5 w-3.5" />
-              Agent workspace
+              {t("heroWorkspace")}
             </div>
             <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-              Employer Accounts
+              {t("heroTitle")}
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Keep assigned employers organized, search their account details quickly, and jump straight into posting roles on their behalf.
+              {t("heroDescription")}
             </p>
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Portfolio</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">{pagination.total} employer accounts</p>
-              <p className="text-xs text-muted-foreground">Assigned companies ready for job posting and follow-up.</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("portfolioLabel")}</p>
+              <p className="mt-1 text-lg font-semibold text-foreground">{pagination.total} {t("employerAccounts")}</p>
+              <p className="text-xs text-muted-foreground">{t("portfolioDescription")}</p>
             </div>
             <div className="flex flex-col gap-2">
               <button
@@ -260,7 +264,7 @@ export default function AgentEmployersPage() {
                 className="inline-flex h-11 items-center gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-sky-700"
               >
                 <UserPlus className="h-4 w-4" />
-                Onboard Employer
+                {t("onboardEmployerButton")}
               </button>
               <button
                 onClick={handleGetReferralLink}
@@ -268,7 +272,7 @@ export default function AgentEmployersPage() {
                 className="inline-flex h-9 items-center gap-2 rounded-xl border border-border px-3 text-xs font-semibold text-muted-foreground transition-colors hover:border-primary/25 hover:text-primary disabled:opacity-50"
               >
                 {referralLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
-                {referralLoading ? "Loading..." : "Get Referral Link"}
+                {referralLoading ? tc("loading") : t("getReferralLinkButton")}
               </button>
             </div>
           </div>
@@ -278,9 +282,9 @@ export default function AgentEmployersPage() {
           <div className="workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Active</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tc("active")}</p>
                 <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{activeEmployers}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Accounts currently available for hiring work.</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t("statsActiveDescription")}</p>
               </div>
               <div className="workspace-tone-emerald rounded-2xl p-2.5">
                 <Building2 className="h-5 w-5" />
@@ -290,9 +294,9 @@ export default function AgentEmployersPage() {
           <div className="workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Inactive</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tc("inactive")}</p>
                 <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{inactiveEmployers}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Accounts that may need reactivation or follow-up.</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t("statsInactiveDescription")}</p>
               </div>
               <div className="workspace-tone-amber rounded-2xl p-2.5">
                 <BriefcaseBusiness className="h-5 w-5" />
@@ -302,9 +306,9 @@ export default function AgentEmployersPage() {
           <div className="workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Industries</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statsIndustriesLabel")}</p>
                 <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{industriesCount}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Distinct sectors represented in your employer book.</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t("statsIndustriesDescription")}</p>
               </div>
               <div className="workspace-tone-indigo rounded-2xl p-2.5">
                 <Globe2 className="h-5 w-5" />
@@ -314,9 +318,9 @@ export default function AgentEmployersPage() {
           <div className="workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Search ready</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statsSearchReadyLabel")}</p>
                 <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{search ? 1 : 0}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Current search state for narrowing employer accounts.</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t("statsSearchReadyDescription")}</p>
               </div>
               <div className="workspace-tone-sky rounded-2xl p-2.5">
                 <Search className="h-5 w-5" />
@@ -342,16 +346,16 @@ export default function AgentEmployersPage() {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <p className="text-sm font-semibold text-foreground">Your Referral Link</p>
+                <p className="text-sm font-semibold text-foreground">{t("referralLinkTitle")}</p>
                 {referralData.label && (
                   <span className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
                     <Tag className="h-2.5 w-2.5" />{referralData.label}
                   </span>
                 )}
                 {referralData.isActive ? (
-                  <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-400">Active</span>
+                  <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-400">{tc("active")}</span>
                 ) : (
-                  <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-600 dark:bg-red-900/30 dark:text-red-400">Disabled</span>
+                  <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-600 dark:bg-red-900/30 dark:text-red-400">{t("referralDisabledStatus")}</span>
                 )}
               </div>
               <p className="mt-1 text-xs text-muted-foreground break-all font-mono">{referralLink}</p>
@@ -362,7 +366,7 @@ export default function AgentEmployersPage() {
                 className="inline-flex h-9 items-center gap-2 rounded-xl bg-sky-600 px-3 text-xs font-semibold text-white transition-colors hover:bg-sky-700"
               >
                 {referralCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                {referralCopied ? "Copied!" : "Copy"}
+                {referralCopied ? t("referralCopied") : tc("copy")}
               </button>
             </div>
           </div>
@@ -371,15 +375,15 @@ export default function AgentEmployersPage() {
           <div className="grid grid-cols-3 gap-3">
             <div className="rounded-xl border border-border/50 bg-secondary/30 p-3 text-center">
               <p className="text-lg font-semibold text-foreground">{referralData.usedCount}</p>
-              <p className="text-[10px] text-muted-foreground">Registrations</p>
+              <p className="text-[10px] text-muted-foreground">{t("referralStatsRegistrations")}</p>
             </div>
             <div className="rounded-xl border border-border/50 bg-secondary/30 p-3 text-center">
               <p className="text-lg font-semibold text-foreground">{referralData.maxUses || "∞"}</p>
-              <p className="text-[10px] text-muted-foreground">Max Uses</p>
+              <p className="text-[10px] text-muted-foreground">{t("referralStatsMaxUses")}</p>
             </div>
             <div className="rounded-xl border border-border/50 bg-secondary/30 p-3 text-center">
               <p className="text-lg font-semibold text-foreground font-mono">{referralData.referralCode}</p>
-              <p className="text-[10px] text-muted-foreground">Referral Code</p>
+              <p className="text-[10px] text-muted-foreground">{t("referralStatsCode")}</p>
             </div>
           </div>
 
@@ -395,14 +399,14 @@ export default function AgentEmployersPage() {
               }`}
             >
               {referralData.isActive ? <PowerOff className="h-3.5 w-3.5" /> : <Power className="h-3.5 w-3.5" />}
-              {togglingActive ? "Updating..." : referralData.isActive ? "Disable Link" : "Enable Link"}
+              {togglingActive ? t("referralUpdating") : referralData.isActive ? t("referralDisableLink") : t("referralEnableLink")}
             </button>
             <button
               onClick={() => setReferralExpanded(!referralExpanded)}
               className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-xs font-medium text-muted-foreground hover:text-foreground"
             >
               <Users className="h-3.5 w-3.5" />
-              {referralData.usedCount} Registration{referralData.usedCount !== 1 ? "s" : ""}
+              {referralData.usedCount} {t("referralRegistrationLabel", { count: referralData.usedCount })}
               {referralExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
             </button>
             <Link
@@ -410,7 +414,7 @@ export default function AgentEmployersPage() {
               className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-xs font-medium text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/20"
             >
               <ExternalLink className="h-3.5 w-3.5" />
-              Manage All Links
+              {t("referralManageAllLinks")}
             </Link>
           </div>
 
@@ -418,10 +422,10 @@ export default function AgentEmployersPage() {
           {referralExpanded && (
             <div className="border-t border-border pt-4">
               <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                Employers Joined via This Link ({referralData.registrations.length})
+                {t("referralRegistrationsHeader", { count: referralData.registrations.length })}
               </p>
               {referralData.registrations.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No employers have registered through this link yet.</p>
+                <p className="text-sm text-muted-foreground">{t("referralNoRegistrations")}</p>
               ) : (
                 <div className="space-y-2">
                   {referralData.registrations.map((reg, i) => (
@@ -449,9 +453,9 @@ export default function AgentEmployersPage() {
       <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Browse employers</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Filter the accounts you want to work on next</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Search by company, contact, industry, or location to focus your assigned book.</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("browseEmployersLabel")}</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("browseEmployersTitle")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("browseEmployersDescription")}</p>
           </div>
         </div>
 
@@ -459,7 +463,7 @@ export default function AgentEmployersPage() {
           <TableToolbar
             search={search}
             onSearchChange={setSearch}
-            searchPlaceholder="Search employers"
+            searchPlaceholder={t("searchEmployersPlaceholder")}
             onExportCsv={handleExportCsv}
             onExportExcel={handleExportExcel}
             onExportPdf={handleExportPdf}
@@ -492,8 +496,8 @@ export default function AgentEmployersPage() {
       ) : employers.length === 0 ? (
         <section className="workspace-empty-state rounded-[28px] p-10 text-center">
           <Building2 className="mx-auto mb-3 h-10 w-10 text-muted-foreground/55" />
-          <p className="text-sm font-medium text-foreground">No employer accounts yet</p>
-          <p className="mt-1 text-sm text-muted-foreground">Assigned companies will appear here once they are available to your workspace.</p>
+          <p className="text-sm font-medium text-foreground">{t("emptyStateTitle")}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{t("emptyStateDescription")}</p>
         </section>
       ) : (
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -518,8 +522,8 @@ export default function AgentEmployersPage() {
               </div>
 
               <div className="space-y-2 text-xs text-muted-foreground">
-                {em.industry && <p className="flex items-center gap-2"><Globe2 className="h-3.5 w-3.5 text-muted-foreground" /> Industry: {em.industry}</p>}
-                {em.location && <p className="flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-muted-foreground" /> Location: {em.location}</p>}
+                {em.industry && <p className="flex items-center gap-2"><Globe2 className="h-3.5 w-3.5 text-muted-foreground" /> {t("cardFieldIndustry")}: {em.industry}</p>}
+                {em.location && <p className="flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-muted-foreground" /> {t("cardFieldLocation")}: {em.location}</p>}
               </div>
 
               <TooltipProvider delayDuration={200}>
@@ -528,19 +532,19 @@ export default function AgentEmployersPage() {
                     href={`./jobs/new?employer=${em._id}`}
                     className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/15"
                   >
-                    <BriefcaseBusiness className="h-3.5 w-3.5" /> Post Job
+                    <BriefcaseBusiness className="h-3.5 w-3.5" /> {t("cardPostJobButton")}
                   </Link>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Link
                         href={`./jobs?employer=${em._id}`}
                         className="inline-flex items-center justify-center rounded-xl border border-border px-3 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:border-primary/20 hover:text-primary"
-                        aria-label={`View ${em.companyName ?? em.name} jobs`}
+                        aria-label={t("cardViewJobsAriaLabel", { company: em.companyName ?? em.name })}
                       >
                         <ArrowRight className="h-3.5 w-3.5" />
                       </Link>
                     </TooltipTrigger>
-                    <TooltipContent>View Jobs</TooltipContent>
+                    <TooltipContent>{t("cardViewJobsTooltip")}</TooltipContent>
                   </Tooltip>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -548,7 +552,7 @@ export default function AgentEmployersPage() {
                         onClick={() => handleSwitchToEmployerView(em._id)}
                         disabled={switchingEmployerId === em._id || !em.isActive}
                         className="inline-flex items-center justify-center gap-1 rounded-xl border border-sky-400/50 bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-700 transition-colors hover:bg-sky-100 disabled:opacity-50 dark:bg-sky-950/20 dark:text-sky-400 dark:hover:bg-sky-900/30"
-                        aria-label={`Switch to ${em.companyName ?? em.name} workspace`}
+                        aria-label={t("cardSwitchWorkspaceAriaLabel", { company: em.companyName ?? em.name })}
                       >
                         {switchingEmployerId === em._id ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -557,7 +561,7 @@ export default function AgentEmployersPage() {
                         )}
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent>Switch to Workspace</TooltipContent>
+                    <TooltipContent>{t("cardSwitchWorkspaceTooltip")}</TooltipContent>
                   </Tooltip>
                   {can("employers", "update") && (
                     <Tooltip>
@@ -565,12 +569,12 @@ export default function AgentEmployersPage() {
                         <button
                           onClick={() => { setEditEmployer(em); setModalOpen(true); }}
                           className="rounded-xl p-2 transition-colors hover:bg-secondary/80"
-                          aria-label={`Edit ${em.companyName ?? em.name}`}
+                          aria-label={t("cardEditAriaLabel", { company: em.companyName ?? em.name })}
                         >
                           <Edit2 className="h-3.5 w-3.5 text-blue-600" />
                         </button>
                       </TooltipTrigger>
-                      <TooltipContent>Edit</TooltipContent>
+                      <TooltipContent>{tc("edit")}</TooltipContent>
                     </Tooltip>
                   )}
                   {can("employers", "delete") && (
@@ -579,12 +583,12 @@ export default function AgentEmployersPage() {
                         <button
                           onClick={() => handleDelete(em._id)}
                           className="rounded-xl p-2 transition-colors hover:bg-secondary/80"
-                          aria-label={`Delete ${em.companyName ?? em.name}`}
+                          aria-label={t("cardDeleteAriaLabel", { company: em.companyName ?? em.name })}
                         >
                           <Trash2 className="h-3.5 w-3.5 text-red-600" />
                         </button>
                       </TooltipTrigger>
-                      <TooltipContent>Delete</TooltipContent>
+                      <TooltipContent>{tc("delete")}</TooltipContent>
                     </Tooltip>
                   )}
                 </div>
@@ -606,8 +610,8 @@ export default function AgentEmployersPage() {
       <CrudModal
         open={modalOpen}
         onClose={() => { setModalOpen(false); setEditEmployer(null); }}
-        title="Edit Employer"
-        fields={EMPLOYER_FIELDS}
+        title={t("modalEditEmployerTitle")}
+        fields={getEmployerFields(t)}
         initialValues={editEmployer ? {
           companyName: editEmployer.companyName ?? "",
           industry: editEmployer.industry ?? "",
@@ -619,8 +623,8 @@ export default function AgentEmployersPage() {
       <CrudModal
         open={onboardOpen}
         onClose={() => setOnboardOpen(false)}
-        title="Onboard New Employer"
-        fields={ONBOARD_FIELDS}
+        title={t("modalOnboardEmployerTitle")}
+        fields={getOnboardFields(t)}
         onSubmit={handleOnboard}
       />
     </div>

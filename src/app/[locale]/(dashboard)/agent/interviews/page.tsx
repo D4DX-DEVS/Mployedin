@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
@@ -37,36 +38,36 @@ interface Interview {
 interface EmployerOption { _id: string; companyName: string; }
 interface JobOption { _id: string; title: string; }
 
-const INTERVIEW_FIELDS: CrudField[] = [
-  { name: "scheduledAt", label: "Scheduled At", type: "date", required: true, min: new Date().toISOString().slice(0, 10) },
-  { name: "type", label: "Type", type: "select", options: [
-    { value: "video", label: "Video" }, { value: "offline", label: "In-Person" }, { value: "hybrid", label: "Hybrid" },
+const INTERVIEW_FIELDS_BASE: (t: ReturnType<typeof useTranslations>) => CrudField[] = (t) => [
+  { name: "scheduledAt", label: t("fieldScheduledAt"), type: "date", required: true, min: new Date().toISOString().slice(0, 10) },
+  { name: "type", label: t("fieldType"), type: "select", options: [
+    { value: "video", label: t("typeVideo") }, { value: "offline", label: t("typeInPerson") }, { value: "hybrid", label: t("typeHybrid") },
   ]},
-  { name: "notes", label: "Notes", type: "textarea" },
+  { name: "notes", label: t("fieldNotes"), type: "textarea" },
 ];
 
-const STATUS_OPTIONS = [
-  { value: "", label: "All Statuses" },
-  { value: "scheduled", label: "Scheduled" },
-  { value: "confirmed", label: "Confirmed" },
-  { value: "completed", label: "Completed" },
-  { value: "cancelled", label: "Cancelled" },
-  { value: "rescheduled", label: "Rescheduled" },
+const STATUS_OPTIONS_BASE: (t: ReturnType<typeof useTranslations>) => Array<{ value: string; label: string }> = (t) => [
+  { value: "", label: t("filterAllStatuses") },
+  { value: "scheduled", label: t("statusScheduled") },
+  { value: "confirmed", label: t("statusConfirmed") },
+  { value: "completed", label: t("statusCompleted") },
+  { value: "cancelled", label: t("statusCancelled") },
+  { value: "rescheduled", label: t("statusRescheduled") },
 ];
 
-const TYPE_OPTIONS = [
-  { value: "", label: "All Types" },
-  { value: "video", label: "Video" },
-  { value: "offline", label: "In-Person" },
-  { value: "hybrid", label: "Hybrid" },
+const TYPE_OPTIONS_BASE: (t: ReturnType<typeof useTranslations>) => Array<{ value: string; label: string }> = (t) => [
+  { value: "", label: t("filterAllTypes") },
+  { value: "video", label: t("typeVideo") },
+  { value: "offline", label: t("typeInPerson") },
+  { value: "hybrid", label: t("typeHybrid") },
 ];
 
-const OUTCOME_OPTIONS = [
-  { value: "", label: "All Outcomes" },
-  { value: "passed", label: "Passed" },
-  { value: "failed", label: "Failed" },
-  { value: "hold", label: "On Hold" },
-  { value: "no_show", label: "No Show" },
+const OUTCOME_OPTIONS_BASE: (t: ReturnType<typeof useTranslations>) => Array<{ value: string; label: string }> = (t) => [
+  { value: "", label: t("filterAllOutcomes") },
+  { value: "passed", label: t("outcomePassed") },
+  { value: "failed", label: t("outcomeFailed") },
+  { value: "hold", label: t("outcomeOnHold") },
+  { value: "no_show", label: t("outcomeNoShow") },
 ];
 
 const typeIcon = (type?: string) => {
@@ -83,6 +84,9 @@ const selectClass = "h-10 w-full rounded-xl border border-border bg-background/7
 /* ── Page Component ─────────────────────────────────────────────────── */
 
 export default function AgentInterviewsPage() {
+  const t = useTranslations("agentInterviews");
+  const tc = useTranslations("common");
+  const ttable = useTranslations("table");
   const { can } = usePermissions();
   const pagination = usePagination();
 
@@ -90,6 +94,12 @@ export default function AgentInterviewsPage() {
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
+
+  /* Initialize filter options */
+  const INTERVIEW_FIELDS = INTERVIEW_FIELDS_BASE(t);
+  const STATUS_OPTIONS = STATUS_OPTIONS_BASE(t);
+  const TYPE_OPTIONS = TYPE_OPTIONS_BASE(t);
+  const OUTCOME_OPTIONS = OUTCOME_OPTIONS_BASE(t);
 
   /* Filter options (fetched) */
   const [employers, setEmployers] = useState<EmployerOption[]>([]);
@@ -214,21 +224,21 @@ export default function AgentInterviewsPage() {
   const hasActiveFilters = status || employerFilter || jobFilter || typeFilter || outcomeFilter || debouncedSearch || dateFrom || dateTo;
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
-    { header: "Candidate", key: "jobSeekerId", formatter: (_v, row) => (row.jobSeekerId as { fullName?: string })?.fullName ?? "" },
-    { header: "Job", key: "jobId", formatter: (_v, row) => (row.jobId as { title?: string })?.title ?? "" },
-    { header: "Employer", key: "employerId", formatter: (_v, row) => (row.employerId as { companyName?: string })?.companyName ?? "" },
-    { header: "Type", key: "type" },
-    { header: "Scheduled", key: "scheduledAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
-    { header: "Round", key: "interviewRound" },
-    { header: "Status", key: "status" },
-    { header: "Outcome", key: "outcome" },
+    { header: t("columnCandidate"), key: "jobSeekerId", formatter: (_v, row) => (row.jobSeekerId as { fullName?: string })?.fullName ?? "" },
+    { header: t("columnJob"), key: "jobId", formatter: (_v, row) => (row.jobId as { title?: string })?.title ?? "" },
+    { header: t("columnEmployer"), key: "employerId", formatter: (_v, row) => (row.employerId as { companyName?: string })?.companyName ?? "" },
+    { header: t("columnType"), key: "type" },
+    { header: t("columnScheduled"), key: "scheduledAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: t("columnRound"), key: "interviewRound" },
+    { header: t("columnStatus"), key: "status" },
+    { header: t("columnOutcome"), key: "outcome" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: interviews as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "agent-interviews",
-    title: "Agent Interviews",
+    title: t("exportTitle"),
   });
 
   /* Counts from API */
@@ -244,14 +254,14 @@ export default function AgentInterviewsPage() {
       <section className="workspace-hero-surface agent-legacy-hero overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary"><Sparkles className="h-3.5 w-3.5" />Agent workspace</div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">Interviews</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">Keep interview schedules current, mark outcomes quickly, and stay aligned with candidates and employer teams.</p>
+            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary"><Sparkles className="h-3.5 w-3.5" />{t("badgeAgentWorkspace")}</div>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("pageTitle")}</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">{t("pageSubtitle")}</p>
           </div>
           <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:min-w-[260px]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Calendar</p>
-            <p className="mt-1 text-lg font-semibold text-foreground">{totalAll} interviews</p>
-            <p className="text-xs text-muted-foreground">Scheduled and historical interview activity in your scope.</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("labelCalendar")}</p>
+            <p className="mt-1 text-lg font-semibold text-foreground">{totalAll} {t("labelInterviews")}</p>
+            <p className="text-xs text-muted-foreground">{t("descCalendarActivity")}</p>
           </div>
         </div>
 
@@ -260,9 +270,9 @@ export default function AgentInterviewsPage() {
           <button type="button" onClick={() => setStatus(status === "scheduled" ? "" : "scheduled")} className={`workspace-glass-panel rounded-2xl p-4 text-left transition-all ${status === "scheduled" ? "ring-2 ring-primary/40" : "hover:ring-1 hover:ring-border"}`}>
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Scheduled</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("kpiScheduled")}</p>
                 <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{scheduledCount}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Upcoming interview sessions still on the calendar.</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t("descScheduled")}</p>
               </div>
               <div className="workspace-tone-sky rounded-2xl p-2.5"><CalendarCheck2 className="h-5 w-5" /></div>
             </div>
@@ -270,9 +280,9 @@ export default function AgentInterviewsPage() {
           <button type="button" onClick={() => setStatus(status === "completed" ? "" : "completed")} className={`workspace-glass-panel rounded-2xl p-4 text-left transition-all ${status === "completed" ? "ring-2 ring-primary/40" : "hover:ring-1 hover:ring-border"}`}>
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Completed</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("kpiCompleted")}</p>
                 <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{completedCount}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Meetings that already reached a final outcome.</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t("descCompleted")}</p>
               </div>
               <div className="workspace-tone-emerald rounded-2xl p-2.5"><CheckCircle className="h-5 w-5" /></div>
             </div>
@@ -280,9 +290,9 @@ export default function AgentInterviewsPage() {
           <button type="button" onClick={() => setStatus(status === "cancelled" ? "" : "cancelled")} className={`workspace-glass-panel rounded-2xl p-4 text-left transition-all ${status === "cancelled" ? "ring-2 ring-primary/40" : "hover:ring-1 hover:ring-border"}`}>
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Cancelled</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("kpiCancelled")}</p>
                 <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{cancelledCount}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Sessions cancelled before they could happen.</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t("descCancelled")}</p>
               </div>
               <div className="workspace-tone-amber rounded-2xl p-2.5"><XCircle className="h-5 w-5" /></div>
             </div>
@@ -290,9 +300,9 @@ export default function AgentInterviewsPage() {
           <button type="button" onClick={() => setStatus(status === "rescheduled" ? "" : "rescheduled")} className={`workspace-glass-panel rounded-2xl p-4 text-left transition-all ${status === "rescheduled" ? "ring-2 ring-primary/40" : "hover:ring-1 hover:ring-border"}`}>
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Rescheduled</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("kpiRescheduled")}</p>
                 <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{rescheduledCount}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Interviews that were moved to a new time slot.</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t("descRescheduled")}</p>
               </div>
               <div className="workspace-tone-rose rounded-2xl p-2.5"><RotateCcw className="h-5 w-5" /></div>
             </div>
@@ -304,12 +314,12 @@ export default function AgentInterviewsPage() {
       <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Filter interviews</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Narrow down to what matters</h2>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sectionFilterLabel")}</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("sectionFilterTitle")}</h2>
           </div>
           {hasActiveFilters && (
             <Button variant="ghost" size="sm" onClick={clearAllFilters} className="gap-1.5 text-xs text-muted-foreground hover:text-foreground">
-              <X className="h-3.5 w-3.5" />Clear all
+              <X className="h-3.5 w-3.5" />{t("buttonClearAll")}
             </Button>
           )}
         </div>
@@ -321,7 +331,7 @@ export default function AgentInterviewsPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search candidate name or job title..."
+            placeholder={t("searchPlaceholder")}
             className="h-10 w-full rounded-xl border border-border bg-background/70 pl-10 pr-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground/60 focus:border-ring focus:ring-2 focus:ring-ring/20"
           />
         </div>
@@ -330,7 +340,7 @@ export default function AgentInterviewsPage() {
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {/* Status */}
           <div>
-            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Status</label>
+            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{tc("status")}</label>
             <select value={status} onChange={(e) => setStatus(e.target.value)} className={selectClass}>
               {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
@@ -338,25 +348,25 @@ export default function AgentInterviewsPage() {
 
           {/* Employer */}
           <div>
-            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Employer</label>
+            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("filterEmployer")}</label>
             <select value={employerFilter} onChange={(e) => { setEmployerFilter(e.target.value); setJobFilter(""); }} className={selectClass}>
-              <option value="">All Employers</option>
+              <option value="">{t("filterAllEmployers")}</option>
               {employers.map((emp) => <option key={emp._id} value={emp._id}>{emp.companyName}</option>)}
             </select>
           </div>
 
           {/* Job */}
           <div>
-            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Job</label>
+            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("filterJob")}</label>
             <select value={jobFilter} onChange={(e) => setJobFilter(e.target.value)} className={selectClass}>
-              <option value="">All Jobs</option>
+              <option value="">{t("filterAllJobs")}</option>
               {jobs.map((j) => <option key={j._id} value={j._id}>{j.title}</option>)}
             </select>
           </div>
 
           {/* Type */}
           <div>
-            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Type</label>
+            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("filterType")}</label>
             <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className={selectClass}>
               {TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
@@ -364,7 +374,7 @@ export default function AgentInterviewsPage() {
 
           {/* Outcome */}
           <div>
-            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Outcome</label>
+            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("filterOutcome")}</label>
             <select value={outcomeFilter} onChange={(e) => setOutcomeFilter(e.target.value)} className={selectClass}>
               {OUTCOME_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
@@ -374,11 +384,11 @@ export default function AgentInterviewsPage() {
         {/* Date range – separate row for breathing room */}
         <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:max-w-md">
           <div>
-            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">From date</label>
+            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("labelFromDate")}</label>
             <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className={selectClass} />
           </div>
           <div>
-            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">To date</label>
+            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("labelToDate")}</label>
             <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className={selectClass} />
           </div>
         </div>
@@ -388,43 +398,43 @@ export default function AgentInterviewsPage() {
           <div className="mt-4 flex flex-wrap gap-2">
             {status && (
               <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                <Filter className="h-3 w-3" />Status: {STATUS_OPTIONS.find(o => o.value === status)?.label}
+                <Filter className="h-3 w-3" />{t("pillStatus")}: {STATUS_OPTIONS.find(o => o.value === status)?.label}
                 <button type="button" onClick={() => setStatus("")} className="ml-0.5 hover:text-primary/70"><X className="h-3 w-3" /></button>
               </span>
             )}
             {employerFilter && (
               <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                <Filter className="h-3 w-3" />Employer: {employers.find(e => e._id === employerFilter)?.companyName}
+                <Filter className="h-3 w-3" />{t("pillEmployer")}: {employers.find(e => e._id === employerFilter)?.companyName}
                 <button type="button" onClick={() => { setEmployerFilter(""); setJobFilter(""); }} className="ml-0.5 hover:text-primary/70"><X className="h-3 w-3" /></button>
               </span>
             )}
             {jobFilter && (
               <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                <Filter className="h-3 w-3" />Job: {jobs.find(j => j._id === jobFilter)?.title}
+                <Filter className="h-3 w-3" />{t("pillJob")}: {jobs.find(j => j._id === jobFilter)?.title}
                 <button type="button" onClick={() => setJobFilter("")} className="ml-0.5 hover:text-primary/70"><X className="h-3 w-3" /></button>
               </span>
             )}
             {typeFilter && (
               <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                <Filter className="h-3 w-3" />Type: {TYPE_OPTIONS.find(o => o.value === typeFilter)?.label}
+                <Filter className="h-3 w-3" />{t("pillType")}: {TYPE_OPTIONS.find(o => o.value === typeFilter)?.label}
                 <button type="button" onClick={() => setTypeFilter("")} className="ml-0.5 hover:text-primary/70"><X className="h-3 w-3" /></button>
               </span>
             )}
             {outcomeFilter && (
               <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                <Filter className="h-3 w-3" />Outcome: {OUTCOME_OPTIONS.find(o => o.value === outcomeFilter)?.label}
+                <Filter className="h-3 w-3" />{t("pillOutcome")}: {OUTCOME_OPTIONS.find(o => o.value === outcomeFilter)?.label}
                 <button type="button" onClick={() => setOutcomeFilter("")} className="ml-0.5 hover:text-primary/70"><X className="h-3 w-3" /></button>
               </span>
             )}
             {(dateFrom || dateTo) && (
               <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                <Filter className="h-3 w-3" />Date: {dateFrom || "..."} – {dateTo || "..."}
+                <Filter className="h-3 w-3" />{t("pillDate")}: {dateFrom || "..."} – {dateTo || "..."}
                 <button type="button" onClick={() => { setDateFrom(""); setDateTo(""); }} className="ml-0.5 hover:text-primary/70"><X className="h-3 w-3" /></button>
               </span>
             )}
             {debouncedSearch && (
               <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                <Search className="h-3 w-3" />Search: &quot;{debouncedSearch}&quot;
+                <Search className="h-3 w-3" />{t("pillSearch")}: &quot;{debouncedSearch}&quot;
                 <button type="button" onClick={() => setSearch("")} className="ml-0.5 hover:text-primary/70"><X className="h-3 w-3" /></button>
               </span>
             )}
@@ -436,11 +446,11 @@ export default function AgentInterviewsPage() {
       <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Current results</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Keep each interview updated as decisions land</h2>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sectionResultsLabel")}</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("sectionResultsTitle")}</h2>
           </div>
           <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">
-            <ArrowRight className="h-3.5 w-3.5 text-primary" />{pagination.total} interviews across {pagination.totalPages} page{pagination.totalPages === 1 ? "" : "s"}
+            <ArrowRight className="h-3.5 w-3.5 text-primary" />{t("paginationSummary", { total: pagination.total, pages: pagination.totalPages, pageWord: pagination.totalPages === 1 ? t("pageWordSingular") : t("pageWordPlural") })}
           </div>
         </div>
 
@@ -455,15 +465,15 @@ export default function AgentInterviewsPage() {
           <Table>
             <TableHeader>
               <TableRow className="workspace-subtle-surface hover:bg-secondary/70">
-                <TableHead>Candidate</TableHead>
-                <TableHead>Job</TableHead>
-                <TableHead>Employer</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Scheduled</TableHead>
-                <TableHead>Round</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Outcome</TableHead>
-                {can("interviews", "update") && <TableHead>Actions</TableHead>}
+                <TableHead>{t("columnCandidate")}</TableHead>
+                <TableHead>{t("columnJob")}</TableHead>
+                <TableHead>{t("columnEmployer")}</TableHead>
+                <TableHead>{t("columnType")}</TableHead>
+                <TableHead>{t("columnScheduled")}</TableHead>
+                <TableHead>{t("columnRound")}</TableHead>
+                <TableHead>{tc("status")}</TableHead>
+                <TableHead>{t("columnOutcome")}</TableHead>
+                {can("interviews", "update") && <TableHead>{tc("actions")}</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -482,10 +492,10 @@ export default function AgentInterviewsPage() {
                   <TableCell colSpan={9} className="h-32 text-center">
                     <div className="flex flex-col items-center gap-2 text-muted-foreground">
                       <Inbox className="h-8 w-8 text-muted-foreground" />
-                      <span className="text-sm">{hasActiveFilters ? "No interviews match your filters" : "No interviews found"}</span>
+                      <span className="text-sm">{hasActiveFilters ? t("emptyStateWithFilters") : t("emptyStateNoResults")}</span>
                       {hasActiveFilters && (
                         <Button variant="ghost" size="sm" onClick={clearAllFilters} className="mt-1 gap-1 text-xs">
-                          <X className="h-3 w-3" />Clear filters
+                          <X className="h-3 w-3" />{t("buttonClearFilters")}
                         </Button>
                       )}
                     </div>
@@ -504,7 +514,7 @@ export default function AgentInterviewsPage() {
                   <TableCell>
                     <span className="inline-flex items-center gap-1.5 capitalize text-muted-foreground">
                       {typeIcon(iv.type)}
-                      {iv.type === "offline" ? "In-Person" : iv.type ?? "—"}
+                      {iv.type === "offline" ? t("typeInPerson") : iv.type ? t(`type${iv.type.charAt(0).toUpperCase()}${iv.type.slice(1)}`) : "—"}
                     </span>
                   </TableCell>
                   <TableCell className="text-muted-foreground whitespace-nowrap">
@@ -525,15 +535,15 @@ export default function AgentInterviewsPage() {
                   {can("interviews", "update") && (
                     <TableCell>
                       <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="xs" onClick={() => { setEditInterview(iv); setModalOpen(true); }} title="Edit" aria-label={`Edit interview for ${iv.jobSeekerId?.fullName ?? "candidate"}`}>
+                        <Button variant="ghost" size="xs" onClick={() => { setEditInterview(iv); setModalOpen(true); }} title={tc("edit")} aria-label={t("ariaEditInterview", { name: iv.jobSeekerId?.fullName ?? tc("name") })}>
                           <Edit2 className="h-3.5 w-3.5 text-primary" />
                         </Button>
                         {(iv.status === "scheduled" || iv.status === "confirmed") && (
                           <>
-                            <Button variant="ghost" size="xs" onClick={() => updateInterviewStatus(iv._id, "completed")} title="Mark completed" aria-label={`Mark interview completed`}>
+                            <Button variant="ghost" size="xs" onClick={() => updateInterviewStatus(iv._id, "completed")} title={t("buttonMarkCompleted")} aria-label={t("ariaMarkCompleted")}>
                               <CheckCircle className="h-3.5 w-3.5 text-[hsl(var(--status-selected))]" />
                             </Button>
-                            <Button variant="ghost" size="xs" onClick={() => updateInterviewStatus(iv._id, "cancelled")} title="Cancel" aria-label={`Cancel interview`}>
+                            <Button variant="ghost" size="xs" onClick={() => updateInterviewStatus(iv._id, "cancelled")} title={tc("cancel")} aria-label={t("ariaCancel")}>
                               <XCircle className="h-3.5 w-3.5 text-destructive" />
                             </Button>
                           </>
@@ -560,7 +570,7 @@ export default function AgentInterviewsPage() {
       <CrudModal
         open={modalOpen}
         onClose={() => { setModalOpen(false); setEditInterview(null); }}
-        title="Edit Interview"
+        title={t("modalEditTitle")}
         fields={INTERVIEW_FIELDS}
         initialValues={editInterview ? {
           scheduledAt: editInterview.scheduledAt?.slice(0, 10) ?? "",
