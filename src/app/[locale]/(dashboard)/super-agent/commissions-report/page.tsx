@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -84,6 +85,8 @@ function fmt(value: number, currency = "AED"): string {
 /* ------------------------------------------------------------------ */
 
 export default function SuperAgentCommissionsReportPage() {
+  const t = useTranslations("superAgentCommissionsReport");
+  const tc = useTranslations("common");
   const currentYear = new Date().getFullYear();
   const [yearFilter, setYearFilter] = useState(currentYear);
   const [searchQuery, setSearchQuery] = useState("");
@@ -97,14 +100,14 @@ export default function SuperAgentCommissionsReportPage() {
       if (res.ok) {
         setData(await res.json());
       } else {
-        toast.error("Failed to load commission report");
+        toast.error(t("failedToLoadReport"));
       }
     } catch {
-      toast.error("Failed to load commission report");
+      toast.error(t("failedToLoadReport"));
     } finally {
       setLoading(false);
     }
-  }, [yearFilter]);
+  }, [yearFilter, t]);
 
   useEffect(() => { fetchReport(); }, [fetchReport]);
 
@@ -118,13 +121,13 @@ export default function SuperAgentCommissionsReportPage() {
   }, [data, searchQuery]);
 
   const exportColumns: ExportColumn<AgentRow>[] = [
-    { header: "Agent", key: "agentName" },
-    { header: "Email", key: "agentEmail" },
-    { header: "Total (AED)", key: "total" },
-    { header: "Pending (AED)", key: "pending" },
-    { header: "Approved (AED)", key: "approved" },
-    { header: "Paid (AED)", key: "paid" },
-    { header: "Count", key: "count" },
+    { header: t("columnAgent"), key: "agentName" },
+    { header: tc("email"), key: "agentEmail" },
+    { header: t("columnTotalAed"), key: "total" },
+    { header: t("columnPendingAed"), key: "pending" },
+    { header: t("columnApprovedAed"), key: "approved" },
+    { header: t("columnPaidAed"), key: "paid" },
+    { header: t("columnCount"), key: "count" },
   ];
   const { handleExportCsv, handleExportExcel } = useTableExport({ data: filteredAgents, columns: exportColumns, filename: `sa-commissions-${yearFilter}` });
 
@@ -132,8 +135,8 @@ export default function SuperAgentCommissionsReportPage() {
 
   const chartData = data?.monthlyTrend.map((m) => ({
     name: MONTHS_SHORT[m.month - 1],
-    "My Override": m.overrideTotal,
-    "Team Total": m.teamTotal,
+    [t("chartMyOverride")]: m.overrideTotal,
+    [t("chartTeamTotal")]: m.teamTotal,
   })) ?? [];
 
   const s = data?.overviewSummary;
@@ -142,11 +145,11 @@ export default function SuperAgentCommissionsReportPage() {
     <div className="page-container space-y-6">
       {/* ── Hero Section ── */}
       <SuperAgentPageIntro
-        title="Commission Report"
-        description={`Your override commissions and your team's earnings — ${yearFilter}. Track pending approvals, payouts, and team performance.`}
-        eyebrow="Super agent workspace"
-        summaryTitle="Overview"
-        summaryDescription={s ? `${fmt(s.grandTotal, s.currency)} total commissions across your team with ${fmt(s.overrideTotal, s.currency)} in override earnings.` : "Loading commission data…"}
+        title={t("pageTitle")}
+        description={t("pageDescription", { year: yearFilter })}
+        eyebrow={t("pageEyebrow")}
+        summaryTitle={t("summaryTitle")}
+        summaryDescription={s ? t("summaryDescription", { grandTotal: fmt(s.grandTotal, s.currency), overrideTotal: fmt(s.overrideTotal, s.currency) }) : t("loadingData")}
       >
         <div className="flex items-center gap-2">
           <Select value={String(yearFilter)} onValueChange={(v) => setYearFilter(Number(v))}>
@@ -169,17 +172,17 @@ export default function SuperAgentCommissionsReportPage() {
       {/* ── KPI Cards ── */}
       <SuperAgentMetricsGrid
         items={[
-          { label: "Grand Total", value: loading ? "—" : s ? fmt(s.grandTotal, s.currency) : "—", helper: "All commissions combined", icon: <CircleDollarSign className="h-5 w-5" />, toneClassName: "workspace-tone-indigo" },
-          { label: "My Override", value: loading ? "—" : s ? fmt(s.overrideTotal, s.currency) : "—", helper: "Your personal override earnings", icon: <Layers className="h-5 w-5" />, toneClassName: "workspace-tone-violet" },
-          { label: "Team Earned", value: loading ? "—" : s ? fmt(s.teamTotal, s.currency) : "—", helper: "Total team commission earnings", icon: <Users className="h-5 w-5" />, toneClassName: "workspace-tone-sky" },
-          { label: "Pending", value: loading ? "—" : s ? fmt(s.overridePending, s.currency) : "—", helper: "Awaiting approval or payment", icon: <Clock className="h-5 w-5" />, toneClassName: "workspace-tone-amber" },
-          { label: "Override Paid", value: loading ? "—" : s ? fmt(s.overridePaid, s.currency) : "—", helper: "Paid out to date", icon: <Wallet className="h-5 w-5" />, toneClassName: "workspace-tone-emerald" },
+          { label: t("kpiGrandTotal"), value: loading ? "—" : s ? fmt(s.grandTotal, s.currency) : "—", helper: t("kpiGrandTotalHelper"), icon: <CircleDollarSign className="h-5 w-5" />, toneClassName: "workspace-tone-indigo" },
+          { label: t("kpiMyOverride"), value: loading ? "—" : s ? fmt(s.overrideTotal, s.currency) : "—", helper: t("kpiMyOverrideHelper"), icon: <Layers className="h-5 w-5" />, toneClassName: "workspace-tone-violet" },
+          { label: t("kpiTeamEarned"), value: loading ? "—" : s ? fmt(s.teamTotal, s.currency) : "—", helper: t("kpiTeamEarnedHelper"), icon: <Users className="h-5 w-5" />, toneClassName: "workspace-tone-sky" },
+          { label: tc("status"), value: loading ? "—" : s ? fmt(s.overridePending, s.currency) : "—", helper: t("kpiPendingHelper"), icon: <Clock className="h-5 w-5" />, toneClassName: "workspace-tone-amber" },
+          { label: t("kpiOverridePaid"), value: loading ? "—" : s ? fmt(s.overridePaid, s.currency) : "—", helper: t("kpiOverridePaidHelper"), icon: <Wallet className="h-5 w-5" />, toneClassName: "workspace-tone-emerald" },
         ]}
       />
 
       {/* ── Monthly Trend ── */}
       <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">Monthly Trend — Override vs Team ({yearFilter})</h2>
+        <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("monthlyTrendHeading", { year: yearFilter })}</h2>
         <ResponsiveContainer width="100%" height={240}>
           <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -187,8 +190,8 @@ export default function SuperAgentCommissionsReportPage() {
             <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${Math.round(v / 1000)}K`} />
             <ReTooltip formatter={(v) => fmt(v as number)} />
             <Legend wrapperStyle={{ fontSize: 11 }} />
-            <Bar dataKey="My Override" fill="#7c3aed" radius={[3, 3, 0, 0]} />
-            <Bar dataKey="Team Total" fill="#0ea5e9" radius={[3, 3, 0, 0]} />
+            <Bar dataKey={t("chartMyOverride")} fill="#7c3aed" radius={[3, 3, 0, 0]} />
+            <Bar dataKey={t("chartTeamTotal")} fill="#0ea5e9" radius={[3, 3, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </section>
@@ -197,10 +200,10 @@ export default function SuperAgentCommissionsReportPage() {
       {data && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
-            { label: "Override — Pending", value: s ? fmt(s.overridePending, s.currency) : "—", icon: Clock, color: "text-amber-600", chip: "bg-amber-50 dark:bg-amber-950/30" },
-            { label: "Override — Approved", value: s ? fmt(s.overrideApproved, s.currency) : "—", icon: CheckCircle2, color: "text-blue-600", chip: "bg-blue-50 dark:bg-blue-950/30" },
-            { label: "Override — Paid", value: s ? fmt(s.overridePaid, s.currency) : "—", icon: Wallet, color: "text-emerald-600", chip: "bg-emerald-50 dark:bg-emerald-950/30" },
-            { label: "Team — Total Earned", value: s ? fmt(s.teamTotal, s.currency) : "—", icon: Users, color: "text-sky-600", chip: "bg-sky-50 dark:bg-sky-950/30" },
+            { label: t("breakdownOverridePending"), value: s ? fmt(s.overridePending, s.currency) : "—", icon: Clock, color: "text-amber-600", chip: "bg-amber-50 dark:bg-amber-950/30" },
+            { label: t("breakdownOverrideApproved"), value: s ? fmt(s.overrideApproved, s.currency) : "—", icon: CheckCircle2, color: "text-blue-600", chip: "bg-blue-50 dark:bg-blue-950/30" },
+            { label: t("breakdownOverridePaid"), value: s ? fmt(s.overridePaid, s.currency) : "—", icon: Wallet, color: "text-emerald-600", chip: "bg-emerald-50 dark:bg-emerald-950/30" },
+            { label: t("breakdownTeamTotalEarned"), value: s ? fmt(s.teamTotal, s.currency) : "—", icon: Users, color: "text-sky-600", chip: "bg-sky-50 dark:bg-sky-950/30" },
           ].map(({ label, value, icon: Icon, color, chip }) => (
             <div key={label} className="workspace-glass-panel rounded-2xl p-4">
               <div className="flex items-center gap-2">
@@ -220,13 +223,13 @@ export default function SuperAgentCommissionsReportPage() {
         <div className="border-b border-border/60 px-5 py-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-sm font-semibold">Team Breakdown</h2>
-            {data && <Badge variant="secondary">{data.agentBreakdown.length} agents</Badge>}
+            <h2 className="text-sm font-semibold">{t("teamBreakdownTitle")}</h2>
+            {data && <Badge variant="secondary">{t("agentsCount", { count: data.agentBreakdown.length })}</Badge>}
           </div>
           <TableToolbar
             search={searchQuery}
             onSearchChange={setSearchQuery}
-            searchPlaceholder="Search agent…"
+            searchPlaceholder={t("searchAgentPlaceholder")}
             onExportCsv={handleExportCsv}
             onExportExcel={handleExportExcel}
           />
@@ -235,12 +238,12 @@ export default function SuperAgentCommissionsReportPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Agent</TableHead>
-                <TableHead className="text-right">Total</TableHead>
-                <TableHead className="text-right">Pending</TableHead>
-                <TableHead className="text-right">Approved</TableHead>
-                <TableHead className="text-right">Paid</TableHead>
-                <TableHead className="text-right">Count</TableHead>
+                <TableHead>{t("tableColumnAgent")}</TableHead>
+                <TableHead className="text-right">{t("tableColumnTotal")}</TableHead>
+                <TableHead className="text-right">{t("tableColumnPending")}</TableHead>
+                <TableHead className="text-right">{t("tableColumnApproved")}</TableHead>
+                <TableHead className="text-right">{t("tableColumnPaid")}</TableHead>
+                <TableHead className="text-right">{t("tableColumnCount")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -255,7 +258,7 @@ export default function SuperAgentCommissionsReportPage() {
               ) : filteredAgents.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="py-10 text-center text-sm text-muted-foreground">
-                    No team commission data for {yearFilter}
+                    {t("noTeamDataMessage", { year: yearFilter })}
                   </TableCell>
                 </TableRow>
               ) : (

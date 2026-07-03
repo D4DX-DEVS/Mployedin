@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -80,6 +81,9 @@ interface JobCounts {
 }
 
 export default function SuperAgentApprovalsPage() {
+  const t = useTranslations("superAgentApprovals");
+  const tc = useTranslations("common");
+  const tt = useTranslations("table");
   const params = useParams();
   const locale = (params?.locale as string) ?? "en";
   const [jobs, setJobs] = useState<RegionalJob[]>([]);
@@ -206,44 +210,44 @@ export default function SuperAgentApprovalsPage() {
 
   const kpis = [
     {
-      label: "Pending Approval",
+      label: t("kpiPendingApprovalLabel"),
       value: counts.pendingApproval,
-      helper: "Jobs awaiting your approval decision.",
+      helper: t("kpiPendingApprovalHelper"),
       icon: <Clock className="h-5 w-5" />,
       toneClassName: "workspace-tone-amber",
     },
     {
-      label: "Total Jobs",
+      label: t("kpiTotalJobsLabel"),
       value: counts.total,
-      helper: "All jobs in your region.",
+      helper: t("kpiTotalJobsHelper"),
       icon: <Briefcase className="h-5 w-5" />,
       toneClassName: "workspace-tone-sky",
     },
     {
-      label: "Active",
+      label: tc("active"),
       value: counts.active,
-      helper: "Live jobs visible to seekers.",
+      helper: t("kpiActiveHelper"),
       icon: <Activity className="h-5 w-5" />,
       toneClassName: "workspace-tone-emerald",
     },
     {
-      label: "Employers",
+      label: t("kpiEmployersLabel"),
       value: counts.employers,
-      helper: "Distinct employers in your region.",
+      helper: t("kpiEmployersHelper"),
       icon: <Building2 className="h-5 w-5" />,
       toneClassName: "workspace-tone-indigo",
     },
   ];
 
-  const tableHeaders = ["Job Title", "Employer", "Posted By", "Location", "Status", "Date", ""];
+  const tableHeaders = [t("tableHeaderJobTitle"), t("tableHeaderEmployer"), t("tableHeaderPostedBy"), t("tableHeaderLocation"), tc("status"), tc("date"), ""];
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
-    { header: "Title", key: "title" },
-    { header: "Employer", key: "employerId", formatter: (_v, row) => (row.employerId as { companyName?: string; name?: string })?.companyName ?? (row.employerId as { name?: string })?.name ?? "" },
-    { header: "Posted By", key: "postedByAgent", formatter: (_v, row) => (row.postedByAgent as { name?: string })?.name ?? "Employer" },
-    { header: "Location", key: "location", formatter: (_v, row) => formatLocation((row as unknown as RegionalJob).location) },
-    { header: "Status", key: "status" },
-    { header: "Date", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: t("tableHeaderJobTitle"), key: "title" },
+    { header: t("tableHeaderEmployer"), key: "employerId", formatter: (_v, row) => (row.employerId as { companyName?: string; name?: string })?.companyName ?? (row.employerId as { name?: string })?.name ?? "" },
+    { header: t("tableHeaderPostedBy"), key: "postedByAgent", formatter: (_v, row) => (row.postedByAgent as { name?: string })?.name ?? t("defaultEmployer") },
+    { header: t("tableHeaderLocation"), key: "location", formatter: (_v, row) => formatLocation((row as unknown as RegionalJob).location) },
+    { header: tc("status"), key: "status" },
+    { header: tc("date"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
@@ -256,50 +260,50 @@ export default function SuperAgentApprovalsPage() {
   return (
     <div className="page-container space-y-6">
       <SuperAgentPageIntro
-        title="Job Approvals"
-        description="Review and approve job postings from your agents before they go live, and monitor all jobs across your region."
-        summaryTitle="Approval gate"
-        summaryDescription="Jobs submitted by your agents wait here for your approval. Approve to publish, or reject to send back as a draft."
+        title={t("pageTitle")}
+        description={t("pageDescription")}
+        summaryTitle={t("approvalGateTitle")}
+        summaryDescription={t("approvalGateDescription")}
       />
 
       <SuperAgentMetricsGrid items={kpis} />
 
       <SuperAgentSection
-        eyebrow="Jobs"
-        title="Regional job listings"
-        description="Browse all jobs in your region. Use filters to narrow down by status, date, or keyword."
+        eyebrow={t("sectionEyebrow")}
+        title={t("sectionTitle")}
+        description={t("sectionDescription")}
       >
         {/* Filter controls + Export */}
         <TableToolbar
           search={searchQuery}
           onSearchChange={handleSearchChange}
-          searchPlaceholder="Search job title or employer…"
+          searchPlaceholder={t("searchPlaceholder")}
           onExportCsv={handleExportCsv}
           onExportExcel={handleExportExcel}
           onExportPdf={handleExportPdf}
           hasActiveFilters={hasFilters}
           actions={hasFilters ? (
             <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9 text-xs text-muted-foreground">
-              <X className="h-3.5 w-3.5 mr-1" /> Clear filters
+              <X className="h-3.5 w-3.5 mr-1" /> {t("clearFilters")}
             </Button>
           ) : undefined}
           filterContent={
             <div className="flex flex-wrap items-center gap-3">
               <Select value={jobStatus} onValueChange={(v) => { setJobStatus(v as JobStatus); resetPage(); }}>
                 <SelectTrigger className="h-11 w-[160px] rounded-xl border-border bg-card text-sm">
-                  <SelectValue placeholder="Job Status" />
+                  <SelectValue placeholder={t("statusFilterPlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="pending_approval">Pending Approval</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="closed">Closed</SelectItem>
-                  <SelectItem value="expired">Expired</SelectItem>
+                  <SelectItem value="all">{t("statusFilterAll")}</SelectItem>
+                  <SelectItem value="pending_approval">{t("statusFilterPendingApproval")}</SelectItem>
+                  <SelectItem value="active">{tc("active")}</SelectItem>
+                  <SelectItem value="draft">{t("statusFilterDraft")}</SelectItem>
+                  <SelectItem value="closed">{t("statusFilterClosed")}</SelectItem>
+                  <SelectItem value="expired">{t("statusFilterExpired")}</SelectItem>
                 </SelectContent>
               </Select>
               <div className="flex items-center gap-1.5">
-                <label className="text-xs text-muted-foreground whitespace-nowrap">From</label>
+                <label className="text-xs text-muted-foreground whitespace-nowrap">{t("dateFromLabel")}</label>
                 <Input
                   type="date"
                   value={dateFrom}
@@ -308,7 +312,7 @@ export default function SuperAgentApprovalsPage() {
                 />
               </div>
               <div className="flex items-center gap-1.5">
-                <label className="text-xs text-muted-foreground whitespace-nowrap">To</label>
+                <label className="text-xs text-muted-foreground whitespace-nowrap">{t("dateToLabel")}</label>
                 <Input
                   type="date"
                   value={dateTo}
@@ -347,20 +351,20 @@ export default function SuperAgentApprovalsPage() {
                 <Briefcase className="h-6 w-6" />
               </div>
               <div>
-                <p className="text-base font-semibold text-foreground">No jobs found</p>
-                <p className="mt-1 text-sm text-muted-foreground">No jobs match your current filters. Try adjusting the filters or check back later.</p>
+                <p className="text-base font-semibold text-foreground">{t("noJobsFound")}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{t("noJobsFoundHint")}</p>
               </div>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow className="bg-background/60 hover:bg-background/60">
-                  <TableHead>Job Title</TableHead>
-                  <TableHead>Employer</TableHead>
-                  <TableHead>Posted By</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Date</TableHead>
+                  <TableHead>{t("tableHeaderJobTitle")}</TableHead>
+                  <TableHead>{t("tableHeaderEmployer")}</TableHead>
+                  <TableHead>{t("tableHeaderPostedBy")}</TableHead>
+                  <TableHead>{t("tableHeaderLocation")}</TableHead>
+                  <TableHead>{tc("status")}</TableHead>
+                  <TableHead>{tc("date")}</TableHead>
                   <TableHead className="text-right" />
                 </TableRow>
               </TableHeader>
@@ -371,11 +375,11 @@ export default function SuperAgentApprovalsPage() {
                   <TableRow key={job._id} className="bg-transparent">
                     <TableCell className="font-medium text-foreground">{job.title}</TableCell>
                     <TableCell className="text-muted-foreground">{job.employerId?.companyName ?? job.employerId?.name ?? "—"}</TableCell>
-                    <TableCell className="text-muted-foreground">{job.postedByAgent?.name ?? "Employer"}</TableCell>
+                    <TableCell className="text-muted-foreground">{job.postedByAgent?.name ?? t("defaultEmployer")}</TableCell>
                     <TableCell className="text-muted-foreground">{formatLocation(job.location)}</TableCell>
                     <TableCell>
                       {isPending ? (
-                        <Badge variant="secondary" className="bg-amber-500/15 text-amber-700 dark:text-amber-400">Pending Approval</Badge>
+                        <Badge variant="secondary" className="bg-amber-500/15 text-amber-700 dark:text-amber-400">{t("statusPendingApproval")}</Badge>
                       ) : (
                         <StatusBadge status={job.status ?? "draft"} />
                       )}
@@ -391,7 +395,7 @@ export default function SuperAgentApprovalsPage() {
                               disabled={rowActionId === job._id}
                               onClick={() => handleRowApproval(job._id, "approved")}
                             >
-                              {rowActionId === job._id ? "…" : "Approve"}
+                              {rowActionId === job._id ? "…" : t("approveButtonLabel")}
                             </Button>
                             <Button
                               variant="outline"
@@ -400,7 +404,7 @@ export default function SuperAgentApprovalsPage() {
                               disabled={rowActionId === job._id}
                               onClick={() => handleRowApproval(job._id, "rejected")}
                             >
-                              Reject
+                              {t("rejectButtonLabel")}
                             </Button>
                           </>
                         )}
@@ -408,7 +412,7 @@ export default function SuperAgentApprovalsPage() {
                           variant="ghost"
                           size="sm"
                           className="h-8 w-8 p-0"
-                          title="View job details"
+                          title={t("viewJobDetailsTitle")}
                           onClick={() => openDetail(job._id)}
                         >
                           <Eye className="h-4 w-4 text-muted-foreground" />
@@ -444,7 +448,7 @@ export default function SuperAgentApprovalsPage() {
           {detailLoading ? (
             <>
               <DialogHeader className="sr-only">
-                <DialogTitle>Loading job details</DialogTitle>
+                <DialogTitle>{t("loadingJobDetails")}</DialogTitle>
               </DialogHeader>
               <div className="flex items-center justify-center py-16">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -479,7 +483,7 @@ export default function SuperAgentApprovalsPage() {
                 <div className="flex items-start gap-2 rounded-lg border border-border/60 bg-secondary/30 p-3">
                   <MapPin className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
                   <div>
-                    <p className="text-xs text-muted-foreground">Location</p>
+                    <p className="text-xs text-muted-foreground">{t("detailLocation")}</p>
                     <p className="font-medium text-foreground">{formatLocation(selectedJob.location)}</p>
                   </div>
                 </div>
@@ -487,10 +491,10 @@ export default function SuperAgentApprovalsPage() {
                 <div className="flex items-start gap-2 rounded-lg border border-border/60 bg-secondary/30 p-3">
                   <DollarSign className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
                   <div>
-                    <p className="text-xs text-muted-foreground">Salary</p>
+                    <p className="text-xs text-muted-foreground">{t("detailSalary")}</p>
                     <p className="font-medium text-foreground">
                       {selectedJob.salary?.isNegotiable
-                        ? "Negotiable"
+                        ? t("salaryNegotiable")
                         : selectedJob.salary?.min && selectedJob.salary?.max
                           ? `${selectedJob.salary.min.toLocaleString()}–${selectedJob.salary.max.toLocaleString()} ${selectedJob.salary.currency ?? ""}`
                           : "—"}
@@ -501,7 +505,7 @@ export default function SuperAgentApprovalsPage() {
                 <div className="flex items-start gap-2 rounded-lg border border-border/60 bg-secondary/30 p-3">
                   <Clock className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
                   <div>
-                    <p className="text-xs text-muted-foreground">Type</p>
+                    <p className="text-xs text-muted-foreground">{t("detailType")}</p>
                     <p className="font-medium text-foreground capitalize">
                       {selectedJob.employmentType?.replace("_", " ") ?? "—"}
                     </p>
@@ -512,7 +516,7 @@ export default function SuperAgentApprovalsPage() {
                   <div className="flex items-start gap-2 rounded-lg border border-border/60 bg-secondary/30 p-3">
                     <Globe className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
                     <div>
-                      <p className="text-xs text-muted-foreground">Work Mode</p>
+                      <p className="text-xs text-muted-foreground">{t("detailWorkMode")}</p>
                       <p className="font-medium text-foreground capitalize">{selectedJob.workMode}</p>
                     </div>
                   </div>
@@ -522,7 +526,7 @@ export default function SuperAgentApprovalsPage() {
                   <div className="flex items-start gap-2 rounded-lg border border-border/60 bg-secondary/30 p-3">
                     <Users className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
                     <div>
-                      <p className="text-xs text-muted-foreground">Vacancies</p>
+                      <p className="text-xs text-muted-foreground">{t("detailVacancies")}</p>
                       <p className="font-medium text-foreground">{selectedJob.vacancies}</p>
                     </div>
                   </div>
@@ -531,7 +535,7 @@ export default function SuperAgentApprovalsPage() {
                 <div className="flex items-start gap-2 rounded-lg border border-border/60 bg-secondary/30 p-3">
                   <Calendar className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
                   <div>
-                    <p className="text-xs text-muted-foreground">Posted</p>
+                    <p className="text-xs text-muted-foreground">{t("detailPosted")}</p>
                     <p className="font-medium text-foreground">{new Date(selectedJob.createdAt).toLocaleDateString()}</p>
                   </div>
                 </div>
@@ -540,7 +544,7 @@ export default function SuperAgentApprovalsPage() {
               {/* Description */}
               {selectedJob.description && (
                 <div>
-                  <h4 className="mb-1.5 text-sm font-semibold text-foreground">Description</h4>
+                  <h4 className="mb-1.5 text-sm font-semibold text-foreground">{t("detailDescription")}</h4>
                   <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line line-clamp-6">
                     {selectedJob.description}
                   </p>
@@ -550,7 +554,7 @@ export default function SuperAgentApprovalsPage() {
               {/* Skills */}
               {(selectedJob.requirements?.skills?.length ?? 0) > 0 && (
                 <div>
-                  <h4 className="mb-1.5 text-sm font-semibold text-foreground">Required Skills</h4>
+                  <h4 className="mb-1.5 text-sm font-semibold text-foreground">{t("detailRequiredSkills")}</h4>
                   <div className="flex flex-wrap gap-1.5">
                     {selectedJob.requirements.skills!.map((s) => (
                       <Badge key={s} variant="secondary" className="text-xs">{s}</Badge>
@@ -565,7 +569,7 @@ export default function SuperAgentApprovalsPage() {
                   {selectedJob.requirements.experienceMin != null && (
                     <span className="inline-flex items-center gap-1 text-muted-foreground">
                       <Briefcase className="h-3.5 w-3.5" />
-                      {selectedJob.requirements.experienceMin}–{selectedJob.requirements.experienceMax ?? "?"} yrs
+                      {t("experienceRange", { min: selectedJob.requirements.experienceMin, max: selectedJob.requirements.experienceMax ?? "?" })}
                     </span>
                   )}
                   {selectedJob.requirements.education && (
@@ -580,7 +584,7 @@ export default function SuperAgentApprovalsPage() {
               {/* Responsibilities */}
               {(selectedJob.responsibilities?.length ?? 0) > 0 && (
                 <div>
-                  <h4 className="mb-1.5 text-sm font-semibold text-foreground">Responsibilities</h4>
+                  <h4 className="mb-1.5 text-sm font-semibold text-foreground">{t("detailResponsibilities")}</h4>
                   <ul className="list-disc pl-5 space-y-0.5 text-sm text-muted-foreground">
                     {selectedJob.responsibilities!.map((r, i) => <li key={i}>{r}</li>)}
                   </ul>
@@ -590,7 +594,7 @@ export default function SuperAgentApprovalsPage() {
               {/* Benefits */}
               {(selectedJob.benefits?.length ?? 0) > 0 && (
                 <div>
-                  <h4 className="mb-1.5 text-sm font-semibold text-foreground">Benefits</h4>
+                  <h4 className="mb-1.5 text-sm font-semibold text-foreground">{t("detailBenefits")}</h4>
                   <ul className="list-disc pl-5 space-y-0.5 text-sm text-muted-foreground">
                     {selectedJob.benefits!.map((b, i) => <li key={i}>{b}</li>)}
                   </ul>
@@ -605,7 +609,7 @@ export default function SuperAgentApprovalsPage() {
                     disabled={approving}
                     className="flex-1"
                   >
-                    {approving ? "Processing…" : "Approve & Publish"}
+                    {approving ? t("processingEllipsis") : t("approvePublishButtonLabel")}
                   </Button>
                   <Button
                     variant="destructive"
@@ -613,7 +617,7 @@ export default function SuperAgentApprovalsPage() {
                     disabled={approving}
                     className="flex-1"
                   >
-                    Reject
+                    {t("rejectButtonLabel")}
                   </Button>
                 </div>
               )}
@@ -621,10 +625,10 @@ export default function SuperAgentApprovalsPage() {
           ) : (
             <>
               <DialogHeader className="sr-only">
-                <DialogTitle>Job details unavailable</DialogTitle>
+                <DialogTitle>{t("jobDetailsUnavailable")}</DialogTitle>
               </DialogHeader>
               <div className="py-16 text-center text-sm text-muted-foreground">
-                Failed to load job details.
+                {t("failedToLoadJobDetails")}
               </div>
             </>
           )}

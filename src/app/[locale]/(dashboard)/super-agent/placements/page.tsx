@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -77,16 +78,9 @@ const INITIAL_FILTERS: Filters = {
 
 const VISA_STATUSES: VisaStatus[] = ["not_required", "pending", "approved", "rejected", "stamped"];
 
-const VISA_LABELS: Record<VisaStatus, string> = {
-  not_required: "Not Required",
-  pending: "Pending",
-  approved: "Approved",
-  rejected: "Rejected",
-  stamped: "Stamped",
-};
-
+// Static currency options - labels are currency codes, not translated
 const CURRENCY_OPTIONS = [
-  { value: "", label: "All currencies" },
+  { value: "", label: "All currencies" }, // Will be translated in component
   { value: "AED", label: "AED" },
   { value: "USD", label: "USD" },
   { value: "EUR", label: "EUR" },
@@ -98,13 +92,6 @@ const CURRENCY_OPTIONS = [
   { value: "OMR", label: "OMR" },
   { value: "EGP", label: "EGP" },
   { value: "INR", label: "INR" },
-];
-
-const SORT_OPTIONS = [
-  { value: "createdAt", label: "Date Created" },
-  { value: "placedAt", label: "Placed Date" },
-  { value: "startDate", label: "Start Date" },
-  { value: "salary", label: "Salary" },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -150,6 +137,10 @@ function formatPlacementSalary(p: Placement): string {
 /* ------------------------------------------------------------------ */
 
 export default function SuperAgentPlacementsPage() {
+  const t = useTranslations("superAgentPlacements");
+  const tc = useTranslations("common");
+  const tt = useTranslations("table");
+
   const [placements, setPlacements] = useState<Placement[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
@@ -158,6 +149,14 @@ export default function SuperAgentPlacementsPage() {
   const [employers, setEmployers] = useState<{ _id: string; companyName: string }[]>([]);
   const [salaryByCurrency, setSalaryByCurrency] = useState<Record<string, number>>({});
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
+
+  const visaLabels: Record<VisaStatus, string> = {
+    not_required: t("visaStatusNotRequired"),
+    pending: t("visaStatusPending"),
+    approved: t("visaStatusApproved"),
+    rejected: t("visaStatusRejected"),
+    stamped: t("visaStatusStamped"),
+  };
 
   /* -- Fetch agents for filter dropdown -- */
   useEffect(() => {
@@ -270,16 +269,16 @@ export default function SuperAgentPlacementsPage() {
   const activeFilterCount = countActiveFilters(filters);
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
-    { header: "Candidate", key: "candidateName", formatter: (_v, row) => getCandidateName(row as unknown as Placement) },
-    { header: "Job", key: "jobTitle", formatter: (_v, row) => getJobTitle(row as unknown as Placement) },
-    { header: "Employer", key: "companyName", formatter: (_v, row) => getCompanyName(row as unknown as Placement) },
-    { header: "Agent", key: "agentName" },
-    { header: "Visa Status", key: "visaStatus", formatter: (_v, row) => getVisaStatus(row as unknown as Placement) },
-    { header: "Salary", key: "salary", formatter: (_v, row) => formatPlacementSalary(row as unknown as Placement) },
-    { header: "Currency", key: "currency" },
-    { header: "Commission Paid", key: "commissionPaid", formatter: (v) => v ? "Yes" : "No" },
-    { header: "Start Date", key: "startDate", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
-    { header: "Placed At", key: "placedAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: t("exportCandidate"), key: "candidateName", formatter: (_v, row) => getCandidateName(row as unknown as Placement) },
+    { header: t("exportJob"), key: "jobTitle", formatter: (_v, row) => getJobTitle(row as unknown as Placement) },
+    { header: t("exportEmployer"), key: "companyName", formatter: (_v, row) => getCompanyName(row as unknown as Placement) },
+    { header: t("exportAgent"), key: "agentName" },
+    { header: t("exportVisaStatus"), key: "visaStatus", formatter: (_v, row) => getVisaStatus(row as unknown as Placement) },
+    { header: t("exportSalary"), key: "salary", formatter: (_v, row) => formatPlacementSalary(row as unknown as Placement) },
+    { header: t("exportCurrency"), key: "currency" },
+    { header: t("exportCommissionPaid"), key: "commissionPaid", formatter: (v) => v ? tc("yes") : tc("no") },
+    { header: t("exportStartDate"), key: "startDate", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: t("exportPlacedAt"), key: "placedAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
@@ -291,30 +290,30 @@ export default function SuperAgentPlacementsPage() {
 
   const kpis = [
     {
-      label: "Placements",
+      label: t("kpiPlacements"),
       value: total,
-      helper: "Total placement records matching current filters.",
+      helper: t("kpiPlacementsHelper"),
       icon: <Trophy className="h-5 w-5" />,
       toneClassName: "workspace-tone-sky",
     },
     {
-      label: "Upcoming Starts",
+      label: t("kpiUpcomingStarts"),
       value: upcomingStarts,
-      helper: "Candidates scheduled to start within the next two weeks.",
+      helper: t("kpiUpcomingStartsHelper"),
       icon: <CalendarClock className="h-5 w-5" />,
       toneClassName: "workspace-tone-emerald",
     },
     {
-      label: "Commission Paid",
+      label: t("kpiCommissionPaid"),
       value: placements.filter((p) => p.commissionPaid).length,
-      helper: "Placements on this page where commission has been paid.",
+      helper: t("kpiCommissionPaidHelper"),
       icon: <DollarSign className="h-5 w-5" />,
       toneClassName: "workspace-tone-indigo",
     },
     {
-      label: "Employers",
+      label: t("kpiEmployers"),
       value: employerCount,
-      helper: "Distinct employer accounts represented in the current placement list.",
+      helper: t("kpiEmployersHelper"),
       icon: <Users2 className="h-5 w-5" />,
       toneClassName: "workspace-tone-amber",
     },
@@ -351,18 +350,18 @@ export default function SuperAgentPlacementsPage() {
   return (
     <div className="page-container space-y-6">
       <SuperAgentPageIntro
-        title="Placements"
-        description="Track successful candidate placements made by your team, monitor start timing, and keep employer delivery visible from one polished review surface."
-        summaryTitle="Placement flow"
-        summaryDescription="Filter by visa status, salary range, date, commission, and more — every combination is handled instantly."
+        title={t("pageTitle")}
+        description={t("pageDescription")}
+        summaryTitle={t("summaryTitle")}
+        summaryDescription={t("summaryDescription")}
       />
 
       <SuperAgentMetricsGrid items={kpis} />
 
       <SuperAgentSection
-        eyebrow="Placements"
-        title="Review successful hiring outcomes"
-        description="Use visa status toggles, keyword search, and advanced filters to find the placements you need."
+        eyebrow={t("sectionEyebrow")}
+        title={t("sectionTitle")}
+        description={t("sectionDescription")}
       >
         {/* ---- Visa Status Strip ---- */}
         <div className="flex flex-col gap-4">
@@ -375,7 +374,7 @@ export default function SuperAgentPlacementsPage() {
                 aria-pressed={filters.visaStatus === s}
                 className={`rounded-2xl border px-4 py-3 text-left transition-all ${filters.visaStatus === s ? "border-primary/35 bg-primary/10 shadow-sm shadow-primary/15" : "border-border/70 bg-background/85 hover:border-border hover:bg-secondary/80"}`}
               >
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{VISA_LABELS[s]}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{visaLabels[s]}</p>
                 <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{visaCounts[s]}</p>
               </button>
             ))}
@@ -386,7 +385,7 @@ export default function SuperAgentPlacementsPage() {
         <TableToolbar
           search={filters.search}
           onSearchChange={(v) => updateFilter("search", v)}
-          searchPlaceholder="Search candidate, company, email..."
+          searchPlaceholder={t("searchPlaceholder")}
           onExportCsv={handleExportCsv}
           onExportExcel={handleExportExcel}
           onExportPdf={handleExportPdf}
@@ -395,9 +394,9 @@ export default function SuperAgentPlacementsPage() {
             <div className="flex items-center gap-2">
               {/* Commission Toggle */}
               {[
-                { value: "", label: "All" },
-                { value: "true", label: "Commission Paid" },
-                { value: "false", label: "Unpaid" },
+                { value: "", label: tc("all") },
+                { value: "true", label: t("commissionPaid") },
+                { value: "false", label: t("unpaid") },
               ].map((opt) => (
                 <button
                   key={opt.value}
@@ -415,7 +414,7 @@ export default function SuperAgentPlacementsPage() {
               ))}
               {(activeFilterCount > 0 || filters.visaStatus || filters.search || filters.commissionPaid) && (
                 <button type="button" onClick={resetFilters} className="flex h-9 items-center gap-2 rounded-lg border border-border/70 bg-card px-3 text-sm text-muted-foreground hover:bg-secondary/80 transition-all">
-                  <RotateCcw className="h-3.5 w-3.5" /> Reset
+                  <RotateCcw className="h-3.5 w-3.5" /> {t("reset")}
                 </button>
               )}
             </div>
@@ -426,59 +425,64 @@ export default function SuperAgentPlacementsPage() {
               {Object.keys(salaryByCurrency).length > 0 && (
                 <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-50/40 px-4 py-2.5 text-sm text-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-300">
                   <DollarSign className="h-4 w-4 shrink-0" />
-                  <span>Total salary value: <strong>{totalSalary}</strong></span>
+                  <span>{t("totalSalaryValue")} <strong>{totalSalary}</strong></span>
                 </div>
               )}
 
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Currency</label>
-                  <SearchableSelect options={CURRENCY_OPTIONS} value={filters.currency} onValueChange={(v) => updateFilter("currency", v)} placeholder="All currencies" searchPlaceholder="Search currency..." />
+                  <label className="text-xs font-medium text-muted-foreground">{t("filterCurrency")}</label>
+                  <SearchableSelect options={[{ value: "", label: t("filterCurrencyPlaceholder") }, ...CURRENCY_OPTIONS.slice(1)]} value={filters.currency} onValueChange={(v) => updateFilter("currency", v)} placeholder={t("filterCurrencyPlaceholder")} searchPlaceholder={t("filterCurrencySearch")} />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Salary Min</label>
-                  <Input type="number" min={0} placeholder="e.g. 5000" value={filters.salaryMin} onChange={(e) => updateFilter("salaryMin", e.target.value)} className="h-10 rounded-xl text-sm" />
+                  <label className="text-xs font-medium text-muted-foreground">{t("filterSalaryMin")}</label>
+                  <Input type="number" min={0} placeholder={t("filterSalaryMinPlaceholder")} value={filters.salaryMin} onChange={(e) => updateFilter("salaryMin", e.target.value)} className="h-10 rounded-xl text-sm" />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Salary Max</label>
-                  <Input type="number" min={0} placeholder="e.g. 30000" value={filters.salaryMax} onChange={(e) => updateFilter("salaryMax", e.target.value)} className="h-10 rounded-xl text-sm" />
+                  <label className="text-xs font-medium text-muted-foreground">{t("filterSalaryMax")}</label>
+                  <Input type="number" min={0} placeholder={t("filterSalaryMaxPlaceholder")} value={filters.salaryMax} onChange={(e) => updateFilter("salaryMax", e.target.value)} className="h-10 rounded-xl text-sm" />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Agent</label>
-                  <SearchableSelect options={[{ value: "", label: "All agents" }, ...agents.map((a) => ({ value: a._id, label: a.name || a.email }))]} value={filters.agentId} onValueChange={(v) => updateFilter("agentId", v)} placeholder="All agents" searchPlaceholder="Search agent..." />
+                  <label className="text-xs font-medium text-muted-foreground">{t("filterAgent")}</label>
+                  <SearchableSelect options={[{ value: "", label: t("filterAgentPlaceholder") }, ...agents.map((a) => ({ value: a._id, label: a.name || a.email }))]} value={filters.agentId} onValueChange={(v) => updateFilter("agentId", v)} placeholder={t("filterAgentPlaceholder")} searchPlaceholder={t("filterAgentSearch")} />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Employer</label>
-                  <SearchableSelect options={[{ value: "", label: "All employers" }, ...employers.map((e) => ({ value: e._id, label: e.companyName }))]} value={filters.employerId} onValueChange={(v) => updateFilter("employerId", v)} placeholder="All employers" searchPlaceholder="Search employer..." />
+                  <label className="text-xs font-medium text-muted-foreground">{t("filterEmployer")}</label>
+                  <SearchableSelect options={[{ value: "", label: t("filterEmployerPlaceholder") }, ...employers.map((e) => ({ value: e._id, label: e.companyName }))]} value={filters.employerId} onValueChange={(v) => updateFilter("employerId", v)} placeholder={t("filterEmployerPlaceholder")} searchPlaceholder={t("filterEmployerSearch")} />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Placed From</label>
-                  <DateTimePicker value={filters.dateFrom} onChange={(v) => updateFilter("dateFrom", v)} placeholder="Start date" mode="date" />
+                  <label className="text-xs font-medium text-muted-foreground">{t("filterPlacedFrom")}</label>
+                  <DateTimePicker value={filters.dateFrom} onChange={(v) => updateFilter("dateFrom", v)} placeholder={t("filterPlacedFromPlaceholder")} mode="date" />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Placed To</label>
-                  <DateTimePicker value={filters.dateTo} onChange={(v) => updateFilter("dateTo", v)} placeholder="End date" mode="date" />
+                  <label className="text-xs font-medium text-muted-foreground">{t("filterPlacedTo")}</label>
+                  <DateTimePicker value={filters.dateTo} onChange={(v) => updateFilter("dateTo", v)} placeholder={t("filterPlacedToPlaceholder")} mode="date" />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Sort By</label>
-                  <SearchableSelect options={SORT_OPTIONS} value={filters.sortBy} onValueChange={(v) => updateFilter("sortBy", v)} placeholder="Date Created" />
+                  <label className="text-xs font-medium text-muted-foreground">{t("filterSortBy")}</label>
+                  <SearchableSelect options={[
+                    { value: "createdAt", label: t("sortDateCreated") },
+                    { value: "placedAt", label: t("sortPlacedDate") },
+                    { value: "startDate", label: t("sortStartDate") },
+                    { value: "salary", label: t("sortSalary") },
+                  ]} value={filters.sortBy} onValueChange={(v) => updateFilter("sortBy", v)} placeholder={t("sortDateCreated")} />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Sort Order</label>
-                  <SearchableSelect options={[{ value: "desc", label: "Newest first" }, { value: "asc", label: "Oldest first" }]} value={filters.sortOrder} onValueChange={(v) => updateFilter("sortOrder", v)} placeholder="Newest first" />
+                  <label className="text-xs font-medium text-muted-foreground">{t("filterSortOrder")}</label>
+                  <SearchableSelect options={[{ value: "desc", label: t("sortNewestFirst") }, { value: "asc", label: t("sortOldestFirst") }]} value={filters.sortOrder} onValueChange={(v) => updateFilter("sortOrder", v)} placeholder={t("sortNewestFirst")} />
                 </div>
               </div>
 
               {/* Quick Filter Chips */}
               <div className="flex flex-wrap gap-2">
-                <span className="text-xs font-medium text-muted-foreground/70 self-center mr-1">Quick:</span>
+                <span className="text-xs font-medium text-muted-foreground/70 self-center mr-1">{t("quickFilterLabel")}:</span>
                 {[
-                  { label: "Visa Pending", action: () => updateFilter("visaStatus", "pending") },
-                  { label: "Commission Unpaid", action: () => updateFilter("commissionPaid", "false") },
-                  { label: "This Month", action: () => { const d = new Date(); updateFilter("dateFrom", `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`); } },
-                  { label: "High Salary (10k+)", action: () => updateFilter("salaryMin", "10000") },
-                  { label: "Visa Approved", action: () => updateFilter("visaStatus", "approved") },
-                  { label: "Stamped", action: () => updateFilter("visaStatus", "stamped") },
+                  { label: t("quickFilterVisaPending"), action: () => updateFilter("visaStatus", "pending") },
+                  { label: t("quickFilterCommissionUnpaid"), action: () => updateFilter("commissionPaid", "false") },
+                  { label: t("quickFilterThisMonth"), action: () => { const d = new Date(); updateFilter("dateFrom", `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`); } },
+                  { label: t("quickFilterHighSalary"), action: () => updateFilter("salaryMin", "10000") },
+                  { label: t("quickFilterVisaApproved"), action: () => updateFilter("visaStatus", "approved") },
+                  { label: t("quickFilterStamped"), action: () => updateFilter("visaStatus", "stamped") },
                 ].map((chip) => (
                   <button key={chip.label} type="button" onClick={chip.action} className="rounded-lg border border-border/60 bg-secondary/50 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-all">
                     {chip.label}
@@ -493,14 +497,14 @@ export default function SuperAgentPlacementsPage() {
           <Table>
             <TableHeader>
               <TableRow className="bg-background/60 hover:bg-background/60">
-                <TableHead className="min-w-[180px]"><SortHeader field="candidateName">Candidate</SortHeader></TableHead>
-                <TableHead>Job</TableHead>
-                <TableHead>Employer</TableHead>
-                <TableHead>Visa Status</TableHead>
-                <TableHead><SortHeader field="salary">Salary</SortHeader></TableHead>
-                <TableHead>Commission</TableHead>
-                <TableHead><SortHeader field="startDate">Start Date</SortHeader></TableHead>
-                <TableHead><SortHeader field="placedAt">Placed</SortHeader></TableHead>
+                <TableHead className="min-w-[180px]"><SortHeader field="candidateName">{t("columnCandidate")}</SortHeader></TableHead>
+                <TableHead>{t("columnJob")}</TableHead>
+                <TableHead>{t("columnEmployer")}</TableHead>
+                <TableHead>{t("columnVisaStatus")}</TableHead>
+                <TableHead><SortHeader field="salary">{t("columnSalary")}</SortHeader></TableHead>
+                <TableHead>{t("columnCommission")}</TableHead>
+                <TableHead><SortHeader field="startDate">{t("columnStartDate")}</SortHeader></TableHead>
+                <TableHead><SortHeader field="placedAt">{t("columnPlaced")}</SortHeader></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -520,11 +524,11 @@ export default function SuperAgentPlacementsPage() {
                         <Trophy className="h-6 w-6" />
                       </div>
                       <div>
-                        <p className="text-base font-semibold text-foreground">No placements yet</p>
+                        <p className="text-base font-semibold text-foreground">{t("emptyStateTitle")}</p>
                         <p className="mt-1 text-sm text-muted-foreground">
                           {filters.search || filters.visaStatus || activeFilterCount > 0
-                            ? "No placements match the current filters. Try adjusting your criteria."
-                            : "Placements will appear here once your team closes successful hires."}
+                            ? t("emptyStateFiltered")
+                            : t("emptyStateDefault")}
                         </p>
                       </div>
                     </div>
@@ -547,10 +551,10 @@ export default function SuperAgentPlacementsPage() {
                   <TableCell>
                     {p.commissionPaid ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
-                        <ShieldCheck className="h-3 w-3" /> Paid{p.commissionAmount ? ` · ${p.commissionAmount.toLocaleString()}` : ""}
+                        <ShieldCheck className="h-3 w-3" /> {t("commissionBadgePaid")}{p.commissionAmount ? ` · ${p.commissionAmount.toLocaleString()}` : ""}
                       </span>
                     ) : (
-                      <span className="text-xs text-muted-foreground">Unpaid</span>
+                      <span className="text-xs text-muted-foreground">{t("commissionBadgeUnpaid")}</span>
                     )}
                   </TableCell>
                   <TableCell className="text-muted-foreground">{p.startDate ? new Date(p.startDate).toLocaleDateString() : "—"}</TableCell>

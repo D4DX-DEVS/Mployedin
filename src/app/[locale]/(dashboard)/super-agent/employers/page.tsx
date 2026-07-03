@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -61,23 +61,6 @@ interface Facets {
   locations: string[];
 }
 
-const STATUS_OPTIONS = [
-  { value: "", label: "All" },
-  { value: "active", label: "Active" },
-  { value: "inactive", label: "Inactive" },
-];
-
-const VERIFIED_OPTIONS = [
-  { value: "", label: "All" },
-  { value: "verified", label: "Verified" },
-  { value: "unverified", label: "Not Verified" },
-];
-
-const SORT_OPTIONS = [
-  { value: "name", label: "Name" },
-  { value: "email", label: "Email" },
-  { value: "createdAt", label: "Date Joined" },
-];
 
 function countActiveFilters(f: Filters): number {
   let count = 0;
@@ -95,6 +78,27 @@ export default function SuperAgentEmployersPage() {
   const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
   const router = useRouter();
   const locale = useLocale();
+  const t = useTranslations("superAgentEmployers");
+  const tc = useTranslations("common");
+  const tt = useTranslations("table");
+
+  const statusOptions = useMemo(() => [
+    { value: "", label: tc("all") },
+    { value: "active", label: tc("active") },
+    { value: "inactive", label: tc("inactive") },
+  ], [tc]);
+
+  const verifiedOptions = useMemo(() => [
+    { value: "", label: tc("all") },
+    { value: "verified", label: t("verified") },
+    { value: "unverified", label: t("notVerified") },
+  ], [t, tc]);
+
+  const sortOptions = useMemo(() => [
+    { value: "name", label: tc("name") },
+    { value: "email", label: tc("email") },
+    { value: "createdAt", label: t("dateJoined") },
+  ], [t, tc]);
 
   const [facets, setFacets] = useState<Facets>({ industries: [], locations: [] });
   const [serverStats, setServerStats] = useState<{ total: number; active: number; assigned: number } | null>(null);
@@ -117,10 +121,10 @@ export default function SuperAgentEmployersPage() {
         router.refresh();
       } else {
         const data = await res.json().catch(() => ({}));
-        alert(data.error ?? "Failed to switch to employer view");
+        alert(data.error ?? t("switchError"));
       }
     } catch {
-      alert("Network error — please try again");
+      alert(t("networkError"));
     } finally {
       setSwitchingEmployerId(null);
     }
@@ -135,14 +139,14 @@ export default function SuperAgentEmployersPage() {
       .catch(() => {});
   }, []);
 
-  const ONBOARD_FIELDS: CrudField[] = [
-    { name: "name", label: "Contact Name", type: "text", required: true },
-    { name: "email", label: "Email", type: "text", required: true },
-    { name: "password", label: "Temporary Password", type: "text", required: true },
-    { name: "companyName", label: "Company Name", type: "text", required: true },
-    { name: "industry", label: "Industry", type: "text" },
-    { name: "phone", label: "Phone", type: "text" },
-  ];
+  const onboardFields: CrudField[] = useMemo(() => [
+    { name: "name", label: t("contactNameLabel"), type: "text", required: true },
+    { name: "email", label: tc("email"), type: "text", required: true },
+    { name: "password", label: t("tempPasswordLabel"), type: "text", required: true },
+    { name: "companyName", label: t("companyNameLabel"), type: "text", required: true },
+    { name: "industry", label: t("industryLabel"), type: "text" },
+    { name: "phone", label: tc("phone"), type: "text" },
+  ], [t, tc]);
 
   const loadEmployers = useCallback(async () => {
     setLoading(true);
@@ -197,21 +201,21 @@ export default function SuperAgentEmployersPage() {
 
   const activeFilterCount = countActiveFilters(filters);
 
-  const exportColumns: ExportColumn<Record<string, unknown>>[] = [
-    { header: "Company", key: "companyName", formatter: (_v, row) => String((row as unknown as Employer).companyName ?? (row as unknown as Employer).name ?? "") },
-    { header: "Email", key: "email" },
-    { header: "Industry", key: "industry" },
-    { header: "Location", key: "location" },
-    { header: "Agent", key: "assignedAgent", formatter: (_v, row) => (row.assignedAgent as { name?: string })?.name ?? "Unassigned" },
-    { header: "Active", key: "isActive", formatter: (v) => v ? "Yes" : "No" },
-    { header: "Jobs", key: "jobCount" },
-  ];
+  const exportColumns: ExportColumn<Record<string, unknown>>[] = useMemo(() => [
+    { header: t("companyHeader"), key: "companyName", formatter: (_v, row) => String((row as unknown as Employer).companyName ?? (row as unknown as Employer).name ?? "") },
+    { header: tc("email"), key: "email" },
+    { header: t("industryHeader"), key: "industry" },
+    { header: t("locationHeader"), key: "location" },
+    { header: t("agentHeader"), key: "assignedAgent", formatter: (_v, row) => (row.assignedAgent as { name?: string })?.name ?? t("unassigned") },
+    { header: t("activeHeader"), key: "isActive", formatter: (v) => v ? tc("yes") : tc("no") },
+    { header: t("jobsHeader"), key: "jobCount" },
+  ], [t, tc]);
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: employers as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
-    filename: "super-agent-employers",
-    title: "Employer Relationships",
+    filename: t("exportFilename"),
+    title: t("pageTitle"),
   });
 
   const stats = useMemo(() => ({
@@ -229,7 +233,7 @@ export default function SuperAgentEmployersPage() {
     });
     if (!res.ok) {
       const data = await res.json();
-      throw new Error(data.error || "Failed to onboard employer");
+      throw new Error(data.error || t("onboardError"));
     }
     setOnboardOpen(false);
     loadEmployers();
@@ -259,10 +263,10 @@ export default function SuperAgentEmployersPage() {
   return (
     <div className="page-container space-y-6">
       <SuperAgentPageIntro
-        title="Employer Relationships"
-        description="Track employer accounts across your region, review who owns each relationship, and keep commercial coverage visible at a glance."
-        summaryTitle="Portfolio"
-        summaryDescription="Search across employer records, compare activity, and confirm which accounts already have active agent ownership."
+        title={t("pageTitle")}
+        description={t("pageDescription")}
+        summaryTitle={t("summaryTitle")}
+        summaryDescription={t("summaryDescription")}
       >
         <div className="flex gap-2 mt-3">
           <button
@@ -270,14 +274,14 @@ export default function SuperAgentEmployersPage() {
             className="inline-flex h-10 items-center gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-sky-700"
           >
             <UserPlus className="h-4 w-4" />
-            Onboard Employer
+            {t("onboardButton")}
           </button>
           <button
             onClick={() => setReferralDialogOpen(true)}
             className="inline-flex h-10 items-center gap-2 rounded-xl border border-border px-3 text-xs font-semibold text-muted-foreground transition-colors hover:border-primary/25 hover:text-primary"
           >
             <Link2 className="h-3.5 w-3.5" />
-            Get Referral Link
+            {t("referralButton")}
           </button>
         </div>
       </SuperAgentPageIntro>
@@ -285,30 +289,30 @@ export default function SuperAgentEmployersPage() {
       <SuperAgentMetricsGrid
         items={[
           {
-            label: "Total Employers",
+            label: t("totalEmployersLabel"),
             value: stats.total,
-            helper: "Employer accounts currently visible in the regional workspace.",
+            helper: t("totalEmployersHelper"),
             icon: <Building2 className="h-5 w-5" />,
             toneClassName: "workspace-tone-sky",
           },
           {
-            label: "Active Accounts",
+            label: t("activeAccountsLabel"),
             value: stats.active,
-            helper: "Accounts marked active and ready to work with your team.",
+            helper: t("activeAccountsHelper"),
             icon: <ShieldCheck className="h-5 w-5" />,
             toneClassName: "workspace-tone-emerald",
           },
           {
-            label: "Assigned",
+            label: t("assignedLabel"),
             value: stats.assigned,
-            helper: "Employer records that already have an assigned agent.",
+            helper: t("assignedHelper"),
             icon: <Users className="h-5 w-5" />,
             toneClassName: "workspace-tone-indigo",
           },
           {
-            label: "Revenue Tracked",
+            label: t("revenueLabel"),
             value: stats.revenue > 0 ? formatCurrency(stats.revenue, currencyCode) : "—",
-            helper: "Visible account revenue surfaced by the current employer response.",
+            helper: t("revenueHelper"),
             icon: <DollarSign className="h-5 w-5" />,
             toneClassName: "workspace-tone-amber",
           },
@@ -316,15 +320,15 @@ export default function SuperAgentEmployersPage() {
       />
 
       <SuperAgentSection
-        eyebrow="Accounts"
-        title="Review employer ownership and account health"
-        description="Filter by industry, location, status, and verification to narrow down the employer list."
+        eyebrow={t("sectionEyebrow")}
+        title={t("sectionTitle")}
+        description={t("sectionDescription")}
       >
         {/* ── Search + Advanced Toggle via TableToolbar ── */}
         <TableToolbar
           search={filters.search}
           onSearchChange={(v) => updateFilter("search", v)}
-          searchPlaceholder="Search employers..."
+          searchPlaceholder={t("searchPlaceholder")}
           onExportCsv={handleExportCsv}
           onExportExcel={handleExportExcel}
           onExportPdf={handleExportPdf}
@@ -337,7 +341,7 @@ export default function SuperAgentEmployersPage() {
                 className="flex h-9 items-center gap-2 rounded-lg border border-border/70 bg-card px-3 text-sm text-muted-foreground hover:bg-secondary/80 transition-all"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
-                Reset
+                {t("resetButton")}
               </button>
             ) : undefined
           }
@@ -346,77 +350,77 @@ export default function SuperAgentEmployersPage() {
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                 {/* Industry */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Industry</label>
+                  <label className="text-xs font-medium text-muted-foreground">{t("industryLabel")}</label>
                   <SearchableSelect
-                    options={[{ value: "", label: "All industries" }, ...facets.industries.map((i) => ({ value: i, label: i }))]}
+                    options={[{ value: "", label: t("allIndustries") }, ...facets.industries.map((i) => ({ value: i, label: i }))]}
                     value={filters.industry}
                     onValueChange={(v) => updateFilter("industry", v)}
-                    placeholder="All industries"
-                    searchPlaceholder="Search industry..."
+                    placeholder={t("allIndustries")}
+                    searchPlaceholder={t("searchIndustry")}
                     className="h-11 rounded-xl border-border bg-card"
                   />
                 </div>
 
                 {/* Location */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Location</label>
+                  <label className="text-xs font-medium text-muted-foreground">{t("locationLabel")}</label>
                   <SearchableSelect
-                    options={[{ value: "", label: "All locations" }, ...facets.locations.map((l) => ({ value: l, label: l }))]}
+                    options={[{ value: "", label: t("allLocations") }, ...facets.locations.map((l) => ({ value: l, label: l }))]}
                     value={filters.location}
                     onValueChange={(v) => updateFilter("location", v)}
-                    placeholder="All locations"
-                    searchPlaceholder="Search location..."
+                    placeholder={t("allLocations")}
+                    searchPlaceholder={t("searchLocation")}
                     className="h-11 rounded-xl border-border bg-card"
                   />
                 </div>
 
                 {/* Status */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Status</label>
+                  <label className="text-xs font-medium text-muted-foreground">{tc("status")}</label>
                   <SearchableSelect
-                    options={STATUS_OPTIONS}
+                    options={statusOptions}
                     value={filters.status}
                     onValueChange={(v) => updateFilter("status", v)}
-                    placeholder="All"
+                    placeholder={tc("all")}
                     className="h-11 rounded-xl border-border bg-card"
                   />
                 </div>
 
                 {/* Verification */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Verification</label>
+                  <label className="text-xs font-medium text-muted-foreground">{t("verificationLabel")}</label>
                   <SearchableSelect
-                    options={VERIFIED_OPTIONS}
+                    options={verifiedOptions}
                     value={filters.verified}
                     onValueChange={(v) => updateFilter("verified", v)}
-                    placeholder="All"
+                    placeholder={tc("all")}
                     className="h-11 rounded-xl border-border bg-card"
                   />
                 </div>
 
                 {/* Sort By */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Sort By</label>
+                  <label className="text-xs font-medium text-muted-foreground">{t("sortByLabel")}</label>
                   <SearchableSelect
-                    options={SORT_OPTIONS}
+                    options={sortOptions}
                     value={filters.sortBy}
                     onValueChange={(v) => updateFilter("sortBy", v)}
-                    placeholder="Name"
+                    placeholder={tc("name")}
                     className="h-11 rounded-xl border-border bg-card"
                   />
                 </div>
 
                 {/* Sort Order */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Sort Order</label>
+                  <label className="text-xs font-medium text-muted-foreground">{t("sortOrderLabel")}</label>
                   <SearchableSelect
                     options={[
-                      { value: "asc", label: "Ascending" },
-                      { value: "desc", label: "Descending" },
+                      { value: "asc", label: t("ascending") },
+                      { value: "desc", label: t("descending") },
                     ]}
                     value={filters.sortOrder}
                     onValueChange={(v) => updateFilter("sortOrder", v)}
-                    placeholder="Ascending"
+                    placeholder={t("ascending")}
                     className="h-11 rounded-xl border-border bg-card"
                   />
                 </div>
@@ -424,13 +428,13 @@ export default function SuperAgentEmployersPage() {
 
               {/* Quick Filter Chips */}
               <div className="flex flex-wrap gap-2">
-                <span className="text-xs font-medium text-muted-foreground/70 self-center mr-1">Quick:</span>
+                <span className="text-xs font-medium text-muted-foreground/70 self-center mr-1">{t("quickFilters")}:</span>
                 {[
-                  { label: "Active Only", action: () => updateFilter("status", "active") },
-                  { label: "Inactive", action: () => updateFilter("status", "inactive") },
-                  { label: "Verified", action: () => updateFilter("verified", "verified") },
-                  { label: "Not Verified", action: () => updateFilter("verified", "unverified") },
-                  { label: "Newest First", action: () => { updateFilter("sortBy", "createdAt"); updateFilter("sortOrder", "desc"); } },
+                  { label: t("activeOnly"), action: () => updateFilter("status", "active") },
+                  { label: t("inactiveOnly"), action: () => updateFilter("status", "inactive") },
+                  { label: t("verifiedOnly"), action: () => updateFilter("verified", "verified") },
+                  { label: t("notVerifiedOnly"), action: () => updateFilter("verified", "unverified") },
+                  { label: t("newestFirst"), action: () => { updateFilter("sortBy", "createdAt"); updateFilter("sortOrder", "desc"); } },
                 ].map((chip) => (
                   <button
                     key={chip.label}
@@ -451,13 +455,13 @@ export default function SuperAgentEmployersPage() {
           <Table>
             <TableHeader>
               <TableRow className="bg-background/60 hover:bg-background/60">
-                <TableHead className="min-w-[180px]"><SortHeader field="name">Company</SortHeader></TableHead>
-                <TableHead className="min-w-[180px]"><SortHeader field="email">Contact</SortHeader></TableHead>
-                <TableHead>Industry</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Agent</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-[80px] text-right">Actions</TableHead>
+                <TableHead className="min-w-[180px]"><SortHeader field="name">{t("companyHeader")}</SortHeader></TableHead>
+                <TableHead className="min-w-[180px]"><SortHeader field="email">{t("contactHeader")}</SortHeader></TableHead>
+                <TableHead>{t("industryHeader")}</TableHead>
+                <TableHead>{t("locationHeader")}</TableHead>
+                <TableHead>{t("agentHeader")}</TableHead>
+                <TableHead>{tc("status")}</TableHead>
+                <TableHead className="w-[80px] text-right">{tc("actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -477,8 +481,8 @@ export default function SuperAgentEmployersPage() {
                         <Building2 className="h-6 w-6" />
                       </div>
                       <div>
-                        <p className="text-base font-semibold text-foreground">No employers found</p>
-                        <p className="mt-1 text-sm text-muted-foreground">Broaden the search or adjust filters to see more employer accounts.</p>
+                        <p className="text-base font-semibold text-foreground">{t("noEmployersFound")}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">{t("noEmployersHint")}</p>
                       </div>
                     </div>
                   </TableCell>
@@ -489,11 +493,11 @@ export default function SuperAgentEmployersPage() {
                   <TableCell className="text-xs text-muted-foreground">{em.email}</TableCell>
                   <TableCell className="text-muted-foreground">{em.industry ?? "—"}</TableCell>
                   <TableCell className="text-muted-foreground">{em.location ?? "—"}</TableCell>
-                  <TableCell className="text-muted-foreground">{em.assignedAgent?.name ?? "Unassigned"}</TableCell>
+                  <TableCell className="text-muted-foreground">{em.assignedAgent?.name ?? t("unassigned")}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1.5">
                       {em.isAgentVerified && (
-                        <span className="text-[10px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full font-medium">Verified</span>
+                        <span className="text-[10px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full font-medium">{t("verified")}</span>
                       )}
                       <StatusBadge status={em.isActive ? "active" : "inactive"} />
                     </div>
@@ -503,8 +507,8 @@ export default function SuperAgentEmployersPage() {
                       onClick={() => handleSwitchToEmployerView(em._id)}
                       disabled={switchingEmployerId === em._id || !em.isActive}
                       className="inline-flex items-center gap-1 rounded-lg border border-sky-400/50 bg-sky-50 px-2.5 py-1.5 text-xs font-semibold text-sky-700 transition-colors hover:bg-sky-100 disabled:opacity-50 dark:bg-sky-950/20 dark:text-sky-400 dark:hover:bg-sky-900/30"
-                      title="Switch to employer workspace"
-                      aria-label={`Switch to ${em.companyName ?? em.name} workspace`}
+                      title={t("switchButtonTitle")}
+                      aria-label={t("switchButtonAriaLabel", { company: em.companyName ?? em.name })}
                     >
                       {switchingEmployerId === em._id ? (
                         <><span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-sky-600 border-t-transparent" /></>
@@ -527,8 +531,8 @@ export default function SuperAgentEmployersPage() {
       <CrudModal
         open={onboardOpen}
         onClose={() => setOnboardOpen(false)}
-        title="Onboard New Employer"
-        fields={ONBOARD_FIELDS}
+        title={t("onboardModalTitle")}
+        fields={onboardFields}
         onSubmit={handleOnboard}
       />
 

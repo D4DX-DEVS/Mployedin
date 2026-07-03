@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
   SuperAgentPageIntro, SuperAgentMetricsGrid, SuperAgentSection, SuperAgentEmptyState,
@@ -33,6 +34,8 @@ interface TerritoryStats {
 /* ------------------------------------------------------------------ */
 
 export default function SuperAgentTerritoryPage() {
+  const t = useTranslations("superAgentTerritory");
+  const tc = useTranslations("common");
   const [regions, setRegions] = useState<TerritoryRegion[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<TerritoryStats>({ totalRegions: 0, totalAgents: 0, totalEmployers: 0, totalJobs: 0 });
@@ -47,7 +50,7 @@ export default function SuperAgentTerritoryPage() {
         if (data.stats) setStats(data.stats);
       }
     } catch {
-      toast.error("Failed to load territory data");
+      toast.error(t("loadTerritoryError"));
     } finally {
       setLoading(false);
     }
@@ -56,10 +59,10 @@ export default function SuperAgentTerritoryPage() {
   useEffect(() => { fetchTerritory(); }, [fetchTerritory]);
 
   const metricsItems = [
-    { label: "Regions", value: stats.totalRegions, helper: "Assigned territories", icon: <Globe className="h-5 w-5" />, toneClassName: "workspace-tone-sky" },
-    { label: "Agents", value: stats.totalAgents, helper: "Across all regions", icon: <Users className="h-5 w-5" />, toneClassName: "workspace-tone-emerald" },
-    { label: "Employers", value: stats.totalEmployers, helper: "In your territory", icon: <Building2 className="h-5 w-5" />, toneClassName: "workspace-tone-violet" },
-    { label: "Active Jobs", value: stats.totalJobs, helper: "Open positions", icon: <Briefcase className="h-5 w-5" />, toneClassName: "workspace-tone-amber" },
+    { label: t("metricsRegions"), value: stats.totalRegions, helper: t("metricsRegionsHelper"), icon: <Globe className="h-5 w-5" />, toneClassName: "workspace-tone-sky" },
+    { label: t("metricsAgents"), value: stats.totalAgents, helper: t("metricsAgentsHelper"), icon: <Users className="h-5 w-5" />, toneClassName: "workspace-tone-emerald" },
+    { label: t("metricsEmployers"), value: stats.totalEmployers, helper: t("metricsEmployersHelper"), icon: <Building2 className="h-5 w-5" />, toneClassName: "workspace-tone-violet" },
+    { label: t("metricsActiveJobs"), value: stats.totalJobs, helper: t("metricsJobsHelper"), icon: <Briefcase className="h-5 w-5" />, toneClassName: "workspace-tone-amber" },
   ];
 
   /* Color scale based on agent density */
@@ -71,10 +74,10 @@ export default function SuperAgentTerritoryPage() {
   };
 
   const getHeatLabel = (count: number) => {
-    if (count >= 5) return "High Coverage";
-    if (count >= 3) return "Good Coverage";
-    if (count >= 1) return "Low Coverage";
-    return "No Coverage";
+    if (count >= 5) return t("coverageHigh");
+    if (count >= 3) return t("coverageGood");
+    if (count >= 1) return t("coverageLow");
+    return t("coverageNone");
   };
 
   const getHeatBadge = (count: number) => {
@@ -95,10 +98,10 @@ export default function SuperAgentTerritoryPage() {
   return (
     <div className="page-container">
       <SuperAgentPageIntro
-        title="Territory Map"
-        description="Visualize your assigned territories with agent coverage, employer density, and job distribution across regions."
-        summaryTitle="Coverage health"
-        summaryDescription={`${coverageSummary.high + coverageSummary.good} of ${regions.length} regions with good+ coverage`}
+        title={t("pageTitle")}
+        description={t("pageDescription")}
+        summaryTitle={t("summaryTitle")}
+        summaryDescription={t("summaryDescription", { count: coverageSummary.high + coverageSummary.good, total: regions.length })}
       />
 
       <SuperAgentMetricsGrid items={metricsItems} />
@@ -106,13 +109,13 @@ export default function SuperAgentTerritoryPage() {
       {/* Coverage Legend — inline bar style */}
       <div className="workspace-glass-panel rounded-2xl px-5 py-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Coverage distribution</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("coverageDistribution")}</p>
           <div className="flex flex-wrap items-center gap-4">
             {[
-              { color: "bg-emerald-500", label: "High (5+)", count: coverageSummary.high },
-              { color: "bg-sky-500", label: "Good (3-4)", count: coverageSummary.good },
-              { color: "bg-amber-500", label: "Low (1-2)", count: coverageSummary.low },
-              { color: "bg-red-400", label: "None (0)", count: coverageSummary.none },
+              { color: "bg-emerald-500", label: t("legendHigh"), count: coverageSummary.high },
+              { color: "bg-sky-500", label: t("legendGood"), count: coverageSummary.good },
+              { color: "bg-amber-500", label: t("legendLow"), count: coverageSummary.low },
+              { color: "bg-red-400", label: t("legendNone"), count: coverageSummary.none },
             ].map((l) => (
               <div key={l.label} className="flex items-center gap-2">
                 <div className={`h-2.5 w-2.5 rounded-full ${l.color}`} />
@@ -134,7 +137,7 @@ export default function SuperAgentTerritoryPage() {
       </div>
 
       {/* Territory Grid */}
-      <SuperAgentSection title="Territory Overview" description={`${regions.length} region${regions.length !== 1 ? "s" : ""} assigned`}>
+      <SuperAgentSection title={t("sectionTitle")} description={t("sectionDescription", { count: regions.length })}>
         {loading ? (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 3 }).map((_, i) => (
@@ -150,7 +153,7 @@ export default function SuperAgentTerritoryPage() {
             ))}
           </div>
         ) : regions.length === 0 ? (
-          <SuperAgentEmptyState icon={<MapPin className="h-10 w-10" />} title="No territories assigned" description="Contact admin to assign territories to your account" />
+          <SuperAgentEmptyState icon={<MapPin className="h-10 w-10" />} title={t("emptyTitle")} description={t("emptyDescription")} />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {regions.map((region) => (
@@ -183,28 +186,28 @@ export default function SuperAgentTerritoryPage() {
                     <UserCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                     <div>
                       <p className="text-lg font-bold tabular-nums text-foreground">{region.agentCount}</p>
-                      <p className="text-[10px] font-medium text-muted-foreground">Agents</p>
+                      <p className="text-[10px] font-medium text-muted-foreground">{t("cardAgents")}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2.5">
                     <Building2 className="h-4 w-4 text-sky-600 dark:text-sky-400" />
                     <div>
                       <p className="text-lg font-bold tabular-nums text-foreground">{region.employerCount}</p>
-                      <p className="text-[10px] font-medium text-muted-foreground">Employers</p>
+                      <p className="text-[10px] font-medium text-muted-foreground">{t("cardEmployers")}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2.5">
                     <Briefcase className="h-4 w-4 text-violet-600 dark:text-violet-400" />
                     <div>
                       <p className="text-lg font-bold tabular-nums text-foreground">{region.jobCount}</p>
-                      <p className="text-[10px] font-medium text-muted-foreground">Jobs</p>
+                      <p className="text-[10px] font-medium text-muted-foreground">{t("cardJobs")}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2.5">
                     <TrendingUp className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                     <div>
                       <p className="text-lg font-bold tabular-nums text-foreground">{region.seekerCount}</p>
-                      <p className="text-[10px] font-medium text-muted-foreground">Candidates</p>
+                      <p className="text-[10px] font-medium text-muted-foreground">{t("cardCandidates")}</p>
                     </div>
                   </div>
                 </div>

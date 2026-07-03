@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -43,6 +44,9 @@ interface Commission {
 }
 
 export default function SuperAgentCommissionsPage() {
+  const t = useTranslations("superAgentCommissions");
+  const tc = useTranslations("common");
+  const tt = useTranslations("table");
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("");
@@ -104,48 +108,48 @@ export default function SuperAgentCommissionsPage() {
   const totalAmount = commissions.reduce((sum, commission) => sum + (commission.amount ?? 0), 0);
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
-    { header: "Agent", key: "agentId", formatter: (_v, row) => { const a = row.agentId as { fullName?: string; userId?: { name?: string } }; return a?.fullName ?? a?.userId?.name ?? ""; } },
-    { header: "Type", key: "type" },
-    { header: "Notes", key: "notes" },
-    { header: "Amount", key: "amount" },
-    { header: "Currency", key: "currency" },
-    { header: "Status", key: "status" },
-    { header: "Date", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: t("tableHeaderAgent"), key: "agentId", formatter: (_v, row) => { const a = row.agentId as { fullName?: string; userId?: { name?: string } }; return a?.fullName ?? a?.userId?.name ?? ""; } },
+    { header: t("tableHeaderType"), key: "type" },
+    { header: t("tableHeaderNotes"), key: "notes" },
+    { header: t("tableHeaderAmount"), key: "amount" },
+    { header: t("exportHeaderCurrency"), key: "currency" },
+    { header: tc("status"), key: "status" },
+    { header: tc("date"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: commissions as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "super-agent-commissions",
-    title: "Commission Management",
+    title: t("pageTitle"),
   });
 
   const kpis = [
     {
-      label: "Visible Payouts",
+      label: t("kpiVisiblePayouts"),
       value: totalAmount > 0 ? formatCurrency(totalAmount, currencyCode) : "—",
-      helper: "Commission amount represented in the current results page.",
+      helper: t("kpiVisiblePayoutsHelper"),
       icon: <Coins className="h-5 w-5" />,
       toneClassName: "workspace-tone-sky",
     },
     {
-      label: "Pending",
+      label: t("kpiPending"),
       value: commissions.filter((commission) => commission.status === "pending").length,
-      helper: "Commission entries still waiting for approval review.",
+      helper: t("kpiPendingHelper"),
       icon: <ReceiptText className="h-5 w-5" />,
       toneClassName: "workspace-tone-amber",
     },
     {
-      label: "Approved",
+      label: t("kpiApproved"),
       value: commissions.filter((commission) => commission.status === "approved").length,
-      helper: "Approved entries ready to move into payout confirmation.",
+      helper: t("kpiApprovedHelper"),
       icon: <CheckCircle2 className="h-5 w-5" />,
       toneClassName: "workspace-tone-emerald",
     },
     {
-      label: "Override Rate",
+      label: t("kpiOverrideRate"),
       value: `${overrideRate || 0}%`,
-      helper: "Current regional override rate pulled from the super-agent profile.",
+      helper: t("kpiOverrideRateHelper"),
       icon: <Wallet className="h-5 w-5" />,
       toneClassName: "workspace-tone-indigo",
     },
@@ -154,18 +158,18 @@ export default function SuperAgentCommissionsPage() {
   return (
     <div className="page-container space-y-6">
       <SuperAgentPageIntro
-        title="Commission Management"
-        description="Review payout records, approve commissions, and maintain the regional override rate from one streamlined workspace."
-        summaryTitle="Finance lane"
-        summaryDescription="Filter by status, approve payouts, and update your override rate — all in real time."
+        title={t("pageTitle")}
+        description={t("pageDescription")}
+        summaryTitle={t("summaryTitle")}
+        summaryDescription={t("summaryDescription")}
       />
 
       <SuperAgentMetricsGrid items={kpis} />
 
       <SuperAgentSection
-        eyebrow="Controls"
-        title="Configure the regional override and filter payout status"
-        description="Adjust the commission override rate and move between payout states without changing the current backend behavior."
+        eyebrow={t("sectionEyebrow")}
+        title={t("sectionTitle")}
+        description={t("sectionDescription")}
       >
         {/* Override rate row — read-only, set by admin */}
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -173,14 +177,14 @@ export default function SuperAgentCommissionsPage() {
             <div className="flex items-center gap-2">
               <Settings2 className="h-4 w-4 text-muted-foreground" />
               <Label className="whitespace-nowrap text-sm font-medium text-foreground">
-                Commission Override Rate
+                {t("overrideRateLabel")}
               </Label>
             </div>
             <div className="flex items-center gap-2 h-11 rounded-xl border border-border bg-muted/30 px-4">
               <span className="text-lg font-semibold text-foreground">{overrideRate}%</span>
-              <span className="ml-2 text-[10px] text-muted-foreground uppercase tracking-wide">Set by Admin</span>
+              <span className="ml-2 text-[10px] text-muted-foreground uppercase tracking-wide">{t("setByAdmin")}</span>
             </div>
-            <p className="text-xs text-muted-foreground">Contact admin to change your commission rate.</p>
+            <p className="text-xs text-muted-foreground">{t("contactAdminMessage")}</p>
           </div>
         </div>
 
@@ -188,7 +192,7 @@ export default function SuperAgentCommissionsPage() {
         <TableToolbar
           search={searchQuery}
           onSearchChange={(v) => { setSearchQuery(v); resetPage(); }}
-          searchPlaceholder="Search by agent name..."
+          searchPlaceholder={t("searchPlaceholder")}
           onExportCsv={handleExportCsv}
           onExportExcel={handleExportExcel}
           onExportPdf={handleExportPdf}
@@ -204,7 +208,7 @@ export default function SuperAgentCommissionsPage() {
                   size="sm"
                   className={statusFilter === s ? "rounded-xl" : "rounded-xl border-border/70 bg-card text-muted-foreground hover:bg-secondary/80 hover:text-foreground"}
                 >
-                  {s === "" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
+                  {s === "" ? tc("all") : t(`status_${s}`)}
                 </Button>
               ))}
             </div>
@@ -212,27 +216,27 @@ export default function SuperAgentCommissionsPage() {
           filterContent={
             <div className="flex flex-wrap items-end gap-3">
               <div className="flex flex-col gap-1.5">
-                <Label className="text-xs text-muted-foreground">Type</Label>
+                <Label className="text-xs text-muted-foreground">{t("filterTypeLabel")}</Label>
                 <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v === "all" ? "" : v); resetPage(); }}>
                   <SelectTrigger className="h-11 w-36 rounded-xl border-border bg-card text-sm shadow-none">
-                    <SelectValue placeholder="All types" />
+                    <SelectValue placeholder={t("filterTypeAllTypes")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All types</SelectItem>
-                    <SelectItem value="placement">Placement</SelectItem>
-                    <SelectItem value="override">Override</SelectItem>
-                    <SelectItem value="bonus">Bonus</SelectItem>
+                    <SelectItem value="all">{t("filterTypeAllTypes")}</SelectItem>
+                    <SelectItem value="placement">{t("filterTypePlacement")}</SelectItem>
+                    <SelectItem value="override">{t("filterTypeOverride")}</SelectItem>
+                    <SelectItem value="bonus">{t("filterTypeBonus")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label className="text-xs text-muted-foreground">Currency</Label>
+                <Label className="text-xs text-muted-foreground">{t("filterCurrencyLabel")}</Label>
                 <Select value={currencyFilter} onValueChange={(v) => { setCurrencyFilter(v === "all" ? "" : v); resetPage(); }}>
                   <SelectTrigger className="h-11 w-32 rounded-xl border-border bg-card text-sm shadow-none">
-                    <SelectValue placeholder="All currencies" />
+                    <SelectValue placeholder={t("filterCurrencyAll")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All currencies</SelectItem>
+                    <SelectItem value="all">{t("filterCurrencyAll")}</SelectItem>
                     <SelectItem value="AED">AED</SelectItem>
                     <SelectItem value="USD">USD</SelectItem>
                     <SelectItem value="EUR">EUR</SelectItem>
@@ -241,16 +245,16 @@ export default function SuperAgentCommissionsPage() {
                 </Select>
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label className="text-xs text-muted-foreground flex items-center gap-1"><CalendarDays className="h-3 w-3" /> From</Label>
+                <Label className="text-xs text-muted-foreground flex items-center gap-1"><CalendarDays className="h-3 w-3" /> {t("filterDateFrom")}</Label>
                 <Input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); resetPage(); }} className="h-11 w-40 rounded-xl border-border bg-card text-sm shadow-none" />
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label className="text-xs text-muted-foreground flex items-center gap-1"><CalendarDays className="h-3 w-3" /> To</Label>
+                <Label className="text-xs text-muted-foreground flex items-center gap-1"><CalendarDays className="h-3 w-3" /> {t("filterDateTo")}</Label>
                 <Input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); resetPage(); }} className="h-11 w-40 rounded-xl border-border bg-card text-sm shadow-none" />
               </div>
               {(typeFilter || currencyFilter || dateFrom || dateTo) && (
                 <Button variant="ghost" size="sm" onClick={() => { setTypeFilter(""); setCurrencyFilter(""); setDateFrom(""); setDateTo(""); resetPage(); }} className="h-11 rounded-xl text-xs text-muted-foreground hover:text-foreground">
-                  <X className="mr-1 h-3 w-3" /> Clear filters
+                  <X className="mr-1 h-3 w-3" /> {t("clearFilters")}
                 </Button>
               )}
             </div>
@@ -261,13 +265,13 @@ export default function SuperAgentCommissionsPage() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-background/60 hover:bg-background/60">
-                  <TableHead>Agent</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Notes</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead>{t("tableHeaderAgent")}</TableHead>
+                  <TableHead>{t("tableHeaderType")}</TableHead>
+                  <TableHead>{t("tableHeaderNotes")}</TableHead>
+                  <TableHead className="text-right">{t("tableHeaderAmount")}</TableHead>
+                  <TableHead>{tc("status")}</TableHead>
+                  <TableHead>{tc("date")}</TableHead>
+                  <TableHead>{tc("actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -287,8 +291,8 @@ export default function SuperAgentCommissionsPage() {
                           <Coins className="h-6 w-6" />
                         </div>
                         <div>
-                          <p className="text-base font-semibold text-foreground">No commissions found</p>
-                          <p className="mt-1 text-sm text-muted-foreground">Change the status filter or wait for payout records to appear.</p>
+                          <p className="text-base font-semibold text-foreground">{t("emptyStateTitle")}</p>
+                          <p className="mt-1 text-sm text-muted-foreground">{t("emptyStateMessage")}</p>
                         </div>
                       </div>
                     </TableCell>
@@ -307,15 +311,15 @@ export default function SuperAgentCommissionsPage() {
                     <TableCell>
                       {c.status === "pending" && (
                         <Button variant="ghost" size="sm" className="h-7 text-xs text-green-700" onClick={() => updateStatus(c._id, "approved")}>
-                          Approve
+                          {t("actionApprove")}
                         </Button>
                       )}
                       {c.status === "approved" && (
                         <Button variant="ghost" size="sm" className="h-7 text-xs text-blue-700" onClick={() => updateStatus(c._id, "paid")}>
-                          Mark Paid
+                          {t("actionMarkPaid")}
                         </Button>
                       )}
-                      {c.status === "paid" && <span className="text-xs text-muted-foreground">Paid ✓</span>}
+                      {c.status === "paid" && <span className="text-xs text-muted-foreground">{t("statusPaid")}</span>}
                     </TableCell>
                   </TableRow>
                 ))}

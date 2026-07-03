@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -54,31 +54,14 @@ interface Invoice {
   createdAt: string;
 }
 
-const STATUS_OPTIONS = [
-  { value: "all", label: "All Statuses" },
-  { value: "draft", label: "Draft" },
-  { value: "pending_approval", label: "Pending Approval" },
-  { value: "issued", label: "Issued" },
-  { value: "sent", label: "Sent" },
-  { value: "paid", label: "Paid" },
-  { value: "partially_paid", label: "Partially Paid" },
-  { value: "overdue", label: "Overdue" },
-  { value: "void", label: "Void" },
-];
-
-const CATEGORY_OPTIONS = [
-  { value: "all", label: "All Categories" },
-  { value: "recruitment", label: "Recruitment" },
-  { value: "subscription", label: "Subscription" },
-  { value: "premium_posting", label: "Premium Posting" },
-  { value: "exhibition", label: "Exhibition" },
-  { value: "bulk_hiring", label: "Bulk Hiring" },
-  { value: "consulting", label: "Consulting" },
-];
+// Status and category options are built dynamically with translations in the component
 
 export default function SuperAgentInvoicesPage() {
   const router = useRouter();
   const locale = useLocale();
+  const t = useTranslations("superAgentInvoices");
+  const tc = useTranslations("common");
+  const tt = useTranslations("table");
   const [activeView, setActiveView] = useState<"table" | "analytics">("table");
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -108,70 +91,93 @@ export default function SuperAgentInvoicesPage() {
       if (dateFrom) params.set("dateFrom", dateFrom);
       if (dateTo) params.set("dateTo", dateTo);
       const res = await fetch(`/api/invoices?${params}`);
-      if (!res.ok) throw new Error("Failed to load invoices");
+      if (!res.ok) throw new Error(t("failedToLoad"));
       const data = await res.json();
       setInvoices(data.invoices ?? []);
       updateTotal(data.total ?? 0);
       if (data.summary) setSummary(data.summary);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to load invoices";
+      const msg = err instanceof Error ? err.message : t("failedToLoad");
       setErrorMessage(msg);
       toast.error(msg);
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, categoryFilter, dateFrom, dateTo, page, limit, updateTotal]);
+  }, [statusFilter, categoryFilter, dateFrom, dateTo, page, limit, updateTotal, t]);
 
   useEffect(() => { fetchInvoices(); }, [fetchInvoices]);
-  useEffect(() => { document.title = "Team Finance · MPLOYEDIN"; }, []);
+  useEffect(() => { document.title = t("pageTitle"); }, [t]);
 
   const hasActiveFilters = Boolean(statusFilter || categoryFilter || dateFrom || dateTo);
   const fmt = (v: number) => `${displayCurrency} ${v.toLocaleString()}`;
 
   const exportColumns: ExportColumn<Invoice>[] = [
-    { header: "Invoice #", key: "invoiceNumber" },
-    { header: "Employer", key: "employerId" as keyof Invoice, formatter: (_v, r) => (r as unknown as Invoice).employerId?.companyName ?? "—" },
-    { header: "Job", key: "jobId" as keyof Invoice, formatter: (_v, r) => (r as unknown as Invoice).jobId?.title ?? "—" },
-    { header: "Agent", key: "agentId" as keyof Invoice, formatter: (_v, r) => (r as unknown as Invoice).agentId?.name ?? (r as unknown as Invoice).agentId?.email ?? "—" },
-    { header: "Category", key: "category" },
-    { header: "Total", key: "totalAmount", formatter: v => String(v ?? 0) },
-    { header: "Paid", key: "paidAmount", formatter: v => String(v ?? 0) },
-    { header: "Balance", key: "balanceDue", formatter: v => String(v ?? 0) },
-    { header: "Commission", key: "commissions" as keyof Invoice, formatter: (_v, r) => {
+    { header: t("invoiceNumber"), key: "invoiceNumber" },
+    { header: t("employer"), key: "employerId" as keyof Invoice, formatter: (_v, r) => (r as unknown as Invoice).employerId?.companyName ?? "—" },
+    { header: t("job"), key: "jobId" as keyof Invoice, formatter: (_v, r) => (r as unknown as Invoice).jobId?.title ?? "—" },
+    { header: t("agent"), key: "agentId" as keyof Invoice, formatter: (_v, r) => (r as unknown as Invoice).agentId?.name ?? (r as unknown as Invoice).agentId?.email ?? "—" },
+    { header: t("category"), key: "category" },
+    { header: t("total"), key: "totalAmount", formatter: v => String(v ?? 0) },
+    { header: t("paid"), key: "paidAmount", formatter: v => String(v ?? 0) },
+    { header: t("balance"), key: "balanceDue", formatter: v => String(v ?? 0) },
+    { header: t("commission"), key: "commissions" as keyof Invoice, formatter: (_v, r) => {
       const inv = r as unknown as Invoice;
       const sc = inv.commissions?.find(c => c.role === "super_agent");
       return sc ? `${sc.rate}% = ${sc.amount}` : "—";
     }},
-    { header: "Status", key: "status" },
-    { header: "Due", key: "dueDate" as keyof Invoice, formatter: v => v ? new Date(String(v)).toLocaleDateString() : "—" },
+    { header: tc("status"), key: "status" },
+    { header: t("dueDate"), key: "dueDate" as keyof Invoice, formatter: v => v ? new Date(String(v)).toLocaleDateString() : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: invoices as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
-    filename: "team-invoices",
-    title: "Team Invoice Report",
+    filename: t("exportFilename"),
+    title: t("exportTitle"),
   });
+
+  // Build status and category options with translations
+  const statusOptions = [
+    { value: "all", label: tc("all") },
+    { value: "draft", label: t("statusDraft") },
+    { value: "pending_approval", label: t("statusPendingApproval") },
+    { value: "issued", label: t("statusIssued") },
+    { value: "sent", label: t("statusSent") },
+    { value: "paid", label: t("statusPaid") },
+    { value: "partially_paid", label: t("statusPartiallyPaid") },
+    { value: "overdue", label: t("statusOverdue") },
+    { value: "void", label: t("statusVoid") },
+  ];
+
+  const categoryOptions = [
+    { value: "all", label: tc("all") },
+    { value: "recruitment", label: t("categoryRecruitment") },
+    { value: "subscription", label: t("categorySubscription") },
+    { value: "premium_posting", label: t("categoryPremiumPosting") },
+    { value: "exhibition", label: t("categoryExhibition") },
+    { value: "bulk_hiring", label: t("categoryBulkHiring") },
+    { value: "consulting", label: t("categoryConsulting") },
+  ];
 
   return (
     <div className="page-container space-y-6">
       {/* ── Hero Section ── */}
       <SuperAgentPageIntro
-        title="Team Finance Overview"
-        description="Monitor team invoices, track payment status, review commissions, and oversee billing activity across your agents."
-        eyebrow="Super agent workspace"
-        summaryTitle="Invoice pipeline"
-        summaryDescription={`${total.toLocaleString()} invoices tracked across your team with ${fmt(summary.totalPaid)} collected.`}
+        title={t("heroTitle")}
+        description={t("heroDescription")}
+        eyebrow={tc("superAgentWorkspace")}
+        summaryTitle={t("summaryTitle")}
+        summaryDescription={t("summaryDescription", { total: total.toLocaleString(), paid: fmt(summary.totalPaid) })}
       >
         <div className="flex items-center gap-2">
           <Button onClick={() => router.push(`/${locale}/super-agent/invoices/new`)} className="h-10 gap-1.5 rounded-xl text-xs font-semibold">
-            <FileText className="h-3.5 w-3.5" /> Create Invoice
+            <FileText className="h-3.5 w-3.5" /> {t("createInvoice")}
           </Button>
           <div className="inline-flex rounded-lg border border-border/70 bg-card">
             <button onClick={() => setActiveView("table")} className={`rounded-l-lg px-3 py-1.5 text-xs font-medium transition-colors ${activeView === "table" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-              <FileText className="mr-1 inline-block h-3.5 w-3.5" /> Invoices
+              <FileText className="mr-1 inline-block h-3.5 w-3.5" /> {t("viewInvoices")}
             </button>
             <button onClick={() => setActiveView("analytics")} className={`rounded-r-lg px-3 py-1.5 text-xs font-medium transition-colors ${activeView === "analytics" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-              <BarChart3 className="mr-1 inline-block h-3.5 w-3.5" /> Analytics
+              <BarChart3 className="mr-1 inline-block h-3.5 w-3.5" /> {t("viewAnalytics")}
             </button>
           </div>
         </div>
@@ -179,21 +185,21 @@ export default function SuperAgentInvoicesPage() {
 
       {/* ── Filters ── */}
       <TableToolbar
-        search="" onSearchChange={() => {}} searchPlaceholder="Search invoices…"
+        search="" onSearchChange={() => {}} searchPlaceholder={t("searchPlaceholder")}
         filterContent={
           <div className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <SearchableSelect id="sa-inv-status" className="h-11 w-full rounded-xl border-border bg-card" options={STATUS_OPTIONS} value={statusFilter || "all"} onValueChange={v => { setStatusFilter(v === "all" ? "" : v); resetPage(); }} placeholder="All Statuses" />
-              <SearchableSelect id="sa-inv-cat" className="h-11 w-full rounded-xl border-border bg-card" options={CATEGORY_OPTIONS} value={categoryFilter || "all"} onValueChange={v => { setCategoryFilter(v === "all" ? "" : v); resetPage(); }} placeholder="All Categories" />
+              <SearchableSelect id="sa-inv-status" className="h-11 w-full rounded-xl border-border bg-card" options={statusOptions} value={statusFilter || "all"} onValueChange={v => { setStatusFilter(v === "all" ? "" : v); resetPage(); }} placeholder={t("allStatuses")} />
+              <SearchableSelect id="sa-inv-cat" className="h-11 w-full rounded-xl border-border bg-card" options={categoryOptions} value={categoryFilter || "all"} onValueChange={v => { setCategoryFilter(v === "all" ? "" : v); resetPage(); }} placeholder={t("allCategories")} />
               <div className="flex items-center gap-2 xl:col-span-2">
                 <div className="relative flex-1"><CalendarDays className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input type="date" className="h-11 rounded-xl border-border bg-card pl-9 text-sm" value={dateFrom} onChange={e => { setDateFrom(e.target.value); resetPage(); }} /></div>
-                <span className="text-xs text-muted-foreground">to</span>
+                <span className="text-xs text-muted-foreground">{t("dateSeparator")}</span>
                 <div className="relative flex-1"><Input type="date" className="h-11 rounded-xl border-border bg-card text-sm" value={dateTo} onChange={e => { setDateTo(e.target.value); resetPage(); }} /></div>
               </div>
             </div>
             <div className="flex justify-end">
               <Button type="button" variant="outline" onClick={() => { setStatusFilter(""); setCategoryFilter(""); setDateFrom(""); setDateTo(""); resetPage(); }} disabled={!hasActiveFilters} className="h-11 rounded-xl">
-                <RotateCcw className="mr-2 h-4 w-4" /> Clear
+                <RotateCcw className="mr-2 h-4 w-4" /> {tc("cancel")}
               </Button>
             </div>
           </div>
@@ -210,13 +216,13 @@ export default function SuperAgentInvoicesPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               {(["7d", "30d", "90d", "1y"] as const).map(p => (
-                <button key={p} onClick={() => setAnalyticsPeriod(p)} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${analyticsPeriod === p ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}>{p === "1y" ? "1 Year" : p}</button>
+                <button key={p} onClick={() => setAnalyticsPeriod(p)} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${analyticsPeriod === p ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}>{p === "1y" ? t("periodOneYear") : p}</button>
               ))}
             </div>
-            <Button variant="outline" size="sm" onClick={refreshAnalytics} className="h-8 gap-1.5 rounded-lg text-xs"><RefreshCw className="h-3.5 w-3.5" /> Refresh</Button>
+            <Button variant="outline" size="sm" onClick={refreshAnalytics} className="h-8 gap-1.5 rounded-lg text-xs"><RefreshCw className="h-3.5 w-3.5" /> {t("refresh")}</Button>
           </div>
           {analyticsData && <RevenueAnalyticsPanel data={analyticsData} currency={displayCurrency} />}
-          {analyticsLoading && <div className="py-12 text-center text-sm text-muted-foreground">Loading analytics...</div>}
+          {analyticsLoading && <div className="py-12 text-center text-sm text-muted-foreground">{tc("loading")}</div>}
         </div>
       )}
 
@@ -227,25 +233,25 @@ export default function SuperAgentInvoicesPage() {
 
           <section className="workspace-panel-surface overflow-hidden rounded-[24px]">
             <div className="flex flex-col gap-2 border-b border-border/80 px-4 py-4 sm:px-5">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Team Invoice Ledger</p>
-              <h3 className="text-lg font-semibold text-foreground">Team Invoices</h3>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("ledgerLabel")}</p>
+              <h3 className="text-lg font-semibold text-foreground">{t("tableTitle")}</h3>
             </div>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="border-border/80 bg-secondary/72 hover:bg-secondary/72">
-                    <TableHead>Invoice #</TableHead>
-                    <TableHead>Employer</TableHead>
-                    <TableHead>Job</TableHead>
-                    <TableHead>Agent</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    <TableHead className="text-right">Paid</TableHead>
-                    <TableHead className="text-right">Balance</TableHead>
-                    <TableHead>My Commission</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Due Date</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{t("invoiceNumber")}</TableHead>
+                    <TableHead>{t("employer")}</TableHead>
+                    <TableHead>{t("job")}</TableHead>
+                    <TableHead>{t("agent")}</TableHead>
+                    <TableHead>{t("category")}</TableHead>
+                    <TableHead className="text-right">{t("total")}</TableHead>
+                    <TableHead className="text-right">{t("paid")}</TableHead>
+                    <TableHead className="text-right">{t("balance")}</TableHead>
+                    <TableHead>{t("myCommission")}</TableHead>
+                    <TableHead>{tc("status")}</TableHead>
+                    <TableHead>{t("dueDate")}</TableHead>
+                    <TableHead className="text-right">{tc("actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -256,7 +262,7 @@ export default function SuperAgentInvoicesPage() {
                   )) : invoices.length === 0 ? (
                     <TableRow className="border-border/70 hover:bg-transparent">
                       <TableCell colSpan={12} className="px-6 py-14 text-center">
-                        <div className="flex flex-col items-center gap-3"><div className="workspace-muted-pill rounded-[20px] p-3"><Inbox className="h-6 w-6" /></div><div><p className="text-sm font-semibold">No invoices found</p><p className="mt-1 text-sm text-muted-foreground">Team invoices will appear here when agents create them.</p></div></div>
+                        <div className="flex flex-col items-center gap-3"><div className="workspace-muted-pill rounded-[20px] p-3"><Inbox className="h-6 w-6" /></div><div><p className="text-sm font-semibold">{tt("noResults")}</p><p className="mt-1 text-sm text-muted-foreground">{t("emptyStateMessage")}</p></div></div>
                       </TableCell>
                     </TableRow>
                   ) : invoices.map((inv) => {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { BarChart3, Coins, Download, Loader2, Sparkles, Target, TrendingDown, TrendingUp, Users2 } from "lucide-react";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -13,12 +14,6 @@ import {
 import { MarkdownRenderer } from "@/components/shared/MarkdownRenderer";
 import { formatCurrency } from "@/lib/currency";
 
-const SA_REPORT_TEMPLATES = [
-  { label: "Team performance summary", query: "Summarize overall team performance this month: total leads, placements, commissions, and highlight top performers" },
-  { label: "Agent comparison analysis", query: "Compare all my agents side by side on leads generated, placement rate, and commission earned. Who needs coaching?" },
-  { label: "Lead pipeline health", query: "Analyze the health of my team's lead pipeline: conversion rates by stage, stale leads, and bottlenecks" },
-  { label: "Commission forecast", query: "Project next month's commissions based on current pipeline and historical conversion rates" },
-];
 
 interface Stats {
   totalAgents: number;
@@ -44,6 +39,17 @@ interface MonthlyTrend {
 }
 
 export default function SuperAgentReportsPage() {
+  const t = useTranslations("superAgentReports");
+  const tc = useTranslations("common");
+  const tt = useTranslations("table");
+
+  const SA_REPORT_TEMPLATES = [
+    { label: t("teamPerformanceSummary"), query: t("teamPerformanceQuery") },
+    { label: t("agentComparisonAnalysis"), query: t("agentComparisonQuery") },
+    { label: t("leadPipelineHealth"), query: t("leadPipelineQuery") },
+    { label: t("commissionForecast"), query: t("commissionForecastQuery") },
+  ];
+
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [currencyCode, setCurrencyCode] = useState("AED");
@@ -114,30 +120,30 @@ export default function SuperAgentReportsPage() {
 
   const kpis = [
     {
-      label: "Agents Managed",
+      label: t("agentsManaged"),
       value: stats?.totalAgents ?? 0,
-      helper: "Total team members currently falling under your direct reporting view.",
+      helper: t("agentsManagedHelper"),
       icon: <Users2 className="h-5 w-5" />,
       toneClassName: "workspace-tone-sky",
     },
     {
-      label: "Total Leads",
+      label: t("totalLeads"),
       value: stats?.totalLeads ?? 0,
-      helper: "Combined lead volume generated and worked by your team.",
+      helper: t("totalLeadsHelper"),
       icon: <Target className="h-5 w-5" />,
       toneClassName: "workspace-tone-indigo",
     },
     {
-      label: "Placements",
+      label: t("placements"),
       value: stats?.totalPlacements ?? 0,
-      helper: "Successful placements recorded across the current reporting scope.",
+      helper: t("placementsHelper"),
       icon: <BarChart3 className="h-5 w-5" />,
       toneClassName: "workspace-tone-emerald",
     },
     {
-      label: "Commissions",
+      label: t("commissions"),
       value: formatCurrency(stats?.totalCommissions ?? 0, currencyCode),
-      helper: "Total commissions currently included in the super-agent report payload.",
+      helper: t("commissionsHelper"),
       icon: <Coins className="h-5 w-5" />,
       toneClassName: "workspace-tone-amber",
     },
@@ -146,10 +152,10 @@ export default function SuperAgentReportsPage() {
   return (
     <div className="page-container space-y-6">
       <SuperAgentPageIntro
-        title="Reports"
-        description="Use the report summary as your regional scorecard for team coverage, lead volume, placements, and commission output."
-        summaryTitle="Reporting surface"
-        summaryDescription="A consolidated view of your team's coverage, pipeline, and commission performance — updated in real time."
+        title={t("pageTitle")}
+        description={t("pageDescription")}
+        summaryTitle={t("reportingSurface")}
+        summaryDescription={t("reportingSurfaceDescription")}
       />
 
       {loading ? (
@@ -164,13 +170,13 @@ export default function SuperAgentReportsPage() {
 
       {/* Agent Comparison */}
       <SuperAgentSection
-        eyebrow="Agent comparison"
-        title="Agent Performance Breakdown"
-        description="Compare individual agent performance metrics across your team."
+        eyebrow={t("agentComparison")}
+        title={t("agentPerformanceBreakdown")}
+        description={t("agentPerformanceDescription")}
       >
         {agentBreakdown.length === 0 ? (
           <div className="rounded-2xl border border-border/70 bg-secondary/50 p-5 text-sm leading-6 text-muted-foreground">
-            Agent comparison data will appear once agents generate activity.
+            {t("noAgentData")}
           </div>
         ) : (
           <div className="space-y-3">
@@ -188,22 +194,22 @@ export default function SuperAgentReportsPage() {
                   </div>
                   <div className="flex items-center gap-4 text-right">
                     <div>
-                      <p className="text-xs text-muted-foreground">Conversion</p>
+                      <p className="text-xs text-muted-foreground">{t("conversion")}</p>
                       <p className={`text-sm font-semibold ${agent.conversionRate >= 30 ? "text-emerald-600" : agent.conversionRate >= 15 ? "text-amber-600" : "text-red-500"}`}>
                         {agent.conversionRate}%
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">Commission</p>
+                      <p className="text-xs text-muted-foreground">{t("commission")}</p>
                       <p className="text-sm font-semibold text-foreground">{formatCurrency(agent.commission, currencyCode)}</p>
                     </div>
                   </div>
                 </div>
                 {/* Performance bar */}
                 <div className="mt-3 flex gap-1">
-                  <div className="h-2 rounded-full bg-sky-400" style={{ width: `${Math.min(100, agent.leads * 2)}%` }} title="Leads" />
-                  <div className="h-2 rounded-full bg-emerald-400" style={{ width: `${Math.min(100, agent.placements * 5)}%` }} title="Placements" />
-                  <div className="h-2 rounded-full bg-amber-400" style={{ width: `${Math.min(100, agent.conversionRate)}%` }} title="Conversion" />
+                  <div className="h-2 rounded-full bg-sky-400" style={{ width: `${Math.min(100, agent.leads * 2)}%` }} title={t("leads")} />
+                  <div className="h-2 rounded-full bg-emerald-400" style={{ width: `${Math.min(100, agent.placements * 5)}%` }} title={t("placements")} />
+                  <div className="h-2 rounded-full bg-amber-400" style={{ width: `${Math.min(100, agent.conversionRate)}%` }} title={t("conversion")} />
                 </div>
               </div>
             ))}
@@ -213,24 +219,24 @@ export default function SuperAgentReportsPage() {
 
       {/* Monthly Trends */}
       <SuperAgentSection
-        eyebrow="Trends"
-        title="Monthly Trends"
-        description="Track key metrics month over month to spot patterns and seasonality."
+        eyebrow={t("trends")}
+        title={t("monthlyTrends")}
+        description={t("monthlyTrendsDescription")}
       >
         {monthlyTrends.length === 0 ? (
           <div className="rounded-2xl border border-border/70 bg-secondary/50 p-5 text-sm leading-6 text-muted-foreground">
-            Monthly trends will appear after the first full month of data.
+            {t("noMonthlyData")}
           </div>
         ) : (
           <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
             <Table>
               <TableHeader>
                 <TableRow className="bg-background/60 hover:bg-background/60">
-                  <TableHead>Month</TableHead>
-                  <TableHead className="text-right">Leads</TableHead>
-                  <TableHead className="text-right">Placements</TableHead>
-                  <TableHead className="text-right">Revenue</TableHead>
-                  <TableHead className="text-right">Trend</TableHead>
+                  <TableHead>{t("month")}</TableHead>
+                  <TableHead className="text-right">{t("leads")}</TableHead>
+                  <TableHead className="text-right">{t("placements")}</TableHead>
+                  <TableHead className="text-right">{t("revenue")}</TableHead>
+                  <TableHead className="text-right">{t("trend")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -259,9 +265,9 @@ export default function SuperAgentReportsPage() {
 
       {/* ─── AI Report Section ─── */}
       <SuperAgentSection
-        eyebrow="AI-powered reports"
-        title="Generate Custom Reports"
-        description="Reports are generated using your actual database figures — leads, placements, commissions, and agent data."
+        eyebrow={t("aiPoweredReports")}
+        title={t("generateCustomReports")}
+        description={t("generateCustomReportsDescription")}
       >
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {SA_REPORT_TEMPLATES.map((t) => (
@@ -281,13 +287,13 @@ export default function SuperAgentReportsPage() {
         <div className="mt-6 space-y-4">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
-            <p className="text-sm font-semibold text-foreground">Custom report</p>
+            <p className="text-sm font-semibold text-foreground">{t("customReport")}</p>
           </div>
           <textarea
             value={aiQuery}
             onChange={(e) => setAiQuery(e.target.value)}
             rows={3}
-            placeholder="e.g. Which agents have the best lead-to-placement conversion rate this quarter?"
+            placeholder={t("customReportPlaceholder")}
             className="w-full rounded-2xl border border-border bg-secondary/65 px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary/30 focus:ring-2 focus:ring-primary/10"
           />
           <button
@@ -296,7 +302,7 @@ export default function SuperAgentReportsPage() {
             className="inline-flex h-11 items-center gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-sky-700 disabled:opacity-50"
           >
             {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-            {aiLoading ? "Generating…" : "Generate Report"}
+            {aiLoading ? tc("generating") : t("generateReport")}
           </button>
         </div>
 
@@ -307,12 +313,12 @@ export default function SuperAgentReportsPage() {
         {aiResult && (
           <div className="mt-6 space-y-4">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-primary">Report Generated at {aiResult.generatedAt}</p>
+              <p className="text-sm font-semibold text-primary">{t("reportGeneratedAt", { time: aiResult.generatedAt })}</p>
               <button
                 onClick={downloadAIReport}
                 className="inline-flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:border-primary/25 hover:text-primary"
               >
-                <Download className="h-3.5 w-3.5" />Export
+                <Download className="h-3.5 w-3.5" />{tc("export")}
               </button>
             </div>
             <div className="workspace-subtle-surface rounded-2xl p-4">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { useSession } from "next-auth/react";
 import {
   Globe, DollarSign, Save, CheckCircle2, Bell, Shield, Clock,
@@ -117,15 +118,16 @@ function SectionHeader({ icon: Icon, title, description }: { icon: typeof Globe;
 function SaveFeedback({ saving, saved, hasChanges, onSave, label = "Save Changes" }: {
   saving: boolean; saved: boolean; hasChanges: boolean; onSave: () => void; label?: string;
 }) {
+  const tc = useTranslations("common");
   return (
     <div className="flex items-center gap-3">
       <Button type="button" onClick={onSave} disabled={saving || !hasChanges} size="sm" className="gap-2">
         <Save className="w-4 h-4" />
-        {saving ? "Saving…" : label}
+        {saving ? tc("saving") : label}
       </Button>
       {saved && (
         <span className="text-sm text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-          <CheckCircle2 className="w-3.5 h-3.5" /> Saved
+          <CheckCircle2 className="w-3.5 h-3.5" /> {tc("saved")}
         </span>
       )}
     </div>
@@ -147,6 +149,8 @@ const MAX_SIZE = 2 * 1024 * 1024; // 2MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 function ProfileTab() {
+  const t = useTranslations("superAgentSettings");
+  const tc = useTranslations("common");
   const { data: session, update: updateSession } = useSession();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -202,11 +206,11 @@ function ProfileTab() {
     setError("");
 
     if (!ALLOWED_TYPES.includes(file.type)) {
-      setError("Only JPEG, PNG, and WebP images are allowed.");
+      setError(t("avatarInvalidType"));
       return;
     }
     if (file.size > MAX_SIZE) {
-      setError("Image must be under 2 MB.");
+      setError(t("avatarTooLarge"));
       return;
     }
 
@@ -226,7 +230,7 @@ function ProfileTab() {
       });
       if (!res.ok) {
         const data = await res.json();
-        setError(data.error ?? "Upload failed");
+        setError(data.error ?? t("avatarUploadFailed"));
         setPreview(null);
         return;
       }
@@ -235,7 +239,7 @@ function ProfileTab() {
       setPreview(null);
       await updateSession({ image: data.url });
     } catch {
-      setError("Network error. Please try again.");
+      setError(t("networkError"));
       setPreview(null);
     } finally {
       setUploading(false);
@@ -257,7 +261,7 @@ function ProfileTab() {
         await updateSession({ image: null });
       }
     } catch {
-      setError("Failed to remove avatar.");
+      setError(t("avatarRemoveFailed"));
     } finally {
       setUploading(false);
     }
@@ -293,7 +297,7 @@ function ProfileTab() {
           <div className="relative group shrink-0">
             <div className="w-20 h-20 rounded-2xl border-2 border-primary/20 bg-muted/30 flex items-center justify-center overflow-hidden transition-colors group-hover:border-primary/40 shadow-sm">
               {displayUrl ? (
-                <img src={displayUrl} alt="Profile photo" className="w-full h-full object-cover" />
+                <img src={displayUrl} alt={t("profilePhoto")} className="w-full h-full object-cover" />
               ) : (
                 <span className="text-xl font-bold text-primary/60">{initials}</span>
               )}
@@ -308,6 +312,7 @@ function ProfileTab() {
               onClick={() => inputRef.current?.click()}
               disabled={uploading}
               className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center shadow-md hover:bg-primary/90 transition-colors disabled:opacity-50"
+              title={t("changePhoto")}
             >
               <Camera className="w-3.5 h-3.5" />
             </button>
@@ -326,7 +331,7 @@ function ProfileTab() {
               <h3 className="text-lg font-semibold tracking-tight truncate">{name || userName}</h3>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-primary">
                 <Shield className="w-3 h-3" />
-                Super Agent
+                {t("superAgentRole")}
               </span>
             </div>
             <p className="text-sm text-muted-foreground mt-0.5 truncate">{userEmail}</p>
@@ -339,7 +344,7 @@ function ProfileTab() {
                 disabled={uploading}
                 className="h-7 text-xs"
               >
-                {displayUrl ? "Change Photo" : "Upload Photo"}
+                {displayUrl ? t("changePhoto") : t("uploadPhoto")}
               </Button>
               {displayUrl && (
                 <Button
@@ -351,19 +356,19 @@ function ProfileTab() {
                   className="h-7 text-xs text-destructive hover:text-destructive"
                 >
                   <Trash2 className="w-3 h-3 me-1" />
-                  Remove
+                  {tc("delete")}
                 </Button>
               )}
             </div>
             {error && <p className="text-xs text-destructive mt-1">{error}</p>}
-            <p className="text-[10px] text-muted-foreground mt-1">JPEG, PNG or WebP. Max 2 MB.</p>
+            <p className="text-[10px] text-muted-foreground mt-1">{t("avatarFormats")}</p>
           </div>
         </div>
       </div>
 
       {/* Editable Profile Fields */}
       <SectionCard>
-        <SectionHeader icon={UserCircle} title="Basic Information" description="Update your display name and contact details" />
+        <SectionHeader icon={UserCircle} title={t("basicInformation")} description={t("basicInformationDesc")} />
         <div className="p-6 space-y-5">
           {profileLoading ? (
             <div className="h-24 animate-pulse rounded-xl bg-muted/30" />
@@ -372,50 +377,50 @@ function ProfileTab() {
               <div className="grid gap-5 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="sa-name" className="text-sm font-medium text-foreground">
-                    Full Name <span className="text-destructive">*</span>
+                    {tc("name")} <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="sa-name"
-                    placeholder="e.g. John Doe"
+                    placeholder={t("namePlaceholder")}
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     maxLength={80}
                   />
                   <p className="text-[11px] text-muted-foreground">
-                    Displayed in team views, agent listings, and commission reports.
+                    {t("nameDesc")}
                   </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="sa-phone" className="text-sm font-medium text-foreground">
-                    Phone Number
+                    {tc("phone")}
                   </Label>
                   <Input
                     id="sa-phone"
                     type="tel"
-                    placeholder="e.g. +971 50 123 4567"
+                    placeholder={t("phonePlaceholder")}
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     maxLength={20}
                   />
                   <p className="text-[11px] text-muted-foreground">
-                    Used for urgent communication from your team.
+                    {t("phoneDesc")}
                   </p>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-foreground">Email Address</Label>
+                <Label className="text-sm font-medium text-foreground">{tc("email")}</Label>
                 <div className="flex items-center gap-2 h-10 rounded-xl border border-border bg-muted/30 px-3">
                   <Mail className="w-4 h-4 text-muted-foreground shrink-0" />
                   <span className="text-sm text-muted-foreground truncate">{userEmail}</span>
-                  <Badge variant="outline" className="ml-auto text-[10px] shrink-0">Read-only</Badge>
+                  <Badge variant="outline" className="ml-auto text-[10px] shrink-0">{t("emailReadOnly")}</Badge>
                 </div>
                 <p className="text-[11px] text-muted-foreground">
-                  Email is managed by your administrator and cannot be changed here.
+                  {t("emailDesc")}
                 </p>
               </div>
 
-              <SaveFeedback saving={profileSaving} saved={profileSaved} hasChanges={profileHasChanges} onSave={handleProfileSave} label="Save Profile" />
+              <SaveFeedback saving={profileSaving} saved={profileSaved} hasChanges={profileHasChanges} onSave={handleProfileSave} label={t("saveProfile")} />
             </>
           )}
         </div>
@@ -427,6 +432,8 @@ function ProfileTab() {
 // ─── Tab: Region & Currency ───────────────────────────────────────────────────
 
 function RegionTab() {
+  const t = useTranslations("superAgentSettings");
+  const tc = useTranslations("common");
   const [country, setCountry] = useState("");
   const [currencyCode, setCurrencyCode] = useState("AED");
   const [loading, setLoading] = useState(true);
@@ -484,13 +491,13 @@ function RegionTab() {
   return (
     <>
       <SectionCard>
-        <SectionHeader icon={Globe} title="Country & Currency" description="Set your operating region and display currency" />
+        <SectionHeader icon={Globe} title={t("countryAndCurrency")} description={t("countryAndCurrencyDesc")} />
         <div className="p-6 space-y-6">
           <div className="grid gap-6 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="country" className="flex items-center gap-2 text-sm font-medium text-foreground">
                 <Globe className="h-4 w-4 text-muted-foreground" />
-                Country
+                {tc("country")}
               </Label>
               <select
                 id="country"
@@ -498,20 +505,20 @@ function RegionTab() {
                 onChange={handleCountryChange}
                 className="h-11 w-full rounded-xl border border-border bg-background/85 px-3 text-sm text-foreground shadow-none focus:outline-none focus:ring-2 focus:ring-primary/35"
               >
-                <option value="">Select a country</option>
+                <option value="">{t("selectCountry")}</option>
                 {COUNTRIES.map((c) => (
                   <option key={c.code} value={c.code}>{c.label}</option>
                 ))}
               </select>
               <p className="text-xs text-muted-foreground">
-                Selecting a country auto-fills the currency used in that region.
+                {t("countryAutoFill")}
               </p>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="currency" className="flex items-center gap-2 text-sm font-medium text-foreground">
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
-                Display Currency
+                {t("displayCurrency")}
               </Label>
               <select
                 id="currency"
@@ -526,18 +533,18 @@ function RegionTab() {
                 ))}
               </select>
               <p className="text-xs text-muted-foreground">
-                This currency will be used to display commissions, revenue, and all monetary values.
+                {t("currencyDesc")}
               </p>
             </div>
           </div>
 
-          <SaveFeedback saving={saving} saved={saved} hasChanges={hasChanges} onSave={handleSave} label="Save Region Settings" />
+          <SaveFeedback saving={saving} saved={saved} hasChanges={hasChanges} onSave={handleSave} label={t("saveRegionSettings")} />
         </div>
       </SectionCard>
 
       {/* Currency Preview */}
       <SectionCard>
-        <SectionHeader icon={DollarSign} title="Currency Display Preview" description="How monetary values will appear across your workspace" />
+        <SectionHeader icon={DollarSign} title={t("currencyPreview")} description={t("currencyPreviewDesc")} />
         <div className="p-6">
           <div className="grid gap-4 sm:grid-cols-3">
             {[12500, 85000, 250000].map((amount) => {
@@ -545,7 +552,7 @@ function RegionTab() {
               const symbol = info?.symbol ?? currencyCode;
               return (
                 <div key={amount} className="rounded-xl border border-border/50 bg-muted/20 p-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Sample</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sample")}</p>
                   <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
                     {symbol} {amount.toLocaleString()}
                   </p>
@@ -562,6 +569,7 @@ function RegionTab() {
 // ─── Tab: Commission Rate Override ────────────────────────────────────────────
 
 function CommissionTab() {
+  const t = useTranslations("superAgentSettings");
   const [overrideRate, setOverrideRate] = useState<number>(0);
   const [currencyCode, setCurrencyCode] = useState("AED");
   const [loading, setLoading] = useState(true);
@@ -584,19 +592,19 @@ function CommissionTab() {
   return (
     <>
       <SectionCard>
-        <SectionHeader icon={Percent} title="Commission Override Rate" description="Your current commission override rate set by the administrator" />
+        <SectionHeader icon={Percent} title={t("commissionOverride")} description={t("commissionOverrideDesc")} />
         <div className="p-6 space-y-6">
           <div className="max-w-md space-y-3">
             <Label className="flex items-center gap-2 text-sm font-medium text-foreground">
               <Percent className="h-4 w-4 text-muted-foreground" />
-              Current Override Rate
+              {t("currentOverrideRate")}
             </Label>
             <div className="flex items-center gap-2 h-11 rounded-xl border border-border bg-muted/30 px-4">
               <span className="text-lg font-semibold text-foreground">{overrideRate}%</span>
-              <Badge variant="outline" className="ml-auto text-[10px] shrink-0">Set by Admin</Badge>
+              <Badge variant="outline" className="ml-auto text-[10px] shrink-0">{t("setByAdmin")}</Badge>
             </div>
             <p className="text-xs text-muted-foreground">
-              Your commission override rate is managed by the administrator. Contact admin to request changes.
+              {t("commissionAdminManaged")}
             </p>
           </div>
 
@@ -604,9 +612,9 @@ function CommissionTab() {
             <div className="flex items-start gap-3">
               <AlertTriangle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
               <div>
-                <p className="text-sm font-medium text-blue-800 dark:text-blue-300">How it works</p>
+                <p className="text-sm font-medium text-blue-800 dark:text-blue-300">{t("howItWorks")}</p>
                 <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">
-                  This rate is applied when invoices are created for employers. Country-based overrides configured by admin may take precedence over this rate.
+                  {t("commissionRateExplain")}
                 </p>
               </div>
             </div>
@@ -617,7 +625,7 @@ function CommissionTab() {
       {/* Commission Preview */}
       {overrideRate > 0 && (
         <SectionCard>
-          <SectionHeader icon={DollarSign} title="Rate Preview" description="Projected commission at different placement values" />
+          <SectionHeader icon={DollarSign} title={t("ratePreview")} description={t("ratePreviewDesc")} />
           <div className="p-6">
             <div className="grid gap-4 sm:grid-cols-3">
               {[50000, 120000, 300000].map((salary) => {
@@ -625,12 +633,12 @@ function CommissionTab() {
                 return (
                   <div key={salary} className="rounded-xl border border-border/50 bg-muted/20 p-4">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                      On {salary.toLocaleString()} placement
+                      {t("onPlacement", { amount: salary.toLocaleString() })}
                     </p>
                     <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
                       {commission.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                     </p>
-                    <p className="mt-1 text-xs text-muted-foreground">{overrideRate}% commission</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{t("percentCommission", { rate: overrideRate })}</p>
                   </div>
                 );
               })}
@@ -645,6 +653,8 @@ function CommissionTab() {
 // ─── Tab: Notifications ───────────────────────────────────────────────────────
 
 function NotificationsTab() {
+  const t = useTranslations("superAgentSettings");
+  const tc = useTranslations("common");
   const defaultPrefs: NotifPrefs = {
     emailFrequency: "daily",
     categories: {
@@ -723,9 +733,9 @@ function NotificationsTab() {
             <div className="flex items-start gap-3">
               <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
               <div>
-                <p className="text-sm font-medium text-amber-800 dark:text-amber-300">All notifications paused</p>
+                <p className="text-sm font-medium text-amber-800 dark:text-amber-300">{t("notificationsPaused")}</p>
                 <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
-                  You won&apos;t receive any email or in-app notifications. Toggle this off to resume.
+                  {t("notificationsPausedDesc")}
                 </p>
               </div>
             </div>
@@ -739,7 +749,7 @@ function NotificationsTab() {
 
       {/* Email frequency */}
       <SectionCard>
-        <SectionHeader icon={Clock} title="Email Frequency" description="How often to receive email digests" />
+        <SectionHeader icon={Clock} title={t("emailFrequency")} description={t("emailFrequencyDesc")} />
         <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
           {FREQ_OPTIONS.map((opt) => (
             <button
@@ -762,20 +772,20 @@ function NotificationsTab() {
       {/* Digest time */}
       {(prefs.emailFrequency === "daily" || prefs.emailFrequency === "weekly") && (
         <SectionCard>
-          <SectionHeader icon={Clock} title="Digest Schedule" description="When to receive your email digest" />
+          <SectionHeader icon={Clock} title={t("digestSchedule")} description={t("digestScheduleDesc")} />
           <div className="p-6 grid gap-6 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-foreground">Digest Time</Label>
+              <Label className="text-sm font-medium text-foreground">{t("digestTime")}</Label>
               <Input
                 type="time"
                 value={prefs.dailyDigestTime}
                 onChange={(e) => setPrefs((p) => ({ ...p, dailyDigestTime: e.target.value }))}
                 className="max-w-[180px]"
               />
-              <p className="text-xs text-muted-foreground">Time in your selected timezone</p>
+              <p className="text-xs text-muted-foreground">{t("digestTimeDesc")}</p>
             </div>
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-foreground">Timezone</Label>
+              <Label className="text-sm font-medium text-foreground">{t("timezone")}</Label>
               <select
                 value={prefs.timezone}
                 onChange={(e) => setPrefs((p) => ({ ...p, timezone: e.target.value }))}
@@ -792,7 +802,7 @@ function NotificationsTab() {
 
       {/* Categories */}
       <SectionCard>
-        <SectionHeader icon={Bell} title="Notification Categories" description="Toggle categories and choose delivery channels" />
+        <SectionHeader icon={Bell} title={t("notificationCategories")} description={t("notificationCategoriesDesc")} />
         <div className="divide-y divide-border/30">
           {SA_CATEGORIES.map((cat) => {
             const pref = prefs.categories[cat.key];
@@ -862,8 +872,8 @@ function NotificationsTab() {
       <SectionCard>
         <div className="flex items-center justify-between gap-4 px-6 py-4">
           <div>
-            <p className="text-sm font-medium">Pause all notifications</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Temporarily stop all email and in-app notifications</p>
+            <p className="text-sm font-medium">{t("pauseAllNotifications")}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{t("pauseAllNotificationsDesc")}</p>
           </div>
           <Switch
             checked={prefs.unsubscribedAll}
@@ -872,7 +882,7 @@ function NotificationsTab() {
         </div>
       </SectionCard>
 
-      <SaveFeedback saving={saving} saved={saved} hasChanges={hasChanges} onSave={handleSave} label="Save Notification Settings" />
+      <SaveFeedback saving={saving} saved={saved} hasChanges={hasChanges} onSave={handleSave} label={t("saveNotificationSettings")} />
     </>
   );
 }
@@ -880,6 +890,7 @@ function NotificationsTab() {
 // ─── Tab: Availability ────────────────────────────────────────────────────────
 
 function AvailabilityTab() {
+  const t = useTranslations("superAgentSettings");
   const [timezone, setTimezone] = useState("Asia/Dubai");
   const [workingHoursStart, setWorkingHoursStart] = useState("09:00");
   const [workingHoursEnd, setWorkingHoursEnd] = useState("18:00");
@@ -943,7 +954,7 @@ function AvailabilityTab() {
   return (
     <>
       <SectionCard>
-        <SectionHeader icon={MapPin} title="Timezone" description="Your local timezone for scheduling and digest delivery" />
+        <SectionHeader icon={MapPin} title={t("timezone")} description={t("timezoneDesc")} />
         <div className="p-6">
           <select
             value={timezone}
@@ -958,11 +969,11 @@ function AvailabilityTab() {
       </SectionCard>
 
       <SectionCard>
-        <SectionHeader icon={Clock} title="Working Hours" description="Define your typical working window" />
+        <SectionHeader icon={Clock} title={t("workingHours")} description={t("workingHoursDesc")} />
         <div className="p-6 space-y-6">
           <div className="grid gap-6 sm:grid-cols-2 max-w-md">
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-foreground">Start Time</Label>
+              <Label className="text-sm font-medium text-foreground">{t("startTime")}</Label>
               <Input
                 type="time"
                 value={workingHoursStart}
@@ -970,7 +981,7 @@ function AvailabilityTab() {
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-foreground">End Time</Label>
+              <Label className="text-sm font-medium text-foreground">{t("endTime")}</Label>
               <Input
                 type="time"
                 value={workingHoursEnd}
@@ -980,7 +991,7 @@ function AvailabilityTab() {
           </div>
 
           <div className="space-y-3">
-            <Label className="text-sm font-medium text-foreground">Working Days</Label>
+            <Label className="text-sm font-medium text-foreground">{t("workingDays")}</Label>
             <div className="flex flex-wrap gap-2">
               {DAYS_OF_WEEK.map((day) => {
                 const active = workingDays.includes(day);
@@ -1001,13 +1012,13 @@ function AvailabilityTab() {
               })}
             </div>
             <p className="text-xs text-muted-foreground">
-              These are shown to agents in your team for coordination purposes.
+              {t("workingDaysDesc")}
             </p>
           </div>
         </div>
       </SectionCard>
 
-      <SaveFeedback saving={saving} saved={saved} hasChanges={hasChanges} onSave={handleSave} label="Save Availability" />
+      <SaveFeedback saving={saving} saved={saved} hasChanges={hasChanges} onSave={handleSave} label={t("saveAvailability")} />
     </>
   );
 }
@@ -1084,6 +1095,8 @@ const EMPTY_DEFAULTS: InvoiceDefaultsState = {
 };
 
 function InvoiceDefaultsTab({ apiBase = "/api/super-agent/settings/invoice-defaults" }: { apiBase?: string }) {
+  const t = useTranslations("superAgentSettings");
+  const tc = useTranslations("common");
   const [form, setForm] = useState<InvoiceDefaultsState>(EMPTY_DEFAULTS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1182,9 +1195,9 @@ function InvoiceDefaultsTab({ apiBase = "/api/super-agent/settings/invoice-defau
         <div className="flex items-start gap-3">
           <Receipt className="h-5 w-5 text-primary mt-0.5 shrink-0" />
           <div>
-            <p className="text-sm font-medium text-foreground">Speed up invoice creation</p>
+            <p className="text-sm font-medium text-foreground">{t("speedUpInvoice")}</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Set your default billing details, tax configuration, and payment terms here. These will auto-fill every new invoice you create — no need to retype the same information.
+              {t("speedUpInvoiceDesc")}
             </p>
           </div>
         </div>
@@ -1192,47 +1205,47 @@ function InvoiceDefaultsTab({ apiBase = "/api/super-agent/settings/invoice-defau
 
       {/* Billing Entity */}
       <SectionCard>
-        <SectionHeader icon={FileText} title="Your Billing Entity" description="Company or individual details that appear on your invoices" />
+        <SectionHeader icon={FileText} title={t("billingEntity")} description={t("billingEntityDesc")} />
         <div className="p-6 space-y-5">
           <div className="grid gap-5 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="inv-company" className="text-sm font-medium">Company / Entity Name</Label>
-              <Input id="inv-company" placeholder="e.g. Acme Recruitment LLC" value={form.billingCompanyName} onChange={(e) => update("billingCompanyName", e.target.value)} maxLength={200} />
+              <Label htmlFor="inv-company" className="text-sm font-medium">{t("companyName")}</Label>
+              <Input id="inv-company" placeholder={t("companyNamePlaceholder")} value={form.billingCompanyName} onChange={(e) => update("billingCompanyName", e.target.value)} maxLength={200} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="inv-contact" className="text-sm font-medium">Contact Person</Label>
-              <Input id="inv-contact" placeholder="e.g. John Smith" value={form.billingContactPerson} onChange={(e) => update("billingContactPerson", e.target.value)} maxLength={200} />
+              <Label htmlFor="inv-contact" className="text-sm font-medium">{t("contactPerson")}</Label>
+              <Input id="inv-contact" placeholder={t("contactPersonPlaceholder")} value={form.billingContactPerson} onChange={(e) => update("billingContactPerson", e.target.value)} maxLength={200} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="inv-email" className="text-sm font-medium">Billing Email</Label>
-              <Input id="inv-email" type="email" placeholder="billing@company.com" value={form.billingEmail} onChange={(e) => update("billingEmail", e.target.value)} maxLength={200} />
+              <Label htmlFor="inv-email" className="text-sm font-medium">{t("billingEmail")}</Label>
+              <Input id="inv-email" type="email" placeholder={t("billingEmailPlaceholder")} value={form.billingEmail} onChange={(e) => update("billingEmail", e.target.value)} maxLength={200} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="inv-phone" className="text-sm font-medium">Billing Phone</Label>
-              <Input id="inv-phone" type="tel" placeholder="+971 50 123 4567" value={form.billingPhone} onChange={(e) => update("billingPhone", e.target.value)} maxLength={50} />
+              <Label htmlFor="inv-phone" className="text-sm font-medium">{t("billingPhone")}</Label>
+              <Input id="inv-phone" type="tel" placeholder={t("billingPhonePlaceholder")} value={form.billingPhone} onChange={(e) => update("billingPhone", e.target.value)} maxLength={50} />
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="inv-address" className="text-sm font-medium">Billing Address</Label>
-            <Textarea id="inv-address" placeholder="Street address, building, floor…" value={form.billingAddress} onChange={(e) => update("billingAddress", e.target.value)} maxLength={500} rows={2} className="resize-none" />
+            <Label htmlFor="inv-address" className="text-sm font-medium">{t("billingAddress")}</Label>
+            <Textarea id="inv-address" placeholder={t("billingAddressPlaceholder")} value={form.billingAddress} onChange={(e) => update("billingAddress", e.target.value)} maxLength={500} rows={2} className="resize-none" />
           </div>
           <div className="grid gap-5 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="inv-country" className="text-sm font-medium">Billing Country</Label>
+              <Label htmlFor="inv-country" className="text-sm font-medium">{t("billingCountry")}</Label>
               <select
                 id="inv-country"
                 value={form.billingCountry}
                 onChange={(e) => handleBillingCountryChange(e.target.value)}
                 className="h-11 w-full rounded-xl border border-border bg-background/85 px-3 text-sm text-foreground shadow-none focus:outline-none focus:ring-2 focus:ring-primary/35"
               >
-                <option value="">Select country</option>
+                <option value="">{t("selectCountry")}</option>
                 {COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
               </select>
-              <p className="text-[11px] text-muted-foreground">Selecting a country auto-updates the default currency.</p>
+              <p className="text-[11px] text-muted-foreground">{t("billingCountryAutoUpdate")}</p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="inv-taxid" className="text-sm font-medium">Tax ID / VAT Number</Label>
-              <Input id="inv-taxid" placeholder="e.g. TRN 100234567890003" value={form.billingTaxId} onChange={(e) => update("billingTaxId", e.target.value)} maxLength={50} />
+              <Label htmlFor="inv-taxid" className="text-sm font-medium">{t("taxId")}</Label>
+              <Input id="inv-taxid" placeholder={t("taxIdPlaceholder")} value={form.billingTaxId} onChange={(e) => update("billingTaxId", e.target.value)} maxLength={50} />
             </div>
           </div>
         </div>
@@ -1240,11 +1253,11 @@ function InvoiceDefaultsTab({ apiBase = "/api/super-agent/settings/invoice-defau
 
       {/* Invoice Preferences */}
       <SectionCard>
-        <SectionHeader icon={Receipt} title="Invoice Preferences" description="Default values pre-filled when creating new invoices" />
+        <SectionHeader icon={Receipt} title={t("invoicePreferences")} description={t("invoicePreferencesDesc")} />
         <div className="p-6 space-y-5">
           <div className="grid gap-5 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="inv-category" className="text-sm font-medium">Default Invoice Type</Label>
+              <Label htmlFor="inv-category" className="text-sm font-medium">{t("defaultInvoiceType")}</Label>
               <select
                 id="inv-category"
                 value={form.defaultCategory}
@@ -1255,7 +1268,7 @@ function InvoiceDefaultsTab({ apiBase = "/api/super-agent/settings/invoice-defau
               </select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="inv-currency" className="text-sm font-medium">Default Currency</Label>
+              <Label htmlFor="inv-currency" className="text-sm font-medium">{t("defaultCurrency")}</Label>
               <select
                 id="inv-currency"
                 value={form.defaultCurrency}
@@ -1269,10 +1282,10 @@ function InvoiceDefaultsTab({ apiBase = "/api/super-agent/settings/invoice-defau
 
           {/* Tax Configuration */}
           <div className="rounded-xl border border-border/50 bg-muted/10 p-4 space-y-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">Tax Configuration</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("taxConfiguration")}</p>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="inv-taxtype" className="text-sm font-medium">Tax Type</Label>
+                <Label htmlFor="inv-taxtype" className="text-sm font-medium">{t("taxType")}</Label>
                 <select
                   id="inv-taxtype"
                   value={form.defaultTaxType}
@@ -1283,7 +1296,7 @@ function InvoiceDefaultsTab({ apiBase = "/api/super-agent/settings/invoice-defau
                 </select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="inv-taxpct" className="text-sm font-medium">Tax Rate (%)</Label>
+                <Label htmlFor="inv-taxpct" className="text-sm font-medium">{t("taxRate")}</Label>
                 <Input id="inv-taxpct" type="number" min={0} max={100} step={0.5} value={form.defaultTaxPercent} onChange={(e) => update("defaultTaxPercent", parseFloat(e.target.value) || 0)} />
               </div>
             </div>
@@ -1291,10 +1304,10 @@ function InvoiceDefaultsTab({ apiBase = "/api/super-agent/settings/invoice-defau
 
           {/* Payment Terms */}
           <div className="rounded-xl border border-border/50 bg-muted/10 p-4 space-y-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">Payment Terms</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("paymentTerms")}</p>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="inv-terms" className="text-sm font-medium">Default Terms</Label>
+                <Label htmlFor="inv-terms" className="text-sm font-medium">{t("defaultTerms")}</Label>
                 <select
                   id="inv-terms"
                   value={form.defaultPaymentTerms}
@@ -1306,7 +1319,7 @@ function InvoiceDefaultsTab({ apiBase = "/api/super-agent/settings/invoice-defau
               </div>
               {form.defaultPaymentTerms === "custom" && (
                 <div className="space-y-2">
-                  <Label htmlFor="inv-custom-days" className="text-sm font-medium">Custom Days</Label>
+                  <Label htmlFor="inv-custom-days" className="text-sm font-medium">{t("customDays")}</Label>
                   <Input id="inv-custom-days" type="number" min={1} max={365} value={form.customPaymentDays} onChange={(e) => update("customPaymentDays", parseInt(e.target.value) || 30)} />
                 </div>
               )}
@@ -1315,20 +1328,20 @@ function InvoiceDefaultsTab({ apiBase = "/api/super-agent/settings/invoice-defau
 
           {/* Default Notes */}
           <div className="space-y-2">
-            <Label htmlFor="inv-notes" className="text-sm font-medium">Default Invoice Notes</Label>
+            <Label htmlFor="inv-notes" className="text-sm font-medium">{t("defaultInvoiceNotes")}</Label>
             <Textarea
               id="inv-notes"
-              placeholder="Standard payment terms, bank details, or any recurring notes to include on every invoice…"
+              placeholder={t("defaultInvoiceNotesPlaceholder")}
               value={form.defaultNotes}
               onChange={(e) => update("defaultNotes", e.target.value)}
               maxLength={1000}
               rows={3}
               className="resize-none"
             />
-            <p className="text-[11px] text-muted-foreground">{form.defaultNotes.length}/1000 characters</p>
+            <p className="text-[11px] text-muted-foreground">{t("charCount", { current: form.defaultNotes.length, max: 1000 })}</p>
           </div>
 
-          <SaveFeedback saving={saving} saved={saved} hasChanges={hasChanges} onSave={handleSave} label="Save Invoice Defaults" />
+          <SaveFeedback saving={saving} saved={saved} hasChanges={hasChanges} onSave={handleSave} label={t("saveInvoiceDefaults")} />
         </div>
       </SectionCard>
     </>
@@ -1338,24 +1351,26 @@ function InvoiceDefaultsTab({ apiBase = "/api/super-agent/settings/invoice-defau
 // ─── Tab: Account & Security ──────────────────────────────────────────────────
 
 function SecurityTab() {
+  const t = useTranslations("superAgentSettings");
+  const tc = useTranslations("common");
   return (
     <>
       <SectionCard>
-        <SectionHeader icon={Shield} title="Account Information" description="Your super agent account details" />
+        <SectionHeader icon={Shield} title={t("accountInformation")} description={t("accountInformationDesc")} />
         <div className="p-6 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/20">
               <Calendar className="w-4 h-4 text-muted-foreground" />
               <div>
-                <p className="text-[11px] text-muted-foreground">Role</p>
-                <p className="text-sm font-medium">Super Agent</p>
+                <p className="text-[11px] text-muted-foreground">{t("role")}</p>
+                <p className="text-sm font-medium">{t("superAgentRole")}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/20">
               <Shield className="w-4 h-4 text-muted-foreground" />
               <div>
-                <p className="text-[11px] text-muted-foreground">Account Status</p>
-                <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">Active</p>
+                <p className="text-[11px] text-muted-foreground">{t("accountStatus")}</p>
+                <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">{tc("active")}</p>
               </div>
             </div>
           </div>
@@ -1363,14 +1378,14 @@ function SecurityTab() {
       </SectionCard>
 
       <SectionCard>
-        <SectionHeader icon={Shield} title="Security" description="Manage your security preferences" />
+        <SectionHeader icon={Shield} title={t("security")} description={t("securityDesc")} />
         <div className="p-6 space-y-4">
           <div className="flex items-center justify-between p-4 rounded-xl border border-border/50 bg-muted/20">
             <div className="flex items-start gap-3">
               <Mail className="w-4 h-4 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-sm font-medium">Login Notifications</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Get notified when someone logs into your account</p>
+                <p className="text-sm font-medium">{t("loginNotifications")}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{t("loginNotificationsDesc")}</p>
               </div>
             </div>
             <Switch defaultChecked />
@@ -1383,15 +1398,15 @@ function SecurityTab() {
       <ChangeEmailCard />
 
       <SectionCard>
-        <SectionHeader icon={AlertTriangle} title="Danger Zone" description="Irreversible account actions" />
+        <SectionHeader icon={AlertTriangle} title={t("dangerZone")} description={t("dangerZoneDesc")} />
         <div className="p-6">
           <div className="flex items-center justify-between p-4 rounded-xl border border-destructive/20 bg-destructive/5">
             <div>
-              <p className="text-sm font-medium text-destructive">Deactivate Account</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Temporarily disable your super agent account</p>
+              <p className="text-sm font-medium text-destructive">{t("deactivateAccount")}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("deactivateAccountDesc")}</p>
             </div>
             <Button variant="outline" size="sm" className="border-destructive/30 text-destructive hover:bg-destructive/10">
-              Deactivate
+              {t("deactivateButton")}
             </Button>
           </div>
         </div>
@@ -1403,15 +1418,16 @@ function SecurityTab() {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function SuperAgentSettingsPage() {
+  const t = useTranslations("superAgentSettings");
   const [activeTab, setActiveTab] = useState<TabKey>("profile");
 
   return (
     <div className="page-container space-y-6">
       <SuperAgentPageIntro
-        title="Settings"
-        description="Manage your super-agent workspace configuration — regional preferences, commission rates, notification channels, availability, and account security."
-        summaryTitle="Workspace settings"
-        summaryDescription="Changes take effect immediately across all dashboard pages, reports, and financial displays."
+        title={t("settingsTitle")}
+        description={t("settingsDescription")}
+        summaryTitle={t("workspaceSettings")}
+        summaryDescription={t("workspaceSettingsDesc")}
       />
 
       {/* Sidebar + Content Layout */}

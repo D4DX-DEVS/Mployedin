@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -96,13 +97,13 @@ const INITIAL_FILTERS: Filters = {
 const STAGES: LeadStatus[] = ["new", "contacted", "interested", "negotiating", "converted", "lost"];
 
 const SORT_OPTIONS = [
-  { value: "createdAt", label: "Date Created" },
-  { value: "companyName", label: "Company Name" },
-  { value: "status", label: "Stage" },
-  { value: "score", label: "Score" },
-  { value: "followUpAt", label: "Follow-up Date" },
-  { value: "country", label: "Country" },
-  { value: "industry", label: "Industry" },
+  { value: "createdAt", label: "sortOptionCreatedAt" },
+  { value: "companyName", label: "sortOptionCompanyName" },
+  { value: "status", label: "sortOptionStatus" },
+  { value: "score", label: "sortOptionScore" },
+  { value: "followUpAt", label: "sortOptionFollowUpAt" },
+  { value: "country", label: "sortOptionCountry" },
+  { value: "industry", label: "sortOptionIndustry" },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -128,6 +129,10 @@ function countActiveFilters(f: Filters): number {
 /* ------------------------------------------------------------------ */
 
 export default function SuperAgentLeadsPage() {
+  const t = useTranslations("superAgentLeads");
+  const tc = useTranslations("common");
+  const tt = useTranslations("table");
+
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
@@ -264,55 +269,55 @@ export default function SuperAgentLeadsPage() {
   const activeFilterCount = countActiveFilters(filters);
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
-    { header: "Company", key: "companyName" },
-    { header: "Contact", key: "contactPerson" },
-    { header: "Email", key: "contactEmail" },
-    { header: "Phone", key: "contactPhone" },
-    { header: "Country", key: "country" },
-    { header: "Industry", key: "industry" },
-    { header: "Source", key: "source" },
-    { header: "Exhibition Linked", key: "exhibitionId", formatter: (v) => v ? "Yes" : "" },
-    { header: "Agent", key: "agentId", formatter: (_v, row) => (row.agentId as { userId?: { name?: string } })?.userId?.name ?? "" },
-    { header: "Stage", key: "status" },
-    { header: "Score", key: "score" },
-    { header: "Qualification", key: "qualificationLevel" },
-    { header: "Follow Up", key: "followUpAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
-    { header: "Created", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: t("columnCompany"), key: "companyName" },
+    { header: t("columnContact"), key: "contactPerson" },
+    { header: tc("email"), key: "contactEmail" },
+    { header: tc("phone"), key: "contactPhone" },
+    { header: tc("country"), key: "country" },
+    { header: t("columnIndustry"), key: "industry" },
+    { header: t("columnSource"), key: "source" },
+    { header: t("columnExhibitionLinked"), key: "exhibitionId", formatter: (v) => v ? t("yes") : "" },
+    { header: t("columnAgent"), key: "agentId", formatter: (_v, row) => (row.agentId as { userId?: { name?: string } })?.userId?.name ?? "" },
+    { header: t("columnStage"), key: "status" },
+    { header: t("columnScore"), key: "score" },
+    { header: t("columnQualification"), key: "qualificationLevel" },
+    { header: t("columnFollowUp"), key: "followUpAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: tc("date"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: leads as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "super-agent-leads",
-    title: "Lead Pipeline",
+    title: t("pageTitle"),
   });
 
   const kpis = [
     {
-      label: "Open Pipeline",
+      label: t("kpiOpenPipeline"),
       value: leads.filter((lead) => !["converted", "lost"].includes(lead.status)).length,
-      helper: "Leads still moving through discovery, contact, or negotiation.",
+      helper: t("kpiOpenPipelineHelper"),
       icon: <Target className="h-5 w-5" />,
       toneClassName: "workspace-tone-sky",
     },
     {
-      label: "Contacted",
+      label: t("kpiContacted"),
       value: stageCounts.contacted,
-      helper: "Accounts already touched by your team and in follow-up motion.",
+      helper: t("kpiContactedHelper"),
       icon: <Activity className="h-5 w-5" />,
       toneClassName: "workspace-tone-indigo",
     },
     {
-      label: "Converted",
+      label: t("kpiConverted"),
       value: stageCounts.converted,
-      helper: "Leads that have already moved into active employer relationships.",
+      helper: t("kpiConvertedHelper"),
       icon: <Handshake className="h-5 w-5" />,
       toneClassName: "workspace-tone-emerald",
     },
     {
-      label: "Lost",
+      label: t("kpiLost"),
       value: stageCounts.lost,
-      helper: "Dropped opportunities that may need later reactivation or review.",
+      helper: t("kpiLostHelper"),
       icon: <CircleSlash className="h-5 w-5" />,
       toneClassName: "workspace-tone-rose",
     },
@@ -349,18 +354,18 @@ export default function SuperAgentLeadsPage() {
   return (
     <div className="page-container space-y-6">
       <SuperAgentPageIntro
-        title="Lead Pipeline"
-        description="Review every employer lead across your team, switch between stages quickly, and keep regional follow-up work visible from one modern queue."
-        summaryTitle="Coverage"
-        summaryDescription="Use the stage strip to isolate bottlenecks, then search by company or contact to drill in."
+        title={t("pageTitle")}
+        description={t("pageDescription")}
+        summaryTitle={t("summaryTitle")}
+        summaryDescription={t("summaryDescription")}
       />
 
       <SuperAgentMetricsGrid items={kpis} />
 
       <SuperAgentSection
-        eyebrow="Pipeline"
-        title="Filter and review employer leads"
-        description="Use stage toggles, advanced filters, and AI-powered search to focus on the right leads."
+        eyebrow={t("sectionEyebrow")}
+        title={t("sectionTitle")}
+        description={t("sectionDescription")}
       >
         {/* ---- Stage Strip ---- */}
         <div className="flex flex-col gap-4">
@@ -383,7 +388,7 @@ export default function SuperAgentLeadsPage() {
         <TableToolbar
           search={filters.search}
           onSearchChange={(v) => updateFilter("search", v)}
-          searchPlaceholder="Search company, contact, email..."
+          searchPlaceholder={t("searchPlaceholder")}
           onExportCsv={handleExportCsv}
           onExportExcel={handleExportExcel}
           onExportPdf={handleExportPdf}
@@ -396,8 +401,8 @@ export default function SuperAgentLeadsPage() {
                   <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-500/70" />
                   <Input
                     ref={aiInputRef}
-                    aria-label="AI-powered search"
-                    placeholder="Ask AI..."
+                    aria-label={t("aiSearchLabel")}
+                    placeholder={t("aiSearchPlaceholder")}
                     value={aiQuery}
                     onChange={(e) => setAiQuery(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") handleAiSearch(); }}
@@ -411,7 +416,7 @@ export default function SuperAgentLeadsPage() {
                   className="flex h-9 items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 text-xs font-medium text-amber-700 transition-all hover:bg-amber-500/20 disabled:opacity-50 dark:text-amber-400"
                 >
                   {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                  AI
+                  {t("aiButton")}
                 </button>
               </div>
               {(activeFilterCount > 0 || filters.status || filters.search || aiSummary) && (
@@ -421,7 +426,7 @@ export default function SuperAgentLeadsPage() {
                   className="flex h-9 items-center gap-2 rounded-lg border border-border/70 bg-card px-3 text-sm text-muted-foreground hover:bg-secondary/80 transition-all"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
-                  Reset
+                  {t("resetButton")}
                 </button>
               )}
             </div>
@@ -434,7 +439,7 @@ export default function SuperAgentLeadsPage() {
                   <Sparkles className="mt-0.5 h-4 w-4 shrink-0" />
                   <div className="flex-1">
                     <p>{aiSummary}</p>
-                    {aiDegraded && <p className="mt-1 text-xs opacity-70">AI was unavailable — fell back to keyword search.</p>}
+                    {aiDegraded && <p className="mt-1 text-xs opacity-70">{t("aiDegradedMessage")}</p>}
                   </div>
                   <button type="button" onClick={() => setAiSummary("")} className="mt-0.5 shrink-0 opacity-60 hover:opacity-100 transition-opacity">
                     <X className="h-4 w-4" />
@@ -444,104 +449,104 @@ export default function SuperAgentLeadsPage() {
 
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Country</label>
+                  <label className="text-xs font-medium text-muted-foreground">{tc("country")}</label>
                   <SearchableSelect
-                    options={[{ value: "", label: "All countries" }, ...facets.countries.map((c) => ({ value: c, label: c }))]}
+                    options={[{ value: "", label: t("filterAllCountries") }, ...facets.countries.map((c) => ({ value: c, label: c }))]}
                     value={filters.country}
                     onValueChange={(v) => updateFilter("country", v)}
-                    placeholder="All countries"
-                    searchPlaceholder="Search country..."
+                    placeholder={t("filterAllCountries")}
+                    searchPlaceholder={t("searchCountry")}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Industry</label>
+                  <label className="text-xs font-medium text-muted-foreground">{t("filterIndustry")}</label>
                   <SearchableSelect
-                    options={[{ value: "", label: "All industries" }, ...facets.industries.map((i) => ({ value: i, label: i }))]}
+                    options={[{ value: "", label: t("filterAllIndustries") }, ...facets.industries.map((i) => ({ value: i, label: i }))]}
                     value={filters.industry}
                     onValueChange={(v) => updateFilter("industry", v)}
-                    placeholder="All industries"
-                    searchPlaceholder="Search industry..."
+                    placeholder={t("filterAllIndustries")}
+                    searchPlaceholder={t("searchIndustry")}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Source</label>
+                  <label className="text-xs font-medium text-muted-foreground">{t("filterSource")}</label>
                   <SearchableSelect
-                    options={[{ value: "", label: "All sources" }, ...facets.sources.map((s) => ({ value: s, label: s }))]}
+                    options={[{ value: "", label: t("filterAllSources") }, ...facets.sources.map((s) => ({ value: s, label: s }))]}
                     value={filters.source}
                     onValueChange={(v) => updateFilter("source", v)}
-                    placeholder="All sources"
-                    searchPlaceholder="Search source..."
+                    placeholder={t("filterAllSources")}
+                    searchPlaceholder={t("searchSource")}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Agent</label>
+                  <label className="text-xs font-medium text-muted-foreground">{t("filterAgent")}</label>
                   <SearchableSelect
-                    options={[{ value: "", label: "All agents" }, ...agents.map((a) => ({ value: a._id, label: a.name || a.email }))]}
+                    options={[{ value: "", label: t("filterAllAgents") }, ...agents.map((a) => ({ value: a._id, label: a.name || a.email }))]}
                     value={filters.agentId}
                     onValueChange={(v) => updateFilter("agentId", v)}
-                    placeholder="All agents"
-                    searchPlaceholder="Search agent..."
+                    placeholder={t("filterAllAgents")}
+                    searchPlaceholder={t("searchAgent")}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Created From</label>
-                  <DateTimePicker value={filters.dateFrom} onChange={(v) => updateFilter("dateFrom", v)} placeholder="Start date" mode="date" />
+                  <label className="text-xs font-medium text-muted-foreground">{t("filterCreatedFrom")}</label>
+                  <DateTimePicker value={filters.dateFrom} onChange={(v) => updateFilter("dateFrom", v)} placeholder={t("placeholderStartDate")} mode="date" />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Created To</label>
-                  <DateTimePicker value={filters.dateTo} onChange={(v) => updateFilter("dateTo", v)} placeholder="End date" mode="date" />
+                  <label className="text-xs font-medium text-muted-foreground">{t("filterCreatedTo")}</label>
+                  <DateTimePicker value={filters.dateTo} onChange={(v) => updateFilter("dateTo", v)} placeholder={t("placeholderEndDate")} mode="date" />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Follow-up From</label>
-                  <DateTimePicker value={filters.followUpFrom} onChange={(v) => updateFilter("followUpFrom", v)} placeholder="Follow-up start" mode="date" />
+                  <label className="text-xs font-medium text-muted-foreground">{t("filterFollowUpFrom")}</label>
+                  <DateTimePicker value={filters.followUpFrom} onChange={(v) => updateFilter("followUpFrom", v)} placeholder={t("placeholderFollowUpStart")} mode="date" />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Follow-up To</label>
-                  <DateTimePicker value={filters.followUpTo} onChange={(v) => updateFilter("followUpTo", v)} placeholder="Follow-up end" mode="date" />
+                  <label className="text-xs font-medium text-muted-foreground">{t("filterFollowUpTo")}</label>
+                  <DateTimePicker value={filters.followUpTo} onChange={(v) => updateFilter("followUpTo", v)} placeholder={t("placeholderFollowUpEnd")} mode="date" />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Has Notes</label>
+                  <label className="text-xs font-medium text-muted-foreground">{t("filterHasNotes")}</label>
                   <SearchableSelect
-                    options={[{ value: "", label: "Any" }, { value: "true", label: "With notes" }, { value: "false", label: "Without notes" }]}
+                    options={[{ value: "", label: t("filterAny") }, { value: "true", label: t("filterWithNotes") }, { value: "false", label: t("filterWithoutNotes") }]}
                     value={filters.hasNotes}
                     onValueChange={(v) => updateFilter("hasNotes", v)}
-                    placeholder="Any"
+                    placeholder={t("filterAny")}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Follow-up Status</label>
+                  <label className="text-xs font-medium text-muted-foreground">{t("filterFollowUpStatus")}</label>
                   <SearchableSelect
-                    options={[{ value: "", label: "Any" }, { value: "true", label: "Has follow-up scheduled" }, { value: "overdue", label: "Overdue follow-ups only" }]}
+                    options={[{ value: "", label: t("filterAny") }, { value: "true", label: t("filterHasFollowUp") }, { value: "overdue", label: t("filterOverdueOnly") }]}
                     value={filters.hasFollowUp}
                     onValueChange={(v) => updateFilter("hasFollowUp", v)}
-                    placeholder="Any"
+                    placeholder={t("filterAny")}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Sort By</label>
-                  <SearchableSelect options={SORT_OPTIONS} value={filters.sortBy} onValueChange={(v) => updateFilter("sortBy", v)} placeholder="Date Created" />
+                  <label className="text-xs font-medium text-muted-foreground">{t("filterSortBy")}</label>
+                  <SearchableSelect options={SORT_OPTIONS.map((o) => ({ value: o.value, label: t(`sortOption${o.value}`) }))} value={filters.sortBy} onValueChange={(v) => updateFilter("sortBy", v)} placeholder={t("sortOptionCreatedAt")} />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Sort Order</label>
+                  <label className="text-xs font-medium text-muted-foreground">{t("filterSortOrder")}</label>
                   <SearchableSelect
-                    options={[{ value: "desc", label: "Newest first" }, { value: "asc", label: "Oldest first" }]}
+                    options={[{ value: "desc", label: t("sortNewestFirst") }, { value: "asc", label: t("sortOldestFirst") }]}
                     value={filters.sortOrder}
                     onValueChange={(v) => updateFilter("sortOrder", v)}
-                    placeholder="Newest first"
+                    placeholder={t("sortNewestFirst")}
                   />
                 </div>
               </div>
 
               {/* Quick Filter Chips */}
               <div className="flex flex-wrap gap-2">
-                <span className="text-xs font-medium text-muted-foreground/70 self-center mr-1">Quick:</span>
+                <span className="text-xs font-medium text-muted-foreground/70 self-center mr-1">{t("quickFiltersLabel")}</span>
                 {[
-                  { label: "Overdue Follow-ups", action: () => { updateFilter("hasFollowUp", "overdue"); } },
-                  { label: "This Week", action: () => { const d = new Date(); const start = new Date(d); start.setDate(d.getDate() - d.getDay()); updateFilter("dateFrom", start.toISOString().split("T")[0]); } },
-                  { label: "Converted", action: () => { updateFilter("status", "converted"); } },
-                  { label: "Lost Leads", action: () => { updateFilter("status", "lost"); } },
-                  { label: "With Notes", action: () => { updateFilter("hasNotes", "true"); } },
-                  { label: "Needs Contact", action: () => { updateFilter("status", "new"); } },
+                  { label: t("quickFilterOverdueFollowUps"), action: () => { updateFilter("hasFollowUp", "overdue"); } },
+                  { label: t("quickFilterThisWeek"), action: () => { const d = new Date(); const start = new Date(d); start.setDate(d.getDate() - d.getDay()); updateFilter("dateFrom", start.toISOString().split("T")[0]); } },
+                  { label: t("quickFilterConverted"), action: () => { updateFilter("status", "converted"); } },
+                  { label: t("quickFilterLostLeads"), action: () => { updateFilter("status", "lost"); } },
+                  { label: t("quickFilterWithNotes"), action: () => { updateFilter("hasNotes", "true"); } },
+                  { label: t("quickFilterNeedsContact"), action: () => { updateFilter("status", "new"); } },
                 ].map((chip) => (
                   <button
                     key={chip.label}
@@ -557,16 +562,16 @@ export default function SuperAgentLeadsPage() {
               {/* Active filters strip */}
               {activeFilterCount > 0 && (
                 <div className="flex flex-wrap items-center gap-2 border-t border-border/40 pt-3">
-                  <span className="text-xs text-muted-foreground/70">Active:</span>
-                  {filters.country && <FilterChip label={`Country: ${filters.country}`} onRemove={() => updateFilter("country", "")} />}
-                  {filters.industry && <FilterChip label={`Industry: ${filters.industry}`} onRemove={() => updateFilter("industry", "")} />}
-                  {filters.source && <FilterChip label={`Source: ${filters.source}`} onRemove={() => updateFilter("source", "")} />}
-                  {filters.agentId && <FilterChip label={`Agent: ${agents.find((a) => a._id === filters.agentId)?.name ?? filters.agentId}`} onRemove={() => updateFilter("agentId", "")} />}
-                  {(filters.dateFrom || filters.dateTo) && <FilterChip label={`Created: ${filters.dateFrom || "…"} → ${filters.dateTo || "…"}`} onRemove={() => { updateFilter("dateFrom", ""); updateFilter("dateTo", ""); }} />}
-                  {(filters.followUpFrom || filters.followUpTo) && <FilterChip label={`Follow-up: ${filters.followUpFrom || "…"} → ${filters.followUpTo || "…"}`} onRemove={() => { updateFilter("followUpFrom", ""); updateFilter("followUpTo", ""); }} />}
-                  {filters.hasNotes && <FilterChip label={filters.hasNotes === "true" ? "Has notes" : "No notes"} onRemove={() => updateFilter("hasNotes", "")} />}
-                  {filters.hasFollowUp && <FilterChip label={filters.hasFollowUp === "overdue" ? "Overdue follow-ups" : "Has follow-up"} onRemove={() => updateFilter("hasFollowUp", "")} />}
-                  {(filters.sortBy !== "createdAt" || filters.sortOrder !== "desc") && <FilterChip label={`Sort: ${SORT_OPTIONS.find((o) => o.value === filters.sortBy)?.label ?? filters.sortBy} (${filters.sortOrder})`} onRemove={() => { updateFilter("sortBy", "createdAt"); updateFilter("sortOrder", "desc"); }} />}
+                  <span className="text-xs text-muted-foreground/70">{t("activeFiltersLabel")}</span>
+                  {filters.country && <FilterChip label={t("filterLabelCountry", { value: filters.country })} onRemove={() => updateFilter("country", "")} />}
+                  {filters.industry && <FilterChip label={t("filterLabelIndustry", { value: filters.industry })} onRemove={() => updateFilter("industry", "")} />}
+                  {filters.source && <FilterChip label={t("filterLabelSource", { value: filters.source })} onRemove={() => updateFilter("source", "")} />}
+                  {filters.agentId && <FilterChip label={t("filterLabelAgent", { value: agents.find((a) => a._id === filters.agentId)?.name ?? filters.agentId })} onRemove={() => updateFilter("agentId", "")} />}
+                  {(filters.dateFrom || filters.dateTo) && <FilterChip label={t("filterLabelCreated", { from: filters.dateFrom || "…", to: filters.dateTo || "…" })} onRemove={() => { updateFilter("dateFrom", ""); updateFilter("dateTo", ""); }} />}
+                  {(filters.followUpFrom || filters.followUpTo) && <FilterChip label={t("filterLabelFollowUp", { from: filters.followUpFrom || "…", to: filters.followUpTo || "…" })} onRemove={() => { updateFilter("followUpFrom", ""); updateFilter("followUpTo", ""); }} />}
+                  {filters.hasNotes && <FilterChip label={filters.hasNotes === "true" ? t("filterLabelHasNotes") : t("filterLabelNoNotes")} onRemove={() => updateFilter("hasNotes", "")} />}
+                  {filters.hasFollowUp && <FilterChip label={filters.hasFollowUp === "overdue" ? t("filterLabelOverdueFollowUps") : t("filterLabelHasFollowUp")} onRemove={() => updateFilter("hasFollowUp", "")} />}
+                  {(filters.sortBy !== "createdAt" || filters.sortOrder !== "desc") && <FilterChip label={t("filterLabelSort", { sortBy: t(`sortOption${filters.sortBy}`), order: filters.sortOrder })} onRemove={() => { updateFilter("sortBy", "createdAt"); updateFilter("sortOrder", "desc"); }} />}
                 </div>
               )}
             </div>
@@ -579,17 +584,17 @@ export default function SuperAgentLeadsPage() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-background/60 hover:bg-background/60">
-                  <TableHead><SortHeader field="companyName">Company</SortHeader></TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead><SortHeader field="country">Country</SortHeader></TableHead>
-                  <TableHead><SortHeader field="industry">Industry</SortHeader></TableHead>
-                  <TableHead>Source</TableHead>
-                  <TableHead>Exhibition</TableHead>
-                  <TableHead><SortHeader field="status">Stage</SortHeader></TableHead>
-                  <TableHead><SortHeader field="score">Score</SortHeader></TableHead>
-                  <TableHead>Agent</TableHead>
-                  <TableHead><SortHeader field="followUpAt">Follow-up</SortHeader></TableHead>
-                  <TableHead><SortHeader field="createdAt">Date</SortHeader></TableHead>
+                  <TableHead><SortHeader field="companyName">{t("columnCompany")}</SortHeader></TableHead>
+                  <TableHead>{t("columnContact")}</TableHead>
+                  <TableHead><SortHeader field="country">{tc("country")}</SortHeader></TableHead>
+                  <TableHead><SortHeader field="industry">{t("columnIndustry")}</SortHeader></TableHead>
+                  <TableHead>{t("columnSource")}</TableHead>
+                  <TableHead>{t("columnExhibition")}</TableHead>
+                  <TableHead><SortHeader field="status">{t("columnStage")}</SortHeader></TableHead>
+                  <TableHead><SortHeader field="score">{t("columnScore")}</SortHeader></TableHead>
+                  <TableHead>{t("columnAgent")}</TableHead>
+                  <TableHead><SortHeader field="followUpAt">{t("columnFollowUp")}</SortHeader></TableHead>
+                  <TableHead><SortHeader field="createdAt">{tc("date")}</SortHeader></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -609,8 +614,8 @@ export default function SuperAgentLeadsPage() {
                           <Target className="h-6 w-6" />
                         </div>
                         <div>
-                          <p className="text-base font-semibold text-foreground">No leads found</p>
-                          <p className="mt-1 text-sm text-muted-foreground">Try another search, adjust filters, or use AI search to explore your pipeline.</p>
+                          <p className="text-base font-semibold text-foreground">{t("noLeadsFoundTitle")}</p>
+                          <p className="mt-1 text-sm text-muted-foreground">{t("noLeadsFoundMessage")}</p>
                         </div>
                       </div>
                     </TableCell>
@@ -627,7 +632,7 @@ export default function SuperAgentLeadsPage() {
                       <TableCell className="text-muted-foreground">
                         <span>{lead.country ?? "—"}</span>
                         {lead.autoRouted && (
-                          <span className="ml-1 rounded bg-emerald-100 px-1 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">Routed</span>
+                          <span className="ml-1 rounded bg-emerald-100 px-1 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">{t("badgeRouted")}</span>
                         )}
                       </TableCell>
                       <TableCell className="text-muted-foreground">{lead.industry ?? "—"}</TableCell>
@@ -649,7 +654,7 @@ export default function SuperAgentLeadsPage() {
                         {lead.followUpAt ? (
                           <span className={isOverdue ? "font-medium text-red-600 dark:text-red-400" : "text-muted-foreground"}>
                             {new Date(lead.followUpAt).toLocaleDateString()}
-                            {isOverdue && <span className="ml-1 text-[10px]">overdue</span>}
+                            {isOverdue && <span className="ml-1 text-[10px]">{t("labelOverdue")}</span>}
                           </span>
                         ) : (
                           <span className="text-muted-foreground/50">—</span>

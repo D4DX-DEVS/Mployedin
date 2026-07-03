@@ -2,6 +2,7 @@
 
 import { useState, useCallback, Fragment } from "react";
 import { useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -68,12 +69,12 @@ function linkStatus(link: ReferralLinkItem): "active" | "expired" | "maxed" | "i
   return "active";
 }
 
-function statusLabel(s: ReturnType<typeof linkStatus>): string {
+function statusLabel(s: ReturnType<typeof linkStatus>, t: ReturnType<typeof useTranslations<"superAgentReferralLinks">>): string {
   switch (s) {
-    case "active": return "Active";
-    case "expired": return "Expired";
-    case "maxed": return "Limit Reached";
-    case "inactive": return "Disabled";
+    case "active": return t("statusActive");
+    case "expired": return t("statusExpired");
+    case "maxed": return t("statusLimitReached");
+    case "inactive": return t("statusDisabled");
   }
 }
 
@@ -84,6 +85,9 @@ function creatorName(link: ReferralLinkItem): string {
 
 export default function SuperAgentReferralLinksPage() {
   const { locale } = useParams<{ locale: string }>();
+  const t = useTranslations("superAgentReferralLinks");
+  const tc = useTranslations("common");
+  const tt = useTranslations("table");
   const pagination = usePagination();
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -168,21 +172,21 @@ export default function SuperAgentReferralLinksPage() {
   const hasActiveFilters = !!(statusFilter || creatorRoleFilter || dateFrom || dateTo || sortBy || search);
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
-    { header: "Code", key: "code" },
-    { header: "Creator", key: "createdBy", formatter: (_v, row) => creatorName(row as unknown as ReferralLinkItem) },
-    { header: "Label", key: "label" },
-    { header: "Active", key: "isActive", formatter: (v) => v ? "Yes" : "No" },
-    { header: "Used", key: "usedCount" },
-    { header: "Max Uses", key: "maxUses" },
-    { header: "Created", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
-    { header: "Expires", key: "expiresAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: t("tableHeadCode"), key: "code" },
+    { header: t("tableHeadCreator"), key: "createdBy", formatter: (_v, row) => creatorName(row as unknown as ReferralLinkItem) },
+    { header: t("tableHeadLabel"), key: "label" },
+    { header: t("exportColumnActive"), key: "isActive", formatter: (v) => v ? t("yesText") : t("noText") },
+    { header: t("tableHeadUsed"), key: "usedCount" },
+    { header: t("exportColumnMaxUses"), key: "maxUses" },
+    { header: t("exportColumnCreated"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: t("tableHeadExpires"), key: "expiresAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: links as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "super-agent-referral-links",
-    title: "Referral Links",
+    title: t("exportTitle"),
   });
 
   const handleAiSearch = async () => {
@@ -211,7 +215,7 @@ export default function SuperAgentReferralLinksPage() {
 
       pagination.resetPage();
     } catch {
-      setAiSummary("Could not process your query. Try rephrasing.");
+      setAiSummary(t("aiSearchError"));
     } finally {
       setAiLoading(false);
     }
@@ -220,45 +224,45 @@ export default function SuperAgentReferralLinksPage() {
   return (
     <div className="page-container space-y-6">
       <SuperAgentPageIntro
-        eyebrow="Referral Links"
-        title="Referral Link Management"
-        description="Track all referral links — yours and your agents'. See who registered via each link."
+        eyebrow={t("eyebrow")}
+        title={t("pageTitle")}
+        description={t("pageDescription")}
       />
 
       <SuperAgentMetricsGrid
         items={[
-          { label: "Total Links", value: stats.totalLinks, icon: <Link2 className="h-5 w-5" />, helper: "All referral links" },
-          { label: "Active Links", value: stats.activeLinks, icon: <Check className="h-5 w-5" />, helper: "Currently active" },
-          { label: "Total Registrations", value: stats.totalRegistrations, icon: <Users className="h-5 w-5" />, helper: "Users registered via links" },
-          { label: "Your Links / Agent Links", value: `${stats.myLinks} / ${stats.agentLinks}`, icon: <User className="h-5 w-5" />, helper: "Breakdown by owner" },
+          { label: t("metricTotalLinks"), value: stats.totalLinks, icon: <Link2 className="h-5 w-5" />, helper: t("metricTotalLinksHelper") },
+          { label: t("metricActiveLinks"), value: stats.activeLinks, icon: <Check className="h-5 w-5" />, helper: t("metricActiveLinksHelper") },
+          { label: t("metricTotalRegistrations"), value: stats.totalRegistrations, icon: <Users className="h-5 w-5" />, helper: t("metricTotalRegistrationsHelper") },
+          { label: t("metricYourAgentLinks"), value: `${stats.myLinks} / ${stats.agentLinks}`, icon: <User className="h-5 w-5" />, helper: t("metricYourAgentLinksHelper") },
         ]}
       />
 
       {/* Create section */}
       <SuperAgentSection
-        title="Create New Link"
+        title={t("createSectionTitle")}
         actions={
           <button
             onClick={() => setCreateOpen(!createOpen)}
             className="inline-flex h-9 items-center gap-2 rounded-xl bg-sky-600 px-3 text-xs font-semibold text-white transition-colors hover:bg-sky-700"
           >
             {createOpen ? <X className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
-            {createOpen ? "Cancel" : "New Referral Link"}
+            {createOpen ? tc("cancel") : t("newReferralLink")}
           </button>
         }
       >
         {createOpen && (
           <div className="mt-4 grid gap-4 sm:grid-cols-3">
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Label (optional)</label>
-              <Input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} placeholder="e.g. LinkedIn Campaign" className="h-10 rounded-xl" />
+              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("labelFieldLabel")}</label>
+              <Input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} placeholder={t("labelFieldPlaceholder")} className="h-10 rounded-xl" />
             </div>
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Max Registrations (0 = unlimited)</label>
+              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("maxRegistrationsLabel")}</label>
               <Input type="number" value={newMaxUses} onChange={(e) => setNewMaxUses(e.target.value)} placeholder="0" min={0} className="h-10 rounded-xl" />
             </div>
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Expiry Date (optional)</label>
+              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("expiryDateLabel")}</label>
               <Input type="date" value={newExpiresAt} onChange={(e) => setNewExpiresAt(e.target.value)} className="h-10 rounded-xl" />
             </div>
             <div className="sm:col-span-3 flex justify-end">
@@ -268,7 +272,7 @@ export default function SuperAgentReferralLinksPage() {
                 className="inline-flex h-10 items-center gap-2 rounded-xl bg-sky-600 px-5 text-sm font-semibold text-white transition-colors hover:bg-sky-700 disabled:opacity-50"
               >
                 {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                Create Link
+                {t("createLinkButton")}
               </button>
             </div>
           </div>
@@ -276,7 +280,7 @@ export default function SuperAgentReferralLinksPage() {
       </SuperAgentSection>
 
       {/* AI Search + Filters */}
-      <SuperAgentSection title="Browse Referral Links">
+      <SuperAgentSection title={t("browseTitle")}>
         {/* AI Natural Language Search */}
         <div className="mt-4 space-y-3">
           <div className="flex items-center gap-2">
@@ -286,7 +290,7 @@ export default function SuperAgentReferralLinksPage() {
                 value={aiQuery}
                 onChange={(e) => setAiQuery(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleAiSearch()}
-                placeholder='Try: "most used links this month" or "expired agent links"'
+                placeholder={t("aiSearchPlaceholder")}
                 className="h-11 rounded-xl border-border bg-secondary/65 pl-9 pr-24 text-sm text-foreground shadow-none placeholder:text-muted-foreground"
               />
               <button
@@ -295,7 +299,7 @@ export default function SuperAgentReferralLinksPage() {
                 className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-7 items-center gap-1.5 rounded-lg bg-purple-600 px-3 text-[11px] font-semibold text-white transition-colors hover:bg-purple-700 disabled:opacity-50"
               >
                 {aiLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-                AI Search
+                {t("aiSearchButton")}
               </button>
             </div>
           </div>
@@ -311,7 +315,7 @@ export default function SuperAgentReferralLinksPage() {
           <TableToolbar
             search={search}
             onSearchChange={(v) => { setSearch(v); pagination.resetPage(); }}
-            searchPlaceholder="Search by code, label, or creator..."
+            searchPlaceholder={t("tableSearchPlaceholder")}
             onExportCsv={handleExportCsv}
             onExportExcel={handleExportExcel}
             onExportPdf={handleExportPdf}
@@ -322,53 +326,53 @@ export default function SuperAgentReferralLinksPage() {
                   onClick={handleClearFilters}
                   className="inline-flex h-9 items-center gap-1 rounded-xl border border-border px-3 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  <X className="h-3 w-3" /> Clear All
+                  <X className="h-3 w-3" /> {t("clearAllFilters")}
                 </button>
               ) : undefined
             }
             filterContent={
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div>
-                  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Status</label>
+                  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{tc("status")}</label>
                   <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value as ReferralLinkStatus | ""); pagination.resetPage(); }} className="h-9 w-full rounded-lg border border-border bg-background px-2.5 text-sm text-foreground">
-                    <option value="">All Statuses</option>
-                    <option value="active">Active</option>
-                    <option value="expired">Expired</option>
-                    <option value="maxed">Limit Reached</option>
-                    <option value="inactive">Disabled</option>
+                    <option value="">{t("filterAllStatuses")}</option>
+                    <option value="active">{t("statusActive")}</option>
+                    <option value="expired">{t("statusExpired")}</option>
+                    <option value="maxed">{t("statusLimitReached")}</option>
+                    <option value="inactive">{t("statusDisabled")}</option>
                   </select>
                 </div>
                 <div>
-                  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Creator Role</label>
+                  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("filterCreatorRole")}</label>
                   <select value={creatorRoleFilter} onChange={(e) => { setCreatorRoleFilter(e.target.value as ReferralCreatorRole | ""); pagination.resetPage(); }} className="h-9 w-full rounded-lg border border-border bg-background px-2.5 text-sm text-foreground">
-                    <option value="">All Roles</option>
-                    <option value="super_agent">Super Agent</option>
-                    <option value="agent">Agent</option>
+                    <option value="">{t("filterAllRoles")}</option>
+                    <option value="super_agent">{t("roleSuperAgent")}</option>
+                    <option value="agent">{t("roleAgent")}</option>
                   </select>
                 </div>
                 <div>
-                  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Date From</label>
+                  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("filterDateFrom")}</label>
                   <Input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); pagination.resetPage(); }} className="h-9 rounded-lg text-sm" />
                 </div>
                 <div>
-                  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Date To</label>
+                  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("filterDateTo")}</label>
                   <Input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); pagination.resetPage(); }} className="h-9 rounded-lg text-sm" />
                 </div>
                 <div>
-                  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Sort By</label>
+                  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("filterSortBy")}</label>
                   <select value={sortBy} onChange={(e) => { setSortBy(e.target.value as ReferralSortField | ""); pagination.resetPage(); }} className="h-9 w-full rounded-lg border border-border bg-background px-2.5 text-sm text-foreground">
-                    <option value="">Newest First</option>
-                    <option value="usedCount">Most Used</option>
-                    <option value="code">Code (A-Z)</option>
-                    <option value="label">Label (A-Z)</option>
+                    <option value="">{t("sortNewestFirst")}</option>
+                    <option value="usedCount">{t("sortMostUsed")}</option>
+                    <option value="code">{t("sortCodeAZ")}</option>
+                    <option value="label">{t("sortLabelAZ")}</option>
                   </select>
                 </div>
                 <div>
-                  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Sort Order</label>
+                  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("filterSortOrder")}</label>
                   <select value={sortOrder} onChange={(e) => { setSortOrder(e.target.value as "asc" | "desc" | ""); pagination.resetPage(); }} className="h-9 w-full rounded-lg border border-border bg-background px-2.5 text-sm text-foreground">
-                    <option value="">Default</option>
-                    <option value="desc">Descending</option>
-                    <option value="asc">Ascending</option>
+                    <option value="">{t("sortDefault")}</option>
+                    <option value="desc">{t("sortDescending")}</option>
+                    <option value="asc">{t("sortAscending")}</option>
                   </select>
                 </div>
               </div>
@@ -384,14 +388,14 @@ export default function SuperAgentReferralLinksPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Code</TableHead>
-                <TableHead>Creator</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Label</TableHead>
-                <TableHead>Used</TableHead>
-                <TableHead>Expires</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t("tableHeadCode")}</TableHead>
+                <TableHead>{t("tableHeadCreator")}</TableHead>
+                <TableHead>{t("tableHeadRole")}</TableHead>
+                <TableHead>{t("tableHeadLabel")}</TableHead>
+                <TableHead>{t("tableHeadUsed")}</TableHead>
+                <TableHead>{t("tableHeadExpires")}</TableHead>
+                <TableHead>{tc("status")}</TableHead>
+                <TableHead className="text-right">{tc("actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -412,8 +416,8 @@ export default function SuperAgentReferralLinksPage() {
               <Link2 className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-base font-semibold text-foreground">No referral links yet</p>
-              <p className="mt-1 text-sm text-muted-foreground">Create your first referral link or wait for agents to create theirs.</p>
+              <p className="text-base font-semibold text-foreground">{t("emptyStateTitle")}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{t("emptyStateDescription")}</p>
             </div>
           </div>
         </div>
@@ -422,14 +426,14 @@ export default function SuperAgentReferralLinksPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Code</TableHead>
-                <TableHead>Creator</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Label</TableHead>
-                <TableHead>Used</TableHead>
-                <TableHead>Expires</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t("tableHeadCode")}</TableHead>
+                <TableHead>{t("tableHeadCreator")}</TableHead>
+                <TableHead>{t("tableHeadRole")}</TableHead>
+                <TableHead>{t("tableHeadLabel")}</TableHead>
+                <TableHead>{t("tableHeadUsed")}</TableHead>
+                <TableHead>{t("tableHeadExpires")}</TableHead>
+                <TableHead>{tc("status")}</TableHead>
+                <TableHead className="text-right">{tc("actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -443,7 +447,7 @@ export default function SuperAgentReferralLinksPage() {
                       <TableCell className="text-sm">{creatorName(link)}</TableCell>
                       <TableCell>
                         <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${link.creatorRole === "super_agent" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}`}>
-                          {link.creatorRole === "super_agent" ? "Super Agent" : "Agent"}
+                          {link.creatorRole === "super_agent" ? t("roleSuperAgent") : t("roleAgent")}
                         </span>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">{link.label || "—"}</TableCell>
@@ -462,7 +466,7 @@ export default function SuperAgentReferralLinksPage() {
                             status === "maxed" ? "bg-orange-500" :
                             "bg-red-500"
                           }`} />
-                          {statusLabel(status)}
+                          {statusLabel(status, t)}
                         </span>
                       </TableCell>
                       <TableCell className="text-right">
@@ -470,11 +474,11 @@ export default function SuperAgentReferralLinksPage() {
                           <button
                             onClick={(e) => { e.stopPropagation(); handleCopy(link.code); }}
                             className="inline-flex h-7 items-center gap-1 rounded-md border border-border px-2 text-[11px] font-medium text-muted-foreground hover:text-primary"
-                            title="Copy referral URL"
-                            aria-label="Copy referral URL"
+                            title={t("copyButtonTooltip")}
+                            aria-label={t("copyButtonAriaLabel")}
                           >
                             {copyMap[link.code] ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                            {copyMap[link.code] ? "Copied" : "Copy"}
+                            {copyMap[link.code] ? t("copiedButtonText") : t("copyButtonText")}
                           </button>
                           <button
                             onClick={(e) => {
@@ -483,17 +487,17 @@ export default function SuperAgentReferralLinksPage() {
                             }}
                             disabled={updateMutation.isPending}
                             className={`inline-flex h-7 items-center gap-1 rounded-md border px-2 text-[11px] font-medium transition-colors ${link.isActive ? "border-amber-300 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30" : "border-emerald-300 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"}`}
-                            title={link.isActive ? "Deactivate this link" : "Reactivate this link"}
-                            aria-label={link.isActive ? "Deactivate referral link" : "Reactivate referral link"}
+                            title={link.isActive ? t("toggleDisableTooltip") : t("toggleEnableTooltip")}
+                            aria-label={link.isActive ? t("toggleDisableAriaLabel") : t("toggleEnableAriaLabel")}
                           >
                             {link.isActive ? <PowerOff className="h-3 w-3" /> : <Power className="h-3 w-3" />}
-                            {link.isActive ? "Disable" : "Enable"}
+                            {link.isActive ? t("disableButton") : t("enableButton")}
                           </button>
                           <button
                             onClick={(e) => { e.stopPropagation(); setExpandedId(isExpanded ? null : link._id); }}
                             className="inline-flex h-7 items-center rounded-md border border-border px-1.5 text-muted-foreground hover:text-foreground"
-                            title="View registrations"
-                            aria-label={isExpanded ? "Collapse registrations" : "Expand registrations"}
+                            title={t("expandButtonTooltip")}
+                            aria-label={isExpanded ? t("collapseRegistrationsAriaLabel") : t("expandRegistrationsAriaLabel")}
                           >
                             {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                           </button>
@@ -504,10 +508,10 @@ export default function SuperAgentReferralLinksPage() {
                       <TableRow key={`${link._id}-detail`}>
                         <TableCell colSpan={8} className="bg-secondary/30 px-6 py-4">
                           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                            Registrations ({link.registrations.length})
+                            {t("registrationsLabel", { count: link.registrations.length })}
                           </p>
                           {link.registrations.length === 0 ? (
-                            <p className="text-sm text-muted-foreground">No registrations yet.</p>
+                            <p className="text-sm text-muted-foreground">{t("noRegistrationsYet")}</p>
                           ) : (
                             <div className="space-y-2">
                               {link.registrations.map((reg, i) => (

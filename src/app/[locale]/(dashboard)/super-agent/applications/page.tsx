@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -43,16 +44,16 @@ interface Filters {
 
 const INITIAL_FILTERS: Filters = { search: "", status: "all", agent: "all" };
 
-const STATUS_OPTIONS = [
-  { value: "all", label: "All statuses" },
-  { value: "applied", label: "Applied" },
-  { value: "shortlisted", label: "Shortlisted" },
-  { value: "interview_scheduled", label: "Interview" },
-  { value: "selected", label: "Selected" },
-  { value: "offer", label: "Offer" },
-  { value: "hired", label: "Hired" },
-  { value: "rejected", label: "Rejected" },
-  { value: "withdrawn", label: "Withdrawn" },
+const getStatusOptions = (t: ReturnType<typeof useTranslations>) => [
+  { value: "all", label: t("statusOptions.all") },
+  { value: "applied", label: t("statusOptions.applied") },
+  { value: "shortlisted", label: t("statusOptions.shortlisted") },
+  { value: "interview_scheduled", label: t("statusOptions.interviewScheduled") },
+  { value: "selected", label: t("statusOptions.selected") },
+  { value: "offer", label: t("statusOptions.offer") },
+  { value: "hired", label: t("statusOptions.hired") },
+  { value: "rejected", label: t("statusOptions.rejected") },
+  { value: "withdrawn", label: t("statusOptions.withdrawn") },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -60,10 +61,11 @@ const STATUS_OPTIONS = [
 /* ------------------------------------------------------------------ */
 
 export default function SuperAgentApplicationsPage() {
+  const t = useTranslations("superAgentApplications");
   const [applications, setApplications] = useState<ApplicationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
-  const [agentOptions, setAgentOptions] = useState<{ value: string; label: string }[]>([{ value: "all", label: "All agents" }]);
+  const [agentOptions, setAgentOptions] = useState<{ value: string; label: string }[]>([{ value: "all", label: t("allAgentsPlaceholder") }]);
   const [stats, setStats] = useState({ total: 0, shortlisted: 0, hired: 0, conversionRate: 0 });
   const pagination = usePagination();
 
@@ -83,13 +85,13 @@ export default function SuperAgentApplicationsPage() {
         if (data.stats) setStats(data.stats);
         if (data.agents) {
           setAgentOptions([
-            { value: "all", label: "All agents" },
+            { value: "all", label: t("allAgentsPlaceholder") },
             ...data.agents.map((a: { _id: string; name: string }) => ({ value: a._id, label: a.name })),
           ]);
         }
       }
     } catch {
-      toast.error("Failed to load applications");
+      toast.error(t("loadError"));
     } finally {
       setLoading(false);
     }
@@ -103,27 +105,27 @@ export default function SuperAgentApplicationsPage() {
   };
 
   const metricsItems = [
-    { label: "Total Applications", value: stats.total, helper: "All team applications", icon: <FileText className="h-5 w-5" />, toneClassName: "workspace-tone-sky" },
-    { label: "Shortlisted", value: stats.shortlisted, helper: "Currently shortlisted", icon: <Star className="h-5 w-5" />, toneClassName: "workspace-tone-amber" },
-    { label: "Hired", value: stats.hired, helper: "Successfully hired", icon: <CheckCircle2 className="h-5 w-5" />, toneClassName: "workspace-tone-emerald" },
-    { label: "Conversion Rate", value: `${stats.conversionRate}%`, helper: "Applied to hired", icon: <TrendingUp className="h-5 w-5" />, toneClassName: "workspace-tone-violet" },
+    { label: t("metrics.totalApplications"), value: stats.total, helper: t("metrics.allTeamApplications"), icon: <FileText className="h-5 w-5" />, toneClassName: "workspace-tone-sky" },
+    { label: t("metrics.shortlisted"), value: stats.shortlisted, helper: t("metrics.currentlyShortlisted"), icon: <Star className="h-5 w-5" />, toneClassName: "workspace-tone-amber" },
+    { label: t("metrics.hired"), value: stats.hired, helper: t("metrics.successfullyHired"), icon: <CheckCircle2 className="h-5 w-5" />, toneClassName: "workspace-tone-emerald" },
+    { label: t("metrics.conversionRate"), value: `${stats.conversionRate}%`, helper: t("metrics.appliedToHired"), icon: <TrendingUp className="h-5 w-5" />, toneClassName: "workspace-tone-violet" },
   ];
 
   return (
     <div className="page-container space-y-6">
       <SuperAgentPageIntro
-        title="Applications"
-        description="Monitor the entire application pipeline across your team. Track candidate progress from application to hiring."
+        title={t("pageTitle")}
+        description={t("pageDescription")}
       />
 
       <SuperAgentMetricsGrid items={metricsItems} />
 
       <TableToolbar
-        title="Application tracking"
-        description="Filter by status or agent to narrow down the application list."
+        title={t("toolbarTitle")}
+        description={t("toolbarDescription")}
         search={filters.search}
         onSearchChange={(v) => updateFilter("search", v)}
-        searchPlaceholder="Search candidate, job title, or company..."
+        searchPlaceholder={t("searchPlaceholder")}
         hasActiveFilters={filters.status !== "all" || filters.agent !== "all"}
         actions={
           (filters.search || filters.status !== "all" || filters.agent !== "all") ? (
@@ -133,24 +135,24 @@ export default function SuperAgentApplicationsPage() {
               className="flex h-9 items-center gap-2 rounded-lg border border-border/70 bg-card px-3 text-sm text-muted-foreground hover:bg-secondary/80 transition-all"
             >
               <RotateCcw className="h-3.5 w-3.5" />
-              Reset
+              {t("resetButton")}
             </button>
           ) : undefined
         }
         filterContent={
           <div className="flex flex-wrap items-center gap-3">
             <SearchableSelect
-              options={STATUS_OPTIONS}
+              options={getStatusOptions(t)}
               value={filters.status}
               onValueChange={(v) => updateFilter("status", v)}
-              placeholder="All statuses"
+              placeholder={t("statusPlaceholder")}
               className="h-11 w-[180px] rounded-xl border-border bg-card"
             />
             <SearchableSelect
               options={agentOptions}
               value={filters.agent}
               onValueChange={(v) => updateFilter("agent", v)}
-              placeholder="All agents"
+              placeholder={t("allAgentsPlaceholder")}
               className="h-11 w-[180px] rounded-xl border-border bg-card"
             />
           </div>
@@ -158,20 +160,20 @@ export default function SuperAgentApplicationsPage() {
       />
 
       <SuperAgentSection
-        eyebrow="Pipeline"
-        title="Applications"
+        eyebrow={t("sectionEyebrow")}
+        title={t("sectionTitle")}
       >
         <div className="overflow-x-auto rounded-3xl border border-border/60">
           <Table>
             <TableHeader>
               <TableRow className="bg-background/60 hover:bg-background/60">
-                <TableHead className="min-w-[180px]">Candidate</TableHead>
-                <TableHead className="min-w-[180px]">Job</TableHead>
-                <TableHead>Agent</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Match Score</TableHead>
-                <TableHead>Source</TableHead>
-                <TableHead>Applied</TableHead>
+                <TableHead className="min-w-[180px]">{t("tableHeaders.candidate")}</TableHead>
+                <TableHead className="min-w-[180px]">{t("tableHeaders.job")}</TableHead>
+                <TableHead>{t("tableHeaders.agent")}</TableHead>
+                <TableHead>{t("tableHeaders.status")}</TableHead>
+                <TableHead>{t("tableHeaders.matchScore")}</TableHead>
+                <TableHead>{t("tableHeaders.source")}</TableHead>
+                <TableHead>{t("tableHeaders.applied")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -191,8 +193,8 @@ export default function SuperAgentApplicationsPage() {
                         <FileText className="h-6 w-6" />
                       </div>
                       <div>
-                        <p className="text-base font-semibold text-foreground">No applications found</p>
-                        <p className="mt-1 text-sm text-muted-foreground">Try adjusting your filters</p>
+                        <p className="text-base font-semibold text-foreground">{t("emptyState.title")}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">{t("emptyState.subtitle")}</p>
                       </div>
                     </div>
                   </TableCell>

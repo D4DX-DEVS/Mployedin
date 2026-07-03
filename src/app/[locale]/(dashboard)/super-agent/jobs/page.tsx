@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -133,20 +134,24 @@ interface JobCounts {
 
 /* ────────────────────────── AI Quick Chips ────────────────────────── */
 
-const AI_SUGGESTIONS = [
-  "Show me all remote jobs",
-  "Find senior developer positions",
-  "Jobs in UAE paying above 10000 AED",
-  "Entry level internships",
-  "Contract roles in Abu Dhabi",
-  "Active jobs with React skills",
-  "High-salary jobs in Dubai",
-  "Full-time positions posted this week",
+const AI_SUGGESTIONS_KEYS = [
+  "aiSuggestion1",
+  "aiSuggestion2",
+  "aiSuggestion3",
+  "aiSuggestion4",
+  "aiSuggestion5",
+  "aiSuggestion6",
+  "aiSuggestion7",
+  "aiSuggestion8",
 ];
 
 /* ──────────────────────────── Component ──────────────────────────── */
 
 export default function SuperAgentJobsPage() {
+  const t = useTranslations("superAgentJobs");
+  const tc = useTranslations("common");
+  const tt = useTranslations("table");
+
   const params = useParams();
   const locale = (params?.locale as string) ?? "en";
 
@@ -358,13 +363,13 @@ export default function SuperAgentJobsPage() {
   ) => {
     if (!loc) return "—";
     if (typeof loc === "string") return loc || "—";
-    if (loc.isRemote) return "Remote";
+    if (loc.isRemote) return t("remote");
     return [loc.city, loc.country].filter(Boolean).join(", ") || "—";
   };
 
   const formatSalary = (salary?: RegionalJob["salary"]) => {
     if (!salary) return "—";
-    if (salary.isNegotiable) return "Negotiable";
+    if (salary.isNegotiable) return t("negotiable");
     if (salary.min && salary.max) {
       return `${salary.min.toLocaleString()}–${salary.max.toLocaleString()} ${salary.currency ?? ""}`;
     }
@@ -379,44 +384,44 @@ export default function SuperAgentJobsPage() {
   /* ── KPI Cards ── */
   const kpis = [
     {
-      label: "Total Jobs",
+      label: t("totalJobsLabel"),
       value: counts.total,
-      helper: "All jobs in your region.",
+      helper: t("totalJobsHelper"),
       icon: <Briefcase className="h-5 w-5" />,
       toneClassName: "workspace-tone-sky",
     },
     {
-      label: "Active",
+      label: tc("active"),
       value: counts.active,
-      helper: "Live jobs visible to seekers.",
+      helper: t("activeJobsHelper"),
       icon: <Activity className="h-5 w-5" />,
       toneClassName: "workspace-tone-emerald",
     },
     {
-      label: "Draft",
+      label: t("draftLabel"),
       value: counts.draft,
-      helper: "Jobs not yet published.",
+      helper: t("draftJobsHelper"),
       icon: <FileText className="h-5 w-5" />,
       toneClassName: "workspace-tone-amber",
     },
     {
-      label: "Employers",
+      label: t("employersLabel"),
       value: counts.employers,
-      helper: "Distinct employers in your region.",
+      helper: t("employersHelper"),
       icon: <Building2 className="h-5 w-5" />,
       toneClassName: "workspace-tone-indigo",
     },
   ];
 
   const tableHeaders = [
-    "Job Title",
-    "Employer",
-    "Location",
-    "Type",
-    "Work Mode",
-    "Salary",
-    "Status",
-    "Date",
+    t("jobTitleHeader"),
+    t("employerHeader"),
+    t("locationHeader"),
+    t("typeHeader"),
+    t("workModeHeader"),
+    t("salaryHeader"),
+    tc("status"),
+    tc("date"),
     "",
   ];
 
@@ -441,19 +446,19 @@ export default function SuperAgentJobsPage() {
   return (
     <div className="page-container space-y-6">
       <SuperAgentPageIntro
-        title="Regional Jobs"
-        description="View and monitor all job postings from agents and employers in your region. Use advanced filters, sorting, or AI-powered search to find exactly what you need."
-        summaryTitle="AI-Powered"
-        summaryDescription="Use natural language to search jobs — e.g. 'remote React jobs paying above 5000 USD'."
+        title={t("pageTitle")}
+        description={t("pageDescription")}
+        summaryTitle={t("aiPoweredTitle")}
+        summaryDescription={t("aiPoweredDescription")}
       />
 
       <SuperAgentMetricsGrid items={kpis} />
 
       {/* ── AI Search Section ── */}
       <SuperAgentSection
-        eyebrow="AI Search"
-        title="Search jobs with natural language"
-        description="Describe what you're looking for and AI will translate it into filters automatically."
+        eyebrow={t("aiSearchEyebrow")}
+        title={t("aiSearchTitle")}
+        description={t("aiSearchDescription")}
       >
         <div className="space-y-3">
           <div className="flex flex-col gap-2 lg:flex-row">
@@ -463,7 +468,7 @@ export default function SuperAgentJobsPage() {
                 value={aiQuery}
                 onChange={(e) => setAiQuery(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleAiSearch()}
-                placeholder="e.g. Show me remote React developer jobs in Dubai paying above 10000 AED"
+                placeholder={t("aiSearchPlaceholder")}
                 className="h-11 rounded-xl bg-background/85 pl-9 text-sm shadow-none"
               />
             </div>
@@ -477,30 +482,33 @@ export default function SuperAgentJobsPage() {
               ) : (
                 <Send className="h-4 w-4" />
               )}
-              Search
+              {tc("search")}
             </Button>
           </div>
 
           <div className="flex flex-wrap gap-1.5">
-            {AI_SUGGESTIONS.map((q, i) => (
-              <button
-                key={i}
-                onClick={() => {
-                  setAiQuery(q);
-                  handleAiSearch(q);
-                }}
-                className="rounded-full border border-border/70 bg-background/85 px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/30 hover:bg-secondary/80 hover:text-foreground"
-              >
-                {q}
-              </button>
-            ))}
+            {AI_SUGGESTIONS_KEYS.map((key, i) => {
+              const q = t(key);
+              return (
+                <button
+                  key={i}
+                  onClick={() => {
+                    setAiQuery(q);
+                    handleAiSearch(q);
+                  }}
+                  className="rounded-full border border-border/70 bg-background/85 px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/30 hover:bg-secondary/80 hover:text-foreground"
+                >
+                  {q}
+                </button>
+              );
+            })}
           </div>
 
           {aiActive && (
             <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-sm">
               <Sparkles className="h-4 w-4 text-primary shrink-0" />
               <span className="text-muted-foreground">
-                AI filter active: <span className="font-medium text-foreground">&quot;{aiQuery}&quot;</span>
+                {t("aiFilterActive")}: <span className="font-medium text-foreground">&quot;{aiQuery}&quot;</span>
               </span>
               <Button
                 variant="ghost"
@@ -512,7 +520,7 @@ export default function SuperAgentJobsPage() {
                   resetPage();
                 }}
               >
-                <X className="h-3 w-3 mr-1" /> Clear
+                <X className="h-3 w-3 mr-1" /> {t("clearAiFilter")}
               </Button>
             </div>
           )}
@@ -521,15 +529,15 @@ export default function SuperAgentJobsPage() {
 
       {/* ── Jobs Listing with Filters ── */}
       <SuperAgentSection
-        eyebrow="Jobs"
-        title="Regional job listings"
-        description="Browse all jobs in your region. Use filters to narrow down results."
+        eyebrow={t("jobsEyebrow")}
+        title={t("jobsListingTitle")}
+        description={t("jobsListingDescription")}
       >
         {/* ── Merged Filters via TableToolbar ── */}
         <TableToolbar
           search={searchQuery}
           onSearchChange={handleSearchChange}
-          searchPlaceholder="Search job title or keyword…"
+          searchPlaceholder={t("searchPlaceholder")}
           onExportCsv={handleExportCsv}
           onExportExcel={handleExportExcel}
           onExportPdf={handleExportPdf}
@@ -538,14 +546,14 @@ export default function SuperAgentJobsPage() {
             <div className="flex flex-wrap items-center gap-2">
               {/* Status quick-filter pills */}
               {([
-                { key: "all" as const, label: "All", count: counts.total, icon: Briefcase },
-                { key: "active" as const, label: "Active", count: counts.active, icon: CheckCircle2 },
-                { key: "draft" as const, label: "Draft", count: counts.draft, icon: FileText },
-                { key: "pending_approval" as const, label: "Pending", count: counts.pending, icon: AlertCircle },
-                { key: "paused" as const, label: "Paused", count: counts.paused, icon: Pause },
-                { key: "closed" as const, label: "Closed", count: counts.closed, icon: X },
-                { key: "expired" as const, label: "Expired", count: counts.expired, icon: Clock },
-              ] as const).map(({ key, label, count, icon: Icon }) => (
+                { key: "all" as const, labelKey: "statusFilterAll", count: counts.total, icon: Briefcase },
+                { key: "active" as const, labelKey: "statusFilterActive", count: counts.active, icon: CheckCircle2 },
+                { key: "draft" as const, labelKey: "statusFilterDraft", count: counts.draft, icon: FileText },
+                { key: "pending_approval" as const, labelKey: "statusFilterPending", count: counts.pending, icon: AlertCircle },
+                { key: "paused" as const, labelKey: "statusFilterPaused", count: counts.paused, icon: Pause },
+                { key: "closed" as const, labelKey: "statusFilterClosed", count: counts.closed, icon: X },
+                { key: "expired" as const, labelKey: "statusFilterExpired", count: counts.expired, icon: Clock },
+              ] as const).map(({ key, labelKey, count, icon: Icon }) => (
                 <button
                   key={key}
                   onClick={() => { setJobStatus(key); resetPage(); }}
@@ -556,7 +564,7 @@ export default function SuperAgentJobsPage() {
                   }`}
                 >
                   <Icon className="h-3 w-3" />
-                  {label}
+                  {t(labelKey)}
                   <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${
                     jobStatus === key ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"
                   }`}>{count}</span>
@@ -564,7 +572,7 @@ export default function SuperAgentJobsPage() {
               ))}
               {hasFilters && (
                 <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 text-xs text-muted-foreground">
-                  <X className="h-3.5 w-3.5 mr-1" /> Clear all
+                  <X className="h-3.5 w-3.5 mr-1" /> {t("clearAllFilters")}
                   {activeFilterCount > 0 && (
                     <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1 text-[10px]">{activeFilterCount}</Badge>
                   )}
@@ -577,67 +585,67 @@ export default function SuperAgentJobsPage() {
               {/* Row 1: Status / Employment Type / Work Mode / Sort */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Status</label>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">{tc("status")}</label>
                   <Select value={jobStatus} onValueChange={(v) => { setJobStatus(v as JobStatus); resetPage(); }}>
-                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Status" /></SelectTrigger>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder={tc("status")} /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Statuses</SelectItem>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="draft">Draft</SelectItem>
-                      <SelectItem value="pending_approval">Pending</SelectItem>
-                      <SelectItem value="paused">Paused</SelectItem>
-                      <SelectItem value="closed">Closed</SelectItem>
-                      <SelectItem value="expired">Expired</SelectItem>
+                      <SelectItem value="all">{t("allStatuses")}</SelectItem>
+                      <SelectItem value="active">{tc("active")}</SelectItem>
+                      <SelectItem value="draft">{t("draftLabel")}</SelectItem>
+                      <SelectItem value="pending_approval">{t("pendingLabel")}</SelectItem>
+                      <SelectItem value="paused">{t("pausedLabel")}</SelectItem>
+                      <SelectItem value="closed">{t("closedLabel")}</SelectItem>
+                      <SelectItem value="expired">{t("expiredLabel")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Employment Type</label>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("employmentTypeLabel")}</label>
                   <Select value={employmentType} onValueChange={(v) => { setEmploymentType(v as EmploymentType); resetPage(); }}>
-                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Job Type" /></SelectTrigger>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder={t("jobTypePlaceholder")} /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Types</SelectItem>
-                      <SelectItem value="full_time">Full Time</SelectItem>
-                      <SelectItem value="part_time">Part Time</SelectItem>
-                      <SelectItem value="contract">Contract</SelectItem>
-                      <SelectItem value="internship">Internship</SelectItem>
-                      <SelectItem value="freelance">Freelance</SelectItem>
+                      <SelectItem value="all">{t("allTypes")}</SelectItem>
+                      <SelectItem value="full_time">{t("fullTime")}</SelectItem>
+                      <SelectItem value="part_time">{t("partTime")}</SelectItem>
+                      <SelectItem value="contract">{t("contract")}</SelectItem>
+                      <SelectItem value="internship">{t("internship")}</SelectItem>
+                      <SelectItem value="freelance">{t("freelance")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Work Mode</label>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("workModeLabel")}</label>
                   <Select value={workMode} onValueChange={(v) => { setWorkMode(v as WorkMode); resetPage(); }}>
-                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Work Mode" /></SelectTrigger>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder={t("workModePlaceholder")} /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Modes</SelectItem>
-                      <SelectItem value="onsite">On-site</SelectItem>
-                      <SelectItem value="hybrid">Hybrid</SelectItem>
-                      <SelectItem value="remote">Remote</SelectItem>
+                      <SelectItem value="all">{t("allModes")}</SelectItem>
+                      <SelectItem value="onsite">{t("onsite")}</SelectItem>
+                      <SelectItem value="hybrid">{t("hybrid")}</SelectItem>
+                      <SelectItem value="remote">{t("remote")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Sort By</label>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("sortByLabel")}</label>
                     <Select value={sortBy} onValueChange={(v) => { setSortBy(v as SortBy); resetPage(); }}>
                       <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="createdAt">Date Created</SelectItem>
-                        <SelectItem value="title">Title</SelectItem>
-                        <SelectItem value="salary">Salary</SelectItem>
-                        <SelectItem value="views">Views</SelectItem>
-                        <SelectItem value="status">Status</SelectItem>
+                        <SelectItem value="createdAt">{t("sortDateCreated")}</SelectItem>
+                        <SelectItem value="title">{t("sortTitle")}</SelectItem>
+                        <SelectItem value="salary">{t("sortSalary")}</SelectItem>
+                        <SelectItem value="views">{t("sortViews")}</SelectItem>
+                        <SelectItem value="status">{tc("status")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Order</label>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("orderLabel")}</label>
                     <Select value={sortOrder} onValueChange={(v) => { setSortOrder(v as SortOrder); resetPage(); }}>
                       <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="desc">Newest First</SelectItem>
-                        <SelectItem value="asc">Oldest First</SelectItem>
+                        <SelectItem value="desc">{t("newestFirst")}</SelectItem>
+                        <SelectItem value="asc">{t("oldestFirst")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -647,32 +655,32 @@ export default function SuperAgentJobsPage() {
               {/* Row 2: Advanced fields */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Country</label>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">{tc("country")}</label>
                   <div className="relative">
                     <Globe className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input placeholder="e.g. India, UAE" value={country} onChange={(e) => setCountry(e.target.value)} className="h-9 pl-8 text-sm" />
+                    <Input placeholder={t("countryPlaceholder")} value={country} onChange={(e) => setCountry(e.target.value)} className="h-9 pl-8 text-sm" />
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">City</label>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("cityLabel")}</label>
                   <div className="relative">
                     <MapPin className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input placeholder="e.g. Dubai, Abu Dhabi" value={city} onChange={(e) => setCity(e.target.value)} className="h-9 pl-8 text-sm" />
+                    <Input placeholder={t("cityPlaceholder")} value={city} onChange={(e) => setCity(e.target.value)} className="h-9 pl-8 text-sm" />
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Skills (comma-separated)</label>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("skillsLabel")}</label>
                   <div className="relative">
                     <Tag className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input placeholder="e.g. React, Node.js" value={skills} onChange={(e) => setSkills(e.target.value)} className="h-9 pl-8 text-sm" />
+                    <Input placeholder={t("skillsPlaceholder")} value={skills} onChange={(e) => setSkills(e.target.value)} className="h-9 pl-8 text-sm" />
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Currency</label>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("currencyLabel")}</label>
                   <Select value={currency || "any"} onValueChange={(v) => setCurrency(v === "any" ? "" : v)}>
-                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Any" /></SelectTrigger>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder={t("anyCurrency")} /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="any">Any Currency</SelectItem>
+                      <SelectItem value="any">{t("anyCurrency")}</SelectItem>
                       <SelectItem value="AED">AED</SelectItem>
                       <SelectItem value="USD">USD</SelectItem>
                       <SelectItem value="INR">INR</SelectItem>
@@ -691,28 +699,28 @@ export default function SuperAgentJobsPage() {
               {/* Row 3: Salary / Experience / Dates */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Salary Min</label>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("salaryMinLabel")}</label>
                   <div className="relative">
                     <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input type="number" placeholder="Min salary" value={salaryMin} onChange={(e) => setSalaryMin(e.target.value)} className="h-9 pl-8 text-sm" />
+                    <Input type="number" placeholder={t("minSalaryPlaceholder")} value={salaryMin} onChange={(e) => setSalaryMin(e.target.value)} className="h-9 pl-8 text-sm" />
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Salary Max</label>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("salaryMaxLabel")}</label>
                   <div className="relative">
                     <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input type="number" placeholder="Max salary" value={salaryMax} onChange={(e) => setSalaryMax(e.target.value)} className="h-9 pl-8 text-sm" />
+                    <Input type="number" placeholder={t("maxSalaryPlaceholder")} value={salaryMax} onChange={(e) => setSalaryMax(e.target.value)} className="h-9 pl-8 text-sm" />
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Experience Min (yrs)</label>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("experienceMinLabel")}</label>
                   <div className="relative">
                     <GraduationCap className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                     <Input type="number" placeholder="0" value={experienceMin} onChange={(e) => setExperienceMin(e.target.value)} className="h-9 pl-8 text-sm" min="0" />
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Experience Max (yrs)</label>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">{t("experienceMaxLabel")}</label>
                   <div className="relative">
                     <GraduationCap className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                     <Input type="number" placeholder="20" value={experienceMax} onChange={(e) => setExperienceMax(e.target.value)} className="h-9 pl-8 text-sm" min="0" />
@@ -724,15 +732,15 @@ export default function SuperAgentJobsPage() {
               <div className="flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-1.5">
                   <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                  <label className="text-xs text-muted-foreground whitespace-nowrap">From</label>
+                  <label className="text-xs text-muted-foreground whitespace-nowrap">{t("dateFromLabel")}</label>
                   <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-9 w-[140px] text-sm" />
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <label className="text-xs text-muted-foreground whitespace-nowrap">To</label>
+                  <label className="text-xs text-muted-foreground whitespace-nowrap">{t("dateToLabel")}</label>
                   <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-9 w-[140px] text-sm" />
                 </div>
                 <Button variant="default" size="sm" className="h-9 gap-1.5 text-xs ml-auto" onClick={() => { resetPage(); loadJobs(); }}>
-                  Apply Filters
+                  {t("applyFiltersButton")}
                 </Button>
               </div>
 
@@ -838,11 +846,11 @@ export default function SuperAgentJobsPage() {
                 <Briefcase className="h-6 w-6" />
               </div>
               <div>
-                <p className="text-base font-semibold text-foreground">No jobs found</p>
+                <p className="text-base font-semibold text-foreground">{t("noJobsFound")}</p>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {aiActive
-                    ? "No jobs matched your AI search. Try rephrasing or clear the AI filter."
-                    : "No jobs match your current filters. Try adjusting the filters or check back later."}
+                    ? t("noJobsMatchedAiSearch")
+                    : t("noJobsMatchFilters")}
                 </p>
               </div>
             </div>
@@ -850,14 +858,14 @@ export default function SuperAgentJobsPage() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-background/60 hover:bg-background/60">
-                  <TableHead>Job Title</TableHead>
-                  <TableHead>Employer</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Work Mode</TableHead>
-                  <TableHead>Salary</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Date</TableHead>
+                  <TableHead>{t("jobTitleHeader")}</TableHead>
+                  <TableHead>{t("employerHeader")}</TableHead>
+                  <TableHead>{t("locationHeader")}</TableHead>
+                  <TableHead>{t("typeHeader")}</TableHead>
+                  <TableHead>{t("workModeHeader")}</TableHead>
+                  <TableHead>{t("salaryHeader")}</TableHead>
+                  <TableHead>{tc("status")}</TableHead>
+                  <TableHead>{tc("date")}</TableHead>
                   <TableHead className="text-right" />
                 </TableRow>
               </TableHeader>
@@ -924,7 +932,7 @@ export default function SuperAgentJobsPage() {
                           variant="ghost"
                           size="sm"
                           className="h-8 w-8 p-0"
-                          title="View job details"
+                          title={t("viewJobDetailsButton")}
                           onClick={() => openDetail(job._id)}
                         >
                           <Eye className="h-4 w-4 text-muted-foreground" />
@@ -959,7 +967,7 @@ export default function SuperAgentJobsPage() {
           {detailLoading ? (
             <>
               <DialogHeader className="sr-only">
-                <DialogTitle>Loading job details</DialogTitle>
+                <DialogTitle>{t("loadingJobDetails")}</DialogTitle>
               </DialogHeader>
               <div className="flex items-center justify-center py-16">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -995,17 +1003,17 @@ export default function SuperAgentJobsPage() {
                 <div className="flex items-start gap-2 rounded-lg border border-border/60 bg-secondary/30 p-3">
                   <MapPin className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
                   <div>
-                    <p className="text-xs text-muted-foreground">Location</p>
+                    <p className="text-xs text-muted-foreground">{t("locationHeader")}</p>
                     <p className="font-medium text-foreground">{formatLocation(selectedJob.location)}</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-2 rounded-lg border border-border/60 bg-secondary/30 p-3">
                   <DollarSign className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
                   <div>
-                    <p className="text-xs text-muted-foreground">Salary</p>
+                    <p className="text-xs text-muted-foreground">{t("salaryHeader")}</p>
                     <p className="font-medium text-foreground">
                       {selectedJob.salary?.isNegotiable
-                        ? "Negotiable"
+                        ? t("negotiable")
                         : selectedJob.salary?.min && selectedJob.salary?.max
                           ? `${selectedJob.salary.min.toLocaleString()}–${selectedJob.salary.max.toLocaleString()} ${selectedJob.salary.currency ?? ""}`
                           : "—"}
@@ -1015,7 +1023,7 @@ export default function SuperAgentJobsPage() {
                 <div className="flex items-start gap-2 rounded-lg border border-border/60 bg-secondary/30 p-3">
                   <Clock className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
                   <div>
-                    <p className="text-xs text-muted-foreground">Type</p>
+                    <p className="text-xs text-muted-foreground">{t("typeHeader")}</p>
                     <p className="font-medium text-foreground capitalize">
                       {selectedJob.employmentType?.replace("_", " ") ?? "—"}
                     </p>
@@ -1025,7 +1033,7 @@ export default function SuperAgentJobsPage() {
                   <div className="flex items-start gap-2 rounded-lg border border-border/60 bg-secondary/30 p-3">
                     <Globe className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
                     <div>
-                      <p className="text-xs text-muted-foreground">Work Mode</p>
+                      <p className="text-xs text-muted-foreground">{t("workModeHeader")}</p>
                       <p className="font-medium text-foreground capitalize">{selectedJob.workMode}</p>
                     </div>
                   </div>
@@ -1034,7 +1042,7 @@ export default function SuperAgentJobsPage() {
                   <div className="flex items-start gap-2 rounded-lg border border-border/60 bg-secondary/30 p-3">
                     <Users className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
                     <div>
-                      <p className="text-xs text-muted-foreground">Vacancies</p>
+                      <p className="text-xs text-muted-foreground">{t("vacanciesLabel")}</p>
                       <p className="font-medium text-foreground">{selectedJob.vacancies}</p>
                     </div>
                   </div>
@@ -1042,7 +1050,7 @@ export default function SuperAgentJobsPage() {
                 <div className="flex items-start gap-2 rounded-lg border border-border/60 bg-secondary/30 p-3">
                   <Calendar className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
                   <div>
-                    <p className="text-xs text-muted-foreground">Posted</p>
+                    <p className="text-xs text-muted-foreground">{t("postedLabel")}</p>
                     <p className="font-medium text-foreground">
                       {new Date(selectedJob.createdAt).toLocaleDateString()}
                     </p>
@@ -1053,7 +1061,7 @@ export default function SuperAgentJobsPage() {
               {/* Description */}
               {selectedJob.description && (
                 <div>
-                  <h4 className="mb-1.5 text-sm font-semibold text-foreground">Description</h4>
+                  <h4 className="mb-1.5 text-sm font-semibold text-foreground">{t("descriptionLabel")}</h4>
                   <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line line-clamp-6">
                     {selectedJob.description}
                   </p>
@@ -1063,7 +1071,7 @@ export default function SuperAgentJobsPage() {
               {/* Skills */}
               {(selectedJob.requirements?.skills?.length ?? 0) > 0 && (
                 <div>
-                  <h4 className="mb-1.5 text-sm font-semibold text-foreground">Required Skills</h4>
+                  <h4 className="mb-1.5 text-sm font-semibold text-foreground">{t("requiredSkillsLabel")}</h4>
                   <div className="flex flex-wrap gap-1.5">
                     {selectedJob.requirements.skills!.map((s) => (
                       <Badge key={s} variant="secondary" className="text-xs">
@@ -1077,7 +1085,7 @@ export default function SuperAgentJobsPage() {
               {/* Preferred Skills */}
               {(selectedJob.requirements?.preferredSkills?.length ?? 0) > 0 && (
                 <div>
-                  <h4 className="mb-1.5 text-sm font-semibold text-foreground">Preferred Skills</h4>
+                  <h4 className="mb-1.5 text-sm font-semibold text-foreground">{t("preferredSkillsLabel")}</h4>
                   <div className="flex flex-wrap gap-1.5">
                     {selectedJob.requirements.preferredSkills!.map((s) => (
                       <Badge key={s} variant="outline" className="text-xs">
@@ -1094,7 +1102,7 @@ export default function SuperAgentJobsPage() {
                   {selectedJob.requirements.experienceMin != null && (
                     <span className="inline-flex items-center gap-1 text-muted-foreground">
                       <Briefcase className="h-3.5 w-3.5" />
-                      {selectedJob.requirements.experienceMin}–{selectedJob.requirements.experienceMax ?? "?"} yrs
+                      {selectedJob.requirements.experienceMin}–{selectedJob.requirements.experienceMax ?? "?"} {t("yearsAbbr")}
                     </span>
                   )}
                   {selectedJob.requirements.education && (
@@ -1109,7 +1117,7 @@ export default function SuperAgentJobsPage() {
               {/* Languages */}
               {(selectedJob.requirements?.languages?.length ?? 0) > 0 && (
                 <div>
-                  <h4 className="mb-1.5 text-sm font-semibold text-foreground">Languages</h4>
+                  <h4 className="mb-1.5 text-sm font-semibold text-foreground">{t("languagesLabel")}</h4>
                   <div className="flex flex-wrap gap-1.5">
                     {selectedJob.requirements.languages!.map((l) => (
                       <Badge key={l} variant="outline" className="text-xs">
@@ -1123,7 +1131,7 @@ export default function SuperAgentJobsPage() {
               {/* Responsibilities */}
               {(selectedJob.responsibilities?.length ?? 0) > 0 && (
                 <div>
-                  <h4 className="mb-1.5 text-sm font-semibold text-foreground">Responsibilities</h4>
+                  <h4 className="mb-1.5 text-sm font-semibold text-foreground">{t("responsibilitiesLabel")}</h4>
                   <ul className="list-disc pl-5 space-y-0.5 text-sm text-muted-foreground">
                     {selectedJob.responsibilities!.map((r, i) => (
                       <li key={i}>{r}</li>
@@ -1135,7 +1143,7 @@ export default function SuperAgentJobsPage() {
               {/* Benefits */}
               {(selectedJob.benefits?.length ?? 0) > 0 && (
                 <div>
-                  <h4 className="mb-1.5 text-sm font-semibold text-foreground">Benefits</h4>
+                  <h4 className="mb-1.5 text-sm font-semibold text-foreground">{t("benefitsLabel")}</h4>
                   <ul className="list-disc pl-5 space-y-0.5 text-sm text-muted-foreground">
                     {selectedJob.benefits!.map((b, i) => (
                       <li key={i}>{b}</li>
@@ -1147,10 +1155,10 @@ export default function SuperAgentJobsPage() {
           ) : (
             <>
               <DialogHeader className="sr-only">
-                <DialogTitle>Job details unavailable</DialogTitle>
+                <DialogTitle>{t("jobDetailsUnavailable")}</DialogTitle>
               </DialogHeader>
               <div className="py-16 text-center text-sm text-muted-foreground">
-                Failed to load job details.
+                {t("failedToLoadJobDetails")}
               </div>
             </>
           )}

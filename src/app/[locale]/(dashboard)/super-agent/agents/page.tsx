@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -64,37 +65,37 @@ const INITIAL_FILTERS: Filters = {
   sortBy: "name", sortOrder: "asc",
 };
 
-const PERFORMANCE_OPTIONS = [
-  { value: "", label: "All agents" },
-  { value: "high_performer", label: "High Performers (≥50% conv.)" },
-  { value: "needs_attention", label: "Needs Attention (<15% conv.)" },
-  { value: "slow_response", label: "Slow Response (>48h avg.)" },
-  { value: "no_activity", label: "No Activity (0 leads)" },
+const getPerformanceOptions = (t: ReturnType<typeof useTranslations>) => [
+  { value: "", label: t("allAgents") },
+  { value: "high_performer", label: t("highPerformers") },
+  { value: "needs_attention", label: t("needsAttention") },
+  { value: "slow_response", label: t("slowResponse") },
+  { value: "no_activity", label: t("noActivity") },
 ];
 
-const LEADS_RANGE_OPTIONS = [
-  { value: "", label: "Any" },
+const getLeadsRangeOptions = (t: ReturnType<typeof useTranslations>) => [
+  { value: "", label: t("any") },
   { value: "0-5", label: "0 – 5" },
   { value: "6-15", label: "6 – 15" },
   { value: "16-50", label: "16 – 50" },
   { value: "51+", label: "51+" },
 ];
 
-const CONV_RATE_OPTIONS = [
-  { value: "", label: "Any" },
+const getConvRateOptions = (t: ReturnType<typeof useTranslations>) => [
+  { value: "", label: t("any") },
   { value: "0-25", label: "0 – 25%" },
   { value: "26-50", label: "26 – 50%" },
   { value: "51-75", label: "51 – 75%" },
   { value: "76-100", label: "76 – 100%" },
 ];
 
-const SORT_OPTIONS = [
-  { value: "name", label: "Name" },
-  { value: "leadsCount", label: "Leads" },
-  { value: "conversions", label: "Conversions" },
-  { value: "placements", label: "Placements" },
-  { value: "conversionRate", label: "Conversion Rate" },
-  { value: "avgResponseHours", label: "Response Time" },
+const getSortOptions = (t: ReturnType<typeof useTranslations>, tc: ReturnType<typeof useTranslations>) => [
+  { value: "name", label: tc("name") },
+  { value: "leadsCount", label: t("leads") },
+  { value: "conversions", label: t("conversions") },
+  { value: "placements", label: t("placements") },
+  { value: "conversionRate", label: t("conversionRate") },
+  { value: "avgResponseHours", label: t("responseTime") },
 ];
 
 function countActiveFilters(f: Filters): number {
@@ -115,6 +116,10 @@ function parseRange(value: string): { min: string; max: string } {
 
 export default function SuperAgentAgentsPage() {
   const router = useRouter();
+  const t = useTranslations("superAgentAgents");
+  const tc = useTranslations("common");
+  const tt = useTranslations("table");
+  const tconf = useTranslations("confirm");
   const [agents, setAgents] = useState<AgentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
@@ -156,11 +161,11 @@ export default function SuperAgentAgentsPage() {
   const handleCreate = async () => {
     setCreateError("");
     if (!createForm.name || !createForm.email || !createForm.password) {
-      setCreateError("Name, email, and password are required.");
+      setCreateError(t("validateNameEmailPasswordRequired"));
       return;
     }
     if (createForm.password.length < 8) {
-      setCreateError("Password must be at least 8 characters.");
+      setCreateError(t("validatePasswordMinLength"));
       return;
     }
     setCreateLoading(true);
@@ -179,7 +184,7 @@ export default function SuperAgentAgentsPage() {
       });
       if (!res.ok) {
         const e = await res.json();
-        setCreateError(e.error ?? "Failed to create agent");
+        setCreateError(e.error ?? t("errorFailedToCreateAgent"));
         return;
       }
       const data = await res.json();
@@ -188,13 +193,13 @@ export default function SuperAgentAgentsPage() {
       setCreateCityIds([]);
       setCreateStateIds([]);
       if (data.emailSent === false) {
-        toast.warning("Agent created, but welcome email could not be sent");
+        toast.warning(t("toastAgentCreatedNoEmail"));
       } else {
-        toast.success("Agent created successfully");
+        toast.success(t("toastAgentCreatedSuccess"));
       }
       fetchAgents();
     } catch {
-      setCreateError("Network error");
+      setCreateError(t("errorNetworkError"));
     } finally {
       setCreateLoading(false);
     }
@@ -237,14 +242,14 @@ export default function SuperAgentAgentsPage() {
   function getPerformanceBadge(agent: AgentRow) {
     const badges: { label: string; className: string }[] = [];
     if (agent.leadsCount === 0) {
-      badges.push({ label: "No Activity", className: "bg-gray-100 text-gray-600 dark:bg-gray-500/20 dark:text-gray-300" });
+      badges.push({ label: t("badgeNoActivity"), className: "bg-gray-100 text-gray-600 dark:bg-gray-500/20 dark:text-gray-300" });
     } else if (agent.conversionRate >= 50) {
-      badges.push({ label: "High Performer", className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300" });
+      badges.push({ label: t("badgeHighPerformer"), className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300" });
     } else if (agent.conversionRate < 15 && agent.leadsCount > 0) {
-      badges.push({ label: "Needs Attention", className: "bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300" });
+      badges.push({ label: t("badgeNeedsAttention"), className: "bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300" });
     }
     if (agent.avgResponseHours > 48 && agent.leadsCount > 0) {
-      badges.push({ label: "Slow Response", className: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300" });
+      badges.push({ label: t("badgeSlowResponse"), className: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300" });
     }
     return badges;
   }
@@ -253,20 +258,20 @@ export default function SuperAgentAgentsPage() {
   const activeFilterCount = countActiveFilters(filters);
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
-    { header: "Name", key: "name" },
-    { header: "Email", key: "email" },
-    { header: "Leads", key: "leadsCount" },
-    { header: "Conversions", key: "conversions" },
-    { header: "Placements", key: "placements" },
-    { header: "Conv. Rate", key: "conversionRate", formatter: (v) => `${v ?? 0}%` },
-    { header: "Avg Response (h)", key: "avgResponseHours" },
+    { header: tc("name"), key: "name" },
+    { header: tc("email"), key: "email" },
+    { header: t("leads"), key: "leadsCount" },
+    { header: t("conversions"), key: "conversions" },
+    { header: t("placements"), key: "placements" },
+    { header: t("convRateShort"), key: "conversionRate", formatter: (v) => `${v ?? 0}%` },
+    { header: t("avgResponseShort"), key: "avgResponseHours" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: agents as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "super-agent-agents",
-    title: "Agent Performance",
+    title: t("pageTitle"),
   });
 
   // Reconstruct the selected range value for the dropdown
@@ -279,30 +284,30 @@ export default function SuperAgentAgentsPage() {
 
   const kpis = [
     {
-      label: "Total Agents",
+      label: t("totalAgents"),
       value: agents.length,
-      helper: "Live team members currently visible in your reporting scope.",
+      helper: t("totalAgentsHelper"),
       icon: <Users2 className="h-5 w-5" />,
       toneClassName: "workspace-tone-sky",
     },
     {
-      label: "Total Leads",
+      label: t("totalLeads"),
       value: agents.reduce((a, b) => a + (b.leadsCount ?? 0), 0),
-      helper: "Combined employer opportunities being worked across the team.",
+      helper: t("totalLeadsHelper"),
       icon: <Target className="h-5 w-5" />,
       toneClassName: "workspace-tone-emerald",
     },
     {
-      label: "Conversions",
+      label: t("conversions"),
       value: agents.reduce((a, b) => a + (b.conversions ?? 0), 0),
-      helper: "Leads converted into active hiring relationships or outcomes.",
+      helper: t("conversionsHelper"),
       icon: <Activity className="h-5 w-5" />,
       toneClassName: "workspace-tone-indigo",
     },
     {
-      label: "Placements",
+      label: t("placements"),
       value: agents.reduce((a, b) => a + (b.placements ?? 0), 0),
-      helper: "Confirmed placements credited to your supervised team.",
+      helper: t("placementsHelper"),
       icon: <BriefcaseBusiness className="h-5 w-5" />,
       toneClassName: "workspace-tone-amber",
     },
@@ -332,22 +337,22 @@ export default function SuperAgentAgentsPage() {
   return (
     <div className="page-container space-y-6">
       <SuperAgentPageIntro
-        title="Agent Performance"
-        description="Monitor agent activity, lead conversion, and placement momentum across your team from one clean review surface."
+        title={t("pageTitle")}
+        description={t("pageDescription")}
       >
         <SuperAgentInsightsPanel />
         <div className="flex flex-col gap-3 sm:min-w-[160px] xl:min-w-[180px]">
           <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Roster</p>
-            <p className="mt-1 text-lg font-semibold text-foreground">{total} visible rows</p>
-            <p className="text-xs text-muted-foreground">Current page and search results stay in sync with pagination.</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("roster")}</p>
+            <p className="mt-1 text-lg font-semibold text-foreground">{total} {t("visibleRows")}</p>
+            <p className="text-xs text-muted-foreground">{t("paginationSync")}</p>
           </div>
           <Button
             onClick={() => { setCreateError(""); setShowCreate(true); }}
             className="gap-2 w-full"
           >
             <Plus className="h-4 w-4" />
-            Add Agent
+            {t("addAgent")}
           </Button>
         </div>
       </SuperAgentPageIntro>
@@ -355,15 +360,15 @@ export default function SuperAgentAgentsPage() {
       <SuperAgentMetricsGrid items={kpis} />
 
       <SuperAgentSection
-        eyebrow="Team review"
-        title="Compare output across your assigned agents"
-        description="Search by name or email, filter by performance level, leads volume, and conversion rate."
+        eyebrow={t("teamReviewEyebrow")}
+        title={t("teamReviewTitle")}
+        description={t("teamReviewDescription")}
       >
         {/* ── Search Row + Advanced Toggle ── */}
         <TableToolbar
           search={filters.search}
           onSearchChange={(v) => updateFilter("search", v)}
-          searchPlaceholder="Search agents..."
+          searchPlaceholder={t("searchAgentsPlaceholder")}
           onExportCsv={handleExportCsv}
           onExportExcel={handleExportExcel}
           onExportPdf={handleExportPdf}
@@ -376,7 +381,7 @@ export default function SuperAgentAgentsPage() {
                 className="flex h-9 items-center gap-2 rounded-lg border border-border/70 bg-card px-3 text-sm text-muted-foreground hover:bg-secondary/80 transition-all"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
-                Reset
+                {tc("reset")}
               </button>
             ) : undefined
           }
@@ -385,64 +390,64 @@ export default function SuperAgentAgentsPage() {
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
                 {/* Performance */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Performance</label>
+                  <label className="text-xs font-medium text-muted-foreground">{t("filterPerformance")}</label>
                   <SearchableSelect
-                    options={PERFORMANCE_OPTIONS}
+                    options={getPerformanceOptions(t)}
                     value={filters.performance}
                     onValueChange={(v) => updateFilter("performance", v)}
-                    placeholder="All agents"
-                    searchPlaceholder="Filter performance..."
+                    placeholder={t("allAgents")}
+                    searchPlaceholder={t("filterPerformancePlaceholder")}
                     className="h-11 rounded-xl border-border bg-card"
                   />
                 </div>
 
                 {/* Leads Range */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Leads Count</label>
+                  <label className="text-xs font-medium text-muted-foreground">{t("filterLeadsCount")}</label>
                   <SearchableSelect
-                    options={LEADS_RANGE_OPTIONS}
+                    options={getLeadsRangeOptions(t)}
                     value={leadsRangeValue}
                     onValueChange={handleLeadsRange}
-                    placeholder="Any"
+                    placeholder={t("any")}
                     className="h-11 rounded-xl border-border bg-card"
                   />
                 </div>
 
                 {/* Conversion Rate Range */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Conversion Rate</label>
+                  <label className="text-xs font-medium text-muted-foreground">{t("filterConversionRate")}</label>
                   <SearchableSelect
-                    options={CONV_RATE_OPTIONS}
+                    options={getConvRateOptions(t)}
                     value={convRateValue}
                     onValueChange={handleConvRateRange}
-                    placeholder="Any"
+                    placeholder={t("any")}
                     className="h-11 rounded-xl border-border bg-card"
                   />
                 </div>
 
                 {/* Sort By */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Sort By</label>
+                  <label className="text-xs font-medium text-muted-foreground">{t("sortBy")}</label>
                   <SearchableSelect
-                    options={SORT_OPTIONS}
+                    options={getSortOptions(t, tc)}
                     value={filters.sortBy}
                     onValueChange={(v) => updateFilter("sortBy", v)}
-                    placeholder="Name"
+                    placeholder={tc("name")}
                     className="h-11 rounded-xl border-border bg-card"
                   />
                 </div>
 
                 {/* Sort Order */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Sort Order</label>
+                  <label className="text-xs font-medium text-muted-foreground">{t("sortOrder")}</label>
                   <SearchableSelect
                     options={[
-                      { value: "asc", label: "Ascending" },
-                      { value: "desc", label: "Descending" },
+                      { value: "asc", label: t("ascending") },
+                      { value: "desc", label: t("descending") },
                     ]}
                     value={filters.sortOrder}
                     onValueChange={(v) => updateFilter("sortOrder", v)}
-                    placeholder="Ascending"
+                    placeholder={t("ascending")}
                     className="h-11 rounded-xl border-border bg-card"
                   />
                 </div>
@@ -450,14 +455,14 @@ export default function SuperAgentAgentsPage() {
 
               {/* Quick Filter Chips */}
               <div className="flex flex-wrap gap-2">
-                <span className="text-xs font-medium text-muted-foreground/70 self-center mr-1">Quick:</span>
+                <span className="text-xs font-medium text-muted-foreground/70 self-center mr-1">{t("quickFilterLabel")}:</span>
                 {[
-                  { label: "Top Performers", action: () => updateFilter("performance", "high_performer") },
-                  { label: "Needs Attention", action: () => updateFilter("performance", "needs_attention") },
-                  { label: "Slow Responders", action: () => updateFilter("performance", "slow_response") },
-                  { label: "No Activity", action: () => updateFilter("performance", "no_activity") },
-                  { label: "High Volume (50+ leads)", action: () => handleLeadsRange("51+") },
-                  { label: "Best Converters (75%+)", action: () => handleConvRateRange("76-100") },
+                  { label: t("quickFilterTopPerformers"), action: () => updateFilter("performance", "high_performer") },
+                  { label: t("quickFilterNeedsAttention"), action: () => updateFilter("performance", "needs_attention") },
+                  { label: t("quickFilterSlowResponders"), action: () => updateFilter("performance", "slow_response") },
+                  { label: t("quickFilterNoActivity"), action: () => updateFilter("performance", "no_activity") },
+                  { label: t("quickFilterHighVolume"), action: () => handleLeadsRange("51+") },
+                  { label: t("quickFilterBestConverters"), action: () => handleConvRateRange("76-100") },
                 ].map((chip) => (
                   <button
                     key={chip.label}
@@ -478,13 +483,13 @@ export default function SuperAgentAgentsPage() {
           <Table>
             <TableHeader>
               <TableRow className="bg-background/60 hover:bg-background/60">
-                <TableHead><SortHeader field="name">Agent</SortHeader></TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead className="text-right"><SortHeader field="leadsCount">Leads</SortHeader></TableHead>
-                <TableHead className="text-right"><SortHeader field="conversions">Conversions</SortHeader></TableHead>
-                <TableHead className="text-right"><SortHeader field="placements">Placements</SortHeader></TableHead>
-                <TableHead className="text-right"><SortHeader field="conversionRate">Conv. Rate</SortHeader></TableHead>
-                <TableHead>Progress</TableHead>
+                <TableHead><SortHeader field="name">{t("agent")}</SortHeader></TableHead>
+                <TableHead>{tc("email")}</TableHead>
+                <TableHead className="text-right"><SortHeader field="leadsCount">{t("leads")}</SortHeader></TableHead>
+                <TableHead className="text-right"><SortHeader field="conversions">{t("conversions")}</SortHeader></TableHead>
+                <TableHead className="text-right"><SortHeader field="placements">{t("placements")}</SortHeader></TableHead>
+                <TableHead className="text-right"><SortHeader field="conversionRate">{t("convRateShort")}</SortHeader></TableHead>
+                <TableHead>{t("progress")}</TableHead>
                 <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
@@ -505,8 +510,8 @@ export default function SuperAgentAgentsPage() {
                         <Users2 className="h-6 w-6" />
                       </div>
                       <div>
-                        <p className="text-base font-semibold text-foreground">No agents found</p>
-                        <p className="mt-1 text-sm text-muted-foreground">Try a broader search or adjust filters to see more results.</p>
+                        <p className="text-base font-semibold text-foreground">{t("noAgentsFound")}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">{t("noAgentsFoundHelper")}</p>
                       </div>
                     </div>
                   </TableCell>
@@ -560,8 +565,8 @@ export default function SuperAgentAgentsPage() {
                         conversionRate: a.conversionRate,
                         avgResponseHours: a.avgResponseHours,
                       }}
-                      entityLabel="Agent Performance"
-                      context="Analyze this agent's performance metrics. Identify strengths and weaknesses. If conversion is low relative to leads, explain possible causes (slow response, poor follow-up). Suggest 2-3 specific improvement actions."
+                      entityLabel={t("entityLabelAgentPerformance")}
+                      context={t("aiExplainContext")}
                     />
                   </TableCell>
                 </TableRow>
@@ -580,9 +585,9 @@ export default function SuperAgentAgentsPage() {
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Add New Agent</DialogTitle>
+            <DialogTitle>{t("dialogAddNewAgent")}</DialogTitle>
             <DialogDescription>
-              Create a new agent under your team. Regions must be within your assigned territory.
+              {t("dialogAddNewAgentDescription")}
             </DialogDescription>
           </DialogHeader>
 
@@ -595,42 +600,42 @@ export default function SuperAgentAgentsPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Full Name <span className="text-destructive">*</span></Label>
+                <Label>{t("formLabelFullName")} <span className="text-destructive">*</span></Label>
                 <Input
                   value={createForm.name}
                   onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
-                  placeholder="Agent full name"
+                  placeholder={t("formPlaceholderAgentFullName")}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Email <span className="text-destructive">*</span></Label>
+                <Label>{tc("email")} <span className="text-destructive">*</span></Label>
                 <Input
                   type="email"
                   value={createForm.email}
                   onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))}
-                  placeholder="agent@example.com"
+                  placeholder={t("formPlaceholderEmail")}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Password <span className="text-destructive">*</span></Label>
+                <Label>{t("formLabelPassword")} <span className="text-destructive">*</span></Label>
                 <Input
                   type="password"
                   value={createForm.password}
                   onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))}
-                  placeholder="Min 8 characters"
+                  placeholder={t("formPlaceholderPassword")}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Commission Rate (%)</Label>
+                <Label>{t("formLabelCommissionRate")}</Label>
                 <Input
                   type="number"
                   min="0"
                   max="100"
                   value={createForm.commissionRate}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, commissionRate: e.target.value }))}
                   placeholder="0"
+                  onChange={(e) => setCreateForm((f) => ({ ...f, commissionRate: e.target.value }))}
                 />
-                <p className="text-[10px] text-muted-foreground">Set the agent&apos;s commission rate (0–100%). Default is 0%.</p>
+                <p className="text-[10px] text-muted-foreground">{t("formHintCommissionRate")}</p>
               </div>
             </div>
 
@@ -638,21 +643,21 @@ export default function SuperAgentAgentsPage() {
               selectedCityIds={createCityIds}
               selectedStateIds={createStateIds}
               onChange={(cities, states) => { setCreateCityIds(cities); setCreateStateIds(states); }}
-              label="Assigned Region"
+              label={t("formLabelAssignedRegion")}
             />
 
             <p className="text-xs text-muted-foreground">
-              The agent will be automatically assigned to your team. Their region must fall within your territory.
+              {t("formHintAssignedRegion")}
             </p>
           </div>
 
           <DialogFooter className="pt-2">
             <Button type="button" variant="outline" onClick={() => setShowCreate(false)} disabled={createLoading}>
-              Cancel
+              {tc("cancel")}
             </Button>
             <Button onClick={handleCreate} disabled={createLoading}>
               {createLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-              {createLoading ? "Creating…" : "Create Agent"}
+              {createLoading ? t("buttonCreating") : t("buttonCreateAgent")}
             </Button>
           </DialogFooter>
         </DialogContent>

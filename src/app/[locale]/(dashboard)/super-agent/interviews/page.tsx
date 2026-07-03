@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -48,27 +49,14 @@ interface Filters {
 
 const INITIAL_FILTERS: Filters = { search: "", status: "all", type: "all", dateFrom: "", dateTo: "" };
 
-const STATUS_OPTIONS = [
-  { value: "all", label: "All statuses" },
-  { value: "scheduled", label: "Scheduled" },
-  { value: "completed", label: "Completed" },
-  { value: "cancelled", label: "Cancelled" },
-  { value: "no_show", label: "No Show" },
-  { value: "rescheduled", label: "Rescheduled" },
-];
-
-const TYPE_OPTIONS = [
-  { value: "all", label: "All types" },
-  { value: "video", label: "Video" },
-  { value: "offline", label: "In-Person" },
-  { value: "hybrid", label: "Hybrid" },
-];
-
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
 export default function SuperAgentInterviewsPage() {
+  const t = useTranslations("superAgentInterviews");
+  const tc = useTranslations("common");
+  const tt = useTranslations("table");
   const [interviews, setInterviews] = useState<InterviewItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
@@ -93,7 +81,7 @@ export default function SuperAgentInterviewsPage() {
         if (data.stats) setStats(data.stats);
       }
     } catch {
-      toast.error("Failed to load interviews");
+      toast.error(t("failedToLoadInterviews"));
     } finally {
       setLoading(false);
     }
@@ -106,11 +94,27 @@ export default function SuperAgentInterviewsPage() {
     pagination.resetPage();
   };
 
+  const STATUS_OPTIONS = [
+    { value: "all", label: t("allStatuses") },
+    { value: "scheduled", label: t("statusScheduled") },
+    { value: "completed", label: t("statusCompleted") },
+    { value: "cancelled", label: t("statusCancelled") },
+    { value: "no_show", label: t("statusNoShow") },
+    { value: "rescheduled", label: t("statusRescheduled") },
+  ];
+
+  const TYPE_OPTIONS = [
+    { value: "all", label: t("allTypes") },
+    { value: "video", label: t("typeVideo") },
+    { value: "offline", label: t("typeInPerson") },
+    { value: "hybrid", label: t("typeHybrid") },
+  ];
+
   const metricsItems = [
-    { label: "Total Interviews", value: stats.total, helper: "Across all agents", icon: <Calendar className="h-5 w-5" />, toneClassName: "workspace-tone-sky" },
-    { label: "Scheduled", value: stats.scheduled, helper: "Upcoming", icon: <Clock className="h-5 w-5" />, toneClassName: "workspace-tone-amber" },
-    { label: "Completed", value: stats.completed, helper: "Successfully done", icon: <CheckCircle2 className="h-5 w-5" />, toneClassName: "workspace-tone-emerald" },
-    { label: "Cancel Rate", value: `${stats.cancelRate}%`, helper: "Cancellation rate", icon: <XCircle className="h-5 w-5" />, toneClassName: "workspace-tone-rose" },
+    { label: t("totalInterviews"), value: stats.total, helper: t("acrossAllAgents"), icon: <Calendar className="h-5 w-5" />, toneClassName: "workspace-tone-sky" },
+    { label: t("scheduled"), value: stats.scheduled, helper: t("upcoming"), icon: <Clock className="h-5 w-5" />, toneClassName: "workspace-tone-amber" },
+    { label: t("completed"), value: stats.completed, helper: t("successfullyDone"), icon: <CheckCircle2 className="h-5 w-5" />, toneClassName: "workspace-tone-emerald" },
+    { label: t("cancelRate"), value: `${stats.cancelRate}%`, helper: t("cancellationRate"), icon: <XCircle className="h-5 w-5" />, toneClassName: "workspace-tone-rose" },
   ];
 
   const typeIcon = (type: string) => {
@@ -125,18 +129,18 @@ export default function SuperAgentInterviewsPage() {
   return (
     <div className="page-container space-y-6">
       <SuperAgentPageIntro
-        title="Interviews"
-        description="Team-wide interview overview. Monitor interview schedules, completion rates, and outcomes across all your agents."
+        title={t("pageTitle")}
+        description={t("pageDescription")}
       />
 
       <SuperAgentMetricsGrid items={metricsItems} />
 
       <TableToolbar
-        title="Interview tracking"
-        description="Filter by status, type, or search to narrow down the interview list."
+        title={t("toolbarTitle")}
+        description={t("toolbarDescription")}
         search={filters.search}
         onSearchChange={(v) => updateFilter("search", v)}
-        searchPlaceholder="Search by candidate, job, or company..."
+        searchPlaceholder={t("searchPlaceholder")}
         hasActiveFilters={filters.status !== "all" || filters.type !== "all"}
         actions={
           (filters.search || filters.status !== "all" || filters.type !== "all") ? (
@@ -146,7 +150,7 @@ export default function SuperAgentInterviewsPage() {
               className="flex h-9 items-center gap-2 rounded-lg border border-border/70 bg-card px-3 text-sm text-muted-foreground hover:bg-secondary/80 transition-all"
             >
               <RotateCcw className="h-3.5 w-3.5" />
-              Reset
+              {tc("cancel")}
             </button>
           ) : undefined
         }
@@ -156,14 +160,14 @@ export default function SuperAgentInterviewsPage() {
               options={STATUS_OPTIONS}
               value={filters.status}
               onValueChange={(v) => updateFilter("status", v)}
-              placeholder="All statuses"
+              placeholder={t("allStatuses")}
               className="h-11 w-[180px] rounded-xl border-border bg-card"
             />
             <SearchableSelect
               options={TYPE_OPTIONS}
               value={filters.type}
               onValueChange={(v) => updateFilter("type", v)}
-              placeholder="All types"
+              placeholder={t("allTypes")}
               className="h-11 w-[180px] rounded-xl border-border bg-card"
             />
             <input
@@ -171,38 +175,38 @@ export default function SuperAgentInterviewsPage() {
               value={filters.dateFrom}
               onChange={(e) => updateFilter("dateFrom", e.target.value)}
               className="h-11 rounded-xl border border-border bg-card px-3 text-sm"
-              placeholder="From date"
-              title="Filter from date"
-              aria-label="Filter interviews from date"
+              placeholder={t("fromDate")}
+              title={t("filterFromDate")}
+              aria-label={t("filterInterviewsFromDate")}
             />
             <input
               type="date"
               value={filters.dateTo}
               onChange={(e) => updateFilter("dateTo", e.target.value)}
               className="h-11 rounded-xl border border-border bg-card px-3 text-sm"
-              placeholder="To date"
-              title="Filter to date"
-              aria-label="Filter interviews to date"
+              placeholder={t("toDate")}
+              title={t("filterToDate")}
+              aria-label={t("filterInterviewsToDate")}
             />
           </div>
         }
       />
 
       <SuperAgentSection
-        eyebrow="Schedule"
-        title="Interviews"
+        eyebrow={t("sectionEyebrow")}
+        title={t("sectionTitle")}
       >
         <div className="overflow-x-auto rounded-3xl border border-border/60">
           <Table>
             <TableHeader>
               <TableRow className="bg-background/60 hover:bg-background/60">
-                <TableHead className="min-w-[180px]">Candidate</TableHead>
-                <TableHead className="min-w-[180px]">Job</TableHead>
-                <TableHead>Agent</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Scheduled</TableHead>
-                <TableHead>Duration</TableHead>
+                <TableHead className="min-w-[180px]">{t("columnCandidate")}</TableHead>
+                <TableHead className="min-w-[180px]">{t("columnJob")}</TableHead>
+                <TableHead>{t("columnAgent")}</TableHead>
+                <TableHead>{t("columnType")}</TableHead>
+                <TableHead>{tc("status")}</TableHead>
+                <TableHead>{t("columnScheduled")}</TableHead>
+                <TableHead>{t("columnDuration")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -222,8 +226,8 @@ export default function SuperAgentInterviewsPage() {
                         <Calendar className="h-6 w-6" />
                       </div>
                       <div>
-                        <p className="text-base font-semibold text-foreground">No interviews found</p>
-                        <p className="mt-1 text-sm text-muted-foreground">No interviews match the current filters</p>
+                        <p className="text-base font-semibold text-foreground">{t("emptyStateTitle")}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">{t("emptyStateDescription")}</p>
                       </div>
                     </div>
                   </TableCell>
@@ -249,7 +253,7 @@ export default function SuperAgentInterviewsPage() {
                     {new Date(i.scheduledAt).toLocaleDateString()}{" "}
                     <span className="text-xs">{new Date(i.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{i.duration ? `${i.duration} min` : "—"}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{i.duration ? t("durationMinutes", { duration: i.duration }) : "—"}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

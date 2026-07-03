@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -45,33 +46,41 @@ interface Filters {
 
 const INITIAL_FILTERS: Filters = { search: "", country: "all", experienceMin: "all", availability: "all" };
 
-const EXPERIENCE_OPTIONS = [
-  { value: "all", label: "All experience" },
-  { value: "0", label: "Fresh (0 yrs)" },
-  { value: "1", label: "1+ years" },
-  { value: "3", label: "3+ years" },
-  { value: "5", label: "5+ years" },
-  { value: "10", label: "10+ years" },
-];
-
-const AVAILABILITY_OPTIONS = [
-  { value: "all", label: "All availability" },
-  { value: "immediate", label: "Available immediately" },
-  { value: "notice_period", label: "Has notice period" },
-  { value: "unavailable", label: "Not available" },
-];
+// These will be constructed inside component with i18n
+// const EXPERIENCE_OPTIONS = [...]
+// const AVAILABILITY_OPTIONS = [...]
 
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
 export default function SuperAgentJobSeekersPage() {
+  const t = useTranslations("superAgentJobSeekers");
+  const tc = useTranslations("common");
+  const tt = useTranslations("table");
+
   const [seekers, setSeekers] = useState<JobSeekerItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
-  const [countryOptions, setCountryOptions] = useState<{ value: string; label: string }[]>([{ value: "all", label: "All countries" }]);
+  const [countryOptions, setCountryOptions] = useState<{ value: string; label: string }[]>([{ value: "all", label: t("allCountries") }]);
   const [totalStats, setTotalStats] = useState({ total: 0, active: 0, avgCompletion: 0, withExperience: 0 });
   const pagination = usePagination();
+
+  const EXPERIENCE_OPTIONS = [
+    { value: "all", label: t("allExperience") },
+    { value: "0", label: t("experienceFresh") },
+    { value: "1", label: t("experience1Plus") },
+    { value: "3", label: t("experience3Plus") },
+    { value: "5", label: t("experience5Plus") },
+    { value: "10", label: t("experience10Plus") },
+  ];
+
+  const AVAILABILITY_OPTIONS = [
+    { value: "all", label: t("allAvailability") },
+    { value: "immediate", label: t("availableImmediately") },
+    { value: "notice_period", label: t("hasNoticePeriod") },
+    { value: "unavailable", label: t("notAvailable") },
+  ];
 
   const handleClearFilters = () => {
     setFilters(INITIAL_FILTERS);
@@ -95,13 +104,13 @@ export default function SuperAgentJobSeekersPage() {
         if (data.stats) setTotalStats(data.stats);
         if (data.countries) {
           setCountryOptions([
-            { value: "all", label: "All countries" },
+            { value: "all", label: t("allCountries") },
             ...data.countries.map((c: string) => ({ value: c, label: c })),
           ]);
         }
       }
     } catch {
-      toast.error("Failed to load job seekers");
+      toast.error(t("failedToLoadJobSeekers"));
     } finally {
       setLoading(false);
     }
@@ -115,27 +124,27 @@ export default function SuperAgentJobSeekersPage() {
   };
 
   const metricsItems = [
-    { label: "Total Candidates", value: totalStats.total, helper: "In your region", icon: <Users className="h-5 w-5" />, toneClassName: "workspace-tone-sky" },
-    { label: "Active Profiles", value: totalStats.active, helper: "Currently seeking", icon: <Star className="h-5 w-5" />, toneClassName: "workspace-tone-emerald" },
-    { label: "Avg Completion", value: `${totalStats.avgCompletion}%`, helper: "Profile completeness", icon: <GraduationCap className="h-5 w-5" />, toneClassName: "workspace-tone-violet" },
-    { label: "Experienced", value: totalStats.withExperience, helper: "3+ years exp", icon: <Briefcase className="h-5 w-5" />, toneClassName: "workspace-tone-amber" },
+    { label: t("totalCandidates"), value: totalStats.total, helper: t("inYourRegion"), icon: <Users className="h-5 w-5" />, toneClassName: "workspace-tone-sky" },
+    { label: t("activeProfiles"), value: totalStats.active, helper: t("currentlySeeking"), icon: <Star className="h-5 w-5" />, toneClassName: "workspace-tone-emerald" },
+    { label: t("avgCompletion"), value: `${totalStats.avgCompletion}%`, helper: t("profileCompleteness"), icon: <GraduationCap className="h-5 w-5" />, toneClassName: "workspace-tone-violet" },
+    { label: t("experienced"), value: totalStats.withExperience, helper: t("experiencedHelper"), icon: <Briefcase className="h-5 w-5" />, toneClassName: "workspace-tone-amber" },
   ];
 
   return (
     <div className="page-container space-y-6">
       <SuperAgentPageIntro
-        title="Job Seekers"
-        description="Browse candidates in your region. This is a read-only directory of job seekers linked to your agents."
+        title={t("pageTitle")}
+        description={t("pageDescription")}
       />
 
       <SuperAgentMetricsGrid items={metricsItems} />
 
       <TableToolbar
-        title="Browse regional candidates"
-        description="Search by name, email, or skills. Filter by country, experience level, and availability."
+        title={t("browseRegionalCandidates")}
+        description={t("searchAndFilterDescription")}
         search={filters.search}
         onSearchChange={(v) => updateFilter("search", v)}
-        searchPlaceholder="Search by name, email, or skills..."
+        searchPlaceholder={t("searchPlaceholder")}
         hasActiveFilters={filters.country !== "all" || filters.experienceMin !== "all" || filters.availability !== "all"}
         actions={
           (filters.search || filters.country !== "all" || filters.experienceMin !== "all" || filters.availability !== "all") ? (
@@ -145,7 +154,7 @@ export default function SuperAgentJobSeekersPage() {
               className="flex h-9 items-center gap-2 rounded-lg border border-border/70 bg-card px-3 text-sm text-muted-foreground hover:bg-secondary/80 transition-all"
             >
               <RotateCcw className="h-3.5 w-3.5" />
-              Reset
+              {t("reset")}
             </button>
           ) : undefined
         }
@@ -155,21 +164,21 @@ export default function SuperAgentJobSeekersPage() {
               options={countryOptions}
               value={filters.country}
               onValueChange={(v) => updateFilter("country", v)}
-              placeholder="All countries"
+              placeholder={t("allCountries")}
               className="h-11 w-[180px] rounded-xl border-border bg-card"
             />
             <SearchableSelect
               options={EXPERIENCE_OPTIONS}
               value={filters.experienceMin}
               onValueChange={(v) => updateFilter("experienceMin", v)}
-              placeholder="All experience"
+              placeholder={t("allExperience")}
               className="h-11 w-[180px] rounded-xl border-border bg-card"
             />
             <SearchableSelect
               options={AVAILABILITY_OPTIONS}
               value={filters.availability}
               onValueChange={(v) => updateFilter("availability", v)}
-              placeholder="All availability"
+              placeholder={t("allAvailability")}
               className="h-11 w-[180px] rounded-xl border-border bg-card"
             />
           </div>
@@ -177,20 +186,20 @@ export default function SuperAgentJobSeekersPage() {
       />
 
       <SuperAgentSection
-        eyebrow="Directory"
-        title="Candidates"
+        eyebrow={t("directory")}
+        title={t("candidates")}
       >
         <div className="overflow-x-auto rounded-3xl border border-border/60">
           <Table>
             <TableHeader>
               <TableRow className="bg-background/60 hover:bg-background/60">
-                <TableHead className="min-w-[180px]">Name</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Current Role</TableHead>
-                <TableHead>Experience</TableHead>
-                <TableHead>Profile</TableHead>
-                <TableHead>Skills</TableHead>
-                <TableHead>Joined</TableHead>
+                <TableHead className="min-w-[180px]">{tc("name")}</TableHead>
+                <TableHead>{t("location")}</TableHead>
+                <TableHead>{t("currentRole")}</TableHead>
+                <TableHead>{t("experience")}</TableHead>
+                <TableHead>{t("profile")}</TableHead>
+                <TableHead>{t("skills")}</TableHead>
+                <TableHead>{tc("date")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -210,8 +219,8 @@ export default function SuperAgentJobSeekersPage() {
                         <Users className="h-6 w-6" />
                       </div>
                       <div>
-                        <p className="text-base font-semibold text-foreground">No job seekers found</p>
-                        <p className="mt-1 text-sm text-muted-foreground">Try adjusting your filters</p>
+                        <p className="text-base font-semibold text-foreground">{t("noJobSeekersFound")}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">{t("tryAdjustingFilters")}</p>
                       </div>
                     </div>
                   </TableCell>
@@ -229,7 +238,7 @@ export default function SuperAgentJobSeekersPage() {
                     </span>
                   </TableCell>
                   <TableCell className="text-sm">{s.currentJobTitle || "—"}</TableCell>
-                  <TableCell className="text-sm">{s.experienceYears != null ? `${s.experienceYears} yrs` : "—"}</TableCell>
+                  <TableCell className="text-sm">{s.experienceYears != null ? `${s.experienceYears} ${t("yearsAbbr")}` : "—"}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <div className="h-2 w-16 overflow-hidden rounded-full bg-muted">
