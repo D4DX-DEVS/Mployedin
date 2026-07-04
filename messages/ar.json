@@ -348,7 +348,8 @@
     "confirmDeleteState": "هل أنت متأكد أنك تريد حذف هذه الولاية؟",
     "reset": "إعادة تعيين",
     "saved": "تم الحفظ",
-    "superAgentWorkspace": "مساحة عمل الوكيل الرئيسي"
+    "superAgentWorkspace": "مساحة عمل الوكيل الرئيسي",
+    "currency": "العملة"
   },
   "table": {
     "search": "بحث...",
@@ -1168,7 +1169,8 @@
       "deleteFailed": "فشل الحذف",
       "alertEnabled": "تم تفعيل التنبيه",
       "alertDisabled": "تم تعطيل التنبيه",
-      "updateFailed": "فشل التحديث"
+      "updateFailed": "فشل التحديث",
+      "selectFrequency": "اختر التكرار"
     },
     "referral": {
       "title": "برنامج الإحالة",
@@ -1813,6 +1815,9 @@
         "small": "صغير",
         "medium": "متوسط",
         "large": "كبير"
+      },
+      "badges": {
+        "photo": "صورة"
       }
     },
     "richText": {
@@ -4317,7 +4322,8 @@
     "unableToLoad": "تعذّر تحميل الطلبات",
     "unableToLoadDesc": "حدث خطأ ما أثناء جلب الطلبات. قد يكون ذلك بسبب حد الاشتراك — يرجى التحقق من خطتك أو تحديث الصفحة.",
     "createScorecardTitle": "إنشاء بطاقة تقييم المقابلة",
-    "createScorecardDesc": "قيّم المرشح لهذه المقابلة"
+    "createScorecardDesc": "قيّم المرشح لهذه المقابلة",
+    "scoringCandidate": "جارٍ تقييم المرشح {done} من {total}"
   },
   "employerAnalytics": {
     "title": "مركز قيادة التحليلات",
@@ -4534,7 +4540,9 @@
     "measuredCol": "المقاسة",
     "lessThanHour": "< ساعة واحدة",
     "hoursValue": "{count} ساعة",
-    "daysLabelPlural": "{count, plural, zero {# يوم} one {# يوم} two {# يومين} few {# أيام} many {# يومًا} other {# يوم}}"
+    "daysLabelPlural": "{count, plural, zero {# يوم} one {# يوم} two {# يومين} few {# أيام} many {# يومًا} other {# يوم}}",
+    "startDate": "تاريخ البدء",
+    "endDate": "تاريخ الانتهاء"
   },
   "employerSettings": {
     "title": "إعدادات الشركة",
@@ -5969,7 +5977,9 @@
       "referenceRequired": "أضف مرجعًا واحدًا على الأقل لفحص المراجع.",
       "createFailed": "فشل إنشاء الفحص. يرجى المحاولة مرة أخرى.",
       "updateFailed": "فشل تحديث الفحص. يرجى المحاولة مرة أخرى."
-    }
+    },
+    "fromDate": "من تاريخ",
+    "toDate": "إلى تاريخ"
   },
   "employerPlacements": {
     "backToPlacements": "العودة إلى التعيينات",
@@ -8354,7 +8364,9 @@
     "items": "البنود",
     "view": "عرض",
     "paymentInitiateFailed": "فشل في بدء عملية الدفع",
-    "toastPaymentFailed": "فشل الدفع"
+    "toastPaymentFailed": "فشل الدفع",
+    "dateFromPlaceholder": "من تاريخ",
+    "dateToPlaceholder": "إلى تاريخ"
   },
   "adminJobAttributes": {
     "nameEnglish": "الاسم (بالإنجليزية)",
@@ -8523,7 +8535,9 @@
     "offerStatus": "عرض",
     "hiredStatus": "معين",
     "rejectedStatus": "مرفوض",
-    "withdrawnStatus": "متراجع عنه"
+    "withdrawnStatus": "متراجع عنه",
+    "fromDate": "من تاريخ",
+    "toDate": "إلى تاريخ"
   },
   "adminCmsFaqs": {
     "title": "الأسئلة الشائعة",
@@ -9816,7 +9830,9 @@
     "deleteConfirmation": "حذف هذا التعيين؟",
     "noSalaryData": "لا توجد بيانات الراتب",
     "currencyBreakdownSeparator": " · ",
-    "dashSeparator": "—"
+    "dashSeparator": "—",
+    "from": "من",
+    "to": "إلى"
   },
   "adminWorkflowTemplates": {
     "adminWorkspaceLabel": "مساحة المسؤول",
@@ -11054,7 +11070,8 @@
     "settingsDescription": "إدارة تكوين مساحة عملك — التفضيلات الإقليمية ومعدلات العمولات وقنوات الإخطارات والتوفر والأمان.",
     "workspaceSettings": "إعدادات مساحة العمل",
     "workspaceSettingsDesc": "تدخل التغييرات حيز النفاذ فوراً في جميع صفحات لوحة المعلومات والتقارير والعروض المالية.",
-    "saved": "تم الحفظ"
+    "saved": "تم الحفظ",
+    "selectTimezone": "اختر المنطقة الزمنية"
   },
   "superAgentJobs": {
     "totalJobsLabel": "إجمالي الوظائف",
@@ -13336,7 +13353,8 @@
     "docCertification": "شهادة",
     "docReference": "خطاب المرجعية",
     "docIdDocument": "وثيقة الهوية",
-    "docOther": "أخرى"
+    "docOther": "أخرى",
+    "selectType": "اختر النوع"
   },
   "applicationFeedback": {
     "errorLoadingDetails": "تعذر تحميل تفاصيل الطلب.",

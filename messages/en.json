@@ -348,7 +348,8 @@
     "confirmDeleteState": "Are you sure you want to delete this state?",
     "reset": "Reset",
     "saved": "Saved",
-    "superAgentWorkspace": "Super agent workspace"
+    "superAgentWorkspace": "Super agent workspace",
+    "currency": "Currency"
   },
   "table": {
     "search": "Search...",
@@ -1168,7 +1169,8 @@
       "deleteFailed": "Failed to delete",
       "alertEnabled": "Alert enabled",
       "alertDisabled": "Alert disabled",
-      "updateFailed": "Failed to update"
+      "updateFailed": "Failed to update",
+      "selectFrequency": "Select frequency"
     },
     "referral": {
       "title": "Referral Program",
@@ -1813,6 +1815,9 @@
         "small": "Small",
         "medium": "Medium",
         "large": "Large"
+      },
+      "badges": {
+        "photo": "Photo"
       }
     },
     "richText": {
@@ -4317,7 +4322,8 @@
     "unableToLoad": "Unable to load applications",
     "unableToLoadDesc": "Something went wrong while fetching applications. This may be a subscription limit — please check your plan or try refreshing the page.",
     "createScorecardTitle": "Create Interview Scorecard",
-    "createScorecardDesc": "Evaluate the candidate for this interview"
+    "createScorecardDesc": "Evaluate the candidate for this interview",
+    "scoringCandidate": "Scoring candidate {done} of {total}"
   },
   "employerAnalytics": {
     "title": "Analytics Command Center",
@@ -4534,7 +4540,9 @@
     "measuredCol": "Measured",
     "lessThanHour": "< 1 hour",
     "hoursValue": "{count} hours",
-    "daysLabelPlural": "{count, plural, one {# day} other {# days}}"
+    "daysLabelPlural": "{count, plural, one {# day} other {# days}}",
+    "startDate": "Start date",
+    "endDate": "End date"
   },
   "employerSettings": {
     "title": "Company Settings",
@@ -5969,7 +5977,9 @@
       "referenceRequired": "Add at least one referee for a reference check.",
       "createFailed": "Failed to create the check. Please try again.",
       "updateFailed": "Failed to update the check. Please try again."
-    }
+    },
+    "fromDate": "From date",
+    "toDate": "To date"
   },
   "employerPlacements": {
     "backToPlacements": "Back to Placements",
@@ -8354,7 +8364,9 @@
     "items": "Items",
     "view": "View",
     "paymentInitiateFailed": "Failed to initiate payment",
-    "toastPaymentFailed": "Payment failed"
+    "toastPaymentFailed": "Payment failed",
+    "dateFromPlaceholder": "From date",
+    "dateToPlaceholder": "To date"
   },
   "adminJobAttributes": {
     "nameEnglish": "Name (English)",
@@ -8523,7 +8535,9 @@
     "offerStatus": "Offer",
     "hiredStatus": "Hired",
     "rejectedStatus": "Rejected",
-    "withdrawnStatus": "Withdrawn"
+    "withdrawnStatus": "Withdrawn",
+    "fromDate": "From date",
+    "toDate": "To date"
   },
   "adminCmsFaqs": {
     "title": "FAQs",
@@ -9816,7 +9830,9 @@
     "deleteConfirmation": "Delete this placement?",
     "noSalaryData": "No salary data",
     "currencyBreakdownSeparator": " · ",
-    "dashSeparator": "—"
+    "dashSeparator": "—",
+    "from": "From",
+    "to": "To"
   },
   "adminWorkflowTemplates": {
     "adminWorkspaceLabel": "Admin workspace",
@@ -11054,7 +11070,8 @@
     "settingsDescription": "Manage your super-agent workspace configuration — regional preferences, commission rates, notification channels, availability, and account security.",
     "workspaceSettings": "Workspace settings",
     "workspaceSettingsDesc": "Changes take effect immediately across all dashboard pages, reports, and financial displays.",
-    "saved": "Saved"
+    "saved": "Saved",
+    "selectTimezone": "Select timezone"
   },
   "superAgentJobs": {
     "totalJobsLabel": "Total Jobs",
@@ -13336,7 +13353,8 @@
     "docCertification": "Certification",
     "docReference": "Reference Letter",
     "docIdDocument": "ID Document",
-    "docOther": "Other"
+    "docOther": "Other",
+    "selectType": "Select type"
   },
   "applicationFeedback": {
     "errorLoadingDetails": "Could not load application details.",
