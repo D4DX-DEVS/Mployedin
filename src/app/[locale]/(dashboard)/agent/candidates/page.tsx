@@ -16,6 +16,8 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
   ArrowRight,
   BriefcaseBusiness,
@@ -597,16 +599,16 @@ export default function AgentCandidatesPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="iv-type">{t("interviewTypeLabel")}</Label>
-                <select
-                  id="iv-type"
-                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                  value={scheduleForm.type}
-                  onChange={(e) => setScheduleForm((f) => ({ ...f, type: e.target.value }))}
-                >
-                  <option value="video">{t("interviewType_video")}</option>
-                  <option value="offline">{t("interviewType_offline")}</option>
-                  <option value="hybrid">{t("interviewType_hybrid")}</option>
-                </select>
+                <Select value={scheduleForm.type} onValueChange={(value) => setScheduleForm((f) => ({ ...f, type: value }))}>
+                  <SelectTrigger id="iv-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="video">{t("interviewType_video")}</SelectItem>
+                    <SelectItem value="offline">{t("interviewType_offline")}</SelectItem>
+                    <SelectItem value="hybrid">{t("interviewType_hybrid")}</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="iv-dur">{t("durationLabel")}</Label>
@@ -721,33 +723,31 @@ export default function AgentCandidatesPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="of-period">{t("payPeriodLabel")}</Label>
-                <select
-                  id="of-period"
-                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                  value={offerForm.period}
-                  onChange={(e) => setOfferForm((f) => ({ ...f, period: e.target.value }))}
-                >
-                  <option value="monthly">{t("payPeriod_monthly")}</option>
-                  <option value="annually">{t("payPeriod_annually")}</option>
-                </select>
+                <Select value={offerForm.period} onValueChange={(value) => setOfferForm((f) => ({ ...f, period: value }))}>
+                  <SelectTrigger id="of-period">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="monthly">{t("payPeriod_monthly")}</SelectItem>
+                    <SelectItem value="annually">{t("payPeriod_annually")}</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="of-start">{t("startDateLabel")}</Label>
-                <Input
-                  id="of-start"
-                  type="date"
+                <DateTimePicker
+                  mode="date"
                   value={offerForm.startDate}
-                  onChange={(e) => setOfferForm((f) => ({ ...f, startDate: e.target.value }))}
+                  onChange={(value) => setOfferForm((f) => ({ ...f, startDate: value }))}
                 />
               </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="of-expires">{t("offerExpiresLabel")}</Label>
-              <Input
-                id="of-expires"
-                type="date"
+              <DateTimePicker
+                mode="date"
                 value={offerForm.expiresAt}
-                onChange={(e) => setOfferForm((f) => ({ ...f, expiresAt: e.target.value }))}
+                onChange={(value) => setOfferForm((f) => ({ ...f, expiresAt: value }))}
               />
             </div>
             <div className="space-y-2">

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Inbox, Plus, X, Edit2, Trash2, UserCheck, MapPin, Sparkles } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
 interface SuperAgentOption { _id: string; name: string; email: string; }
 
@@ -25,14 +26,14 @@ export default function AdminTerritoryPage() {
   const [territories, setTerritories] = useState<Territory[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: "", countries: [] as string[], superAgentId: "" });
+  const [form, setForm] = useState({ name: "", countries: [] as string[], superAgentId: "__none__" });
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
   const [superAgents, setSuperAgents] = useState<SuperAgentOption[]>([]);
 
   // Edit dialog
   const [editTerritory, setEditTerritory] = useState<Territory | null>(null);
-  const [editForm, setEditForm] = useState({ name: "", countries: [] as string[], superAgentId: "" });
+  const [editForm, setEditForm] = useState({ name: "", countries: [] as string[], superAgentId: "__none__" });
   const [editSaving, setEditSaving] = useState(false);
 
   // Delete confirm
@@ -64,7 +65,7 @@ export default function AdminTerritoryPage() {
     e.preventDefault();
     setSaving(true);
     const payload: Record<string, unknown> = { name: form.name, countries: form.countries };
-    if (form.superAgentId) payload.superAgentId = form.superAgentId;
+    if (form.superAgentId && form.superAgentId !== "__none__") payload.superAgentId = form.superAgentId;
     const res = await fetch("/api/admin/territories", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -73,7 +74,7 @@ export default function AdminTerritoryPage() {
     if (res.ok) {
       toast.success(tr("toastTerritoryCreated"));
       setShowForm(false);
-      setForm({ name: "", countries: [], superAgentId: "" });
+      setForm({ name: "", countries: [], superAgentId: "__none__" });
       fetchTerritories();
     } else {
       const err = await res.json().catch(() => ({}));
@@ -93,7 +94,7 @@ export default function AdminTerritoryPage() {
   };
 
   const openEdit = (t: Territory) => {
-    const saId = typeof t.superAgentId === "object" && t.superAgentId?._id ? t.superAgentId._id : "";
+    const saId = typeof t.superAgentId === "object" && t.superAgentId?._id ? t.superAgentId._id : "__none__";
     setEditTerritory(t);
     setEditForm({ name: t.name, countries: t.countries ?? [], superAgentId: saId });
   };
@@ -103,7 +104,7 @@ export default function AdminTerritoryPage() {
     if (!editTerritory) return;
     setEditSaving(true);
     const payload: Record<string, unknown> = { name: editForm.name, countries: editForm.countries };
-    payload.superAgentId = editForm.superAgentId || null;
+    payload.superAgentId = editForm.superAgentId === "__none__" ? null : editForm.superAgentId || null;
     const res = await fetch(`/api/admin/territories/${editTerritory._id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -200,16 +201,17 @@ export default function AdminTerritoryPage() {
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground">{tr("assignSuperAgentLabel")}</label>
-                <select
-                  value={form.superAgentId}
-                  onChange={(e) => setForm((p) => ({ ...p, superAgentId: e.target.value }))}
-                  className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm"
-                >
-                  <option value="">{tr("noAssignmentOption")}</option>
-                  {superAgents.map((sa) => (
-                    <option key={sa._id} value={sa._id}>{sa.name} ({sa.email})</option>
-                  ))}
-                </select>
+                <Select value={form.superAgentId} onValueChange={(v) => setForm((p) => ({ ...p, superAgentId: v }))}>
+                  <SelectTrigger className="h-9 w-full rounded-lg">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">{tr("noAssignmentOption")}</SelectItem>
+                    {superAgents.map((sa) => (
+                      <SelectItem key={sa._id} value={sa._id}>{sa.name} ({sa.email})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <Button type="submit" size="sm" disabled={saving} className="bg-sky-600 hover:bg-sky-700 text-white">
                 {saving ? tr("savingButtonText") : tr("createButtonText")}
@@ -291,16 +293,17 @@ export default function AdminTerritoryPage() {
             </div>
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground">{tr("assignSuperAgentLabel")}</label>
-              <select
-                value={editForm.superAgentId}
-                onChange={(e) => setEditForm((p) => ({ ...p, superAgentId: e.target.value }))}
-                className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm"
-              >
-                <option value="">{tr("unassignedOption")}</option>
-                {superAgents.map((sa) => (
-                  <option key={sa._id} value={sa._id}>{sa.name} ({sa.email})</option>
-                ))}
-              </select>
+              <Select value={editForm.superAgentId} onValueChange={(v) => setEditForm((p) => ({ ...p, superAgentId: v }))}>
+                <SelectTrigger className="h-9 w-full rounded-lg">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">{tr("unassignedOption")}</SelectItem>
+                  {superAgents.map((sa) => (
+                    <SelectItem key={sa._id} value={sa._id}>{sa.name} ({sa.email})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setEditTerritory(null)}>{tr("cancelButtonLabel")}</Button>

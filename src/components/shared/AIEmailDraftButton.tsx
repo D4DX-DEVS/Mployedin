@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Copy, Loader2, Mail, Send } from "lucide-react";
 import { toast } from "sonner";
 import { sanitizeHtml } from "@/lib/security/html";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
 const EMAIL_CONTEXT_KEYS = [
   { value: "after_application", labelKey: "afterApplication" },
@@ -105,15 +106,16 @@ export function AIEmailDraftButton({ applicationId, candidateName, defaultContex
               <>
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground">{t("emailContext")}</label>
-                  <select
-                    value={context}
-                    onChange={(e) => setContext(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-border bg-background/70 px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20"
-                  >
-                    {EMAIL_CONTEXT_KEYS.map((c) => (
-                      <option key={c.value} value={c.value}>{t(c.labelKey)}</option>
-                    ))}
-                  </select>
+                  <Select value={context} onValueChange={setContext}>
+                    <SelectTrigger className="mt-1 w-full rounded-xl">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {EMAIL_CONTEXT_KEYS.map((c) => (
+                        <SelectItem key={c.value} value={c.value}>{t(c.labelKey)}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground">{t("customInstructions")}</label>

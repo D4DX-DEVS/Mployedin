@@ -13,6 +13,7 @@ import { PageHero } from "@/components/shared/PageHero";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -385,23 +386,23 @@ function SubscribersTable() {
                 <div className="xl:col-span-2">
                   <label className="text-xs text-muted-foreground mb-1 block">{t("dateRangeLabel")}</label>
                   <div className="flex items-center gap-2">
-                    <div className="relative flex-1">
-                      <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-                      <Input
-                        type="date"
+                    <div className="flex-1">
+                      <DateTimePicker
+                        mode="date"
                         value={dateFrom}
-                        onChange={(e) => { setDateFrom(e.target.value); setFilters((f) => ({ ...f, dateFrom: e.target.value || undefined })); resetPage(); }}
-                        className="rounded-xl h-9 pl-9"
+                        onChange={(v) => { setDateFrom(v); setFilters((f) => ({ ...f, dateFrom: v || undefined })); resetPage(); }}
+                        placeholder={t("dateRangeLabel")}
+                        className="rounded-xl h-9"
                       />
                     </div>
                     <span className="text-xs text-muted-foreground">{t("dateRangeToLabel")}</span>
-                    <div className="relative flex-1">
-                      <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-                      <Input
-                        type="date"
+                    <div className="flex-1">
+                      <DateTimePicker
+                        mode="date"
                         value={dateTo}
-                        onChange={(e) => { setDateTo(e.target.value); setFilters((f) => ({ ...f, dateTo: e.target.value || undefined })); resetPage(); }}
-                        className="rounded-xl h-9 pl-9"
+                        onChange={(v) => { setDateTo(v); setFilters((f) => ({ ...f, dateTo: v || undefined })); resetPage(); }}
+                        placeholder={t("dateRangeLabel")}
+                        className="rounded-xl h-9"
                       />
                     </div>
                   </div>
@@ -1326,7 +1327,7 @@ function BulkAssignSection() {
   );
 
   const handleBulkAssign = useCallback(() => {
-    if (!selectedPlanId || userIds.length === 0) return;
+    if (!selectedPlanId || selectedPlanId === "__none__" || userIds.length === 0) return;
     bulkMut.mutate(
       { userIds, planId: selectedPlanId, autoRenew: false, notes: "Bulk assigned from admin" },
       { onSuccess: (data) => setBulkResult(data) },
@@ -1367,18 +1368,19 @@ function BulkAssignSection() {
           {/* Plan select */}
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">{t("bulkPlanLabel")}</label>
-            <select
-              value={selectedPlanId}
-              onChange={(e) => setSelectedPlanId(e.target.value)}
-              className="w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-sm"
-            >
-              <option value="">{t("bulkChoosePlanOption")}</option>
-              {(plans ?? []).map((p: SubscriptionPlanItem) => (
-                <option key={p._id} value={p._id}>
-                  {p.name} — {t("tierLabel")} {p.tier} ({p.price} {p.currency}{t("pricePerLabel")}{p.billingCycle})
-                </option>
-              ))}
-            </select>
+            <Select value={selectedPlanId} onValueChange={setSelectedPlanId}>
+              <SelectTrigger className="h-9 w-full rounded-lg">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">{t("bulkChoosePlanOption")}</SelectItem>
+                {(plans ?? []).map((p: SubscriptionPlanItem) => (
+                  <SelectItem key={p._id} value={p._id}>
+                    {p.name} — {t("tierLabel")} {p.tier} ({p.price} {p.currency}{t("pricePerLabel")}{p.billingCycle})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* User IDs textarea */}

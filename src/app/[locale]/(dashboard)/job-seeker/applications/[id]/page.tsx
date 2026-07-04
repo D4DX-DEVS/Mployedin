@@ -28,6 +28,10 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import {
+  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
+} from "@/components/ui/select";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { cn } from "@/lib/utils";
 
 // ── Types ──────────────────────────────────────────────────────────
@@ -657,19 +661,18 @@ function DocumentsSection({
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-medium">{t("type")}</label>
-              <select
-                value={docType}
-                onChange={(e) => setDocType(e.target.value)}
-                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-              >
-                <option value="resume">{t("docResume")}</option>
-                <option value="cover_letter">{t("docCoverLetter")}</option>
-                <option value="portfolio">{t("docPortfolio")}</option>
-                <option value="certification">{t("docCertification")}</option>
-                <option value="reference">{t("docReference")}</option>
-                <option value="id_document">{t("docIdDocument")}</option>
-                <option value="other">{t("docOther")}</option>
-              </select>
+              <Select value={docType} onValueChange={setDocType}>
+                <SelectTrigger className="h-9"><SelectValue placeholder={t("selectType")} /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="resume">{t("docResume")}</SelectItem>
+                  <SelectItem value="cover_letter">{t("docCoverLetter")}</SelectItem>
+                  <SelectItem value="portfolio">{t("docPortfolio")}</SelectItem>
+                  <SelectItem value="certification">{t("docCertification")}</SelectItem>
+                  <SelectItem value="reference">{t("docReference")}</SelectItem>
+                  <SelectItem value="id_document">{t("docIdDocument")}</SelectItem>
+                  <SelectItem value="other">{t("docOther")}</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <div className="space-y-1.5">

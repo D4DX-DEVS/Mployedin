@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
@@ -258,19 +259,17 @@ export default function BackgroundChecksPage() {
                 />
               </div>
               <div className="flex gap-2">
-                <input
-                  type="date"
+                <DateTimePicker
+                  mode="date"
                   value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  className="h-10 rounded-xl border border-border bg-background px-3 text-sm focus:border-primary focus:outline-none"
-                  title="From date"
+                  onChange={setDateFrom}
+                  placeholder={t("fromDate")}
                 />
-                <input
-                  type="date"
+                <DateTimePicker
+                  mode="date"
                   value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  className="h-10 rounded-xl border border-border bg-background px-3 text-sm focus:border-primary focus:outline-none"
-                  title="To date"
+                  onChange={setDateTo}
+                  placeholder={t("toDate")}
                 />
               </div>
             </div>

@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { getInvoiceDeliveryState, type InvoiceDeliveryState } from "@/lib/invoices/status";
 import {
@@ -446,7 +447,7 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
                       <p className="mb-3 text-xs font-semibold text-sky-700 dark:text-sky-300">{t("recordNewPayment", { balance: fmt(invoice.balanceDue) })}</p>
                       <div className="grid gap-3 sm:grid-cols-2">
                         <div><Label className="text-xs">{t("amount")} *</Label><Input type="number" min={0.01} max={invoice.balanceDue} step="0.01" className="mt-1 h-9 rounded-lg" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} /></div>
-                        <div><Label className="text-xs">{t("date")}</Label><Input type="date" className="mt-1 h-9 rounded-lg" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} /></div>
+                        <div><Label className="text-xs">{t("date")}</Label><DateTimePicker mode="date" value={paymentDate} onChange={setPaymentDate} /></div>
                         <div><Label className="text-xs">{t("method")}</Label><SearchableSelect id="pay-method" className="mt-1 h-9 w-full rounded-lg border-border bg-card" options={PAYMENT_METHODS} value={paymentMethod} onValueChange={setPaymentMethod} /></div>
                         <div><Label className="text-xs">{t("referenceNumber")}</Label><Input className="mt-1 h-9 rounded-lg" value={paymentRef} onChange={e => setPaymentRef(e.target.value)} /></div>
                       </div>

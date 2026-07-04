@@ -10,6 +10,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { usePagination } from "@/hooks/usePagination";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -81,10 +82,10 @@ export default function AdminEmployersPage() {
         router.refresh();
       } else {
         const data = await res.json().catch(() => ({}));
-        alert(data.error ?? t("switchViewErrorFallback"));
+        toast.error(data.error ?? t("switchViewErrorFallback"));
       }
     } catch {
-      alert(t("switchViewNetworkError"));
+      toast.error(t("switchViewNetworkError"));
     } finally {
       setSwitchingEmployerId(null);
     }

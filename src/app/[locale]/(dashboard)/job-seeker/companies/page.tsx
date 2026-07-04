@@ -7,6 +7,9 @@ import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import {
+  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
+} from "@/components/ui/select";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
 import { formatLocalizedLocation } from "@/lib/i18n/locations";
@@ -53,7 +56,7 @@ export default function CompaniesListPage() {
     try {
       const params = pagination.paginationParams();
       if (search) params.set("search", search);
-      if (industryFilter) params.set("industry", industryFilter);
+      if (industryFilter && industryFilter !== "all") params.set("industry", industryFilter);
       const res = await fetch(`/api/companies?${params}`);
       if (res.ok) {
         const data = await res.json();
@@ -102,16 +105,15 @@ export default function CompaniesListPage() {
         {industries.length > 0 && (
           <div className="flex flex-col gap-2">
             <label className="text-xs font-medium text-muted-foreground">{t("filterByIndustry") ?? "Industry"}</label>
-            <select
-              value={industryFilter}
-              onChange={(e) => { setIndustryFilter(e.target.value); pagination.resetPage(); }}
-              className="w-full sm:w-48 px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="">{t("allIndustries") ?? "All Industries"}</option>
-              {industries.map((ind) => (
-                <option key={ind} value={ind}>{ind}</option>
-              ))}
-            </select>
+            <Select value={industryFilter} onValueChange={(val) => { setIndustryFilter(val); pagination.resetPage(); }}>
+              <SelectTrigger className="w-full sm:w-48"><SelectValue placeholder={t("allIndustries") ?? "All Industries"} /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("allIndustries") ?? "All Industries"}</SelectItem>
+                {industries.map((ind) => (
+                  <SelectItem key={ind} value={ind}>{ind}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         )}
       </section>

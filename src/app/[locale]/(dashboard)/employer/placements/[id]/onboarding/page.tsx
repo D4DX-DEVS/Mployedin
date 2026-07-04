@@ -19,6 +19,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { toast } from "sonner";
 import { csrfFetch } from "@/lib/security/csrf-client";
 
@@ -432,12 +433,11 @@ export default function PlacementOnboardingPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <Input
-                type="date"
+              <DateTimePicker
+                mode="date"
                 value={newTaskDue}
-                onChange={(e) => setNewTaskDue(e.target.value)}
-                className="w-[150px]"
-                aria-label={t("dueDate")}
+                onChange={setNewTaskDue}
+                placeholder={t("dueDate")}
               />
               <Button onClick={addTask} disabled={busy || newTask.trim().length < 2} className="rounded-xl">
                 <Plus className="mr-2 h-4 w-4" />
@@ -527,11 +527,11 @@ export default function PlacementOnboardingPage() {
               <div className="grid gap-2 sm:grid-cols-2">
                 <Input value={newDocName} onChange={(e) => setNewDocName(e.target.value)} placeholder={t("docNamePlaceholder")} />
                 {requestFromCandidate ? (
-                  <Input
-                    type="date"
+                  <DateTimePicker
+                    mode="date"
                     value={newDocDue}
-                    onChange={(e) => setNewDocDue(e.target.value)}
-                    aria-label={t("dueDate")}
+                    onChange={setNewDocDue}
+                    placeholder={t("dueDate")}
                   />
                 ) : (
                   <Input value={newDocUrl} onChange={(e) => setNewDocUrl(e.target.value)} placeholder={t("docUrlPlaceholder")} />
@@ -563,7 +563,12 @@ export default function PlacementOnboardingPage() {
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="prob-end">{t("probationEndDate")}</Label>
-                <Input id="prob-end" type="date" value={probEnd} onChange={(e) => setProbEnd(e.target.value)} />
+                <DateTimePicker
+                  mode="date"
+                  value={probEnd}
+                  onChange={setProbEnd}
+                  placeholder={t("probationEndDate")}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="prob-status">{t("probationStatus")}</Label>

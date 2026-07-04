@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -322,15 +323,15 @@ function EmailLogsTab() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [statusFilter, setStatusFilter] = useState("");
-  const [sourceFilter, setSourceFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("__all__");
+  const [sourceFilter, setSourceFilter] = useState("__all__");
   const [stats24h, setStats24h] = useState<Record<string, number>>({});
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams({ page: String(page), limit: "30" });
-    if (statusFilter) params.set("status", statusFilter);
-    if (sourceFilter) params.set("source", sourceFilter);
+    if (statusFilter && statusFilter !== "__all__") params.set("status", statusFilter);
+    if (sourceFilter && sourceFilter !== "__all__") params.set("source", sourceFilter);
     try {
       const res = await fetch(`/api/admin/email-logs?${params}`);
       const data = await res.json();
@@ -353,22 +354,32 @@ function EmailLogsTab() {
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
-        <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} className="text-xs border rounded-md px-2 py-1.5 bg-background">
-          <option value="">{t("allStatusesOption")}</option>
-          <option value="sent">{t("sentStatusOption")}</option>
-          <option value="failed">{t("failedStatusOption")}</option>
-          <option value="bounced">{t("bouncedStatusOption")}</option>
-        </select>
-        <select value={sourceFilter} onChange={(e) => { setSourceFilter(e.target.value); setPage(1); }} className="text-xs border rounded-md px-2 py-1.5 bg-background">
-          <option value="">{t("allSourcesOption")}</option>
-          <option value="orchestrator">{t("orchestratorSourceOption")}</option>
-          <option value="daily-digest">{t("dailyDigestSourceOption")}</option>
-          <option value="weekly-digest">{t("weeklyDigestSourceOption")}</option>
-          <option value="re-engagement">{t("reEngagementSourceOption")}</option>
-          <option value="broadcast">{t("broadcastSourceOption")}</option>
-          <option value="direct">{t("directSourceOption")}</option>
-          <option value="test">{t("testSourceOption")}</option>
-        </select>
+        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
+          <SelectTrigger className="w-auto text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">{t("allStatusesOption")}</SelectItem>
+            <SelectItem value="sent">{t("sentStatusOption")}</SelectItem>
+            <SelectItem value="failed">{t("failedStatusOption")}</SelectItem>
+            <SelectItem value="bounced">{t("bouncedStatusOption")}</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={sourceFilter} onValueChange={(v) => { setSourceFilter(v); setPage(1); }}>
+          <SelectTrigger className="w-auto text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">{t("allSourcesOption")}</SelectItem>
+            <SelectItem value="orchestrator">{t("orchestratorSourceOption")}</SelectItem>
+            <SelectItem value="daily-digest">{t("dailyDigestSourceOption")}</SelectItem>
+            <SelectItem value="weekly-digest">{t("weeklyDigestSourceOption")}</SelectItem>
+            <SelectItem value="re-engagement">{t("reEngagementSourceOption")}</SelectItem>
+            <SelectItem value="broadcast">{t("broadcastSourceOption")}</SelectItem>
+            <SelectItem value="direct">{t("directSourceOption")}</SelectItem>
+            <SelectItem value="test">{t("testSourceOption")}</SelectItem>
+          </SelectContent>
+        </Select>
         <Button variant="outline" size="sm" onClick={fetchLogs} disabled={loading} className="gap-1 ml-auto">
           <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} /> {t("refreshButtonLabel")}
         </Button>
@@ -467,11 +478,16 @@ function UserOverridesTab({ config, onRefresh }: { config: SystemConfigData | nu
           <p className="text-xs text-muted-foreground">{t("addUserOverrideDescription")}</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Input placeholder={t("userIdPlaceholder")} value={userId} onChange={(e) => setUserId(e.target.value)} className="text-sm" />
-            <select value={action} onChange={(e) => setAction(e.target.value)} className="text-sm border rounded-md px-3 py-2 bg-background">
-              <option value="force_unsubscribe">{t("forceUnsubscribeOption")}</option>
-              <option value="pause_emails">{t("pauseEmailsOption")}</option>
-              <option value="force_instant">{t("forceInstantOption")}</option>
-            </select>
+            <Select value={action} onValueChange={setAction}>
+              <SelectTrigger className="text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="force_unsubscribe">{t("forceUnsubscribeOption")}</SelectItem>
+                <SelectItem value="pause_emails">{t("pauseEmailsOption")}</SelectItem>
+                <SelectItem value="force_instant">{t("forceInstantOption")}</SelectItem>
+              </SelectContent>
+            </Select>
             <Input placeholder={t("reasonPlaceholder")} value={reason} onChange={(e) => setReason(e.target.value)} className="text-sm" />
           </div>
           <Button onClick={addOverride} disabled={submitting || !userId || !reason} size="sm" className="gap-2">

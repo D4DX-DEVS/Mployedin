@@ -16,6 +16,8 @@ import { csrfFetch } from "@/lib/security/csrf-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
   Dialog,
   DialogContent,
@@ -751,27 +753,29 @@ function QuestionsStep({
           )}
 
           {q.type === "date" && (
-            <Input
-              type="date"
+            <DateTimePicker
+              mode="date"
               value={(answers[q.id] as string) ?? ""}
-              onChange={(e) => onSet(q.id, e.target.value)}
-              className="rounded-xl"
+              onChange={(e) => onSet(q.id, e)}
             />
           )}
 
           {q.type === "select" && (
-            <select
-              className="h-9 w-full rounded-xl border border-border bg-background px-3 text-sm"
+            <Select
               value={(answers[q.id] as string) ?? ""}
-              onChange={(e) => onSet(q.id, e.target.value)}
+              onValueChange={(e) => onSet(q.id, e)}
             >
-              <option value="">{q.placeholder || t("questions.selectOption")}</option>
-              {(q.options ?? []).map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="h-9 w-full rounded-xl">
+                <SelectValue placeholder={q.placeholder || t("questions.selectOption")} />
+              </SelectTrigger>
+              <SelectContent>
+                {(q.options ?? []).map((opt) => (
+                  <SelectItem key={opt} value={opt}>
+                    {opt}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
 
           {q.type === "radio" && (

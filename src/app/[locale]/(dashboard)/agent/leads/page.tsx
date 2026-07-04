@@ -29,6 +29,7 @@ import { useRouter } from "next/navigation";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import type { ExportColumn } from "@/lib/export";
 
 /* ─── Types ─────────────────────────────────────────────────────────────── */
@@ -457,8 +458,8 @@ export default function AgentLeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [exhibitionFilter, setExhibitionFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [exhibitionFilter, setExhibitionFilter] = useState("all");
   const [updating, setUpdating] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editLead, setEditLead] = useState<Lead | null>(null);
@@ -531,8 +532,8 @@ export default function AgentLeadsPage() {
       const pp = pagination.paginationParams();
       pp.forEach((v, k) => params.set(k, v));
     }
-    if (statusFilter) params.set("status", statusFilter);
-    if (exhibitionFilter) params.set("exhibitionId", exhibitionFilter);
+    if (statusFilter !== "all") params.set("status", statusFilter);
+    if (exhibitionFilter !== "all") params.set("exhibitionId", exhibitionFilter);
 
     const res = await fetch(`/api/leads?${params}`);
     const data = await res.json();
@@ -772,26 +773,28 @@ export default function AgentLeadsPage() {
                 className="h-10 w-full rounded-xl border border-border bg-background/70 pl-9 pr-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground/60 focus:border-ring focus:ring-2 focus:ring-ring/20"
               />
             </div>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="h-10 rounded-xl border border-border bg-background/70 px-3 text-sm text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20"
-            >
-              <option value="">{t("allStages")}</option>
-              {STAGES.map((s) => (
-                <option key={s} value={s}>{STAGE_CONFIG[s].label}</option>
-              ))}
-            </select>
-            <select
-              value={exhibitionFilter}
-              onChange={(e) => setExhibitionFilter(e.target.value)}
-              className="h-10 max-w-[180px] truncate rounded-xl border border-border bg-background/70 px-3 text-sm text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20"
-            >
-              <option value="">{t("allExhibitions")}</option>
-              {exhibitions.map((e) => (
-                <option key={e._id} value={e._id}>{e.eventName}</option>
-              ))}
-            </select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="h-10 rounded-xl border border-border bg-background/70 px-3 text-sm text-foreground">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("allStages")}</SelectItem>
+                {STAGES.map((s) => (
+                  <SelectItem key={s} value={s}>{STAGE_CONFIG[s].label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={exhibitionFilter} onValueChange={setExhibitionFilter}>
+              <SelectTrigger className="h-10 max-w-[180px] truncate rounded-xl border border-border bg-background/70 px-3 text-sm text-foreground">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("allExhibitions")}</SelectItem>
+                {exhibitions.map((e) => (
+                  <SelectItem key={e._id} value={e._id}>{e.eventName}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Export */}
@@ -809,7 +812,7 @@ export default function AgentLeadsPage() {
             return (
               <button
                 key={s}
-                onClick={() => setStatusFilter(statusFilter === s ? "" : s)}
+                onClick={() => setStatusFilter(statusFilter === s ? "all" : s)}
                 className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${
                   statusFilter === s
                     ? `${config.bgColor} ${config.borderColor} ${config.color}`
@@ -849,7 +852,7 @@ export default function AgentLeadsPage() {
         >
           <section className="overflow-x-auto pb-4">
             <div className="flex gap-4" style={{ minWidth: "fit-content" }}>
-              {STAGES.filter((s) => !statusFilter || s === statusFilter).map((stage) => (
+              {STAGES.filter((s) => statusFilter === "all" || s === statusFilter).map((stage) => (
                 <DroppableKanbanColumn
                   key={stage}
                   stage={stage}

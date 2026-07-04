@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { usePagination } from "@/hooks/usePagination";
 import {
   Search, Inbox, Sparkles, Calendar, Building2, ArrowUpDown,
@@ -595,24 +596,20 @@ export default function AdminApplicationsPage() {
                   onValueChange={(v) => { setScoreRange(v); resetPage(); }}
                   placeholder={t("allScores")}
                 />
-                <div className="relative">
-                  <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    type="date"
-                    value={dateFrom}
-                    onChange={(e) => { setDateFrom(e.target.value); resetPage(); }}
-                    className="h-11 rounded-xl border-border bg-card pl-9 text-sm shadow-none"
-                  />
-                </div>
-                <div className="relative">
-                  <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    type="date"
-                    value={dateTo}
-                    onChange={(e) => { setDateTo(e.target.value); resetPage(); }}
-                    className="h-11 rounded-xl border-border bg-card pl-9 text-sm shadow-none"
-                  />
-                </div>
+                <DateTimePicker
+                  mode="date"
+                  value={dateFrom}
+                  onChange={(v) => { setDateFrom(v); resetPage(); }}
+                  placeholder={t("fromDate")}
+                  className="h-11 rounded-xl border-border bg-card text-sm"
+                />
+                <DateTimePicker
+                  mode="date"
+                  value={dateTo}
+                  onChange={(v) => { setDateTo(v); resetPage(); }}
+                  placeholder={t("toDate")}
+                  className="h-11 rounded-xl border-border bg-card text-sm"
+                />
                 <SearchableSelect
                   className="h-11 w-full rounded-xl border-border bg-card"
                   options={SORT_OPTIONS}

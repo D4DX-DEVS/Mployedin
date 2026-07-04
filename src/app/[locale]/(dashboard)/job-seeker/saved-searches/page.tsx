@@ -7,6 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import {
+  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
+} from "@/components/ui/select";
+import {
   Bell, Plus, Trash2, Search, Inbox, RotateCcw, Mail,
   BellRing, Briefcase, MapPin, Clock, TrendingUp,
 } from "lucide-react";
@@ -87,7 +90,7 @@ export default function SavedSearchesPage() {
           filters: {
             location: form.location || undefined,
             jobType: form.jobType || undefined,
-            experienceLevel: form.experienceLevel || undefined,
+            experienceLevel: (form.experienceLevel && form.experienceLevel !== "all") ? form.experienceLevel : undefined,
           },
           frequency: form.frequency,
           emailAlert: form.frequency !== "never",
@@ -170,25 +173,23 @@ export default function SavedSearchesPage() {
             <Input placeholder={t("namePlaceholder")} value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} />
             <Input placeholder={t("queryPlaceholder")} value={form.query} onChange={(e) => setForm((p) => ({ ...p, query: e.target.value }))} />
             <Input placeholder={t("locationPlaceholder")} value={form.location} onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))} />
-            <select
-              value={form.experienceLevel}
-              onChange={(e) => setForm((p) => ({ ...p, experienceLevel: e.target.value }))}
-              className="rounded-md border bg-background px-3 py-2 text-sm"
-            >
-              <option value="">{t("experienceAny")}</option>
-              <option value="entry">{t("experienceEntry")}</option>
-              <option value="mid">{t("experienceMid")}</option>
-              <option value="senior">{t("experienceSenior")}</option>
-            </select>
-            <select
-              value={form.frequency}
-              onChange={(e) => setForm((p) => ({ ...p, frequency: e.target.value }))}
-              className="rounded-md border bg-background px-3 py-2 text-sm"
-            >
-              <option value="daily">{t("daily")}</option>
-              <option value="weekly">{t("weekly")}</option>
-              <option value="never">{t("never")}</option>
-            </select>
+            <Select value={form.experienceLevel} onValueChange={(val) => setForm((p) => ({ ...p, experienceLevel: val }))}>
+              <SelectTrigger><SelectValue placeholder={t("experienceAny")} /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("experienceAny")}</SelectItem>
+                <SelectItem value="entry">{t("experienceEntry")}</SelectItem>
+                <SelectItem value="mid">{t("experienceMid")}</SelectItem>
+                <SelectItem value="senior">{t("experienceSenior")}</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={form.frequency} onValueChange={(val) => setForm((p) => ({ ...p, frequency: val }))}>
+              <SelectTrigger><SelectValue placeholder={t("selectFrequency")} /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="daily">{t("daily")}</SelectItem>
+                <SelectItem value="weekly">{t("weekly")}</SelectItem>
+                <SelectItem value="never">{t("never")}</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex gap-2">
             <Button onClick={createSearch}><Plus className="me-1 h-4 w-4" /> {t("create")}</Button>

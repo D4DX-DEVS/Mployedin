@@ -6,6 +6,7 @@ import { Search, Shield, Clock, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Badge } from "@/components/ui/badge";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { usePagination } from "@/hooks/usePagination";
@@ -151,19 +152,19 @@ export default function AuditLogsPage() {
                 maxLength={2}
               />
             </div>
-            <Input
-              type="date"
+            <DateTimePicker
+              mode="date"
               value={fromDate}
-              onChange={(e) => { setFromDate(e.target.value); resetPage(); }}
-              className="h-11 w-40 rounded-xl border-border bg-card text-sm shadow-none"
+              onChange={(v) => { setFromDate(v); resetPage(); }}
               placeholder={t("from")}
+              className="h-11 w-40 rounded-xl border-border bg-card text-sm"
             />
-            <Input
-              type="date"
+            <DateTimePicker
+              mode="date"
               value={toDate}
-              onChange={(e) => { setToDate(e.target.value); resetPage(); }}
-              className="h-11 w-40 rounded-xl border-border bg-card text-sm shadow-none"
+              onChange={(v) => { setToDate(v); resetPage(); }}
               placeholder={t("to")}
+              className="h-11 w-40 rounded-xl border-border bg-card text-sm"
             />
           </div>
         }

@@ -8,6 +8,8 @@ import { Loader2, Zap, FileText, ChevronDown, ChevronUp, Upload, Plus, Link2 } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 
 export interface EasyApplyScreeningQuestion {
   id: string;
@@ -523,25 +525,27 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
               )}
 
               {q.type === "date" && (
-                <Input
-                  type="date"
+                <DateTimePicker
+                  mode="date"
                   value={(answers[q.id] as string) ?? ""}
-                  onChange={(e) => setAnswer(q.id, e.target.value)}
-                  className="rounded-xl"
+                  onChange={(e) => setAnswer(q.id, e)}
                 />
               )}
 
               {q.type === "select" && (
-                <select
-                  className="h-9 w-full rounded-xl border border-border bg-background px-3 text-sm"
+                <Select
                   value={(answers[q.id] as string) ?? ""}
-                  onChange={(e) => setAnswer(q.id, e.target.value)}
+                  onValueChange={(e) => setAnswer(q.id, e)}
                 >
-                  <option value="">{q.placeholder || "Select an option"}</option>
-                  {(q.options ?? []).map((opt) => (
-                    <option key={opt} value={opt}>{opt}</option>
-                  ))}
-                </select>
+                  <SelectTrigger className="h-9 w-full rounded-xl">
+                    <SelectValue placeholder={q.placeholder || "Select an option"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(q.options ?? []).map((opt) => (
+                      <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               )}
 
               {q.type === "radio" && (

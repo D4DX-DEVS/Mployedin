@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CascadingLocationPicker } from "@/components/shared/CascadingLocationPicker";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { cn } from "@/lib/utils";
 
 /* ── Types ── */
@@ -571,18 +572,18 @@ export default function AgentDetailPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>{t("formLabelWorkingHoursStart")}</Label>
-                <Input
-                  type="time"
+                <DateTimePicker
+                  mode="time"
                   value={editForm.workingHoursStart}
-                  onChange={(e) => setEditForm((f) => ({ ...f, workingHoursStart: e.target.value }))}
+                  onChange={(v) => setEditForm((f) => ({ ...f, workingHoursStart: v }))}
                 />
               </div>
               <div className="space-y-2">
                 <Label>{t("formLabelWorkingHoursEnd")}</Label>
-                <Input
-                  type="time"
+                <DateTimePicker
+                  mode="time"
                   value={editForm.workingHoursEnd}
-                  onChange={(e) => setEditForm((f) => ({ ...f, workingHoursEnd: e.target.value }))}
+                  onChange={(v) => setEditForm((f) => ({ ...f, workingHoursEnd: v }))}
                 />
               </div>
             </div>

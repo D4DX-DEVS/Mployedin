@@ -14,6 +14,10 @@ import { usePagination } from "@/hooks/usePagination";
 import { useDebounce } from "@/hooks/useDebounce";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Textarea } from "@/components/ui/textarea";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
+import {
+  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
@@ -300,22 +304,20 @@ export default function ApplicationsPage() {
             <div className="mt-2.5 flex flex-col gap-2 rounded-2xl border border-border/60 bg-background p-3 shadow-sm sm:flex-row sm:items-end">
               <div className="flex-1 space-y-1.5">
                 <label htmlFor="applications-date-from" className="text-xs font-medium text-muted-foreground">{t("appliedFrom")}</label>
-                <Input
-                  id="applications-date-from"
-                  type="date"
+                <DateTimePicker
+                  mode="date"
                   value={dateFrom}
-                  onChange={(e) => { setDateFrom(e.target.value); resetPage(); }}
-                  className="h-[34px] rounded-lg text-sm"
+                  onChange={(val) => { setDateFrom(val); resetPage(); }}
+                  className="h-[34px]"
                 />
               </div>
               <div className="flex-1 space-y-1.5">
                 <label htmlFor="applications-date-to" className="text-xs font-medium text-muted-foreground">{t("appliedTo")}</label>
-                <Input
-                  id="applications-date-to"
-                  type="date"
+                <DateTimePicker
+                  mode="date"
                   value={dateTo}
-                  onChange={(e) => { setDateTo(e.target.value); resetPage(); }}
-                  className="h-[34px] rounded-lg text-sm"
+                  onChange={(val) => { setDateTo(val); resetPage(); }}
+                  className="h-[34px]"
                 />
               </div>
               {hasActiveFilters && (

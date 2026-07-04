@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { JobFormValues } from "./jobFormSchema";
 
@@ -224,11 +225,9 @@ export function Step5ScreeningQuestions() {
               <div className="mt-3 flex flex-wrap items-end gap-4">
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">{t("answerType")}</Label>
-                  <select
-                    {...register(`screeningQuestions.${index}.type`)}
-                    className="h-9 rounded-xl border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-                    onChange={(e) => {
-                      const newType = e.target.value;
+                  <Select
+                    value={questions[index]?.type ?? "text"}
+                    onValueChange={(newType) => {
                       setValue(
                         `screeningQuestions.${index}.type` as const,
                         newType as JobFormValues["screeningQuestions"][number]["type"],
@@ -244,12 +243,17 @@ export function Step5ScreeningQuestions() {
                       }
                     }}
                   >
-                    {QUESTION_TYPES.map((questionType) => (
-                      <option key={questionType} value={questionType}>
-                        {t(`types.${questionType}`)}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="h-9 w-auto rounded-xl">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {QUESTION_TYPES.map((questionType) => (
+                        <SelectItem key={questionType} value={questionType}>
+                          {t(`types.${questionType}`)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">

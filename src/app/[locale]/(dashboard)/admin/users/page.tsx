@@ -25,6 +25,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import type { UserRole, PermissionMode, CustomPermissions } from "@/types/user";
 import { AlertCircle, Loader2, Download, FileSpreadsheet, FileText } from "lucide-react";
 
@@ -129,7 +130,7 @@ export default function AdminUsersPage() {
   }
 
   async function applyBulk() {
-    if (!bulkAction || selected.length === 0) return;
+    if (!bulkAction || bulkAction === "__none__" || selected.length === 0) return;
     setBulkLoading(true);
     try {
       const [action, role] = bulkAction.split(":");
@@ -138,7 +139,7 @@ export default function AdminUsersPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids: selected, action, ...(role ? { role } : {}) }),
       });
-      setBulkAction(""); setSelected([]);
+      setBulkAction("__none__"); setSelected([]);
       fetchUsers();
     } finally { setBulkLoading(false); }
   }
@@ -294,15 +295,20 @@ export default function AdminUsersPage() {
         {selected.length > 0 && (
           <div className="flex items-center gap-3 border-b border-border/80 px-5 py-2.5 bg-primary/5">
             <span className="text-sm font-medium text-primary">{t("selected", { count: selected.length })}</span>
-            <select value={bulkAction} onChange={e => setBulkAction(e.target.value)} className="input-field flex-1 max-w-xs text-sm">
-              <option value="">{t("bulkAction")}</option>
-              <option value="setRole:agent">{t("setRoleAgent")}</option>
-              <option value="setRole:employer">{t("setRoleEmployer")}</option>
-              <option value="setRole:job_seeker">{t("setRoleJobSeeker")}</option>
-              <option value="activate">{t("activate")}</option>
-              <option value="deactivate">{t("deactivate")}</option>
-              <option value="delete">{t("delete")}</option>
-            </select>
+            <Select value={bulkAction} onValueChange={setBulkAction}>
+              <SelectTrigger className="flex-1 max-w-xs text-sm h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">{t("bulkAction")}</SelectItem>
+                <SelectItem value="setRole:agent">{t("setRoleAgent")}</SelectItem>
+                <SelectItem value="setRole:employer">{t("setRoleEmployer")}</SelectItem>
+                <SelectItem value="setRole:job_seeker">{t("setRoleJobSeeker")}</SelectItem>
+                <SelectItem value="activate">{t("activate")}</SelectItem>
+                <SelectItem value="deactivate">{t("deactivate")}</SelectItem>
+                <SelectItem value="delete">{t("delete")}</SelectItem>
+              </SelectContent>
+            </Select>
             <Button size="sm" onClick={applyBulk} disabled={!bulkAction || bulkLoading} className="btn-primary">
               {t("apply")}
             </Button>

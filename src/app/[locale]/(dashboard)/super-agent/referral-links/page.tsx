@@ -49,6 +49,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
@@ -263,7 +271,7 @@ export default function SuperAgentReferralLinksPage() {
             </div>
             <div>
               <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("expiryDateLabel")}</label>
-              <Input type="date" value={newExpiresAt} onChange={(e) => setNewExpiresAt(e.target.value)} className="h-10 rounded-xl" />
+              <DateTimePicker mode="date" value={newExpiresAt} onChange={setNewExpiresAt} className="h-10 rounded-xl" />
             </div>
             <div className="sm:col-span-3 flex justify-end">
               <button
@@ -334,46 +342,66 @@ export default function SuperAgentReferralLinksPage() {
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div>
                   <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{tc("status")}</label>
-                  <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value as ReferralLinkStatus | ""); pagination.resetPage(); }} className="h-9 w-full rounded-lg border border-border bg-background px-2.5 text-sm text-foreground">
-                    <option value="">{t("filterAllStatuses")}</option>
-                    <option value="active">{t("statusActive")}</option>
-                    <option value="expired">{t("statusExpired")}</option>
-                    <option value="maxed">{t("statusLimitReached")}</option>
-                    <option value="inactive">{t("statusDisabled")}</option>
-                  </select>
+                  <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v as ReferralLinkStatus | ""); pagination.resetPage(); }}>
+                    <SelectTrigger className="h-9 w-full text-sm">
+                      <SelectValue placeholder={t("filterAllStatuses")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{t("filterAllStatuses")}</SelectItem>
+                      <SelectItem value="active">{t("statusActive")}</SelectItem>
+                      <SelectItem value="expired">{t("statusExpired")}</SelectItem>
+                      <SelectItem value="maxed">{t("statusLimitReached")}</SelectItem>
+                      <SelectItem value="inactive">{t("statusDisabled")}</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("filterCreatorRole")}</label>
-                  <select value={creatorRoleFilter} onChange={(e) => { setCreatorRoleFilter(e.target.value as ReferralCreatorRole | ""); pagination.resetPage(); }} className="h-9 w-full rounded-lg border border-border bg-background px-2.5 text-sm text-foreground">
-                    <option value="">{t("filterAllRoles")}</option>
-                    <option value="super_agent">{t("roleSuperAgent")}</option>
-                    <option value="agent">{t("roleAgent")}</option>
-                  </select>
+                  <Select value={creatorRoleFilter} onValueChange={(v) => { setCreatorRoleFilter(v as ReferralCreatorRole | ""); pagination.resetPage(); }}>
+                    <SelectTrigger className="h-9 w-full text-sm">
+                      <SelectValue placeholder={t("filterAllRoles")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{t("filterAllRoles")}</SelectItem>
+                      <SelectItem value="super_agent">{t("roleSuperAgent")}</SelectItem>
+                      <SelectItem value="agent">{t("roleAgent")}</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("filterDateFrom")}</label>
-                  <Input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); pagination.resetPage(); }} className="h-9 rounded-lg text-sm" />
+                  <DateTimePicker mode="date" value={dateFrom} onChange={(v) => { setDateFrom(v); pagination.resetPage(); }} />
                 </div>
                 <div>
                   <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("filterDateTo")}</label>
-                  <Input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); pagination.resetPage(); }} className="h-9 rounded-lg text-sm" />
+                  <DateTimePicker mode="date" value={dateTo} onChange={(v) => { setDateTo(v); pagination.resetPage(); }} />
                 </div>
                 <div>
                   <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("filterSortBy")}</label>
-                  <select value={sortBy} onChange={(e) => { setSortBy(e.target.value as ReferralSortField | ""); pagination.resetPage(); }} className="h-9 w-full rounded-lg border border-border bg-background px-2.5 text-sm text-foreground">
-                    <option value="">{t("sortNewestFirst")}</option>
-                    <option value="usedCount">{t("sortMostUsed")}</option>
-                    <option value="code">{t("sortCodeAZ")}</option>
-                    <option value="label">{t("sortLabelAZ")}</option>
-                  </select>
+                  <Select value={sortBy || "newest"} onValueChange={(v) => { setSortBy(v === "newest" ? "" : (v as ReferralSortField)); pagination.resetPage(); }}>
+                    <SelectTrigger className="h-9 w-full text-sm">
+                      <SelectValue placeholder={t("sortNewestFirst")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="newest">{t("sortNewestFirst")}</SelectItem>
+                      <SelectItem value="usedCount">{t("sortMostUsed")}</SelectItem>
+                      <SelectItem value="code">{t("sortCodeAZ")}</SelectItem>
+                      <SelectItem value="label">{t("sortLabelAZ")}</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("filterSortOrder")}</label>
-                  <select value={sortOrder} onChange={(e) => { setSortOrder(e.target.value as "asc" | "desc" | ""); pagination.resetPage(); }} className="h-9 w-full rounded-lg border border-border bg-background px-2.5 text-sm text-foreground">
-                    <option value="">{t("sortDefault")}</option>
-                    <option value="desc">{t("sortDescending")}</option>
-                    <option value="asc">{t("sortAscending")}</option>
-                  </select>
+                  <Select value={sortOrder || "default"} onValueChange={(v) => { setSortOrder(v === "default" ? "" : (v as "asc" | "desc")); pagination.resetPage(); }}>
+                    <SelectTrigger className="h-9 w-full text-sm">
+                      <SelectValue placeholder={t("sortDefault")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="default">{t("sortDefault")}</SelectItem>
+                      <SelectItem value="desc">{t("sortDescending")}</SelectItem>
+                      <SelectItem value="asc">{t("sortAscending")}</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             }

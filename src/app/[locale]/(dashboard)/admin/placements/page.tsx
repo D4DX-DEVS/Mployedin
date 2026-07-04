@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -374,24 +375,20 @@ export default function AdminPlacementsPage() {
 
             {showAdvanced && (
               <div className="grid gap-3 pt-1 sm:grid-cols-2 xl:grid-cols-4">
-                <div className="relative">
-                  <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    type="date"
-                    value={dateFrom}
-                    onChange={(e) => { setDateFrom(e.target.value); resetPage(); }}
-                    className="h-11 rounded-xl border-border bg-card pl-9 text-sm shadow-none"
-                  />
-                </div>
-                <div className="relative">
-                  <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    type="date"
-                    value={dateTo}
-                    onChange={(e) => { setDateTo(e.target.value); resetPage(); }}
-                    className="h-11 rounded-xl border-border bg-card pl-9 text-sm shadow-none"
-                  />
-                </div>
+                <DateTimePicker
+                  mode="date"
+                  value={dateFrom}
+                  onChange={(v) => { setDateFrom(v); resetPage(); }}
+                  placeholder={t("from")}
+                  className="h-11 rounded-xl border-border bg-card text-sm"
+                />
+                <DateTimePicker
+                  mode="date"
+                  value={dateTo}
+                  onChange={(v) => { setDateTo(v); resetPage(); }}
+                  placeholder={t("to")}
+                  className="h-11 rounded-xl border-border bg-card text-sm"
+                />
                 <div className="relative">
                   <DollarSign className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input

@@ -14,6 +14,8 @@ import {
 import { ArrowRight, CalendarCheck2, CheckCircle, Edit2, Inbox, Search, Sparkles, Video, MapPin, Phone, XCircle, RotateCcw, Filter, X } from "lucide-react";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import type { ExportColumn } from "@/lib/export";
 
 /* ── Types ─────────────────────────────────────────────────────────── */
@@ -107,8 +109,8 @@ export default function AgentInterviewsPage() {
 
   /* Filter state */
   const [status, setStatus] = useState("");
-  const [employerFilter, setEmployerFilter] = useState("");
-  const [jobFilter, setJobFilter] = useState("");
+  const [employerFilter, setEmployerFilter] = useState("all");
+  const [jobFilter, setJobFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("");
   const [outcomeFilter, setOutcomeFilter] = useState("");
   const [search, setSearch] = useState("");
@@ -148,7 +150,7 @@ export default function AgentInterviewsPage() {
     (async () => {
       try {
         const params = new URLSearchParams({ limit: "200" });
-        if (employerFilter) params.set("employerId", employerFilter);
+        if (employerFilter !== "all") params.set("employerId", employerFilter);
         const res = await fetch(`/api/jobs?${params}`);
         if (res.ok) {
           const data = await res.json();
@@ -168,8 +170,8 @@ export default function AgentInterviewsPage() {
     try {
       const params = pagination.paginationParams();
       if (status) params.set("status", status);
-      if (employerFilter) params.set("employerId", employerFilter);
-      if (jobFilter) params.set("jobId", jobFilter);
+      if (employerFilter !== "all") params.set("employerId", employerFilter);
+      if (jobFilter !== "all") params.set("jobId", jobFilter);
       if (typeFilter) params.set("type", typeFilter);
       if (outcomeFilter) params.set("outcome", outcomeFilter);
       if (debouncedSearch) params.set("search", debouncedSearch);
@@ -212,8 +214,8 @@ export default function AgentInterviewsPage() {
 
   const clearAllFilters = () => {
     setStatus("");
-    setEmployerFilter("");
-    setJobFilter("");
+    setEmployerFilter("all");
+    setJobFilter("all");
     setTypeFilter("");
     setOutcomeFilter("");
     setSearch("");
@@ -341,43 +343,68 @@ export default function AgentInterviewsPage() {
           {/* Status */}
           <div>
             <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{tc("status")}</label>
-            <select value={status} onChange={(e) => setStatus(e.target.value)} className={selectClass}>
-              {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
+            <Select value={status} onValueChange={setStatus}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Employer */}
           <div>
             <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("filterEmployer")}</label>
-            <select value={employerFilter} onChange={(e) => { setEmployerFilter(e.target.value); setJobFilter(""); }} className={selectClass}>
-              <option value="">{t("filterAllEmployers")}</option>
-              {employers.map((emp) => <option key={emp._id} value={emp._id}>{emp.companyName}</option>)}
-            </select>
+            <Select value={employerFilter} onValueChange={(value) => { setEmployerFilter(value); setJobFilter("all"); }}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("filterAllEmployers")}</SelectItem>
+                {employers.map((emp) => <SelectItem key={emp._id} value={emp._id}>{emp.companyName}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Job */}
           <div>
             <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("filterJob")}</label>
-            <select value={jobFilter} onChange={(e) => setJobFilter(e.target.value)} className={selectClass}>
-              <option value="">{t("filterAllJobs")}</option>
-              {jobs.map((j) => <option key={j._id} value={j._id}>{j.title}</option>)}
-            </select>
+            <Select value={jobFilter} onValueChange={setJobFilter}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("filterAllJobs")}</SelectItem>
+                {jobs.map((j) => <SelectItem key={j._id} value={j._id}>{j.title}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Type */}
           <div>
             <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("filterType")}</label>
-            <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className={selectClass}>
-              {TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TYPE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Outcome */}
           <div>
             <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("filterOutcome")}</label>
-            <select value={outcomeFilter} onChange={(e) => setOutcomeFilter(e.target.value)} className={selectClass}>
-              {OUTCOME_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
+            <Select value={outcomeFilter} onValueChange={setOutcomeFilter}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {OUTCOME_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -385,11 +412,11 @@ export default function AgentInterviewsPage() {
         <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:max-w-md">
           <div>
             <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("labelFromDate")}</label>
-            <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className={selectClass} />
+            <DateTimePicker mode="date" value={dateFrom} onChange={setDateFrom} />
           </div>
           <div>
             <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("labelToDate")}</label>
-            <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className={selectClass} />
+            <DateTimePicker mode="date" value={dateTo} onChange={setDateTo} />
           </div>
         </div>
 

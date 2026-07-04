@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -699,13 +700,13 @@ export default function AgentOffersPage() {
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-xs font-medium text-muted-foreground">{t("reviseDialog.startDate")}</label>
-                <Input type="date" value={reviseForm.startDate}
-                  onChange={(e) => setReviseForm((f) => ({ ...f, startDate: e.target.value }))} />
+                <DateTimePicker mode="date" value={reviseForm.startDate}
+                  onChange={(v) => setReviseForm((f) => ({ ...f, startDate: v }))} />
               </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground">{t("reviseDialog.expiresAt")}</label>
-                <Input type="date" value={reviseForm.expiresAt}
-                  onChange={(e) => setReviseForm((f) => ({ ...f, expiresAt: e.target.value }))} />
+                <DateTimePicker mode="date" value={reviseForm.expiresAt}
+                  onChange={(v) => setReviseForm((f) => ({ ...f, expiresAt: v }))} />
               </div>
             </div>
             <div>

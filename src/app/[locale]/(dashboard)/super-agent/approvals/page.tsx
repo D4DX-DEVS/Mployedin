@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -304,20 +305,18 @@ export default function SuperAgentApprovalsPage() {
               </Select>
               <div className="flex items-center gap-1.5">
                 <label className="text-xs text-muted-foreground whitespace-nowrap">{t("dateFromLabel")}</label>
-                <Input
-                  type="date"
+                <DateTimePicker
+                  mode="date"
                   value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  className="h-11 w-[160px] rounded-xl border-border bg-card text-sm shadow-none"
+                  onChange={setDateFrom}
                 />
               </div>
               <div className="flex items-center gap-1.5">
                 <label className="text-xs text-muted-foreground whitespace-nowrap">{t("dateToLabel")}</label>
-                <Input
-                  type="date"
+                <DateTimePicker
+                  mode="date"
                   value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  className="h-11 w-[160px] rounded-xl border-border bg-card text-sm shadow-none"
+                  onChange={setDateTo}
                 />
               </div>
             </div>

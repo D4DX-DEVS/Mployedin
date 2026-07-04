@@ -16,6 +16,7 @@ import { ArrowRight, BriefcaseBusiness, Building2, Calendar, Check, ChevronDown,
 import { useConfirm } from "@/hooks/useConfirm";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
+import { toast } from "sonner";
 import type { ExportColumn } from "@/lib/export";
 
 interface Employer {
@@ -92,10 +93,10 @@ export default function AgentEmployersPage() {
         router.refresh();
       } else {
         const data = await res.json().catch(() => ({}));
-        alert(data.error ?? t("switchEmployerViewError"));
+        toast.error(data.error ?? t("switchEmployerViewError"));
       }
     } catch {
-      alert(t("switchEmployerNetworkError"));
+      toast.error(t("switchEmployerNetworkError"));
     } finally {
       setSwitchingEmployerId(null);
     }

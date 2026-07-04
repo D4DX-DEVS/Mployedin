@@ -8,6 +8,7 @@ import { usePagination } from "@/hooks/usePagination";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -279,29 +280,21 @@ export default function AgentCommissionsPage() {
             </div>
             <div>
               <label htmlFor="agent-commissions-date-from" className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("dateFromLabel")}</label>
-              <div className="relative">
-                <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="agent-commissions-date-from"
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  className="h-11 rounded-xl border-border bg-secondary/65 pl-10"
-                />
-              </div>
+              <DateTimePicker
+                mode="date"
+                value={dateFrom}
+                onChange={setDateFrom}
+                className="h-11 rounded-xl border-border bg-secondary/65"
+              />
             </div>
             <div>
               <label htmlFor="agent-commissions-date-to" className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("dateToLabel")}</label>
-              <div className="relative">
-                <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="agent-commissions-date-to"
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  className="h-11 rounded-xl border-border bg-secondary/65 pl-10"
-                />
-              </div>
+              <DateTimePicker
+                mode="date"
+                value={dateTo}
+                onChange={setDateTo}
+                className="h-11 rounded-xl border-border bg-secondary/65"
+              />
             </div>
           </div>
         )}

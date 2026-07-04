@@ -16,6 +16,14 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
+import {
   SuperAgentPageIntro,
   SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
@@ -434,7 +442,7 @@ function ProfileTab() {
 function RegionTab() {
   const t = useTranslations("superAgentSettings");
   const tc = useTranslations("common");
-  const [country, setCountry] = useState("");
+  const [country, setCountry] = useState("none");
   const [currencyCode, setCurrencyCode] = useState("AED");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -446,9 +454,9 @@ function RegionTab() {
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data?.settings) {
-          setCountry(data.settings.country ?? "");
+          setCountry(data.settings.country ?? "none");
           setCurrencyCode(data.settings.currencyCode ?? "AED");
-          setServerSnap(JSON.stringify({ country: data.settings.country ?? "", currencyCode: data.settings.currencyCode ?? "AED" }));
+          setServerSnap(JSON.stringify({ country: data.settings.country ?? "none", currencyCode: data.settings.currencyCode ?? "AED" }));
         }
       })
       .catch(() => {})
@@ -457,10 +465,9 @@ function RegionTab() {
 
   const hasChanges = serverSnap ? JSON.stringify({ country, currencyCode }) !== serverSnap : false;
 
-  const handleCountryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newCountry = e.target.value;
+  const handleCountryChange = (newCountry: string) => {
     setCountry(newCountry);
-    if (newCountry) {
+    if (newCountry && newCountry !== "none") {
       const info = currencyForCountry(newCountry);
       setCurrencyCode(info.code);
     }
@@ -472,7 +479,7 @@ function RegionTab() {
       const res = await fetch("/api/super-agent/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ country, currencyCode }),
+        body: JSON.stringify({ country: country === "none" ? "" : country, currencyCode }),
       });
       if (res.ok) {
         setServerSnap(JSON.stringify({ country, currencyCode }));
@@ -499,17 +506,17 @@ function RegionTab() {
                 <Globe className="h-4 w-4 text-muted-foreground" />
                 {tc("country")}
               </Label>
-              <select
-                id="country"
-                value={country}
-                onChange={handleCountryChange}
-                className="h-11 w-full rounded-xl border border-border bg-background/85 px-3 text-sm text-foreground shadow-none focus:outline-none focus:ring-2 focus:ring-primary/35"
-              >
-                <option value="">{t("selectCountry")}</option>
-                {COUNTRIES.map((c) => (
-                  <option key={c.code} value={c.code}>{c.label}</option>
-                ))}
-              </select>
+              <Select value={country} onValueChange={handleCountryChange}>
+                <SelectTrigger id="country" className="h-11 text-sm">
+                  <SelectValue placeholder={t("selectCountry")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">{t("selectCountry")}</SelectItem>
+                  {COUNTRIES.map((c) => (
+                    <SelectItem key={c.code} value={c.code}>{c.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <p className="text-xs text-muted-foreground">
                 {t("countryAutoFill")}
               </p>
@@ -520,18 +527,18 @@ function RegionTab() {
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
                 {t("displayCurrency")}
               </Label>
-              <select
-                id="currency"
-                value={currencyCode}
-                onChange={(e) => setCurrencyCode(e.target.value)}
-                className="h-11 w-full rounded-xl border border-border bg-background/85 px-3 text-sm text-foreground shadow-none focus:outline-none focus:ring-2 focus:ring-primary/35"
-              >
-                {SUPPORTED_CURRENCIES.map((c) => (
-                  <option key={c.code} value={c.code}>
-                    {c.symbol} — {c.code} ({c.label})
-                  </option>
-                ))}
-              </select>
+              <Select value={currencyCode} onValueChange={setCurrencyCode}>
+                <SelectTrigger id="currency" className="h-11 text-sm">
+                  <SelectValue placeholder={tc("currency")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {SUPPORTED_CURRENCIES.map((c) => (
+                    <SelectItem key={c.code} value={c.code}>
+                      {c.symbol} — {c.code} ({c.label})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <p className="text-xs text-muted-foreground">
                 {t("currencyDesc")}
               </p>
@@ -776,25 +783,25 @@ function NotificationsTab() {
           <div className="p-6 grid gap-6 sm:grid-cols-2">
             <div className="space-y-2">
               <Label className="text-sm font-medium text-foreground">{t("digestTime")}</Label>
-              <Input
-                type="time"
+              <DateTimePicker
+                mode="time"
                 value={prefs.dailyDigestTime}
-                onChange={(e) => setPrefs((p) => ({ ...p, dailyDigestTime: e.target.value }))}
-                className="max-w-[180px]"
+                onChange={(v) => setPrefs((p) => ({ ...p, dailyDigestTime: v }))}
               />
               <p className="text-xs text-muted-foreground">{t("digestTimeDesc")}</p>
             </div>
             <div className="space-y-2">
               <Label className="text-sm font-medium text-foreground">{t("timezone")}</Label>
-              <select
-                value={prefs.timezone}
-                onChange={(e) => setPrefs((p) => ({ ...p, timezone: e.target.value }))}
-                className="h-10 w-full rounded-xl border border-border bg-background/85 px-3 text-sm text-foreground shadow-none focus:outline-none focus:ring-2 focus:ring-primary/35"
-              >
-                {TIMEZONES.map((tz) => (
-                  <option key={tz} value={tz}>{tz.replace(/_/g, " ")}</option>
-                ))}
-              </select>
+              <Select value={prefs.timezone} onValueChange={(v) => setPrefs((p) => ({ ...p, timezone: v }))}>
+                <SelectTrigger className="h-10 text-sm">
+                  <SelectValue placeholder={t("selectTimezone")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {TIMEZONES.map((tz) => (
+                    <SelectItem key={tz} value={tz}>{tz.replace(/_/g, " ")}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </SectionCard>
@@ -956,15 +963,16 @@ function AvailabilityTab() {
       <SectionCard>
         <SectionHeader icon={MapPin} title={t("timezone")} description={t("timezoneDesc")} />
         <div className="p-6">
-          <select
-            value={timezone}
-            onChange={(e) => setTimezone(e.target.value)}
-            className="h-11 w-full max-w-md rounded-xl border border-border bg-background/85 px-3 text-sm text-foreground shadow-none focus:outline-none focus:ring-2 focus:ring-primary/35"
-          >
-            {TIMEZONES.map((tz) => (
-              <option key={tz} value={tz}>{tz.replace(/_/g, " ")}</option>
-            ))}
-          </select>
+          <Select value={timezone} onValueChange={setTimezone}>
+            <SelectTrigger className="h-11 w-full max-w-md text-sm">
+              <SelectValue placeholder={t("selectTimezone")} />
+            </SelectTrigger>
+            <SelectContent>
+              {TIMEZONES.map((tz) => (
+                <SelectItem key={tz} value={tz}>{tz.replace(/_/g, " ")}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </SectionCard>
 
@@ -974,18 +982,18 @@ function AvailabilityTab() {
           <div className="grid gap-6 sm:grid-cols-2 max-w-md">
             <div className="space-y-2">
               <Label className="text-sm font-medium text-foreground">{t("startTime")}</Label>
-              <Input
-                type="time"
+              <DateTimePicker
+                mode="time"
                 value={workingHoursStart}
-                onChange={(e) => setWorkingHoursStart(e.target.value)}
+                onChange={setWorkingHoursStart}
               />
             </div>
             <div className="space-y-2">
               <Label className="text-sm font-medium text-foreground">{t("endTime")}</Label>
-              <Input
-                type="time"
+              <DateTimePicker
+                mode="time"
                 value={workingHoursEnd}
-                onChange={(e) => setWorkingHoursEnd(e.target.value)}
+                onChange={setWorkingHoursEnd}
               />
             </div>
           </div>
@@ -1090,7 +1098,7 @@ const EMPTY_DEFAULTS: InvoiceDefaultsState = {
   billingEmail: "",
   billingPhone: "",
   billingAddress: "",
-  billingCountry: "",
+  billingCountry: "none",
   billingTaxId: "",
 };
 
@@ -1122,7 +1130,7 @@ function InvoiceDefaultsTab({ apiBase = "/api/super-agent/settings/invoice-defau
             billingEmail: d.billingEmail ?? "",
             billingPhone: d.billingPhone ?? "",
             billingAddress: d.billingAddress ?? "",
-            billingCountry: d.billingCountry ?? "",
+            billingCountry: d.billingCountry ?? "none",
             billingTaxId: d.billingTaxId ?? "",
           };
           setForm(state);
@@ -1141,7 +1149,7 @@ function InvoiceDefaultsTab({ apiBase = "/api/super-agent/settings/invoice-defau
 
   const handleBillingCountryChange = (country: string) => {
     update("billingCountry", country);
-    if (country) {
+    if (country && country !== "none") {
       const info = currencyForCountry(country);
       update("defaultCurrency", info.code);
     }
@@ -1150,10 +1158,11 @@ function InvoiceDefaultsTab({ apiBase = "/api/super-agent/settings/invoice-defau
   const handleSave = async () => {
     setSaving(true);
     try {
+      const payload = { ...form, billingCountry: form.billingCountry === "none" ? "" : form.billingCountry };
       const res = await fetch(apiBase, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
       if (res.ok) {
         const data = await res.json();
@@ -1171,7 +1180,7 @@ function InvoiceDefaultsTab({ apiBase = "/api/super-agent/settings/invoice-defau
           billingEmail: d.billingEmail ?? "",
           billingPhone: d.billingPhone ?? "",
           billingAddress: d.billingAddress ?? "",
-          billingCountry: d.billingCountry ?? "",
+          billingCountry: d.billingCountry ?? "none",
           billingTaxId: d.billingTaxId ?? "",
         };
         setForm(state);
@@ -1232,15 +1241,15 @@ function InvoiceDefaultsTab({ apiBase = "/api/super-agent/settings/invoice-defau
           <div className="grid gap-5 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="inv-country" className="text-sm font-medium">{t("billingCountry")}</Label>
-              <select
-                id="inv-country"
-                value={form.billingCountry}
-                onChange={(e) => handleBillingCountryChange(e.target.value)}
-                className="h-11 w-full rounded-xl border border-border bg-background/85 px-3 text-sm text-foreground shadow-none focus:outline-none focus:ring-2 focus:ring-primary/35"
-              >
-                <option value="">{t("selectCountry")}</option>
-                {COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
-              </select>
+              <Select value={form.billingCountry} onValueChange={handleBillingCountryChange}>
+                <SelectTrigger id="inv-country" className="h-11 text-sm">
+                  <SelectValue placeholder={t("selectCountry")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">{t("selectCountry")}</SelectItem>
+                  {COUNTRIES.map((c) => <SelectItem key={c.code} value={c.code}>{c.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
               <p className="text-[11px] text-muted-foreground">{t("billingCountryAutoUpdate")}</p>
             </div>
             <div className="space-y-2">
@@ -1258,25 +1267,25 @@ function InvoiceDefaultsTab({ apiBase = "/api/super-agent/settings/invoice-defau
           <div className="grid gap-5 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="inv-category" className="text-sm font-medium">{t("defaultInvoiceType")}</Label>
-              <select
-                id="inv-category"
-                value={form.defaultCategory}
-                onChange={(e) => update("defaultCategory", e.target.value)}
-                className="h-11 w-full rounded-xl border border-border bg-background/85 px-3 text-sm text-foreground shadow-none focus:outline-none focus:ring-2 focus:ring-primary/35"
-              >
-                {INVOICE_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-              </select>
+              <Select value={form.defaultCategory} onValueChange={(val) => update("defaultCategory", val)}>
+                <SelectTrigger id="inv-category" className="h-11 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {INVOICE_CATEGORIES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="inv-currency" className="text-sm font-medium">{t("defaultCurrency")}</Label>
-              <select
-                id="inv-currency"
-                value={form.defaultCurrency}
-                onChange={(e) => update("defaultCurrency", e.target.value)}
-                className="h-11 w-full rounded-xl border border-border bg-background/85 px-3 text-sm text-foreground shadow-none focus:outline-none focus:ring-2 focus:ring-primary/35"
-              >
-                {SUPPORTED_CURRENCIES.map((c) => <option key={c.code} value={c.code}>{c.symbol} — {c.code} ({c.label})</option>)}
-              </select>
+              <Select value={form.defaultCurrency} onValueChange={(val) => update("defaultCurrency", val)}>
+                <SelectTrigger id="inv-currency" className="h-11 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SUPPORTED_CURRENCIES.map((c) => <SelectItem key={c.code} value={c.code}>{c.symbol} — {c.code} ({c.label})</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -1286,14 +1295,14 @@ function InvoiceDefaultsTab({ apiBase = "/api/super-agent/settings/invoice-defau
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="inv-taxtype" className="text-sm font-medium">{t("taxType")}</Label>
-                <select
-                  id="inv-taxtype"
-                  value={form.defaultTaxType}
-                  onChange={(e) => update("defaultTaxType", e.target.value)}
-                  className="h-11 w-full rounded-xl border border-border bg-background/85 px-3 text-sm text-foreground shadow-none focus:outline-none focus:ring-2 focus:ring-primary/35"
-                >
-                  {INVOICE_TAX_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                </select>
+                <Select value={form.defaultTaxType} onValueChange={(val) => update("defaultTaxType", val)}>
+                  <SelectTrigger id="inv-taxtype" className="h-11 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {INVOICE_TAX_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="inv-taxpct" className="text-sm font-medium">{t("taxRate")}</Label>
@@ -1308,14 +1317,14 @@ function InvoiceDefaultsTab({ apiBase = "/api/super-agent/settings/invoice-defau
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="inv-terms" className="text-sm font-medium">{t("defaultTerms")}</Label>
-                <select
-                  id="inv-terms"
-                  value={form.defaultPaymentTerms}
-                  onChange={(e) => update("defaultPaymentTerms", e.target.value)}
-                  className="h-11 w-full rounded-xl border border-border bg-background/85 px-3 text-sm text-foreground shadow-none focus:outline-none focus:ring-2 focus:ring-primary/35"
-                >
-                  {INVOICE_PAYMENT_TERMS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                </select>
+                <Select value={form.defaultPaymentTerms} onValueChange={(val) => update("defaultPaymentTerms", val)}>
+                  <SelectTrigger id="inv-terms" className="h-11 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {INVOICE_PAYMENT_TERMS.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
               {form.defaultPaymentTerms === "custom" && (
                 <div className="space-y-2">

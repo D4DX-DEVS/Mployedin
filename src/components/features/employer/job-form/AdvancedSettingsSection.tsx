@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { JobTemplatePickers } from "./JobTemplatePickers";
 import type { WorkflowTemplateItem } from "@/hooks/useWorkflowTemplates";
 import type { MatchingWeightTemplateItem } from "@/hooks/useMatchingWeightTemplates";
@@ -240,12 +241,11 @@ export function AdvancedSettingsSection() {
                   <Label htmlFor="expires-at" className="text-sm font-medium">
                     {t("expiryDate")}
                   </Label>
-                  <Input
-                    id="expires-at"
-                    type="date"
-                    {...register("expiresAt")}
-                    min={new Date().toISOString().split("T")[0]}
-                    className="w-48"
+                  <DateTimePicker
+                    mode="date"
+                    value={expiresAt ?? ""}
+                    onChange={(v) => setValue("expiresAt", v, { shouldValidate: false })}
+                    minDate={new Date()}
                   />
                   <p className="text-xs text-muted-foreground">
                     {t("expiryHint")}

@@ -11,6 +11,7 @@ import { PaginationControls } from "@/components/shared/PaginationControls";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { usePagination } from "@/hooks/usePagination";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
   SuperAgentPageIntro, SuperAgentMetricsGrid, SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
@@ -170,23 +171,15 @@ export default function SuperAgentInterviewsPage() {
               placeholder={t("allTypes")}
               className="h-11 w-[180px] rounded-xl border-border bg-card"
             />
-            <input
-              type="date"
+            <DateTimePicker
+              mode="date"
               value={filters.dateFrom}
-              onChange={(e) => updateFilter("dateFrom", e.target.value)}
-              className="h-11 rounded-xl border border-border bg-card px-3 text-sm"
-              placeholder={t("fromDate")}
-              title={t("filterFromDate")}
-              aria-label={t("filterInterviewsFromDate")}
+              onChange={(v) => updateFilter("dateFrom", v)}
             />
-            <input
-              type="date"
+            <DateTimePicker
+              mode="date"
               value={filters.dateTo}
-              onChange={(e) => updateFilter("dateTo", e.target.value)}
-              className="h-11 rounded-xl border border-border bg-card px-3 text-sm"
-              placeholder={t("toDate")}
-              title={t("filterToDate")}
-              aria-label={t("filterInterviewsToDate")}
+              onChange={(v) => updateFilter("dateTo", v)}
             />
           </div>
         }

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
   Plus, Trash2, ExternalLink, FolderOpen, Inbox,
   Github, Globe, Image, Edit,
@@ -128,8 +129,8 @@ export default function PortfolioPage() {
             />
             <Input placeholder={t("technologiesPlaceholder")} value={form.technologies} onChange={(e) => setForm((p) => ({ ...p, technologies: e.target.value }))} className="sm:col-span-2" />
             <Input placeholder={t("imagePlaceholder")} value={form.imageUrl} onChange={(e) => setForm((p) => ({ ...p, imageUrl: e.target.value }))} className="sm:col-span-2" />
-            <Input type="date" value={form.startDate} onChange={(e) => setForm((p) => ({ ...p, startDate: e.target.value }))} />
-            <Input type="date" value={form.endDate} onChange={(e) => setForm((p) => ({ ...p, endDate: e.target.value }))} />
+            <DateTimePicker mode="date" value={form.startDate} onChange={(val) => setForm((p) => ({ ...p, startDate: val }))} />
+            <DateTimePicker mode="date" value={form.endDate} onChange={(val) => setForm((p) => ({ ...p, endDate: val }))} />
           </div>
           <div className="flex gap-2">
             <Button onClick={createProject}><Plus className="me-1 h-4 w-4" /> {t("add")}</Button>

@@ -10,6 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
+  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
+} from "@/components/ui/select";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -121,17 +124,21 @@ export default function EmployerCampaignsPage() {
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               className="h-10 rounded-xl border-border bg-background sm:flex-1"
             />
-            <select
-              value={statusFilter || ""}
-              onChange={(e) => { setStatusFilter(e.target.value || null); setPage(1); }}
-              className="h-10 rounded-xl border border-border bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            <Select
+              value={statusFilter || "all"}
+              onValueChange={(v) => { setStatusFilter(v === "all" ? null : v); setPage(1); }}
             >
-              <option value="">{t("allStatuses") || "All statuses"}</option>
-              <option value="draft">{t("draft")}</option>
-              <option value="active">{t("active")}</option>
-              <option value="paused">{t("paused")}</option>
-              <option value="completed">{t("completed")}</option>
-            </select>
+              <SelectTrigger className="h-10 rounded-xl border-border bg-background">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("allStatuses") || "All statuses"}</SelectItem>
+                <SelectItem value="draft">{t("draft")}</SelectItem>
+                <SelectItem value="active">{t("active")}</SelectItem>
+                <SelectItem value="paused">{t("paused")}</SelectItem>
+                <SelectItem value="completed">{t("completed")}</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       )}

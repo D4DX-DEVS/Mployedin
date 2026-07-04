@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { Star, ThumbsUp, MessageSquare, Send } from "lucide-react";
 import { toast } from "sonner";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
 interface Review {
   _id: string;
@@ -252,11 +253,15 @@ function WriteReviewForm({ employerId, onSubmitted, onCancel }: { employerId: st
 
       <div className="grid gap-3 sm:grid-cols-3">
         <input type="text" value={jobTitle} onChange={e => setJobTitle(e.target.value)} placeholder={t("yourJobTitle")} className="px-3 py-2 border border-border rounded-lg bg-background text-sm" />
-        <select value={employmentStatus} onChange={e => setEmploymentStatus(e.target.value)} className="px-3 py-2 border border-border rounded-lg bg-background text-sm">
-          <option value="">{t("employmentStatus")}</option>
-          <option value="current">{t("currentEmployee")}</option>
-          <option value="former">{t("formerEmployee")}</option>
-        </select>
+        <Select value={employmentStatus} onValueChange={setEmploymentStatus}>
+          <SelectTrigger className="h-9 rounded-lg">
+            <SelectValue placeholder={t("employmentStatus")} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="current">{t("currentEmployee")}</SelectItem>
+            <SelectItem value="former">{t("formerEmployee")}</SelectItem>
+          </SelectContent>
+        </Select>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           <input type="checkbox" checked={isAnonymous} onChange={e => setIsAnonymous(e.target.checked)} className="rounded" />
           {t("postAnonymously")}

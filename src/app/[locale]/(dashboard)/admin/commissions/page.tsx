@@ -9,6 +9,7 @@ import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePagination } from "@/hooks/usePagination";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { Plus, Pencil, Trash2, Sparkles, Clock3, CheckCircle2, WalletCards, ReceiptText, RotateCcw, CalendarDays, Globe, ArrowRight } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
@@ -376,26 +377,21 @@ export default function AdminCommissionsPage() {
               </div>
 
               <div className="flex items-center gap-2 xl:col-span-2">
-                <div className="relative flex-1">
-                  <CalendarDays className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    type="date"
-                    className="h-11 rounded-xl border-border bg-card pl-9 text-sm"
-                    value={dateFrom}
-                    onChange={(event) => { setDateFrom(event.target.value); resetPage(); }}
-                    aria-label={t("dateFromLabel")}
-                  />
-                </div>
+                <DateTimePicker
+                  mode="date"
+                  value={dateFrom}
+                  onChange={(v) => { setDateFrom(v); resetPage(); }}
+                  placeholder={t("dateFromLabel")}
+                  className="h-11 rounded-xl border-border bg-card text-sm flex-1"
+                />
                 <span className="text-xs text-muted-foreground">{t("dateRangeSeparator")}</span>
-                <div className="relative flex-1">
-                  <Input
-                    type="date"
-                    className="h-11 rounded-xl border-border bg-card text-sm"
-                    value={dateTo}
-                    onChange={(event) => { setDateTo(event.target.value); resetPage(); }}
-                    aria-label={t("dateToLabel")}
-                  />
-                </div>
+                <DateTimePicker
+                  mode="date"
+                  value={dateTo}
+                  onChange={(v) => { setDateTo(v); resetPage(); }}
+                  placeholder={t("dateToLabel")}
+                  className="h-11 rounded-xl border-border bg-card text-sm flex-1"
+                />
               </div>
             </div>
 

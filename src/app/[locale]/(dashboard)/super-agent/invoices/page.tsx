@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/table";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import type { ExportColumn } from "@/lib/export";
 
 import { InvoiceDetailView } from "@/components/features/invoices/InvoiceDetailView";
@@ -192,9 +193,9 @@ export default function SuperAgentInvoicesPage() {
               <SearchableSelect id="sa-inv-status" className="h-11 w-full rounded-xl border-border bg-card" options={statusOptions} value={statusFilter || "all"} onValueChange={v => { setStatusFilter(v === "all" ? "" : v); resetPage(); }} placeholder={t("allStatuses")} />
               <SearchableSelect id="sa-inv-cat" className="h-11 w-full rounded-xl border-border bg-card" options={categoryOptions} value={categoryFilter || "all"} onValueChange={v => { setCategoryFilter(v === "all" ? "" : v); resetPage(); }} placeholder={t("allCategories")} />
               <div className="flex items-center gap-2 xl:col-span-2">
-                <div className="relative flex-1"><CalendarDays className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input type="date" className="h-11 rounded-xl border-border bg-card pl-9 text-sm" value={dateFrom} onChange={e => { setDateFrom(e.target.value); resetPage(); }} /></div>
+                <DateTimePicker mode="date" value={dateFrom} onChange={v => { setDateFrom(v); resetPage(); }} />
                 <span className="text-xs text-muted-foreground">{t("dateSeparator")}</span>
-                <div className="relative flex-1"><Input type="date" className="h-11 rounded-xl border-border bg-card text-sm" value={dateTo} onChange={e => { setDateTo(e.target.value); resetPage(); }} /></div>
+                <DateTimePicker mode="date" value={dateTo} onChange={v => { setDateTo(v); resetPage(); }} />
               </div>
             </div>
             <div className="flex justify-end">

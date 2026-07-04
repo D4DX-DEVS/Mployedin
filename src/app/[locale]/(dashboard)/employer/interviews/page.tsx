@@ -514,20 +514,20 @@ export default function EmployerInterviewsPage() {
             </div>
             <div>
               <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t("fromDate")}</label>
-              <input
-                type="date"
+              <DateTimePicker
+                mode="date"
                 value={dateFrom}
-                onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
-                className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm focus:border-primary focus:outline-none"
+                onChange={(v) => { setDateFrom(v); setPage(1); }}
+                placeholder={t("fromDate")}
               />
             </div>
             <div>
               <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t("toDate")}</label>
-              <input
-                type="date"
+              <DateTimePicker
+                mode="date"
                 value={dateTo}
-                onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
-                className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm focus:border-primary focus:outline-none"
+                onChange={(v) => { setDateTo(v); setPage(1); }}
+                placeholder={t("toDate")}
               />
             </div>
             <div className="sm:col-span-2">
@@ -1258,9 +1258,13 @@ function InterviewActionModal({
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("startDate")}</label>
-                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
-                  min={new Date().toISOString().slice(0, 10)}
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none" />
+                <DateTimePicker
+                  mode="date"
+                  value={startDate}
+                  onChange={setStartDate}
+                  minDate={new Date()}
+                  placeholder={t("startDate")}
+                />
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("benefitsOptional")}</label>

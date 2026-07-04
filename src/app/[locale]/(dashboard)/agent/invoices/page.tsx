@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -173,9 +174,9 @@ export default function AgentInvoicesPage() {
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               <SearchableSelect id="ag-inv-status" className="h-11 w-full rounded-xl border-border bg-card" options={STATUS_OPTIONS} value={statusFilter || "all"} onValueChange={v => { setStatusFilter(v === "all" ? "" : v); resetPage(); }} placeholder={t("statusAll")} />
               <div className="flex items-center gap-2 xl:col-span-2">
-                <div className="relative flex-1"><CalendarDays className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input type="date" className="h-11 rounded-xl border-border bg-card pl-9 text-sm" value={dateFrom} onChange={e => { setDateFrom(e.target.value); resetPage(); }} /></div>
+                <DateTimePicker mode="date" className="h-11 rounded-xl border-border bg-card text-sm" value={dateFrom} onChange={v => { setDateFrom(v); resetPage(); }} />
                 <span className="text-xs text-muted-foreground">{t("filterDateTo")}</span>
-                <div className="relative flex-1"><Input type="date" className="h-11 rounded-xl border-border bg-card text-sm" value={dateTo} onChange={e => { setDateTo(e.target.value); resetPage(); }} /></div>
+                <DateTimePicker mode="date" className="h-11 rounded-xl border-border bg-card text-sm" value={dateTo} onChange={v => { setDateTo(v); resetPage(); }} />
               </div>
             </div>
             <div className="flex justify-end">

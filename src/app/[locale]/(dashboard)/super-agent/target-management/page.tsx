@@ -7,6 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   SuperAgentSection,
@@ -961,16 +968,17 @@ export default function SuperAgentTargetProfilesPage() {
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/40 bg-card/80 px-4 py-2.5">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <span>Showing {((teamPage - 1) * teamPageSize) + 1}–{Math.min(teamPage * teamPageSize, filteredTeamProfiles.length)} of {filteredTeamProfiles.length}</span>
-              <select
-                value={teamPageSize}
-                onChange={(e) => { setTeamPageSize(Number(e.target.value)); setTeamPage(1); }}
-                className="rounded-md border border-border bg-background px-2 py-1 text-xs"
-              >
-                <option value={5}>5 / page</option>
-                <option value={10}>10 / page</option>
-                <option value={20}>20 / page</option>
-                <option value={50}>50 / page</option>
-              </select>
+              <Select value={String(teamPageSize)} onValueChange={(val) => { setTeamPageSize(Number(val)); setTeamPage(1); }}>
+                <SelectTrigger className="w-auto rounded-md border border-border bg-background px-2 py-1 text-xs h-auto">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5">5 / page</SelectItem>
+                  <SelectItem value="10">10 / page</SelectItem>
+                  <SelectItem value="20">20 / page</SelectItem>
+                  <SelectItem value="50">50 / page</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex items-center gap-1.5">
               <Button variant="outline" size="sm" className="h-8 gap-1 rounded-lg px-3 text-xs font-medium" onClick={() => setShowInsights(true)}>

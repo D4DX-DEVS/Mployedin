@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
   SuperAgentMetricsGrid,
   SuperAgentPageIntro,
@@ -246,11 +247,11 @@ export default function SuperAgentCommissionsPage() {
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label className="text-xs text-muted-foreground flex items-center gap-1"><CalendarDays className="h-3 w-3" /> {t("filterDateFrom")}</Label>
-                <Input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); resetPage(); }} className="h-11 w-40 rounded-xl border-border bg-card text-sm shadow-none" />
+                <DateTimePicker mode="date" value={dateFrom} onChange={(v) => { setDateFrom(v); resetPage(); }} />
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label className="text-xs text-muted-foreground flex items-center gap-1"><CalendarDays className="h-3 w-3" /> {t("filterDateTo")}</Label>
-                <Input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); resetPage(); }} className="h-11 w-40 rounded-xl border-border bg-card text-sm shadow-none" />
+                <DateTimePicker mode="date" value={dateTo} onChange={(v) => { setDateTo(v); resetPage(); }} />
               </div>
               {(typeFilter || currencyFilter || dateFrom || dateTo) && (
                 <Button variant="ghost" size="sm" onClick={() => { setTypeFilter(""); setCurrencyFilter(""); setDateFrom(""); setDateTo(""); resetPage(); }} className="h-11 rounded-xl text-xs text-muted-foreground hover:text-foreground">

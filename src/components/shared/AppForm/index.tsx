@@ -8,6 +8,8 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { ChevronDown, X, Upload, Phone, Search, FileText } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { toast } from "sonner";
 
 // ──────────────────────────────────────────────────────────
@@ -284,17 +286,11 @@ export function FormDatePicker({ label, error, hint, value, onChange, min, max, 
           {label} {required && <span className="text-destructive">*</span>}
         </label>
       )}
-      <input
-        type="date"
+      <DateTimePicker
+        mode="date"
         value={value}
-        onChange={(e) => onChange(e.target.value)}
-        min={min}
-        max={max}
-        required={required}
-        disabled={disabled}
-        className={`w-full h-10 rounded-lg border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-50 ${
-          error ? "border-destructive" : ""
-        }`}
+        onChange={onChange}
+        minDate={min ? new Date(min) : undefined}
       />
       {error && <p className="text-xs text-destructive">{error}</p>}
       {hint && !error && <p className="text-xs text-muted-foreground">{hint}</p>}
@@ -476,15 +472,18 @@ export function FormPhone({ label, error, hint, value, onChange, required }: For
         </label>
       )}
       <div className="flex gap-2">
-        <select
-          value={countryCode}
-          onChange={(e) => { setCountryCode(e.target.value); updateValue(e.target.value, number); }}
-          className="h-10 rounded-lg border px-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-        >
-          {COUNTRY_CODES.map((c) => (
-            <option key={c.code} value={c.code}>{c.flag} {c.code}</option>
-          ))}
-        </select>
+        <div className="w-24">
+          <Select value={countryCode} onValueChange={(value) => { setCountryCode(value); updateValue(value, number); }}>
+            <SelectTrigger className="h-10 rounded-lg">
+              <SelectValue placeholder="Select code" />
+            </SelectTrigger>
+            <SelectContent>
+              {COUNTRY_CODES.map((c) => (
+                <SelectItem key={c.code} value={c.code}>{c.flag} {c.code}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <div className="relative flex-1">
           <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input

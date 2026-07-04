@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { PageHero } from "@/components/shared/PageHero";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { TableToolbar } from "@/components/shared/TableToolbar";
@@ -330,27 +331,27 @@ export default function TeamActivityLogsPage() {
 
         <div className="space-y-1">
           <label className="text-xs font-medium text-muted-foreground">{t("from")}</label>
-          <Input
-            type="date"
+          <DateTimePicker
+            mode="date"
             value={fromDate}
-            onChange={(e) => {
-              setFromDate(e.target.value);
+            onChange={(v) => {
+              setFromDate(v);
               resetPage();
             }}
-            className="w-40"
+            placeholder={t("from")}
           />
         </div>
 
         <div className="space-y-1">
           <label className="text-xs font-medium text-muted-foreground">{t("to")}</label>
-          <Input
-            type="date"
+          <DateTimePicker
+            mode="date"
             value={toDate}
-            onChange={(e) => {
-              setToDate(e.target.value);
+            onChange={(v) => {
+              setToDate(v);
               resetPage();
             }}
-            className="w-40"
+            placeholder={t("to")}
           />
         </div>
 

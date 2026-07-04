@@ -20,6 +20,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { useConfirm } from "@/hooks/useConfirm";
 
 const USER_ROLES = ["all", "job_seeker", "employer", "agent", "super_agent", "admin"];
 const TEMPLATE_TYPES_ARRAY = ["onboarding", "transactional", "marketing", "system"] as const;
@@ -54,6 +56,7 @@ interface BroadcastTemplate {
 
 export default function AdminCommunicationsPage() {
   const tr = useTranslations("adminCommunications");
+  const { confirm, ConfirmDialogNode } = useConfirm();
   const [tab, setTab] = useState<"broadcast" | "templates" | "history">("broadcast");
   const [form, setForm] = useState<BroadcastForm>({
     title: "",
@@ -227,9 +230,9 @@ export default function AdminCommunicationsPage() {
 
   const handleDeleteTemplate = async (id: string) => {
     const template = templates.find((item) => item._id === id);
-    const confirmed = window.confirm(
-      tr("deleteTemplateConfirm", { template: template?.name || "EMPTY" })
-    );
+    const confirmed = await confirm({
+      message: tr("deleteTemplateConfirm", { template: template?.name || "EMPTY" })
+    });
 
     if (!confirmed) {
       return;
@@ -300,6 +303,7 @@ export default function AdminCommunicationsPage() {
 
   return (
     <div className="page-container space-y-4">
+      {ConfirmDialogNode}
       {/* ── Hero Section ── */}
       <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
@@ -585,18 +589,18 @@ export default function AdminCommunicationsPage() {
                   <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                     {tr("typeLabel")} <span className="text-rose-500">*</span>
                   </label>
-                  <select
-                    required
-                    value={templateForm.type}
-                    onChange={(e) => setTemplateForm((current) => ({ ...current, type: e.target.value }))}
-                    className={fieldClassName}
-                  >
-                    {TEMPLATE_TYPES_ARRAY.map((type) => (
-                      <option key={type} value={type}>
-                        {formatTemplateType(type)}
-                      </option>
-                    ))}
-                  </select>
+                  <Select value={templateForm.type} onValueChange={(v) => setTemplateForm((current) => ({ ...current, type: v }))}>
+                    <SelectTrigger className={fieldClassName}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TEMPLATE_TYPES_ARRAY.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {formatTemplateType(type)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2 md:col-span-2">
                   <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
@@ -710,18 +714,18 @@ export default function AdminCommunicationsPage() {
                         </div>
                         <div className="space-y-2">
                           <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{tr("templateType")}</label>
-                          <select
-                            required
-                            value={templateForm.type}
-                            onChange={(e) => setTemplateForm((current) => ({ ...current, type: e.target.value }))}
-                            className={fieldClassName}
-                          >
-                            {TEMPLATE_TYPES_ARRAY.map((type) => (
-                              <option key={type} value={type}>
-                                {formatTemplateType(type)}
-                              </option>
-                            ))}
-                          </select>
+                          <Select value={templateForm.type} onValueChange={(v) => setTemplateForm((current) => ({ ...current, type: v }))}>
+                            <SelectTrigger className={fieldClassName}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {TEMPLATE_TYPES_ARRAY.map((type) => (
+                                <SelectItem key={type} value={type}>
+                                  {formatTemplateType(type)}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                         <div className="space-y-2 md:col-span-2">
                           <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Subject</label>

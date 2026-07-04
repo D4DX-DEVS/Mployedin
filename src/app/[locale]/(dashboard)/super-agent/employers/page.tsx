@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
+import { toast } from "sonner";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -121,10 +122,10 @@ export default function SuperAgentEmployersPage() {
         router.refresh();
       } else {
         const data = await res.json().catch(() => ({}));
-        alert(data.error ?? t("switchError"));
+        toast.error(data.error ?? t("switchError"));
       }
     } catch {
-      alert(t("networkError"));
+      toast.error(t("networkError"));
     } finally {
       setSwitchingEmployerId(null);
     }

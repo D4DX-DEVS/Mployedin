@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { useConfirm } from "@/hooks/useConfirm";
 import {
   AlertTriangle,
   ArrowRight,
@@ -354,6 +355,7 @@ function quoteCsv(value: string | number | undefined | null) {
 
 export default function AdminExhibitionsPage() {
   const t = useTranslations("adminExhibitions");
+  const { confirm } = useConfirm();
   const [items, setItems] = useState<ExhibitionRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -549,7 +551,7 @@ export default function AdminExhibitionsPage() {
   };
 
   const handleDelete = async (item: ExhibitionRequest) => {
-    if (!window.confirm(t("requestDeletedConfirm", { eventName: item.eventName }))) return;
+    if (!(await confirm({ message: t("requestDeletedConfirm", { eventName: item.eventName }) }))) return;
     try {
       const response = await csrfFetch(`/api/exhibitions/${item._id}`, { method: "DELETE" });
       if (response.ok) {
@@ -566,7 +568,7 @@ export default function AdminExhibitionsPage() {
       toast.info(t("selectAtLeastOneRequest"));
       return;
     }
-    if (status === "rejected" && !window.confirm(t("rejectSelectedRequests", { count: selectedItems.length }))) return;
+    if (status === "rejected" && !(await confirm({ message: t("rejectSelectedRequests", { count: selectedItems.length }) }))) return;
     try {
       await Promise.all(
         selectedItems.map((item) =>

@@ -55,6 +55,7 @@ import {
   Legend,
 } from "recharts";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { useTranslations, useLocale } from "next-intl";
 import Link from "next/link";
 
@@ -976,18 +977,18 @@ function HistoricalTab({
           </button>
           {dateRange === "custom" && (
             <div className="flex items-center gap-2">
-              <input
-                type="date"
+              <DateTimePicker
+                mode="date"
                 value={customStart}
-                onChange={(e) => setCustomStart(e.target.value)}
-                className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm outline-none transition focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
+                onChange={setCustomStart}
+                placeholder={t("startDate")}
               />
               <span className="text-slate-400">{t("rangeTo")}</span>
-              <input
-                type="date"
+              <DateTimePicker
+                mode="date"
                 value={customEnd}
-                onChange={(e) => setCustomEnd(e.target.value)}
-                className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm outline-none transition focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
+                onChange={setCustomEnd}
+                placeholder={t("endDate")}
               />
             </div>
           )}

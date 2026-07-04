@@ -62,6 +62,7 @@ import {
 } from "@/components/features/super-agent/WorkspacePage";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import type { ExportColumn } from "@/lib/export";
 
 /* ────────────────────────────── Types ────────────────────────────── */
@@ -733,11 +734,11 @@ export default function SuperAgentJobsPage() {
                 <div className="flex items-center gap-1.5">
                   <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                   <label className="text-xs text-muted-foreground whitespace-nowrap">{t("dateFromLabel")}</label>
-                  <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-9 w-[140px] text-sm" />
+                  <DateTimePicker mode="date" value={dateFrom} onChange={setDateFrom} />
                 </div>
                 <div className="flex items-center gap-1.5">
                   <label className="text-xs text-muted-foreground whitespace-nowrap">{t("dateToLabel")}</label>
-                  <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-9 w-[140px] text-sm" />
+                  <DateTimePicker mode="date" value={dateTo} onChange={setDateTo} />
                 </div>
                 <Button variant="default" size="sm" className="h-9 gap-1.5 text-xs ml-auto" onClick={() => { resetPage(); loadJobs(); }}>
                   {t("applyFiltersButton")}

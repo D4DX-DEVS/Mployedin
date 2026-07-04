@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { SUPPORTED_CURRENCIES, currencyForCountry } from "@/lib/currency";
 
 const CURRENCY_OPTIONS = SUPPORTED_CURRENCIES.map(c => ({ value: c.code, label: `${c.code} — ${c.label}` }));
@@ -220,6 +221,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
   const [customPaymentTerms, setCustomPaymentTerms] = useState<Array<{ value: string; label: string }>>([]);
   const [showAddPaymentTerm, setShowAddPaymentTerm] = useState(false);
   const [customPaymentLabel, setCustomPaymentLabel] = useState("");
+  const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split("T")[0]);
   const [dueDate, setDueDate] = useState("");
   const [notes, setNotes] = useState("");
   const [internalNotes, setInternalNotes] = useState("");
@@ -254,7 +256,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
       setLineItems([{ id: crypto.randomUUID(), description: "", quantity: 1, unitPrice: 0, amount: 0 }]);
       setTaxType("none"); setTaxPercent(0);
       setCurrency(defaultCurrency); setPaymentTerms("net_30"); setCustomPaymentDays(30);
-      setDueDate(""); setNotes(""); setInternalNotes("");
+      setInvoiceDate(new Date().toISOString().split("T")[0]); setDueDate(""); setNotes(""); setInternalNotes("");
       setInvoiceStatus(role === "agent" ? "pending_approval" : "issued");
       setAgentRate(0); setSuperAgentRate(0);
       setCommissionEnabled(false); setCustomAgentRate(0); setCustomSuperAgentRate(0);
@@ -1518,12 +1520,9 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 items-end">
                       <div>
                         <Label className="mb-1 block text-xs font-medium text-muted-foreground">{t("invoiceDate")}</Label>
-                        <Input
-                          type="date"
-                          className="h-9 rounded-lg border-border/60 text-sm"
-                          defaultValue={new Date().toISOString().split("T")[0]}
-                          readOnly
-                        />
+                        <div className="h-9 flex items-center rounded-lg border border-border/60 px-3 text-sm text-muted-foreground">
+                          {invoiceDate}
+                        </div>
                       </div>
                       <div>
                         <div className="flex items-center justify-between">
@@ -1608,11 +1607,10 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                       </div>
                       <div>
                         <Label className="mb-1 block text-xs font-medium text-muted-foreground">{t("dueDate")}</Label>
-                        <Input
-                          type="date"
-                          className="h-9 rounded-lg border-border/60 text-sm"
+                        <DateTimePicker
+                          mode="date"
                           value={dueDate}
-                          onChange={e => setDueDate(e.target.value)}
+                          onChange={setDueDate}
                         />
                       </div>
                     </div>

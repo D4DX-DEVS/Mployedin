@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select";
@@ -1118,9 +1119,12 @@ export function SharedJobEditPage({
               <div className="p-5 pt-0 space-y-4 border-t border-border/40">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
                   <Field label={t("expiryDate")} hint={t("hintExpiry")}>
-                    <Input type="date" value={form.expiresAt}
-                      onChange={(e) => setField("expiresAt", e.target.value)}
-                      min={new Date().toISOString().split("T")[0]} />
+                    <DateTimePicker
+                      mode="date"
+                      value={form.expiresAt}
+                      onChange={(v) => setField("expiresAt", v)}
+                      minDate={new Date()}
+                    />
                   </Field>
                   <Field label={t("applicationMode")} hint={t("hintAppMode")}>
                     <SearchableSelect

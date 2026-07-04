@@ -34,6 +34,7 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
 import { useTranslations } from "next-intl";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Command,
@@ -101,7 +102,7 @@ export default function AgentJobsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [employerFilter, setEmployerFilter] = useState("");
+  const [employerFilter, setEmployerFilter] = useState("all");
 
   const [employers, setEmployers] = useState<EmployerOption[]>([]);
 
@@ -141,7 +142,7 @@ export default function AgentJobsPage() {
       const params = pagination.paginationParams();
       if (search) params.set("search", search);
       if (statusFilter) params.set("status", statusFilter);
-      if (employerFilter) params.set("employerId", employerFilter);
+      if (employerFilter !== "all") params.set("employerId", employerFilter);
       const res = await fetch(`/api/jobs?${params}`);
       if (res.ok) {
         const data = await res.json();
@@ -450,16 +451,17 @@ export default function AgentJobsPage() {
                 {employers.length > 0 && (
                   <div className="flex flex-wrap items-center gap-2">
                     <Building2 className="h-4 w-4 text-muted-foreground" />
-                    <select
-                      value={employerFilter}
-                      onChange={(e) => setEmployerFilter(e.target.value)}
-                      className="h-11 rounded-xl border border-border bg-secondary/65 px-3 text-sm text-foreground"
-                    >
-                      <option value="">{common("allEmployers")}</option>
-                      {employers.map((emp) => (
-                        <option key={emp._id} value={emp._id}>{emp.companyName}</option>
-                      ))}
-                    </select>
+                    <Select value={employerFilter} onValueChange={setEmployerFilter}>
+                      <SelectTrigger className="h-11 w-auto rounded-xl border border-border bg-secondary/65">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">{common("allEmployers")}</SelectItem>
+                        {employers.map((emp) => (
+                          <SelectItem key={emp._id} value={emp._id}>{emp.companyName}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 )}
               </div>

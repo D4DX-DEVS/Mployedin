@@ -11,6 +11,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
   Check,
   Copy,
@@ -218,11 +219,10 @@ export function ReferralLinkDialog({ open, onClose }: ReferralLinkDialogProps) {
                     <label className="text-[11px] font-medium text-muted-foreground">
                       <CalendarClock className="mr-1 inline h-3 w-3" />{t("expires")}
                     </label>
-                    <Input
-                      type="date"
+                    <DateTimePicker
+                      mode="date"
                       value={newExpiry}
-                      onChange={(e) => setNewExpiry(e.target.value)}
-                      className="mt-1 h-8 rounded-lg text-xs"
+                      onChange={setNewExpiry}
                     />
                   </div>
                 </div>

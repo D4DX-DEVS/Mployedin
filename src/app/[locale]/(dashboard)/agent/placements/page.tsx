@@ -13,6 +13,8 @@ import { ArrowRight, BriefcaseBusiness, CircleDollarSign, Filter, Inbox, RotateC
 import { Button } from "@/components/ui/button";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import type { ExportColumn } from "@/lib/export";
 
 interface Placement {
@@ -157,20 +159,25 @@ export default function AgentPlacementsPage() {
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <div>
             <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{tc("status")}</label>
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={selectClass}>
-              {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
         <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:max-w-md">
           <div>
             <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("dateFromLabel")}</label>
-            <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className={selectClass} />
+            <DateTimePicker mode="date" value={dateFrom} onChange={setDateFrom} />
           </div>
           <div>
             <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("dateToLabel")}</label>
-            <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className={selectClass} />
+            <DateTimePicker mode="date" value={dateTo} onChange={setDateTo} />
           </div>
         </div>
 

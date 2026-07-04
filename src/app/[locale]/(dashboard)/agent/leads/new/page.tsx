@@ -6,6 +6,8 @@ import Link from "next/link";
 import { ArrowRight, Building2, CalendarClock, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 
 export default function NewLeadPage() {
   const router = useRouter();
@@ -92,51 +94,54 @@ export default function NewLeadPage() {
 
             <div className="space-y-1">
               <label className="text-sm font-medium">{t("labelIndustry")}</label>
-              <select
-                value={form.industry}
-                onChange={(e) => set("industry", e.target.value)}
-                className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-100"
-              >
-                <option value="">{t("selectIndustryPlaceholder")}</option>
-                {[
-                  t("industryConstruction"),
-                  t("industryIT"),
-                  t("industryHealthcare"),
-                  t("industryHospitality"),
-                  t("industryRetail"),
-                  t("industryManufacturing"),
-                  t("industryFinance"),
-                  t("industryEducation"),
-                  t("industryOilGas"),
-                  t("industryOther"),
-                ].map((industry) => (
-                  <option key={industry} value={industry}>{industry}</option>
-                ))}
-              </select>
+              <Select value={form.industry} onValueChange={(value) => set("industry", value)}>
+                <SelectTrigger className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">
+                  <SelectValue placeholder={t("selectIndustryPlaceholder")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {[
+                    t("industryConstruction"),
+                    t("industryIT"),
+                    t("industryHealthcare"),
+                    t("industryHospitality"),
+                    t("industryRetail"),
+                    t("industryManufacturing"),
+                    t("industryFinance"),
+                    t("industryEducation"),
+                    t("industryOilGas"),
+                    t("industryOther"),
+                  ].map((industry) => (
+                    <SelectItem key={industry} value={industry}>{industry}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-1">
               <label className="text-sm font-medium">{t("labelSource")}</label>
-              <select
-                value={form.source}
-                onChange={(e) => set("source", e.target.value)}
-                className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-100"
-              >
-                <option value="">{t("selectSourcePlaceholder")}</option>
-                {[
-                  t("sourceReferral"),
-                  t("sourceColdCall"),
-                  t("sourceLinkedIn"),
-                  t("sourceWebsite"),
-                  t("sourceEvent"),
-                  t("sourceOther"),
-                ].map((source) => (
-                  <option key={source} value={source}>{source}</option>
-                ))}
-              </select>
+              <Select value={form.source} onValueChange={(value) => set("source", value)}>
+                <SelectTrigger className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">
+                  <SelectValue placeholder={t("selectSourcePlaceholder")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {[
+                    t("sourceReferral"),
+                    t("sourceColdCall"),
+                    t("sourceLinkedIn"),
+                    t("sourceWebsite"),
+                    t("sourceEvent"),
+                    t("sourceOther"),
+                  ].map((source) => (
+                    <SelectItem key={source} value={source}>{source}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
-            <Field label={t("labelFollowUpDate")} name="followUpAt" type="date" />
+            <div className="space-y-1">
+              <label className="text-sm font-medium">{t("labelFollowUpDate")}</label>
+              <DateTimePicker mode="date" value={form.followUpAt} onChange={(value) => set("followUpAt", value)} />
+            </div>
           </div>
         </section>
 

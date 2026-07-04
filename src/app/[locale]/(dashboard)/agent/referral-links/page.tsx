@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { usePagination } from "@/hooks/usePagination";
@@ -243,7 +244,7 @@ export default function AgentReferralLinksPage() {
             </div>
             <div>
               <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("formExpiryDateLabel")}</label>
-              <Input type="date" value={newExpiresAt} onChange={(e) => setNewExpiresAt(e.target.value)} className="h-10 rounded-xl" />
+              <DateTimePicker mode="date" value={newExpiresAt} onChange={setNewExpiresAt} className="h-10 rounded-xl" />
             </div>
           </div>
           <div className="mt-4 flex justify-end">

@@ -570,23 +570,27 @@ export default function AdminSubscriptionPlansPage() {
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium">{t("analyticsLevelLabel")}</label>
-                <select
+                <Select
                   value={form.employerLimits.analyticsLevel}
-                  onChange={(e) =>
+                  onValueChange={(v) =>
                     setForm((f) => ({
                       ...f,
                       employerLimits: {
                         ...f.employerLimits,
-                        analyticsLevel: e.target.value as "none" | "basic" | "advanced",
+                        analyticsLevel: v as "none" | "basic" | "advanced",
                       },
                     }))
                   }
-                  className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
                 >
-                  <option value="none">{t("analyticsLevelNone")}</option>
-                  <option value="basic">{t("analyticsLevelBasic")}</option>
-                  <option value="advanced">{t("analyticsLevelAdvanced")}</option>
-                </select>
+                  <SelectTrigger className="w-full rounded-xl">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">{t("analyticsLevelNone")}</SelectItem>
+                    <SelectItem value="basic">{t("analyticsLevelBasic")}</SelectItem>
+                    <SelectItem value="advanced">{t("analyticsLevelAdvanced")}</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-3">
                 {([

@@ -26,6 +26,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Search, Inbox, AlertCircle, Loader2, Download, FileSpreadsheet, FileText } from "lucide-react";
 
 interface AgentRef {
@@ -511,14 +512,15 @@ export default function AdminSuperAgentsPage() {
               </div>
               <div className="space-y-2">
                 <Label>{t("statusLabel")}</Label>
-                <select
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  value={editForm.isActive}
-                  onChange={(e) => setEditForm((f) => ({ ...f, isActive: e.target.value }))}
-                >
-                  <option value="true">{t("statusActive")}</option>
-                  <option value="false">{t("statusInactive")}</option>
-                </select>
+                <Select value={editForm.isActive} onValueChange={(v) => setEditForm((f) => ({ ...f, isActive: v }))}>
+                  <SelectTrigger className="h-10 w-full rounded-md">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">{t("statusActive")}</SelectItem>
+                    <SelectItem value="false">{t("statusInactive")}</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label>{t("overrideCommissionRateLabel")}</Label>

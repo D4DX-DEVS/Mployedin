@@ -2561,13 +2561,11 @@ function BulkInterviewScheduleModal({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-[11px] text-muted-foreground mb-1">Start</label>
-                <input type="time" value={whStart} onChange={(e) => setWhStart(e.target.value)}
-                  className="w-full h-9 px-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-sky-400" />
+                <DateTimePicker mode="time" value={whStart} onChange={setWhStart} />
               </div>
               <div>
                 <label className="block text-[11px] text-muted-foreground mb-1">End</label>
-                <input type="time" value={whEnd} onChange={(e) => setWhEnd(e.target.value)}
-                  className="w-full h-9 px-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-sky-400" />
+                <DateTimePicker mode="time" value={whEnd} onChange={setWhEnd} />
               </div>
             </div>
 
@@ -2585,14 +2583,12 @@ function BulkInterviewScheduleModal({
                     />
                   </div>
                   <div>
-                    <input type="time" value={brk.start}
-                      onChange={(e) => updateBreak(idx, "start", e.target.value)}
-                      className="h-8 w-24 px-2 text-xs border border-border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-sky-400" />
+                    <DateTimePicker mode="time" value={brk.start}
+                      onChange={(v) => updateBreak(idx, "start", v)} />
                   </div>
                   <div>
-                    <input type="time" value={brk.end}
-                      onChange={(e) => updateBreak(idx, "end", e.target.value)}
-                      className="h-8 w-24 px-2 text-xs border border-border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-sky-400" />
+                    <DateTimePicker mode="time" value={brk.end}
+                      onChange={(v) => updateBreak(idx, "end", v)} />
                   </div>
                   <button onClick={() => removeBreak(idx)} className="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
                     <X className="h-3.5 w-3.5" />
@@ -3018,13 +3014,11 @@ function OfferCreateModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium mb-1">Start Date *</label>
-              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
-                className="w-full h-9 px-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40" />
+              <DateTimePicker mode="date" value={startDate} onChange={setStartDate} />
             </div>
             <div>
               <label className="block text-xs font-medium mb-1">Expires On</label>
-              <input type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)}
-                className="w-full h-9 px-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40" />
+              <DateTimePicker mode="date" value={expiresAt} onChange={setExpiresAt} />
               <p className="text-[10px] text-muted-foreground mt-0.5">Default: 7 days</p>
             </div>
           </div>
