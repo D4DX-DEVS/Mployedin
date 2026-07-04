@@ -1,4 +1,5 @@
 import connectDB from "@/lib/db/mongoose";
+import { AI_MATCH_HIGH_THRESHOLD } from "@/lib/constants";
 import { Employer } from "@/models/Employer";
 import Job from "@/models/Job";
 import { Application } from "@/models/Application";
@@ -153,7 +154,7 @@ export async function getEmployerDashboardStats(
           _id: null,
           avg: { $avg: "$aiMatchScore" },
           max: { $max: "$aiMatchScore" },
-          highCount: { $sum: { $cond: [{ $gte: ["$aiMatchScore", 80] }, 1, 0] } },
+          highCount: { $sum: { $cond: [{ $gte: ["$aiMatchScore", AI_MATCH_HIGH_THRESHOLD] }, 1, 0] } },
           band90Plus: { $sum: { $cond: [{ $gte: ["$aiMatchScore", 90] }, 1, 0] } },
           band80to89: {
             $sum: {

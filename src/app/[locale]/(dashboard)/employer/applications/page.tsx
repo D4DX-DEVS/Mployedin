@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { useParams, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
+import { AI_MATCH_HIGH_THRESHOLD } from "@/lib/constants";
 import {
   Award,
   BadgeCheck,
@@ -562,7 +563,7 @@ export default function EmployerApplicationsPage() {
     return true;
   });
 
-  const highMatchCount = filteredApplications.filter((app) => (app.aiMatchScore ?? 0) >= 70).length;
+  const highMatchCount = filteredApplications.filter((app) => (app.aiMatchScore ?? 0) >= AI_MATCH_HIGH_THRESHOLD).length;
   const interviewCount = filteredApplications.filter((app) => app.status === "interview_scheduled").length;
   const selectedStageCount = filteredApplications.filter((app) => app.status === "selected").length;
   const allVisibleSelected = filteredApplications.length > 0 && filteredApplications.every((app) => selected.includes(app._id));

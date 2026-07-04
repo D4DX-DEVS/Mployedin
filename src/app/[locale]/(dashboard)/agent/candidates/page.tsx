@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import { AI_MATCH_HIGH_THRESHOLD } from "@/lib/constants";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
@@ -244,6 +245,8 @@ export default function AgentCandidatesPage() {
 
   const submitOffer = async () => {
     if (!offerApp) return;
+    // Capture before any await — the dialog can close (offerApp -> null) mid-request.
+    const app = offerApp;
     setOfferError("");
     const amount = Number(offerForm.amount);
     if (!amount || amount <= 0) { setOfferError(t("offerErrorAmountInvalid")); return; }
@@ -256,7 +259,7 @@ export default function AgentCandidatesPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          applicationId: offerApp._id,
+          applicationId: app._id,
           salary: { amount, currency: offerForm.currency.toUpperCase(), period: offerForm.period },
           startDate: new Date(offerForm.startDate).toISOString(),
           expiresAt: offerForm.expiresAt ? new Date(offerForm.expiresAt).toISOString() : undefined,
@@ -285,7 +288,7 @@ export default function AgentCandidatesPage() {
 
   const shortlistedCount = applications.filter((app) => ["shortlisted", "interview_scheduled", "selected", "offer", "hired"].includes(app.status)).length;
   const interviewCount = applications.filter((app) => app.status === "interview_scheduled").length;
-  const highMatchCount = applications.filter((app) => (app.aiMatchScore ?? 0) >= 80).length;
+  const highMatchCount = applications.filter((app) => (app.aiMatchScore ?? 0) >= AI_MATCH_HIGH_THRESHOLD).length;
 
   // Derive the filtered job title from the first loaded application
   const filteredJobTitle = jobIdFilter && applications.length > 0

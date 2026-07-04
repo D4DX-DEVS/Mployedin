@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { AI_MATCH_HIGH_THRESHOLD } from "@/lib/constants";
 import { toast } from "sonner";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
@@ -978,7 +979,7 @@ export default function EmployerCandidatesPage() {
   );
   const hasAnyScore = structuredCandidates.some((candidate) => candidate.matchScore != null);
   const scoreCounts = useMemo(() => getScoreFilterCounts(structuredCandidates), [structuredCandidates]);
-  const visibleHighMatchCount = structuredCandidates.filter((candidate) => (candidate.matchScore ?? 0) >= 80).length;
+  const visibleHighMatchCount = structuredCandidates.filter((candidate) => (candidate.matchScore ?? 0) >= AI_MATCH_HIGH_THRESHOLD).length;
   const readyNowCount = structuredCandidates.filter((candidate) => candidate.availabilityStatus === "immediately").length;
   const scoredCount = structuredCandidates.filter((candidate) => candidate.matchScore != null).length;
   const reviewCount = reviewListIds.size;
