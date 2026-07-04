@@ -138,10 +138,10 @@ export default function SuperAgentTargetReportPage() {
       if (res.ok) {
         setData(await res.json());
       } else {
-        toast.error("Failed to load report");
+        toast.error(t("failedLoadReport"));
       }
     } catch {
-      toast.error("Failed to load report");
+      toast.error(t("failedLoadReport"));
     } finally {
       setLoading(false);
     }
@@ -274,7 +274,7 @@ export default function SuperAgentTargetReportPage() {
 
       {/* ═══════ TOOLBAR ═══════ */}
       <TableToolbar
-        title="Performance data"
+        title={t("performanceDataTitle")}
         description="Filter by quarter, category, or risk level to narrow results."
         search={searchQuery}
         onSearchChange={setSearchQuery}

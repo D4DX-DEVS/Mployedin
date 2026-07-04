@@ -203,7 +203,7 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
 
   const handleRejectInvoice = async () => {
     if (invoice?.status !== "pending_approval") {
-      toast.error("Only pending invoices can be rejected");
+      toast.error(t("onlyPendingCanBeRejected"));
       return;
     }
     const trimmedReason = rejectionReason.trim();

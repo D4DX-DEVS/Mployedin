@@ -34,7 +34,10 @@
     "employerWorkspace": "مساحة عمل صاحب العمل",
     "adminWorkspace": "مساحة عمل المدير",
     "agentWorkspace": "مساحة عمل الوكيل",
-    "superAgentWorkspace": "مساحة عمل الوكيل الرئيسي"
+    "superAgentWorkspace": "مساحة عمل الوكيل الرئيسي",
+    "a11yNavigationMenu": "قائمة التنقل",
+    "a11yOpenMenu": "فتح القائمة",
+    "a11yHome": "الصفحة الرئيسية لمنصة Mployedin"
   },
   "auth": {
     "login": "تسجيل الدخول",
@@ -349,7 +352,8 @@
     "reset": "إعادة تعيين",
     "saved": "تم الحفظ",
     "superAgentWorkspace": "مساحة عمل الوكيل الرئيسي",
-    "currency": "العملة"
+    "currency": "العملة",
+    "a11yFormProgress": "تقدم النموذج"
   },
   "table": {
     "search": "بحث...",
@@ -1459,7 +1463,23 @@
         "accomplishments": "الإنجازات",
         "careerProfile": "الملف المهني",
         "languages": "اللغات والروابط"
-      }
+      },
+      "a11yEditHeadline": "تعديل المسمى التعريفي",
+      "a11yEditName": "تعديل الاسم",
+      "a11yEditSummary": "تعديل الملخص",
+      "a11yChangePhoto": "تغيير الصورة",
+      "sectionSkills": "المهارات",
+      "sectionExperience": "الخبرة",
+      "sectionProjects": "المشاريع",
+      "sectionEducation": "التعليم",
+      "sectionAccomplishments": "الإنجازات",
+      "sectionAbout": "نبذة",
+      "emptyAddSkills": "أضف المهارات",
+      "emptyAddWorkExperience": "أضف الخبرة العملية",
+      "emptyAddProjects": "أضف مشاريع لتتميز أمام أصحاب العمل",
+      "emptyAddEducation": "أضف التعليم",
+      "emptyAddAccomplishments": "أضف الشهادات أو نماذج الأعمال أو المنشورات أو الملفات الإلكترونية",
+      "emptyAddSummary": "أضف ملخصًا مهنيًا"
     },
     "settings": {
       "back": "رجوع",
@@ -1547,6 +1567,10 @@
         "interviewNotifications": "إشعارات المقابلات",
         "interviewNotificationsDescription": "تذكيرات وتحديثات حول المقابلات المجدولة."
       }
+    },
+    "smartWelcome": {
+      "resumeUploadedSuccessfully": "تم تحميل السيرة الذاتية بنجاح",
+      "resumeUploadFailed": "فشل تحميل السيرة الذاتية"
     }
   },
   "cvBuilderPage": {
@@ -2087,7 +2111,8 @@
         "cta": "أضف يدوياً",
         "placeholder": "مثال: الإنجليزية بطلاقة، العربية متوسطة، الهندية لغة أم..."
       }
-    }
+    },
+    "a11yRefreshInsights": "تحديث الرؤى"
   },
   "ai": {
     "bulkSuccess": "تم إنشاء {count} وظيفة بنجاح",
@@ -3030,7 +3055,13 @@
     "aiLabel_ai_job_description": "إنشاء وصف الوظيفة",
     "aiLabel_ai_hiring_reports": "تقارير التوظيف",
     "aiLabel_ai_voice_input": "الإدخال الصوتي",
-    "displayCurrency": "عملة العرض:"
+    "displayCurrency": "عملة العرض:",
+    "paymentIntegrationComingSoon": "قريباً",
+    "paymentIntegrationNotYetAvailable": "تكامل الدفع غير متاح حتى الآن.",
+    "paymentSetupComingSoon": "إعداد الدفع قريباً",
+    "onlinePaymentNotYetAvailable": "تكامل الدفع عبر الإنترنت غير متاح حتى الآن.",
+    "contactAdminToUpgrade": "تواصل مع المسؤول للترقية.",
+    "a11yLiveExchangeRates": "أسعار صرف مباشرة"
   },
   "invoiceManagement": {
     "title": "الفواتير",
@@ -3843,7 +3874,8 @@
     "applicationsLabel": "الطلبات",
     "interviewsLabel": "المقابلات",
     "notesLabel": "الملاحظات",
-    "noActivityData": "لا توجد طلبات أو مقابلات أو ملاحظات بعد."
+    "noActivityData": "لا توجد طلبات أو مقابلات أو ملاحظات بعد.",
+    "a11yClose": "إغلاق"
   },
   "scorecard": {
     "title": "بطاقة تقييم المقابلة",
@@ -4323,7 +4355,8 @@
     "unableToLoadDesc": "حدث خطأ ما أثناء جلب الطلبات. قد يكون ذلك بسبب حد الاشتراك — يرجى التحقق من خطتك أو تحديث الصفحة.",
     "createScorecardTitle": "إنشاء بطاقة تقييم المقابلة",
     "createScorecardDesc": "قيّم المرشح لهذه المقابلة",
-    "scoringCandidate": "جارٍ تقييم المرشح {done} من {total}"
+    "scoringCandidate": "جارٍ تقييم المرشح {done} من {total}",
+    "a11yCloseActivityTimeline": "إغلاق سجل النشاط"
   },
   "employerAnalytics": {
     "title": "مركز قيادة التحليلات",
@@ -6845,7 +6878,9 @@
     "scheduled": "مجدولة",
     "confirmed": "مؤكدة",
     "completed": "مكتملة",
-    "cancelled": "ملغاة"
+    "cancelled": "ملغاة",
+    "failedLoadingCalendarEvents": "فشل تحميل أحداث التقويم",
+    "interviewBookedSuccessfully": "تم حجز المقابلة بنجاح"
   },
   "employerScorecards": {
     "title": "بطاقات تقييم المقابلات",
@@ -6990,7 +7025,15 @@
     "stepBudget": "الميزانية",
     "stepDescription": "الوصف",
     "stepResources": "الموارد",
-    "stepReview": "مراجعة وإرسال"
+    "stepReview": "مراجعة وإرسال",
+    "enterExhibitionTitle": "يرجى إدخال عنوان المعرض.",
+    "startDateInPast": "لا يمكن أن يكون تاريخ البداية في الماضي.",
+    "endDateEarlierThanStart": "لا يمكن أن يكون تاريخ النهاية أبكر من تاريخ البداية.",
+    "requestCopied": "تم نسخ الطلب. قم بتحديث التواريخ والإرسال عند الانتهاء.",
+    "errorUpdatingExhibition": "خطأ في تحديث المعرض",
+    "noExhibitionRequestsFound": "لا توجد طلبات معارض",
+    "tryAdjustingFiltersExhibitions": "جرّب تعديل الفلاتر أو عد لاحقًا عندما يقدم الوكلاء طلبات جديدة.",
+    "teamExhibitionRequests": "طلبات معارض الفريق"
   },
   "resources": {
     "title": "إدارة الموارد",
@@ -7028,7 +7071,10 @@
     "uploadedBy": "رُفع بواسطة",
     "inactive": "غير نشط",
     "activate": "تفعيل",
-    "deactivate": "إلغاء التفعيل"
+    "deactivate": "إلغاء التفعيل",
+    "a11yAddNewCategory": "إضافة فئة جديدة",
+    "a11yDelete": "حذف",
+    "a11yDownloadHistory": "سجل التنزيلات"
   },
   "targets": {
     "title": "إدارة الأهداف",
@@ -7130,7 +7176,36 @@
     "teamOverview": "نظرة عامة على الفريق",
     "createTargetProfile": "إنشاء ملف أهداف",
     "profiles": "الملفات",
-    "analytics": "التحليلات"
+    "analytics": "التحليلات",
+    "failedToLoadProfiles": "فشل تحميل ملفات الأهداف",
+    "profileCancelled": "تم إلغاء ملف الهدف",
+    "failedToCancel": "فشل الإلغاء",
+    "failedToClone": "فشل النسخ",
+    "profilesCloned": "تم نسخ {count} ملفات من {year}",
+    "profileReassigned": "تم إعادة تعيين ملف الهدف",
+    "failedToReassign": "فشل إعادة التعيين",
+    "csvExported": "تم تصدير CSV",
+    "failedToLoadSupervisors": "فشل تحميل المشرفين",
+    "enterTargetsForSupervisors": "أدخل الأهداف لمشرف واحد على الأقل",
+    "failedToCreateProfiles": "فشل إنشاء ملفات الأهداف",
+    "profileNotFound": "الملف غير موجود",
+    "failedToLoadProfile": "فشل تحميل الملف",
+    "failedToLoadReport": "فشل تحميل التقرير",
+    "a11yViewDetails": "عرض التفاصيل",
+    "a11yCancel": "إلغاء",
+    "a11yReassign": "إعادة تعيين",
+    "noLeaderboardData": "لا توجد بيانات للمتصدرين",
+    "createProfilesToSeeRankings": "أنشئ ملفات أهداف لعرض التصنيفات",
+    "a11yYear": "السنة",
+    "performanceDataTitle": "بيانات الأداء",
+    "noAgentsMatchFilters": "لا يوجد وكلاء مطابقون لهذه الفلاتر",
+    "targetsNeedAssignForRankings": "يجب تعيين الأهداف لعرض التصنيفات",
+    "monthlyBreakdownTitle": "التفصيل الشهري",
+    "noMonthlyAnalyticsYet": "لا توجد تحليلات شهرية بعد",
+    "monthlyDistributionInfo": "سيظهر التوزيع الشهري بعد تقسيم الهدف السنوي على الأشهر.",
+    "teamPerformanceLeaderboard": "لوحة متصدري أداء الفريق",
+    "rankingsEyebrow": "التصنيفات",
+    "a11yTargetFlow": "مسار الهدف"
   },
   "webhooks": {
     "title": "الويب هوك",
@@ -7149,7 +7224,24 @@
     "updated": "تم تحديث الويب هوك",
     "deleted": "تم حذف الويب هوك",
     "secretWarning": "احفظ مفتاح التوقيع — لن يظهر مرة أخرى",
-    "noWebhooks": "لم يتم تكوين أي ويب هوك بعد"
+    "noWebhooks": "لم يتم تكوين أي ويب هوك بعد",
+    "loadFailed": "فشل تحميل الويب هوك",
+    "saveFailed": "فشل الحفظ",
+    "saveWebhookFailed": "فشل حفظ الويب هوك",
+    "deleteFailed": "فشل الحذف",
+    "toggleFailed": "فشل التبديل",
+    "testRequestFailed": "فشل طلب الاختبار",
+    "loadLogFailed": "فشل تحميل سجل التسليم",
+    "rotateSecretFailed": "فشل تدوير المفتاح السري",
+    "createdWithSecretWarning": "تم إنشاء الويب هوك! انسخ المفتاح السري — لن يظهر مرة أخرى.",
+    "disabled": "تم تعطيل الويب هوك",
+    "enabled": "تم تفعيل الويب هوك",
+    "secretRotated": "تم تدوير المفتاح السري — انسخ المفتاح الجديد الآن.",
+    "testDelivered": "تم تسليم الاختبار — {statusCode} خلال {responseTime} مللي ثانية",
+    "testFailedMessage": "فشل الاختبار: {message}",
+    "a11yRotateSecret": "تدوير السر",
+    "a11ySendTestPing": "إرسال اختبار",
+    "a11yViewDeliveryLog": "عرض سجل التسليم"
   },
   "notifications": {
     "frequencyInstant": "فوري",
@@ -9337,7 +9429,10 @@
     "insufficientPermissions": "أذونات غير كافية لتحليلات الذكاء الاصطناعي.",
     "serverError": "خطأ في الخادم ({status}). تحقق من تكوين مفتاح API للذكاء الاصطناعي.",
     "reportGenerationFailed": "فشل إنشاء التقرير: {error}. تحقق من تكوين GEMINI_API_KEY في متغيرات البيئة.",
-    "generatedDateLabel": "تم الإنشاء {date}"
+    "generatedDateLabel": "تم الإنشاء {date}",
+    "a11yAnalyticsTemplates": "قوالب التحليلات",
+    "a11yCustomAnalyticsQuery": "استعلام تحليلات مخصص",
+    "a11yAnalyticsReport": "تقرير التحليلات"
   },
   "adminApprovals": {
     "allJobs": "جميع الوظائف",
@@ -10599,7 +10694,16 @@
     "demandEfficiencyDescription": "متوسط الطلبات المولدة لكل وظيفة منشورة.",
     "commercialYield": "العائد التجاري",
     "commercialYieldDescription": "تحويل طلب إلى توظيف عبر دفتر المنصة الحالي.",
-    "failedToLoadReports": "فشل في تحميل التقارير."
+    "failedToLoadReports": "فشل في تحميل التقارير.",
+    "a11yApplicationsByStatus": "الطلبات حسب الحالة",
+    "a11yConversionFunnel": "قمع التحويل",
+    "a11yJobsVsApplications": "الوظائف مقابل الطلبات عبر الزمن",
+    "a11yPlatformAlerts": "تنبيهات المنصة",
+    "a11yRecentApplications": "أحدث الطلبات",
+    "a11yRecentJobs": "أحدث الوظائف",
+    "a11yTopAgents": "أفضل الوكلاء",
+    "a11yOperationalHighlights": "أبرز العمليات",
+    "a11yReportsError": "خطأ في التقارير"
   },
   "adminSettingsNotifications": {
     "adminWorkspaceLabel": "مساحة العمل الإدارية",
@@ -13426,7 +13530,7 @@
     "agent": "الوكيل",
     "allAgents": "جميع الوكلاء",
     "employer": "صاحب العمل",
-    "selectEmployer": "اختر صاحب العمل…",
+    "selectEmployer": "يرجى تحديد صاحب العمل",
     "allEmployers": "جميع أصحاب العمل",
     "noEmployersForAgent": "لم يتم العثور على أصحاب عمل لهذا الوكيل",
     "selectJob": "اختر الوظيفة *",
@@ -13478,7 +13582,14 @@
     "billingTo": "الفواتير إلى",
     "jobReference": "مرجع الوظيفة",
     "yourCommission": "عمولتك",
-    "combinedRateExceedsFull": "معدل العمولة المجمع ({rate}%) يتجاوز 100%"
+    "combinedRateExceedsFull": "معدل العمولة المجمع ({rate}%) يتجاوز 100%",
+    "typeAlreadyExists": "هذا النوع موجود بالفعل",
+    "taxTypeAlreadyExists": "هذا نوع الضريبة موجود بالفعل",
+    "paymentTermAlreadyExists": "هذا شرط الدفع موجود بالفعل",
+    "statusAlreadyExists": "هذه الحالة موجودة بالفعل",
+    "selectJobFirst": "يرجى تحديد الوظيفة أولاً",
+    "fillAllLineItems": "يرجى ملء جميع عناصر السطر مع الوصف والسعر",
+    "invoiceTotalMustBePositive": "يجب أن يكون إجمالي الفاتورة أكبر من صفر"
   },
   "invoiceDetailView": {
     "invoiceDetails": "تفاصيل الفاتورة",
@@ -13533,7 +13644,8 @@
     "markPaid": "وضع علامة مدفوع",
     "void": "إلغاء",
     "invoiceNotFound": "لم يتم العثور على الفاتورة.",
-    "record": "تسجيل"
+    "record": "تسجيل",
+    "onlyPendingCanBeRejected": "يمكن رفض الفواتير المعلقة فقط"
   },
   "uninvoicedPlacementsQueue": {
     "uninvoicedPlacements": "التوظيفات غير المفوترة",
@@ -13679,7 +13791,10 @@
     "saving": "جاري الحفظ…",
     "shortlistCandidate": "اختيار المرشح مبدئياً",
     "shortlisted": "مختار مبدئياً",
-    "scheduleInterview": "جدولة مقابلة"
+    "scheduleInterview": "جدولة مقابلة",
+    "a11yZoomIn": "تكبير",
+    "a11yZoomOut": "تصغير",
+    "a11yRotate": "تدوير"
   },
   "permissionEditor": {
     "customPermissions": "أذونات مخصصة",
@@ -13908,7 +14023,8 @@
     "title": "دليل إعداد إنشاء الوظيفة",
     "subtitle": "أكمل هذه الخطوات لفتح سير عمل صاحب العمل الكامل.",
     "progressLabel": "تقدمك",
-    "doNotShowAgain": "عدم الإظهار مرة أخرى"
+    "doNotShowAgain": "عدم الإظهار مرة أخرى",
+    "a11yClose": "إغلاق"
   },
   "teamAllocationDialog": {
     "distributeTargetsToAgents": "توزيع الأهداف على الوكلاء",
@@ -13944,7 +14060,13 @@
     "monthlyDistribution": "التوزيع الشهري (قابل للتعديل)",
     "sumMismatch": "عدم تطابق الجمع — اضبط القيم الشهرية",
     "month": "شهر",
-    "failedToLoadAgents": "فشل تحميل وكلاء الفريق"
+    "failedToLoadAgents": "فشل تحميل وكلاء الفريق",
+    "failedLoadTargets": "فشل تحميل الأهداف",
+    "failedLoadTeamTargets": "فشل تحميل أهداف الفريق",
+    "failedCreateAgentTargets": "فشل إنشاء أهداف الوكيل",
+    "failedLoadReport": "فشل تحميل التقرير",
+    "enterTargetsForAtLeastOne": "أدخل أهدافًا لوكيل واحد على الأقل",
+    "overAllocatedToast": "تم التوزيع الزائد. قلل الأهداف للبقاء ضمن الميزانية."
   },
   "targetComponents": {
     "high": "مرتفع",
@@ -14012,7 +14134,12 @@
     "done": "تم",
     "helpful": "مفيد",
     "notHelpful": "غير مفيد",
-    "thanks": "شكراً لك!"
+    "thanks": "شكراً لك!",
+    "noUnderperformingAgent": "لم يتم العثور على وكيل متعثر لإعادة تعيين الرسائل من.",
+    "leadsReassignedSuccessfully": "تمت إعادة تعيين الرسائل بنجاح.",
+    "failedToReassignLeads": "فشل في إعادة تعيين الرسائل.",
+    "failedToSendReminder": "فشل في إرسال التذكير.",
+    "a11yDismiss": "إغلاق"
   },
   "jobSeekerRightPanel": {
     "recruiterViews": "عروض المجندين",
@@ -14034,7 +14161,8 @@
     "failedToApply": "فشل في التقديم",
     "jobSaved": "تم حفظ الوظيفة",
     "jobUnsaved": "تم إلغاء حفظ الوظيفة",
-    "failedToUpdateSaved": "فشل في تحديث الوظائف المحفوظة"
+    "failedToUpdateSaved": "فشل في تحديث الوظائف المحفوظة",
+    "applicationLimitReached": "تم الوصول إلى حد الطلبات — قم بالترقية إلى خطتك"
   },
   "jobSeekerStatsGrid": {
     "applicationsSent": "الطلبات المرسلة",
@@ -14138,7 +14266,8 @@
     "recommendQuestion": "التوصية",
     "submitting": "جاري الإرسال...",
     "submitReview": "إرسال التقييم",
-    "cancel": "إلغاء"
+    "cancel": "إلغاء",
+    "networkError": "خطأ في الشبكة"
   },
   "easyApply": {
     "loading": "جاري التحميل…",
@@ -14179,7 +14308,8 @@
     "share": "مشاركة",
     "linkCopied": "تم نسخ الرابط!",
     "failedCopy": "فشل نسخ الرابط",
-    "copyLink": "نسخ الرابط"
+    "copyLink": "نسخ الرابط",
+    "linkCopiedToClipboard": "تم نسخ الرابط إلى الحافظة"
   },
   "recentActivityFeed": {
     "recentActivity": "النشاط الأخير",
@@ -14312,5 +14442,45 @@
     "planDistributionByRevenue": "توزيع الخطة (حسب الإيرادات)",
     "noPlanData": "لا توجد بيانات خطة",
     "aedMrr": "AED MRR"
+  },
+  "errorBoundary": {
+    "title": "حدث خطأ ما",
+    "description": "حدث خطأ غير متوقع أثناء تحميل هذه الصفحة.",
+    "tryAgain": "إعادة المحاولة",
+    "reloadPage": "إعادة تحميل الصفحة",
+    "errorId": "رقم الخطأ: {digest}",
+    "failedApplications": "فشل تحميل الطلبات",
+    "failedApplicationsDescription": "حدث خطأ غير متوقع أثناء تحميل الطلبات.",
+    "failedAnalytics": "فشل تحميل التحليلات",
+    "failedAnalyticsDescription": "حدث خطأ غير متوقع أثناء تحميل التحليلات.",
+    "failedJobs": "فشل تحميل الوظائف",
+    "failedJobsDescription": "حدث خطأ غير متوقع أثناء تحميل الوظائف.",
+    "failedSettings": "فشل تحميل الإعدادات",
+    "failedSettingsDescription": "حدث خطأ غير متوقع أثناء تحميل الإعدادات.",
+    "failedReports": "فشل تحميل التقارير",
+    "failedReportsDescription": "حدث خطأ غير متوقع أثناء تحميل مساحة عمل تقارير الإدارة.",
+    "failedInterviews": "فشل تحميل المقابلات",
+    "failedInterviewsDescription": "حدث خطأ غير متوقع أثناء تحميل المقابلات.",
+    "failedCandidates": "فشل تحميل المرشحين",
+    "failedCandidatesDescription": "حدث خطأ غير متوقع أثناء تحميل المرشحين.",
+    "failedMessages": "فشل تحميل الرسائل",
+    "failedMessagesDescription": "حدث خطأ غير متوقع أثناء تحميل الرسائل."
+  },
+  "agentCalendar": {
+    "failedLoadingCalendarEvents": "فشل تحميل أحداث التقويم"
+  },
+  "agentMessages": {
+    "title": "الرسائل",
+    "description": "رسائل مباشرة مع أصحاب العمل والوكلاء الرئيسيين"
+  },
+  "superAgentMessages": {
+    "title": "الرسائل",
+    "description": "رسائل مباشرة مع الوكلاء وأصحاب العمل والفريق"
+  },
+  "superAgentInsights": {
+    "title": "الرؤى",
+    "description": "تنبيهات وفرص وتوصيات مدعومة بالذكاء الاصطناعي مستمدة من بيانات أداء فريقك الفورية.",
+    "summaryTitle": "محرك الرؤى",
+    "summaryDescription": "مستخلصة من نشاط فريقك خلال آخر 7 أيام ومرتبة حسب الثقة، لتتمكن من التركيز على الأهم."
   }
 }

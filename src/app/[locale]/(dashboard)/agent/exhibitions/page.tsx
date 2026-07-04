@@ -297,17 +297,17 @@ export default function AgentExhibitionsPage() {
 
   const validateForm = () => {
     if (!form.eventName.trim()) {
-      toast.error("Please enter an exhibition title.");
+      toast.error(t("enterExhibitionTitle"));
       return false;
     }
     if (form.eventStartDate) {
       const start = new Date(form.eventStartDate);
       if (start < today) {
-        toast.error("Start date cannot be in the past.");
+        toast.error(t("startDateInPast"));
         return false;
       }
       if (form.eventEndDate && new Date(form.eventEndDate) < start) {
-        toast.error("End date cannot be earlier than start date.");
+        toast.error(t("endDateEarlierThanStart"));
         return false;
       }
     }
@@ -416,7 +416,7 @@ export default function AgentExhibitionsPage() {
     setForm(duplicatedForm);
     setEditingId(null);
     setShowWizard(true);
-    toast.success("Request copied. Update the dates and submit when ready.");
+    toast.success(t("requestCopied"));
   };
 
   const formatDate = (value: string) => {

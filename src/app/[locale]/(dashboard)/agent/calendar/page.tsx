@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import MployedinCalendar, {
   type CalendarEvent,
@@ -8,6 +9,7 @@ import MployedinCalendar, {
 import { Users } from "lucide-react";
 
 export default function AgentCalendarPage() {
+  const t = useTranslations("agentCalendar");
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -39,7 +41,7 @@ export default function AgentCalendarPage() {
         );
       }
     } catch {
-      toast.error("Failed to load calendar events");
+      toast.error(t("failedLoadingCalendarEvents"));
     } finally {
       setLoading(false);
     }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 
 export default function AdminReportsError({
@@ -10,6 +11,7 @@ export default function AdminReportsError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const t = useTranslations("errorBoundary");
   useEffect(() => {
     console.error("[Admin Reports Error]", error);
   }, [error]);
@@ -21,9 +23,9 @@ export default function AdminReportsError({
           <AlertTriangle className="h-6 w-6" />
         </div>
         <div className="space-y-2">
-          <h2 className="text-xl font-semibold text-foreground">Failed to load reports</h2>
+          <h2 className="text-xl font-semibold text-foreground">{t("failedReports")}</h2>
           <p className="text-sm leading-6 text-muted-foreground">
-            {error.message || "An unexpected error occurred while loading the admin reports workspace."}
+            {error.message || t("failedReportsDescription")}
           </p>
         </div>
         <button
@@ -31,7 +33,7 @@ export default function AdminReportsError({
           className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
         >
           <RefreshCw className="h-4 w-4" />
-          Try Again
+          {t("tryAgain")}
         </button>
       </div>
     </div>

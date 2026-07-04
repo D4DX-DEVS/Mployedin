@@ -75,7 +75,10 @@ async function getEligibleAssigneeIds(assigneeIds: string[], assigneeRole: strin
 /* ------------------------------------------------------------------ */
 /*  GET  /api/admin/target-profiles                                    */
 /* ------------------------------------------------------------------ */
-async function handler(req: NextRequest, _ctx: AuthCtx) {
+async function handler(req: NextRequest, ctx: AuthCtx) {
+  if (ctx.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   await connectDB();
 
   const { searchParams } = new URL(req.url);
@@ -173,6 +176,9 @@ async function handler(req: NextRequest, _ctx: AuthCtx) {
 /*  POST  /api/admin/target-profiles — create unified profile          */
 /* ------------------------------------------------------------------ */
 async function postHandler(req: NextRequest, ctx: AuthCtx) {
+  if (ctx.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   await connectDB();
 
   const url = new URL(req.url);

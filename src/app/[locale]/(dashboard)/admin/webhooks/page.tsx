@@ -102,7 +102,7 @@ export default function AdminWebhooksPage() {
         setWebhooks(data.webhooks || []);
       }
     } catch {
-      toast.error("Failed to load webhooks");
+      toast.error(t("loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -182,7 +182,7 @@ export default function AdminWebhooksPage() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: "Request failed" }));
-        toast.error(err.error || "Save failed");
+        toast.error(err.error || t("saveFailed"));
         return;
       }
 
@@ -191,16 +191,16 @@ export default function AdminWebhooksPage() {
       // Show secret on creation
       if (!editId && data.webhook?.secret) {
         setNewSecret(data.webhook.secret);
-        toast.success("Webhook created! Copy the secret — it won't be shown again.");
+        toast.success(t("createdWithSecretWarning"));
       } else {
-        toast.success(editId ? "Webhook updated" : "Webhook created");
+        toast.success(editId ? t("updated") : t("created"));
         setDialogOpen(false);
         resetForm();
       }
 
       fetchWebhooks();
     } catch {
-      toast.error("Failed to save webhook");
+      toast.error(t("saveWebhookFailed"));
     }
   };
 
@@ -210,11 +210,11 @@ export default function AdminWebhooksPage() {
     try {
       const res = await csrfFetch(`/api/admin/webhooks/${id}`, { method: "DELETE" });
       if (res.ok) {
-        toast.success("Webhook deleted");
+        toast.success(t("deleted"));
         fetchWebhooks();
       }
     } catch {
-      toast.error("Delete failed");
+      toast.error(t("deleteFailed"));
     }
   };
 
@@ -226,11 +226,11 @@ export default function AdminWebhooksPage() {
         body: JSON.stringify({ isActive: !wh.isActive }),
       });
       if (res.ok) {
-        toast.success(wh.isActive ? "Webhook disabled" : "Webhook enabled");
+        toast.success(wh.isActive ? t("disabled") : t("enabled"));
         fetchWebhooks();
       }
     } catch {
-      toast.error("Toggle failed");
+      toast.error(t("toggleFailed"));
     }
   };
 
@@ -240,12 +240,12 @@ export default function AdminWebhooksPage() {
       const res = await csrfFetch(`/api/admin/webhooks/${id}/test`, { method: "POST" });
       const data = await res.json();
       if (data.success) {
-        toast.success(`Test delivered — ${data.statusCode} in ${data.responseTime}ms`);
+        toast.success(t("testDelivered", { statusCode: data.statusCode, responseTime: data.responseTime }));
       } else {
-        toast.error(`Test failed: ${data.message}`);
+        toast.error(t("testFailedMessage", { message: data.message }));
       }
     } catch {
-      toast.error("Test request failed");
+      toast.error(t("testRequestFailed"));
     } finally {
       setTestingId(null);
     }
@@ -261,10 +261,10 @@ export default function AdminWebhooksPage() {
         setNewSecret(data.secret);
         setEditId(id);
         setDialogOpen(true);
-        toast.success("Secret rotated — copy the new secret now.");
+        toast.success(t("secretRotated"));
       }
     } catch {
-      toast.error("Failed to rotate secret");
+      toast.error(t("rotateSecretFailed"));
     }
   };
 
@@ -279,7 +279,7 @@ export default function AdminWebhooksPage() {
         setLogEntries(data.webhook?.deliveryLog ?? []);
       }
     } catch {
-      toast.error("Failed to load delivery log");
+      toast.error(t("loadLogFailed"));
     } finally {
       setLogLoading(false);
     }
@@ -613,7 +613,7 @@ export default function AdminWebhooksPage() {
                         size="sm"
                         onClick={() => handleTestPing(wh._id)}
                         disabled={testingId === wh._id}
-                        title="Send test ping"
+                        title={t("a11ySendTestPing")}
                         className="h-8 w-8 p-0"
                       >
                         <Send className={`h-3.5 w-3.5 ${testingId === wh._id ? "animate-pulse" : ""}`} />
@@ -622,7 +622,7 @@ export default function AdminWebhooksPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => openDeliveryLog(wh)}
-                        title="View delivery log"
+                        title={t("a11yViewDeliveryLog")}
                         className="h-8 w-8 p-0"
                       >
                         <Eye className="h-3.5 w-3.5" />
@@ -631,7 +631,7 @@ export default function AdminWebhooksPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleRotateSecret(wh._id)}
-                        title="Rotate secret"
+                        title={t("a11yRotateSecret")}
                         className="h-8 w-8 p-0"
                       >
                         <KeyRound className="h-3.5 w-3.5" />

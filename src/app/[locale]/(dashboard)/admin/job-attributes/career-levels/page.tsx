@@ -7,6 +7,8 @@ export default function CareerLevelsPage() {
       title="Career Levels"
       titleAr="المستويات المهنية"
       description="Manage career seniority level options"
+
+      descriptionAr="إدارة خيارات مستوى الأقدمية المهنية"
     />
   );
 }

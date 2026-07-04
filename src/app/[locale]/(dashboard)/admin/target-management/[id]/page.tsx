@@ -107,10 +107,10 @@ export default function AdminTargetProfileDetailPage() {
         setProfile(data.profile);
         setAgentProfiles(data.agentProfiles ?? []);
       } else {
-        toast.error("Profile not found");
+        toast.error(t("profileNotFound"));
       }
     } catch {
-      toast.error("Failed to load profile");
+      toast.error(t("failedToLoadProfile"));
     } finally {
       setLoading(false);
     }

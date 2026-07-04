@@ -7,6 +7,8 @@ export default function GendersPage() {
       title="Genders"
       titleAr="الجنس"
       description="Manage gender options"
+
+      descriptionAr="إدارة خيارات الجنس"
     />
   );
 }

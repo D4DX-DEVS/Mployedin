@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 // TODO: Re-add useMutation usage for auto-apply toggle when feature is ready
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, Circle, Upload, Loader2 } from "lucide-react";
@@ -47,6 +48,7 @@ export function SmartWelcome({
   completionSteps,
   locale,
 }: SmartWelcomeProps) {
+  const t = useTranslations("jobSeekerExtra.smartWelcome");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const qc = useQueryClient();
 
@@ -108,11 +110,11 @@ export function SmartWelcome({
       return res.json();
     },
     onSuccess: () => {
-      toast.success("Resume uploaded successfully");
+      toast.success(t("resumeUploadedSuccessfully"));
       qc.invalidateQueries({ queryKey: ["job-seeker-profile"] });
       qc.invalidateQueries({ queryKey: ["profile-completion"] });
     },
-    onError: () => toast.error("Resume upload failed"),
+    onError: () => toast.error(t("resumeUploadFailed")),
   });
 
   const completedCount = completionSteps.filter((s) => s.done).length;

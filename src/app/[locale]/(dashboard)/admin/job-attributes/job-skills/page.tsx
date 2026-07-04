@@ -7,6 +7,8 @@ export default function JobSkillsPage() {
       title="Job Skills"
       titleAr="المهارات الوظيفية"
       description="Manage professional skill options"
+
+      descriptionAr="إدارة خيارات المهارات المهنية"
     />
   );
 }

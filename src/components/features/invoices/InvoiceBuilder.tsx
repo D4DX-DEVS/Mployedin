@@ -680,7 +680,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
     if (!trimmed) return;
     const value = trimmed.toLowerCase().replace(/\s+/g, "_");
     if (allInvoiceTypes.some(t => t.value === value)) {
-      toast.error("This type already exists");
+      toast.error(t("typeAlreadyExists"));
       return;
     }
     setCustomInvoiceTypes(prev => [...prev, { value, label: trimmed }]);
@@ -694,7 +694,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
     if (!trimmed) return;
     const value = trimmed.toLowerCase().replace(/\s+/g, "_");
     if (allTaxTypes.some(t => t.value === value)) {
-      toast.error("This tax type already exists");
+      toast.error(t("taxTypeAlreadyExists"));
       return;
     }
     setCustomTaxTypes(prev => [...prev, { value, label: trimmed }]);
@@ -708,7 +708,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
     if (!trimmed) return;
     const value = trimmed.toLowerCase().replace(/\s+/g, "_");
     if (allPaymentTerms.some(t => t.value === value)) {
-      toast.error("This payment term already exists");
+      toast.error(t("paymentTermAlreadyExists"));
       return;
     }
     setCustomPaymentTerms(prev => [...prev, { value, label: trimmed }]);
@@ -722,7 +722,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
     if (!trimmed) return;
     const value = trimmed.toLowerCase().replace(/\s+/g, "_");
     if (allStatusOptions.some(t => t.value === value)) {
-      toast.error("This status already exists");
+      toast.error(t("statusAlreadyExists"));
       return;
     }
     setCustomStatuses(prev => [...prev, { value, label: trimmed }]);
@@ -733,11 +733,11 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
 
   // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
-    if (!selectedJobId) { toast.error("Please select a job first"); setStep(1); return; }
-    if (!selectedEmployerId) { toast.error("Please select an employer"); setStep(1); return; }
-    if (lineItems.some(li => !li.description || li.unitPrice <= 0)) { toast.error("Please fill all line items with description and price"); setStep(1); return; }
+    if (!selectedJobId) { toast.error(t("selectJobFirst")); setStep(1); return; }
+    if (!selectedEmployerId) { toast.error(t("selectEmployer")); setStep(1); return; }
+    if (lineItems.some(li => !li.description || li.unitPrice <= 0)) { toast.error(t("fillAllLineItems")); setStep(1); return; }
     if (combinedRateExceeds) { toast.error(`Combined commission rate (${combinedRate.toFixed(1)}%) exceeds 100%. Please adjust rates.`); return; }
-    if (totalAmount <= 0) { toast.error("Invoice total must be greater than zero"); setStep(1); return; }
+    if (totalAmount <= 0) { toast.error(t("invoiceTotalMustBePositive")); setStep(1); return; }
 
     setSubmitting(true);
     try {

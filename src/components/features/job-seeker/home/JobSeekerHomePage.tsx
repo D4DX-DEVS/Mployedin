@@ -984,7 +984,7 @@ export function JobSeekerHomePage({
                     setAiInsights([]);
                     setAiInsightsKey((k) => k + 1);
                   }}
-                  title="Refresh insights"
+                  title={t("a11yRefreshInsights")}
                   aria-label={t("insights.refresh")}
                   className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-primary/10"
                 >

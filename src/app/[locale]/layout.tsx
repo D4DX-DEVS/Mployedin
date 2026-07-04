@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
+import { PWAInstallPrompt } from "@/components/shared/PWAInstallPrompt";
 
 const locales = ["en", "ar"];
 
@@ -73,6 +74,7 @@ export default async function LocaleLayout({
     <div lang={locale} dir={dir} className={locale === "ar" ? "font-arabic" : ""}>
       <NextIntlClientProvider locale={locale} messages={messages}>
         {children}
+        <PWAInstallPrompt />
       </NextIntlClientProvider>
     </div>
   );

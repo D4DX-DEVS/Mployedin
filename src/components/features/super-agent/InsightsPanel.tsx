@@ -194,7 +194,7 @@ export function SuperAgentInsightsPanel() {
         if (!fromAgent) {
           // Rollback
           setActionDone((prev) => { const next = new Set(prev); next.delete(key); return next; });
-          toast.error("No underperforming agent found to reassign leads from.");
+          toast.error(t("noUnderperformingAgent"));
           return;
         }
 
@@ -208,11 +208,11 @@ export function SuperAgentInsightsPanel() {
           }),
         });
         if (!res.ok) throw new Error();
-        toast.success("Leads reassigned successfully.");
+        toast.success(t("leadsReassignedSuccessfully"));
       } catch {
         // Rollback on failure
         setActionDone((prev) => { const next = new Set(prev); next.delete(key); return next; });
-        toast.error("Failed to reassign leads.");
+        toast.error(t("failedToReassignLeads"));
       } finally {
         setActionLoading(null);
       }
@@ -251,7 +251,7 @@ export function SuperAgentInsightsPanel() {
       } catch {
         // Rollback on failure
         setActionDone((prev) => { const next = new Set(prev); next.delete(key); return next; });
-        toast.error("Failed to send reminder.");
+        toast.error(t("failedToSendReminder"));
       } finally {
         setActionLoading(null);
       }
@@ -414,7 +414,7 @@ export function SuperAgentInsightsPanel() {
                   <button
                     onClick={() => dismissInsight(insight.id)}
                     className="shrink-0 -mr-0.5 mt-0.5 rounded-md p-0.5 text-muted-foreground/40 transition-colors hover:bg-muted hover:text-muted-foreground"
-                    title="Dismiss"
+                    title={t("a11yDismiss")}
                   >
                     <X className="h-3 w-3" />
                   </button>

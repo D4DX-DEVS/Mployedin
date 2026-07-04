@@ -7,6 +7,8 @@ export default function MajorSubjectsPage() {
       title="Major Subjects"
       titleAr="التخصصات الرئيسية"
       description="Manage academic major and specialization options"
+
+      descriptionAr="إدارة خيارات التخصصات الأكاديمية"
     />
   );
 }

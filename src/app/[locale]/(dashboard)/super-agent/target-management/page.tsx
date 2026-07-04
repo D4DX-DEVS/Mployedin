@@ -309,7 +309,7 @@ export default function SuperAgentTargetProfilesPage() {
         const data = await res.json();
         setOwnProfile(data.profile ?? null);
       }
-    } catch { toast.error("Failed to load targets"); }
+    } catch { toast.error(t("failedLoadTargets")); }
     finally { setLoading(false); }
   }, [yearFilter]);
 
@@ -323,7 +323,7 @@ export default function SuperAgentTargetProfilesPage() {
         // Team endpoint also returns ownProfile — update it to avoid separate call
         if (data.ownProfile) setOwnProfile(data.ownProfile);
       }
-    } catch { toast.error("Failed to load team targets"); }
+    } catch { toast.error(t("failedLoadTeamTargets")); }
     finally { setTeamLoading(false); }
   }, [yearFilter]);
 
@@ -452,7 +452,7 @@ export default function SuperAgentTargetProfilesPage() {
     const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url; a.download = `team-targets-${yearFilter}.csv`; a.click();
-    URL.revokeObjectURL(url); toast.success("CSV exported");
+    URL.revokeObjectURL(url); toast.success(t("csvExported"));
   };
 
   const pct = (a: number, tgt: number) => tgt > 0 ? Math.round((a / tgt) * 100) : 0;
@@ -481,7 +481,7 @@ export default function SuperAgentTargetProfilesPage() {
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" aria-label="Target flow">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" aria-label={t("a11yTargetFlow")}>
                       <Info className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
@@ -752,7 +752,7 @@ export default function SuperAgentTargetProfilesPage() {
                 />
               </div>
 
-              <SuperAgentSection eyebrow="Rankings" title="Team performance leaderboard">
+              <SuperAgentSection eyebrow={t("rankingsEyebrow")} title={t("teamPerformanceLeaderboard")}>
                 <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
                   <Table>
                     <TableHeader>
@@ -793,7 +793,7 @@ export default function SuperAgentTargetProfilesPage() {
           ) : !ownProfile ? (
             <TargetEmptyState title={t("noTargetsAssigned")} description={t("contactSupervisor")} />
           ) : ownProfile.monthlyAchievements.length === 0 ? (
-            <TargetEmptyState title="No monthly analytics yet" description="Monthly distribution will appear after this yearly target is split by month." />
+            <TargetEmptyState title={t("noMonthlyAnalyticsYet")} description={t("monthlyDistributionInfo")} />
           ) : (
             <SuperAgentSection eyebrow={t("monthlyBreakdown")} title={t("monthlyBreakdownDescription")}>
               <MonthlyDistributionGrid months={ownProfile.monthlyAchievements} currency={ownProfile.currency} />
@@ -855,7 +855,7 @@ export default function SuperAgentTargetProfilesPage() {
                   <TableRow>
                     <TableCell colSpan={10} className="py-16 text-center">
                       <TargetEmptyState
-                        title="No agents match these filters"
+                        title={t("noAgentsMatchFilters")}
                         description="Try a different search, risk level, or completion stage."
                         action={
                           <Button

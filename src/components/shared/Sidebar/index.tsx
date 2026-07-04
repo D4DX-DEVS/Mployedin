@@ -563,7 +563,7 @@ export function Sidebar({
         </aside>
 
         {mobileOpen && (
-          <div className="fixed inset-0 z-50 lg:hidden flex" role="dialog" aria-modal="true" aria-label="Navigation menu">
+          <div className="fixed inset-0 z-50 lg:hidden flex" role="dialog" aria-modal="true" aria-label={t("a11yNavigationMenu")}>
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={() => onMobileClose?.()} />
 
             <aside
@@ -699,7 +699,7 @@ export function Sidebar({
       </aside>
 
       {mobileOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden flex" role="dialog" aria-modal="true" aria-label="Navigation menu">
+        <div className="fixed inset-0 z-50 lg:hidden flex" role="dialog" aria-modal="true" aria-label={t("a11yNavigationMenu")}>
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={() => onMobileClose?.()} />
 
           <aside
@@ -722,11 +722,12 @@ export function Sidebar({
 }
 
 export function MobileMenuButton({ onClick }: { onClick: () => void }) {
+  const t = useTranslations("nav");
   return (
     <button
       onClick={onClick}
       className="lg:hidden flex h-10 w-10 items-center justify-center rounded-xl border border-border/80 bg-card/80 hover:bg-card shadow-[0_18px_36px_-28px_rgba(15,23,42,0.24)] backdrop-blur-sm transition-colors"
-      aria-label="Open menu"
+      aria-label={t("a11yOpenMenu")}
     >
       <Menu className="h-5 w-5 text-foreground" />
     </button>

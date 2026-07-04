@@ -6,7 +6,10 @@ import Agent from "@/models/Agent";
 import { escapeRegex } from "@/lib/security/sanitize";
 import mongoose from "mongoose";
 
-export const GET = withAuth(async (req: NextRequest) => {
+export const GET = withAuth(async (req: NextRequest, ctx) => {
+  if (ctx.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   await connectDB();
 
   const url = new URL(req.url);

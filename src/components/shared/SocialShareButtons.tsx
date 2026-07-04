@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Share2, Copy, Link2 } from "lucide-react";
@@ -12,6 +13,7 @@ interface SocialShareButtonsProps {
 }
 
 export function SocialShareButtons({ url, title, description, className }: SocialShareButtonsProps) {
+  const t = useTranslations("socialShare");
   const encodedUrl = encodeURIComponent(url);
   const encodedTitle = encodeURIComponent(title);
   const encodedDesc = encodeURIComponent(description ?? title);
@@ -62,9 +64,9 @@ export function SocialShareButtons({ url, title, description, className }: Socia
   const copyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(url);
-      toast.success("Link copied to clipboard");
+      toast.success(t("linkCopiedToClipboard"));
     } catch {
-      toast.error("Failed to copy link");
+      toast.error(t("failedCopy"));
     }
   };
 

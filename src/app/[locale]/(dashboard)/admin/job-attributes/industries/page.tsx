@@ -7,6 +7,8 @@ export default function IndustriesPage() {
       title="Industries"
       titleAr="الصناعات"
       description="Manage industry sector options"
+
+      descriptionAr="إدارة خيارات قطاعات الصناعة"
     />
   );
 }

@@ -237,7 +237,7 @@ export function TeamAllocationDialog({
         }
         setTargetRows(initial);
       } catch {
-        toast.error("Failed to load team agents");
+        toast.error(t("failedToLoadAgents"));
       } finally {
         setLoading(false);
       }
@@ -391,11 +391,11 @@ export function TeamAllocationDialog({
   /* ---- Submit ---- */
   async function handleSubmit() {
     if (validRows.length === 0) {
-      toast.error("Enter targets for at least one agent");
+      toast.error(t("enterTargetsForAtLeastOne"));
       return;
     }
     if (remaining.emp < 0 || remaining.ee < 0 || remaining.fin < 0) {
-      toast.error("Over-allocated. Reduce targets to stay within budget.");
+      toast.error(t("overAllocatedToast"));
       return;
     }
 

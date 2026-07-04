@@ -145,7 +145,7 @@ export default function CreateTargetProfilePage() {
         setTargetRows(initial);
       } catch {
         if (!controller.signal.aborted) {
-          toast.error("Failed to load supervisors");
+          toast.error(t("failedToLoadSupervisors"));
         }
       } finally {
         setLoading(false);
@@ -251,7 +251,7 @@ export default function CreateTargetProfilePage() {
   // Submit targets
   const handleCreate = async () => {
     if (validRows.length === 0) {
-      toast.error("Enter targets for at least one supervisor");
+      toast.error(t("enterTargetsForSupervisors"));
       return;
     }
 
@@ -287,10 +287,10 @@ export default function CreateTargetProfilePage() {
         toast.success(`${created} target profile${created !== 1 ? "s" : ""} created successfully`);
         router.push(`/${locale}/admin/target-management?year=${year}`);
       } else {
-        toast.error(data.error ?? "Failed to create targets");
+        toast.error(data.error ?? t("failedToCreateProfiles"));
       }
     } catch {
-      toast.error("Failed to create target profiles");
+      toast.error(t("failedToCreateProfiles"));
     } finally {
       setCreating(false);
     }

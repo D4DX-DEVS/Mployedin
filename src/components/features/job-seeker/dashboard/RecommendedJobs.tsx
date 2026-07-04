@@ -311,7 +311,7 @@ export function RecommendedJobs({ locale }: { locale: string }) {
                       size="sm"
                       variant="outline"
                       className="h-7 text-xs"
-                      onClick={() => applyAllowed ? setCvApplyJob(job) : toast.error("Application limit reached — upgrade your plan")}
+                      onClick={() => applyAllowed ? setCvApplyJob(job) : toast.error(t("applicationLimitReached"))}
                       disabled={!applyAllowed}
                       title="Apply with a chosen or updated CV"
                     >
@@ -322,7 +322,7 @@ export function RecommendedJobs({ locale }: { locale: string }) {
                   <Button
                     size="sm"
                     className="h-7 text-xs"
-                    onClick={() => applyAllowed ? applyMutation.mutate(job._id) : toast.error("Application limit reached — upgrade your plan")}
+                    onClick={() => applyAllowed ? applyMutation.mutate(job._id) : toast.error(t("applicationLimitReached"))}
                     disabled={!applyAllowed || isApplied || (applyMutation.isPending && applyMutation.variables === job._id)}
                   >
                     {isApplied ? (
@@ -358,7 +358,7 @@ export function RecommendedJobs({ locale }: { locale: string }) {
           onOpenChange={(o) => { if (!o) setCvApplyJob(null); }}
           onApplied={(jobId) => {
             setAppliedIds((s) => new Set([...s, jobId]));
-            toast.success("Application submitted!");
+            toast.success(t("applicationSubmitted"));
             qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
             qc.invalidateQueries({ queryKey: ["recommended-jobs"] });
           }}

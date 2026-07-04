@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 
 export default function AgentInterviewsError({
@@ -10,6 +11,7 @@ export default function AgentInterviewsError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const t = useTranslations("errorBoundary");
   useEffect(() => {
     console.error("[Agent Interviews Error]", error);
   }, [error]);
@@ -21,9 +23,9 @@ export default function AgentInterviewsError({
           <AlertTriangle className="w-6 h-6 text-destructive" />
         </div>
         <div className="space-y-2">
-          <h3 className="text-lg font-semibold text-destructive">Failed to load interviews</h3>
+          <h3 className="text-lg font-semibold text-destructive">{t("failedInterviews")}</h3>
           <p className="text-sm text-muted-foreground">
-            {error.message || "An unexpected error occurred while loading interviews."}
+            {error.message || t("failedInterviewsDescription")}
           </p>
         </div>
         <button
@@ -31,7 +33,7 @@ export default function AgentInterviewsError({
           className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
         >
           <RefreshCw className="w-4 h-4" />
-          Try Again
+          {t("tryAgain")}
         </button>
       </div>
     </div>

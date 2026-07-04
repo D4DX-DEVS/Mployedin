@@ -102,7 +102,7 @@ export function SetupGuide() {
           <button
             onClick={handleDismiss}
             className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20 text-white transition-colors hover:bg-white/30"
-            aria-label="Close"
+            aria-label={t("a11yClose")}
           >
             <X className="h-3.5 w-3.5" />
           </button>

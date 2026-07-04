@@ -7,6 +7,8 @@ export default function LanguageLevelsPage() {
       title="Language Levels"
       titleAr="مستويات اللغة"
       description="Manage language proficiency level options"
+
+      descriptionAr="إدارة خيارات مستوى إتقان اللغة"
     />
   );
 }

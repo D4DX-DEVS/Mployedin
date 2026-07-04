@@ -7,6 +7,8 @@ export default function JobShiftsPage() {
       title="Job Shifts"
       titleAr="نوبات العمل"
       description="Manage work shift options"
+
+      descriptionAr="إدارة خيارات نوبات العمل"
     />
   );
 }

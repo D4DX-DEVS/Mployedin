@@ -120,10 +120,10 @@ export default function AgentTargetReportPage() {
       if (res.ok) {
         setData(await res.json());
       } else {
-        toast.error("Failed to load report");
+        toast.error(t("failedLoadReport"));
       }
     } catch {
-      toast.error("Failed to load report");
+      toast.error(t("failedLoadReport"));
     } finally {
       setLoading(false);
     }
@@ -316,7 +316,7 @@ export default function AgentTargetReportPage() {
 
       {/* ═══════ TOOLBAR ═══════ */}
       <TableToolbar
-        title="Monthly breakdown"
+        title={t("monthlyBreakdownTitle")}
         description="Filter by quarter or category to drill down."
         onExportCsv={handleExportCsv}
         onExportExcel={handleExportExcel}

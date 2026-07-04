@@ -351,14 +351,14 @@ export default function AdminReportsPage() {
           <div className="workspace-panel-surface h-72 animate-pulse rounded-[20px] lg:col-span-2" />
         </div>
       ) : errorMessage ? (
-        <section className="workspace-panel-surface rounded-[28px] border border-rose-200/80 p-5 sm:p-6 dark:border-rose-900/60" aria-label="Reports error">
+        <section className="workspace-panel-surface rounded-[28px] border border-rose-200/80 p-5 sm:p-6 dark:border-rose-900/60" aria-label={t("a11yReportsError")}>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-rose-500">{t("unableToLoadReports")}</p>
           <p className="mt-2 text-sm leading-6 text-rose-700 dark:text-rose-200">{errorMessage}</p>
         </section>
       ) : (
         <>
           <div className="grid gap-6 xl:grid-cols-[minmax(320px,0.9fr)_minmax(0,1.1fr)]">
-            <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label="Platform alerts">
+            <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label={t("a11yPlatformAlerts")}>
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("actionQueue")}</p>
@@ -398,7 +398,7 @@ export default function AdminReportsPage() {
               </div>
             </section>
 
-            <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label="Jobs versus applications over time">
+            <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label={t("a11yJobsVsApplications")}>
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("demandTrend")}</p>
@@ -454,7 +454,7 @@ export default function AdminReportsPage() {
           </div>
 
           <div className="grid gap-6 xl:grid-cols-2">
-            <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label="Applications by status">
+            <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label={t("a11yApplicationsByStatus")}>
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("pipelineMix")}</p>
@@ -501,7 +501,7 @@ export default function AdminReportsPage() {
               )}
             </section>
 
-            <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label="Conversion funnel">
+            <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label={t("a11yConversionFunnel")}>
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("flowEfficiency")}</p>
@@ -550,7 +550,7 @@ export default function AdminReportsPage() {
           </div>
 
           <div className="grid gap-6 xl:grid-cols-3">
-            <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label="Recent jobs">
+            <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label={t("a11yRecentJobs")}>
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("recentActivity")}</p>
@@ -597,7 +597,7 @@ export default function AdminReportsPage() {
               )}
             </section>
 
-            <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label="Recent applications">
+            <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label={t("a11yRecentApplications")}>
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("recentActivity")}</p>
@@ -644,7 +644,7 @@ export default function AdminReportsPage() {
               )}
             </section>
 
-            <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label="Top agents">
+            <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label={t("a11yTopAgents")}>
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("ownership")}</p>
@@ -695,7 +695,7 @@ export default function AdminReportsPage() {
             </section>
           </div>
 
-          <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label="Operational highlights">
+          <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label={t("a11yOperationalHighlights")}>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("decisionSupport")}</p>

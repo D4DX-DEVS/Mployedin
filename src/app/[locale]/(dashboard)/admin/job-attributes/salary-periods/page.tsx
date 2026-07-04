@@ -7,6 +7,8 @@ export default function SalaryPeriodsPage() {
       title="Salary Periods"
       titleAr="فترات الراتب"
       description="Manage salary payment frequency options"
+
+      descriptionAr="إدارة خيارات دورية دفع الراتب"
     />
   );
 }

@@ -136,7 +136,7 @@ export default function SuperAgentCreateTargetPage() {
         setTargetRows(initial);
       } catch {
         if (!controller.signal.aborted) {
-          toast.error("Failed to load agents");
+          toast.error(t("failedToLoadAgents"));
         }
       } finally {
         setLoading(false);
@@ -232,7 +232,7 @@ export default function SuperAgentCreateTargetPage() {
   // Submit targets
   const handleCreate = async () => {
     if (validRows.length === 0) {
-      toast.error("Enter targets for at least one agent");
+      toast.error(t("enterTargetsForAtLeastOne"));
       return;
     }
 
@@ -270,7 +270,7 @@ export default function SuperAgentCreateTargetPage() {
         toast.error(data.error ?? "Failed to create targets");
       }
     } catch {
-      toast.error("Failed to create agent targets");
+      toast.error(t("failedCreateAgentTargets"));
     } finally {
       setCreating(false);
     }

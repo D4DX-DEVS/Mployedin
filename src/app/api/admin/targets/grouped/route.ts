@@ -14,7 +14,10 @@ interface AuthCtx { userId: string; role: string; locale: string; }
  *   team size, all 3 target types, monthly distribution status,
  *   achieved/pending totals, performance %, risk score.
  */
-async function handler(req: NextRequest, _ctx: AuthCtx) {
+async function handler(req: NextRequest, ctx: AuthCtx) {
+  if (ctx.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   await connectDB();
 
   const { searchParams } = new URL(req.url);

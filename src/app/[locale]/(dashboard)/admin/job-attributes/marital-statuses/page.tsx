@@ -7,6 +7,8 @@ export default function MaritalStatusesPage() {
       title="Marital Status"
       titleAr="الحالة الاجتماعية"
       description="Manage marital status options"
+
+      descriptionAr="إدارة خيارات الحالة الاجتماعية"
     />
   );
 }

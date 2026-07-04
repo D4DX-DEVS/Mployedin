@@ -11,6 +11,9 @@ import { notifyTargetAssigned } from "@/lib/notifications/trigger";
 interface AuthCtx { userId: string; role: string; locale: string; }
 
 async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
+  if (ctx.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   await connectDB();
 
   const id = params?.id;

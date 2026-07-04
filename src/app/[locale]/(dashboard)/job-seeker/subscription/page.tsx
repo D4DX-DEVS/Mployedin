@@ -233,7 +233,7 @@ function ActiveView({
           <div className="flex items-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3">
             <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
             <p className="text-sm text-muted-foreground flex-1">You are nearing your application limit. Upgrade for more applications.</p>
-            <Button size="sm" variant="outline" className="shrink-0 border-amber-500/40 text-amber-600 hover:bg-amber-500/10" onClick={() => toast.info("Contact your administrator to upgrade.")}>Upgrade</Button>
+            <Button size="sm" variant="outline" className="shrink-0 border-amber-500/40 text-amber-600 hover:bg-amber-500/10" onClick={() => toast.info(t("contactAdminToUpgrade"))}>Upgrade</Button>
           </div>
         )}
       </section>
@@ -293,7 +293,7 @@ function ActiveView({
               <p className="text-xs text-muted-foreground">No payment method added.</p>
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={() => toast.info("Coming soon", { description: "Payment integration is not yet available." })}>Add Payment Method</Button>
+          <Button variant="outline" size="sm" onClick={() => toast.info(t("paymentIntegrationComingSoon"), { description: t("paymentIntegrationNotYetAvailable") })}>Add Payment Method</Button>
         </div>
       </section>
     </div>

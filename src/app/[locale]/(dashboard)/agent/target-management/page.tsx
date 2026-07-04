@@ -120,7 +120,7 @@ export default function AgentTargetManagementPage() {
         setWeeklyGoals(data.weeklyGoals ?? null);
       }
     } catch {
-      toast.error("Failed to load targets");
+      toast.error(t("failedLoadTargets"));
     } finally {
       setLoading(false);
     }
@@ -466,14 +466,14 @@ export default function AgentTargetManagementPage() {
                 {leaderboard.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="py-16 text-center">
-                      <TargetEmptyState title="No leaderboard data" description="Targets need to be assigned to see rankings" />
+                      <TargetEmptyState title={t("noLeaderboardData")} description={t("targetsNeedAssignForRankings")} />
                     </TableCell>
                   </TableRow>
                 ) : filteredLeaderboard.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="py-16 text-center">
                       <TargetEmptyState
-                        title="No agents match these filters"
+                        title={t("noAgentsMatchFilters")}
                         description="Try a different search, risk level, or completion stage."
                         action={
                           <Button

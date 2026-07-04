@@ -540,8 +540,8 @@ export default function JobSeekerProfilePage() {
               onClick={() => avatarInputRef.current?.click()}
               disabled={avatarUploading}
               className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-              aria-label="Change photo"
-              title="Change photo"
+              aria-label={t("a11yChangePhoto")}
+              title={t("a11yChangePhoto")}
             >
               {avatarUploading ? (
                 <Loader2 className="w-5 h-5 text-white animate-spin" />
@@ -570,8 +570,8 @@ export default function JobSeekerProfilePage() {
               <button
                 onClick={() => { setEditName(name); setShowNameModal(true); }}
                 className="p-1 rounded-md hover:bg-muted transition-colors"
-                aria-label="Edit name"
-                title="Edit name"
+                aria-label={t("a11yEditName")}
+                title={t("a11yEditName")}
               >
                 <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
               </button>
@@ -597,8 +597,8 @@ export default function JobSeekerProfilePage() {
               <button
                 onClick={() => { setEditHeadline(profile?.headline ?? ""); setShowHeadlineModal(true); }}
                 className="p-0.5 rounded hover:bg-muted transition-colors shrink-0"
-                aria-label="Edit headline"
-                title="Edit headline"
+                aria-label={t("a11yEditHeadline")}
+                title={t("a11yEditHeadline")}
               >
                 <Pencil className="w-3 h-3 text-muted-foreground" />
               </button>
@@ -624,7 +624,7 @@ export default function JobSeekerProfilePage() {
               <button
                 onClick={() => { setEditSummary(profile?.summary ?? ""); setShowSummaryModal(true); }}
                 className="p-0.5 rounded hover:bg-muted transition-colors shrink-0 mt-0.5"
-                title="Edit summary"
+                title={t("a11yEditSummary")}
               >
                 <Pencil className="w-3 h-3 text-muted-foreground" />
               </button>
@@ -978,14 +978,14 @@ export default function JobSeekerProfilePage() {
 
           {/* ── About ─────────────────────────────────────────────────── */}
           <div id="about" className="scroll-mt-24">
-            <SectionCard icon={User} title="About" onEdit={() => { setEditSummary(profile?.summary ?? ""); setShowSummaryModal(true); }} onAdd={() => router.push("./settings")} isEmpty={!profile?.summary} emptyLabel="Add a professional summary">
+            <SectionCard icon={User} title={t("sectionAbout")} onEdit={() => { setEditSummary(profile?.summary ?? ""); setShowSummaryModal(true); }} onAdd={() => router.push("./settings")} isEmpty={!profile?.summary} emptyLabel={t("emptyAddSummary")}>
               {profile?.summary && <p className="text-sm text-muted-foreground leading-relaxed">{profile.summary}</p>}
             </SectionCard>
           </div>
 
           {/* ── Experience ────────────────────────────────────────────── */}
           <div id="experience" className="scroll-mt-24">
-            <SectionCard icon={Briefcase} title="Experience" onAdd={() => router.push("./experience")} isEmpty={(profile?.experience?.length ?? 0) === 0} emptyLabel="Add work experience" visible={profile?.sectionVisibility?.experience !== false} onToggleVisibility={(v) => handleToggleSectionVisibility("experience", v)}>
+            <SectionCard icon={Briefcase} title={t("sectionExperience")} onAdd={() => router.push("./experience")} isEmpty={(profile?.experience?.length ?? 0) === 0} emptyLabel={t("emptyAddWorkExperience")} visible={profile?.sectionVisibility?.experience !== false} onToggleVisibility={(v) => handleToggleSectionVisibility("experience", v)}>
               {(profile?.experience?.length ?? 0) > 0 && (
                 <div className="space-y-4">
                   {profile!.experience.map((exp, i) => (
@@ -1008,7 +1008,7 @@ export default function JobSeekerProfilePage() {
 
           {/* ── Skills ────────────────────────────────────────────────── */}
           <div id="skills" className="scroll-mt-24">
-            <SectionCard icon={Award} title="Skills" onAdd={() => router.push("./skills")} isEmpty={(profile?.skills?.length ?? 0) === 0} emptyLabel="Add skills" visible={profile?.sectionVisibility?.skills !== false} onToggleVisibility={(v) => handleToggleSectionVisibility("skills", v)}>
+            <SectionCard icon={Award} title={t("sectionSkills")} onAdd={() => router.push("./skills")} isEmpty={(profile?.skills?.length ?? 0) === 0} emptyLabel={t("emptyAddSkills")} visible={profile?.sectionVisibility?.skills !== false} onToggleVisibility={(v) => handleToggleSectionVisibility("skills", v)}>
               {(profile?.skills?.length ?? 0) > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {profile!.skills.map((s, i) => {
@@ -1028,7 +1028,7 @@ export default function JobSeekerProfilePage() {
 
           {/* ── Education ─────────────────────────────────────────────── */}
           <div id="education" className="scroll-mt-24">
-            <SectionCard icon={GraduationCap} title="Education" onAdd={() => router.push("./cv")} isEmpty={(profile?.education?.length ?? 0) === 0} emptyLabel="Add education" visible={profile?.sectionVisibility?.education !== false} onToggleVisibility={(v) => handleToggleSectionVisibility("education", v)}>
+            <SectionCard icon={GraduationCap} title={t("sectionEducation")} onAdd={() => router.push("./cv")} isEmpty={(profile?.education?.length ?? 0) === 0} emptyLabel={t("emptyAddEducation")} visible={profile?.sectionVisibility?.education !== false} onToggleVisibility={(v) => handleToggleSectionVisibility("education", v)}>
               {(profile?.education?.length ?? 0) > 0 && (
                 <div className="space-y-3">
                   {profile!.education.map((edu, i) => (
@@ -1050,7 +1050,7 @@ export default function JobSeekerProfilePage() {
 
           {/* ── Projects (NEW) ────────────────────────────────────────── */}
           <div id="projects" className="scroll-mt-24">
-            <SectionCard icon={FolderKanban} title="Projects" onAdd={() => router.push("./cv")} isEmpty={(profile?.projects?.length ?? 0) === 0} emptyLabel="Add projects to stand out to employers" visible={profile?.sectionVisibility?.projects !== false} onToggleVisibility={(v) => handleToggleSectionVisibility("projects", v)}>
+            <SectionCard icon={FolderKanban} title={t("sectionProjects")} onAdd={() => router.push("./cv")} isEmpty={(profile?.projects?.length ?? 0) === 0} emptyLabel={t("emptyAddProjects")} visible={profile?.sectionVisibility?.projects !== false} onToggleVisibility={(v) => handleToggleSectionVisibility("projects", v)}>
               {(profile?.projects?.length ?? 0) > 0 && (
                 <div className="space-y-4">
                   {profile!.projects!.map((proj, i) => (
@@ -1092,7 +1092,7 @@ export default function JobSeekerProfilePage() {
 
           {/* ── Accomplishments (NEW) ─────────────────────────────────── */}
           <div id="accomplishments" className="scroll-mt-24">
-            <SectionCard icon={Trophy} title="Accomplishments" onAdd={() => router.push("./cv")} isEmpty={(profile?.accomplishments?.length ?? 0) === 0 && (profile?.certifications?.length ?? 0) === 0} emptyLabel="Add certifications, work samples, publications, or online profiles" visible={profile?.sectionVisibility?.accomplishments !== false} onToggleVisibility={(v) => handleToggleSectionVisibility("accomplishments", v)}>
+            <SectionCard icon={Trophy} title={t("sectionAccomplishments")} onAdd={() => router.push("./cv")} isEmpty={(profile?.accomplishments?.length ?? 0) === 0 && (profile?.certifications?.length ?? 0) === 0} emptyLabel={t("emptyAddAccomplishments")} visible={profile?.sectionVisibility?.accomplishments !== false} onToggleVisibility={(v) => handleToggleSectionVisibility("accomplishments", v)}>
               <div className="space-y-4">
                 {/* Certifications */}
                 {(profile?.certifications?.length ?? 0) > 0 && (

@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Check } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
 interface StepIndicatorStep {
@@ -24,8 +25,9 @@ export function StepIndicator({
   onStepClick,
   stepLabel,
 }: StepIndicatorProps) {
+  const t = useTranslations("common");
   return (
-    <nav aria-label="Form progress">
+    <nav aria-label={t("a11yFormProgress")}>
       <ol className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
         {steps.map((step, index) => {
           const isCompleted = completedSteps.has(step.id);

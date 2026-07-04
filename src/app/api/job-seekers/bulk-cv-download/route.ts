@@ -9,7 +9,10 @@ import User from "@/models/User";
  * Returns a list of CV URLs for the given job seeker IDs or current search results.
  * Admin-only endpoint.
  */
-export const POST = withAuth(async (req: NextRequest) => {
+export const POST = withAuth(async (req: NextRequest, ctx) => {
+  if (ctx.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   await connectDB();
 
   const body = await req.json();

@@ -14,6 +14,9 @@ interface AuthCtx { userId: string; role: string; locale: string; }
 /*  GET  /api/admin/targets — list all targets                        */
 /* ------------------------------------------------------------------ */
 async function handler(req: NextRequest, ctx: AuthCtx) {
+  if (ctx.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   await connectDB();
 
   const { searchParams } = new URL(req.url);
@@ -72,6 +75,9 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 /*  POST  /api/admin/targets — create target for a super_agent        */
 /* ------------------------------------------------------------------ */
 async function postHandler(req: NextRequest, ctx: AuthCtx) {
+  if (ctx.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   await connectDB();
   const body = await validateBody(req, targetCreateSchema);
 

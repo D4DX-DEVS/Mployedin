@@ -465,15 +465,15 @@ export function ResumeViewerModal({
             {!isPdf && (
               <>
                 <Button variant="ghost" size="icon" className="h-8 w-8"
-                  onClick={() => setImgScale((s) => Math.max(0.5, s - 0.25))} title="Zoom out">
+                  onClick={() => setImgScale((s) => Math.max(0.5, s - 0.25))} title={t("a11yZoomOut")}>
                   <ZoomOut className="w-4 h-4" />
                 </Button>
                 <Button variant="ghost" size="icon" className="h-8 w-8"
-                  onClick={() => setImgScale((s) => Math.min(3, s + 0.25))} title="Zoom in">
+                  onClick={() => setImgScale((s) => Math.min(3, s + 0.25))} title={t("a11yZoomIn")}>
                   <ZoomIn className="w-4 h-4" />
                 </Button>
                 <Button variant="ghost" size="icon" className="h-8 w-8"
-                  onClick={() => setImgRotation((r) => (r + 90) % 360)} title="Rotate">
+                  onClick={() => setImgRotation((r) => (r + 90) % 360)} title={t("a11yRotate")}>
                   <RotateCw className="w-4 h-4" />
                 </Button>
               </>

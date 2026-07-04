@@ -34,7 +34,10 @@
     "employerWorkspace": "Employer workspace",
     "adminWorkspace": "Admin workspace",
     "agentWorkspace": "Agent workspace",
-    "superAgentWorkspace": "Super agent workspace"
+    "superAgentWorkspace": "Super agent workspace",
+    "a11yNavigationMenu": "Navigation menu",
+    "a11yOpenMenu": "Open menu",
+    "a11yHome": "Mployedin home"
   },
   "auth": {
     "login": "Login",
@@ -349,7 +352,8 @@
     "reset": "Reset",
     "saved": "Saved",
     "superAgentWorkspace": "Super agent workspace",
-    "currency": "Currency"
+    "currency": "Currency",
+    "a11yFormProgress": "Form progress"
   },
   "table": {
     "search": "Search...",
@@ -1459,7 +1463,23 @@
         "accomplishments": "Accomplishments",
         "careerProfile": "Career Profile",
         "languages": "Languages & Links"
-      }
+      },
+      "a11yEditHeadline": "Edit headline",
+      "a11yEditName": "Edit name",
+      "a11yEditSummary": "Edit summary",
+      "a11yChangePhoto": "Change photo",
+      "sectionSkills": "Skills",
+      "sectionExperience": "Experience",
+      "sectionProjects": "Projects",
+      "sectionEducation": "Education",
+      "sectionAccomplishments": "Accomplishments",
+      "sectionAbout": "About",
+      "emptyAddSkills": "Add skills",
+      "emptyAddWorkExperience": "Add work experience",
+      "emptyAddProjects": "Add projects to stand out to employers",
+      "emptyAddEducation": "Add education",
+      "emptyAddAccomplishments": "Add certifications, work samples, publications, or online profiles",
+      "emptyAddSummary": "Add a professional summary"
     },
     "settings": {
       "back": "Back",
@@ -1547,6 +1567,10 @@
         "interviewNotifications": "Interview Notifications",
         "interviewNotificationsDescription": "Reminders and updates about scheduled interviews."
       }
+    },
+    "smartWelcome": {
+      "resumeUploadedSuccessfully": "Resume uploaded successfully",
+      "resumeUploadFailed": "Resume upload failed"
     }
   },
   "cvBuilderPage": {
@@ -2087,7 +2111,8 @@
         "cta": "Add manually",
         "placeholder": "e.g. English fluent, Arabic intermediate, Hindi native..."
       }
-    }
+    },
+    "a11yRefreshInsights": "Refresh insights"
   },
   "ai": {
     "bulkSuccess": "{count} jobs created successfully",
@@ -3030,7 +3055,13 @@
     "aiLabel_ai_job_description": "Job Description Gen",
     "aiLabel_ai_hiring_reports": "Hiring Reports",
     "aiLabel_ai_voice_input": "Voice Input",
-    "displayCurrency": "Display currency:"
+    "displayCurrency": "Display currency:",
+    "paymentIntegrationComingSoon": "Coming soon",
+    "paymentIntegrationNotYetAvailable": "Payment integration is not yet available.",
+    "paymentSetupComingSoon": "Payment setup coming soon",
+    "onlinePaymentNotYetAvailable": "Online payment integration is not yet available.",
+    "contactAdminToUpgrade": "Contact your administrator to upgrade.",
+    "a11yLiveExchangeRates": "Live exchange rates"
   },
   "invoiceManagement": {
     "title": "Invoices",
@@ -3843,7 +3874,8 @@
     "applicationsLabel": "Applications",
     "interviewsLabel": "Interviews",
     "notesLabel": "Notes",
-    "noActivityData": "No applications, interviews, or notes yet."
+    "noActivityData": "No applications, interviews, or notes yet.",
+    "a11yClose": "Close"
   },
   "scorecard": {
     "title": "Interview Scorecard",
@@ -4323,7 +4355,8 @@
     "unableToLoadDesc": "Something went wrong while fetching applications. This may be a subscription limit — please check your plan or try refreshing the page.",
     "createScorecardTitle": "Create Interview Scorecard",
     "createScorecardDesc": "Evaluate the candidate for this interview",
-    "scoringCandidate": "Scoring candidate {done} of {total}"
+    "scoringCandidate": "Scoring candidate {done} of {total}",
+    "a11yCloseActivityTimeline": "Close activity timeline"
   },
   "employerAnalytics": {
     "title": "Analytics Command Center",
@@ -6845,7 +6878,9 @@
     "scheduled": "Scheduled",
     "confirmed": "Confirmed",
     "completed": "Completed",
-    "cancelled": "Cancelled"
+    "cancelled": "Cancelled",
+    "failedLoadingCalendarEvents": "Failed to load calendar events",
+    "interviewBookedSuccessfully": "Interview booked successfully"
   },
   "employerScorecards": {
     "title": "Interview Scorecards",
@@ -6990,7 +7025,15 @@
     "stepBudget": "Budget",
     "stepDescription": "Description",
     "stepResources": "Resources",
-    "stepReview": "Review & Submit"
+    "stepReview": "Review & Submit",
+    "enterExhibitionTitle": "Please enter an exhibition title.",
+    "startDateInPast": "Start date cannot be in the past.",
+    "endDateEarlierThanStart": "End date cannot be earlier than start date.",
+    "requestCopied": "Request copied. Update the dates and submit when ready.",
+    "errorUpdatingExhibition": "Error updating exhibition",
+    "noExhibitionRequestsFound": "No exhibition requests found",
+    "tryAdjustingFiltersExhibitions": "Try adjusting filters or check back when agents submit new events.",
+    "teamExhibitionRequests": "Team exhibition requests"
   },
   "resources": {
     "title": "Resource Management",
@@ -7028,7 +7071,10 @@
     "uploadedBy": "Uploaded by",
     "inactive": "Inactive",
     "activate": "Activate",
-    "deactivate": "Deactivate"
+    "deactivate": "Deactivate",
+    "a11yAddNewCategory": "Add new category",
+    "a11yDelete": "Delete",
+    "a11yDownloadHistory": "Download history"
   },
   "targets": {
     "title": "Target Management",
@@ -7130,7 +7176,36 @@
     "teamOverview": "Team Overview",
     "createTargetProfile": "Create Target Profile",
     "profiles": "Profiles",
-    "analytics": "Analytics"
+    "analytics": "Analytics",
+    "failedToLoadProfiles": "Failed to load target profiles",
+    "profileCancelled": "Target profile cancelled",
+    "failedToCancel": "Failed to cancel",
+    "failedToClone": "Failed to clone",
+    "profilesCloned": "Cloned {count} profiles from {year}",
+    "profileReassigned": "Target profile reassigned",
+    "failedToReassign": "Failed to reassign",
+    "csvExported": "CSV exported",
+    "failedToLoadSupervisors": "Failed to load supervisors",
+    "enterTargetsForSupervisors": "Enter targets for at least one supervisor",
+    "failedToCreateProfiles": "Failed to create target profiles",
+    "profileNotFound": "Profile not found",
+    "failedToLoadProfile": "Failed to load profile",
+    "failedToLoadReport": "Failed to load report",
+    "a11yViewDetails": "View details",
+    "a11yCancel": "Cancel",
+    "a11yReassign": "Reassign",
+    "noLeaderboardData": "No leaderboard data",
+    "createProfilesToSeeRankings": "Create target profiles to see rankings",
+    "a11yYear": "Year",
+    "performanceDataTitle": "Performance data",
+    "noAgentsMatchFilters": "No agents match these filters",
+    "targetsNeedAssignForRankings": "Targets need to be assigned to see rankings",
+    "monthlyBreakdownTitle": "Monthly breakdown",
+    "noMonthlyAnalyticsYet": "No monthly analytics yet",
+    "monthlyDistributionInfo": "Monthly distribution will appear after this yearly target is split by month.",
+    "teamPerformanceLeaderboard": "Team performance leaderboard",
+    "rankingsEyebrow": "Rankings",
+    "a11yTargetFlow": "Target flow"
   },
   "webhooks": {
     "title": "Webhooks",
@@ -7149,7 +7224,24 @@
     "updated": "Webhook updated",
     "deleted": "Webhook deleted",
     "secretWarning": "Save this signing secret — it won't be shown again",
-    "noWebhooks": "No webhooks configured yet"
+    "noWebhooks": "No webhooks configured yet",
+    "loadFailed": "Failed to load webhooks",
+    "saveFailed": "Save failed",
+    "saveWebhookFailed": "Failed to save webhook",
+    "deleteFailed": "Delete failed",
+    "toggleFailed": "Toggle failed",
+    "testRequestFailed": "Test request failed",
+    "loadLogFailed": "Failed to load delivery log",
+    "rotateSecretFailed": "Failed to rotate secret",
+    "createdWithSecretWarning": "Webhook created! Copy the secret — it won't be shown again.",
+    "disabled": "Webhook disabled",
+    "enabled": "Webhook enabled",
+    "secretRotated": "Secret rotated — copy the new secret now.",
+    "testDelivered": "Test delivered — {statusCode} in {responseTime}ms",
+    "testFailedMessage": "Test failed: {message}",
+    "a11yRotateSecret": "Rotate secret",
+    "a11ySendTestPing": "Send test ping",
+    "a11yViewDeliveryLog": "View delivery log"
   },
   "notifications": {
     "frequencyInstant": "Instant",
@@ -9337,7 +9429,10 @@
     "insufficientPermissions": "Insufficient permissions for AI analytics.",
     "serverError": "Server error ({status}). Check AI API key configuration.",
     "reportGenerationFailed": "Report generation failed: {error}. Verify GEMINI_API_KEY is configured in environment variables.",
-    "generatedDateLabel": "Generated {date}"
+    "generatedDateLabel": "Generated {date}",
+    "a11yAnalyticsTemplates": "Analytics templates",
+    "a11yCustomAnalyticsQuery": "Custom analytics query",
+    "a11yAnalyticsReport": "Analytics report"
   },
   "adminApprovals": {
     "allJobs": "All jobs",
@@ -10599,7 +10694,16 @@
     "demandEfficiencyDescription": "Average applications generated per published role.",
     "commercialYield": "Commercial yield",
     "commercialYieldDescription": "Application-to-placement conversion across the current platform book.",
-    "failedToLoadReports": "Failed to load reports."
+    "failedToLoadReports": "Failed to load reports.",
+    "a11yApplicationsByStatus": "Applications by status",
+    "a11yConversionFunnel": "Conversion funnel",
+    "a11yJobsVsApplications": "Jobs versus applications over time",
+    "a11yPlatformAlerts": "Platform alerts",
+    "a11yRecentApplications": "Recent applications",
+    "a11yRecentJobs": "Recent jobs",
+    "a11yTopAgents": "Top agents",
+    "a11yOperationalHighlights": "Operational highlights",
+    "a11yReportsError": "Reports error"
   },
   "adminSettingsNotifications": {
     "adminWorkspaceLabel": "Admin workspace",
@@ -13426,7 +13530,7 @@
     "agent": "Agent",
     "allAgents": "All Agents",
     "employer": "Employer",
-    "selectEmployer": "Select employer…",
+    "selectEmployer": "Please select an employer",
     "allEmployers": "All Employers",
     "noEmployersForAgent": "No employers found for this agent",
     "selectJob": "Select Job *",
@@ -13478,7 +13582,14 @@
     "billingTo": "Billing To",
     "jobReference": "Job Reference",
     "yourCommission": "Your Commission",
-    "combinedRateExceedsFull": "Combined rate ({rate}%) exceeds 100%"
+    "combinedRateExceedsFull": "Combined rate ({rate}%) exceeds 100%",
+    "typeAlreadyExists": "This type already exists",
+    "taxTypeAlreadyExists": "This tax type already exists",
+    "paymentTermAlreadyExists": "This payment term already exists",
+    "statusAlreadyExists": "This status already exists",
+    "selectJobFirst": "Please select a job first",
+    "fillAllLineItems": "Please fill all line items with description and price",
+    "invoiceTotalMustBePositive": "Invoice total must be greater than zero"
   },
   "invoiceDetailView": {
     "invoiceDetails": "Invoice Details",
@@ -13533,7 +13644,8 @@
     "markPaid": "Mark Paid",
     "void": "Void",
     "invoiceNotFound": "Invoice not found.",
-    "record": "Record"
+    "record": "Record",
+    "onlyPendingCanBeRejected": "Only pending invoices can be rejected"
   },
   "uninvoicedPlacementsQueue": {
     "uninvoicedPlacements": "Uninvoiced Placements",
@@ -13679,7 +13791,10 @@
     "saving": "Saving…",
     "shortlistCandidate": "Shortlist Candidate",
     "shortlisted": "Shortlisted",
-    "scheduleInterview": "Schedule Interview"
+    "scheduleInterview": "Schedule Interview",
+    "a11yZoomIn": "Zoom in",
+    "a11yZoomOut": "Zoom out",
+    "a11yRotate": "Rotate"
   },
   "permissionEditor": {
     "customPermissions": "Custom Permissions",
@@ -13908,7 +14023,8 @@
     "title": "Job Creation Setup Guide",
     "subtitle": "Complete these steps to open the full employer workflow.",
     "progressLabel": "Your progress",
-    "doNotShowAgain": "Do not show again"
+    "doNotShowAgain": "Do not show again",
+    "a11yClose": "Close"
   },
   "teamAllocationDialog": {
     "distributeTargetsToAgents": "Distribute Targets to Agents",
@@ -13944,7 +14060,13 @@
     "monthlyDistribution": "Monthly Distribution (editable)",
     "sumMismatch": "Sum mismatch — adjust monthly values",
     "month": "Month",
-    "failedToLoadAgents": "Failed to load team agents"
+    "failedToLoadAgents": "Failed to load team agents",
+    "failedLoadTargets": "Failed to load targets",
+    "failedLoadTeamTargets": "Failed to load team targets",
+    "failedCreateAgentTargets": "Failed to create agent targets",
+    "failedLoadReport": "Failed to load report",
+    "enterTargetsForAtLeastOne": "Enter targets for at least one agent",
+    "overAllocatedToast": "Over-allocated. Reduce targets to stay within budget."
   },
   "targetComponents": {
     "high": "High",
@@ -14012,7 +14134,12 @@
     "done": "Done",
     "helpful": "Helpful",
     "notHelpful": "Not helpful",
-    "thanks": "Thanks!"
+    "thanks": "Thanks!",
+    "noUnderperformingAgent": "No underperforming agent found to reassign leads from.",
+    "leadsReassignedSuccessfully": "Leads reassigned successfully.",
+    "failedToReassignLeads": "Failed to reassign leads.",
+    "failedToSendReminder": "Failed to send reminder.",
+    "a11yDismiss": "Dismiss"
   },
   "jobSeekerRightPanel": {
     "recruiterViews": "Recruiter Views",
@@ -14034,7 +14161,8 @@
     "failedToApply": "Failed to apply",
     "jobSaved": "Job saved",
     "jobUnsaved": "Job unsaved",
-    "failedToUpdateSaved": "Failed to update saved jobs"
+    "failedToUpdateSaved": "Failed to update saved jobs",
+    "applicationLimitReached": "Application limit reached — upgrade your plan"
   },
   "jobSeekerStatsGrid": {
     "applicationsSent": "Applications Sent",
@@ -14138,7 +14266,8 @@
     "recommendQuestion": "Recommend",
     "submitting": "Submitting...",
     "submitReview": "Submit Review",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "networkError": "Network error"
   },
   "easyApply": {
     "loading": "Loading…",
@@ -14179,7 +14308,8 @@
     "share": "Share",
     "linkCopied": "Link copied!",
     "failedCopy": "Failed to copy link",
-    "copyLink": "Copy link"
+    "copyLink": "Copy link",
+    "linkCopiedToClipboard": "Link copied to clipboard"
   },
   "recentActivityFeed": {
     "recentActivity": "Recent Activity",
@@ -14312,5 +14442,45 @@
     "planDistributionByRevenue": "Plan Distribution (by Revenue)",
     "noPlanData": "No plan data",
     "aedMrr": "AED MRR"
+  },
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "description": "An unexpected error occurred while loading this page.",
+    "tryAgain": "Try Again",
+    "reloadPage": "Reload Page",
+    "errorId": "Error ID: {digest}",
+    "failedApplications": "Failed to load applications",
+    "failedApplicationsDescription": "An unexpected error occurred while loading applications.",
+    "failedAnalytics": "Failed to load analytics",
+    "failedAnalyticsDescription": "An unexpected error occurred while loading analytics.",
+    "failedJobs": "Failed to load jobs",
+    "failedJobsDescription": "An unexpected error occurred while loading jobs.",
+    "failedSettings": "Failed to load settings",
+    "failedSettingsDescription": "An unexpected error occurred while loading settings.",
+    "failedReports": "Failed to load reports",
+    "failedReportsDescription": "An unexpected error occurred while loading the admin reports workspace.",
+    "failedInterviews": "Failed to load interviews",
+    "failedInterviewsDescription": "An unexpected error occurred while loading interviews.",
+    "failedCandidates": "Failed to load candidates",
+    "failedCandidatesDescription": "An unexpected error occurred while loading candidates.",
+    "failedMessages": "Failed to load messages",
+    "failedMessagesDescription": "An unexpected error occurred while loading messages."
+  },
+  "agentCalendar": {
+    "failedLoadingCalendarEvents": "Failed to load calendar events"
+  },
+  "agentMessages": {
+    "title": "Messages",
+    "description": "Direct messages with employers & super agents"
+  },
+  "superAgentMessages": {
+    "title": "Messages",
+    "description": "Direct messages with agents, employers & team"
+  },
+  "superAgentInsights": {
+    "title": "Insights",
+    "description": "AI-powered alerts, opportunities, and recommendations derived from your team's real-time performance data.",
+    "summaryTitle": "Insight engine",
+    "summaryDescription": "Surfaced from your team's activity over the last 7 days and ranked by confidence, so you can act on what matters most."
   }
 }

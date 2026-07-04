@@ -7,6 +7,8 @@ export default function DegreeLevelsPage() {
       title="Degree Levels"
       titleAr="مستويات الشهادات"
       description="Manage education degree level options"
+
+      descriptionAr="إدارة خيارات مستوى الدرجة العلمية"
     />
   );
 }

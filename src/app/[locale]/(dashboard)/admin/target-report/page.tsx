@@ -139,10 +139,10 @@ export default function AdminTargetReportPage() {
       if (res.ok) {
         setData(await res.json());
       } else {
-        toast.error("Failed to load report");
+        toast.error(t("failedToLoadReport"));
       }
     } catch {
-      toast.error("Failed to load report");
+      toast.error(t("failedToLoadReport"));
     } finally {
       setLoading(false);
     }
@@ -334,7 +334,7 @@ export default function AdminTargetReportPage() {
 
       {/* ═══════ TOOLBAR ═══════ */}
       <TableToolbar
-        title="Performance data"
+        title={t("performanceDataTitle")}
         description="Filter by quarter, category, risk, or role."
         search={searchQuery}
         onSearchChange={setSearchQuery}

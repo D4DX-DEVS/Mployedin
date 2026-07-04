@@ -191,8 +191,8 @@ export default function SuperAgentExhibitionsPage() {
       if (res.ok) {
         toast.success(`Exhibition ${reviewAction === "rejected" ? "rejected" : reviewAction === "revision_requested" ? "revision requested" : "approved"}`);
         setReviewItem(null); setReviewNote(""); setApprovedBudget(""); fetchItems();
-      } else { const err = await res.json(); toast.error(err.error ?? "Error"); }
-    } catch { toast.error("Error updating exhibition"); }
+      } else { const err = await res.json(); toast.error(err.error ?? t("errorUpdatingExhibition")); }
+    } catch { toast.error(t("errorUpdatingExhibition")); }
   };
 
   const openReview = (item: ExhibitionRequest, action: string) => {
@@ -272,7 +272,7 @@ export default function SuperAgentExhibitionsPage() {
 
       <SuperAgentSection
         eyebrow="Requests"
-        title="Team exhibition requests"
+        title={t("teamExhibitionRequests")}
         description="Open details or run approval actions from the table below."
       >
         {loading ? (
@@ -289,7 +289,7 @@ export default function SuperAgentExhibitionsPage() {
             ))}
           </SuperAgentDataTableShell>
         ) : items.length === 0 ? (
-          <SuperAgentEmptyState icon={<Inbox className="h-8 w-8 text-muted-foreground" />} title="No exhibition requests found" description="Try adjusting filters or check back when agents submit new events." />
+          <SuperAgentEmptyState icon={<Inbox className="h-8 w-8 text-muted-foreground" />} title={t("noExhibitionRequestsFound")} description={t("tryAdjustingFiltersExhibitions")} />
         ) : (
           <SuperAgentDataTableShell>
             <div className="overflow-x-auto">

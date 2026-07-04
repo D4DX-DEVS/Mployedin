@@ -3063,6 +3063,7 @@ function ActivityTimelinePanel({
   loading: boolean;
   onClose: () => void;
 }) {
+  const t = useTranslations("employerApplications");
   const actionLabels: Record<string, { label: string; color: string }> = {
     "application.created": { label: "Applied", color: "bg-blue-500" },
     "application.status_changed": { label: "Status Changed", color: "bg-amber-500" },
@@ -3154,7 +3155,7 @@ function ActivityTimelinePanel({
               </div>
             </div>
 
-            <Button variant="ghost" size="sm" className="h-9 w-9 rounded-full p-0 hover:bg-destructive/10 hover:text-destructive" onClick={onClose} aria-label="Close activity timeline">
+            <Button variant="ghost" size="sm" className="h-9 w-9 rounded-full p-0 hover:bg-destructive/10 hover:text-destructive" onClick={onClose} aria-label={t("a11yCloseActivityTimeline")}>
               <X className="h-4 w-4" />
             </Button>
           </div>

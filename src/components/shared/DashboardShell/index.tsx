@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Sidebar, MobileMenuButton } from "@/components/shared/Sidebar";
 import { CommandMenuTrigger } from "@/components/shared/CommandMenu";
 import dynamic from "next/dynamic";
@@ -62,6 +63,7 @@ export function DashboardShell({
   companyLogo,
   tenantViewData,
 }: DashboardShellProps) {
+  const tNav = useTranslations("nav");
   const [mobileOpen, setMobileOpen] = useState(false);
   const isJobSeeker = userRole === "job_seeker";
   const isAdminWorkspace = userRole === "admin";
@@ -100,7 +102,7 @@ export function DashboardShell({
             {!isJobSeeker && <MobileMenuButton onClick={() => setMobileOpen(true)} />}
 
             {isJobSeeker && (
-              <Link href={`/${locale}/job-seeker`} className="shrink-0" aria-label="Mployedin home">
+              <Link href={`/${locale}/job-seeker`} className="shrink-0" aria-label={tNav("a11yHome")}>
                 <Image
                   src="/logo.png"
                   alt="Mployedin"

@@ -97,7 +97,7 @@ export default function EmployerSubscriptionPage() {
             <span>{t("displayCurrency")}</span>
             <CurrencySelector value={displayCurrency} onChange={setDisplayCurrency} />
             {rateSource === "live" && (
-              <span className="text-[10px] text-emerald-500" title="Live exchange rates">● live</span>
+              <span className="text-[10px] text-emerald-500" title={t("a11yLiveExchangeRates")}>● live</span>
             )}
           </div>
         }
@@ -215,7 +215,7 @@ function ActiveView({
               <p className="text-muted-foreground text-xs">Payment Method</p>
               <p className="font-medium text-muted-foreground">
                 No payment method
-                <button onClick={() => toast.info("Coming soon", { description: "Payment integration is not yet available." })} className="text-sky-500 hover:text-sky-600 ml-1">Add</button>
+                <button onClick={() => toast.info(t("paymentIntegrationComingSoon"), { description: t("paymentIntegrationNotYetAvailable") })} className="text-sky-500 hover:text-sky-600 ml-1">Add</button>
               </p>
             </div>
           </div>
@@ -254,7 +254,7 @@ function ActiveView({
           <div className="flex items-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3">
             <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
             <p className="text-sm text-muted-foreground flex-1">You are nearing your plan limits. Upgrade your plan to increase capacity.</p>
-            <Button size="sm" variant="outline" className="shrink-0 border-amber-500/40 text-amber-600 hover:bg-amber-500/10" onClick={() => toast.info("Contact your administrator to upgrade.")}>Upgrade Plan</Button>
+            <Button size="sm" variant="outline" className="shrink-0 border-amber-500/40 text-amber-600 hover:bg-amber-500/10" onClick={() => toast.info(t("contactAdminToUpgrade"))}>Upgrade Plan</Button>
           </div>
         )}
       </section>
@@ -314,7 +314,7 @@ function ActiveView({
               <p className="text-xs text-muted-foreground">No payment method added. Add a payment method to enable auto-renewal.</p>
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={() => toast.info("Payment setup coming soon", { description: "Online payment integration is not yet available." })}>Add Payment Method</Button>
+          <Button variant="outline" size="sm" onClick={() => toast.info(t("paymentSetupComingSoon"), { description: t("onlinePaymentNotYetAvailable") })}>Add Payment Method</Button>
         </div>
       </section>
     </div>

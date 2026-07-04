@@ -360,7 +360,7 @@ export default function EmployerInterviewsPage() {
                 try {
                   const res = await fetch("/api/interviews/export/ical", { credentials: "include" });
                   if (!res.ok) {
-                    toast.error("Failed to export calendar");
+                    toast.error(t("failedExportCalendar"));
                     return;
                   }
                   const blob = await res.blob();
@@ -373,7 +373,7 @@ export default function EmployerInterviewsPage() {
                   document.body.removeChild(a);
                   URL.revokeObjectURL(url);
                 } catch {
-                  toast.error("Calendar export failed");
+                  toast.error(t("calendarExportFailed"));
                 }
               }}
             >

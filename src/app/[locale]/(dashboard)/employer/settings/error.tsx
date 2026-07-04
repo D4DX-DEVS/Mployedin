@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 
 export default function SettingsError({
@@ -10,6 +11,7 @@ export default function SettingsError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const t = useTranslations("errorBoundary");
   useEffect(() => {
     console.error("[Settings Error]", error);
   }, [error]);
@@ -21,16 +23,16 @@ export default function SettingsError({
           <AlertTriangle className="w-6 h-6 text-destructive" />
         </div>
         <div className="space-y-2">
-          <h3 className="text-lg font-semibold text-destructive">Failed to load settings</h3>
+          <h3 className="text-lg font-semibold text-destructive">{t("failedSettings")}</h3>
           <p className="text-sm text-muted-foreground">
-            {error.message || "An unexpected error occurred while loading settings."}
+            {error.message || t("failedSettingsDescription")}
           </p>
         </div>
         <button
           onClick={reset}
           className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
         >
-          <RefreshCw className="w-4 h-4" /> Try Again
+          <RefreshCw className="w-4 h-4" /> {t("tryAgain")}
         </button>
       </div>
     </div>

@@ -7,6 +7,8 @@ export default function ResultTypesPage() {
       title="Result Types"
       titleAr="أنواع النتائج"
       description="Manage academic result type options"
+
+      descriptionAr="إدارة خيارات نوع النتيجة الأكاديمية"
     />
   );
 }

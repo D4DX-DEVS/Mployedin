@@ -13,7 +13,10 @@ interface AuthCtx { userId: string; role: string; locale: string; }
 /*  GET  /api/admin/target-report                                      */
 /*  Consolidated target report: trends, YoY, business volume, etc.     */
 /* ------------------------------------------------------------------ */
-async function handler(req: NextRequest, _ctx: AuthCtx) {
+async function handler(req: NextRequest, ctx: AuthCtx) {
+  if (ctx.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   await connectDB();
 
   const { searchParams } = new URL(req.url);

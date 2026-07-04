@@ -220,7 +220,7 @@ function WriteReviewForm({ employerId, onSubmitted, onCancel }: { employerId: st
         const err = await res.json();
         toast.error(err.error ?? "Failed to submit");
       }
-    } catch { toast.error("Network error"); } finally {
+    } catch { toast.error(t("networkError")); } finally {
       setSubmitting(false);
     }
   };

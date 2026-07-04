@@ -7,6 +7,8 @@ export default function FunctionalAreasPage() {
       title="Functional Areas"
       titleAr="المجالات الوظيفية"
       description="Manage job functional area and department options"
+
+      descriptionAr="إدارة خيارات المجالات الوظيفية والأقسام"
     />
   );
 }

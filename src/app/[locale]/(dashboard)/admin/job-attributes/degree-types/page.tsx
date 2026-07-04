@@ -7,6 +7,8 @@ export default function DegreeTypesPage() {
       title="Degree Types"
       titleAr="أنواع الشهادات"
       description="Manage academic degree type options"
+
+      descriptionAr="إدارة خيارات نوع الدرجة العلمية"
     />
   );
 }

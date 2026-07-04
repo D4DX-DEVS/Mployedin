@@ -7,6 +7,8 @@ export default function JobTypesPage() {
       title="Job Types"
       titleAr="أنواع الوظائف"
       description="Manage employment type options"
+
+      descriptionAr="إدارة خيارات نوع التوظيف"
     />
   );
 }

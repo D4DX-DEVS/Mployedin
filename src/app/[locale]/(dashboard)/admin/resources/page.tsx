@@ -148,7 +148,7 @@ export default function AdminResourcesPage() {
   };
 
   const handleCreate = async () => {
-    if (!formTitle.trim()) { toast.error("Title is required"); return; }
+    if (!formTitle.trim()) { toast.error(t("titleRequired")); return; }
     try {
       const fd = new FormData();
       fd.append("title", formTitle.trim()); fd.append("category", formCategory);
@@ -159,7 +159,7 @@ export default function AdminResourcesPage() {
       const res = await csrfFetch("/api/resources", { method: "POST", body: fd });
       if (res.ok) { toast.success(t("created")); resetForm(); fetchItems(); }
       else { const err = await res.json(); toast.error(err.error ?? "Failed"); }
-    } catch { toast.error("Failed to create resource"); }
+    } catch { toast.error(t("createError")); }
   };
 
   const handleUpdate = async () => {
@@ -175,11 +175,11 @@ export default function AdminResourcesPage() {
       const res = await csrfFetch(`/api/resources/${editingId}`, { method: "PATCH", body: fd });
       if (res.ok) { toast.success(t("updated")); resetForm(); fetchItems(); }
       else { const err = await res.json(); toast.error(err.error ?? "Failed"); }
-    } catch { toast.error("Failed to update resource"); }
+    } catch { toast.error(t("updateError")); }
   };
 
   const handleDelete = async (id: string) => {
-    try { const res = await csrfFetch(`/api/resources/${id}`, { method: "DELETE" }); if (res.ok) { toast.success(t("deleted")); fetchItems(); } } catch { toast.error("Failed to delete"); }
+    try { const res = await csrfFetch(`/api/resources/${id}`, { method: "DELETE" }); if (res.ok) { toast.success(t("deleted")); fetchItems(); } } catch { toast.error(t("deleteError")); }
   };
 
   const handleDownloadTrack = async (item: Resource, file: ResourceFile) => {
@@ -368,8 +368,8 @@ export default function AdminResourcesPage() {
 
                   <div className="flex items-center gap-1.5 pt-3 border-t border-border/40">
                     <Button variant="ghost" size="sm" onClick={() => openEdit(item)} className="flex-1 h-8 text-xs"><Edit className="h-3.5 w-3.5 mr-1.5" /> Edit</Button>
-                    <Button variant="ghost" size="sm" onClick={() => fetchDownloadLogs(item._id)} className="h-8 w-8 p-0" title="Download history"><Users className="h-3.5 w-3.5" /></Button>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => handleDelete(item._id)} title="Delete"><Trash2 className="h-3.5 w-3.5" /></Button>
+                    <Button variant="ghost" size="sm" onClick={() => fetchDownloadLogs(item._id)} className="h-8 w-8 p-0" title={t("a11yDownloadHistory")}><Users className="h-3.5 w-3.5" /></Button>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => handleDelete(item._id)} title={t("a11yDelete")}><Trash2 className="h-3.5 w-3.5" /></Button>
                   </div>
                 </div>
               </article>
@@ -519,7 +519,7 @@ export default function AdminResourcesPage() {
                   ) : (
                     <div className="flex gap-2">
                       <div className="flex-1"><SearchableSelect options={allCategoryOptions} value={formCategory} onValueChange={setFormCategory} placeholder="Select category" container={formDialogContainer} modal /></div>
-                      <Button type="button" variant="outline" size="sm" className="h-10 px-3 shrink-0" onClick={() => setShowNewCategory(true)} title="Add new category"><Plus className="h-4 w-4" /></Button>
+                      <Button type="button" variant="outline" size="sm" className="h-10 px-3 shrink-0" onClick={() => setShowNewCategory(true)} title={t("a11yAddNewCategory")}><Plus className="h-4 w-4" /></Button>
                     </div>
                   )}
                 </div>

@@ -511,7 +511,7 @@ function CandidateInsightsDialog({
               type="button"
               onClick={() => onOpenChange(false)}
               className="absolute end-4 top-4 flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background shadow-sm transition-colors hover:bg-muted"
-              aria-label="Close"
+              aria-label={t("a11yClose")}
             >
               <X className="h-4 w-4" />
             </button>

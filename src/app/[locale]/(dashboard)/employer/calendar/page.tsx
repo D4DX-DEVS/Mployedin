@@ -50,7 +50,7 @@ export default function EmployerCalendarPage() {
         );
       }
     } catch {
-      toast.error("Failed to load calendar events");
+      toast.error(t("failedLoadingCalendarEvents"));
     } finally {
       setLoading(false);
     }
@@ -151,7 +151,7 @@ export default function EmployerCalendarPage() {
         throw new Error(err.error ?? "Failed to book interview");
       }
 
-      toast.success("Interview booked successfully");
+      toast.success(t("interviewBookedSuccessfully"));
       // Refresh calendar events
       const now = new Date();
       fetchEvents(now.getFullYear(), now.getMonth());

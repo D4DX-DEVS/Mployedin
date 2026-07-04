@@ -13,6 +13,9 @@ interface AuthCtx { userId: string; role: string; locale: string; }
 /*  Split a yearly target into 12 monthly targets (equal or custom).  */
 /* ------------------------------------------------------------------ */
 async function postHandler(req: NextRequest, ctx: AuthCtx) {
+  if (ctx.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   await connectDB();
   const body = await validateBody(req, targetDistributeSchema);
 

@@ -15,7 +15,10 @@ interface AuthCtx { userId: string; role: string; locale: string; }
 /* ------------------------------------------------------------------ */
 /*  GET  /api/admin/target-profiles/[id]                               */
 /* ------------------------------------------------------------------ */
-async function getHandler(_req: NextRequest, _ctx: AuthCtx, params?: Record<string, string>) {
+async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
+  if (ctx.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   await connectDB();
   const id = params?.id;
   if (!id) return NextResponse.json({ error: "Missing ID" }, { status: 400 });
@@ -64,6 +67,9 @@ async function getHandler(_req: NextRequest, _ctx: AuthCtx, params?: Record<stri
 /*  PATCH  /api/admin/target-profiles/[id]                             */
 /* ------------------------------------------------------------------ */
 async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
+  if (ctx.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   await connectDB();
   const id = params?.id;
   if (!id) return NextResponse.json({ error: "Missing ID" }, { status: 400 });
@@ -129,6 +135,9 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 /*  DELETE  /api/admin/target-profiles/[id]                            */
 /* ------------------------------------------------------------------ */
 async function deleteHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
+  if (ctx.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   await connectDB();
   const id = params?.id;
   if (!id) return NextResponse.json({ error: "Missing ID" }, { status: 400 });

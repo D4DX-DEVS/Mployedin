@@ -36,12 +36,14 @@ interface JobAttributePageProps {
   title: string;
   titleAr: string;
   description?: string;
+  descriptionAr?: string;
 }
 
-export default function JobAttributePage({ category, title, titleAr, description }: JobAttributePageProps) {
+export default function JobAttributePage({ category, title, titleAr, description, descriptionAr }: JobAttributePageProps) {
   const t = useTranslations("adminJobAttributes");
   const locale = useLocale();
   const displayTitle = locale === "ar" ? titleAr : title;
+  const displayDescription = locale === "ar" && descriptionAr ? descriptionAr : description;
   const { can } = usePermissions();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
 
@@ -149,8 +151,8 @@ export default function JobAttributePage({ category, title, titleAr, description
         <div className="flex flex-col gap-3 border-b border-border/80 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-lg font-semibold text-foreground">{displayTitle}</h1>
-            {description && (
-              <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
+            {displayDescription && (
+              <p className="mt-0.5 text-xs text-muted-foreground">{displayDescription}</p>
             )}
           </div>
           <div className="flex items-center gap-2">

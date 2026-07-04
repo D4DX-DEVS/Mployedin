@@ -3,7 +3,6 @@ import { Inter, Noto_Sans_Arabic, Noto_Sans_Malayalam } from "next/font/google";
 import { headers } from "next/headers";
 import { ThemeProvider } from "@/components/shared/ThemeProvider";
 import { ServiceWorkerRegistration } from "@/components/shared/ServiceWorkerRegistration";
-import { PWAInstallPrompt } from "@/components/shared/PWAInstallPrompt";
 import "@/app/globals.css";
 import { getThemeInitializationScript } from "@/lib/theme";
 
@@ -80,26 +79,27 @@ export default async function RootLayout({
 
   return (
     <html lang={locale} dir={dir} suppressHydrationWarning>
-      <body
-        suppressHydrationWarning
-        className={`${inter.variable} ${notoArabic.variable} ${notoMalayalam.variable} font-sans antialiased`}
-        {...(nonce ? { "data-nonce": nonce } : {})}
-      >
-        {/* Native <script> with dangerouslySetInnerHTML avoids the React
-            "script tag inside component" warning while still executing
-            before the page hydrates (preventing FOUC for dark mode).
-            suppressHydrationWarning is required because browsers blank out
-            the nonce content attribute after load, which otherwise produces
-            a server/client hydration mismatch on the nonce attribute. */}
+      <head>
+        {/* Scripts in <head> are hoisted/deduped by React and exempt from
+            the "script tag inside component" client-render warning, unlike
+            scripts placed in <body>. suppressHydrationWarning is required
+            because browsers blank out the nonce content attribute after
+            load, which otherwise produces a server/client hydration
+            mismatch on the nonce attribute. */}
         <script
           id="theme-init"
           suppressHydrationWarning
           nonce={nonce}
           dangerouslySetInnerHTML={{ __html: getThemeInitializationScript() }}
         />
+      </head>
+      <body
+        suppressHydrationWarning
+        className={`${inter.variable} ${notoArabic.variable} ${notoMalayalam.variable} font-sans antialiased`}
+        {...(nonce ? { "data-nonce": nonce } : {})}
+      >
         <ThemeProvider>{children}</ThemeProvider>
         <ServiceWorkerRegistration />
-        <PWAInstallPrompt />
       </body>
     </html>
   );

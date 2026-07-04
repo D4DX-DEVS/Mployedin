@@ -155,7 +155,7 @@ export default function AdminTargetManagementPage() {
         setTotals(data.totals ?? null);
       }
     } catch {
-      toast.error("Failed to load target profiles");
+      toast.error(t("failedToLoadProfiles"));
     } finally {
       setLoading(false);
     }
@@ -230,9 +230,9 @@ export default function AdminTargetManagementPage() {
   const handleCancel = async (id: string) => {
     try {
       const res = await csrfFetch(`/api/admin/target-profiles/${id}`, { method: "DELETE" });
-      if (res.ok) { toast.success("Target profile cancelled"); fetchProfiles(); }
+      if (res.ok) { toast.success(t("profileCancelled")); fetchProfiles(); }
       else { const err = await res.json(); toast.error(err.error ?? "Failed"); }
-    } catch { toast.error("Failed to cancel"); }
+    } catch { toast.error(t("failedToCancel")); }
   };
 
   const handleClone = async () => {
@@ -248,13 +248,13 @@ export default function AdminTargetManagementPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        toast.success(`Cloned ${data.cloned} profiles from ${yearFilter - 1}`);
+        toast.success(t("profilesCloned", { count: data.cloned, year: yearFilter - 1 }));
         fetchProfiles();
       } else {
         const err = await res.json();
-        toast.error(err.error ?? "Failed to clone");
+        toast.error(err.error ?? t("failedToClone"));
       }
-    } catch { toast.error("Failed to clone"); }
+    } catch { toast.error(t("failedToClone")); }
   };
 
   const openReassign = (profileId: string) => {
@@ -283,7 +283,7 @@ export default function AdminTargetManagementPage() {
       });
 
       if (res.ok) {
-        toast.success("Target profile reassigned");
+        toast.success(t("profileReassigned"));
         closeReassign();
         fetchProfiles();
         fetchAnalytics();
@@ -292,9 +292,9 @@ export default function AdminTargetManagementPage() {
       }
 
       const err = await res.json();
-      toast.error(err.error ?? "Failed to reassign");
+      toast.error(err.error ?? t("failedToReassign"));
     } catch {
-      toast.error("Failed to reassign");
+      toast.error(t("failedToReassign"));
     }
   };
 
@@ -319,7 +319,7 @@ export default function AdminTargetManagementPage() {
     a.download = `target-profiles-${yearFilter}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success("CSV exported");
+    toast.success(t("csvExported"));
   };
 
   const pct = (a: number, tgt: number) => tgt > 0 ? Math.round((a / tgt) * 100) : 0;
@@ -370,7 +370,7 @@ export default function AdminTargetManagementPage() {
                 value={yearFilter}
                 onChange={(e) => setYearFilter(parseInt(e.target.value) || currentYear)}
                 className="h-11 w-32 rounded-xl border-border bg-card pl-9 text-sm"
-                aria-label="Year"
+                aria-label={t("a11yYear")}
               />
             </div>
             {regionOptions.length > 0 && (
@@ -651,14 +651,14 @@ export default function AdminTargetManagementPage() {
                         <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-end gap-0.5 opacity-60 group-hover:opacity-100 transition-opacity">
                             <Link href={`/${locale}/admin/target-management/${row._id}`}>
-                              <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg" title="View details">
+                              <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg" title={t("a11yViewDetails")}>
                                 <Eye className="h-3.5 w-3.5" />
                               </Button>
                             </Link>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg" title="Reassign" onClick={() => openReassign(row._id)}>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg" title={t("a11yReassign")} onClick={() => openReassign(row._id)}>
                               <SplitSquareVertical className="h-3.5 w-3.5" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-destructive hover:bg-destructive/10" title="Cancel" onClick={() => handleCancel(row._id)}>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-destructive hover:bg-destructive/10" title={t("a11yCancel")} onClick={() => handleCancel(row._id)}>
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </div>
@@ -722,7 +722,7 @@ export default function AdminTargetManagementPage() {
                 {leaderboard.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="py-16 text-center">
-                      <TargetEmptyState title="No leaderboard data" description="Create target profiles to see rankings" />
+                      <TargetEmptyState title={t("noLeaderboardData")} description={t("createProfilesToSeeRankings")} />
                     </TableCell>
                   </TableRow>
                 ) : (

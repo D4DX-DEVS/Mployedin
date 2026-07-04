@@ -7,6 +7,8 @@ export default function JobExperiencePage() {
       title="Job Experience"
       titleAr="الخبرة الوظيفية"
       description="Manage experience level options"
+
+      descriptionAr="إدارة خيارات مستوى الخبرة"
     />
   );
 }

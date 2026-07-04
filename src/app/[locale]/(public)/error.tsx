@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { reportError } from "@/lib/observability/report-error";
 
 /**
@@ -14,6 +15,7 @@ export default function PublicError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const t = useTranslations("errorBoundary");
   useEffect(() => {
     reportError(error, { source: "public-boundary", digest: error.digest });
   }, [error]);
@@ -37,15 +39,15 @@ export default function PublicError({
           </svg>
         </div>
 
-        <h2 className="text-xl font-semibold">Something went wrong</h2>
+        <h2 className="text-xl font-semibold">{t("title")}</h2>
 
         <p className="text-sm text-muted-foreground">
-          {error.message || "An unexpected error occurred while loading this page."}
+          {error.message || t("description")}
         </p>
 
         {error.digest && (
           <p className="text-xs text-muted-foreground font-mono">
-            Error ID: {error.digest}
+            {t("errorId", { digest: error.digest })}
           </p>
         )}
 
@@ -54,13 +56,13 @@ export default function PublicError({
             onClick={reset}
             className="px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
           >
-            Try Again
+            {t("tryAgain")}
           </button>
           <button
             onClick={() => window.location.reload()}
             className="px-4 py-2 text-sm font-medium rounded-md border border-border hover:bg-muted transition-colors"
           >
-            Reload Page
+            {t("reloadPage")}
           </button>
         </div>
       </div>
