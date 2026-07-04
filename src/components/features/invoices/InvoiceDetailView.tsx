@@ -133,6 +133,7 @@ function fmtDateTime(value?: string) {
 
 export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }: InvoiceDetailViewProps) {
   const t = useTranslations("invoiceDetailView");
+  const tCommon = useTranslations("common");
   const [invoice, setInvoice] = useState<InvoiceData | null>(null);
   const [senderContext, setSenderContext] = useState<{ name: string; role: string; label: string } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -451,7 +452,7 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
                       </div>
                       <div className="mt-2"><Label className="text-xs">{t("notes")}</Label><Textarea className="mt-1 rounded-lg" rows={2} value={paymentNotes} onChange={e => setPaymentNotes(e.target.value)} /></div>
                       <div className="mt-3 flex justify-end gap-2">
-                        <Button variant="outline" size="sm" onClick={() => setShowPaymentForm(false)} className="h-8 rounded-lg">{t("common:cancel")}</Button>
+                        <Button variant="outline" size="sm" onClick={() => setShowPaymentForm(false)} className="h-8 rounded-lg">{tCommon("cancel")}</Button>
                         <Button size="sm" onClick={handleRecordPayment} disabled={recordingPayment || !paymentAmount} className="h-8 rounded-lg bg-emerald-600 hover:bg-emerald-700">
                           {recordingPayment ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : t("record")}
                         </Button>
@@ -564,7 +565,7 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
                     </Button>
                   )}
                   </div>
-                  <Button variant="outline" size="sm" onClick={onClose} className="h-8 rounded-lg text-xs">{t("common:close")}</Button>
+                  <Button variant="outline" size="sm" onClick={onClose} className="h-8 rounded-lg text-xs">{tCommon("close")}</Button>
                 </div>
               </div>
             )}

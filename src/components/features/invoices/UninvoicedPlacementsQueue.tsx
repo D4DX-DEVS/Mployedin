@@ -94,6 +94,7 @@ const STATUS_OPTIONS = [
 // ── Component ────────────────────────────────────────────────────────────────
 export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }: UninvoicedPlacementsQueueProps) {
   const t = useTranslations("uninvoicedPlacementsQueue");
+  const tCommon = useTranslations("common");
   const [placements, setPlacements] = useState<UninvoicedPlacement[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -318,7 +319,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
           )}
           <div className="ml-auto">
             <Button variant="ghost" size="sm" onClick={() => setSelected(new Set())} className="h-7 text-xs text-emerald-600 hover:text-emerald-800 dark:text-emerald-400">
-              {t("common:delete")}
+              {tCommon("delete")}
             </Button>
           </div>
         </div>
@@ -696,7 +697,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
               {/* Actions */}
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={closeBulkModal} className="h-9 rounded-lg">
-                  {t("common:cancel")}
+                  {tCommon("cancel")}
                 </Button>
                 <Button
                   onClick={handleBulkGenerate}
