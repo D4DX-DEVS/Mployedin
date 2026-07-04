@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs";
 import { validateBody } from "@/lib/validators";
 import { changePasswordSchema } from "@/lib/validators/misc";
 import { logActivity } from "@/lib/audit/log";
+import { checkRateLimit } from "@/lib/security/rateLimit";
 
 /**
  * POST /api/users/change-password
@@ -16,6 +17,19 @@ export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rl = await checkRateLimit(`change-pwd:${session.user.id}`, {
+    limit: 3,
+    windowSec: 3600,
+    prefix: "chpwd",
+    failClosed: true,
+  });
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } }
+    );
   }
 
   const { currentPassword, newPassword } = await validateBody(req, changePasswordSchema);

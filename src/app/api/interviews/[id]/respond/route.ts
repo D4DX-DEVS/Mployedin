@@ -8,6 +8,7 @@ import { validateBody } from "@/lib/validators";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { notify } from "@/lib/notifications/trigger";
 import { isValidObjectId } from "@/lib/security/sanitize";
+import { checkRateLimitDual } from "@/lib/security/rateLimit";
 import { z } from "zod";
 import type { UserRole } from "@/models/User";
 import logger from "@/lib/logger";
@@ -36,6 +37,18 @@ async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<strin
   if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   if (ctx.role !== "job_seeker") {
     return NextResponse.json({ error: "Only job seekers can respond to interviews" }, { status: 403 });
+  }
+
+  const rl = await checkRateLimitDual(req, ctx.userId, {
+    limit: 10,
+    windowSec: 3600,
+    prefix: "interview-respond",
+  });
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } }
+    );
   }
 
   await connectDB();

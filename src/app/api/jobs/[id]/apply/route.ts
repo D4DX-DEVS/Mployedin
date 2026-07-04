@@ -11,7 +11,7 @@ import User from "@/models/User";
 import { computeBehaviorSignals } from "@/lib/behaviorSignals";
 import { sendEmail } from "@/lib/communications/email";
 import { isValidObjectId } from "@/lib/security/sanitize";
-import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
+import { checkRateLimitDual } from "@/lib/security/rateLimit";
 import { inngest } from "@/lib/inngest/client";
 import { logActivity } from "@/lib/audit/log";
 import { notifyApplicationReceived } from "@/lib/notifications/trigger";
@@ -34,7 +34,11 @@ async function applyHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 
   // SECURITY (W3-2): parity with POST /api/applications — rate limit the
   // easy-apply path so it cannot be used to bypass the application throttle.
-  const rl = await checkRateLimitDual(req, ctx.userId, RATE_LIMIT_CONFIGS.applications);
+  const rl = await checkRateLimitDual(req, ctx.userId, {
+    limit: 5,
+    windowSec: 3600,
+    prefix: "job-apply",
+  });
   if (!rl.allowed) {
     return NextResponse.json(
       { error: "Too many requests. Please try again later." },
