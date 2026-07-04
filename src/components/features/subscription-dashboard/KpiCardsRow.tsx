@@ -3,6 +3,7 @@
 import {
   DollarSign, CheckCircle, Users, TrendingDown,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { DashboardOverview, KpiComparisons, RevenueTrendPoint } from "./useSubscriptionDashboard";
 
 interface KpiCardsRowProps {
@@ -51,7 +52,7 @@ function MiniSparkline({ data, color }: { data: number[]; color: string }) {
 }
 
 /* ── Employer/JobSeeker Mini Bar ────────────────────────────────────────── */
-function SplitBar({ employer, jobSeeker }: { employer: number; jobSeeker: number }) {
+function SplitBar({ employer, jobSeeker, t }: { employer: number; jobSeeker: number; t: ReturnType<typeof useTranslations> }) {
   const total = employer + jobSeeker || 1;
   const empPct = (employer / total) * 100;
   return (
@@ -63,11 +64,11 @@ function SplitBar({ employer, jobSeeker }: { employer: number; jobSeeker: number
       <div className="flex items-center justify-between mt-1.5">
         <span className="text-[10px] text-muted-foreground flex items-center gap-1">
           <span className="inline-block h-2 w-2 rounded-full bg-primary" />
-          Employers: {employer}
+          {t("employers")}: {employer}
         </span>
         <span className="text-[10px] text-muted-foreground flex items-center gap-1">
           <span className="inline-block h-2 w-2 rounded-full bg-indigo-400" />
-          Job Seekers: {jobSeeker}
+          {t("jobSeekers")}: {jobSeeker}
         </span>
       </div>
     </div>
@@ -75,6 +76,7 @@ function SplitBar({ employer, jobSeeker }: { employer: number; jobSeeker: number
 }
 
 export function KpiCardsRow({ overview, comparisons, revenueTrend }: KpiCardsRowProps) {
+  const t = useTranslations("kpiCardsRow");
   const sparkData = revenueTrend?.map((p) => p.mrr) ?? [];
 
   return (
@@ -83,7 +85,7 @@ export function KpiCardsRow({ overview, comparisons, revenueTrend }: KpiCardsRow
       <div className="rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-50/80 to-white dark:from-emerald-900/10 dark:to-card p-5 transition-all hover:shadow-md">
         <div className="flex items-center justify-between mb-1">
           <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-            Monthly Recurring Revenue
+            {t("monthlyRecurringRevenue")}
           </span>
           <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center">
             <DollarSign className="h-4 w-4 text-emerald-500" />
@@ -97,14 +99,14 @@ export function KpiCardsRow({ overview, comparisons, revenueTrend }: KpiCardsRow
           <span className="text-xs text-muted-foreground">vs last month · {formatCurrency(overview.arr)} AED ARR</span>
         </div>
         <MiniSparkline data={sparkData} color="#10b981" />
-        <SplitBar employer={overview.employerActive} jobSeeker={overview.jobSeekerActive} />
+        <SplitBar employer={overview.employerActive} jobSeeker={overview.jobSeekerActive} t={t} />
       </div>
 
       {/* ── Active Subscriptions ── */}
       <div className="rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-50/60 to-white dark:from-emerald-900/10 dark:to-card p-5 transition-all hover:shadow-md">
         <div className="flex items-center justify-between mb-1">
           <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-            Active Subscriptions
+            {t("activeSubscriptions")}
           </span>
           <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center">
             <CheckCircle className="h-4 w-4 text-emerald-500" />
@@ -116,14 +118,14 @@ export function KpiCardsRow({ overview, comparisons, revenueTrend }: KpiCardsRow
             {comparisons.activeChange >= 0 ? "↑" : "↓"} {Math.abs(comparisons.activeChange)}%
           </span>
         </div>
-        <SplitBar employer={overview.employerActive} jobSeeker={overview.jobSeekerActive} />
+        <SplitBar employer={overview.employerActive} jobSeeker={overview.jobSeekerActive} t={t} />
       </div>
 
       {/* ── Total Subscriptions ── */}
       <div className="rounded-2xl border border-sky-500/20 bg-gradient-to-br from-sky-50/60 to-white dark:from-sky-900/10 dark:to-card p-5 transition-all hover:shadow-md">
         <div className="flex items-center justify-between mb-1">
           <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-            Total Subscriptions
+            {t("totalSubscriptions")}
           </span>
           <div className="h-8 w-8 rounded-full bg-sky-500/10 flex items-center justify-center">
             <Users className="h-4 w-4 text-sky-500" />
@@ -136,7 +138,7 @@ export function KpiCardsRow({ overview, comparisons, revenueTrend }: KpiCardsRow
           </span>
         </div>
         <p className="text-xs text-muted-foreground mt-3">
-          All time · {overview.cancelledThisMonth} cancelled this month
+          {t("allTimeCancelledLabel", { count: overview.cancelledThisMonth })}
         </p>
       </div>
 
@@ -144,7 +146,7 @@ export function KpiCardsRow({ overview, comparisons, revenueTrend }: KpiCardsRow
       <div className="rounded-2xl border border-rose-500/20 bg-gradient-to-br from-rose-50/60 to-white dark:from-rose-900/10 dark:to-card p-5 transition-all hover:shadow-md">
         <div className="flex items-center justify-between mb-1">
           <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-            Churn Rate
+            {t("churnRate")}
           </span>
           <div className="h-8 w-8 rounded-full bg-rose-500/10 flex items-center justify-center">
             <TrendingDown className="h-4 w-4 text-rose-500" />
@@ -158,7 +160,7 @@ export function KpiCardsRow({ overview, comparisons, revenueTrend }: KpiCardsRow
           <span className="text-xs text-muted-foreground">vs last month</span>
         </div>
         <p className="text-xs text-rose-500 mt-3 font-medium">
-          {overview.expiringSoon} subscriptions expiring soon
+          {t("expiringLabel", { count: overview.expiringSoon })}
         </p>
       </div>
     </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
+import { useTranslations } from "next-intl";
 import { BarChart3 } from "lucide-react";
 import type { PlanDistributionItem } from "./useSubscriptionDashboard";
 
@@ -21,6 +22,7 @@ function formatCurrency(n: number) {
 }
 
 export function PlanDistributionChart({ data, totalMrr }: PlanDistributionChartProps) {
+  const t = useTranslations("planDistributionChart");
   const chartData = data.map((d) => ({
     name: d.planName,
     value: d.revenue,
@@ -33,12 +35,12 @@ export function PlanDistributionChart({ data, totalMrr }: PlanDistributionChartP
     <section className="rounded-2xl border border-border/60 bg-card p-6">
       <div className="flex items-center justify-between mb-6">
         <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-          <BarChart3 className="h-4 w-4" /> Plan Distribution (by Revenue)
+          <BarChart3 className="h-4 w-4" /> {t("planDistributionByRevenue")}
         </h4>
       </div>
 
       {chartData.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-8">No plan data</p>
+        <p className="text-sm text-muted-foreground text-center py-8">{t("noPlanData")}</p>
       ) : (
         <div className="flex flex-col lg:flex-row items-center gap-6">
           <div className="relative w-full max-w-[220px]">
@@ -75,7 +77,7 @@ export function PlanDistributionChart({ data, totalMrr }: PlanDistributionChartP
             {/* Center label */}
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
               <span className="text-lg font-bold">{formatCurrency(totalMrr)}</span>
-              <span className="text-[10px] text-muted-foreground font-medium">AED MRR</span>
+              <span className="text-[10px] text-muted-foreground font-medium">{t("aedMrr")}</span>
             </div>
           </div>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { Mail, Loader2, Send, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +12,7 @@ import { Label } from "@/components/ui/label";
  * the change only applies after the link sent to the new address is confirmed.
  */
 export function ChangeEmailCard() {
+  const t = useTranslations("changeEmailCard");
   const [currentEmail, setCurrentEmail] = useState("");
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -76,8 +78,8 @@ export function ChangeEmailCard() {
     <section className="card-base rounded-[28px] p-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Account</div>
-          <h2 className="mt-1 text-lg font-semibold tracking-tight text-foreground">Email address</h2>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("account")}</div>
+          <h2 className="mt-1 text-lg font-semibold tracking-tight text-foreground">{t("emailAddress")}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Changing your email requires your password and a confirmation link sent to the new address.
           </p>
@@ -104,7 +106,7 @@ export function ChangeEmailCard() {
             </p>
           </div>
           <Button variant="ghost" size="sm" onClick={cancelPending} disabled={busy}>
-            <XCircle className="mr-1.5 h-4 w-4" /> Cancel
+            <XCircle className="mr-1.5 h-4 w-4" /> {t("cancel")}
           </Button>
         </div>
       )}
@@ -112,13 +114,13 @@ export function ChangeEmailCard() {
       {!pendingEmail && !loading && (
         !open ? (
           <Button variant="outline" className="mt-5" onClick={() => { setOpen(true); setError(""); }}>
-            Change email address
+            {t("changeEmailAddress")}
           </Button>
         ) : (
           <div className="mt-5 space-y-3 rounded-xl border border-border/70 p-4">
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label htmlFor="new-email">New email address</Label>
+                <Label htmlFor="new-email">{t("newEmailAddress")}</Label>
                 <Input
                   id="new-email"
                   type="email"
@@ -130,7 +132,7 @@ export function ChangeEmailCard() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="confirm-pwd">Current password</Label>
+                <Label htmlFor="confirm-pwd">{t("currentPassword")}</Label>
                 <Input
                   id="confirm-pwd"
                   type="password"
@@ -145,9 +147,9 @@ export function ChangeEmailCard() {
             <div className="flex gap-2">
               <Button onClick={submit} disabled={busy || !newEmail || !password}>
                 {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                Send confirmation link
+                {t("sendConfirmationLink")}
               </Button>
-              <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button variant="ghost" onClick={() => setOpen(false)}>{t("cancel")}</Button>
             </div>
           </div>
         )

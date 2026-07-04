@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { Star, ThumbsUp, MessageSquare, Send } from "lucide-react";
 import { toast } from "sonner";
 
@@ -36,6 +37,7 @@ interface CompanyReviewsProps {
 }
 
 export default function CompanyReviews({ employerId, companyName }: CompanyReviewsProps) {
+  const t = useTranslations("companyReviews");
   const [reviews, setReviews] = useState<Review[]>([]);
   const [stats, setStats] = useState<ReviewStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -61,13 +63,13 @@ export default function CompanyReviews({ employerId, companyName }: CompanyRevie
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
           <MessageSquare className="w-5 h-5" />
-          Reviews
+          {t("reviews")}
         </h2>
         <button
           onClick={() => setShowWriteReview(!showWriteReview)}
           className="text-sm px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
         >
-          Write a Review
+          {t("writeReview")}
         </button>
       </div>
 
@@ -82,7 +84,7 @@ export default function CompanyReviews({ employerId, companyName }: CompanyRevie
                   <Star key={s} className={`w-4 h-4 ${s <= Math.round(stats.avgRating) ? "fill-amber-400 text-amber-400" : "text-muted-foreground/20"}`} />
                 ))}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">{stats.totalReviews} reviews</p>
+              <p className="text-xs text-muted-foreground mt-1">{stats.totalReviews} {t("reviewsCount")}</p>
             </div>
             <div className="flex-1 space-y-1">
               {[5, 4, 3, 2, 1].map((r) => {
@@ -105,7 +107,7 @@ export default function CompanyReviews({ employerId, companyName }: CompanyRevie
                 <p className="text-2xl font-bold text-green-600">
                   {Math.round((stats.recommended / stats.totalReviews) * 100)}%
                 </p>
-                <p className="text-xs text-muted-foreground">Recommend</p>
+                <p className="text-xs text-muted-foreground">{t("recommend")}</p>
               </div>
             )}
           </div>
@@ -129,7 +131,7 @@ export default function CompanyReviews({ employerId, companyName }: CompanyRevie
       ) : reviews.length === 0 ? (
         <div className="text-center py-8 bg-card border border-border rounded-xl">
           <MessageSquare className="w-8 h-8 mx-auto mb-2 text-muted-foreground opacity-50" />
-          <p className="text-sm text-muted-foreground">No reviews yet. Be the first to review!</p>
+          <p className="text-sm text-muted-foreground">{t("noReviewsYet")}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -155,18 +157,18 @@ export default function CompanyReviews({ employerId, companyName }: CompanyRevie
               </div>
               <div className="grid gap-2 sm:grid-cols-2 mt-3">
                 <div>
-                  <p className="text-xs font-medium text-green-600 mb-1">Pros</p>
+                  <p className="text-xs font-medium text-green-600 mb-1">{t("pros")}</p>
                   <p className="text-sm text-muted-foreground">{review.pros}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-red-600 mb-1">Cons</p>
+                  <p className="text-xs font-medium text-red-600 mb-1">{t("cons")}</p>
                   <p className="text-sm text-muted-foreground">{review.cons}</p>
                 </div>
               </div>
               {review.recommendToFriend !== undefined && (
                 <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
                   <ThumbsUp className={`w-3.5 h-3.5 ${review.recommendToFriend ? "text-green-500" : "text-muted-foreground"}`} />
-                  {review.recommendToFriend ? "Recommends" : "Does not recommend"} this employer
+                  {review.recommendToFriend ? t("recommends") : t("doesNotRecommend")} {t("thisEmployer")}
                 </div>
               )}
             </div>
@@ -178,6 +180,7 @@ export default function CompanyReviews({ employerId, companyName }: CompanyRevie
 }
 
 function WriteReviewForm({ employerId, onSubmitted, onCancel }: { employerId: string; onSubmitted: () => void; onCancel: () => void }) {
+  const t = useTranslations("companyReviews");
   const [rating, setRating] = useState(0);
   const [title, setTitle] = useState("");
   const [pros, setPros] = useState("");
@@ -190,7 +193,7 @@ function WriteReviewForm({ employerId, onSubmitted, onCancel }: { employerId: st
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!rating || !title || !pros || !cons) { toast.error("Please fill all required fields"); return; }
+    if (!rating || !title || !pros || !cons) { toast.error(t("fillAllRequired")); return; }
 
     setSubmitting(true);
     try {
@@ -210,7 +213,7 @@ function WriteReviewForm({ employerId, onSubmitted, onCancel }: { employerId: st
         }),
       });
       if (res.ok) {
-        toast.success("Review submitted! It will appear after moderation.");
+        toast.success(t("reviewSubmitted"));
         onSubmitted();
       } else {
         const err = await res.json();
@@ -223,10 +226,10 @@ function WriteReviewForm({ employerId, onSubmitted, onCancel }: { employerId: st
 
   return (
     <form onSubmit={handleSubmit} className="bg-card border border-border rounded-xl p-5 mb-4 space-y-4">
-      <h3 className="font-semibold text-foreground">Write a Review</h3>
+      <h3 className="font-semibold text-foreground">{t("writeReview")}</h3>
 
       <div className="flex items-center gap-2">
-        <span className="text-sm text-muted-foreground">Rating:</span>
+        <span className="text-sm text-muted-foreground">{t("rating")}:</span>
         {[1, 2, 3, 4, 5].map((s) => (
           <button key={s} type="button" onClick={() => setRating(s)}>
             <Star className={`w-6 h-6 ${s <= rating ? "fill-amber-400 text-amber-400" : "text-muted-foreground/20"}`} />
@@ -234,43 +237,43 @@ function WriteReviewForm({ employerId, onSubmitted, onCancel }: { employerId: st
         ))}
       </div>
 
-      <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Review title *" className="w-full px-3 py-2 border border-border rounded-lg bg-background text-sm" required maxLength={200} />
+      <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder={t("reviewTitle")} className="w-full px-3 py-2 border border-border rounded-lg bg-background text-sm" required maxLength={200} />
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
-          <label className="text-xs font-medium text-green-600">Pros *</label>
-          <textarea value={pros} onChange={e => setPros(e.target.value)} className="w-full mt-1 px-3 py-2 border border-border rounded-lg bg-background text-sm" rows={3} required maxLength={2000} placeholder="What you liked..." />
+          <label className="text-xs font-medium text-green-600">{t("pros")} *</label>
+          <textarea value={pros} onChange={e => setPros(e.target.value)} className="w-full mt-1 px-3 py-2 border border-border rounded-lg bg-background text-sm" rows={3} required maxLength={2000} placeholder={t("whatLiked")} />
         </div>
         <div>
-          <label className="text-xs font-medium text-red-600">Cons *</label>
-          <textarea value={cons} onChange={e => setCons(e.target.value)} className="w-full mt-1 px-3 py-2 border border-border rounded-lg bg-background text-sm" rows={3} required maxLength={2000} placeholder="What could be better..." />
+          <label className="text-xs font-medium text-red-600">{t("cons")} *</label>
+          <textarea value={cons} onChange={e => setCons(e.target.value)} className="w-full mt-1 px-3 py-2 border border-border rounded-lg bg-background text-sm" rows={3} required maxLength={2000} placeholder={t("whatBetter")} />
         </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <input type="text" value={jobTitle} onChange={e => setJobTitle(e.target.value)} placeholder="Your job title" className="px-3 py-2 border border-border rounded-lg bg-background text-sm" />
+        <input type="text" value={jobTitle} onChange={e => setJobTitle(e.target.value)} placeholder={t("yourJobTitle")} className="px-3 py-2 border border-border rounded-lg bg-background text-sm" />
         <select value={employmentStatus} onChange={e => setEmploymentStatus(e.target.value)} className="px-3 py-2 border border-border rounded-lg bg-background text-sm">
-          <option value="">Employment status</option>
-          <option value="current">Current employee</option>
-          <option value="former">Former employee</option>
+          <option value="">{t("employmentStatus")}</option>
+          <option value="current">{t("currentEmployee")}</option>
+          <option value="former">{t("formerEmployee")}</option>
         </select>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           <input type="checkbox" checked={isAnonymous} onChange={e => setIsAnonymous(e.target.checked)} className="rounded" />
-          Post anonymously
+          {t("postAnonymously")}
         </label>
       </div>
 
       <div className="flex items-center gap-2">
-        <span className="text-sm text-muted-foreground">Recommend?</span>
+        <span className="text-sm text-muted-foreground">{t("recommendQuestion")}?</span>
         <button type="button" onClick={() => setRecommendToFriend(true)} className={`px-3 py-1 rounded border text-xs ${recommendToFriend === true ? "border-green-500 bg-green-50 text-green-600 dark:bg-green-950" : "border-border"}`}>👍 Yes</button>
         <button type="button" onClick={() => setRecommendToFriend(false)} className={`px-3 py-1 rounded border text-xs ${recommendToFriend === false ? "border-red-500 bg-red-50 text-red-600 dark:bg-red-950" : "border-border"}`}>👎 No</button>
       </div>
 
       <div className="flex justify-end gap-3">
-        <button type="button" onClick={onCancel} className="px-4 py-2 border border-border rounded-lg text-sm hover:bg-accent">Cancel</button>
+        <button type="button" onClick={onCancel} className="px-4 py-2 border border-border rounded-lg text-sm hover:bg-accent">{t("cancel")}</button>
         <button type="submit" disabled={submitting} className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2">
           <Send className="w-4 h-4" />
-          {submitting ? "Submitting..." : "Submit Review"}
+          {submitting ? t("submitting") : t("submitReview")}
         </button>
       </div>
     </form>

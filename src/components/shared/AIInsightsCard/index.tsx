@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Sparkles, TrendingUp, AlertCircle, Lightbulb, RefreshCw } from "lucide-react";
 
 interface Insight {
@@ -25,6 +26,7 @@ const ICON_MAP = {
  * Fetches from /api/ai/daily-insights once per role per session.
  */
 export function AIInsightsCard({ role, context }: AIInsightsCardProps) {
+  const t = useTranslations("aiInsightsCardShared");
   const [insights, setInsights] = useState<Insight[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -64,7 +66,7 @@ export function AIInsightsCard({ role, context }: AIInsightsCardProps) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-primary">
           <Sparkles className="h-4 w-4" />
-          <span className="text-sm font-semibold">AI Daily Insights</span>
+          <span className="text-sm font-semibold">{t("aiDailyInsights")}</span>
         </div>
         <button
           onClick={() => {
@@ -73,7 +75,7 @@ export function AIInsightsCard({ role, context }: AIInsightsCardProps) {
             setInsights([]);
             setRefreshKey(k => k + 1);
           }}
-          title="Refresh insights"
+          title={t("refreshInsights")}
           className="p-1 rounded hover:bg-primary/10 text-muted-foreground transition-colors"
         >
           <RefreshCw className="h-3.5 w-3.5" />
@@ -89,7 +91,7 @@ export function AIInsightsCard({ role, context }: AIInsightsCardProps) {
       )}
 
       {!loading && insights.length === 0 && (
-        <p className="text-xs text-muted-foreground">No insights available yet.</p>
+        <p className="text-xs text-muted-foreground">{t("noInsights")}</p>
       )}
 
       <ul className="space-y-2">

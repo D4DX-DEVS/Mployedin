@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Loader2, Zap, FileText, ChevronDown, ChevronUp, Upload, Plus, Link2 } from "lucide-react";
@@ -47,6 +48,7 @@ const PROFILE_CV_KEY = "__profile_cv__";
 const NO_CV_KEY = "__none__";
 
 export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions = [] }: EasyApplyProps) {
+  const t = useTranslations("easyApply");
   const { data: session, status } = useSession();
   const router = useRouter();
 
@@ -145,7 +147,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
     return (
       <Button disabled className="h-12 w-full rounded-2xl text-base">
         <Loader2 className="h-4 w-4 animate-spin mr-2" />
-        Loading…
+        {t("loading")}
       </Button>
     );
   }
@@ -158,7 +160,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
           router.push(`/${locale}/login?callbackUrl=/${locale}/jobs/${jobId}`)
         }
       >
-        Sign in to Apply
+        {t("signInApply")}
       </Button>
     );
   }
@@ -166,7 +168,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
   if (!isJobSeeker) {
     return (
       <Button variant="outline" className="h-12 w-full rounded-2xl text-base" disabled>
-        Job seekers only can apply
+        {t("jobSeekersOnly")}
       </Button>
     );
   }
@@ -174,9 +176,9 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
   if (applied) {
     return (
       <div className="w-full rounded-[22px] border border-green-500/30 bg-green-500/10 px-4 py-4 text-center">
-        <p className="text-sm font-semibold text-green-600">✓ Application submitted!</p>
+        <p className="text-sm font-semibold text-green-600">✓ {t("applicationSubmitted")}</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          We&apos;ve sent your profile to the employer.
+          {t("sentProfile")}
         </p>
       </div>
     );
@@ -201,7 +203,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
       if (!q.required) continue;
       const val = answers[q.id];
       if (val === undefined || val === "" || (Array.isArray(val) && val.length === 0)) {
-        setError(`Please answer the required question: "${q.label}"`);
+        setError(t("answerRequired", { label: q.label }));
         return false;
       }
     }
@@ -324,7 +326,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
       {profile && (
         <div className="space-y-2 rounded-[22px] border border-border/70 bg-muted/20 px-4 py-4 shadow-[0_12px_28px_rgba(15,23,42,0.04)]">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Applying as
+            {t("applyingAs")}
           </p>
           {profile.name && (
             <p className="text-sm font-semibold text-foreground">{profile.name}</p>
@@ -356,7 +358,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
       {profile && (
         <div className="space-y-2 rounded-[22px] border border-border/70 bg-muted/10 px-4 py-4">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            CV / Resume
+            {t("profileCv")}
           </p>
           <div className="space-y-1.5">
             {hasProfileCv && (
@@ -369,7 +371,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
                   className="accent-primary"
                 />
                 <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                Profile CV
+                {t("profileCvLabel")}
               </label>
             )}
             {resumeDocs.map((d) => (
@@ -387,7 +389,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
             ))}
             {!hasProfileCv && resumeDocs.length === 0 && (
               <p className="flex items-center gap-1 text-xs text-muted-foreground/70">
-                <FileText className="h-3 w-3" /> No CV on file yet — upload one below.
+                <FileText className="h-3 w-3" /> {t("noCvOnFile")}
               </p>
             )}
           </div>
@@ -407,7 +409,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
             className="h-8 gap-1.5 rounded-xl text-xs"
           >
             {uploadingCv ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-            {uploadingCv ? "Uploading…" : "Upload a different CV"}
+            {uploadingCv ? t("uploading") : t("uploadDifferentCv")}
           </Button>
         </div>
       )}
@@ -416,7 +418,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
       {profile && (
         <div className="space-y-2 rounded-[22px] border border-border/70 bg-muted/10 px-4 py-4">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Additional Documents
+            {t("additionalDocuments")}
           </p>
           {otherDocs.length > 0 ? (
             <div className="space-y-1.5">
@@ -435,7 +437,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
             </div>
           ) : (
             <p className="text-xs text-muted-foreground/70">
-              Attach certificates, references or portfolio files (optional).
+              {t("attachDocumentsOptional")}
             </p>
           )}
           <input
@@ -454,13 +456,13 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
             className="h-8 gap-1.5 rounded-xl text-xs"
           >
             {uploadingDoc ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-            {uploadingDoc ? "Uploading…" : "Add a document"}
+            {uploadingDoc ? t("uploading") : t("addDocument")}
           </Button>
 
           <div className="space-y-1.5 pt-1">
             <Label htmlFor="portfolio-url" className="flex items-center gap-1.5 text-xs font-medium text-foreground">
               <Link2 className="h-3.5 w-3.5 text-muted-foreground" />
-              Portfolio link (optional)
+              {t("portfolioLink")}
             </Label>
             <Input
               id="portfolio-url"
@@ -480,7 +482,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
       {hasQuestions && (
         <div className="space-y-3 rounded-[22px] border border-border/70 bg-muted/10 px-4 py-4">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Screening Questions
+            {t("screeningQuestions")}
           </p>
           {sortedQuestions.map((q) => (
             <div key={q.id} className="space-y-1.5">
@@ -599,7 +601,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
         <button
           type="button"
           onClick={() => setShowCoverLetter((v) => !v)}
-          aria-label={showCoverLetter ? "Hide cover letter" : "Add cover letter"}
+          aria-label={showCoverLetter ? t("hideCoverLetter") : t("addCoverLetter")}
           className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
         >
           {showCoverLetter ? (
@@ -607,7 +609,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
           ) : (
             <ChevronDown className="h-3 w-3" />
           )}
-          {showCoverLetter ? "Hide" : "Add"} cover letter (optional)
+          {showCoverLetter ? t("hide") : t("add")} {t("coverLetterOptional")}
         </button>
         {showCoverLetter && (
           <textarea
@@ -636,7 +638,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
         ) : (
           <Zap className="h-4 w-4" />
         )}
-        {loading ? "Submitting…" : "Easy Apply"}
+        {loading ? t("submitting") : t("easyApply")}
       </Button>
 
       {error && (
@@ -644,7 +646,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
       )}
 
       <p className="text-center text-xs text-muted-foreground">
-        Your profile is auto-attached to the application.
+        {t("profileAutoAttached")}
       </p>
     </div>
   );
@@ -656,6 +658,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
 // react-query provider, so this uses plain fetch instead of the
 // useSkillConfirmations hooks.
 function EasyApplySkillConfirm({ jobId }: { jobId: string }) {
+  const t = useTranslations("easyApply");
   const [skills, setSkills] = useState<string[] | null>(null);
   const [index, setIndex] = useState(0);
   const [answeredCount, setAnsweredCount] = useState(0);
@@ -707,8 +710,7 @@ function EasyApplySkillConfirm({ jobId }: { jobId: string }) {
     return (
       <div className="rounded-[22px] border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
         <p className="text-xs font-semibold text-emerald-600">
-          ✓ Thanks! Your profile has been updated with {answeredCount} skill
-          {answeredCount !== 1 ? "s" : ""}.
+          {t("skillsUpdated", { count: answeredCount })}
         </p>
       </div>
     );
@@ -719,11 +721,10 @@ function EasyApplySkillConfirm({ jobId }: { jobId: string }) {
   return (
     <div className="space-y-3 rounded-[22px] border border-border/70 bg-muted/20 px-4 py-4 shadow-[0_12px_28px_rgba(15,23,42,0.04)]">
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-        Confirm your skills
+        {t("confirmSkills")}
       </p>
       <p className="text-sm text-muted-foreground">
-        Do you have experience in{" "}
-        <span className="font-semibold text-foreground">{currentSkill}</span>?
+        {t("experienceQuestion", { skill: currentSkill })}
       </p>
       <div className="flex flex-wrap gap-2">
         <button
@@ -732,7 +733,7 @@ function EasyApplySkillConfirm({ jobId }: { jobId: string }) {
           disabled={saving}
           className="inline-flex items-center rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 disabled:opacity-50 dark:border-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 dark:hover:bg-emerald-900/40"
         >
-          Yes
+          {t("yes")}
         </button>
         <button
           type="button"
@@ -740,7 +741,7 @@ function EasyApplySkillConfirm({ jobId }: { jobId: string }) {
           disabled={saving}
           className="inline-flex items-center rounded-xl border border-border bg-secondary/80 px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
         >
-          No
+          {t("no")}
         </button>
         <button
           type="button"
@@ -748,12 +749,12 @@ function EasyApplySkillConfirm({ jobId }: { jobId: string }) {
           disabled={saving}
           className="inline-flex items-center rounded-xl border border-border bg-secondary/80 px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
         >
-          Skip
+          {t("skip")}
         </button>
       </div>
       {remaining > 1 && (
         <p className="text-[11px] text-muted-foreground/70">
-          {remaining - 1} more skill question{remaining - 1 !== 1 ? "s" : ""}
+          {t("moreSkillQuestions", { count: remaining - 1 })}
         </p>
       )}
     </div>

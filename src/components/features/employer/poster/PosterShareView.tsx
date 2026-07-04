@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { buildJobApplyUrl } from "@/lib/composer/branding";
 import { ExternalLink } from "lucide-react";
 import Link from "next/link";
@@ -19,6 +20,7 @@ export function PosterShareView({
   jobId,
   slug,
 }: PosterShareViewProps) {
+  const t = useTranslations("posterShareView");
   const applyUrl = buildJobApplyUrl(jobId);
 
   return (
@@ -40,13 +42,13 @@ export function PosterShareView({
           href={applyUrl}
           className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors"
         >
-          Apply Now <ExternalLink className="w-4 h-4" />
+          {t("applyNow")} <ExternalLink className="w-4 h-4" />
         </Link>
       </div>
 
       {/* Branding */}
       <p className="mt-8 text-xs text-muted-foreground">
-        Powered by <strong>Mployedin</strong>
+        {t("poweredBy")} <strong>Mployedin</strong>
       </p>
     </div>
   );

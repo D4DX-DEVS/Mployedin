@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import {
   Settings2, ChevronDown, ChevronUp, Save, Loader2, CheckCircle,
   Plus, Trash2, ArrowRight, Sparkles, Bell, ShieldAlert,
@@ -34,6 +35,7 @@ const STAGE_COLORS: Record<string, string> = {
 interface Props { jobId: string; }
 
 export function JobWorkflowTab({ jobId }: Props) {
+  const t = useTranslations("jobWorkflowTab");
   const { data: serverData, isLoading: loading, error: fetchError } = useJobWorkflow(jobId);
   const saveWorkflow = useSaveJobWorkflow(jobId);
 
@@ -60,7 +62,7 @@ export function JobWorkflowTab({ jobId }: Props) {
     }
   }, [serverData]);
 
-  useEffect(() => { if (fetchError) setError("Could not load workflow settings"); }, [fetchError]);
+  useEffect(() => { if (fetchError) setError(t("couldNotLoadWorkflowSettings")); }, [fetchError, t]);
 
   const markDirty = useCallback(() => { setDirty(true); setSaved(false); }, []);
 
@@ -112,7 +114,7 @@ export function JobWorkflowTab({ jobId }: Props) {
       setSource("job");
       setTimeout(() => setSaved(false), 3000);
     } catch {
-      setError("Failed to save workflow");
+      setError(t("failedToSaveWorkflow"));
     }
   };
 
@@ -135,14 +137,14 @@ export function JobWorkflowTab({ jobId }: Props) {
       {source === "employer" && !dirty && (
         <div className="flex items-center gap-2 rounded-2xl border border-sky-500/20 bg-sky-500/10 px-4 py-3 text-sm text-sky-700 dark:text-sky-200">
           <Settings2 className="h-4 w-4 shrink-0" />
-          Using employer default workflow. Customise below to create a job-specific pipeline.
+          {t("usingEmployerDefaultWorkflow")}
         </div>
       )}
 
       {dirty && (
         <div className="flex items-center gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
           <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
-          You have unsaved changes
+          {t("youHaveUnsavedChanges")}
         </div>
       )}
 
@@ -158,9 +160,9 @@ export function JobWorkflowTab({ jobId }: Props) {
         <div className="flex items-center justify-between gap-3 mb-4">
           <div>
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-sky-600" /> Pipeline Preview
+              <Sparkles className="h-4 w-4 text-sky-600" /> {t("pipelinePreview")}
             </h3>
-            <p className="mt-1 text-xs text-muted-foreground">Active candidate path for this job</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t("activeCandidatePathForThisJob")}</p>
           </div>
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
             <span>{activeStages.length} stages</span>
@@ -181,7 +183,7 @@ export function JobWorkflowTab({ jobId }: Props) {
             ))}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">No active stages. Enable at least one stage.</p>
+          <p className="text-sm text-muted-foreground">{t("noActiveStagesEnableAtLeastOneStage")}</p>
         )}
       </div>
 
@@ -190,10 +192,10 @@ export function JobWorkflowTab({ jobId }: Props) {
         <div className="card-base p-5 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <Settings2 className="h-4 w-4 text-sky-600" /> Pipeline Stages
+              <Settings2 className="h-4 w-4 text-sky-600" /> {t("pipelineStages")}
             </h3>
             <Button variant="outline" size="sm" onClick={() => setAddingStage(!addingStage)} disabled={stages.length >= 20} className="gap-1.5 h-8">
-              <Plus className="h-3.5 w-3.5" /> Add Stage
+              <Plus className="h-3.5 w-3.5" /> {t("addStage")}
             </Button>
           </div>
 
@@ -202,14 +204,14 @@ export function JobWorkflowTab({ jobId }: Props) {
               <Input
                 value={newStageLabel}
                 onChange={(e) => setNewStageLabel(e.target.value)}
-                placeholder="Stage name (e.g. Technical Test)"
+                placeholder={t("stageNamePlaceholder")}
                 className="h-9 flex-1"
                 maxLength={100}
                 onKeyDown={(e) => e.key === "Enter" && addStage()}
               />
               <div className="flex gap-2">
-                <Button size="sm" onClick={addStage} disabled={!newStageLabel.trim()} className="bg-sky-600 text-white hover:bg-sky-700">Add</Button>
-                <Button size="sm" variant="ghost" onClick={() => { setAddingStage(false); setNewStageLabel(""); }}>Cancel</Button>
+                <Button size="sm" onClick={addStage} disabled={!newStageLabel.trim()} className="bg-sky-600 text-white hover:bg-sky-700">{t("add")}</Button>
+                <Button size="sm" variant="ghost" onClick={() => { setAddingStage(false); setNewStageLabel(""); }}>{t("cancel")}</Button>
               </div>
             </div>
           )}
@@ -217,10 +219,10 @@ export function JobWorkflowTab({ jobId }: Props) {
           {stages.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-12 text-center">
               <Settings2 className="mb-3 h-8 w-8 text-muted-foreground" />
-              <p className="text-sm font-semibold text-foreground">No stages</p>
-              <p className="mb-3 mt-1 text-xs text-muted-foreground">Create your pipeline or use the defaults</p>
+              <p className="text-sm font-semibold text-foreground">{t("noStages")}</p>
+              <p className="mb-3 mt-1 text-xs text-muted-foreground">{t("createYourPipelineOrUseTheDefaults")}</p>
               <Button size="sm" variant="outline" onClick={() => { setStages(DEFAULT_STAGES); markDirty(); }} className="gap-1.5">
-                <Plus className="h-3.5 w-3.5" /> Use Default Pipeline
+                <Plus className="h-3.5 w-3.5" /> {t("useDefaultPipeline")}
               </Button>
             </div>
           ) : (
@@ -256,16 +258,16 @@ export function JobWorkflowTab({ jobId }: Props) {
                       </div>
                       <div className="mt-2.5 flex flex-wrap items-center gap-4">
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span>Auto-progress</span>
+                          <span>{t("autoProgress")}</span>
                           <Switch checked={stage.autoProgress} onCheckedChange={() => toggleStage(stage.id, "autoProgress")} disabled={!stage.enabled} />
                         </div>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span>Active</span>
+                          <span>{t("active")}</span>
                           <Switch checked={stage.enabled} onCheckedChange={() => toggleStage(stage.id, "enabled")} />
                         </div>
                       </div>
                     </div>
-                    <button onClick={() => removeStage(stage.id)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-red-500/10 hover:text-red-500 sm:opacity-0 sm:group-hover:opacity-100" title="Remove stage">
+                    <button onClick={() => removeStage(stage.id)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-red-500/10 hover:text-red-500 sm:opacity-0 sm:group-hover:opacity-100" title={t("removeStage")}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
@@ -277,7 +279,7 @@ export function JobWorkflowTab({ jobId }: Props) {
 
         {/* Automation settings */}
         <div className="card-base p-5 space-y-5">
-          <h3 className="text-sm font-semibold text-foreground">Automation Rules</h3>
+          <h3 className="text-sm font-semibold text-foreground">{t("automationRules")}</h3>
 
           <div className="flex items-start gap-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/10">
@@ -285,10 +287,10 @@ export function JobWorkflowTab({ jobId }: Props) {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-medium text-foreground">AI Auto-Screening</p>
+                <p className="text-sm font-medium text-foreground">{t("aiAutoScreening")}</p>
                 <Switch checked={aiAutoScreen} onCheckedChange={(v) => { setAiAutoScreen(v); markDirty(); }} />
               </div>
-              <p className="text-xs text-muted-foreground">Auto-score and rank new applications</p>
+              <p className="text-xs text-muted-foreground">{t("autoScoreAndRankNewApplications")}</p>
             </div>
           </div>
 
@@ -298,10 +300,10 @@ export function JobWorkflowTab({ jobId }: Props) {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-medium text-foreground">Notify Candidates</p>
+                <p className="text-sm font-medium text-foreground">{t("notifyCandidates")}</p>
                 <Switch checked={notifyOnStageChange} onCheckedChange={(v) => { setNotifyOnStageChange(v); markDirty(); }} />
               </div>
-              <p className="text-xs text-muted-foreground">Send alerts on stage changes</p>
+              <p className="text-xs text-muted-foreground">{t("sendAlertsOnStageChanges")}</p>
             </div>
           </div>
 
@@ -312,11 +314,11 @@ export function JobWorkflowTab({ jobId }: Props) {
               </div>
               <div className="flex-1">
                 <div className="flex justify-between items-baseline">
-                  <p className="text-sm font-medium text-foreground">Auto-reject Threshold</p>
+                  <p className="text-sm font-medium text-foreground">{t("autoRejectThreshold")}</p>
                   <span className="text-base font-bold text-sky-700 dark:text-sky-300">{autoRejectBelow}%</span>
                 </div>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  Reject below <strong>{autoRejectBelow}%</strong> match score
+                  {t("rejectBelowMatchScore", { percent: autoRejectBelow })}
                 </p>
                 <input
                   type="range" min={0} max={80} step={5}
@@ -325,9 +327,9 @@ export function JobWorkflowTab({ jobId }: Props) {
                   className="mt-3 w-full cursor-pointer accent-sky-600"
                 />
                 <div className="flex justify-between text-[10px] text-muted-foreground">
-                  <span>0% (off)</span>
-                  <span>40% (default)</span>
-                  <span>80% (strict)</span>
+                  <span>{t("percentOff")}</span>
+                  <span>{t("percentDefault")}</span>
+                  <span>{t("percentStrict")}</span>
                 </div>
               </div>
             </div>
@@ -339,7 +341,7 @@ export function JobWorkflowTab({ jobId }: Props) {
             className="w-full gap-2 bg-sky-600 text-white hover:bg-sky-700 disabled:bg-slate-300"
           >
             {saveWorkflow.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : saved ? <CheckCircle className="h-4 w-4" /> : <Save className="h-4 w-4" />}
-            {saveWorkflow.isPending ? "Saving…" : saved ? "Saved!" : "Save Workflow for this Job"}
+            {saveWorkflow.isPending ? t("saving") : saved ? t("saved") : t("saveWorkflowForThisJob")}
           </Button>
         </div>
       </div>

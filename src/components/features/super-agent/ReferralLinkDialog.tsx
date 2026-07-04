@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +32,7 @@ interface ReferralLinkDialogProps {
 }
 
 export function ReferralLinkDialog({ open, onClose }: ReferralLinkDialogProps) {
+  const t = useTranslations("referralLinkDialog");
   const { locale } = useParams<{ locale: string }>();
   /* ── Legacy referral code (quick link) ────────────────────── */
   const [legacyLink, setLegacyLink] = useState("");
@@ -98,10 +100,10 @@ export function ReferralLinkDialog({ open, onClose }: ReferralLinkDialogProps) {
             </div>
             <div>
               <DialogTitle className="text-lg font-semibold tracking-tight">
-                Referral Links
+                {t("referralLinks")}
               </DialogTitle>
               <DialogDescription className="mt-0.5 text-xs text-muted-foreground">
-                Share referral links so employers can sign up directly. They get auto-verified and linked to your account.
+                {t("shareReferralLinksDesc")}
               </DialogDescription>
             </div>
           </div>
@@ -112,9 +114,9 @@ export function ReferralLinkDialog({ open, onClose }: ReferralLinkDialogProps) {
           <div className="mx-6 mt-5 flex items-start gap-3 rounded-2xl border border-green-200/60 bg-green-50/60 p-3.5 dark:border-green-800/40 dark:bg-green-950/20">
             <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-green-600 dark:text-green-400" />
             <div>
-              <p className="text-xs font-semibold text-green-800 dark:text-green-300">Verified Badge on Signup</p>
+              <p className="text-xs font-semibold text-green-800 dark:text-green-300">{t("verifiedBadgeOnSignup")}</p>
               <p className="mt-0.5 text-[11px] leading-relaxed text-green-700/80 dark:text-green-400/70">
-                Employers who register through your referral link automatically receive a <strong>verified badge</strong>, get linked to your account, and appear in your employer portfolio.
+                {t("verifiedBadgeDesc")}
               </p>
             </div>
           </div>
@@ -122,11 +124,11 @@ export function ReferralLinkDialog({ open, onClose }: ReferralLinkDialogProps) {
           {/* ── Quick referral link (legacy) ─────────────────── */}
           <div className="mx-6 mt-4">
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-              Your Referral Link
+              {t("yourReferralLink")}
             </p>
             {legacyLoading ? (
               <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Generating link…
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("generatingLink")}
               </div>
             ) : legacyLink ? (
               <div className="mt-2 flex items-center gap-2 rounded-xl border border-border/60 bg-secondary/40 px-3 py-2.5">
@@ -136,14 +138,14 @@ export function ReferralLinkDialog({ open, onClose }: ReferralLinkDialogProps) {
                   className="inline-flex h-7 items-center gap-1.5 rounded-lg bg-sky-600 px-2.5 text-[11px] font-semibold text-white transition-colors hover:bg-sky-700"
                 >
                   {copiedId === "legacy" ? (
-                    <><Check className="h-3 w-3" /> Copied</>
+                    <><Check className="h-3 w-3" /> {t("copied")}</>
                   ) : (
-                    <><Copy className="h-3 w-3" /> Copy</>
+                    <><Copy className="h-3 w-3" /> {t("copy")}</>
                   )}
                 </button>
               </div>
             ) : (
-              <p className="mt-2 text-xs text-muted-foreground">Failed to load. Try again.</p>
+              <p className="mt-2 text-xs text-muted-foreground">{t("failedToLoad")}</p>
             )}
             {legacyCode && (
               <p className="mt-1.5 text-[11px] text-muted-foreground">
@@ -156,17 +158,17 @@ export function ReferralLinkDialog({ open, onClose }: ReferralLinkDialogProps) {
           <div className="mx-6 mt-5 grid grid-cols-3 gap-3">
             <div className="rounded-xl border border-border/50 bg-secondary/30 p-3 text-center">
               <p className="text-lg font-semibold text-foreground">{advancedLinks.length}</p>
-              <p className="text-[10px] text-muted-foreground">Active Links</p>
+              <p className="text-[10px] text-muted-foreground">{t("activeLinks")}</p>
             </div>
             <div className="rounded-xl border border-border/50 bg-secondary/30 p-3 text-center">
               <p className="text-lg font-semibold text-foreground">{totalRegistrations}</p>
-              <p className="text-[10px] text-muted-foreground">Registrations</p>
+              <p className="text-[10px] text-muted-foreground">{t("registrations")}</p>
             </div>
             <div className="rounded-xl border border-border/50 bg-secondary/30 p-3 text-center">
               <p className="text-lg font-semibold text-emerald-600 dark:text-emerald-400">
                 {totalRegistrations > 0 ? "100%" : "—"}
               </p>
-              <p className="text-[10px] text-muted-foreground">Verified Rate</p>
+              <p className="text-[10px] text-muted-foreground">{t("verifiedRate")}</p>
             </div>
           </div>
 
@@ -174,14 +176,14 @@ export function ReferralLinkDialog({ open, onClose }: ReferralLinkDialogProps) {
           <div className="mx-6 mt-5">
             <div className="flex items-center justify-between">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                Tracked Links
+                {t("trackedLinks")}
               </p>
               <button
                 onClick={() => setShowCreate(!showCreate)}
                 className="inline-flex items-center gap-1 text-[11px] font-semibold text-sky-600 hover:text-sky-700 dark:text-sky-400"
               >
                 <Plus className="h-3 w-3" />
-                New Link
+                {t("newLink")}
               </button>
             </div>
 
@@ -190,31 +192,31 @@ export function ReferralLinkDialog({ open, onClose }: ReferralLinkDialogProps) {
               <div className="mt-3 space-y-2.5 rounded-xl border border-sky-200/60 bg-sky-50/40 p-3.5 dark:border-sky-800/40 dark:bg-sky-950/20">
                 <div>
                   <label className="text-[11px] font-medium text-muted-foreground">
-                    <Tag className="mr-1 inline h-3 w-3" />Label (optional)
+                    <Tag className="mr-1 inline h-3 w-3" />{t("labelOptional")}
                   </label>
                   <Input
                     value={newLabel}
                     onChange={(e) => setNewLabel(e.target.value)}
-                    placeholder="e.g. LinkedIn campaign"
+                    placeholder={t("exampleLinkedinCampaign")}
                     className="mt-1 h-8 rounded-lg text-xs"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="text-[11px] font-medium text-muted-foreground">
-                      <Hash className="mr-1 inline h-3 w-3" />Max Uses
+                      <Hash className="mr-1 inline h-3 w-3" />{t("maxUses")}
                     </label>
                     <Input
                       type="number"
                       value={newMaxUses}
                       onChange={(e) => setNewMaxUses(e.target.value)}
-                      placeholder="0 = unlimited"
+                      placeholder={t("unlimitedPlaceholder")}
                       className="mt-1 h-8 rounded-lg text-xs"
                     />
                   </div>
                   <div>
                     <label className="text-[11px] font-medium text-muted-foreground">
-                      <CalendarClock className="mr-1 inline h-3 w-3" />Expires
+                      <CalendarClock className="mr-1 inline h-3 w-3" />{t("expires")}
                     </label>
                     <Input
                       type="date"
@@ -229,7 +231,7 @@ export function ReferralLinkDialog({ open, onClose }: ReferralLinkDialogProps) {
                     onClick={() => setShowCreate(false)}
                     className="h-7 rounded-lg px-3 text-[11px] font-medium text-muted-foreground hover:bg-secondary"
                   >
-                    Cancel
+                    {t("cancel")}
                   </button>
                   <button
                     onClick={handleCreate}
@@ -241,7 +243,7 @@ export function ReferralLinkDialog({ open, onClose }: ReferralLinkDialogProps) {
                     ) : (
                       <Plus className="h-3 w-3" />
                     )}
-                    Create Link
+                    {t("createLink")}
                   </button>
                 </div>
               </div>
@@ -250,11 +252,11 @@ export function ReferralLinkDialog({ open, onClose }: ReferralLinkDialogProps) {
             {/* Links list */}
             {linksLoading ? (
               <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading links…
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("loadingLinks")}
               </div>
             ) : advancedLinks.length === 0 ? (
               <p className="mt-3 text-xs text-muted-foreground">
-                No tracked links yet. Create one to track signups from specific campaigns.
+                {t("noTrackedLinks")}
               </p>
             ) : (
               <div className="mt-3 space-y-2">
@@ -278,28 +280,28 @@ export function ReferralLinkDialog({ open, onClose }: ReferralLinkDialogProps) {
                           )}
                           {!link.isActive && (
                             <span className="rounded-full bg-red-100/60 px-2 py-0.5 text-[10px] font-medium text-red-600 dark:bg-red-900/30 dark:text-red-400">
-                              Disabled
+                              {t("disabled")}
                             </span>
                           )}
                           {isExpired && (
                             <span className="rounded-full bg-amber-100/60 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
-                              Expired
+                              {t("expired")}
                             </span>
                           )}
                           {isMaxed && (
                             <span className="rounded-full bg-amber-100/60 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
-                              Max reached
+                              {t("maxReached")}
                             </span>
                           )}
                         </div>
                         <div className="mt-1 flex items-center gap-3 text-[10px] text-muted-foreground">
                           <span className="flex items-center gap-1">
                             <Users className="h-3 w-3" />
-                            {link.usedCount} signup{link.usedCount !== 1 ? "s" : ""}
+                            {link.usedCount} {link.usedCount !== 1 ? t("signups") : t("signup")}
                           </span>
-                          {link.maxUses > 0 && <span>Max: {link.maxUses}</span>}
+                          {link.maxUses > 0 && <span>{t("max")}: {link.maxUses}</span>}
                           {link.expiresAt && (
-                            <span>Exp: {new Date(link.expiresAt).toLocaleDateString()}</span>
+                            <span>{t("exp")}: {new Date(link.expiresAt).toLocaleDateString()}</span>
                           )}
                         </div>
                       </div>
@@ -308,9 +310,9 @@ export function ReferralLinkDialog({ open, onClose }: ReferralLinkDialogProps) {
                         className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-lg border border-border/50 px-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-secondary"
                       >
                         {copiedId === link._id ? (
-                          <><Check className="h-3 w-3 text-green-600" /> Copied</>
+                          <><Check className="h-3 w-3 text-green-600" /> {t("copied")}</>
                         ) : (
-                          <><Copy className="h-3 w-3" /> Copy</>
+                          <><Copy className="h-3 w-3" /> {t("copy")}</>
                         )}
                       </button>
                     </div>
@@ -327,7 +329,7 @@ export function ReferralLinkDialog({ open, onClose }: ReferralLinkDialogProps) {
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-sky-600 hover:text-sky-700 dark:text-sky-400"
             >
               <ExternalLink className="h-3 w-3" />
-              Manage all referral links
+              {t("manageAllReferralLinks")}
             </a>
           </div>
         </div>

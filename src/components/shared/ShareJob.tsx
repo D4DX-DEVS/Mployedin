@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { Share2, Link2, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -32,6 +33,7 @@ const X_ICON = (
 );
 
 export function ShareJob({ jobId, jobTitle, companyName, locale, variant = "full" }: ShareJobProps) {
+  const t = useTranslations("shareJob");
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -101,7 +103,7 @@ export function ShareJob({ jobId, jobTitle, companyName, locale, variant = "full
         <button
           onClick={handleNativeShare}
           className="inline-flex items-center justify-center rounded-xl border border-border bg-secondary/80 p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          aria-label="Share job"
+          aria-label={t("share")}
         >
           <Share2 className="h-3.5 w-3.5" />
         </button>
@@ -112,6 +114,7 @@ export function ShareJob({ jobId, jobTitle, companyName, locale, variant = "full
             <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
             <div className="absolute right-0 top-full z-50 mt-1 w-48 rounded-xl border border-border bg-popover p-2 shadow-lg">
               <ShareOptions
+                t={t}
                 onWhatsApp={shareWhatsApp}
                 onLinkedIn={shareLinkedIn}
                 onX={shareX}
@@ -135,7 +138,7 @@ export function ShareJob({ jobId, jobTitle, companyName, locale, variant = "full
         className="gap-2 rounded-xl"
       >
         <Share2 className="h-4 w-4" />
-        Share
+        {t("share")}
       </Button>
 
       {open && (
@@ -143,7 +146,7 @@ export function ShareJob({ jobId, jobTitle, companyName, locale, variant = "full
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute left-0 top-full z-50 mt-2 w-56 rounded-2xl border border-border bg-popover p-3 shadow-xl">
             <div className="mb-2 flex items-center justify-between">
-              <span className="text-sm font-semibold text-foreground">Share this job</span>
+              <span className="text-sm font-semibold text-foreground">{t("shareThisJob")}</span>
               <button
                 onClick={() => setOpen(false)}
                 className="rounded-lg p-1 text-muted-foreground hover:bg-accent"
@@ -152,6 +155,7 @@ export function ShareJob({ jobId, jobTitle, companyName, locale, variant = "full
               </button>
             </div>
             <ShareOptions
+              t={t}
               onWhatsApp={shareWhatsApp}
               onLinkedIn={shareLinkedIn}
               onX={shareX}
@@ -167,6 +171,7 @@ export function ShareJob({ jobId, jobTitle, companyName, locale, variant = "full
 }
 
 function ShareOptions({
+  t,
   onWhatsApp,
   onLinkedIn,
   onX,
@@ -174,6 +179,7 @@ function ShareOptions({
   copied,
   onClose,
 }: {
+  t: ReturnType<typeof useTranslations>;
   onWhatsApp: () => void;
   onLinkedIn: () => void;
   onX: () => void;
@@ -188,21 +194,21 @@ function ShareOptions({
         className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent"
       >
         <span className="text-green-600">{WHATSAPP_ICON}</span>
-        WhatsApp
+        {t("whatsApp")}
       </button>
       <button
         onClick={() => { onLinkedIn(); onClose(); }}
         className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent"
       >
         <span className="text-blue-700">{LINKEDIN_ICON}</span>
-        LinkedIn
+        {t("linkedIn")}
       </button>
       <button
         onClick={() => { onX(); onClose(); }}
         className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent"
       >
         <span className="text-foreground">{X_ICON}</span>
-        X (Twitter)
+        {t("xTwitter")}
       </button>
       <div className="my-1 border-t border-border" />
       <button
@@ -212,12 +218,12 @@ function ShareOptions({
         {copied ? (
           <>
             <Check className="h-4 w-4 text-green-600" />
-            <span className="text-green-600">Link copied!</span>
+            <span className="text-green-600">{t("linkCopied")}</span>
           </>
         ) : (
           <>
             <Link2 className="h-4 w-4 text-muted-foreground" />
-            Copy link
+            {t("copyLink")}
           </>
         )}
       </button>

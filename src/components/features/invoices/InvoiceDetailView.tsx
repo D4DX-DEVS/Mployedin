@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -131,6 +132,7 @@ function fmtDateTime(value?: string) {
 }
 
 export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }: InvoiceDetailViewProps) {
+  const t = useTranslations("invoiceDetailView");
   const [invoice, setInvoice] = useState<InvoiceData | null>(null);
   const [senderContext, setSenderContext] = useState<{ name: string; role: string; label: string } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -269,7 +271,7 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
         <DialogHeader className="border-b border-border/80 px-6 py-4">
           <DialogTitle className="flex items-center gap-3">
             <FileText className="h-5 w-5 text-primary" />
-            {invoice ? `Invoice ${invoice.invoiceNumber}` : "Invoice Details"}
+            {invoice ? `Invoice ${invoice.invoiceNumber}` : t("invoiceDetails")}
           </DialogTitle>
           {invoice && (
             <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -307,19 +309,19 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
                   {/* KPI Row */}
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                     <div className="rounded-xl border border-border/70 bg-secondary/30 p-3">
-                      <p className="text-[10px] font-semibold uppercase text-muted-foreground">Total</p>
+                      <p className="text-[10px] font-semibold uppercase text-muted-foreground">{t("total")}</p>
                       <p className="mt-1 text-lg font-bold text-primary">{fmt(invoice.totalAmount)}</p>
                     </div>
                     <div className="rounded-xl border border-border/70 bg-secondary/30 p-3">
-                      <p className="text-[10px] font-semibold uppercase text-muted-foreground">Paid</p>
+                      <p className="text-[10px] font-semibold uppercase text-muted-foreground">{t("paid")}</p>
                       <p className="mt-1 text-lg font-bold text-emerald-600">{fmt(invoice.paidAmount)}</p>
                     </div>
                     <div className="rounded-xl border border-border/70 bg-secondary/30 p-3">
-                      <p className="text-[10px] font-semibold uppercase text-muted-foreground">Balance Due</p>
+                      <p className="text-[10px] font-semibold uppercase text-muted-foreground">{t("balanceDue")}</p>
                       <p className="mt-1 text-lg font-bold text-amber-600">{fmt(invoice.balanceDue)}</p>
                     </div>
                     <div className="rounded-xl border border-border/70 bg-secondary/30 p-3">
-                      <p className="text-[10px] font-semibold uppercase text-muted-foreground">Platform Revenue</p>
+                      <p className="text-[10px] font-semibold uppercase text-muted-foreground">{t("platformRevenue")}</p>
                       <p className="mt-1 text-lg font-bold">{fmt(invoice.platformRevenue)}</p>
                     </div>
                   </div>
@@ -329,7 +331,7 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
                     <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-secondary/20 p-3">
                       <UserCircle2 className="h-5 w-5 text-primary" />
                       <div>
-                        <p className="text-xs font-semibold uppercase text-muted-foreground">Issued By</p>
+                        <p className="text-xs font-semibold uppercase text-muted-foreground">{t("issuedBy")}</p>
                         <p className="text-sm font-medium">{senderContext.name} <span className="text-muted-foreground">— {senderContext.label}</span></p>
                       </div>
                     </div>
@@ -338,7 +340,7 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
                   {/* Billing Info */}
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="rounded-xl border border-border/70 p-4">
-                      <div className="flex items-center gap-2"><Building2 className="h-4 w-4 text-muted-foreground" /><p className="text-xs font-semibold uppercase text-muted-foreground">Bill To</p></div>
+                      <div className="flex items-center gap-2"><Building2 className="h-4 w-4 text-muted-foreground" /><p className="text-xs font-semibold uppercase text-muted-foreground">{t("billTo")}</p></div>
                       <div className="mt-2 space-y-0.5 text-sm">
                         <p className="font-medium">{invoice.billingDetails?.companyName || invoice.employerId?.companyName || "—"}</p>
                         <p className="text-muted-foreground">{invoice.billingDetails?.contactPerson}</p>
@@ -349,15 +351,15 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
                       </div>
                     </div>
                     <div className="rounded-xl border border-border/70 p-4">
-                      <div className="flex items-center gap-2"><CreditCard className="h-4 w-4 text-muted-foreground" /><p className="text-xs font-semibold uppercase text-muted-foreground">Invoice Details</p></div>
+                      <div className="flex items-center gap-2"><CreditCard className="h-4 w-4 text-muted-foreground" /><p className="text-xs font-semibold uppercase text-muted-foreground">{t("invoiceDetailsLabel")}</p></div>
                       <div className="mt-2 space-y-0.5 text-sm">
-                        <p>Job: <span className="font-medium">{invoice.jobId?.title || "—"}</span></p>
-                        <p>Terms: <span className="font-medium">{invoice.paymentTerms?.replace(/_/g, " ")}</span></p>
-                        {invoice.dueDate && <p>Due Date: <span className="font-medium">{new Date(invoice.dueDate).toLocaleDateString()}</span></p>}
-                        {invoice.approvedAt && <p>Approved: <span className="font-medium">{new Date(invoice.approvedAt).toLocaleDateString()}</span></p>}
-                        {invoice.rejectedAt && <p>Rejected: <span className="font-medium">{new Date(invoice.rejectedAt).toLocaleDateString()}</span></p>}
-                        <p>Tax: <span className="font-medium">{invoice.taxType && invoice.taxType !== "none" ? `${invoice.taxType.toUpperCase()} ${invoice.taxPercent}%` : "None"}</span></p>
-                        {invoice.rejectionReason && <p className="text-rose-600 dark:text-rose-300">Reason: {invoice.rejectionReason}</p>}
+                        <p>{t("job")}: <span className="font-medium">{invoice.jobId?.title || "—"}</span></p>
+                        <p>{t("terms")}: <span className="font-medium">{invoice.paymentTerms?.replace(/_/g, " ")}</span></p>
+                        {invoice.dueDate && <p>{t("dueDate")}: <span className="font-medium">{new Date(invoice.dueDate).toLocaleDateString()}</span></p>}
+                        {invoice.approvedAt && <p>{t("approved")}: <span className="font-medium">{new Date(invoice.approvedAt).toLocaleDateString()}</span></p>}
+                        {invoice.rejectedAt && <p>{t("rejected")}: <span className="font-medium">{new Date(invoice.rejectedAt).toLocaleDateString()}</span></p>}
+                        <p>{t("tax")}: <span className="font-medium">{invoice.taxType && invoice.taxType !== "none" ? `${invoice.taxType.toUpperCase()} ${invoice.taxPercent}%` : t("none")}</span></p>
+                        {invoice.rejectionReason && <p className="text-rose-600 dark:text-rose-300">{t("reason")}: {invoice.rejectionReason}</p>}
                         {invoice.description && <p className="text-muted-foreground">{invoice.description}</p>}
                       </div>
                     </div>
@@ -366,26 +368,26 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
                   {/* Delivery */}
                   <div className="rounded-xl border border-border/70 p-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex items-center gap-2"><Send className="h-4 w-4 text-muted-foreground" /><p className="text-xs font-semibold uppercase text-muted-foreground">Delivery</p></div>
+                      <div className="flex items-center gap-2"><Send className="h-4 w-4 text-muted-foreground" /><p className="text-xs font-semibold uppercase text-muted-foreground">{t("delivery")}</p></div>
                       <span className={`rounded-full border px-2.5 py-1 text-xs font-medium ${DELIVERY_STATE_STYLES[deliveryState]}`}>
                         {DELIVERY_STATE_LABELS[deliveryState]}
                       </span>
                     </div>
                     <div className="mt-3 grid gap-3 sm:grid-cols-4">
                       <div className="rounded-lg bg-secondary/30 p-3">
-                        <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase text-muted-foreground"><Send className="h-3.5 w-3.5" /> Sent</div>
+                        <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase text-muted-foreground"><Send className="h-3.5 w-3.5" /> {t("sent")}</div>
                         <p className="mt-1 text-xs font-medium">{fmtDateTime(invoice.sentAt)}</p>
                       </div>
                       <div className="rounded-lg bg-secondary/30 p-3">
-                        <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase text-muted-foreground"><Eye className="h-3.5 w-3.5" /> Viewed</div>
+                        <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase text-muted-foreground"><Eye className="h-3.5 w-3.5" /> {t("viewed")}</div>
                         <p className="mt-1 text-xs font-medium">{fmtDateTime(invoice.viewedAt)}</p>
                       </div>
                       <div className="rounded-lg bg-secondary/30 p-3">
-                        <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase text-muted-foreground"><Download className="h-3.5 w-3.5" /> Downloaded</div>
+                        <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase text-muted-foreground"><Download className="h-3.5 w-3.5" /> {t("downloaded")}</div>
                         <p className="mt-1 text-xs font-medium">{fmtDateTime(invoice.downloadedAt)}</p>
                       </div>
                       <div className="rounded-lg bg-secondary/30 p-3">
-                        <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase text-muted-foreground"><BellRing className="h-3.5 w-3.5" /> Reminders</div>
+                        <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase text-muted-foreground"><BellRing className="h-3.5 w-3.5" /> {t("reminders")}</div>
                         <p className="mt-1 text-xs font-medium">{invoice.reminderCount ?? 0}{invoice.lastReminderAt ? ` · ${fmtDateTime(invoice.lastReminderAt)}` : ""}</p>
                       </div>
                     </div>
@@ -395,7 +397,7 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
                   {invoice.lineItems?.length > 0 && (
                     <div className="overflow-hidden rounded-xl border border-border/70">
                       <table className="w-full text-sm">
-                        <thead><tr className="bg-muted/50"><th className="px-4 py-2 text-left text-xs font-semibold">Description</th><th className="px-4 py-2 text-right text-xs font-semibold">Qty</th><th className="px-4 py-2 text-right text-xs font-semibold">Unit Price</th><th className="px-4 py-2 text-right text-xs font-semibold">Amount</th></tr></thead>
+                        <thead><tr className="bg-muted/50"><th className="px-4 py-2 text-left text-xs font-semibold">{t("description")}</th><th className="px-4 py-2 text-right text-xs font-semibold">{t("quantity")}</th><th className="px-4 py-2 text-right text-xs font-semibold">{t("unitPrice")}</th><th className="px-4 py-2 text-right text-xs font-semibold">{t("amount")}</th></tr></thead>
                         <tbody>
                           {invoice.lineItems.map((li, i) => (
                             <tr key={i} className="border-t border-border/50"><td className="px-4 py-2">{li.description}</td><td className="px-4 py-2 text-right">{li.quantity}</td><td className="px-4 py-2 text-right">{fmt(li.unitPrice)}</td><td className="px-4 py-2 text-right font-medium">{fmt(li.amount)}</td></tr>
@@ -404,12 +406,12 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
                       </table>
                       <div className="border-t border-border/70 bg-muted/30 px-4 py-2.5">
                         <div className="ml-auto max-w-xs space-y-0.5 text-sm">
-                          <div className="flex justify-between"><span>Subtotal</span><span>{fmt(invoice.subtotal)}</span></div>
-                          {invoice.discountPercent > 0 && <div className="flex justify-between text-emerald-600"><span>Discount ({invoice.discountPercent}%)</span><span>-{fmt(invoice.discountAmount)}</span></div>}
-                          {invoice.serviceCharge > 0 && <div className="flex justify-between"><span>Service Charge</span><span>{fmt(invoice.serviceCharge)}</span></div>}
-                          {invoice.taxAmount > 0 && <div className="flex justify-between"><span>Tax ({invoice.taxType?.toUpperCase()} {invoice.taxPercent}%)</span><span>{fmt(invoice.taxAmount)}</span></div>}
+                          <div className="flex justify-between"><span>{t("subtotal")}</span><span>{fmt(invoice.subtotal)}</span></div>
+                          {invoice.discountPercent > 0 && <div className="flex justify-between text-emerald-600"><span>{t("discountLabel", { percent: invoice.discountPercent })}</span><span>-{fmt(invoice.discountAmount)}</span></div>}
+                          {invoice.serviceCharge > 0 && <div className="flex justify-between"><span>{t("serviceCharge")}</span><span>{fmt(invoice.serviceCharge)}</span></div>}
+                          {invoice.taxAmount > 0 && <div className="flex justify-between"><span>{t("taxLabel", { type: invoice.taxType?.toUpperCase(), percent: invoice.taxPercent })}</span><span>{fmt(invoice.taxAmount)}</span></div>}
                           <div className="border-t border-border/50 pt-0.5" />
-                          <div className="flex justify-between font-bold"><span>Total</span><span>{fmt(invoice.totalAmount)}</span></div>
+                          <div className="flex justify-between font-bold"><span>{t("total")}</span><span>{fmt(invoice.totalAmount)}</span></div>
                         </div>
                       </div>
                     </div>
@@ -418,8 +420,8 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
                   {/* Notes */}
                   {(invoice.notes || invoice.internalNotes) && (
                     <div className="space-y-2">
-                      {invoice.notes && <div className="rounded-lg bg-muted/30 p-3 text-sm"><p className="font-semibold text-xs text-muted-foreground">NOTES</p><p className="mt-1">{invoice.notes}</p></div>}
-                      {invoice.internalNotes && canManage && <div className="rounded-lg bg-amber-50/50 p-3 text-sm dark:bg-amber-950/20"><p className="font-semibold text-xs text-amber-700 dark:text-amber-300">INTERNAL NOTES</p><p className="mt-1">{invoice.internalNotes}</p></div>}
+                      {invoice.notes && <div className="rounded-lg bg-muted/30 p-3 text-sm"><p className="font-semibold text-xs text-muted-foreground">{t("notes")}</p><p className="mt-1">{invoice.notes}</p></div>}
+                      {invoice.internalNotes && canManage && <div className="rounded-lg bg-amber-50/50 p-3 text-sm dark:bg-amber-950/20"><p className="font-semibold text-xs text-amber-700 dark:text-amber-300">{t("internalNotes")}</p><p className="mt-1">{invoice.internalNotes}</p></div>}
                     </div>
                   )}
                 </div>
@@ -429,10 +431,10 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
               {activeTab === "payments" && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-semibold">Payment History</h4>
+                    <h4 className="text-sm font-semibold">{t("paymentHistory")}</h4>
                     {canManage && !["draft", "pending_approval", "void", "cancelled", "refunded", "paid", "credit_note"].includes(invoice.status) && (
                       <Button size="sm" onClick={() => setShowPaymentForm(!showPaymentForm)} className="h-8 gap-1.5 rounded-lg bg-sky-600 text-xs hover:bg-sky-700">
-                        <CreditCard className="h-3.5 w-3.5" /> Record Payment
+                        <CreditCard className="h-3.5 w-3.5" /> {t("recordPayment")}
                       </Button>
                     )}
                   </div>
@@ -440,18 +442,18 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
                   {/* Payment form */}
                   {showPaymentForm && (
                     <div className="rounded-xl border border-sky-200 bg-sky-50/50 p-4 dark:border-sky-900/40 dark:bg-sky-950/20">
-                      <p className="mb-3 text-xs font-semibold text-sky-700 dark:text-sky-300">Record New Payment (Balance: {fmt(invoice.balanceDue)})</p>
+                      <p className="mb-3 text-xs font-semibold text-sky-700 dark:text-sky-300">{t("recordNewPayment", { balance: fmt(invoice.balanceDue) })}</p>
                       <div className="grid gap-3 sm:grid-cols-2">
-                        <div><Label className="text-xs">Amount *</Label><Input type="number" min={0.01} max={invoice.balanceDue} step="0.01" className="mt-1 h-9 rounded-lg" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} /></div>
-                        <div><Label className="text-xs">Date</Label><Input type="date" className="mt-1 h-9 rounded-lg" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} /></div>
-                        <div><Label className="text-xs">Method</Label><SearchableSelect id="pay-method" className="mt-1 h-9 w-full rounded-lg border-border bg-card" options={PAYMENT_METHODS} value={paymentMethod} onValueChange={setPaymentMethod} /></div>
-                        <div><Label className="text-xs">Reference #</Label><Input className="mt-1 h-9 rounded-lg" value={paymentRef} onChange={e => setPaymentRef(e.target.value)} /></div>
+                        <div><Label className="text-xs">{t("amount")} *</Label><Input type="number" min={0.01} max={invoice.balanceDue} step="0.01" className="mt-1 h-9 rounded-lg" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} /></div>
+                        <div><Label className="text-xs">{t("date")}</Label><Input type="date" className="mt-1 h-9 rounded-lg" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} /></div>
+                        <div><Label className="text-xs">{t("method")}</Label><SearchableSelect id="pay-method" className="mt-1 h-9 w-full rounded-lg border-border bg-card" options={PAYMENT_METHODS} value={paymentMethod} onValueChange={setPaymentMethod} /></div>
+                        <div><Label className="text-xs">{t("referenceNumber")}</Label><Input className="mt-1 h-9 rounded-lg" value={paymentRef} onChange={e => setPaymentRef(e.target.value)} /></div>
                       </div>
-                      <div className="mt-2"><Label className="text-xs">Notes</Label><Textarea className="mt-1 rounded-lg" rows={2} value={paymentNotes} onChange={e => setPaymentNotes(e.target.value)} /></div>
+                      <div className="mt-2"><Label className="text-xs">{t("notes")}</Label><Textarea className="mt-1 rounded-lg" rows={2} value={paymentNotes} onChange={e => setPaymentNotes(e.target.value)} /></div>
                       <div className="mt-3 flex justify-end gap-2">
-                        <Button variant="outline" size="sm" onClick={() => setShowPaymentForm(false)} className="h-8 rounded-lg">Cancel</Button>
+                        <Button variant="outline" size="sm" onClick={() => setShowPaymentForm(false)} className="h-8 rounded-lg">{t("common:cancel")}</Button>
                         <Button size="sm" onClick={handleRecordPayment} disabled={recordingPayment || !paymentAmount} className="h-8 rounded-lg bg-emerald-600 hover:bg-emerald-700">
-                          {recordingPayment ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Record"}
+                          {recordingPayment ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : t("record")}
                         </Button>
                       </div>
                     </div>
@@ -472,7 +474,7 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
                       ))}
                     </div>
                   ) : (
-                    <div className="py-8 text-center text-sm text-muted-foreground">No payments recorded yet.</div>
+                    <div className="py-8 text-center text-sm text-muted-foreground">{t("noPaymentsRecorded")}</div>
                   )}
                 </div>
               )}
@@ -480,7 +482,7 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
               {/* Commissions Tab */}
               {activeTab === "commissions" && (
                 <div className="space-y-4">
-                  <h4 className="text-sm font-semibold">Commission Breakdown</h4>
+                  <h4 className="text-sm font-semibold">{t("commissionBreakdown")}</h4>
                   {invoice.commissions?.length > 0 ? (
                     <div className="space-y-2">
                       {invoice.commissions.map((c, i) => (
@@ -497,12 +499,12 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
                       ))}
                     </div>
                   ) : (
-                    <div className="py-8 text-center text-sm text-muted-foreground">No commissions on this invoice.</div>
+                    <div className="py-8 text-center text-sm text-muted-foreground">{t("noCommissionsOnInvoice")}</div>
                   )}
                   <div className="rounded-xl border border-border/70 bg-secondary/30 p-4">
                     <div className="space-y-1 text-sm">
-                      <div className="flex justify-between"><span className="text-muted-foreground">Total Commissions</span><span className="font-medium">{fmt(invoice.commissions?.reduce((s, c) => s + c.amount, 0) ?? 0)}</span></div>
-                      <div className="flex justify-between"><span className="text-muted-foreground">Platform Revenue</span><span className="font-bold text-emerald-600">{fmt(invoice.platformRevenue)}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">{t("totalCommissions")}</span><span className="font-medium">{fmt(invoice.commissions?.reduce((s, c) => s + c.amount, 0) ?? 0)}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">{t("platformRevenue")}</span><span className="font-bold text-emerald-600">{fmt(invoice.platformRevenue)}</span></div>
                     </div>
                   </div>
                 </div>
@@ -514,8 +516,8 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
               <div className="space-y-3 border-t border-border/80 px-6 py-3">
                 {invoice.status === "pending_approval" && showRejectForm && (
                   <div className="rounded-xl border border-rose-200 bg-rose-50/70 p-3 dark:border-rose-900/50 dark:bg-rose-950/20">
-                    <Label className="text-xs text-rose-700 dark:text-rose-300">Rejection Reason</Label>
-                    <Textarea className="mt-1 rounded-lg" rows={2} value={rejectionReason} onChange={e => setRejectionReason(e.target.value)} placeholder="Optional note for finance records" />
+                    <Label className="text-xs text-rose-700 dark:text-rose-300">{t("rejectionReason")}</Label>
+                    <Textarea className="mt-1 rounded-lg" rows={2} value={rejectionReason} onChange={e => setRejectionReason(e.target.value)} placeholder={t("rejectionReasonPlaceholder")} />
                   </div>
                 )}
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -523,52 +525,52 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
                   {invoice.status === "pending_approval" && (
                     <>
                       <Button size="sm" onClick={() => handleStatusUpdate("issued")} disabled={updatingStatus} className="h-8 gap-1.5 rounded-lg bg-sky-600 text-xs hover:bg-sky-700">
-                        <CheckCircle2 className="h-3.5 w-3.5" /> Approve & Issue
+                        <CheckCircle2 className="h-3.5 w-3.5" /> {t("approveAndIssue")}
                       </Button>
                       {showRejectForm ? (
                         <Button size="sm" variant="outline" onClick={handleRejectInvoice} disabled={updatingStatus} className="h-8 gap-1.5 rounded-lg text-xs text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30">
-                          <XCircle className="h-3.5 w-3.5" /> Confirm Reject
+                          <XCircle className="h-3.5 w-3.5" /> {t("confirmReject")}
                         </Button>
                       ) : (
                         <Button size="sm" variant="outline" onClick={() => setShowRejectForm(true)} disabled={updatingStatus} className="h-8 gap-1.5 rounded-lg text-xs text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30">
-                          <XCircle className="h-3.5 w-3.5" /> Reject
+                          <XCircle className="h-3.5 w-3.5" /> {t("reject")}
                         </Button>
                       )}
                     </>
                   )}
                   {invoice.status === "draft" && (
                     <Button size="sm" onClick={() => handleStatusUpdate("issued")} disabled={updatingStatus} className="h-8 gap-1.5 rounded-lg bg-sky-600 text-xs hover:bg-sky-700">
-                      <Send className="h-3.5 w-3.5" /> Issue Invoice
+                      <Send className="h-3.5 w-3.5" /> {t("issueInvoice")}
                     </Button>
                   )}
                   {invoice.status === "issued" && (
                     <Button size="sm" variant="outline" onClick={() => handleDeliveryAction("sent")} disabled={updatingStatus} className="h-8 gap-1.5 rounded-lg text-xs">
-                      <Send className="h-3.5 w-3.5" /> Mark Sent
+                      <Send className="h-3.5 w-3.5" /> {t("markSent")}
                     </Button>
                   )}
                   {canRecordReminder && (
                     <Button size="sm" variant="outline" onClick={() => handleDeliveryAction("reminder")} disabled={updatingStatus} className="h-8 gap-1.5 rounded-lg text-xs">
-                      <BellRing className="h-3.5 w-3.5" /> Record Reminder
+                      <BellRing className="h-3.5 w-3.5" /> {t("recordReminder")}
                     </Button>
                   )}
                   {["issued", "sent"].includes(invoice.status) && (
                     <Button size="sm" onClick={() => handleStatusUpdate("paid")} disabled={updatingStatus} className="h-8 gap-1.5 rounded-lg bg-emerald-600 text-xs hover:bg-emerald-700">
-                      <CheckCircle2 className="h-3.5 w-3.5" /> Mark Paid
+                      <CheckCircle2 className="h-3.5 w-3.5" /> {t("markPaid")}
                     </Button>
                   )}
                   {!["pending_approval", "void", "cancelled", "refunded", "paid", "credit_note"].includes(invoice.status) && (
                     <Button size="sm" variant="outline" onClick={() => handleStatusUpdate("void")} disabled={updatingStatus} className="h-8 gap-1.5 rounded-lg text-xs text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30">
-                      <XCircle className="h-3.5 w-3.5" /> Void
+                      <XCircle className="h-3.5 w-3.5" /> {t("void")}
                     </Button>
                   )}
                   </div>
-                  <Button variant="outline" size="sm" onClick={onClose} className="h-8 rounded-lg text-xs">Close</Button>
+                  <Button variant="outline" size="sm" onClick={onClose} className="h-8 rounded-lg text-xs">{t("common:close")}</Button>
                 </div>
               </div>
             )}
           </>
         ) : (
-          <div className="py-20 text-center text-sm text-muted-foreground">Invoice not found.</div>
+          <div className="py-20 text-center text-sm text-muted-foreground">{t("invoiceNotFound")}</div>
         )}
       </DialogContent>
     </Dialog>

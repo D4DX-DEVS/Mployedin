@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import {
   FileText,
   Calendar,
@@ -39,6 +40,8 @@ function StatCardSkeleton() {
 }
 
 export function StatsGrid({ stats: propStats }: StatsGridProps) {
+  const t = useTranslations("jobSeekerStatsGrid");
+
   // Prefer fetching from the spec API if no props given
   const { data: apiStats, isLoading } = useQuery({
     queryKey: ["dashboard-stats"],
@@ -65,36 +68,36 @@ export function StatsGrid({ stats: propStats }: StatsGridProps) {
 
   const cards = [
     {
-      label: "Applications Sent",
+      label: t("applicationsSent"),
       value: appCount,
       delta: appDelta,
       icon: FileText,
       tone: "dashboard-tone-primary",
-      emptyState: "Send your first application today",
+      emptyState: t("sendFirstApplication"),
     },
     {
-      label: "Upcoming Interviews",
+      label: t("upcomingInterviews"),
       value: intCount,
       delta: intDelta,
       icon: Calendar,
       tone: "dashboard-tone-success",
-      emptyState: "Interviews appear after you apply",
+      emptyState: t("interviewsAppearAfter"),
     },
     {
-      label: "Jobs Saved",
+      label: t("jobsSaved"),
       value: savedCount,
       delta: savedDelta,
       icon: Bookmark,
       tone: "dashboard-tone-metric",
-      emptyState: "Save jobs you like to revisit them",
+      emptyState: t("saveJobsRevisit"),
     },
     {
-      label: "Avg Match Score",
+      label: t("avgMatchScore"),
       value: avgScore !== null ? `${avgScore}%` : null,
       delta: 0,
       icon: Sparkles,
       tone: "dashboard-tone-warning",
-      emptyState: "Set preferences to see your score",
+      emptyState: t("setPreferencesScore"),
     },
   ];
 
@@ -140,18 +143,20 @@ export function CareerInsights({
 }: {
   stats: Stats;
 }) {
+  const t = useTranslations("jobSeekerStatsGrid");
+
   const insights = [
     {
-      label: "Profile Views (30d)",
+      label: t("profileViews"),
       value: stats.profileViewsCount,
       icon: TrendingUp,
       description:
         stats.profileViewsCount > 0
-          ? "Recruiters are checking your profile"
-          : "Complete your profile to attract recruiters",
+          ? t("recruitersChecking")
+          : t("completeProfileAttract"),
     },
     {
-      label: "Success Rate",
+      label: t("successRate"),
       value:
         stats.applicationSuccessRate !== null
           ? `${stats.applicationSuccessRate}%`
@@ -162,14 +167,14 @@ export function CareerInsights({
           : TrendingDown,
       description:
         (stats.applicationSuccessRate ?? 0) >= 30
-          ? "You're doing well! Keep applying"
-          : "Improve your profile to increase your success rate",
+          ? t("doingWellKeep")
+          : t("improveProfileIncrease"),
     },
   ];
 
   return (
     <div className="card-base p-6">
-      <h3 className="mb-4 text-sm font-semibold">Career Insights</h3>
+      <h3 className="mb-4 text-sm font-semibold">{t("careerInsights")}</h3>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {insights.map((insight) => (
           <div

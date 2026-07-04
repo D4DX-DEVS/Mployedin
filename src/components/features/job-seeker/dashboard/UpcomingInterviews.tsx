@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { Calendar, Video, MapPin, Monitor, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,19 +33,21 @@ const typeLabels = {
   hybrid: "Hybrid",
 };
 
-export function UpcomingInterviews({
+export async function UpcomingInterviews({
   interviews,
   locale,
 }: UpcomingInterviewsProps) {
+  const t = await getTranslations("upcomingInterviews");
+
   if (interviews.length === 0) {
     return (
       <div className="card-base p-6 text-center">
         <Calendar className="mx-auto h-8 w-8 text-muted-foreground/40" />
         <p className="mt-2 text-sm text-muted-foreground">
-          No upcoming interviews
+          {t("noUpcomingInterviews")}
         </p>
         <p className="text-xs text-muted-foreground">
-          Keep applying to get interview invitations
+          {t("keepApplying")}
         </p>
       </div>
     );
@@ -53,12 +56,12 @@ export function UpcomingInterviews({
   return (
     <div className="card-base p-6">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-sm font-semibold">Upcoming Interviews</h3>
+        <h3 className="text-sm font-semibold">{t("upcomingInterviews")}</h3>
         <Link
           href={`/${locale}/job-seeker/interviews`}
           className="text-xs font-medium text-primary hover:underline"
         >
-          View All
+          {t("viewAll")}
         </Link>
       </div>
 

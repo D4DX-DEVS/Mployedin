@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import { FileText, Calendar, CheckCircle2, Star, Clock } from "lucide-react";
 
 interface ActivityItem {
@@ -46,16 +47,18 @@ function timeAgo(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString();
 }
 
-export function RecentActivity({ items }: RecentActivityProps) {
+export async function RecentActivity({ items }: RecentActivityProps) {
+  const t = await getTranslations("jobSeekerRecentActivity");
+
   if (items.length === 0) {
     return (
       <div className="card-base p-6 text-center">
         <Clock className="mx-auto h-8 w-8 text-muted-foreground/40" />
         <p className="mt-2 text-sm text-muted-foreground">
-          No recent activity
+          {t("noRecentActivity")}
         </p>
         <p className="text-xs text-muted-foreground">
-          Start applying to jobs to see your activity here
+          {t("startApplying")}
         </p>
       </div>
     );
@@ -63,7 +66,7 @@ export function RecentActivity({ items }: RecentActivityProps) {
 
   return (
     <div className="card-base p-6">
-      <h3 className="mb-4 text-sm font-semibold">Recent Activity</h3>
+      <h3 className="mb-4 text-sm font-semibold">{t("recentActivity")}</h3>
       <div className="space-y-3">
         {items.map((item, i) => {
           if (item.type === "application") {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -73,6 +74,7 @@ export default function CmsPage({
   filterFields: filterFieldsProp,
   searchPlaceholder,
 }: CmsPageProps) {
+  const t = useTranslations("cmsPage");
   const { can } = usePermissions();
   const { locale } = useParams<{ locale: string }>();
   const router = useRouter();
@@ -194,7 +196,7 @@ export default function CmsPage({
           <div className="max-w-3xl">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
               <Sparkles className="h-3.5 w-3.5" />
-              CMS Workspace
+              {t("cmsWorkspace")}
             </div>
             <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
               {title}
@@ -209,11 +211,11 @@ export default function CmsPage({
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                Total records
+                {t("totalRecords")}
               </p>
               <p className="mt-1 text-lg font-semibold text-foreground">{total.toLocaleString()}</p>
               <p className="text-xs text-muted-foreground">
-                Across {totalPages} page{totalPages === 1 ? "" : "s"}
+                {t("acrossPages", { count: totalPages })}
               </p>
             </div>
             {allowCreate && can(resource as "cms", "create") && (
@@ -224,7 +226,7 @@ export default function CmsPage({
                 className="h-11 gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700"
               >
                 <Plus className="h-4 w-4" />
-                Add New
+                {t("addNew")}
               </Button>
             )}
           </div>
@@ -235,7 +237,7 @@ export default function CmsPage({
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Total Items
+                  {t("totalItems")}
                 </p>
                 <p className="mt-3 text-4xl font-semibold tracking-tight text-foreground">{total}</p>
               </div>
@@ -245,13 +247,13 @@ export default function CmsPage({
                 </span>
               )}
             </div>
-            <p className="mt-3 text-sm leading-5 text-muted-foreground">All records in this module</p>
+            <p className="mt-3 text-sm leading-5 text-muted-foreground">{t("allRecords")}</p>
           </div>
           <div className="workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Active (this page)
+                  {t("activeThisPage")}
                 </p>
                 <p className="mt-3 text-4xl font-semibold tracking-tight text-foreground">{activeOnPage}</p>
               </div>
@@ -259,13 +261,13 @@ export default function CmsPage({
                 <span className="h-3 w-3 rounded-full bg-emerald-500" />
               </span>
             </div>
-            <p className="mt-3 text-sm leading-5 text-muted-foreground">Visible on the site</p>
+            <p className="mt-3 text-sm leading-5 text-muted-foreground">{t("visibleOnSite")}</p>
           </div>
           <div className="workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Per Page
+                  {t("perPage")}
                 </p>
                 <p className="mt-3 text-4xl font-semibold tracking-tight text-foreground">{limit}</p>
               </div>
@@ -273,7 +275,7 @@ export default function CmsPage({
                 <span className="h-3 w-3 rounded-full bg-violet-500" />
               </span>
             </div>
-            <p className="mt-3 text-sm leading-5 text-muted-foreground">Items shown per page</p>
+            <p className="mt-3 text-sm leading-5 text-muted-foreground">{t("itemsShownPerPage")}</p>
           </div>
         </div>
 
@@ -301,7 +303,7 @@ export default function CmsPage({
                 {columns.map((col) => (
                   <TableHead key={col.key}>{col.label}</TableHead>
                 ))}
-                <TableHead className="w-[100px]">Actions</TableHead>
+                <TableHead className="w-[100px]">{t("actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -326,17 +328,17 @@ export default function CmsPage({
                         <Inbox className="h-7 w-7 text-muted-foreground" />
                       </div>
                       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                        {hasActiveFilters ? "No matching items" : "No items yet"}
+                        {hasActiveFilters ? t("noMatchingItems") : t("noItemsYet")}
                       </p>
                       <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">
                         {hasActiveFilters
-                          ? "No items match the current filters."
-                          : `No ${title.toLowerCase()} found.`}
+                          ? t("noItemsMatchFilters")
+                          : t("noFoundTitle", { title: title.toLowerCase() })}
                       </h3>
                       <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-muted-foreground">
                         {hasActiveFilters
-                          ? "Adjust the filters in the hero section or clear them to see more results."
-                          : 'Click "Add New" to create your first entry.'}
+                          ? t("adjustFiltersMsg")
+                          : t("clickAddNewMsg")}
                       </p>
                       {hasActiveFilters && (
                         <Button
@@ -344,7 +346,7 @@ export default function CmsPage({
                           variant="outline"
                           className="mt-4 h-9 rounded-xl border-border bg-background/70 px-4 text-sm"
                         >
-                          Clear filters
+                          {t("clearFilters")}
                         </Button>
                       )}
                     </div>
@@ -360,7 +362,7 @@ export default function CmsPage({
                           : col.key === "isActive"
                             ? (
                                 <Badge variant={item[col.key] ? "default" : "secondary"}>
-                                  {item[col.key] ? "Active" : "Inactive"}
+                                  {item[col.key] ? t("active") : t("inactive")}
                                 </Badge>
                               )
                             : (
@@ -381,7 +383,7 @@ export default function CmsPage({
                                 ? router.push(`/${locale}${editPageBasePath}/${item._id}/edit`)
                                 : setEditItem(item)
                             }
-                            title="Edit"
+                            title={t("edit")}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -391,7 +393,7 @@ export default function CmsPage({
                             variant="ghost"
                             size="icon"
                             onClick={() => handleDelete(String(item._id))}
-                            title="Delete"
+                            title={t("delete")}
                             className="text-destructive hover:text-destructive"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -425,7 +427,7 @@ export default function CmsPage({
         <CrudModal
           open={showAdd}
           onClose={() => setShowAdd(false)}
-          title={`Add ${title}`}
+          title={t("addTitle", { title })}
           fields={fields}
           onSubmit={handleCreate}
         />
@@ -435,7 +437,7 @@ export default function CmsPage({
         <CrudModal
           open={!!editItem}
           onClose={() => setEditItem(null)}
-          title={`Edit ${title}`}
+          title={t("editTitle", { title })}
           fields={fields}
           initialValues={toStringRecord(editItem)}
           onSubmit={handleUpdate}

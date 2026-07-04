@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { Check, ChevronsUpDown, Search, Loader2 } from "lucide-react";
 
 export interface InlineSelectOption {
@@ -26,6 +27,7 @@ export function InlineSearchSelect({
   disabled = false,
   loading = false,
 }: InlineSearchSelectProps) {
+  const t = useTranslations("inlineSearchSelect");
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
@@ -64,10 +66,10 @@ export function InlineSearchSelect({
         <span className={selectedLabel ? "truncate text-left" : "truncate text-left text-muted-foreground"}>
           {loading ? (
             <span className="flex items-center gap-1.5">
-              <Loader2 className="h-3 w-3 animate-spin" /> Loading...
+              <Loader2 className="h-3 w-3 animate-spin" /> {t("loading")}
             </span>
           ) : (
-            selectedLabel ?? placeholder
+            selectedLabel ?? (placeholder || t("select"))
           )}
         </span>
         <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-40" />
@@ -82,14 +84,14 @@ export function InlineSearchSelect({
                 ref={inputRef}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search..."
+                placeholder={t("search")}
                 className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
               />
             </div>
           )}
           <div className="max-h-60 overflow-y-auto p-1 scrollbar-none">
             {filtered.length === 0 ? (
-              <div className="px-3 py-4 text-center text-xs text-muted-foreground">No results found</div>
+              <div className="px-3 py-4 text-center text-xs text-muted-foreground">{t("noResults")}</div>
             ) : (
               filtered.map((opt) => {
                 const isActive = opt.value === value;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, Fragment } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -92,6 +93,7 @@ const STATUS_OPTIONS = [
 
 // ── Component ────────────────────────────────────────────────────────────────
 export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }: UninvoicedPlacementsQueueProps) {
+  const t = useTranslations("uninvoicedPlacementsQueue");
   const [placements, setPlacements] = useState<UninvoicedPlacement[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -267,9 +269,9 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 className="text-base font-semibold text-foreground">Uninvoiced Placements</h3>
+          <h3 className="text-base font-semibold text-foreground">{t("uninvoicedPlacements")}</h3>
           <p className="text-xs text-muted-foreground">
-            {total} placement{total !== 1 ? "s" : ""} pending invoice generation. Select and generate in bulk.
+            {t("placementsPending", { count: total })}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -277,7 +279,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
             <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
               className="h-9 w-48 rounded-lg pl-8 text-sm"
-              placeholder="Search placements…"
+              placeholder={t("searchPlacements")}
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             />
@@ -288,7 +290,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
               className="h-9 gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-700"
             >
               <Receipt className="h-4 w-4" />
-              Generate {selected.size} Invoice{selected.size !== 1 ? "s" : ""}
+              {t("generateInvoices", { count: selected.size })}
             </Button>
           )}
         </div>
@@ -299,11 +301,11 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
         <div className="flex flex-wrap items-center gap-4 rounded-xl border border-emerald-200 bg-emerald-50/80 px-4 py-3 dark:border-emerald-900/50 dark:bg-emerald-950/20">
           <div className="flex items-center gap-2 text-sm font-medium text-emerald-700 dark:text-emerald-300">
             <CheckSquare className="h-4 w-4" />
-            {selected.size} selected
+            {t("selected", { count: selected.size })}
           </div>
           <div className="h-4 w-px bg-emerald-300 dark:bg-emerald-700" />
           <div className="text-sm text-emerald-600 dark:text-emerald-400">
-            Est. total: <span className="font-semibold">{fmt(selectedTotal)}</span>
+            {t("estTotal")}: <span className="font-semibold">{fmt(selectedTotal)}</span>
           </div>
           {selectedCountries.length > 0 && (
             <>
@@ -316,7 +318,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
           )}
           <div className="ml-auto">
             <Button variant="ghost" size="sm" onClick={() => setSelected(new Set())} className="h-7 text-xs text-emerald-600 hover:text-emerald-800 dark:text-emerald-400">
-              Clear
+              {t("common:delete")}
             </Button>
           </div>
         </div>
@@ -337,15 +339,15 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                     )}
                   </button>
                 </TableHead>
-                <TableHead className="min-w-[130px]">Job / Placement</TableHead>
-                <TableHead className="min-w-[120px]">Employer</TableHead>
-                <TableHead>Candidate</TableHead>
-                <TableHead>Agent</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-                <TableHead>Tax Region</TableHead>
-                <TableHead>Commission</TableHead>
-                <TableHead>Visa</TableHead>
-                <TableHead className="text-right">Quick Action</TableHead>
+                <TableHead className="min-w-[130px]">{t("job")}</TableHead>
+                <TableHead className="min-w-[120px]">{t("employer")}</TableHead>
+                <TableHead>{t("candidate")}</TableHead>
+                <TableHead>{t("agent")}</TableHead>
+                <TableHead className="text-right">{t("amount")}</TableHead>
+                <TableHead>{t("taxRegion")}</TableHead>
+                <TableHead>{t("commission")}</TableHead>
+                <TableHead>{t("visa")}</TableHead>
+                <TableHead className="text-right">{t("quickAction")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -367,8 +369,8 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                         <FileText className="h-6 w-6 text-emerald-500" />
                       </div>
                       <div>
-                        <p className="text-sm font-semibold">All placements invoiced</p>
-                        <p className="mt-1 text-sm text-muted-foreground">No pending placements need invoicing.</p>
+                        <p className="text-sm font-semibold">{t("allPlacementsInvoiced")}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">{t("noPendingPlacements")}</p>
                       </div>
                     </div>
                   </TableCell>
@@ -399,7 +401,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                         <div>
                           <p className="text-sm font-medium text-foreground">{p.jobTitle}</p>
                           <p className="text-[10px] text-muted-foreground">
-                            Placed {new Date(p.placedAt).toLocaleDateString()}
+                            {t("placedDate")} {new Date(p.placedAt).toLocaleDateString()}
                           </p>
                         </div>
                       </TableCell>
@@ -494,11 +496,11 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                           <div className="grid gap-4 py-2 sm:grid-cols-3">
                             <div className="rounded-lg border border-border/70 bg-card p-3">
                               <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                Invoice Preview
+                                {t("invoicePreview")}
                               </p>
                               <div className="space-y-1 text-xs">
                                 <div className="flex justify-between">
-                                  <span>Subtotal</span>
+                                  <span>{t("subtotal")}</span>
                                   <span className="font-medium">{fmt(p.salary, p.currency)}</span>
                                 </div>
                                 {taxInfo && taxInfo.defaultRate > 0 && (
@@ -509,14 +511,14 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                                 )}
                                 <div className="border-t border-border/70 pt-1" />
                                 <div className="flex justify-between font-bold">
-                                  <span>Est. Total</span>
+                                  <span>{t("estTotal")}</span>
                                   <span className="text-primary">{fmt(estTotal, p.currency)}</span>
                                 </div>
                               </div>
                             </div>
                             <div className="rounded-lg border border-border/70 bg-card p-3">
                               <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                Commission Split
+                                {t("commissionSplit")}
                               </p>
                               <div className="space-y-1 text-xs">
                                 {p.agentRate > 0 && (
@@ -533,14 +535,14 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                                 )}
                                 <div className="border-t border-border/70 pt-1" />
                                 <div className="flex justify-between font-medium text-emerald-600">
-                                  <span>Company Net</span>
+                                  <span>{t("companyNet")}</span>
                                   <span>{fmt(Math.round(estTotal * (100 - p.agentRate - p.superAgentRate) / 100), p.currency)}</span>
                                 </div>
                               </div>
                             </div>
                             <div className="rounded-lg border border-border/70 bg-card p-3">
                               <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                Employer Billing
+                                {t("employerBilling")}
                               </p>
                               <div className="space-y-1 text-xs">
                                 <p className="font-medium">{p.employerName}</p>
@@ -578,11 +580,10 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Receipt className="h-5 w-5 text-emerald-600" />
-              Bulk Invoice Generation
+              {t("bulkInvoiceGeneration")}
             </DialogTitle>
             <DialogDescription>
-              Generate {selected.size} invoice{selected.size !== 1 ? "s" : ""} with the settings below.
-              Tax will be auto-detected from each employer&apos;s country.
+              {t("generateInvoicesDesc", { count: selected.size })}
             </DialogDescription>
           </DialogHeader>
 
@@ -593,15 +594,15 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                 <div className="grid grid-cols-3 gap-4 text-center">
                   <div>
                     <p className="text-2xl font-bold text-foreground">{selected.size}</p>
-                    <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Invoices</p>
+                    <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{t("invoices")}</p>
                   </div>
                   <div>
                     <p className="text-2xl font-bold text-primary">{fmt(selectedTotal)}</p>
-                    <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Est. Subtotal</p>
+                    <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{t("estSubtotal")}</p>
                   </div>
                   <div>
                     <p className="text-2xl font-bold text-emerald-600">{selectedCountries.length}</p>
-                    <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Countries</p>
+                    <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{t("countries")}</p>
                   </div>
                 </div>
               </div>
@@ -609,7 +610,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
               {/* Settings */}
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <label className="text-xs font-medium text-foreground">Tax Handling</label>
+                  <label className="text-xs font-medium text-foreground">{t("taxHandling")}</label>
                   <div className="mt-1 flex items-center gap-2">
                     <button
                       onClick={() => setBulkAutoDetectTax(!bulkAutoDetectTax)}
@@ -619,7 +620,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                     >
                       {bulkAutoDetectTax && <span className="text-xs">✓</span>}
                     </button>
-                    <span className="text-sm text-muted-foreground">Auto-detect by country</span>
+                    <span className="text-sm text-muted-foreground">{t("autoDetectByCountry")}</span>
                   </div>
                   {!bulkAutoDetectTax && (
                     <div className="mt-2 grid grid-cols-2 gap-2">
@@ -644,7 +645,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                   )}
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-foreground">Payment Terms</label>
+                  <label className="text-xs font-medium text-foreground">{t("paymentTerms")}</label>
                   <SearchableSelect
                     id="bulk-payment-terms"
                     className="mt-1 h-9 w-full rounded-lg border-border bg-card text-sm"
@@ -654,7 +655,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="text-xs font-medium text-foreground">Invoice Status</label>
+                  <label className="text-xs font-medium text-foreground">{t("invoiceStatus")}</label>
                   <SearchableSelect
                     id="bulk-status"
                     className="mt-1 h-9 w-full rounded-lg border-border bg-card text-sm"
@@ -670,10 +671,10 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-border/70 bg-secondary/50">
-                      <th className="px-3 py-1.5 text-left font-semibold">Job</th>
-                      <th className="px-3 py-1.5 text-left font-semibold">Employer</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">Amount</th>
-                      <th className="px-3 py-1.5 text-left font-semibold">Tax</th>
+                      <th className="px-3 py-1.5 text-left font-semibold">{t("job")}</th>
+                      <th className="px-3 py-1.5 text-left font-semibold">{t("employer")}</th>
+                      <th className="px-3 py-1.5 text-right font-semibold">{t("amount")}</th>
+                      <th className="px-3 py-1.5 text-left font-semibold">{t("tax")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -695,7 +696,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
               {/* Actions */}
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={closeBulkModal} className="h-9 rounded-lg">
-                  Cancel
+                  {t("common:cancel")}
                 </Button>
                 <Button
                   onClick={handleBulkGenerate}
@@ -703,9 +704,9 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                   className="h-9 gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-700"
                 >
                   {bulkProcessing ? (
-                    <><Loader2 className="h-4 w-4 animate-spin" /> Processing…</>
+                    <><Loader2 className="h-4 w-4 animate-spin" /> {t("processing")}</>
                   ) : (
-                    <><Receipt className="h-4 w-4" /> Generate {selected.size} Invoice{selected.size !== 1 ? "s" : ""}</>
+                    <><Receipt className="h-4 w-4" /> {t("generateInvoices", { count: selected.size })}</>
                   )}
                 </Button>
               </div>
@@ -717,15 +718,15 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
               <div className="grid grid-cols-3 gap-3">
                 <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-3 text-center dark:border-emerald-900/50 dark:bg-emerald-950/20">
                   <p className="text-2xl font-bold text-emerald-600">{bulkResults.summary.created}</p>
-                  <p className="text-[10px] font-medium uppercase text-emerald-700 dark:text-emerald-400">Created</p>
+                  <p className="text-[10px] font-medium uppercase text-emerald-700 dark:text-emerald-400">{t("created")}</p>
                 </div>
                 <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-3 text-center dark:border-amber-900/50 dark:bg-amber-950/20">
                   <p className="text-2xl font-bold text-amber-600">{bulkResults.summary.skipped}</p>
-                  <p className="text-[10px] font-medium uppercase text-amber-700 dark:text-amber-400">Skipped</p>
+                  <p className="text-[10px] font-medium uppercase text-amber-700 dark:text-amber-400">{t("skipped")}</p>
                 </div>
                 <div className="rounded-xl border border-rose-200 bg-rose-50/80 p-3 text-center dark:border-rose-900/50 dark:bg-rose-950/20">
                   <p className="text-2xl font-bold text-rose-600">{bulkResults.summary.errors}</p>
-                  <p className="text-[10px] font-medium uppercase text-rose-700 dark:text-rose-400">Errors</p>
+                  <p className="text-[10px] font-medium uppercase text-rose-700 dark:text-rose-400">{t("errors")}</p>
                 </div>
               </div>
 
@@ -734,10 +735,10 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-border/70 bg-secondary/50">
-                      <th className="px-3 py-1.5 text-left font-semibold">Status</th>
-                      <th className="px-3 py-1.5 text-left font-semibold">Invoice #</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">Amount</th>
-                      <th className="px-3 py-1.5 text-left font-semibold">Notes</th>
+                      <th className="px-3 py-1.5 text-left font-semibold">{t("status")}</th>
+                      <th className="px-3 py-1.5 text-left font-semibold">{t("invoiceNumber")}</th>
+                      <th className="px-3 py-1.5 text-right font-semibold">{t("amount")}</th>
+                      <th className="px-3 py-1.5 text-left font-semibold">{t("notes")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -763,7 +764,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
 
               <div className="flex justify-end">
                 <Button onClick={closeBulkModal} className="h-9 rounded-lg">
-                  Done
+                  {t("done")}
                 </Button>
               </div>
             </div>

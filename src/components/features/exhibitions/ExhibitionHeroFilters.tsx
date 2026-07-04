@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,6 +58,7 @@ export function ExhibitionHeroFilters({
   searchPlaceholder = "Search events, agents, locations...",
   defaultExpanded = false,
 }: ExhibitionHeroFiltersProps) {
+  const t = useTranslations("exhibitionHeroFilters");
   const [showFilters, setShowFilters] = useState(defaultExpanded);
   const showPriority = Boolean(onPriorityChange && priorityOptions?.length);
   const showCategory = Boolean(onCategoryChange && categoryOptions?.length);
@@ -83,10 +85,10 @@ export function ExhibitionHeroFilters({
           className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-white/10 dark:hover:bg-white/5"
         >
           <Filter className="h-4 w-4 text-muted-foreground" />
-          {showFilters ? "Hide Filters" : "Show Filters"}
+          {showFilters ? t("hideFilters") : t("showFilters")}
           {hasActiveFilters && (
             <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
-              Active
+              {t("active")}
             </Badge>
           )}
           {showFilters ? (
@@ -104,7 +106,7 @@ export function ExhibitionHeroFilters({
             className="gap-1.5 text-xs text-muted-foreground"
           >
             <RotateCcw className="h-3.5 w-3.5" />
-            Clear filters
+            {t("clearFilters")}
           </Button>
         )}
       </div>
@@ -123,38 +125,38 @@ export function ExhibitionHeroFilters({
 
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Status</label>
+              <label className="text-xs font-medium text-muted-foreground">{t("status")}</label>
               <SearchableSelect
                 className="h-11 w-full rounded-xl border-border bg-card"
                 options={statusOptions}
                 value={statusFilter}
                 onValueChange={onStatusChange}
-                placeholder="All statuses"
+                placeholder={t("allStatuses")}
               />
             </div>
 
             {showPriority && (
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Priority</label>
+                <label className="text-xs font-medium text-muted-foreground">{t("priority")}</label>
                 <SearchableSelect
                   className="h-11 w-full rounded-xl border-border bg-card"
                   options={priorityOptions!}
                   value={priorityFilter}
                   onValueChange={onPriorityChange!}
-                  placeholder="All priorities"
+                  placeholder={t("allPriorities")}
                 />
               </div>
             )}
 
             {showCategory && (
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Category</label>
+                <label className="text-xs font-medium text-muted-foreground">{t("category")}</label>
                 <SearchableSelect
                   className="h-11 w-full rounded-xl border-border bg-card"
                   options={categoryOptions!}
                   value={categoryFilter}
                   onValueChange={onCategoryChange!}
-                  placeholder="All categories"
+                  placeholder={t("allCategories")}
                 />
               </div>
             )}

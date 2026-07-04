@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Sparkles } from "lucide-react";
 import type { RevenueHealth } from "./useSubscriptionDashboard";
 
@@ -12,19 +13,20 @@ interface Props {
 }
 
 export function RevenueHealthCards({ data }: Props) {
+  const t = useTranslations("revenueHealthCards");
   const cards = [
-    { label: "ARPU", value: formatCurrency(data.arpu), unit: "AED", sub: "Avg / customer", positive: true, neutral: true },
-    { label: "LTV", value: formatCurrency(data.ltv), unit: "AED", sub: "Lifetime value", positive: true, neutral: true },
-    { label: "New Revenue", value: `+${formatCurrency(data.newRevenue)}`, unit: "AED", sub: "This month", positive: true, neutral: false },
-    { label: "Expansion", value: `+${formatCurrency(data.expansionRevenue)}`, unit: "AED", sub: "Upgrades", positive: true, neutral: false },
-    { label: "Churned", value: `-${formatCurrency(data.churnedRevenue)}`, unit: "AED", sub: "Lost revenue", positive: false, neutral: false },
-    { label: "Net Revenue", value: `${data.netRevenue >= 0 ? "+" : "-"}${formatCurrency(data.netRevenue)}`, unit: "AED", sub: "Net new MRR", positive: data.netRevenue >= 0, neutral: false },
+    { label: t("arpu"), value: formatCurrency(data.arpu), unit: "AED", sub: t("avgPerCustomer"), positive: true, neutral: true },
+    { label: t("ltv"), value: formatCurrency(data.ltv), unit: "AED", sub: t("lifetimeValue"), positive: true, neutral: true },
+    { label: t("newRevenue"), value: `+${formatCurrency(data.newRevenue)}`, unit: "AED", sub: t("thisMonth"), positive: true, neutral: false },
+    { label: t("expansion"), value: `+${formatCurrency(data.expansionRevenue)}`, unit: "AED", sub: t("upgrades"), positive: true, neutral: false },
+    { label: t("churned"), value: `-${formatCurrency(data.churnedRevenue)}`, unit: "AED", sub: t("lostRevenue"), positive: false, neutral: false },
+    { label: t("netRevenue"), value: `${data.netRevenue >= 0 ? "+" : "-"}${formatCurrency(data.netRevenue)}`, unit: "AED", sub: t("netNewMRR"), positive: data.netRevenue >= 0, neutral: false },
   ];
 
   return (
     <section className="rounded-2xl border border-border/60 bg-card p-6">
       <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2 mb-5">
-        <Sparkles className="h-4 w-4" /> Revenue Health
+        <Sparkles className="h-4 w-4" /> {t("revenueHealth")}
       </h4>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {cards.map((card) => (

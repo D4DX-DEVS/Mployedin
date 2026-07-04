@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Filter } from "lucide-react";
 import type { FunnelStage } from "./useSubscriptionDashboard";
 
@@ -23,6 +24,7 @@ function formatNumber(n: number) {
 }
 
 export function SubscriptionFunnel({ employer, jobSeeker }: SubscriptionFunnelProps) {
+  const t = useTranslations("subscriptionFunnel");
   const [tab, setTab] = useState<"employer" | "jobSeeker">("employer");
   const stages = tab === "employer" ? employer : jobSeeker;
   const maxCount = stages.length > 0 ? Math.max(...stages.map((s) => s.count)) : 1;
@@ -31,7 +33,7 @@ export function SubscriptionFunnel({ employer, jobSeeker }: SubscriptionFunnelPr
     <section className="rounded-2xl border border-border/60 bg-card p-6">
       <div className="flex items-center justify-between mb-6">
         <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-          <Filter className="h-4 w-4" /> Plan Split
+          <Filter className="h-4 w-4" /> {t("planSplit")}
         </h4>
         <div className="flex gap-1 rounded-lg bg-muted/50 p-1">
           <button
@@ -40,7 +42,7 @@ export function SubscriptionFunnel({ employer, jobSeeker }: SubscriptionFunnelPr
               tab === "employer" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            Employers
+            {t("employers")}
           </button>
           <button
             onClick={() => setTab("jobSeeker")}
@@ -48,13 +50,13 @@ export function SubscriptionFunnel({ employer, jobSeeker }: SubscriptionFunnelPr
               tab === "jobSeeker" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            Job Seekers
+            {t("jobSeekers")}
           </button>
         </div>
       </div>
 
       {stages.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-8">No data available</p>
+        <p className="text-sm text-muted-foreground text-center py-8">{t("noDataAvailable")}</p>
       ) : (
         <div className="space-y-3">
           {stages.map((stage, i) => {

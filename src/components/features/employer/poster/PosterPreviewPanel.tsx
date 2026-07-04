@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import type { PosterVariation, PosterType, PosterFormat, ShowFields } from "@/lib/composer/types";
 import { FORMAT_DIMENSIONS } from "@/lib/composer/types";
 import { PosterOverlay } from "./PosterOverlay";
@@ -28,6 +29,7 @@ export function PosterPreviewPanel({
   shareSlug,
   generationId,
 }: PosterPreviewPanelProps) {
+  const t = useTranslations("posterPreviewPanel");
   const posterRef = useRef<HTMLDivElement>(null);
 
   const downloadPng = useCallback(async (format: PosterFormat) => {
@@ -68,7 +70,7 @@ export function PosterPreviewPanel({
     return (
       <div className="flex flex-col items-center justify-center h-48 text-center">
         <p className="text-xs text-muted-foreground">
-          Generated posters will preview here
+          {t("noPreview")}
         </p>
       </div>
     );
@@ -98,8 +100,8 @@ export function PosterPreviewPanel({
 
       {/* Download per format */}
       <div>
-        <p className="text-xs font-medium text-foreground mb-2">Download & Share</p>
-        <p className="text-[10px] text-muted-foreground mb-2">Download your poster in multiple formats</p>
+        <p className="text-xs font-medium text-foreground mb-2">{t("downloadShareTitle")}</p>
+        <p className="text-[10px] text-muted-foreground mb-2">{t("downloadShareDesc")}</p>
         <div className="space-y-1.5">
           {formats.map((f) => (
             <button
@@ -158,7 +160,7 @@ export function PosterPreviewPanel({
         className="w-full flex items-center justify-center gap-2 rounded-xl border border-primary bg-primary/5 text-primary py-2.5 text-sm font-medium hover:bg-primary/10 disabled:opacity-50 transition-colors"
       >
         <Save className="h-4 w-4" />
-        {saveMutation.isSuccess ? "Saved to My Posters" : saveMutation.isPending ? "Saving..." : "Save to My Posters"}
+        {saveMutation.isSuccess ? t("savedState") : saveMutation.isPending ? t("savingState") : t("saveButton")}
       </button>
     </div>
   );

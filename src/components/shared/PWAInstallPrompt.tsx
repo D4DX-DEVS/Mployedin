@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -8,6 +9,7 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export function PWAInstallPrompt() {
+  const t = useTranslations("pwaInstallPrompt");
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
@@ -76,26 +78,21 @@ export function PWAInstallPrompt() {
           />
           <div className="flex-1 space-y-1">
             <p className="text-sm font-semibold text-card-foreground">
-              Install MPLOYEDIN
+              {t("installApp")}
             </p>
             {isIOS ? (
               <p className="text-xs text-muted-foreground">
-                Tap{" "}
-                <span className="inline-block" aria-label="share icon">
-                  ⎋
-                </span>{" "}
-                then &quot;Add to Home Screen&quot; to install.
+                {t("iosInstallInstructions")}
               </p>
             ) : (
               <p className="text-xs text-muted-foreground">
-                Add to your home screen for quick access and an app-like
-                experience.
+                {t("androidInstallInstructions")}
               </p>
             )}
           </div>
           <button
             onClick={handleDismiss}
-            aria-label="Dismiss"
+            aria-label={t("dismiss")}
             className="shrink-0 rounded-md p-1 text-muted-foreground hover:text-foreground"
           >
             <svg
@@ -117,7 +114,7 @@ export function PWAInstallPrompt() {
             onClick={handleInstall}
             className="mt-3 w-full rounded-md bg-primary py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            Install App
+            {t("installButton")}
           </button>
         )}
       </div>

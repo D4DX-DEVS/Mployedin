@@ -4,6 +4,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend,
 } from "recharts";
+import { useTranslations } from "next-intl";
 import { TrendingUp } from "lucide-react";
 import type { RevenueTrendPoint } from "./useSubscriptionDashboard";
 
@@ -17,20 +18,22 @@ function formatCurrency(n: number) {
 }
 
 export function RevenueTrendChart({ data }: RevenueTrendChartProps) {
+  const t = useTranslations("revenueTrendChart");
+
   return (
     <section className="rounded-2xl border border-border/60 bg-card p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-            <TrendingUp className="h-4 w-4" /> Revenue Trend (MRR)
+            <TrendingUp className="h-4 w-4" /> {t("revenueTrendMrr")}
           </h4>
-          <p className="text-xs text-muted-foreground mt-1">Employer vs Job Seeker contribution over time</p>
+          <p className="text-xs text-muted-foreground mt-1">{t("employerVsJobSeekerContribution")}</p>
         </div>
-        <span className="text-xs text-muted-foreground bg-muted/50 px-2.5 py-1 rounded-lg">Last 6 months</span>
+        <span className="text-xs text-muted-foreground bg-muted/50 px-2.5 py-1 rounded-lg">{t("last6Months")}</span>
       </div>
       {data.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-12">
-          No revenue data available
+          {t("noRevenueDataAvailable")}
         </p>
       ) : (
         <ResponsiveContainer width="100%" height={300}>
@@ -70,12 +73,12 @@ export function RevenueTrendChart({ data }: RevenueTrendChartProps) {
               }}
               formatter={(value, name) => [
                 `${new Intl.NumberFormat("en-US").format(Number(value))} AED`,
-                name === "mrr" ? "Total MRR" : name === "employerMrr" ? "Employer" : "Job Seeker",
+                name === "mrr" ? t("totalMrr") : name === "employerMrr" ? t("employer") : t("jobSeeker"),
               ]}
             />
             <Legend
               formatter={(value: string) =>
-                value === "mrr" ? "Total MRR" : value === "employerMrr" ? "Employer" : "Job Seeker"
+                value === "mrr" ? t("totalMrr") : value === "employerMrr" ? t("employer") : t("jobSeeker")
               }
             />
             <Area

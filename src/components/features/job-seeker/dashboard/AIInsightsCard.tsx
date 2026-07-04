@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Sparkles, Lightbulb, AlertTriangle, Rocket, BarChart3, Loader2, RefreshCw } from "lucide-react";
 
 interface Insight {
@@ -18,6 +19,7 @@ const typeConfig = {
 };
 
 export function AIInsightsCard() {
+  const t = useTranslations("jobSeekerAiInsightsCard");
   const [insights, setInsights] = useState<Insight[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -50,7 +52,7 @@ export function AIInsightsCard() {
       <div className="card-base p-6 text-center">
         <Sparkles className="mx-auto h-8 w-8 text-muted-foreground/40" />
         <p className="mt-2 text-sm text-muted-foreground">
-          No AI insights available right now
+          {t("noInsightsAvailable")}
         </p>
       </div>
     );
@@ -61,7 +63,7 @@ export function AIInsightsCard() {
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-semibold">AI Insights</h3>
+          <h3 className="text-sm font-semibold">{t("aiInsights")}</h3>
         </div>
         <button
           onClick={loadInsights}
@@ -69,7 +71,7 @@ export function AIInsightsCard() {
           className="flex items-center gap-1 text-xs text-primary transition-colors hover:text-primary/70 disabled:opacity-50"
         >
           <RefreshCw className="h-3 w-3" />
-          Refresh
+          {t("refresh")}
         </button>
       </div>
 

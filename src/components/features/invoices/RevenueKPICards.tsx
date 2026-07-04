@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import {
   TrendingUp, TrendingDown, DollarSign, Clock, AlertTriangle,
   CheckCircle2, Percent, ReceiptText, RefreshCw, BarChart3,
@@ -26,18 +27,19 @@ interface RevenueKPICardsProps {
 }
 
 export function RevenueKPICards({ kpi, currency = "AED", variant = "admin" }: RevenueKPICardsProps) {
+  const t = useTranslations("revenueKPICards");
   const fmt = (v: number) => `${currency} ${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 
   const adminCards = [
-    { label: "Total Revenue", value: fmt(kpi.totalRevenue), icon: DollarSign, tone: "workspace-tone-sky" },
-    { label: "Paid Revenue", value: fmt(kpi.paidRevenue), icon: CheckCircle2, tone: "workspace-tone-emerald" },
-    { label: "Pending Revenue", value: fmt(kpi.pendingRevenue), icon: Clock, tone: "workspace-tone-amber" },
-    { label: "Overdue Revenue", value: fmt(kpi.overdueRevenue), sub: `${kpi.overdueCount} invoice${kpi.overdueCount !== 1 ? "s" : ""}`, icon: AlertTriangle, tone: "workspace-tone-rose" },
-    { label: "Agent Commission Due", value: fmt(kpi.agentCommissionPayable), icon: Percent, tone: "workspace-tone-indigo" },
-    { label: "Tax Collected", value: fmt(kpi.taxCollected), icon: ReceiptText, tone: "workspace-tone-violet" },
-    { label: "Refunds", value: fmt(kpi.refunds), icon: RefreshCw, tone: "workspace-tone-rose" },
+    { label: t("totalRevenue"), value: fmt(kpi.totalRevenue), icon: DollarSign, tone: "workspace-tone-sky" },
+    { label: t("paidRevenue"), value: fmt(kpi.paidRevenue), icon: CheckCircle2, tone: "workspace-tone-emerald" },
+    { label: t("pendingRevenue"), value: fmt(kpi.pendingRevenue), icon: Clock, tone: "workspace-tone-amber" },
+    { label: t("overdueRevenue"), value: fmt(kpi.overdueRevenue), sub: t("overdueCount", { count: kpi.overdueCount }), icon: AlertTriangle, tone: "workspace-tone-rose" },
+    { label: t("agentCommissionDue"), value: fmt(kpi.agentCommissionPayable), icon: Percent, tone: "workspace-tone-indigo" },
+    { label: t("taxCollected"), value: fmt(kpi.taxCollected), icon: ReceiptText, tone: "workspace-tone-violet" },
+    { label: t("refunds"), value: fmt(kpi.refunds), icon: RefreshCw, tone: "workspace-tone-rose" },
     {
-      label: "Monthly Growth",
+      label: t("monthlyGrowth"),
       value: `${kpi.monthlyGrowth > 0 ? "+" : ""}${kpi.monthlyGrowth}%`,
       icon: kpi.monthlyGrowth >= 0 ? TrendingUp : TrendingDown,
       tone: kpi.monthlyGrowth >= 0 ? "workspace-tone-emerald" : "workspace-tone-rose",
@@ -45,22 +47,22 @@ export function RevenueKPICards({ kpi, currency = "AED", variant = "admin" }: Re
   ];
 
   const saCards = [
-    { label: "Team Revenue", value: fmt(kpi.totalRevenue), icon: DollarSign, tone: "workspace-tone-sky" },
-    { label: "Team Paid", value: fmt(kpi.paidRevenue), icon: CheckCircle2, tone: "workspace-tone-emerald" },
-    { label: "Team Pending", value: fmt(kpi.pendingRevenue), icon: Clock, tone: "workspace-tone-amber" },
-    { label: "Commission Due", value: fmt(kpi.agentCommissionPayable), icon: Percent, tone: "workspace-tone-indigo" },
-    { label: "Total Invoices", value: String(kpi.totalInvoices), icon: BarChart3, tone: "workspace-tone-sky" },
-    { label: "Monthly Growth", value: `${kpi.monthlyGrowth > 0 ? "+" : ""}${kpi.monthlyGrowth}%`, icon: kpi.monthlyGrowth >= 0 ? TrendingUp : TrendingDown, tone: kpi.monthlyGrowth >= 0 ? "workspace-tone-emerald" : "workspace-tone-rose" },
+    { label: t("teamRevenue"), value: fmt(kpi.totalRevenue), icon: DollarSign, tone: "workspace-tone-sky" },
+    { label: t("teamPaid"), value: fmt(kpi.paidRevenue), icon: CheckCircle2, tone: "workspace-tone-emerald" },
+    { label: t("teamPending"), value: fmt(kpi.pendingRevenue), icon: Clock, tone: "workspace-tone-amber" },
+    { label: t("commissionDue"), value: fmt(kpi.agentCommissionPayable), icon: Percent, tone: "workspace-tone-indigo" },
+    { label: t("totalInvoices"), value: String(kpi.totalInvoices), icon: BarChart3, tone: "workspace-tone-sky" },
+    { label: t("monthlyGrowth"), value: `${kpi.monthlyGrowth > 0 ? "+" : ""}${kpi.monthlyGrowth}%`, icon: kpi.monthlyGrowth >= 0 ? TrendingUp : TrendingDown, tone: kpi.monthlyGrowth >= 0 ? "workspace-tone-emerald" : "workspace-tone-rose" },
   ];
 
   const agentCards = [
-    { label: "My Revenue", value: fmt(kpi.totalRevenue), icon: DollarSign, tone: "workspace-tone-sky" },
-    { label: "Paid", value: fmt(kpi.paidRevenue), icon: CheckCircle2, tone: "workspace-tone-emerald" },
-    { label: "Pending", value: fmt(kpi.pendingRevenue), icon: Clock, tone: "workspace-tone-amber" },
-    { label: "My Commission", value: fmt(kpi.agentCommissionPayable), icon: Percent, tone: "workspace-tone-indigo" },
-    { label: "Total Invoices", value: String(kpi.totalInvoices), icon: BarChart3, tone: "workspace-tone-sky" },
+    { label: t("myRevenue"), value: fmt(kpi.totalRevenue), icon: DollarSign, tone: "workspace-tone-sky" },
+    { label: t("paid"), value: fmt(kpi.paidRevenue), icon: CheckCircle2, tone: "workspace-tone-emerald" },
+    { label: t("pending"), value: fmt(kpi.pendingRevenue), icon: Clock, tone: "workspace-tone-amber" },
+    { label: t("myCommission"), value: fmt(kpi.agentCommissionPayable), icon: Percent, tone: "workspace-tone-indigo" },
+    { label: t("totalInvoices"), value: String(kpi.totalInvoices), icon: BarChart3, tone: "workspace-tone-sky" },
     {
-      label: "Monthly Growth",
+      label: t("monthlyGrowth"),
       value: `${kpi.monthlyGrowth > 0 ? "+" : ""}${kpi.monthlyGrowth}%`,
       icon: kpi.monthlyGrowth >= 0 ? TrendingUp : TrendingDown,
       tone: kpi.monthlyGrowth >= 0 ? "workspace-tone-emerald" : "workspace-tone-rose",

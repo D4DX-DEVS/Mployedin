@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { Search, FileText, Target } from "lucide-react";
 // TODO: Re-add Zap when auto-apply feature is ready
 
@@ -6,35 +7,36 @@ interface QuickActionsProps {
   locale: string;
 }
 
-const actions = [
-  {
-    icon: Search,
-    label: "Find Jobs",
-    href: "/job-seeker/jobs",
-    tone: "dashboard-tone-primary",
-  },
-  {
-    icon: FileText,
-    label: "Update Resume",
-    href: "/job-seeker/cv",
-    tone: "dashboard-tone-metric",
-  },
-  // TODO: Auto-apply quick action — re-enable when auto-apply feature is ready
-  // {
-  //   icon: Zap,
-  //   label: "Auto Apply Settings",
-  //   href: "/job-seeker/settings",
-  //   color: "bg-amber-50 text-amber-600 border-amber-200",
-  // },
-  {
-    icon: Target,
-    label: "Set Preferences",
-    href: "/job-seeker/preferences",
-    tone: "dashboard-tone-success",
-  },
-];
+export async function QuickActions({ locale }: QuickActionsProps) {
+  const t = await getTranslations("quickActions");
 
-export function QuickActions({ locale }: QuickActionsProps) {
+  const actions = [
+    {
+      icon: Search,
+      label: t("findJobs"),
+      href: "/job-seeker/jobs",
+      tone: "dashboard-tone-primary",
+    },
+    {
+      icon: FileText,
+      label: t("updateResume"),
+      href: "/job-seeker/cv",
+      tone: "dashboard-tone-metric",
+    },
+    // TODO: Auto-apply quick action — re-enable when auto-apply feature is ready
+    // {
+    //   icon: Zap,
+    //   label: "Auto Apply Settings",
+    //   href: "/job-seeker/settings",
+    //   color: "bg-amber-50 text-amber-600 border-amber-200",
+    // },
+    {
+      icon: Target,
+      label: t("setPreferences"),
+      href: "/job-seeker/preferences",
+      tone: "dashboard-tone-success",
+    },
+  ];
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       {actions.map((action) => (

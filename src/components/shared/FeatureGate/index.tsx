@@ -15,6 +15,7 @@
  */
 
 import type { ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import { Crown, Lock } from "lucide-react";
 import { useFeatureGate } from "@/hooks/useFeatureGate";
 
@@ -70,15 +71,16 @@ export function FeatureGate({
 
 /** Compact upgrade prompt shown when a feature is gated. */
 function UpgradeHint({ label }: { label: string }) {
+  const t = useTranslations("featureGate");
   return (
     <div className="flex items-center gap-2 rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3">
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/10">
         <Crown className="h-4 w-4 text-amber-500" />
       </div>
       <div className="min-w-0">
-        <p className="text-sm font-medium text-amber-200/90">Upgrade Required</p>
+        <p className="text-sm font-medium text-amber-200/90">{t("upgradeRequired")}</p>
         <p className="text-xs text-muted-foreground truncate">
-          This feature requires a higher subscription plan
+          {t("featureRequiresHigherPlan")}
         </p>
       </div>
     </div>
@@ -87,6 +89,7 @@ function UpgradeHint({ label }: { label: string }) {
 
 /** Inline lock icon badge for compact spaces (e.g. next to a button). */
 export function FeatureLockBadge({ feature }: { feature: string }) {
+  const t = useTranslations("featureGate");
   const { allowed, isLoading } = useFeatureGate(feature);
 
   if (isLoading || allowed) return null;
@@ -94,7 +97,7 @@ export function FeatureLockBadge({ feature }: { feature: string }) {
   return (
     <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs text-amber-400">
       <Lock className="h-3 w-3" />
-      Premium
+      {t("premium")}
     </span>
   );
 }

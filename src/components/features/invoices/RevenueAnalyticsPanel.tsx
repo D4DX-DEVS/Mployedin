@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { InvoiceAnalytics } from "@/hooks/useInvoiceAnalytics";
 import { BarChart3, TrendingUp, Users, Layers, Clock } from "lucide-react";
 
@@ -9,6 +10,7 @@ interface RevenueAnalyticsPanelProps {
 }
 
 export function RevenueAnalyticsPanel({ data, currency = "AED" }: RevenueAnalyticsPanelProps) {
+  const t = useTranslations("revenueAnalyticsPanel");
   const fmt = (v: number) => `${currency} ${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 
   return (
@@ -18,7 +20,7 @@ export function RevenueAnalyticsPanel({ data, currency = "AED" }: RevenueAnalyti
         <div className="border-b border-border/80 px-5 py-4">
           <div className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4 text-primary" />
-            <h3 className="text-sm font-semibold">Monthly Revenue Trend</h3>
+            <h3 className="text-sm font-semibold">{t("monthlyRevenueTrend")}</h3>
           </div>
         </div>
         <div className="px-5 py-4">
@@ -47,7 +49,7 @@ export function RevenueAnalyticsPanel({ data, currency = "AED" }: RevenueAnalyti
               })}
             </div>
           ) : (
-            <p className="py-6 text-center text-sm text-muted-foreground">No revenue data available.</p>
+            <p className="py-6 text-center text-sm text-muted-foreground">{t("noRevenueData")}</p>
           )}
         </div>
       </div>
@@ -58,7 +60,7 @@ export function RevenueAnalyticsPanel({ data, currency = "AED" }: RevenueAnalyti
           <div className="border-b border-border/80 px-5 py-4">
             <div className="flex items-center gap-2">
               <Layers className="h-4 w-4 text-primary" />
-              <h3 className="text-sm font-semibold">Revenue by Category</h3>
+              <h3 className="text-sm font-semibold">{t("revenueByCategory")}</h3>
             </div>
           </div>
           <div className="px-5 py-4">
@@ -78,7 +80,7 @@ export function RevenueAnalyticsPanel({ data, currency = "AED" }: RevenueAnalyti
                 ))}
               </div>
             ) : (
-              <p className="py-6 text-center text-sm text-muted-foreground">No category data.</p>
+              <p className="py-6 text-center text-sm text-muted-foreground">{t("noCategoryData")}</p>
             )}
           </div>
         </div>
@@ -88,7 +90,7 @@ export function RevenueAnalyticsPanel({ data, currency = "AED" }: RevenueAnalyti
           <div className="border-b border-border/80 px-5 py-4">
             <div className="flex items-center gap-2">
               <Users className="h-4 w-4 text-primary" />
-              <h3 className="text-sm font-semibold">Top Paying Employers</h3>
+              <h3 className="text-sm font-semibold">{t("topPayingEmployers")}</h3>
             </div>
           </div>
           <div className="px-5 py-4">
@@ -108,7 +110,7 @@ export function RevenueAnalyticsPanel({ data, currency = "AED" }: RevenueAnalyti
                 ))}
               </div>
             ) : (
-              <p className="py-6 text-center text-sm text-muted-foreground">No employer data.</p>
+              <p className="py-6 text-center text-sm text-muted-foreground">{t("noEmployerData")}</p>
             )}
           </div>
         </div>
@@ -119,9 +121,9 @@ export function RevenueAnalyticsPanel({ data, currency = "AED" }: RevenueAnalyti
         <div className="border-b border-border/80 px-5 py-4">
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-primary" />
-            <h3 className="text-sm font-semibold">Invoice Aging Analysis</h3>
+            <h3 className="text-sm font-semibold">{t("invoiceAgingAnalysis")}</h3>
           </div>
-          <p className="mt-0.5 text-xs text-muted-foreground">Outstanding invoice balance by age bracket</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{t("outstandingInvoiceBalance")}</p>
         </div>
         <div className="px-5 py-4">
           {data.invoiceAging.length > 0 ? (
@@ -139,7 +141,7 @@ export function RevenueAnalyticsPanel({ data, currency = "AED" }: RevenueAnalyti
               })}
             </div>
           ) : (
-            <p className="py-6 text-center text-sm text-muted-foreground">No outstanding invoices.</p>
+            <p className="py-6 text-center text-sm text-muted-foreground">{t("noOutstandingInvoices")}</p>
           )}
         </div>
       </div>

@@ -14,6 +14,7 @@
  */
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Check, X, Sparkles, Crown, Zap, ChevronDown, ChevronUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -118,6 +119,7 @@ export function PricingGrid({
   displayCurrency = "AED",
   rates = {},
 }: PricingGridProps) {
+  const t = useTranslations("pricingGrid");
   const { mutate: selfAssign, isPending: activating } = useSelfAssignFreePlan();
   const [showComparison, setShowComparison] = useState(false);
   const [checkoutPlanId, setCheckoutPlanId] = useState<string | null>(null);
@@ -135,13 +137,13 @@ export function PricingGrid({
         window.location.href = data.checkoutUrl;
         return;
       }
-      toast.info("Upgrade coming soon", {
+      toast.info(t("upgradeComingSoon"), {
         description:
           data.message ??
-          "Online payments are not yet available. Contact your administrator to upgrade your plan.",
+          t("paymentNotAvailable"),
       });
     } catch {
-      toast.error("Could not start checkout. Please try again.");
+      toast.error(t("checkoutError"));
     } finally {
       setCheckoutPlanId(null);
     }
@@ -176,14 +178,14 @@ export function PricingGrid({
               {isMostPopular && !isActive && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                   <Badge className="bg-amber-500 text-white text-[10px] px-2.5 py-0.5 shadow-sm font-semibold">
-                    Popular
+                    {t("popular")}
                   </Badge>
                 </div>
               )}
               {isActive && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                   <Badge className="bg-sky-500 text-white text-[10px] px-2.5 py-0.5 shadow-sm font-semibold">
-                    Current Plan
+                    {t("currentPlan")}
                   </Badge>
                 </div>
               )}
@@ -198,7 +200,7 @@ export function PricingGrid({
               <div className="mb-4">
                 <p className="text-3xl font-bold tracking-tight">
                   {isFreePlan
-                    ? "Free"
+                    ? t("free")
                     : convertAndFormat(plan.price, plan.currency, displayCurrency, rates)}
                 </p>
                 {plan.price > 0 && (
@@ -212,7 +214,7 @@ export function PricingGrid({
                   </p>
                 )}
                 {isFreePlan && (
-                  <p className="text-xs text-muted-foreground mt-0.5">Forever free</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{t("foreverFree")}</p>
                 )}
               </div>
 
@@ -235,11 +237,11 @@ export function PricingGrid({
               {/* CTA button */}
               {isActive ? (
                 <Button variant="outline" disabled className="w-full mt-auto">
-                  <Check className="h-4 w-4 mr-1.5 text-emerald-500" /> Current Plan
+                  <Check className="h-4 w-4 mr-1.5 text-emerald-500" /> {t("currentPlan")}
                 </Button>
               ) : isFreePlan && (showActivateFree || currentTier === undefined) ? (
                 <Button className="w-full mt-auto" onClick={() => selfAssign()} disabled={activating}>
-                  {activating ? "Activating…" : "Activate Free Plan"}
+                  {activating ? t("activating") : t("activateFreePlan")}
                 </Button>
               ) : (
                 <Button
@@ -248,7 +250,7 @@ export function PricingGrid({
                   onClick={() => startCheckout(plan._id)}
                   disabled={checkoutPlanId !== null}
                 >
-                  {checkoutPlanId === plan._id ? "Redirecting…" : `Choose ${plan.name}`}
+                  {checkoutPlanId === plan._id ? t("redirecting") : t("choosePlan", { name: plan.name })}
                 </Button>
               )}
             </div>
@@ -262,7 +264,7 @@ export function PricingGrid({
         className="flex items-center gap-2 mx-auto text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
         {showComparison ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-        {showComparison ? "Hide" : "View all"} features comparison
+        {showComparison ? t("hide") : t("viewAll")} {t("featuresComparison")}
       </button>
 
       {showComparison && (
@@ -272,7 +274,7 @@ export function PricingGrid({
             style={{ gridTemplateColumns: `1.5fr repeat(${plans.length}, minmax(0, 1fr))` }}
           >
             <div className="p-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Feature
+              {t("feature")}
             </div>
             {plans.map((plan) => (
               <div

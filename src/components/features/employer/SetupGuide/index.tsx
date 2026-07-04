@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { X, Minus, ChevronRight, CheckCircle2, Loader2, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -24,6 +25,7 @@ const DISMISSED_KEY = "mployedin:setup-guide:dismissed";
 export function SetupGuide() {
   const params = useParams();
   const locale = (params?.locale as string) ?? "en";
+  const t = useTranslations("employerSetupGuide");
 
   const [visible, setVisible] = useState(false);
   const [minimized, setMinimized] = useState(false);
@@ -82,11 +84,11 @@ export function SetupGuide() {
         <div className="flex-1 min-w-0">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/90">
             <Sparkles className="h-3 w-3" />
-            Setup guide
+            {t("setupGuide")}
           </div>
-          <h3 className="mt-3 text-sm font-bold leading-snug text-white">Job Creation Setup Guide</h3>
+          <h3 className="mt-3 text-sm font-bold leading-snug text-white">{t("title")}</h3>
           <p className="mt-1 text-xs leading-snug text-white/75">
-            Complete these steps to open the full employer workflow.
+            {t("subtitle")}
           </p>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0 mt-0.5">
@@ -111,7 +113,7 @@ export function SetupGuide() {
         <>
           <div className="border-b border-slate-200/80 px-5 py-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-slate-500">Your progress</span>
+              <span className="text-xs font-medium text-slate-500">{t("progressLabel")}</span>
               <span className="text-xs font-bold text-sky-700">
                 {completedCount} / {steps.length} completed
               </span>
@@ -205,7 +207,7 @@ export function SetupGuide() {
                 onChange={(e) => setDoNotShow(e.target.checked)}
                 className="h-3.5 w-3.5 rounded border-slate-300 text-sky-600 focus:ring-sky-600"
               />
-              <span className="text-xs text-slate-500">Do not show again</span>
+              <span className="text-xs text-slate-500">{t("doNotShowAgain")}</span>
             </label>
           </div>
         </>

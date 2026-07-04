@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { MapPin, Briefcase } from "lucide-react";
 
@@ -15,6 +16,8 @@ interface SimilarJob {
 }
 
 export function SimilarJobs({ jobId, locale }: { jobId: string; locale: string }) {
+  const t = useTranslations("similarJobs");
+
   const { data, isLoading } = useQuery<{ jobs: SimilarJob[] }>({
     queryKey: ["similar-jobs", jobId],
     queryFn: () => fetch(`/api/jobs/${jobId}/similar`).then((r) => r.json()),
@@ -26,7 +29,7 @@ export function SimilarJobs({ jobId, locale }: { jobId: string; locale: string }
   if (isLoading) {
     return (
       <div className="mt-8 border-t border-border pt-8 space-y-4">
-        <h2 className="text-lg font-semibold text-foreground">Similar Jobs</h2>
+        <h2 className="text-lg font-semibold text-foreground">{t("similarJobs")}</h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-36 animate-pulse rounded-lg sm:rounded-[22px] bg-muted" />
@@ -41,8 +44,8 @@ export function SimilarJobs({ jobId, locale }: { jobId: string; locale: string }
   return (
     <div className="mt-8 border-t border-border pt-8 space-y-4">
       <div>
-        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Keep exploring</div>
-        <h2 className="mt-1 text-lg font-semibold tracking-tight text-foreground">Similar Jobs</h2>
+        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("keepExploring")}</div>
+        <h2 className="mt-1 text-lg font-semibold tracking-tight text-foreground">{t("similarJobs")}</h2>
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {jobs.map((job) => (
@@ -95,7 +98,7 @@ export function SimilarJobs({ jobId, locale }: { jobId: string; locale: string }
             )}
 
             <div className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary">
-              View role
+              {t("viewRole")}
               <Briefcase className="h-3.5 w-3.5" />
             </div>
           </Link>

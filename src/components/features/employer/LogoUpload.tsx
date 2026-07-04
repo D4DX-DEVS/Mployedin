@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { Camera, Trash2, Loader2, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -22,6 +23,7 @@ const MAX_SIZE = 2 * 1024 * 1024; // 2MB
 const ALLOWED = ["image/jpeg", "image/png", "image/webp"];
 
 export function LogoUpload({ currentLogo, companyName, onUploadComplete, onRemove }: LogoUploadProps) {
+  const t = useTranslations("logoUpload");
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -35,11 +37,11 @@ export function LogoUpload({ currentLogo, companyName, onUploadComplete, onRemov
     setError("");
 
     if (!ALLOWED.includes(file.type)) {
-      setError("Only JPEG, PNG, and WebP images are allowed.");
+      setError(t("onlyJpegPngWebpAllowed"));
       return;
     }
     if (file.size > MAX_SIZE) {
-      setError("Image must be under 2MB.");
+      setError(t("imageMustBeUnder2mb"));
       return;
     }
 
@@ -60,14 +62,14 @@ export function LogoUpload({ currentLogo, companyName, onUploadComplete, onRemov
       });
       if (!res.ok) {
         const data = await res.json();
-        setError(data.error ?? "Upload failed");
+        setError(data.error ?? t("uploadFailed"));
         setPreview(null);
         return;
       }
       const data = await res.json();
       onUploadComplete(data.url);
     } catch {
-      setError("Network error. Please try again.");
+      setError(t("networkErrorTryAgain"));
       setPreview(null);
     } finally {
       setUploading(false);
@@ -88,7 +90,7 @@ export function LogoUpload({ currentLogo, companyName, onUploadComplete, onRemov
         onRemove();
       }
     } catch {
-      setError("Failed to remove logo.");
+      setError(t("failedToRemoveLogo"));
     } finally {
       setUploading(false);
     }
@@ -105,7 +107,7 @@ export function LogoUpload({ currentLogo, companyName, onUploadComplete, onRemov
           {displayUrl ? (
             <img
               src={displayUrl}
-              alt="Company logo"
+              alt={t("companyLogo")}
               className="w-full h-full object-cover rounded-xl"
             />
           ) : (
@@ -135,8 +137,8 @@ export function LogoUpload({ currentLogo, companyName, onUploadComplete, onRemov
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <p className="text-sm font-medium">Company Logo</p>
-        <p className="text-xs text-muted-foreground">JPEG, PNG or WebP. Max 2MB.</p>
+        <p className="text-sm font-medium">{t("companyLogo")}</p>
+        <p className="text-xs text-muted-foreground">{t("fileTypesAndSize")}</p>
         <div className="flex gap-2 mt-1">
           <Button
             type="button"
@@ -146,7 +148,7 @@ export function LogoUpload({ currentLogo, companyName, onUploadComplete, onRemov
             disabled={uploading}
             className="h-7 text-xs"
           >
-            {displayUrl ? "Change" : "Upload"}
+            {displayUrl ? t("change") : t("upload")}
           </Button>
           {displayUrl && (
             <Button
@@ -158,7 +160,7 @@ export function LogoUpload({ currentLogo, companyName, onUploadComplete, onRemov
               className="h-7 text-xs text-destructive hover:text-destructive"
             >
               <Trash2 className="w-3 h-3 me-1" />
-              Remove
+              {t("remove")}
             </Button>
           )}
         </div>

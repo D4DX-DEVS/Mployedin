@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Filter } from "lucide-react";
 import type { ConversionFunnel as ConversionFunnelData } from "./useSubscriptionDashboard";
 
@@ -8,13 +9,14 @@ interface Props {
 }
 
 export function ConversionFunnelChart({ data }: Props) {
+  const t = useTranslations("conversionFunnelChart");
   const stages = [
-    { label: "Total Users", value: data.totalUsers, color: "bg-primary" },
-    { label: "Verified", value: data.verified, color: "bg-primary/80" },
-    { label: "Onboarded", value: data.onboarded, color: "bg-indigo-500" },
-    { label: "Trial / Free", value: data.trial, color: "bg-rose-400" },
-    { label: "Paid", value: data.paid, color: "bg-emerald-500" },
-    { label: "Renewed", value: data.renewed, color: "bg-amber-500" },
+    { label: t("totalUsers"), value: data.totalUsers, color: "bg-primary" },
+    { label: t("verified"), value: data.verified, color: "bg-primary/80" },
+    { label: t("onboarded"), value: data.onboarded, color: "bg-indigo-500" },
+    { label: t("trialFree"), value: data.trial, color: "bg-rose-400" },
+    { label: t("paid"), value: data.paid, color: "bg-emerald-500" },
+    { label: t("renewed"), value: data.renewed, color: "bg-amber-500" },
   ];
 
   const maxValue = Math.max(...stages.map((s) => s.value), 1);
@@ -22,7 +24,7 @@ export function ConversionFunnelChart({ data }: Props) {
   return (
     <section className="rounded-2xl border border-border/60 bg-card p-6">
       <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2 mb-5">
-        <Filter className="h-4 w-4" /> Subscription Conversion Funnel
+        <Filter className="h-4 w-4" /> {t("subscriptionConversionFunnel")}
       </h4>
       <div className="space-y-3">
         {stages.map((stage, idx) => {

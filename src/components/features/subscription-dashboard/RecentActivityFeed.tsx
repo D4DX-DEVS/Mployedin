@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   Activity, CheckCircle, ArrowUpRight, ArrowDownRight,
   RotateCcw, XCircle, AlertTriangle,
@@ -11,52 +12,60 @@ interface RecentActivityFeedProps {
   data: ActivityItem[];
 }
 
-const ACTION_CONFIG: Record<string, { icon: typeof CheckCircle; color: string; label: string }> = {
-  assigned: { icon: CheckCircle, color: "text-emerald-400", label: "New subscription" },
-  upgraded: { icon: ArrowUpRight, color: "text-sky-400", label: "Upgraded" },
-  downgraded: { icon: ArrowDownRight, color: "text-amber-400", label: "Downgraded" },
-  renewed: { icon: RotateCcw, color: "text-emerald-400", label: "Renewed" },
-  cancelled: { icon: XCircle, color: "text-red-400", label: "Cancelled" },
-  expired: { icon: AlertTriangle, color: "text-amber-400", label: "Expired" },
-  suspended: { icon: AlertTriangle, color: "text-orange-400", label: "Suspended" },
-  reactivated: { icon: CheckCircle, color: "text-emerald-400", label: "Reactivated" },
-};
+function getActionConfig(t: ReturnType<typeof useTranslations>) {
+  return {
+    assigned: { icon: CheckCircle, color: "text-emerald-400", label: t("newSubscription") },
+    upgraded: { icon: ArrowUpRight, color: "text-sky-400", label: t("upgraded") },
+    downgraded: { icon: ArrowDownRight, color: "text-amber-400", label: t("downgraded") },
+    renewed: { icon: RotateCcw, color: "text-emerald-400", label: t("renewed") },
+    cancelled: { icon: XCircle, color: "text-red-400", label: t("cancelled") },
+    expired: { icon: AlertTriangle, color: "text-amber-400", label: t("expired") },
+    suspended: { icon: AlertTriangle, color: "text-orange-400", label: t("suspended") },
+    reactivated: { icon: CheckCircle, color: "text-emerald-400", label: t("reactivated") },
+  } as const;
+}
 
-const FILTER_OPTIONS = [
-  { key: "all", label: "All" },
-  { key: "assigned", label: "New" },
-  { key: "upgraded", label: "Upgrade" },
-  { key: "downgraded", label: "Downgrade" },
-  { key: "renewed", label: "Renewal" },
-  { key: "cancelled", label: "Cancel" },
-];
+function getFilterOptions(t: ReturnType<typeof useTranslations>) {
+  return [
+    { key: "all", label: t("all") },
+    { key: "assigned", label: t("new") },
+    { key: "upgraded", label: t("upgrade") },
+    { key: "downgraded", label: t("downgrade") },
+    { key: "renewed", label: t("renewal") },
+    { key: "cancelled", label: t("cancel") },
+  ];
+}
 
-function timeAgo(dateStr: string) {
+function timeAgo(dateStr: string, t: ReturnType<typeof useTranslations>) {
   const diff = Date.now() - new Date(dateStr).getTime();
   const hours = Math.floor(diff / 36e5);
-  if (hours < 1) return "Just now";
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 1) return t("justNow");
+  if (hours < 24) return t("hoursAgo", { hours });
   const days = Math.floor(hours / 24);
-  if (days === 1) return "1 day ago";
-  return `${days} days ago`;
+  if (days === 1) return t("oneDayAgo");
+  return t("daysAgo", { days });
 }
 
 export function RecentActivityFeed({ data }: RecentActivityFeedProps) {
+  const t = useTranslations("recentActivityFeed");
+  const tc = useTranslations("common");
   const [filter, setFilter] = useState("all");
   const filtered = filter === "all" ? data : data.filter((a) => a.action === filter);
+  const actionConfig = getActionConfig(t);
+  const filterOptions = getFilterOptions(t);
 
   return (
     <section className="rounded-2xl border border-border/60 bg-card p-6">
       <div className="flex items-center justify-between mb-4">
         <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-          <Activity className="h-4 w-4" /> Recent Activity
+          <Activity className="h-4 w-4" /> {t("recentActivity")}
         </h4>
-        <span className="text-xs text-primary cursor-pointer hover:underline">View all</span>
+        <span className="text-xs text-primary cursor-pointer hover:underline">{tc("view")}</span>
       </div>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-1 mb-4">
-        {FILTER_OPTIONS.map((f) => (
+        {filterOptions.map((f) => (
           <button
             key={f.key}
             onClick={() => setFilter(f.key)}
@@ -72,11 +81,11 @@ export function RecentActivityFeed({ data }: RecentActivityFeedProps) {
       </div>
 
       {filtered.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-6">No activity</p>
+        <p className="text-sm text-muted-foreground text-center py-6">{t("noActivity")}</p>
       ) : (
         <div className="space-y-2 max-h-80 overflow-y-auto">
           {filtered.slice(0, 10).map((a) => {
-            const cfg = ACTION_CONFIG[a.action] ?? ACTION_CONFIG.assigned;
+            const cfg = actionConfig[a.action as keyof typeof actionConfig] ?? actionConfig.assigned;
             const Icon = cfg.icon;
             return (
               <div
@@ -95,12 +104,12 @@ export function RecentActivityFeed({ data }: RecentActivityFeedProps) {
                     )}
                   </p>
                   <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-0.5">
-                    <span>{timeAgo(a.createdAt)}</span>
-                    {a.performedByName && <span>· by {a.performedByName}</span>}
+                    <span>{timeAgo(a.createdAt, t)}</span>
+                    {a.performedByName && <span>· {t("by", { name: a.performedByName })}</span>}
                   </div>
                 </div>
                 <span className="shrink-0 text-[10px] font-medium rounded-md border border-border/60 bg-muted/40 px-2 py-0.5">
-                  {a.userEmail?.includes("employer") ? "Employer" : "Job Seeker"}
+                  {a.userEmail?.includes("employer") ? t("employer") : t("jobSeeker")}
                 </span>
               </div>
             );

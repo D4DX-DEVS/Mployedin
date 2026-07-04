@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { createPortal } from "react-dom";
 import {
   X, Download, FileText, ZoomIn, ZoomOut, RotateCw,
@@ -71,6 +72,7 @@ function ScoreBar({ label, value }: { label: string; value: number }) {
 }
 
 function MoreMenu({ url, displayName }: { url: string; displayName: string }) {
+  const t = useTranslations("resumeViewerModal");
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -84,7 +86,7 @@ function MoreMenu({ url, displayName }: { url: string; displayName: string }) {
 
   return (
     <div ref={ref} className="relative">
-      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setOpen((o) => !o)} title="More">
+      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setOpen((o) => !o)} title={t("more")}>
         <MoreHorizontal className="w-4 h-4" />
       </Button>
       {open && (
@@ -98,7 +100,7 @@ function MoreMenu({ url, displayName }: { url: string; displayName: string }) {
             onClick={() => setOpen(false)}
           >
             <Download className="w-3.5 h-3.5 text-muted-foreground" />
-            Download CV
+            {t("downloadCv")}
           </a>
         </div>
       )}
@@ -139,6 +141,7 @@ function AtsPanel({
   jobId?: string;
   initialScore?: number;
 }) {
+  const t = useTranslations("resumeViewerModal");
   const ats = useAtsCheck();
   const [report, setReport] = useState<AtsReport | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -192,14 +195,14 @@ function AtsPanel({
         {loading && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
             <Loader2 className="w-4 h-4 animate-spin" />
-            Reading the CV the way an ATS would…
+            {t("readingCv")}
           </div>
         )}
 
         {error && !loading && (
           <div className="text-xs text-red-500 space-y-2">
             <p>{error}</p>
-            <Button variant="outline" size="sm" className="h-7 text-xs" onClick={rerun}>Try again</Button>
+            <Button variant="outline" size="sm" className="h-7 text-xs" onClick={rerun}>{t("tryAgain")}</Button>
           </div>
         )}
 
@@ -221,7 +224,7 @@ function AtsPanel({
             {!report.parseable && (
               <div className="flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/5 p-2.5 text-[11px] text-red-600 dark:text-red-400">
                 <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                <span>No readable text layer — this looks like a scanned/image CV that ATS software cannot parse.</span>
+                <span>{t("notParseable")}</span>
               </div>
             )}
 
@@ -242,7 +245,7 @@ function AtsPanel({
             {report.keywordCoverage && (
               <div className="space-y-1.5">
                 <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Job keyword match</span>
+                  <span>{t("jobKeywordMatch")}</span>
                   <span className="font-medium tabular-nums">{report.keywordCoverage.coverage}%</span>
                 </div>
                 <div className="h-2 rounded-full bg-muted overflow-hidden">
@@ -253,7 +256,7 @@ function AtsPanel({
                 </div>
                 {report.keywordCoverage.missing.length > 0 && (
                   <p className="text-[11px] text-muted-foreground">
-                    Missing: {report.keywordCoverage.missing.slice(0, 8).join(", ")}
+                    {t("missing")}: {report.keywordCoverage.missing.slice(0, 8).join(", ")}
                     {report.keywordCoverage.missing.length > 8 ? "…" : ""}
                   </p>
                 )}
@@ -263,7 +266,7 @@ function AtsPanel({
             {/* Recommendations */}
             {report.recommendations.length > 0 && (
               <div className="space-y-1.5">
-                <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">How to improve</p>
+                <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">{t("howToImprove")}</p>
                 <ul className="space-y-1">
                   {report.recommendations.slice(0, 5).map((r, i) => (
                     <li key={i} className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
@@ -298,6 +301,7 @@ export function ResumeViewerModal({
   jobId,
   initialAtsScore,
 }: ResumeViewerModalProps) {
+  const t = useTranslations("resumeViewerModal");
   const isPdf = url.toLowerCase().includes(".pdf") || url.includes("application/pdf");
   const [imgScale, setImgScale] = useState(1);
   const [imgRotation, setImgRotation] = useState(0);
@@ -431,7 +435,7 @@ export function ResumeViewerModal({
                     onClick={() => handleAction("shortlisted")}
                   >
                     <Star className="w-3.5 h-3.5" />
-                    {actionLoading === "shortlisted" ? "…" : "Shortlist"}
+                    {actionLoading === "shortlisted" ? "…" : t("shortlist")}
                   </Button>
                 )}
                 {currentStatus !== "interview_scheduled" && (
@@ -441,7 +445,7 @@ export function ResumeViewerModal({
                     onClick={() => handleAction("interview_scheduled")}
                   >
                     <Calendar className="w-3.5 h-3.5" />
-                    {actionLoading === "interview_scheduled" ? "…" : "Interview"}
+                    {actionLoading === "interview_scheduled" ? "…" : t("interview")}
                   </Button>
                 )}
                 {currentStatus !== "rejected" && (
@@ -451,7 +455,7 @@ export function ResumeViewerModal({
                     onClick={() => handleAction("rejected")}
                   >
                     <XCircle className="w-3.5 h-3.5" />
-                    {actionLoading === "rejected" ? "…" : "Reject"}
+                    {actionLoading === "rejected" ? "…" : t("reject")}
                   </Button>
                 )}
                 <div className="w-px h-5 bg-border mx-0.5" />
@@ -504,9 +508,9 @@ export function ResumeViewerModal({
                 <div className="flex flex-col items-center justify-center min-h-full gap-3 text-center px-6">
                   <FileText className="w-10 h-10 text-muted-foreground/60" />
                   <div className="space-y-1">
-                    <p className="text-sm font-medium">Preview isn&rsquo;t available here</p>
+                    <p className="text-sm font-medium">{t("previewNotAvailable")}</p>
                     <p className="text-xs text-muted-foreground max-w-xs">
-                      This CV can&rsquo;t be embedded in the browser. Open or download it to view the full document.
+                      {t("cvNotEmbeddable")}
                     </p>
                   </div>
                   {url && (
@@ -518,7 +522,7 @@ export function ResumeViewerModal({
                       className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
                     >
                       <Download className="w-4 h-4" />
-                      Open / Download CV
+                      {t("openDownloadCv")}
                     </a>
                   )}
                 </div>
@@ -565,7 +569,7 @@ export function ResumeViewerModal({
                   <div className="min-w-0 pt-0.5">
                     <p className="font-bold text-sm leading-snug truncate">{candidateName ?? "Candidate"}</p>
                     {candidate?.role && (
-                      <p className="text-xs text-muted-foreground mt-0.5 truncate">{candidate.role}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 truncate">{t("role")}: {candidate.role}</p>
                     )}
                   </div>
                 </div>
@@ -589,7 +593,7 @@ export function ResumeViewerModal({
                 {/* Skills */}
                 {candidate?.skills && candidate.skills.length > 0 && (
                   <div className="space-y-2">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Skills</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("skills")}</p>
                     <div className="flex flex-wrap gap-1.5">
                       {candidate.skills.slice(0, 12).map((s) => (
                         <span key={s} className="text-xs px-2.5 py-0.5 bg-muted rounded-md border border-border/60 font-medium">
@@ -613,7 +617,7 @@ export function ResumeViewerModal({
                   <div className="p-5 space-y-4">
                     <div className="flex items-center gap-2">
                       <Brain className="w-4 h-4 text-primary" />
-                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">AI Match</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("aiMatch")}</p>
                     </div>
 
                     {/* Big score */}
@@ -631,7 +635,7 @@ export function ResumeViewerModal({
                           />
                         </div>
                         <p className="text-[11px] text-muted-foreground">
-                          {aiMatchScore >= 75 ? "Strong match" : aiMatchScore >= 50 ? "Moderate match" : "Low match"}
+                          {aiMatchScore >= 75 ? t("strongMatch") : aiMatchScore >= 50 ? t("moderateMatch") : t("lowMatch")}
                         </p>
                       </div>
                     </div>
@@ -649,7 +653,7 @@ export function ResumeViewerModal({
                     {strengths && strengths.length > 0 && (
                       <div className="space-y-1.5">
                         <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
-                          <CheckCircle2 className="w-3.5 h-3.5" /> Strengths
+                          <CheckCircle2 className="w-3.5 h-3.5" /> {t("strengths")}
                         </p>
                         <ul className="space-y-1">
                           {strengths.map((s, i) => (
@@ -666,7 +670,7 @@ export function ResumeViewerModal({
                     {gaps && gaps.length > 0 && (
                       <div className="space-y-1.5">
                         <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
-                          <XCircle className="w-3.5 h-3.5" /> Missing
+                          <XCircle className="w-3.5 h-3.5" /> {t("gaps")}
                         </p>
                         <ul className="space-y-1">
                           {gaps.map((g, i) => (
@@ -697,12 +701,12 @@ export function ResumeViewerModal({
                       onClick={() => handleAction("shortlisted")}
                     >
                       <Star className="w-4 h-4" />
-                      {actionLoading === "shortlisted" ? "Saving…" : "Shortlist Candidate"}
+                      {actionLoading === "shortlisted" ? t("saving") : t("shortlistCandidate")}
                     </Button>
                   )}
                   {currentStatus === "shortlisted" && (
                     <div className="flex items-center justify-center gap-1.5 py-1 text-emerald-700 dark:text-emerald-400 text-sm font-medium">
-                      <CheckCircle2 className="w-4 h-4" /> Shortlisted
+                      <CheckCircle2 className="w-4 h-4" /> {t("shortlisted")}
                     </div>
                   )}
                   {currentStatus !== "interview_scheduled" && (
@@ -713,7 +717,7 @@ export function ResumeViewerModal({
                       onClick={() => handleAction("interview_scheduled")}
                     >
                       <Calendar className="w-4 h-4" />
-                      {actionLoading === "interview_scheduled" ? "Saving…" : "Schedule Interview"}
+                      {actionLoading === "interview_scheduled" ? t("saving") : t("scheduleInterview")}
                     </Button>
                   )}
                   {currentStatus !== "rejected" && (
@@ -724,7 +728,7 @@ export function ResumeViewerModal({
                       onClick={() => handleAction("rejected")}
                     >
                       <XCircle className="w-4 h-4" />
-                      {actionLoading === "rejected" ? "Saving…" : "Reject"}
+                      {actionLoading === "rejected" ? t("saving") : t("reject")}
                     </Button>
                   )}
                 </div>

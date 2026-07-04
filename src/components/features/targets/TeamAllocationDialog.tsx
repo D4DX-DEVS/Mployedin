@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -173,6 +174,7 @@ export function TeamAllocationDialog({
   teamProfiles,
   onSuccess,
 }: TeamAllocationDialogProps) {
+  const t = useTranslations("teamAllocationDialog");
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<AllocationMode>("manual");
@@ -473,10 +475,10 @@ export function TeamAllocationDialog({
         <DialogHeader className="flex-shrink-0 border-b border-border/60 px-6 py-4">
           <DialogTitle className="flex items-center gap-2 text-lg">
             <SplitSquareVertical className="h-5 w-5 text-sky-600" />
-            Distribute Targets to Agents
+            {t("distributeTargetsToAgents")}
           </DialogTitle>
           <DialogDescription className="text-sm text-muted-foreground">
-            Set targets for your team agents and distribute your {year} targets.
+            {t("setTargetsDescription", { year })}
           </DialogDescription>
         </DialogHeader>
 
@@ -515,11 +517,11 @@ export function TeamAllocationDialog({
                           className="h-4 px-1 text-[9px]"
                         >
                           {status === "over"
-                            ? "Over"
+                            ? t("over")
                             : status === "not-set"
-                              ? "No Budget"
+                              ? t("noBudget")
                               : status === "full"
-                                ? "Full"
+                                ? t("full")
                                 : `${c.allocated}/${c.total}`}
                         </Badge>
                       </div>
@@ -531,12 +533,12 @@ export function TeamAllocationDialog({
 
             {/* Strategy + Search */}
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-medium text-muted-foreground">Strategy:</span>
+              <span className="text-xs font-medium text-muted-foreground">{t("strategy")}:</span>
               <div className="flex rounded-lg border border-border/60 p-0.5">
                 {([
-                  { key: "equal" as const, label: "Equal", icon: <SplitSquareVertical className="h-3.5 w-3.5" /> },
-                  { key: "weighted" as const, label: "Weighted", icon: <Weight className="h-3.5 w-3.5" /> },
-                  { key: "manual" as const, label: "Manual", icon: <WandSparkles className="h-3.5 w-3.5" /> },
+                  { key: "equal" as const, label: t("equal"), icon: <SplitSquareVertical className="h-3.5 w-3.5" /> },
+                  { key: "weighted" as const, label: t("weighted"), icon: <Weight className="h-3.5 w-3.5" /> },
+                  { key: "manual" as const, label: t("manual"), icon: <WandSparkles className="h-3.5 w-3.5" /> },
                 ]).map((s) => (
                   <Button
                     key={s.key}
@@ -550,9 +552,9 @@ export function TeamAllocationDialog({
                 ))}
               </div>
               <span className="text-xs text-muted-foreground">
-                {mode === "equal" && "Remaining pool split evenly across all agents"}
-                {mode === "weighted" && "Split by performance weight across agents"}
-                {mode === "manual" && "Type each agent\u2019s targets manually"}
+                {mode === "equal" && t("equalDesc")}
+                {mode === "weighted" && t("weightedDesc")}
+                {mode === "manual" && t("manualDesc")}
               </span>
               <Button
                 variant="ghost"
@@ -560,7 +562,7 @@ export function TeamAllocationDialog({
                 className="ml-auto h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
                 onClick={resetAllocations}
               >
-                <RotateCcw className="h-3 w-3" /> Reset
+                <RotateCcw className="h-3 w-3" /> {t("reset")}
               </Button>
             </div>
 
@@ -570,7 +572,7 @@ export function TeamAllocationDialog({
               <Input
                 value={filterName}
                 onChange={(e) => setFilterName(e.target.value)}
-                placeholder="Search agents..."
+                placeholder={t("searchAgents")}
                 className="h-8 rounded-lg border-border bg-background pl-8 text-xs"
               />
             </div>
@@ -584,7 +586,7 @@ export function TeamAllocationDialog({
               ) : agents.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
                   <Users className="h-10 w-10 text-muted-foreground/50 mb-3" />
-                  <p className="text-sm text-muted-foreground">No agents in your team</p>
+                  <p className="text-sm text-muted-foreground">{t("noAgentsInTeam")}</p>
                 </div>
               ) : (
                 <div>
@@ -592,28 +594,28 @@ export function TeamAllocationDialog({
                     <thead className="bg-muted/40 border-b border-border/70">
                       <tr>
                         <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground w-[30%]">
-                          Agent
+                          {t("agent")}
                         </th>
                         <th className="px-3 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                           <div className="flex items-center justify-center gap-1.5">
                             <Building2 className="h-3.5 w-3.5" />
-                            Employers
+                            {t("employers")}
                           </div>
                         </th>
                         <th className="px-3 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                           <div className="flex items-center justify-center gap-1.5">
                             <Users className="h-3.5 w-3.5" />
-                            Employees
+                            {t("employees")}
                           </div>
                         </th>
                         <th className="px-3 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                           <div className="flex items-center justify-center gap-1.5">
                             <DollarSign className="h-3.5 w-3.5" />
-                            Revenue
+                            {t("revenue")}
                           </div>
                         </th>
                         <th className="px-3 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground w-[80px]">
-                          Monthly
+                          {t("monthly")}
                         </th>
                       </tr>
                     </thead>
@@ -621,7 +623,7 @@ export function TeamAllocationDialog({
                       {filteredAgents.length === 0 ? (
                         <tr>
                           <td colSpan={5} className="px-4 py-10 text-center text-sm text-muted-foreground">
-                            No agents match the search
+                            {t("noAgentsMatch")}
                           </td>
                         </tr>
                       ) : (
@@ -638,6 +640,7 @@ export function TeamAllocationDialog({
                               onUpdateTarget={updateTarget}
                               onToggleMonthly={toggleMonthly}
                               onUpdateMonthly={updateMonthlyTarget}
+                              t={t}
                             />
                           );
                         })
@@ -647,7 +650,7 @@ export function TeamAllocationDialog({
                     <tfoot className="bg-muted/30 border-t-2 border-border">
                       <tr>
                         <td className="px-4 py-2.5 text-sm font-semibold text-foreground">
-                          Total ({validRows.length} agent{validRows.length !== 1 ? "s" : ""})
+                          {t("total")} ({validRows.length} {t(validRows.length !== 1 ? "agents" : "agent")})
                         </td>
                         <td className="px-3 py-2.5 text-center text-sm font-bold text-foreground tabular-nums">
                           {totals.employer.toLocaleString()}
@@ -662,7 +665,7 @@ export function TeamAllocationDialog({
                       </tr>
                       <tr className="bg-muted/10">
                         <td className="px-4 py-2 text-xs text-muted-foreground">
-                          Remaining
+                          {t("remaining")}
                         </td>
                         <td className={`px-3 py-2 text-center text-xs font-semibold tabular-nums ${remaining.emp < 0 ? "text-red-500" : "text-emerald-600"}`}>
                           {remaining.emp.toLocaleString()}
@@ -687,11 +690,11 @@ export function TeamAllocationDialog({
         <DialogFooter className="flex-shrink-0 border-t border-border/60 bg-background px-5 py-3 sm:justify-between">
           <div className="flex min-h-7 flex-1 items-center text-[11px] text-muted-foreground">
             {!supervisorProfile ? (
-              <span className="text-red-500">No supervisor target profile.</span>
+              <span className="text-red-500">{t("noSupervisorProfile")}</span>
             ) : remaining.emp < 0 || remaining.ee < 0 || remaining.fin < 0 ? (
-              <span className="text-red-500">Over-allocated. Reduce targets to stay within budget.</span>
+              <span className="text-red-500">{t("overAllocated")}</span>
             ) : validRows.length > 0 ? (
-              <span>{validRows.length} agent{validRows.length > 1 ? "s" : ""} · {mode} distribution</span>
+              <span>{validRows.length} {t(validRows.length > 1 ? "agents" : "agent")} · {mode} {t("distribution")}</span>
             ) : null}
           </div>
           <div className="flex items-center gap-2">
@@ -701,7 +704,7 @@ export function TeamAllocationDialog({
               className="h-8"
               onClick={() => onOpenChange(false)}
             >
-              Cancel
+              {t("cancel")}
             </Button>
             <Button
               size="sm"
@@ -711,8 +714,8 @@ export function TeamAllocationDialog({
             >
               <Target className="h-3.5 w-3.5" />
               {saving
-                ? "Distributing…"
-                : `Distribute to ${validRows.length} Agent${validRows.length !== 1 ? "s" : ""}`}
+                ? t("distributing")
+                : `${t("distributeTo")} ${validRows.length} ${t(validRows.length !== 1 ? "agents" : "agent")}`}
             </Button>
           </div>
         </DialogFooter>
@@ -733,6 +736,7 @@ interface AgentTargetRowProps {
   onUpdateTarget: (id: string, field: "employerTarget" | "employeeTarget" | "financeTarget", value: number) => void;
   onToggleMonthly: (id: string) => void;
   onUpdateMonthly: (id: string, month: number, field: "employerTarget" | "employeeTarget" | "financeTarget", value: number) => void;
+  t: ReturnType<typeof useTranslations>;
 }
 
 function AgentTargetRow({
@@ -743,6 +747,7 @@ function AgentTargetRow({
   onUpdateTarget,
   onToggleMonthly,
   onUpdateMonthly,
+  t,
 }: AgentTargetRowProps) {
   const hasTarget = row.employerTarget > 0 || row.employeeTarget > 0 || row.financeTarget > 0;
 
@@ -831,6 +836,7 @@ function AgentTargetRow({
                 financeTarget: row.financeTarget,
               }}
               onUpdate={onUpdateMonthly}
+              t={t}
             />
           </td>
         </tr>
@@ -849,6 +855,7 @@ interface MonthlyDistributionTableProps {
   currency: string;
   annualTargets: { employerTarget: number; employeeTarget: number; financeTarget: number };
   onUpdate: (agentId: string, month: number, field: "employerTarget" | "employeeTarget" | "financeTarget", value: number) => void;
+  t: ReturnType<typeof useTranslations>;
 }
 
 function MonthlyDistributionTable({
@@ -857,6 +864,7 @@ function MonthlyDistributionTable({
   currency,
   annualTargets,
   onUpdate,
+  t,
 }: MonthlyDistributionTableProps) {
   const monthlySum = monthly.reduce(
     (acc, m) => ({
@@ -875,10 +883,10 @@ function MonthlyDistributionTable({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold text-muted-foreground">Monthly Distribution (editable)</p>
+        <p className="text-xs font-semibold text-muted-foreground">{t("monthlyDistribution")}</p>
         {!isValid && (
           <Badge variant="destructive" className="text-[10px]">
-            Sum mismatch — adjust monthly values
+            {t("sumMismatch")}
           </Badge>
         )}
       </div>
@@ -886,10 +894,10 @@ function MonthlyDistributionTable({
         <table className="w-full text-xs">
           <thead className="bg-muted/30">
             <tr>
-              <th className="px-2 py-2 text-left font-semibold text-muted-foreground">Month</th>
-              <th className="px-2 py-2 text-center font-semibold text-muted-foreground">Employers</th>
-              <th className="px-2 py-2 text-center font-semibold text-muted-foreground">Employees</th>
-              <th className="px-2 py-2 text-center font-semibold text-muted-foreground">Revenue</th>
+              <th className="px-2 py-2 text-left font-semibold text-muted-foreground">{t("month")}</th>
+              <th className="px-2 py-2 text-center font-semibold text-muted-foreground">{t("employers")}</th>
+              <th className="px-2 py-2 text-center font-semibold text-muted-foreground">{t("employees")}</th>
+              <th className="px-2 py-2 text-center font-semibold text-muted-foreground">{t("revenue")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/40">
@@ -928,7 +936,7 @@ function MonthlyDistributionTable({
           </tbody>
           <tfoot className="bg-muted/20 border-t border-border">
             <tr>
-              <td className="px-2 py-1.5 font-semibold">Total</td>
+              <td className="px-2 py-1.5 font-semibold">{t("total")}</td>
               <td className={`px-2 py-1.5 text-center font-bold tabular-nums ${monthlySum.employer !== annualTargets.employerTarget ? "text-red-500" : ""}`}>
                 {monthlySum.employer}
               </td>

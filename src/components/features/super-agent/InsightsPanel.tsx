@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import {
   AlertTriangle, TrendingUp, Lightbulb, Rocket, RefreshCw, Sparkles,
   ThumbsUp, ThumbsDown, ArrowRight, Loader2, X, Eye,
@@ -84,6 +85,7 @@ const confidenceStyles: Record<ConfidenceLevel, { dot: string; label: string }> 
    ──────────────────────────────────────────────────────── */
 
 export function SuperAgentInsightsPanel() {
+  const t = useTranslations("insightsPanel");
   const router = useRouter();
   const { confirm, ConfirmDialogNode } = useConfirm();
   const [insights, setInsights] = useState<Insight[]>([]);
@@ -287,12 +289,12 @@ export function SuperAgentInsightsPanel() {
         <div className="flex items-center gap-2 mb-3">
           <Sparkles className="h-4 w-4 text-primary animate-pulse" />
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            AI Insights
+            {t("aiInsights")}
           </p>
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          <span className="animate-pulse">Analyzing your team…</span>
+          <span className="animate-pulse">{t("analyzingTeam")}</span>
         </div>
       </div>
     );
@@ -307,14 +309,14 @@ export function SuperAgentInsightsPanel() {
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              AI Insights
+              {t("aiInsights")}
             </p>
           </div>
           <button onClick={fetchInsights} className="text-xs text-primary hover:underline flex items-center gap-1">
-            <RefreshCw className="h-3 w-3" /> Retry
+            <RefreshCw className="h-3 w-3" /> {t("retry")}
           </button>
         </div>
-        <p className="text-xs text-muted-foreground">Failed to load insights. Try again.</p>
+        <p className="text-xs text-muted-foreground">{t("failedToLoadInsights")}</p>
       </div>
     );
   }
@@ -327,10 +329,10 @@ export function SuperAgentInsightsPanel() {
         <div className="flex items-center gap-2 mb-2">
           <Sparkles className="h-4 w-4 text-primary" />
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            AI Insights
+            {t("aiInsights")}
           </p>
         </div>
-        <p className="text-xs text-muted-foreground">No insights available right now. Your team data will be analysed as activity grows.</p>
+        <p className="text-xs text-muted-foreground">{t("noInsightsAvailable")}</p>
       </div>
     );
   }
@@ -345,7 +347,7 @@ export function SuperAgentInsightsPanel() {
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            AI Insights
+            {t("aiInsights")}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -355,13 +357,13 @@ export function SuperAgentInsightsPanel() {
               className="text-[10px] text-muted-foreground/60 hover:text-primary transition-colors flex items-center gap-1"
             >
               <Eye className="h-3 w-3" />
-              {showDismissed ? "Restore all" : `${dismissedCount} hidden`}
+              {showDismissed ? t("restoreAll") : `${dismissedCount} ${t("hidden")}`}
             </button>
           )}
           <button
             onClick={fetchInsights}
             className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
-            title="Refresh insights"
+            title={t("refreshInsights")}
           >
             <RefreshCw className="h-3 w-3" />
           </button>
@@ -424,7 +426,7 @@ export function SuperAgentInsightsPanel() {
                 {insight.action && insight.actionType ? (
                   isActionComplete ? (
                     <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                      ✓ Done
+                      ✓ {t("done")}
                     </span>
                   ) : (
                     <button
@@ -449,20 +451,20 @@ export function SuperAgentInsightsPanel() {
                     <button
                       onClick={() => handleFeedback(insight, true)}
                       className="text-muted-foreground/50 hover:text-emerald-500 transition-colors"
-                      title="Helpful"
+                      title={t("helpful")}
                     >
                       <ThumbsUp className="h-3 w-3" />
                     </button>
                     <button
                       onClick={() => handleFeedback(insight, false)}
                       className="text-muted-foreground/50 hover:text-rose-500 transition-colors"
-                      title="Not helpful"
+                      title={t("notHelpful")}
                     >
                       <ThumbsDown className="h-3 w-3" />
                     </button>
                   </div>
                 ) : (
-                  <span className="text-[10px] text-muted-foreground/50">Thanks!</span>
+                  <span className="text-[10px] text-muted-foreground/50">{t("thanks")}</span>
                 )}
               </div>
             </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { Clock, Globe } from "lucide-react";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 
@@ -61,6 +62,7 @@ export function AvailabilityCalendar({
   timezone,
   onTimezoneChange,
 }: AvailabilityCalendarProps) {
+  const t = useTranslations("availabilityCalendar");
   const hoursMap = new Map(availableHours.map((h) => [h.day, h]));
 
   const toggleDay = useCallback(
@@ -95,7 +97,7 @@ export function AvailabilityCalendar({
       <div>
         <div className="flex items-center gap-1.5 mb-2">
           <Globe className="h-3.5 w-3.5 text-muted-foreground" />
-          <p className="text-sm font-medium text-foreground">Your Timezone</p>
+          <p className="text-sm font-medium text-foreground">{t("yourTimezone")}</p>
         </div>
         <SearchableSelect
           className="h-9 w-64 text-sm rounded-lg"
@@ -104,13 +106,13 @@ export function AvailabilityCalendar({
           onValueChange={onTimezoneChange}
         />
         <p className="mt-1 text-xs text-muted-foreground">
-          All times below are in your selected timezone. Employers will see slots converted to their local time.
+          {t("timezoneDescription")}
         </p>
       </div>
 
       {/* Day selector chips */}
       <div>
-        <p className="text-sm font-medium text-foreground mb-3">Available Days</p>
+        <p className="text-sm font-medium text-foreground mb-3">{t("availableDays")}</p>
         <div className="flex gap-2 flex-wrap">
           {DAYS.map((day) => {
             const active = selectedDays.includes(day);
@@ -137,7 +139,7 @@ export function AvailabilityCalendar({
         <div>
           <div className="flex items-center gap-1.5 mb-3">
             <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-            <p className="text-sm font-medium text-foreground">Working Hours</p>
+            <p className="text-sm font-medium text-foreground">{t("workingHours")}</p>
           </div>
           <div className="space-y-2">
             {DAYS.filter((d) => selectedDays.includes(d)).map((day) => {
@@ -151,7 +153,7 @@ export function AvailabilityCalendar({
                     value={hours?.startTime ?? DEFAULT_START}
                     onValueChange={(v) => updateHour(day, "startTime", v)}
                   />
-                  <span className="text-xs text-muted-foreground">to</span>
+                  <span className="text-xs text-muted-foreground">{t("to")}</span>
                   <SearchableSelect
                     className="h-8 w-24 text-xs rounded-lg"
                     options={TIME_OPTIONS}
@@ -169,7 +171,7 @@ export function AvailabilityCalendar({
       {selectedDays.length > 0 && (
         <div className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2">
           <p className="text-xs text-primary font-medium">
-            ✓ Your availability is active — employers can book interviews on your available slots automatically.
+            {t("availabilityActive")}
           </p>
         </div>
       )}

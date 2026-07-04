@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import {
   Dialog,
   DialogContent,
@@ -115,6 +116,7 @@ function getProgressColor(progress: number): string {
 /* ------------------------------------------------------------------ */
 
 export function AgentDetailDialog({ open, onOpenChange, agent, year }: AgentDetailDialogProps) {
+  const t = useTranslations("agentDetailDialog");
   if (!agent) return null;
 
   const overallColor = getProgressColor(agent.overallProgress);
@@ -193,7 +195,7 @@ export function AgentDetailDialog({ open, onOpenChange, agent, year }: AgentDeta
               className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
               <X className="h-4 w-4" />
-              <span className="sr-only">Close</span>
+              <span className="sr-only">{t("close")}</span>
             </button>
           </div>
           {/* Meta + Badges */}
@@ -254,7 +256,7 @@ export function AgentDetailDialog({ open, onOpenChange, agent, year }: AgentDeta
                 <p className="mt-1 text-2xl font-bold" style={{ color: overallColor }}>
                   {agent.overallProgress}%
                 </p>
-                <p className="text-[11px] text-muted-foreground">Overall Progress</p>
+                <p className="text-[11px] text-muted-foreground">{t("overallProgress")}</p>
               </div>
 
               {/* Target Cards */}
@@ -303,12 +305,12 @@ export function AgentDetailDialog({ open, onOpenChange, agent, year }: AgentDeta
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                   <TrendingUp className="h-4 w-4 text-sky-600" />
-                  Monthly Performance — {year}
+                  {t("monthlyPerformance")} — {year}
                 </h3>
 
                 {/* Employers & Employees Bar Chart */}
                 <div className="rounded-xl border border-border/60 bg-card p-4">
-                  <p className="mb-3 text-xs font-medium text-muted-foreground">Employers & Employees (Achieved vs Target)</p>
+                  <p className="mb-3 text-xs font-medium text-muted-foreground">{t("employersEmployees")}</p>
                   <ResponsiveContainer width="100%" height={200}>
                     <BarChart data={monthlyChartData} barGap={2} barCategoryGap="20%">
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -333,7 +335,7 @@ export function AgentDetailDialog({ open, onOpenChange, agent, year }: AgentDeta
 
                 {/* Revenue Bar Chart */}
                 <div className="rounded-xl border border-border/60 bg-card p-4">
-                  <p className="mb-3 text-xs font-medium text-muted-foreground">Revenue ({agent.currency})</p>
+                  <p className="mb-3 text-xs font-medium text-muted-foreground">{t("revenue")} ({agent.currency})</p>
                   <ResponsiveContainer width="100%" height={180}>
                     <BarChart data={monthlyChartData} barGap={2} barCategoryGap="20%">
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -362,7 +364,7 @@ export function AgentDetailDialog({ open, onOpenChange, agent, year }: AgentDeta
               <div className="rounded-xl border border-border/60 bg-muted/10 p-8 text-center">
                 <TrendingUp className="mx-auto h-8 w-8 text-muted-foreground/40" />
                 <p className="mt-2 text-sm text-muted-foreground">
-                  No monthly achievement data available yet.
+                  {t("noMonthlyData")}
                 </p>
               </div>
             )}

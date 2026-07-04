@@ -6,6 +6,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { useState, useRef, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useFeatureGate } from "@/hooks/useFeatureGate";
 import {
@@ -75,6 +76,7 @@ async function fetchJobs(cursor: string | null, sort: SortMode): Promise<JobPage
 }
 
 export function RecommendedJobs({ locale }: { locale: string }) {
+  const t = useTranslations("recommendedJobs");
   const qc = useQueryClient();
   const [sortMode, setSortMode] = useState<SortMode>("match");
   const [appliedIds, setAppliedIds] = useState<Set<string>>(new Set());
@@ -123,13 +125,13 @@ export function RecommendedJobs({ locale }: { locale: string }) {
       }),
     onMutate: (jobId) => setAppliedIds((s) => new Set([...s, jobId])),
     onSuccess: () => {
-      toast.success("Application submitted!");
+      toast.success(t("applicationSubmitted"));
       qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
       qc.invalidateQueries({ queryKey: ["recommended-jobs"] });
     },
     onError: (err: unknown, jobId) => {
       setAppliedIds((s) => { const n = new Set(s); n.delete(jobId); return n; });
-      toast.error(typeof err === "string" ? err : "Failed to apply");
+      toast.error(typeof err === "string" ? err : t("failedToApply"));
     },
   });
 
@@ -147,7 +149,7 @@ export function RecommendedJobs({ locale }: { locale: string }) {
       });
     },
     onSuccess: (data: { saved: boolean }, jobId) => {
-      toast.success(data.saved ? "Job saved" : "Job unsaved");
+      toast.success(data.saved ? t("jobSaved") : t("jobUnsaved"));
       if (data.saved) {
         setSavedIds((s) => new Set([...s, jobId]));
       } else {
@@ -157,7 +159,7 @@ export function RecommendedJobs({ locale }: { locale: string }) {
     },
     onError: (err: unknown, jobId) => {
       setSavedIds((s) => { const n = new Set(s); n.has(jobId) ? n.delete(jobId) : n.add(jobId); return n; });
-      toast.error(typeof err === "string" ? err : "Failed to update saved jobs");
+      toast.error(typeof err === "string" ? err : t("failedToUpdateSaved"));
     },
   });
 
@@ -183,7 +185,7 @@ export function RecommendedJobs({ locale }: { locale: string }) {
   if (error) {
     return (
       <div className="card-base p-6 text-center">
-        <p className="text-sm text-muted-foreground">Failed to load recommendations</p>
+        <p className="text-sm text-muted-foreground">{t("failedToLoad")}</p>
       </div>
     );
   }
@@ -192,13 +194,13 @@ export function RecommendedJobs({ locale }: { locale: string }) {
     return (
       <div className="card-base p-6 text-center">
         <Sparkles className="mx-auto h-8 w-8 text-muted-foreground/40" />
-        <p className="mt-2 text-sm font-medium text-muted-foreground">No matches right now</p>
+        <p className="mt-2 text-sm font-medium text-muted-foreground">{t("noMatches")}</p>
         <p className="text-xs text-muted-foreground mb-3">
-          Set your job preferences or expand your salary range and location
+          {t("expandPreferences")}
         </p>
         <div className="flex justify-center gap-2">
           <Link href={`/${locale}/job-seeker/preferences`}>
-            <Button size="sm">Set Preferences</Button>
+            <Button size="sm">{t("setPreferences")}</Button>
           </Link>
         </div>
       </div>
@@ -265,7 +267,7 @@ export function RecommendedJobs({ locale }: { locale: string }) {
                     {job.matchScore}% match
                   </Badge>
                   {job.location.isRemote && (
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0">Remote</Badge>
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0">{t("remote")}</Badge>
                   )}
                 </div>
 

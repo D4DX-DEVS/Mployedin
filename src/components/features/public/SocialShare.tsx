@@ -2,6 +2,7 @@
 
 import { Share2, Link2, MessageCircle } from "lucide-react";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 interface SocialShareProps {
@@ -11,6 +12,7 @@ interface SocialShareProps {
 }
 
 export default function SocialShare({ url, title, description }: SocialShareProps) {
+  const t = useTranslations("socialShare");
   const [open, setOpen] = useState(false);
 
   const encodedUrl = encodeURIComponent(url);
@@ -47,10 +49,10 @@ export default function SocialShare({ url, title, description }: SocialShareProp
   const copyLink = async () => {
     try {
       await navigator.clipboard.writeText(url);
-      toast.success("Link copied!");
+      toast.success(t("linkCopied"));
       setOpen(false);
     } catch {
-      toast.error("Failed to copy link");
+      toast.error(t("failedCopy"));
     }
   };
 
@@ -59,10 +61,10 @@ export default function SocialShare({ url, title, description }: SocialShareProp
       <button
         onClick={() => setOpen(!open)}
         className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg hover:bg-accent transition-colors"
-        aria-label="Share this job"
+        aria-label={t("shareJob")}
       >
         <Share2 className="w-4 h-4" />
-        Share
+        {t("share")}
       </button>
 
       {open && (
@@ -87,7 +89,7 @@ export default function SocialShare({ url, title, description }: SocialShareProp
               className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-foreground hover:bg-accent transition-colors w-full"
             >
               <Link2 className="w-4 h-4" />
-              Copy link
+              {t("copyLink")}
             </button>
           </div>
         </>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
   X, Sparkles, Loader2, ChevronDown, ChevronUp,
   Copy, Check, Printer, AlertTriangle, Lightbulb, Target,
@@ -54,6 +54,7 @@ export function AIInterviewQuestionsPanel({
   experienceYears = 3,
   onClose,
 }: Props) {
+  const t = useTranslations("aiInterviewQuestionsPanel");
   const [activeTab, setActiveTab] = useState<QuestionType>("technical");
   const [count, setCount] = useState("8");
   const [loading, setLoading] = useState(false);
@@ -132,7 +133,7 @@ export function AIInterviewQuestionsPanel({
         loadHistory();
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong");
+      setError(e instanceof Error ? e.message : t("somethingWentWrong"));
     } finally {
       setLoading(false);
     }
@@ -224,21 +225,21 @@ export function AIInterviewQuestionsPanel({
             <div className="px-4 py-3 flex gap-2">
               <Target className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
               <div>
-                <p className="font-semibold text-muted-foreground uppercase tracking-wide text-[10px] mb-1">Tests</p>
+                <p className="font-semibold text-muted-foreground uppercase tracking-wide text-[10px] mb-1">{t("tests")}</p>
                 <p className="text-foreground/80">{q.tests}</p>
               </div>
             </div>
             <div className="px-4 py-3 flex gap-2">
               <Lightbulb className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
               <div>
-                <p className="font-semibold text-emerald-700 uppercase tracking-wide text-[10px] mb-1">Strong Answer</p>
+                <p className="font-semibold text-emerald-700 uppercase tracking-wide text-[10px] mb-1">{t("strongAnswer")}</p>
                 <p className="text-foreground/80">{q.strongAnswer}</p>
               </div>
             </div>
             <div className="px-4 py-3 flex gap-2">
               <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
               <div>
-                <p className="font-semibold text-red-600 uppercase tracking-wide text-[10px] mb-1">Red Flag</p>
+                <p className="font-semibold text-red-600 uppercase tracking-wide text-[10px] mb-1">{t("redFlag")}</p>
                 <p className="text-foreground/80">{q.redFlag}</p>
               </div>
             </div>
@@ -261,7 +262,7 @@ export function AIInterviewQuestionsPanel({
           <div>
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-primary" />
-              <h2 className="font-semibold text-sm">AI Interview Questions</h2>
+              <h2 className="font-semibold text-sm">{t("aiInterviewQuestions")}</h2>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
               {jobTitle}{candidateName ? ` · ${candidateName}` : ""}
@@ -306,7 +307,7 @@ export function AIInterviewQuestionsPanel({
             })}
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Questions:</span>
+            <span className="text-xs text-muted-foreground">{t("questions")}:</span>
             <SearchableSelect
               className="h-7 w-16 text-xs"
               options={["5", "8", "10", "15"].map((n) => ({ value: n, label: n }))}
@@ -321,7 +322,7 @@ export function AIInterviewQuestionsPanel({
               {loading
                 ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 : <Sparkles className="w-3.5 h-3.5" />}
-              {loading ? "Generating..." : questions.length ? "Regenerate" : "Generate"}
+              {loading ? t("generating") : questions.length ? t("regenerate") : t("generate")}
             </Button>
           </div>
 
@@ -332,7 +333,7 @@ export function AIInterviewQuestionsPanel({
               onClick={() => setShowHistory((p) => !p)}
             >
               <History className="w-3.5 h-3.5" />
-              {showHistory ? "Show latest only" : `View all history (${totalHistorySets} sets)`}
+              {showHistory ? t("showLatestOnly") : t("viewAllHistory", { count: totalHistorySets })}
             </button>
           )}
         </div>
@@ -350,7 +351,7 @@ export function AIInterviewQuestionsPanel({
             <div className="flex flex-col items-center gap-3 py-16 text-center">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
               <p className="text-sm text-muted-foreground">
-                {historyLoading ? "Loading saved questions..." : `Generating ${count} ${activeTabMeta.label.toLowerCase()} questions...`}
+                {historyLoading ? t("loadingSavedQuestions") : t("generatingQuestions", { count, type: activeTabMeta.label.toLowerCase() })}
               </p>
             </div>
           )}
@@ -359,7 +360,7 @@ export function AIInterviewQuestionsPanel({
             <div className="flex flex-col items-center gap-3 py-16 text-center">
               <Sparkles className="w-8 h-8 text-muted-foreground/40" />
               <p className="text-sm text-muted-foreground">
-                Click &quot;Generate&quot; to create {activeTabMeta.label.toLowerCase()} questions
+                {t("clickGenerateToCreate", { type: activeTabMeta.label.toLowerCase() })}
               </p>
             </div>
           )}
@@ -372,8 +373,8 @@ export function AIInterviewQuestionsPanel({
                   <div className="flex items-center gap-2 mb-2 mt-1">
                     <Clock className="w-3 h-3 text-muted-foreground" />
                     <span className="text-[11px] font-medium text-muted-foreground">
-                      {formatDate(set.createdAt)} · {set.questions.length} questions
-                      {setIdx === 0 && <Badge variant="secondary" className="ml-1.5 text-[9px] h-4 px-1">Latest</Badge>}
+                      {formatDate(set.createdAt)} · {set.questions.length} {t("questions")}
+                      {setIdx === 0 && <Badge variant="secondary" className="ml-1.5 text-[9px] h-4 px-1">{t("latest")}</Badge>}
                     </span>
                   </div>
                   <div className="space-y-2">
@@ -396,14 +397,14 @@ export function AIInterviewQuestionsPanel({
           <div className="px-5 py-3 border-t flex gap-2 shrink-0">
             <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={copyAll}>
               {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-              {copied ? "Copied!" : "Copy All"}
+              {copied ? t("copied") : t("copyAll")}
             </Button>
             <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={printQuestions}>
               <Printer className="w-3.5 h-3.5" />
-              Print
+              {t("print")}
             </Button>
             <p className="text-xs text-muted-foreground ms-auto flex items-center">
-              {getAllDisplayQuestions().length} questions · {activeTabMeta.label}
+              {getAllDisplayQuestions().length} {t("questions")} · {activeTabMeta.label}
             </p>
           </div>
         )}

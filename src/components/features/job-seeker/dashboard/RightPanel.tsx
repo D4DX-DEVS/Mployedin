@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { TrendingUp, TrendingDown, Sparkles, CheckCircle2, Clock, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -32,15 +33,15 @@ interface ProfileCompletion {
 
 // ── RecruiterViews ────────────────────────────────────────────────────────────
 
-function RecruiterViews({ stats }: { stats?: DashboardStats }) {
+function RecruiterViews({ stats, t }: { stats?: DashboardStats; t: ReturnType<typeof useTranslations> }) {
   const views = stats?.recruiterViews;
   if (!views) {
     return (
       <div className="card-base p-4">
         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-          Recruiter Views
+          {t("recruiterViews")}
         </h4>
-        <p className="text-xs text-muted-foreground">No view data yet</p>
+        <p className="text-xs text-muted-foreground">{t("noViewDataYet")}</p>
       </div>
     );
   }
@@ -51,7 +52,7 @@ function RecruiterViews({ stats }: { stats?: DashboardStats }) {
     <div className="card-base p-4">
       <div className="flex items-center justify-between mb-3">
         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-          Recruiter Views
+          {t("recruiterViews")}
         </h4>
         <span
           className={`text-xs font-medium flex items-center gap-0.5 ${
@@ -64,7 +65,7 @@ function RecruiterViews({ stats }: { stats?: DashboardStats }) {
             <TrendingDown className="h-3 w-3" />
           )}
           {views.delta >= 0 ? "+" : ""}
-          {views.delta} from last week
+          {views.delta} {t("fromLastWeek")}
         </span>
       </div>
 
@@ -84,7 +85,7 @@ function RecruiterViews({ stats }: { stats?: DashboardStats }) {
       </div>
 
       <p className="mt-2 text-xs text-muted-foreground">
-        <span className="font-semibold text-foreground">{views.total}</span> searches this week
+        <span className="font-semibold text-foreground">{views.total}</span> {t("searchesThisWeek")}
       </p>
     </div>
   );
@@ -132,7 +133,7 @@ function insightToCoachItem(insight: CoachInsight) {
   };
 }
 
-function AICoach() {
+function AICoach({ t }: { t: ReturnType<typeof useTranslations> }) {
   const { data, isLoading } = useQuery<{ insights: CoachInsight[] }>({
     queryKey: ["ai-coach-insights"],
     queryFn: async () => {
@@ -153,7 +154,7 @@ function AICoach() {
       <div className="flex items-center gap-2 mb-3">
         <Sparkles className="h-4 w-4 text-violet-500" />
         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-          AI Coach
+          {t("aiCoach")}
         </h4>
         {isLoading && (
           <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-violet-400 border-t-transparent" />
@@ -189,13 +190,13 @@ const NEXT_STEP_CONFIG: Record<
   preferences: { label: "Set job preferences", href: "/job-seeker/preferences" },
 };
 
-function NextSteps({ completion }: { completion?: ProfileCompletion }) {
+function NextSteps({ completion, t }: { completion?: ProfileCompletion; t: ReturnType<typeof useTranslations> }) {
   if (!completion || completion.missing.length === 0) return null;
 
   return (
     <div className="card-base p-4">
       <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-        Next Steps
+        {t("nextSteps")}
       </h4>
       <ol className="space-y-2">
         {completion.missing.slice(0, 4).map((key, i) => {
@@ -231,15 +232,15 @@ function formatRelativeTime(isoString: string) {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-function ActivityFeed({ events }: { events?: ActivityEvent[] }) {
+function ActivityFeed({ events, t }: { events?: ActivityEvent[]; t: ReturnType<typeof useTranslations> }) {
   if (!events || events.length === 0) {
     return (
       <div className="card-base p-4">
         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-          Activity
+          {t("activity")}
         </h4>
         <p className="text-xs text-muted-foreground">
-          Your activity will appear as you apply and explore
+          {t("activityWillAppear")}
         </p>
       </div>
     );
@@ -248,7 +249,7 @@ function ActivityFeed({ events }: { events?: ActivityEvent[] }) {
   return (
     <div className="card-base p-4">
       <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-        Activity
+        {t("activity")}
       </h4>
       <div className="space-y-3">
         {events.slice(0, 5).map((ev) => (
@@ -282,6 +283,8 @@ function ActivityFeed({ events }: { events?: ActivityEvent[] }) {
 // ── RightPanel (orchestrator) ─────────────────────────────────────────────────
 
 export function RightPanel() {
+  const t = useTranslations("jobSeekerRightPanel");
+
   const { data: stats } = useQuery<DashboardStats>({
     queryKey: ["dashboard-stats"],
     queryFn: () => fetch("/api/dashboard/stats").then((r) => r.json()),
@@ -303,10 +306,10 @@ export function RightPanel() {
 
   return (
     <>
-      <RecruiterViews stats={stats} />
-      <AICoach />
-      <NextSteps completion={completion} />
-      <ActivityFeed events={activityData?.events} />
+      <RecruiterViews stats={stats} t={t} />
+      <AICoach t={t} />
+      <NextSteps completion={completion} t={t} />
+      <ActivityFeed events={activityData?.events} t={t} />
     </>
   );
 }

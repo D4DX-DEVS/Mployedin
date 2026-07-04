@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import {
   Sliders, Save, RotateCcw, Loader2, CheckCircle,
   Sparkles, Target, Scale, BarChart3,
@@ -38,6 +39,7 @@ const WEIGHT_DESCRIPTIONS: Record<keyof MatchingWeights, string> = {
 interface Props { jobId: string; }
 
 export function JobMatchingWeightsTab({ jobId }: Props) {
+  const t = useTranslations("jobMatchingWeightsTab");
   const { data: serverData, isLoading: loading } = useJobMatchingWeights(jobId);
   const saveWeights = useSaveJobMatchingWeights(jobId);
 
@@ -72,7 +74,7 @@ export function JobMatchingWeightsTab({ jobId }: Props) {
       setSource("job");
       setTimeout(() => setSaved(false), 3000);
     } catch {
-      setError("Failed to save matching weights");
+      setError(t("failedToSaveMatchingWeights"));
     }
   };
 
@@ -111,20 +113,20 @@ export function JobMatchingWeightsTab({ jobId }: Props) {
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="card-base p-4">
           <Scale className="h-5 w-5 text-sky-600 dark:text-sky-300" />
-          <p className="mt-2 text-sm font-semibold text-foreground">Total at {total}%</p>
-          <p className="mt-1 text-xs text-muted-foreground">Must total 100% before saving.</p>
+          <p className="mt-2 text-sm font-semibold text-foreground">{t("totalAt", { total })}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{t("mustTotal100PercentBeforeSaving")}</p>
         </div>
         <div className="card-base p-4">
           <Target className="h-5 w-5 text-sky-600 dark:text-sky-300" />
-          <p className="mt-2 text-sm font-semibold text-foreground">Top: {WEIGHT_LABELS[topPriority]}</p>
-          <p className="mt-1 text-xs text-muted-foreground">Strongest influence at {weights[topPriority]}%.</p>
+          <p className="mt-2 text-sm font-semibold text-foreground">{t("top")}: {WEIGHT_LABELS[topPriority]}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{t("strongestInfluenceAt", { percent: weights[topPriority] })}</p>
         </div>
         <div className="card-base p-4">
           <BarChart3 className="h-5 w-5 text-sky-600 dark:text-sky-300" />
           <p className="mt-2 text-sm font-semibold text-foreground">
-            {saveWeights.isPending ? "Saving…" : saved ? "Weights saved" : "Ready to update"}
+            {saveWeights.isPending ? t("saving") : saved ? t("weightsSaved") : t("readyToUpdate")}
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">Scoring updates after you save.</p>
+          <p className="mt-1 text-xs text-muted-foreground">{t("scoringUpdatesAfterYouSave")}</p>
         </div>
       </div>
 
@@ -133,10 +135,10 @@ export function JobMatchingWeightsTab({ jobId }: Props) {
         <div className="card-base p-5 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <Sliders className="h-4 w-4 text-sky-600" /> Weight Configuration
+              <Sliders className="h-4 w-4 text-sky-600" /> {t("weightConfiguration")}
             </h3>
             <span className={`rounded-full px-3 py-1 text-xs font-semibold ${isTotalValid ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-red-500/10 text-red-600 dark:text-red-300"}`}>
-              {total}% {isTotalValid ? "✓" : "Need 100%"}
+              {total}% {isTotalValid ? "✓" : t("need100Percent")}
             </span>
           </div>
 
@@ -173,10 +175,10 @@ export function JobMatchingWeightsTab({ jobId }: Props) {
               className="gap-2 bg-sky-600 text-white hover:bg-sky-700 disabled:bg-slate-300"
             >
               {saveWeights.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : saved ? <CheckCircle className="h-4 w-4" /> : <Save className="h-4 w-4" />}
-              {saveWeights.isPending ? "Saving…" : saved ? "Saved!" : "Save Weights for this Job"}
+              {saveWeights.isPending ? t("saving") : saved ? t("saved") : t("saveWeightsForThisJob")}
             </Button>
             <Button variant="outline" onClick={() => setWeights(DEFAULT_WEIGHTS)} className="gap-2">
-              <RotateCcw className="h-4 w-4" /> Reset Defaults
+              <RotateCcw className="h-4 w-4" /> {t("resetDefaults")}
             </Button>
           </div>
         </div>
@@ -184,7 +186,7 @@ export function JobMatchingWeightsTab({ jobId }: Props) {
         {/* Distribution overview */}
         <div className="space-y-4">
           <div className="card-base p-5 space-y-3">
-            <h3 className="text-sm font-semibold text-foreground">Weight Distribution</h3>
+            <h3 className="text-sm font-semibold text-foreground">{t("weightDistribution")}</h3>
             {weightKeys.map((key) => (
               <div key={key} className="space-y-1">
                 <div className="flex justify-between text-xs">
@@ -201,16 +203,16 @@ export function JobMatchingWeightsTab({ jobId }: Props) {
               ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
               : "bg-amber-500/10 text-amber-700 dark:text-amber-300"}`}>
               {isTotalValid
-                ? "✓ Weights balanced. Candidates will be ranked by these priorities."
-                : `⚠ Total is ${total}%. Adjust to 100%.`}
+                ? t("weightsBalanced")
+                : t("totalIsAdjustTo100", { total })}
             </div>
           </div>
 
           <div className="card-base p-5">
             <Sparkles className="h-4 w-4 text-sky-600 mb-2" />
-            <h4 className="text-sm font-semibold text-foreground">Tuning Tip</h4>
+            <h4 className="text-sm font-semibold text-foreground">{t("tuningTip")}</h4>
             <p className="mt-1 text-xs text-muted-foreground leading-5">
-              Increase skills and experience for technical roles. Raise behavior signals for client-facing positions. Keep salary and location lighter unless they are strict filters.
+              {t("tuningTipDescription")}
             </p>
           </div>
         </div>

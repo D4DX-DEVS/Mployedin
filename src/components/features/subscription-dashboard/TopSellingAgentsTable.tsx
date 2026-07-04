@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Award, UserX } from "lucide-react";
 import type { TopAgent } from "./useSubscriptionDashboard";
 
@@ -12,13 +13,15 @@ function formatCurrency(n: number) {
 }
 
 export function TopSellingAgentsTable({ data }: TopSellingAgentsTableProps) {
+  const t = useTranslations("topSellingAgentsTable");
+
   return (
     <section className="rounded-2xl border border-border/60 bg-card p-6">
       <div className="flex items-center justify-between mb-5">
         <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-          <Award className="h-4 w-4" /> Top Selling Agents
+          <Award className="h-4 w-4" /> {t("topSellingAgents")}
           <span className="text-[10px] text-muted-foreground font-normal normal-case tracking-normal">
-            (This Month)
+            {t("thisMonth")}
           </span>
         </h4>
       </div>
@@ -26,9 +29,9 @@ export function TopSellingAgentsTable({ data }: TopSellingAgentsTableProps) {
       {data.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-8 text-center">
           <UserX className="h-10 w-10 text-muted-foreground/40 mb-3" />
-          <p className="text-sm font-medium text-muted-foreground">No agent sales yet</p>
+          <p className="text-sm font-medium text-muted-foreground">{t("noAgentSalesYet")}</p>
           <p className="text-xs text-muted-foreground/70 mt-1 max-w-[200px]">
-            Agent-attributed subscriptions will appear here once recorded.
+            {t("agentAttributedDescription")}
           </p>
         </div>
       ) : (
@@ -46,11 +49,11 @@ export function TopSellingAgentsTable({ data }: TopSellingAgentsTableProps) {
               </div>
               <div className="text-center shrink-0">
                 <p className="text-sm font-semibold">{a.subscriptionsSold}</p>
-                <p className="text-[10px] text-muted-foreground">Sold</p>
+                <p className="text-[10px] text-muted-foreground">{t("sold")}</p>
               </div>
               <div className="text-right shrink-0 ml-2">
                 <p className="text-sm font-semibold">{formatCurrency(a.revenue)} AED</p>
-                <p className="text-[10px] text-muted-foreground">Revenue</p>
+                <p className="text-[10px] text-muted-foreground">{t("revenue")}</p>
               </div>
             </div>
           ))}

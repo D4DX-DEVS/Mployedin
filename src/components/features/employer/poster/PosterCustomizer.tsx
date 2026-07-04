@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { PosterFormat, DesignStyle, ShowFields } from "@/lib/composer/types";
 import { FORMAT_DIMENSIONS } from "@/lib/composer/types";
 import { CREDITS_PER_GENERATION } from "@/lib/composer/credits";
@@ -43,6 +44,7 @@ export function PosterCustomizer({
   isGenerating,
   creditsRemaining,
 }: PosterCustomizerProps) {
+  const t = useTranslations("posterCustomizer");
   const allFormats: PosterFormat[] = ["instagram-post", "instagram-story", "linkedin-post", "a4-print"];
   const allSelected = formats.length === allFormats.length;
 
@@ -74,7 +76,7 @@ export function PosterCustomizer({
     <div className="space-y-4">
       {/* Job info (read-only) */}
       <div className="space-y-1">
-        <p className="text-sm font-semibold text-foreground">{job?.title || "Job Title"}</p>
+        <p className="text-sm font-semibold text-foreground">{job?.title || t("jobTitle")}</p>
         <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
           {job?.employmentType && <span>{job.employmentType.replace(/_/g, " ")}</span>}
           {locationStr && <><span>•</span><span>{locationStr}</span></>}
@@ -85,12 +87,12 @@ export function PosterCustomizer({
 
       {/* Style Description */}
       <div>
-        <label className="text-xs font-medium text-foreground">Style / Design Description</label>
-        <p className="text-[10px] text-muted-foreground mb-1">Describe the look and feel you want for your poster</p>
+        <label className="text-xs font-medium text-foreground">{t("styleLabel")}</label>
+        <p className="text-[10px] text-muted-foreground mb-1">{t("styleHelpText")}</p>
         <textarea
           value={description}
           onChange={(e) => onDescriptionChange(e.target.value)}
-          placeholder="Modern, professional, tech-themed with dark blue and purple gradient, clean layout, minimal, attractive for tech professionals."
+          placeholder={t("stylePlaceholder")}
           maxLength={300}
           rows={3}
           className="w-full rounded-lg border border-input bg-background px-3 py-2 text-xs resize-none focus:outline-none focus:ring-2 focus:ring-primary/20"
@@ -100,7 +102,7 @@ export function PosterCustomizer({
 
       {/* Design Style pills */}
       <div>
-        <label className="text-xs font-medium text-foreground">Design Style (Optional)</label>
+        <label className="text-xs font-medium text-foreground">{t("designStyleLabel")}</label>
         <div className="flex flex-wrap gap-2 mt-1.5">
           {DESIGN_STYLES.map((s) => (
             <button
@@ -121,7 +123,7 @@ export function PosterCustomizer({
 
       {/* Show on Poster toggles */}
       <div>
-        <label className="text-xs font-medium text-foreground">Show on Poster</label>
+        <label className="text-xs font-medium text-foreground">{t("showOnPosterLabel")}</label>
         <div className="grid grid-cols-2 gap-2 mt-1.5">
           {(Object.keys(showFields) as (keyof ShowFields)[]).map((field) => (
             <label key={field} className="flex items-center gap-2 text-[11px] cursor-pointer">
@@ -139,7 +141,7 @@ export function PosterCustomizer({
 
       {/* Format selector */}
       <div>
-        <label className="text-xs font-medium text-foreground">Select Format</label>
+        <label className="text-xs font-medium text-foreground">{t("selectFormatLabel")}</label>
         <div className="mt-1.5 space-y-1.5">
           <button
             type="button"
@@ -148,7 +150,7 @@ export function PosterCustomizer({
               allSelected ? "bg-primary/10 border-primary text-primary" : "border-border"
             }`}
           >
-            All Formats ({allFormats.length})
+            {t("allFormats", { count: allFormats.length })}
           </button>
           <div className="grid grid-cols-2 gap-1.5">
             {allFormats.map((f) => (
@@ -172,13 +174,13 @@ export function PosterCustomizer({
       {/* Tips */}
       <div className="rounded-lg bg-primary/5 border border-primary/10 p-3 space-y-1">
         <p className="text-[11px] font-medium text-primary flex items-center gap-1">
-          <CheckCircle2 className="h-3.5 w-3.5" /> Tips for better results
+          <CheckCircle2 className="h-3.5 w-3.5" /> {t("tipsTitle")}
         </p>
         <ul className="text-[10px] text-muted-foreground space-y-0.5 pl-5 list-disc">
-          <li>Be clear and specific in your description</li>
-          <li>Mention the style, mood & vibe you want</li>
-          <li>Include key benefits and requirements</li>
-          <li>Short descriptions work better</li>
+          <li>{t("tip1")}</li>
+          <li>{t("tip2")}</li>
+          <li>{t("tip3")}</li>
+          <li>{t("tip4")}</li>
         </ul>
       </div>
 
@@ -190,10 +192,10 @@ export function PosterCustomizer({
         className="w-full flex items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground py-3 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors"
       >
         <Sparkles className="h-4 w-4" />
-        {isGenerating ? "Generating..." : `Generate Posters (${CREDITS_PER_GENERATION} Credits)`}
+        {isGenerating ? t("generating") : t("generatePosters", { credits: CREDITS_PER_GENERATION })}
       </button>
       <p className="text-[10px] text-center text-muted-foreground">
-        2 variations will be generated. You can generate more.
+        {t("variationsText")}
       </p>
     </div>
   );

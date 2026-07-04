@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -99,6 +100,7 @@ export function PermissionEditor({
   onChange,
   readOnly = false,
 }: PermissionEditorProps) {
+  const t = useTranslations("permissionEditor");
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
     new Set(RESOURCE_GROUPS.map((g) => g.label))
   );
@@ -202,12 +204,12 @@ export function PermissionEditor({
           )}
           <div>
             <Label className="text-sm font-medium">
-              {isCustom ? "Custom Permissions" : "Role-Based Permissions"}
+              {isCustom ? t("customPermissions") : t("roleBasedPermissions")}
             </Label>
             <p className="text-xs text-muted-foreground mt-0.5">
               {isCustom
-                ? `${totalCustomPerms} permission(s) configured`
-                : `Using default ${baseRole.replace("_", " ")} permissions`}
+                ? t("permissionsConfigured", { count: totalCustomPerms })
+                : t("usingDefault", { role: baseRole.replace("_", " ") })}
             </p>
           </div>
         </div>
@@ -219,14 +221,14 @@ export function PermissionEditor({
       {/* Presets (only in custom mode) */}
       {isCustom && !readOnly && (
         <div className="flex flex-wrap gap-2">
-          <span className="text-xs text-muted-foreground self-center mr-1">Presets:</span>
+          <span className="text-xs text-muted-foreground self-center mr-1">{t("presets")}:</span>
           <Button
             type="button"
             variant="outline"
             size="xs"
             onClick={() => loadPreset("role_default")}
           >
-            <RotateCcw className="h-3 w-3" /> Role Default
+            <RotateCcw className="h-3 w-3" /> {t("roleDefault")}
           </Button>
           <Button
             type="button"
@@ -234,7 +236,7 @@ export function PermissionEditor({
             size="xs"
             onClick={() => loadPreset("full_access")}
           >
-            <CheckCircle2 className="h-3 w-3" /> Full Access
+            <CheckCircle2 className="h-3 w-3" /> {t("fullAccess")}
           </Button>
           <Button
             type="button"
@@ -242,7 +244,7 @@ export function PermissionEditor({
             size="xs"
             onClick={() => loadPreset("read_only")}
           >
-            <ShieldOff className="h-3 w-3" /> Read Only
+            <ShieldOff className="h-3 w-3" /> {t("readOnly")}
           </Button>
           <Button
             type="button"
@@ -250,7 +252,7 @@ export function PermissionEditor({
             size="xs"
             onClick={() => loadPreset("minimal")}
           >
-            <ShieldOff className="h-3 w-3" /> Minimal
+            <ShieldOff className="h-3 w-3" /> {t("minimal")}
           </Button>
         </div>
       )}

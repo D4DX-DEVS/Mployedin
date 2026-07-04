@@ -9,6 +9,7 @@ import {
   type ColumnFiltersState,
 } from "@tanstack/react-table";
 import { useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -103,6 +104,8 @@ export function DataTable<TData, TValue>({
   className,
   searchPlaceholder = "Search\u2026",
 }: DataTableProps<TData, TValue>) {
+  const t = useTranslations("dataTable");
+  const tc = useTranslations("common");
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [rowSelection, setRowSelection] = useState({});
@@ -174,7 +177,7 @@ export function DataTable<TData, TValue>({
           {onFiltersChange && (
             <Button variant="outline" size="sm" className="h-9 gap-1.5">
               <SlidersHorizontal className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Filters</span>
+              <span className="hidden sm:inline">{t("filters")}</span>
             </Button>
           )}
         </div>
@@ -185,11 +188,11 @@ export function DataTable<TData, TValue>({
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="h-9 gap-1.5">
                   <Download className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Export</span>
+                  <span className="hidden sm:inline">{t("export")}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-40">
-                <DropdownMenuLabel>Export data</DropdownMenuLabel>
+                <DropdownMenuLabel>{t("exportData")}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {onExportCsv && (
                   <DropdownMenuItem onClick={onExportCsv}>
@@ -257,7 +260,7 @@ export function DataTable<TData, TValue>({
         ) : (
           <div className="flex h-32 flex-col items-center justify-center gap-2 rounded-xl border border-border/50 bg-card text-muted-foreground">
             <Inbox className="h-8 w-8 opacity-40" />
-            <span className="text-sm">No results found.</span>
+            <span className="text-sm">{tc("noResultsFound")}</span>
           </div>
         )}
       </div>
@@ -342,7 +345,7 @@ export function DataTable<TData, TValue>({
                 >
                   <div className="flex flex-col items-center gap-2 text-muted-foreground">
                     <Inbox className="h-8 w-8 opacity-40" />
-                    <span className="text-sm">No results found.</span>
+                    <span className="text-sm">{tc("noResultsFound")}</span>
                   </div>
                 </TableCell>
               </TableRow>
@@ -354,7 +357,7 @@ export function DataTable<TData, TValue>({
       {/* Pagination */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-[13px] text-muted-foreground">
         <div className="flex items-center gap-2">
-          <span>Rows per page</span>
+          <span>{t("rowsPerPage")}</span>
           <Select
             value={String(pageSize)}
             onValueChange={(v) => onPageSizeChange?.(Number(v))}
@@ -375,8 +378,8 @@ export function DataTable<TData, TValue>({
         <div className="flex items-center gap-2">
           <span className="tabular-nums">
             {totalCount > 0
-              ? `Showing ${from}\u2013${to} of ${totalCount}`
-              : "No records"}
+              ? t("showing", { from, to, total: totalCount })
+              : t("noRecords")}
           </span>
           <div className="flex items-center gap-1">
             <Button

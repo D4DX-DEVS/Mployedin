@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Crown, Download, Settings, Plus, RefreshCw } from "lucide-react";
 import { PageHero } from "@/components/shared/PageHero";
 
@@ -9,6 +10,8 @@ interface SubscriptionHeroProps {
 }
 
 export function SubscriptionHero({ onRefresh }: SubscriptionHeroProps) {
+  const t = useTranslations("subscriptionHero");
+
   return (
     <PageHero
       title="Subscription Dashboard"
@@ -23,26 +26,26 @@ export function SubscriptionHero({ onRefresh }: SubscriptionHeroProps) {
               className="inline-flex items-center gap-2 rounded-xl border border-border/60 bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-accent"
             >
               <RefreshCw className="h-4 w-4" />
-              Refresh
+              {t("refresh")}
             </button>
           )}
           <button className="inline-flex items-center gap-2 rounded-xl border border-border/60 bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-accent">
             <Download className="h-4 w-4" />
-            Export Report
+            {t("exportReport")}
           </button>
           <Link
             href="/admin/subscription-plans"
             className="inline-flex items-center gap-2 rounded-xl border border-border/60 bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-accent"
           >
             <Settings className="h-4 w-4" />
-            Manage Plans
+            {t("managePlans")}
           </Link>
           <Link
             href="/admin/subscriptions"
             className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
             <Plus className="h-4 w-4" />
-            New Subscription
+            {t("newSubscription")}
           </Link>
         </>
       }

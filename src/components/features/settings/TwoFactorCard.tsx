@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { ShieldCheck, ShieldOff, Loader2, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ async function post2fa(body: Record<string, unknown>) {
  * Flow: setup (QR + manual key) → verify code → show recovery codes once → enabled.
  */
 export function TwoFactorCard() {
+  const t = useTranslations("twoFactorCard");
   const [phase, setPhase] = useState<Phase>("loading");
   const [enabledAt, setEnabledAt] = useState<string | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState("");
@@ -108,19 +110,19 @@ export function TwoFactorCard() {
     <section className="card-base rounded-[28px] p-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Security</div>
-          <h2 className="mt-1 text-lg font-semibold tracking-tight text-foreground">Two-factor authentication</h2>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("security")}</div>
+          <h2 className="mt-1 text-lg font-semibold tracking-tight text-foreground">{t("twoFactorAuthentication")}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Protect this account with a 6-digit code from an authenticator app (Google Authenticator, Authy, 1Password).
           </p>
         </div>
         {phase === "enabled" ? (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-green-500/10 px-3 py-1 text-xs font-semibold text-green-600">
-            <ShieldCheck className="h-3.5 w-3.5" /> Enabled
+            <ShieldCheck className="h-3.5 w-3.5" /> {t("enabled")}
           </span>
         ) : phase !== "loading" ? (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground">
-            <ShieldOff className="h-3.5 w-3.5" /> Off
+            <ShieldOff className="h-3.5 w-3.5" /> {t("off")}
           </span>
         ) : null}
       </div>
@@ -133,14 +135,14 @@ export function TwoFactorCard() {
 
       {phase === "loading" && (
         <div className="mt-5 flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+          <Loader2 className="h-4 w-4 animate-spin" /> {t("loading")}
         </div>
       )}
 
       {phase === "disabled" && (
         <Button className="mt-5" onClick={startSetup} disabled={busy}>
           {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Set up two-factor authentication
+          {t("setupTwoFactor")}
         </Button>
       )}
 
@@ -154,14 +156,14 @@ export function TwoFactorCard() {
           <div className="space-y-4">
             <div>
               <p className="text-sm text-muted-foreground">
-                1. Scan the QR code with your authenticator app, or enter this key manually:
+                {t("scanQrCode")}
               </p>
               <code className="mt-2 block w-fit rounded-lg bg-muted px-3 py-1.5 font-mono text-xs tracking-wider break-all">
                 {manualKey}
               </code>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="totp-verify">2. Enter the 6-digit code to confirm</Label>
+              <Label htmlFor="totp-verify">{t("enterCode")}</Label>
               <div className="flex gap-2">
                 <Input
                   id="totp-verify"
@@ -173,7 +175,7 @@ export function TwoFactorCard() {
                 />
                 <Button onClick={verifyCode} disabled={busy || code.trim().length < 6}>
                   {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Verify & enable
+                  {t("verifyEnable")}
                 </Button>
               </div>
             </div>
@@ -201,9 +203,9 @@ export function TwoFactorCard() {
           <div className="flex gap-2">
             <Button variant="outline" onClick={copyRecoveryCodes}>
               {copied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
-              {copied ? "Copied" : "Copy codes"}
+              {copied ? t("copied") : t("copyCodes")}
             </Button>
-            <Button onClick={() => setPhase("enabled")}>I&apos;ve saved them</Button>
+            <Button onClick={() => setPhase("enabled")}>{t("savedCodes")}</Button>
           </div>
         </div>
       )}
@@ -216,7 +218,7 @@ export function TwoFactorCard() {
           </p>
           {!showDisable ? (
             <Button variant="outline" onClick={() => { setShowDisable(true); setCode(""); setPassword(""); setError(""); }}>
-              Disable two-factor authentication
+              {t("disableTwoFactor")}
             </Button>
           ) : (
             <div className="space-y-3 rounded-xl border border-border/70 p-4">
@@ -241,9 +243,9 @@ export function TwoFactorCard() {
               <div className="flex gap-2">
                 <Button variant="destructive" onClick={disable} disabled={busy || !password || !code}>
                   {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Disable 2FA
+                  {t("disable2fa")}
                 </Button>
-                <Button variant="ghost" onClick={() => setShowDisable(false)}>Cancel</Button>
+                <Button variant="ghost" onClick={() => setShowDisable(false)}>{t("cancel")}</Button>
               </div>
             </div>
           )}

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Progress } from "@/components/ui/progress";
 import {
   Building2, Users, DollarSign, AlertTriangle, CheckCircle2,
@@ -51,21 +52,22 @@ export function CompactProgress({
 /* ------------------------------------------------------------------ */
 
 export function RiskBadge({ risk }: { risk: "high" | "medium" | "low" }) {
+  const t = useTranslations("targetComponents");
   if (risk === "high")
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400">
-        <AlertTriangle className="h-3 w-3" /> High
+        <AlertTriangle className="h-3 w-3" /> {t("high")}
       </span>
     );
   if (risk === "medium")
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
-        <Clock className="h-3 w-3" /> Medium
+        <Clock className="h-3 w-3" /> {t("medium")}
       </span>
     );
   return (
     <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-      <CheckCircle2 className="h-3 w-3" /> Low
+      <CheckCircle2 className="h-3 w-3" /> {t("low")}
     </span>
   );
 }
@@ -83,10 +85,11 @@ export function getCompletionStage(progress: number): CompletionStage {
 }
 
 export function CompletionBadge({ stage }: { stage: CompletionStage }) {
+  const t = useTranslations("targetComponents");
   if (stage === "completed") {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-        <CheckCircle2 className="h-3 w-3" /> Completed
+        <CheckCircle2 className="h-3 w-3" /> {t("completed")}
       </span>
     );
   }
@@ -94,14 +97,14 @@ export function CompletionBadge({ stage }: { stage: CompletionStage }) {
   if (stage === "in_progress") {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-sky-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">
-        <Clock className="h-3 w-3" /> In progress
+        <Clock className="h-3 w-3" /> {t("inProgress")}
       </span>
     );
   }
 
   return (
     <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-      <Target className="h-3 w-3" /> Not started
+      <Target className="h-3 w-3" /> {t("notStarted")}
     </span>
   );
 }
@@ -250,6 +253,7 @@ export function TargetSummaryCard({
   employerAchieved, employeeAchieved, financeAchieved,
   currency = "AED", compact = false,
 }: TargetSummaryCardProps) {
+  const t = useTranslations("targetComponents");
   const types = [
     { type: "employer" as const, target: employerTarget, achieved: employerAchieved },
     { type: "employee" as const, target: employeeTarget, achieved: employeeAchieved },
@@ -274,19 +278,19 @@ export function TargetSummaryCard({
             <div className="grid grid-cols-3 gap-2 text-sm mb-3">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Assigned
+                  {t("assigned")}
                 </p>
                 <p className="font-semibold tabular-nums">{fmt(tgt)}</p>
               </div>
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Achieved
+                  {t("achieved")}
                 </p>
                 <p className="font-semibold tabular-nums text-primary">{fmt(achieved)}</p>
               </div>
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Balance
+                  {t("balance")}
                 </p>
                 <p className="font-semibold tabular-nums text-amber-600 dark:text-amber-400">
                   {fmt(pending)}
@@ -544,21 +548,24 @@ export function QuarterlyBreakdownGrid({
 /* ------------------------------------------------------------------ */
 
 export function TargetEmptyState({
-  title = "No targets found",
-  description = "Assign annual targets to begin planning",
+  title,
+  description,
   action,
 }: {
   title?: string;
   description?: string;
   action?: React.ReactNode;
 }) {
+  const t = useTranslations("targetComponents");
+  const displayTitle = title ?? t("noTargetsFound");
+  const displayDescription = description ?? t("assignAnnualTargets");
   return (
     <div className="flex flex-col items-center gap-3 py-16">
       <div className="rounded-2xl bg-muted/50 p-4">
         <Target className="h-8 w-8 text-muted-foreground/40" />
       </div>
-      <p className="text-sm font-medium text-muted-foreground">{title}</p>
-      <p className="text-xs text-muted-foreground max-w-sm text-center">{description}</p>
+      <p className="text-sm font-medium text-muted-foreground">{displayTitle}</p>
+      <p className="text-xs text-muted-foreground max-w-sm text-center">{displayDescription}</p>
       {action}
     </div>
   );
