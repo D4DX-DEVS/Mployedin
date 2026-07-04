@@ -524,7 +524,7 @@ export default function SuperAgentLeadsPage() {
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">{t("filterSortBy")}</label>
-                  <SearchableSelect options={SORT_OPTIONS.map((o) => ({ value: o.value, label: t(`sortOption${o.value}`) }))} value={filters.sortBy} onValueChange={(v) => updateFilter("sortBy", v)} placeholder={t("sortOptionCreatedAt")} />
+                  <SearchableSelect options={SORT_OPTIONS.map((o) => ({ value: o.value, label: t(o.label) }))} value={filters.sortBy} onValueChange={(v) => updateFilter("sortBy", v)} placeholder={t("sortOptionCreatedAt")} />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">{t("filterSortOrder")}</label>

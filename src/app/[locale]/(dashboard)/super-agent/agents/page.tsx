@@ -340,7 +340,6 @@ export default function SuperAgentAgentsPage() {
         title={t("pageTitle")}
         description={t("pageDescription")}
       >
-        <SuperAgentInsightsPanel />
         <div className="flex flex-col gap-3 sm:min-w-[160px] xl:min-w-[180px]">
           <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("roster")}</p>
@@ -356,6 +355,8 @@ export default function SuperAgentAgentsPage() {
           </Button>
         </div>
       </SuperAgentPageIntro>
+
+      <SuperAgentInsightsPanel />
 
       <SuperAgentMetricsGrid items={kpis} />
 

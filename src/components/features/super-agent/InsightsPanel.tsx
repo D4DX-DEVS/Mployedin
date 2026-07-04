@@ -342,7 +342,7 @@ export function SuperAgentInsightsPanel() {
   return (
     <>
       {ConfirmDialogNode}
-      <div className="workspace-glass-panel rounded-2xl px-4 py-4 text-left sm:min-w-[280px] sm:max-w-[340px] space-y-0">
+      <div className="workspace-glass-panel rounded-2xl px-4 py-4 text-left w-full space-y-0">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
@@ -370,7 +370,7 @@ export function SuperAgentInsightsPanel() {
         </div>
       </div>
 
-      <div className="space-y-2.5 max-h-[240px] overflow-y-auto pr-1">
+      <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {visibleInsights.map((insight, idx) => {
           const sev = severityStyles[insight.severity];
           const isVisible = idx < visibleCount;
