@@ -768,14 +768,18 @@ export default function EmployerAIJobCreatePage() {
                     variant="outline"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isStreaming || isUploading}
-                    className="h-10 w-10 rounded-xl border-border/60 p-0 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
-                    title={t("jobCreator.uploadJobPoster")}
-                    aria-label={t("jobCreator.uploadJobPoster")}
+                    className="relative h-10 gap-1.5 rounded-xl border-border/60 px-3 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+                    title={t("jobCreator.uploadJobPosterHint")}
+                    aria-label={t("jobCreator.uploadJobPosterHint")}
                   >
                     {isUploading ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
-                      <Upload className="h-4 w-4" />
+                      <>
+                        <Upload className="h-4 w-4" />
+                        <Sparkles className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-primary p-0.5 text-white" />
+                        <span className="text-xs font-medium">{t("jobCreator.uploadJobPosterLabel")}</span>
+                      </>
                     )}
                   </Button>
                   <input

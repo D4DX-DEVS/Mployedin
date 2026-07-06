@@ -53,6 +53,7 @@ export function PosterVariationsGrid({
             className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${
               selectedIndex === index ? "border-primary ring-2 ring-primary/20" : "border-border hover:border-primary/40"
             }`}
+            style={{ containerType: "size" }}
           >
             {/* AI background */}
             <div

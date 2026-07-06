@@ -18,7 +18,7 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
   if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
   const job = await Job.findOne({ _id: params?.id, deletedAt: null })
-    .populate("employerId", "companyName country industry verificationLevel")
+    .populate("employerId", "companyName country industry verificationLevel logo")
     .lean();
   if (!job) return NextResponse.json({ error: "Job not found" }, { status: 404 });
 

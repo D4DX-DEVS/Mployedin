@@ -13,6 +13,7 @@ const PUBLIC_ROUTES = [
   "/api/contact",
   "/api/public",
   "/api/jobs",
+  "/api/image-proxy",
   "/about",
   "/contact",
   "/blog",

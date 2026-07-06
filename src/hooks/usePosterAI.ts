@@ -2,13 +2,14 @@
 
 import { useCallback, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { PosterType, PosterFormat, DesignStyle, ShowFields, PosterVariation } from "@/lib/composer/types";
+import type { PosterType, PosterFormat, DesignStyle, ShowFields, PosterTemplate, PosterVariation } from "@/lib/composer/types";
 
 export interface PosterGenerateInput {
   type: PosterType;
   formats: PosterFormat[];
   description: string;
   style: DesignStyle;
+  template: PosterTemplate;
   jobId: string;
   showFields: ShowFields;
 }
@@ -93,9 +94,22 @@ export function usePosterGenerate() {
     if (generationId) moreMutation.mutate();
   }, [generationId, moreMutation]);
 
+  // Load a previously saved generation into the editor (reuse from My Posters —
+  // no new AI call, no credits).
+  const hydrate = useCallback(
+    (data: { id: string; variations: PosterVariation[]; selectedIndex?: number; shareSlug?: string | null }) => {
+      setGenerationId(data.id);
+      setVariations(data.variations);
+      setSelectedIndex(Math.min(data.selectedIndex ?? 0, Math.max(0, data.variations.length - 1)));
+      setShareSlug(data.shareSlug ?? null);
+    },
+    [],
+  );
+
   return {
     generate,
     generateMore,
+    hydrate,
     generationId,
     variations,
     selectedIndex,

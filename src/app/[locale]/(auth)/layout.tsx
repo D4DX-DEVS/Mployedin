@@ -28,7 +28,7 @@ export default async function AuthLayout({
                 href={`/${locale}`}
                 className="inline-flex items-center transition-transform hover:-translate-y-0.5"
               >
-                <Image src="/mployedin-logo.png" alt="Mployedin" width={240} height={160} className="h-80 w-auto object-contain" priority />
+                <Image src="/mployedin-logo.png" alt="Mployedin" width={240} height={66} className="h-80 w-auto object-contain" priority />
               </Link>
             </div>
 

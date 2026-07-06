@@ -2166,6 +2166,8 @@
       "failedOpenForm": "Failed to open the review form. Please try again.",
       "toastThreadUnavailable": "This AI conversation draft is no longer available — it may have expired or been discarded.",
       "uploadJobPoster": "Upload Job Poster",
+      "uploadJobPosterHint": "Upload a job poster (image/PDF) — AI extracts the details",
+      "uploadJobPosterLabel": "AI Scan",
       "toastInvalidType": "Unsupported file type. Please upload a PDF, image, or .docx file.",
       "toastTooLarge": "File is too large. Maximum size is 10 MB.",
       "toastExtractFailed": "Could not extract job details from the file. Please try again.",

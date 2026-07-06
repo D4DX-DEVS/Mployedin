@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Image, Trash2, ExternalLink, Eye, Download, QrCode, Plus } from "lucide-react";
 import Link from "next/link";
@@ -8,24 +9,38 @@ import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { buildPosterShareUrl } from "@/lib/composer/branding";
 import { CreditsBadge } from "./CreditsBadge";
+import { PosterOverlay } from "./PosterOverlay";
 import { usePosterCredits } from "@/hooks/usePosterCredits";
 import { useConfirm } from "@/hooks/useConfirm";
 import { PageHero } from "@/components/shared/PageHero";
+import type { PosterType, PosterLayout, ShowFields, PosterStyleOverrides } from "@/lib/composer/types";
 
 interface PosterItem {
   _id: string;
-  jobId: { _id: string; title: string } | null;
+  jobId: {
+    _id: string; title: string; companyName?: string; logo?: string;
+    location?: { city?: string; country?: string };
+    salary?: { min?: number; max?: number; currency?: string };
+    skills?: string[]; description?: string; responsibilities?: string[]; qualifications?: string[];
+    requirements?: { skills?: string[]; education?: string } | null; employmentType?: string;
+  } | null;
   type: string;
   style: string;
+  showFields?: ShowFields;
   variations: { backgroundUrl: string; layout: string }[];
   selectedVariation: number;
+  styleOverrides?: PosterStyleOverrides;
+  layoutOverride?: PosterLayout;
   shareSlug: string;
   analytics: { views: number; downloads: number; qrScans: number };
   createdAt: string;
 }
 
+const SHOW_ALL: ShowFields = { salary: true, location: true, experience: true, skills: true };
+
 export function MyPostersPage() {
   const locale = useLocale();
+  const router = useRouter();
   const t = useTranslations("myPosters");
   const queryClient = useQueryClient();
   const { credits } = usePosterCredits();
@@ -94,18 +109,34 @@ export function MyPostersPage() {
             {data.posters.map((poster) => {
               const thumb = poster.variations[poster.selectedVariation]?.backgroundUrl
                 || poster.variations[0]?.backgroundUrl;
+              // Card click reopens this poster in the editor (same tab) — saved
+              // design + overrides restore there, so posters double as reusable templates.
+              const reuseHref = poster.jobId?._id
+                ? `/${locale}/employer/jobs/${poster.jobId._id}/poster?generation=${poster._id}`
+                : null;
               return (
                 <div
                   key={poster._id}
-                  className="group relative rounded-xl border overflow-hidden bg-card shadow-sm hover:shadow-md transition-shadow"
+                  onClick={() => reuseHref && router.push(reuseHref)}
+                  className={`group relative rounded-xl border overflow-hidden bg-card shadow-sm hover:shadow-md transition-shadow ${reuseHref ? "cursor-pointer" : ""}`}
                 >
-                  {/* Thumbnail */}
-                  <div className="aspect-square relative">
+                  {/* Composed poster thumbnail (background + branding/text overlay) */}
+                  <div className="aspect-square relative" style={{ containerType: "size" }}>
                     {thumb ? (
-                      <div
-                        className="absolute inset-0 bg-cover bg-center"
-                        style={{ backgroundImage: `url(${thumb})` }}
-                      />
+                      <>
+                        <div
+                          className="absolute inset-0 bg-cover bg-center"
+                          style={{ backgroundImage: `url(${thumb})` }}
+                        />
+                        <PosterOverlay
+                          job={poster.jobId}
+                          posterType={poster.type as PosterType}
+                          showFields={poster.showFields ?? SHOW_ALL}
+                          layout={poster.layoutOverride ?? (poster.variations[poster.selectedVariation]?.layout as PosterLayout) ?? "layout-a"}
+                          format="instagram-post"
+                          style={poster.styleOverrides}
+                        />
+                      </>
                     ) : (
                       <div className="absolute inset-0 bg-muted flex items-center justify-center">
                         <Image className="w-8 h-8 text-muted-foreground" />
@@ -118,6 +149,7 @@ export function MyPostersPage() {
                           href={buildPosterShareUrl(poster.shareSlug)}
                           target="_blank"
                           rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
                           className="p-2 rounded-full bg-white/20 hover:bg-white/30"
                         >
                           <ExternalLink className="w-4 h-4 text-white" />
@@ -125,7 +157,8 @@ export function MyPostersPage() {
                       )}
                       <button
                         type="button"
-                        onClick={async () => {
+                        onClick={async (e) => {
+                          e.stopPropagation();
                           const ok = await confirm({
                             message: t("deleteConfirm"),
                             variant: "destructive",

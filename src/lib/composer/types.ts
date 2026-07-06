@@ -51,7 +51,130 @@ export type DesignStyle =
   | "luxury";
 
 // ── Layouts ────────────────────────────────────────────────────────────────
+// Internal geometry ids (persisted in the DB — do NOT rename or old records break).
 export type PosterLayout = "layout-a" | "layout-b" | "layout-c" | "layout-d";
+
+// ── Templates (user-facing composition presets) ────────────────────────────
+// A template = a named, art-directed composition. It maps to an internal layout
+// geometry; the layout ids stay stable for storage, the templates are the UI.
+export type PosterTemplate =
+  | "platform-editorial"
+  | "bold-recruitment"
+  | "minimal-professional"
+  | "tech-signal";
+
+export interface PosterTemplateMeta {
+  id: PosterTemplate;
+  label: string;
+  description: string;
+  layout: PosterLayout;
+  /** lowercase substrings matched against job category/industry for auto-recommend */
+  recommendedFor: string[];
+}
+
+export const TEMPLATES: PosterTemplateMeta[] = [
+  {
+    id: "platform-editorial",
+    label: "Platform Editorial",
+    description: "Premium corporate campaign. Strong left-aligned typography.",
+    layout: "layout-a",
+    recommendedFor: ["finance", "management", "corporate", "consulting", "bank"],
+  },
+  {
+    id: "bold-recruitment",
+    label: "Bold Recruitment",
+    description: "High-impact. Oversized centered WE ARE HIRING.",
+    layout: "layout-c",
+    recommendedFor: ["sales", "retail", "operations", "hospitality", "startup"],
+  },
+  {
+    id: "minimal-professional",
+    label: "Minimal Professional",
+    description: "Clean, spacious. Job title is the hero.",
+    layout: "layout-b",
+    recommendedFor: ["executive", "legal", "healthcare", "medical"],
+  },
+  {
+    id: "tech-signal",
+    label: "Tech Signal",
+    description: "Modern tech grid. Subtle data/software motifs.",
+    layout: "layout-d",
+    recommendedFor: ["tech", "software", "engineering", "cyber", "data", "devops", "it", "ai"],
+  },
+];
+
+export function templateToLayout(id: PosterTemplate): PosterLayout {
+  return TEMPLATES.find((t) => t.id === id)?.layout ?? "layout-a";
+}
+
+/** Suggest a template from job category/industry (does not override an explicit choice). */
+export function recommendTemplate(category?: string): PosterTemplate {
+  const c = (category || "").toLowerCase();
+  const hit = TEMPLATES.find((t) => t.recommendedFor.some((k) => c.includes(k)));
+  return hit?.id ?? "platform-editorial";
+}
+
+// ── Per-element overrides (poster editor: click a text block, tweak it) ─────
+// Kept format-safe: size is a multiplier over the layout default (not absolute
+// px), so one override reads correctly across Instagram/Story/LinkedIn/A4.
+export type PosterElementId =
+  | "platformLogo" | "employerLogo" | "qrCode"
+  | "companyName" | "headline" | "jobTitle" | "summary"
+  | "details" | "requirements" | "ctaTitle" | "ctaSubtitle" | "footer";
+
+export interface ElementOverride {
+  text?: string; // display-text override (never touches the canonical Job record)
+  x?: number; // position % (drag) — overrides layout left
+  y?: number; // position % (drag) — overrides layout top
+  fontScale?: number; // text: × font size; image: × box size (clamp 0.5–2.5 in UI)
+  fontWeight?: number; // 400–800 (text only)
+  color?: string; // hex (text only)
+  hidden?: boolean;
+}
+
+// Which elements the inspector exposes. kind drives which controls show;
+// editableText gates the free-text field (derived blocks like summary are style-only).
+export const POSTER_ELEMENTS: { id: PosterElementId; label: string; kind: "text" | "image"; editableText: boolean }[] = [
+  { id: "platformLogo", label: "Mployedin logo", kind: "image", editableText: false },
+  { id: "employerLogo", label: "Employer logo", kind: "image", editableText: false },
+  { id: "companyName", label: "Company name", kind: "text", editableText: true },
+  { id: "headline", label: "Headline", kind: "text", editableText: true },
+  { id: "jobTitle", label: "Job title", kind: "text", editableText: true },
+  { id: "summary", label: "Summary", kind: "text", editableText: false },
+  { id: "details", label: "Details", kind: "text", editableText: false },
+  { id: "requirements", label: "Requirements", kind: "text", editableText: false },
+  { id: "ctaTitle", label: "CTA heading", kind: "text", editableText: true },
+  { id: "ctaSubtitle", label: "CTA subtitle", kind: "text", editableText: true },
+  { id: "qrCode", label: "QR code", kind: "image", editableText: false },
+  { id: "footer", label: "Footer", kind: "text", editableText: true },
+];
+
+// ── Post-generation appearance overrides (poster editor) ───────────────────
+// Applied over the layout defaults at render + export time. Position/composition
+// is changed by switching template (PosterLayout), not per-element drag.
+export interface PosterStyleOverrides {
+  fontFamily?: string; // CSS font stack (OS fonts only → export-safe)
+  textTheme?: "white" | "warm" | "sky" | "mono-dark";
+  bodyWeight?: 400 | 500 | 700; // weight for summary/metadata/requirements ("plain" → bold)
+  overlay?: "none" | "light" | "medium" | "heavy"; // background scrim strength
+  elements?: Partial<Record<PosterElementId, ElementOverride>>; // per-block tweaks
+}
+
+// Quick-apply accent swatches for the color picker (includes the requested blue).
+export const POSTER_SWATCHES: string[] = [
+  "#ffffff", "#e5e7eb", "#94a3b8", "#0f172a", "#000000",
+  "#2563eb", "#1d4ed8", "#0ea5e9", "#38bdf8", "#06b6d4",
+  "#16a34a", "#22c55e", "#84cc16", "#eab308", "#f59e0b",
+  "#f97316", "#dc2626", "#ec4899", "#a855f7", "#7c3aed",
+  "#fef3c7", "#fde68a", "#fca5a5", "#bae6fd", "#bbf7d0",
+];
+
+export const POSTER_FONTS: { id: string; label: string; stack: string }[] = [
+  { id: "sans", label: "Sans", stack: 'Inter, "Segoe UI", system-ui, sans-serif' },
+  { id: "serif", label: "Serif", stack: 'Georgia, "Times New Roman", serif' },
+  { id: "rounded", label: "Rounded", stack: '"Trebuchet MS", "Segoe UI", system-ui, sans-serif' },
+  { id: "mono", label: "Mono", stack: '"Courier New", ui-monospace, monospace' },
+];
 
 // ── Show Fields (configurable by employer) ─────────────────────────────────
 export interface ShowFields {
@@ -69,6 +192,7 @@ export interface PosterGenerationRequest {
   formats: PosterFormat[];
   description: string;
   style: DesignStyle;
+  template: PosterTemplate;
   jobId: string;
   showFields: ShowFields;
 }

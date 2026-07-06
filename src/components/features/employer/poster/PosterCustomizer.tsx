@@ -1,8 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import type { PosterFormat, DesignStyle, ShowFields } from "@/lib/composer/types";
-import { FORMAT_DIMENSIONS } from "@/lib/composer/types";
+import type { PosterFormat, DesignStyle, ShowFields, PosterTemplate } from "@/lib/composer/types";
+import { FORMAT_DIMENSIONS, TEMPLATES } from "@/lib/composer/types";
 import { CREDITS_PER_GENERATION } from "@/lib/composer/credits";
 import { CheckCircle2, Sparkles } from "lucide-react";
 
@@ -19,6 +19,8 @@ interface PosterCustomizerProps {
   job: { title?: string; employmentType?: string; location?: { city?: string; country?: string }; salary?: { min?: number; max?: number; currency?: string }; experienceMin?: number; experienceMax?: number } | null;
   description: string;
   onDescriptionChange: (v: string) => void;
+  template: PosterTemplate;
+  onTemplateChange: (t: PosterTemplate) => void;
   style: DesignStyle;
   onStyleChange: (s: DesignStyle) => void;
   showFields: ShowFields;
@@ -34,6 +36,8 @@ export function PosterCustomizer({
   job,
   description,
   onDescriptionChange,
+  template,
+  onTemplateChange,
   style,
   onStyleChange,
   showFields,
@@ -85,7 +89,30 @@ export function PosterCustomizer({
         </div>
       </div>
 
-      {/* Style Description */}
+      {/* Template — controls composition/layout */}
+      <div>
+        <label className="text-xs font-medium text-foreground">Template</label>
+        <p className="text-[10px] text-muted-foreground mb-1.5">Controls the poster composition & layout.</p>
+        <div className="grid grid-cols-2 gap-1.5">
+          {TEMPLATES.map((tpl) => (
+            <button
+              key={tpl.id}
+              type="button"
+              onClick={() => onTemplateChange(tpl.id)}
+              className={`text-left px-2.5 py-2 rounded-lg border transition-all ${
+                template === tpl.id
+                  ? "bg-primary/10 border-primary text-foreground"
+                  : "border-border hover:border-primary/40"
+              }`}
+            >
+              <span className="block text-[11px] font-semibold">{tpl.label}</span>
+              <span className="block text-[9px] text-muted-foreground leading-tight mt-0.5">{tpl.description}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Design Description (optional art direction for the AI background) */}
       <div>
         <label className="text-xs font-medium text-foreground">{t("styleLabel")}</label>
         <p className="text-[10px] text-muted-foreground mb-1">{t("styleHelpText")}</p>

@@ -1,19 +1,13 @@
 /**
- * Centralized OpenAI client — used for GPT-image-1 poster generation.
+ * Centralized image-generation client — OpenRouter (cheap image model) for poster generation.
+ * File name kept for callers; provider is now OpenRouter.
  */
 
-import OpenAI from "openai";
 import logger from "@/lib/logger";
 
-let _client: OpenAI | null = null;
-
-function getClient(): OpenAI {
-  if (_client) return _client;
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error("OPENAI_API_KEY environment variable is not set");
-  _client = new OpenAI({ apiKey });
-  return _client;
-}
+// ponytail: single cheap image model, override via env if a cheaper/better one appears
+const MODEL = process.env.OPENROUTER_IMAGE_MODEL || "google/gemini-2.5-flash-image";
+const ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 
 export interface ImageGenerationOptions {
   prompt: string;
@@ -26,52 +20,61 @@ interface GeneratedImage {
   revisedPrompt?: string;
 }
 
+// OpenRouter image models don't take a size param — steer aspect ratio via the prompt.
+// Deliberately avoid the word "poster" here — it makes image models bake in headline text.
+function aspectHint(size?: string): string {
+  switch (size) {
+    case "1024x1536": return " Output a tall vertical portrait image (2:3 aspect ratio).";
+    case "1536x1024": return " Output a wide horizontal landscape image (3:2 aspect ratio).";
+    default: return " Output a square image (1:1 aspect ratio).";
+  }
+}
+
 /**
- * Generate an image using GPT-image-1.
- * Returns base64-encoded PNG data.
+ * Generate an image via OpenRouter. Returns base64-encoded PNG data.
  */
 export async function generateImage(opts: ImageGenerationOptions): Promise<GeneratedImage> {
-  const client = getClient();
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) throw new Error("OPENROUTER_API_KEY environment variable is not set");
+
   const start = Date.now();
 
-  try {
-    const response = await client.images.generate({
-      model: "gpt-image-1",
-      prompt: opts.prompt,
-      n: 1,
-      size: opts.size ?? "1024x1024",
-      quality: opts.quality ?? "medium",
-      output_format: "png",
-    });
+  const res = await fetch(ENDPOINT, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      modalities: ["image", "text"],
+      messages: [{ role: "user", content: opts.prompt + aspectHint(opts.size) }],
+    }),
+  });
 
-    const latencyMs = Date.now() - start;
-    logger.info(
-      { model: "gpt-image-1", size: opts.size ?? "1024x1024", latencyMs },
-      "OpenAI image generated",
-    );
-
-    const imageData = response.data?.[0];
-    if (!imageData?.b64_json) {
-      throw new Error("OpenAI returned no image data");
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    if (res.status === 402) {
+      throw new Error("OpenRouter credit limit reached. Please add credits to your OpenRouter account.");
     }
-
-    return {
-      b64: imageData.b64_json,
-      revisedPrompt: imageData.revised_prompt ?? undefined,
-    };
-  } catch (err: any) {
-    // Surface OpenAI billing/quota errors with a user-friendly message
-    if (err?.code === "billing_hard_limit_reached" || err?.status === 402 || err?.error?.code === "billing_hard_limit_reached") {
-      throw new Error("OpenAI billing limit reached. Please check your OpenAI account billing settings and add credits.");
+    if (res.status === 429) {
+      throw new Error("OpenRouter rate limit exceeded. Please wait a moment and try again.");
     }
-    if (err?.code === "insufficient_quota" || err?.error?.code === "insufficient_quota") {
-      throw new Error("OpenAI quota exceeded. Please check your OpenAI account billing.");
-    }
-    if (err?.status === 429) {
-      throw new Error("OpenAI rate limit exceeded. Please wait a moment and try again.");
-    }
-    throw err;
+    throw new Error(`OpenRouter image generation failed (${res.status}): ${text.slice(0, 200)}`);
   }
+
+  const data = await res.json();
+  const latencyMs = Date.now() - start;
+  logger.info({ model: MODEL, size: opts.size ?? "1024x1024", latencyMs }, "OpenRouter image generated");
+
+  // OpenRouter returns images on message.images[].image_url.url as a data: URL
+  const url: string | undefined = data?.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+  const b64 = url?.includes(",") ? url.split(",", 2)[1] : undefined;
+  if (!b64) {
+    throw new Error("OpenRouter returned no image data");
+  }
+
+  return { b64 };
 }
 
 /**

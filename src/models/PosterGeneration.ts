@@ -24,6 +24,9 @@ export interface IPosterGeneration extends Document {
   variations: IPosterVariation[];
   selectedVariation: number;
   finalPosterUrls: Record<string, string>;
+  /** Post-generation editor state (per-element overrides + chosen template). */
+  styleOverrides?: Record<string, unknown>;
+  layoutOverride?: PosterLayout;
   shareSlug: string;
   analytics: IPosterAnalytics;
   creditsUsed: number;
@@ -64,6 +67,8 @@ const PosterGenerationSchema = new Schema<IPosterGeneration>(
     variations: [PosterVariationSchema],
     selectedVariation: { type: Number, default: 0 },
     finalPosterUrls: { type: Schema.Types.Mixed, default: {} },
+    styleOverrides: { type: Schema.Types.Mixed, default: undefined },
+    layoutOverride: { type: String, enum: ["layout-a", "layout-b", "layout-c", "layout-d"], default: undefined },
     shareSlug: { type: String, unique: true, sparse: true },
     analytics: {
       views: { type: Number, default: 0 },

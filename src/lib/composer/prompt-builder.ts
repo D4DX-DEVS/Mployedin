@@ -3,8 +3,22 @@
  * Builds optimized prompts for GPT-image-1 with smart job-aware context.
  */
 
-import type { PosterType, PosterFormat, DesignStyle, PosterJobData } from "./types";
+import type { PosterType, PosterFormat, DesignStyle, PosterJobData, PosterTemplate } from "./types";
 import { FORMAT_TO_AI_SIZE } from "./types";
+
+// ── Template → artwork art-direction ───────────────────────────────────────
+// Controls WHERE visual interest sits so it never fights the overlaid text, and
+// what aesthetic each template's background should have.
+const TEMPLATE_ART: Record<PosterTemplate, string> = {
+  "platform-editorial":
+    "Premium editorial advertising background. Keep the top-left and left edge calm and darker for text; concentrate decorative visual interest on the right and lower-right. Subtle gradients and refined shapes.",
+  "bold-recruitment":
+    "High-impact background with controlled geometric energy around the edges and lower-right. Keep a calm content-safe band through the vertical center for large typography. Strong but not noisy.",
+  "minimal-professional":
+    "Minimal background: generous negative space, restrained gradient or soft light, very low detail. Any subtle interest sits in a corner, away from the center and bottom.",
+  "tech-signal":
+    "Sophisticated technology abstraction: subtle network lines, fine grids, faint data/code motifs concentrated on the right and lower-right. NO giant glowing circles, NO HUD or dashboard, NO fake charts, NO heavy neon. Calm, dark, upmarket.",
+};
 
 // ── Design Style → Prompt Modifiers ────────────────────────────────────────
 const STYLE_PROMPTS: Record<DesignStyle, string> = {
@@ -45,8 +59,10 @@ export function buildPosterPrompt(opts: {
   description: string;
   jobData: PosterJobData;
   variationIndex: number;
+  template?: PosterTemplate;
 }): string {
-  const { type, format, style, description, jobData, variationIndex } = opts;
+  const { type, format, style, description, jobData, variationIndex, template } = opts;
+  const artDirection = TEMPLATE_ART[template ?? "platform-editorial"];
 
   const aiSize = FORMAT_TO_AI_SIZE[format];
   const aspectLabel = aiSize === "1024x1024" ? "square (1:1)" : aiSize === "1536x1024" ? "landscape (16:9)" : "portrait (9:16)";
@@ -55,23 +71,28 @@ export function buildPosterPrompt(opts: {
   const jobContext = buildJobContext(jobData);
 
   const parts = [
-    "Create a professional recruitment poster background image.",
+    // Lead with the strongest constraint. Image models (esp. Gemini) treat the word
+    // "poster" as a cue to bake in headline text — describe an abstract background instead.
+    "Generate an abstract decorative background image. This is NOT a poster or flyer.",
+    "It must contain ZERO text — all wording is added programmatically afterwards.",
     "",
-    `Style description: ${description || "Professional and modern"}`,
-    `Design aesthetic: ${STYLE_PROMPTS[style]}`,
-    `Poster context: ${TYPE_PROMPTS[type]}`,
+    `Mood / theme: ${description || "Professional and modern"}`,
+    `Aesthetic: ${STYLE_PROMPTS[style]}`,
+    `Atmosphere: ${TYPE_PROMPTS[type]}`,
     "",
     jobContext,
     "",
     `Aspect ratio: ${aspectLabel}`,
+    `Composition: ${artDirection}`,
     `Visual approach: ${VARIATION_SUFFIXES[variationIndex % VARIATION_SUFFIXES.length]}`,
     "",
-    "CRITICAL RULES:",
-    "- DO NOT include any text, letters, words, numbers, or characters of any kind.",
-    "- DO NOT include any logos, brand marks, or recognizable symbols.",
-    "- The image must be purely visual — suitable as a background for overlaying recruitment text.",
-    "- Ensure there is adequate dark or semi-transparent areas for white text readability.",
-    "- Image should feel premium and professional, suitable for corporate recruitment.",
+    "ABSOLUTE REQUIREMENTS:",
+    "- NO text of any kind: no words, letters, numbers, captions, labels, or writing.",
+    "- Do NOT render any headline, 'WE ARE HIRING', job title, company name, or call-to-action.",
+    "- NO logos, watermarks, badges, or recognizable brand symbols.",
+    "- Only abstract shapes, gradients, textures, lighting and color — like a plain wallpaper.",
+    "- Keep the composition mostly open with calm darker regions so white text overlays cleanly.",
+    "- Premium, professional corporate feel.",
   ];
 
   return parts.join("\n");

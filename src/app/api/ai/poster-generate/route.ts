@@ -7,10 +7,9 @@ import { Job } from "@/models/Job";
 import { generateImages } from "@/lib/ai/openai";
 import { uploadBuffer } from "@/lib/storage/spaces";
 import { buildPosterPrompt } from "@/lib/composer/prompt-builder";
-import { getLayoutForVariation } from "@/lib/composer/layouts";
 import { CREDITS_PER_GENERATION, hasCredits, getCreditLimitForPlan, getNextResetDate } from "@/lib/composer/credits";
-import { FORMAT_TO_AI_SIZE } from "@/lib/composer/types";
-import type { PosterType, PosterFormat, DesignStyle, ShowFields, PosterJobData } from "@/lib/composer/types";
+import { FORMAT_TO_AI_SIZE, templateToLayout } from "@/lib/composer/types";
+import type { PosterType, PosterFormat, DesignStyle, ShowFields, PosterJobData, PosterTemplate } from "@/lib/composer/types";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { z } from "zod";
@@ -25,6 +24,7 @@ const generateSchema = z.object({
   formats: z.array(z.enum(["instagram-post", "instagram-story", "linkedin-post", "a4-print"])).min(1).max(4),
   description: z.string().max(300).default(""),
   style: z.enum(["professional", "modern", "creative", "minimal", "bold", "luxury"]),
+  template: z.enum(["platform-editorial", "bold-recruitment", "minimal-professional", "tech-signal"]).default("platform-editorial"),
   jobId: z.string().min(1),
   showFields: z.object({
     salary: z.boolean(),
@@ -40,7 +40,7 @@ const generateSchema = z.object({
  */
 async function postHandler(req: NextRequest, ctx: AuthCtx) {
   if (ctx.role !== "employer") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return NextResponse.json({ error: `Poster generation is only available on employer accounts (your session role: ${ctx.role})` }, { status: 403 });
   }
 
   // Rate limit
@@ -92,7 +92,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
 
   // Verify job belongs to this employer
   if (String(job.employerId) !== String(employer._id)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return NextResponse.json({ error: "This job does not belong to your employer account" }, { status: 403 });
   }
 
   const jobData: PosterJobData = {
@@ -118,6 +118,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       description: body.description,
       jobData,
       variationIndex,
+      template: body.template as PosterTemplate,
     }),
     size: FORMAT_TO_AI_SIZE[primaryFormat],
     quality: "medium" as const,
@@ -138,7 +139,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
 
   // Upload to S3
   const variations = await Promise.all(
-    images.map(async (img, index) => {
+    images.map(async (img) => {
       const buffer = Buffer.from(img.b64, "base64");
       const result = await uploadBuffer(buffer, {
         folder: "media",
@@ -147,7 +148,8 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       });
       return {
         backgroundUrl: result.url,
-        layout: getLayoutForVariation(body.type as PosterType, index),
+        // Template controls composition — both variations share it (artwork varies via prompt).
+        layout: templateToLayout(body.template as PosterTemplate),
       };
     }),
   );

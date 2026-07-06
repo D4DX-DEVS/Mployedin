@@ -116,7 +116,8 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       });
       return {
         backgroundUrl: result.url,
-        layout: getLayoutForVariation(posterGen.type as PosterType, existingCount + index),
+        // Keep the template/composition chosen at generation time.
+        layout: posterGen.variations[0]?.layout ?? getLayoutForVariation(posterGen.type as PosterType, existingCount + index),
       };
     }),
   );

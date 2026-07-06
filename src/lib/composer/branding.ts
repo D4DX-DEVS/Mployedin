@@ -7,6 +7,18 @@
 import type { PosterType } from "./types";
 
 export const MPLOYEDIN_LOGO_PATH = "/mployedin-logo.png";
+
+/**
+ * Route a remote image (e.g. DigitalOcean Spaces) through the same-origin proxy so it
+ * can be drawn onto a <canvas> during poster export without cross-origin taint.
+ * Data URLs and same-origin/relative paths are returned unchanged.
+ */
+export function proxiedImageUrl(url?: string | null): string | undefined {
+  if (!url) return undefined;
+  if (url.startsWith("data:") || url.startsWith("/")) return url;
+  if (/^https?:\/\//i.test(url)) return `/api/image-proxy?url=${encodeURIComponent(url)}`;
+  return url;
+}
 export const MPLOYEDIN_LOGO_WHITE_PATH = "/mployedin-logo.png"; // white variant for dark backgrounds
 
 export const APPLY_TEXT_TEMPLATE = "Apply via Mployedin";
