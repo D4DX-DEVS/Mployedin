@@ -155,6 +155,7 @@ export const POSTER_ELEMENTS: { id: PosterElementId; label: string; kind: "text"
 export interface PosterStyleOverrides {
   fontFamily?: string; // CSS font stack (OS fonts only → export-safe)
   textTheme?: "white" | "warm" | "sky" | "mono-dark";
+  textScale?: number; // global × over ALL text sizes (whole-poster resize; clamp 0.5–2 in UI)
   bodyWeight?: 400 | 500 | 700; // weight for summary/metadata/requirements ("plain" → bold)
   overlay?: "none" | "light" | "medium" | "heavy"; // background scrim strength
   elements?: Partial<Record<PosterElementId, ElementOverride>>; // per-block tweaks

@@ -114,6 +114,7 @@ export function PosterOverlay({
   const E = style?.elements;
 
   // Resolve a TEXT block: position (drag) + font/weight/color overrides over layout defaults.
+  const globalScale = style?.textScale ?? 1;
   const T = (id: PosterElementId, base: ElementPosition, baseColor: string, baseWeight: number) => {
     const o = E?.[id];
     return {
@@ -126,7 +127,7 @@ export function PosterOverlay({
       align: base.align,
       color: o?.color ?? baseColor,
       fontWeight: o?.fontWeight ?? baseWeight,
-      fontSize: fs(base.fontSize * (o?.fontScale ?? 1)),
+      fontSize: fs(base.fontSize * (o?.fontScale ?? 1) * globalScale),
     };
   };
   // Resolve an IMAGE block: position (drag) + box scale.

@@ -4156,7 +4156,8 @@
     "untitledJob": "Untitled Job",
     "previous": "Previous",
     "next": "Next",
-    "pageOf": "Page {page} of {pages}"
+    "pageOf": "Page {page} of {pages}",
+    "perPage": "Per page"
   },
   "employerMessages": {
     "title": "Messages",

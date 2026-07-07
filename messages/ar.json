@@ -4156,7 +4156,8 @@
     "untitledJob": "وظيفة بدون عنوان",
     "previous": "السابق",
     "next": "التالي",
-    "pageOf": "صفحة {page} من {pages}"
+    "pageOf": "صفحة {page} من {pages}",
+    "perPage": "لكل صفحة"
   },
   "employerMessages": {
     "title": "الرسائل",

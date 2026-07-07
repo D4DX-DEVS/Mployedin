@@ -110,6 +110,9 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
 
   // Build prompts for 2 variations
   const primaryFormat: PosterFormat = body.formats[0];
+  // Random palette offset per generation so re-generating yields a fresh look
+  // (fixes "every poster comes back the same dark-blue background").
+  const paletteSeed = Math.floor(Math.random() * 8);
   const prompts = [0, 1].map((variationIndex) => ({
     prompt: buildPosterPrompt({
       type: body.type as PosterType,
@@ -119,6 +122,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       jobData,
       variationIndex,
       template: body.template as PosterTemplate,
+      paletteSeed,
     }),
     size: FORMAT_TO_AI_SIZE[primaryFormat],
     quality: "medium" as const,

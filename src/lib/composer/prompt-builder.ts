@@ -46,6 +46,19 @@ const VARIATION_SUFFIXES = [
   "Emphasis on subtle textured patterns with layered visual elements",
 ];
 
+// Dominant color palettes — rotated per generation (paletteSeed) so re-generating
+// or the two side-by-side variations don't all come back the same dark-blue look.
+const PALETTES = [
+  "deep navy and steel blue with cool cyan highlights",
+  "charcoal black with warm amber and gold accents",
+  "deep emerald and teal with soft mint highlights",
+  "burgundy and plum with rose-gold accents",
+  "midnight indigo and violet with a subtle magenta glow",
+  "slate grey and copper with warm bronze tones",
+  "forest green and warm cream, earthy and organic",
+  "deep teal and coral with sunset warmth",
+];
+
 /**
  * Build an AI image generation prompt for a poster background.
  *
@@ -60,9 +73,12 @@ export function buildPosterPrompt(opts: {
   jobData: PosterJobData;
   variationIndex: number;
   template?: PosterTemplate;
+  /** Rotates palette + visual approach so generations don't all look alike. Defaults to 0. */
+  paletteSeed?: number;
 }): string {
-  const { type, format, style, description, jobData, variationIndex, template } = opts;
+  const { type, format, style, description, jobData, variationIndex, template, paletteSeed = 0 } = opts;
   const artDirection = TEMPLATE_ART[template ?? "platform-editorial"];
+  const palette = PALETTES[(paletteSeed + variationIndex) % PALETTES.length];
 
   const aiSize = FORMAT_TO_AI_SIZE[format];
   const aspectLabel = aiSize === "1024x1024" ? "square (1:1)" : aiSize === "1536x1024" ? "landscape (16:9)" : "portrait (9:16)";
@@ -84,7 +100,8 @@ export function buildPosterPrompt(opts: {
     "",
     `Aspect ratio: ${aspectLabel}`,
     `Composition: ${artDirection}`,
-    `Visual approach: ${VARIATION_SUFFIXES[variationIndex % VARIATION_SUFFIXES.length]}`,
+    `Dominant color palette: ${palette}. Commit to this palette — do NOT default to generic dark blue.`,
+    `Visual approach: ${VARIATION_SUFFIXES[(paletteSeed + variationIndex) % VARIATION_SUFFIXES.length]}`,
     "",
     "ABSOLUTE REQUIREMENTS:",
     "- NO text of any kind: no words, letters, numbers, captions, labels, or writing.",

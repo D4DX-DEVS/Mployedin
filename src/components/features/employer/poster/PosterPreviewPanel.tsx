@@ -352,6 +352,21 @@ export function PosterPreviewPanel({
             ))}
           </EditorRow>
 
+          <EditorRow label="All text size">
+            <Chip active={false} onClick={() => setLook((s) => ({ ...s, textScale: clamp((s.textScale ?? 1) - 0.1, 0.5, 2) }))}>−</Chip>
+            <input
+              type="number"
+              min={50}
+              max={200}
+              step={5}
+              value={Math.round((look.textScale ?? 1) * 100)}
+              onChange={(e) => { const v = Number(e.target.value); if (Number.isFinite(v)) setLook((s) => ({ ...s, textScale: clamp(v / 100, 0.5, 2) })); }}
+              className="w-14 rounded-md border px-1.5 py-0.5 text-[11px] bg-background text-center"
+            />
+            <span className="text-[10px] text-muted-foreground self-center">%</span>
+            <Chip active={false} onClick={() => setLook((s) => ({ ...s, textScale: clamp((s.textScale ?? 1) + 0.1, 0.5, 2) }))}>+</Chip>
+          </EditorRow>
+
           <EditorRow label="Body weight">
             {([[400, "Plain"], [500, "Medium"], [700, "Bold"]] as const).map(([w, label]) => (
               <Chip key={w} active={(look.bodyWeight ?? 400) === w} onClick={() => setLook((s) => ({ ...s, bodyWeight: w }))}>

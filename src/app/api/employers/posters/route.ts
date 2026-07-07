@@ -24,6 +24,7 @@ const elementOverrideSchema = z.object({
 const styleOverridesSchema = z.object({
   fontFamily: z.string().max(200).optional(),
   textTheme: z.enum(["white", "warm", "sky", "mono-dark"]).optional(),
+  textScale: z.number().min(0.3).max(3).optional(),
   bodyWeight: z.number().int().min(100).max(900).optional(),
   overlay: z.enum(["none", "light", "medium", "heavy"]).optional(),
   elements: z.record(z.string(), elementOverrideSchema).optional(),

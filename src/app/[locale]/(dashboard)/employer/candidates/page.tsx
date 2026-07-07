@@ -1026,8 +1026,11 @@ export default function EmployerCandidatesPage() {
       return;
     }
 
-    // Close the candidate insights dialog so the CV viewer is not stacked behind it.
-    setDetailCandidateId(null);
+    // Narrow layout renders insights as a Dialog — close it so the CV viewer isn't stacked behind.
+    // Wide layout keeps it as an inline side panel, so leave it open; closing the CV should return to it.
+    if (!isWide) {
+      setDetailCandidateId(null);
+    }
 
     const ext = candidate.cv.originalUrl.split("?")[0].split(".").pop()?.toLowerCase() || "pdf";
 
@@ -1761,7 +1764,7 @@ export default function EmployerCandidatesPage() {
       <div ref={layoutRef} className="@container/cands">
       <div className="grid gap-4 @4xl/cands:grid-cols-[minmax(340px,380px)_minmax(0,1fr)]">
         {/* Center: candidate list */}
-        <div className="min-w-0 space-y-3">
+        <div className="sticky top-4 flex h-[calc(100vh-1.5rem)] min-w-0 flex-col gap-3">
       {/* Toolbar — Select all (left) + bulk actions + Export (right) on one horizontal section */}
       <TableToolbar
         className="flex-wrap rounded-[20px] border border-border bg-card px-4 py-2.5"
@@ -1808,6 +1811,7 @@ export default function EmployerCandidatesPage() {
         onExportPdf={handleExportPdf}
       />
 
+      <div className="flex-1 overflow-y-auto pe-1">
       {loading ? (
         <div className="space-y-2">
           {Array.from({ length: 6 }).map((_, index) => (
@@ -1852,6 +1856,7 @@ export default function EmployerCandidatesPage() {
           })}
         </div>
       )}
+      </div>
         </div>
 
         {/* Right: sticky detail panel (only when the container is wide enough) */}

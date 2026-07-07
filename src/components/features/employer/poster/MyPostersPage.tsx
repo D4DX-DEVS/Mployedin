@@ -38,6 +38,20 @@ interface PosterItem {
 
 const SHOW_ALL: ShowFields = { salary: true, location: true, experience: true, skills: true };
 
+// Numbered pager with first/last always shown and an ellipsis around the current page.
+// e.g. page 6 of 20 → [1, "…", 5, 6, 7, "…", 20].
+function getPageWindow(current: number, total: number): (number | "…")[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const out: (number | "…")[] = [1];
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+  if (start > 2) out.push("…");
+  for (let n = start; n <= end; n++) out.push(n);
+  if (end < total - 1) out.push("…");
+  out.push(total);
+  return out;
+}
+
 export function MyPostersPage() {
   const locale = useLocale();
   const router = useRouter();
@@ -46,11 +60,12 @@ export function MyPostersPage() {
   const { credits } = usePosterCredits();
   const { confirm, ConfirmDialogNode } = useConfirm();
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(12);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["employer-posters", page],
+    queryKey: ["employer-posters", page, limit],
     queryFn: async () => {
-      const res = await fetch(`/api/employers/posters?page=${page}&limit=12`);
+      const res = await fetch(`/api/employers/posters?page=${page}&limit=${limit}`);
       if (!res.ok) throw new Error("Failed to fetch posters");
       return res.json() as Promise<{ posters: PosterItem[]; pagination: { page: number; pages: number; total: number } }>;
     },
@@ -201,30 +216,59 @@ export function MyPostersPage() {
             })}
           </div>
 
-          {/* Pagination */}
-          {data.pagination.pages > 1 && (
-            <div className="flex items-center justify-center gap-2 pt-4">
-              <button
-                type="button"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
-                className="px-3 py-1.5 rounded-md border text-sm disabled:opacity-50"
+          {/* Pagination: page-size selector + numbered pages */}
+          <div className="flex flex-col-reverse items-center justify-between gap-3 pt-4 sm:flex-row">
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              {t("perPage")}
+              <select
+                value={limit}
+                onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
+                className="rounded-md border bg-background px-2 py-1 text-sm"
               >
-                {t("previous")}
-              </button>
-              <span className="text-sm text-muted-foreground">
-                {t("pageOf", { page, pages: data.pagination.pages })}
-              </span>
-              <button
-                type="button"
-                disabled={page >= data.pagination.pages}
-                onClick={() => setPage((p) => p + 1)}
-                className="px-3 py-1.5 rounded-md border text-sm disabled:opacity-50"
-              >
-                {t("next")}
-              </button>
-            </div>
-          )}
+                {[12, 24, 48].map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+            </label>
+
+            {data.pagination.pages > 1 && (
+              <div className="flex flex-wrap items-center justify-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  className="px-3 py-1.5 rounded-md border text-sm disabled:opacity-50"
+                >
+                  {t("previous")}
+                </button>
+                {getPageWindow(page, data.pagination.pages).map((n, i) =>
+                  n === "…" ? (
+                    <span key={`gap-${i}`} className="px-2 text-sm text-muted-foreground">…</span>
+                  ) : (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setPage(n as number)}
+                      aria-current={n === page ? "page" : undefined}
+                      className={`min-w-[2rem] px-2.5 py-1.5 rounded-md border text-sm ${
+                        n === page ? "bg-primary text-primary-foreground border-primary" : "hover:bg-muted"
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ),
+                )}
+                <button
+                  type="button"
+                  disabled={page >= data.pagination.pages}
+                  onClick={() => setPage((p) => Math.min(data.pagination.pages, p + 1))}
+                  className="px-3 py-1.5 rounded-md border text-sm disabled:opacity-50"
+                >
+                  {t("next")}
+                </button>
+              </div>
+            )}
+          </div>
         </>
       )}
     </div>

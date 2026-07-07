@@ -81,6 +81,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   const existingCount = posterGen.variations.length;
   const primaryFormat: PosterFormat = posterGen.formats[0] as PosterFormat;
 
+  const paletteSeed = Math.floor(Math.random() * 8);
   const prompts = [existingCount, existingCount + 1].map((variationIndex) => ({
     prompt: buildPosterPrompt({
       type: posterGen.type as PosterType,
@@ -89,6 +90,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       description: posterGen.prompt,
       jobData: { title: "", companyName: "" }, // Will be re-derived from job if needed
       variationIndex,
+      paletteSeed,
     }),
     size: FORMAT_TO_AI_SIZE[primaryFormat],
     quality: "medium" as const,
