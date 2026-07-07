@@ -24,6 +24,7 @@ import Invoice from "@/models/Invoice";
 import SubscriptionHistory from "@/models/SubscriptionHistory";
 import { User } from "@/models/User";
 import { Employer } from "@/models/Employer";
+import { requireSubscriptionTargetAccess } from "@/lib/auth/agentRestrictions";
 import type { UserRole } from "@/types/user";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string }
@@ -36,6 +37,10 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
   await connectDB();
   const body = await validateBody(req, subscriptionAssignSchema);
+
+  // Agents/super-agents may only act on employers within their scope
+  const scopeCheck = await requireSubscriptionTargetAccess(ctx, body.userId);
+  if (scopeCheck) return scopeCheck;
 
   // 1. Look up the plan
   const plan = await SubscriptionPlan.findById(body.planId).lean();

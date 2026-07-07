@@ -33,7 +33,7 @@ async function logAccessDenied(req: NextRequest, ctx: AuthCtx, invoice: { _id?: 
   await logActivity({
     ...actorFromCtx(ctx),
     action: "invoice.access_denied",
-    resource: "subscriptions",
+    resource: "invoices",
     resourceId: String(invoice._id ?? "unknown"),
     meta: {
       operation,
@@ -347,7 +347,7 @@ async function patchHandler(
   await logActivity({
     ...actorFromCtx(ctx),
     action: "invoice.update",
-    resource: "subscriptions",
+    resource: "invoices",
     resourceId: invoice._id.toString(),
     changes: { before, after: { status: invoice.status, notes: invoice.notes, internalNotes: invoice.internalNotes } },
     meta: { commissionsCreated, commissionsReversed, commissionsAlreadyPaid, commissionsApproved, commissionNotificationFailures, commissionApprovalFailed },
@@ -357,5 +357,5 @@ async function patchHandler(
   return NextResponse.json({ invoice, commissionsCreated, commissionsReversed, commissionsAlreadyPaid, commissionsApproved, commissionNotificationFailures, commissionApprovalFailed });
 }
 
-export const GET = withAuth(getHandler, { resource: "subscriptions", action: "read" });
-export const PATCH = withAuth(patchHandler, { resource: "subscriptions", action: "update" });
+export const GET = withAuth(getHandler, { resource: "invoices", action: "read" });
+export const PATCH = withAuth(patchHandler, { resource: "invoices", action: "update" });

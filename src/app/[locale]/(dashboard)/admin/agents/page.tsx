@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CascadingLocationPicker } from "@/components/shared/CascadingLocationPicker";
@@ -179,14 +180,16 @@ export default function AdminAgentsPage() {
         }),
       });
       if (!res.ok) {
-        const e = await res.json();
+        const e = await res.json().catch(() => ({}));
         setAddError(e.error ?? tr("createAgentFailed"));
+        toast.error(e.error ?? "Failed to create agent");
         return;
       }
       setShowAdd(false);
       setAddForm({ name: "", email: "", password: "", superAgentId: "", commissionRate: "0" });
       setAddCityIds([]);
       setAddStateIds([]);
+      toast.success("Agent created successfully");
       fetchAgents();
     } catch {
       setAddError(tr("networkError"));
@@ -241,11 +244,13 @@ export default function AdminAgentsPage() {
         }),
       });
       if (!res.ok) {
-        const e = await res.json();
+        const e = await res.json().catch(() => ({}));
         setEditError(e.error ?? tr("updateAgentFailed"));
+        toast.error(e.error ?? "Failed to update agent");
         return;
       }
       setEditAgent(null);
+      toast.success("Agent updated successfully");
       fetchAgents();
     } catch {
       setEditError(tr("networkError"));
@@ -257,22 +262,42 @@ export default function AdminAgentsPage() {
   const handleDelete = async (id: string) => {
     const ok = await confirmDialog({ message: tr("deactivateConfirm"), confirmLabel: tr("deactivate") });
     if (!ok) return;
-    await fetch("/api/admin/users", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: id }),
-    });
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: id }),
+      });
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        toast.error(e.error ?? "Failed to deactivate agent");
+        return;
+      }
+      toast.success("Agent deactivated successfully");
+    } catch {
+      toast.error("Failed to deactivate agent");
+    }
     fetchAgents();
   };
 
   const handlePermanentDelete = async (id: string) => {
     const ok = await confirmDialog({ title: tr("deleteForeverTitle"), message: tr("deleteForeverConfirm"), confirmLabel: tr("deleteForever") });
     if (!ok) return;
-    await fetch("/api/admin/users", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: id, permanent: true }),
-    });
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: id, permanent: true }),
+      });
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        toast.error(e.error ?? "Failed to permanently delete agent");
+        return;
+      }
+      toast.success("Agent permanently deleted");
+    } catch {
+      toast.error("Failed to permanently delete agent");
+    }
     fetchAgents();
   };
 

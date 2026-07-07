@@ -14,7 +14,7 @@ export type Resource =
   | "ai_cv" | "ai_match" | "ai_assistant" | "tasks"
   | "job_attributes" | "location_data" | "cms" | "contact_submissions"
   | "offers" | "subscriptions" | "exhibitions" | "resources" | "targets"
-  | "onboarding";
+  | "onboarding" | "invoices";
 
 export type Action = "create" | "read" | "update" | "delete" | "approve" | "export" | "impersonate";
 

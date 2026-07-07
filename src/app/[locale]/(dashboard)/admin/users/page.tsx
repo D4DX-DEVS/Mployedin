@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { Search, UserCheck, UserX, Shield, ChevronDown, Inbox, Plus, Settings2, Check, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -109,6 +110,8 @@ export default function AdminUsersPage() {
         const data = await res.json();
         setUsers(data.users);
         updateTotal(data.pagination.total);
+      } else {
+        toast.error("Failed to load users");
       }
     } finally {
       setLoading(false);
@@ -126,7 +129,12 @@ export default function AdminUsersPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId, ...update }),
     });
-    if (res.ok) fetchUsers();
+    if (res.ok) {
+      fetchUsers();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      toast.error(err.error || "Failed to update user");
+    }
   }
 
   async function applyBulk() {
@@ -134,11 +142,31 @@ export default function AdminUsersPage() {
     setBulkLoading(true);
     try {
       const [action, role] = bulkAction.split(":");
-      await fetch("/api/admin/users", {
+      const res = await fetch("/api/admin/users", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids: selected, action, ...(role ? { role } : {}) }),
       });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Bulk action failed");
+        return;
+      }
+      const data = await res.json() as {
+        affected: number;
+        total: number;
+        results: Array<{ userId: string; status: "updated" | "skipped" | "error"; reason?: string }>;
+      };
+      const failed = data.results.filter((r) => r.status !== "updated");
+      if (failed.length === 0) {
+        toast.success(`${data.affected}/${data.total} user(s) updated`);
+      } else if (data.affected > 0) {
+        const reasons = [...new Set(failed.map((r) => r.reason).filter(Boolean))].join("; ");
+        toast(`${data.affected}/${data.total} updated, ${failed.length} skipped: ${reasons}`);
+      } else {
+        const reasons = [...new Set(failed.map((r) => r.reason).filter(Boolean))].join("; ");
+        toast.error(`No users updated: ${reasons}`);
+      }
       setBulkAction("__none__"); setSelected([]);
       fetchUsers();
     } finally { setBulkLoading(false); }
@@ -193,7 +221,7 @@ export default function AdminUsersPage() {
     if (!permUser) return;
     setPermSaving(true);
     try {
-      await fetch("/api/admin/users", {
+      const res = await fetch("/api/admin/users", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -202,6 +230,12 @@ export default function AdminUsersPage() {
           customPermissions: editPermMode === "custom" ? editPerms : undefined,
         }),
       });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Failed to save permissions");
+        return;
+      }
+      toast.success("Permissions updated");
       setPermUser(null);
       fetchUsers();
     } finally {

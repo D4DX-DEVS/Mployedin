@@ -265,4 +265,4 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   });
 }
 
-export const GET = withAuth(handler, { resource: "subscriptions", action: "read" });
+export const GET = withAuth(handler, { resource: "invoices", action: "read" });

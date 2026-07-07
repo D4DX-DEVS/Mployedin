@@ -43,6 +43,7 @@ const RESOURCE_LABELS: Record<Resource, string> = {
   resources: "Resources",
   targets: "Targets",
   onboarding: "Onboarding",
+  invoices: "Invoices",
 };
 
 /** Human-readable labels for actions */

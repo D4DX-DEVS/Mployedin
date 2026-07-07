@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { Eye, Briefcase, MapPin, Building2, Clock, Search, DollarSign, Calendar, Globe, Users, UserCheck, FileText, Sparkles, Inbox } from "lucide-react";
+import { toast } from "sonner";
+import { Eye, Briefcase, MapPin, Building2, Clock, Search, DollarSign, Calendar, Globe, Users, UserCheck, FileText, Sparkles, Inbox, Check, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,6 +65,7 @@ function getSuperAgentName(job: Job) {
 
 export default function AdminApprovalsPage() {
   const t = useTranslations("adminApprovals");
+  const tJobs = useTranslations("adminJobs");
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
@@ -115,6 +117,9 @@ export default function AdminApprovalsPage() {
           const data = await empRes.json();
           const list = (data.employers ?? data.items ?? data ?? []) as { _id: string; companyName?: string }[];
           setEmployers([{ value: "all", label: t("allEmployers") }, ...list.map((e) => ({ value: e._id, label: e.companyName ?? e._id }))]);
+        } else {
+          const e = await empRes.json().catch(() => ({}));
+          toast.error(e.error ?? "Failed to load employers");
         }
         if (agentRes.ok) {
           const data = await agentRes.json();
@@ -123,6 +128,9 @@ export default function AdminApprovalsPage() {
             const label = typeof a.userId === "object" ? (a.userId?.name ?? a.userId?.email ?? a._id) : (a.name ?? a._id);
             return { value: a._id, label };
           })]);
+        } else {
+          const e = await agentRes.json().catch(() => ({}));
+          toast.error(e.error ?? "Failed to load agents");
         }
         if (saRes.ok) {
           const data = await saRes.json();
@@ -131,10 +139,15 @@ export default function AdminApprovalsPage() {
             const label = typeof s.userId === "object" ? (s.userId?.name ?? s.userId?.email ?? s._id) : (s.name ?? s._id);
             return { value: s._id, label };
           })]);
+        } else {
+          const e = await saRes.json().catch(() => ({}));
+          toast.error(e.error ?? "Failed to load super agents");
         }
-      } catch { /* non-critical */ }
+      } catch {
+        toast.error("Failed to load filter options");
+      }
     })();
-  }, []);
+  }, [t]);
 
   const fetchJobs = useCallback(async () => {
     setLoading(true);
@@ -154,13 +167,39 @@ export default function AdminApprovalsPage() {
         setStatusCounts(data.statusCounts ?? {});
         setApprovalCounts(data.approvalCounts ?? {});
         updateTotal(data.pagination?.total ?? data.total ?? 0);
+      } else {
+        const e = await res.json().catch(() => ({}));
+        toast.error(e.error ?? "Failed to load jobs");
       }
+    } catch {
+      toast.error("Failed to load jobs");
     } finally {
       setLoading(false);
     }
   }, [search, status, approvalStatus, selectedEmployer, selectedAgent, selectedSuperAgent, page, limit, updateTotal]);
 
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
+
+  const [actingId, setActingId] = useState<string | null>(null);
+
+  const decideJob = async (jobId: string, approved: boolean) => {
+    setActingId(jobId);
+    try {
+      const res = await fetch(`/api/admin/jobs/${jobId}/approve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ approved }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success(approved ? tJobs("jobApprovedSuccess") : tJobs("jobRejectedSuccess"));
+      setSelectedJob(null);
+      fetchJobs();
+    } catch {
+      toast.error(approved ? tJobs("jobApprovalFailed") : tJobs("jobRejectionFailed"));
+    } finally {
+      setActingId(null);
+    }
+  };
 
   const exportColumns: ExportColumn<Job>[] = [
     { header: t("tableHeaderTitle"), key: "title" },
@@ -310,10 +349,38 @@ export default function AdminApprovalsPage() {
                     <TableCell className="text-right text-muted-foreground">{job.applicantsCount ?? 0}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{new Date(job.createdAt).toLocaleDateString()}</TableCell>
                     <TableCell className="text-center">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedJob(job)}>
-                        <Eye className="h-4 w-4" />
-                        <span className="sr-only">{t("viewDetails")}</span>
-                      </Button>
+                      <div className="flex items-center justify-center gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedJob(job)}>
+                          <Eye className="h-4 w-4" />
+                          <span className="sr-only">{t("viewDetails")}</span>
+                        </Button>
+                        {getApproval(job) === "pending" && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-700"
+                              disabled={actingId === job._id}
+                              onClick={() => decideJob(job._id, true)}
+                              title={tJobs("approve")}
+                            >
+                              <Check className="h-4 w-4" />
+                              <span className="sr-only">{tJobs("approve")}</span>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-red-500 hover:bg-red-500/10 hover:text-red-600"
+                              disabled={actingId === job._id}
+                              onClick={() => decideJob(job._id, false)}
+                              title={tJobs("reject")}
+                            >
+                              <X className="h-4 w-4" />
+                              <span className="sr-only">{tJobs("reject")}</span>
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -401,6 +468,26 @@ export default function AdminApprovalsPage() {
                     <ul className="list-disc space-y-0.5 pl-4 text-sm text-foreground">
                       {selectedJob.benefits!.map((b, i) => <li key={i}>{b}</li>)}
                     </ul>
+                  </div>
+                )}
+
+                {getApproval(selectedJob) === "pending" && (
+                  <div className="flex justify-end gap-2 border-t border-border/70 pt-4">
+                    <Button
+                      variant="outline"
+                      className="gap-1.5 text-red-500 hover:bg-red-500/10 hover:text-red-600"
+                      disabled={actingId === selectedJob._id}
+                      onClick={() => decideJob(selectedJob._id, false)}
+                    >
+                      <X className="h-4 w-4" /> {tJobs("reject")}
+                    </Button>
+                    <Button
+                      className="gap-1.5 bg-emerald-600 hover:bg-emerald-700"
+                      disabled={actingId === selectedJob._id}
+                      onClick={() => decideJob(selectedJob._id, true)}
+                    >
+                      <Check className="h-4 w-4" /> {tJobs("approve")}
+                    </Button>
                   </div>
                 )}
               </div>

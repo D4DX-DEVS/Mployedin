@@ -84,7 +84,7 @@ async function handler(
   await logActivity({
     ...actorFromCtx(ctx),
     action: "invoice.pdf_download",
-    resource: "subscriptions",
+    resource: "invoices",
     resourceId: String(invoice._id),
     req,
   });

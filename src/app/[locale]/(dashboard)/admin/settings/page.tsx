@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { Eye, EyeOff, Mail, Send, Globe, Plus, Trash2, Percent } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -58,7 +59,13 @@ export default function AdminSettingsPage() {
 
   useEffect(() => {
     fetch("/api/admin/settings")
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) {
+          toast.error("Failed to load settings");
+          throw new Error("Failed to load settings");
+        }
+        return r.json();
+      })
       .then((data) => {
         if (data.settings) {
           setSettings({
@@ -91,8 +98,14 @@ export default function AdminSettingsPage() {
       });
       if (res.ok) {
         setSaved(true);
+        toast.success("Settings saved successfully");
         setTimeout(() => setSaved(false), 2500);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Failed to save settings");
       }
+    } catch (error) {
+      toast.error("Failed to save settings");
     } finally {
       setSaving(false);
     }

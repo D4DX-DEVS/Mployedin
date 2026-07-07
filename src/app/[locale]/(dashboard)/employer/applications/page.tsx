@@ -390,6 +390,20 @@ export default function EmployerApplicationsPage() {
     }
   }
 
+  /** Surface the itemized processed/total/errors result from a bulk action as a toast. */
+  function reportBulkActionResult(result: { processed?: number; total?: number; errors?: string[] }) {
+    const processed = result.processed ?? 0;
+    const total = result.total ?? processed;
+    const errors = result.errors ?? [];
+    if (errors.length === 0) {
+      toast.success(`${processed}/${total} application(s) updated`);
+    } else if (processed > 0) {
+      toast(`${processed}/${total} updated, ${errors.length} failed: ${errors.slice(0, 3).join("; ")}`);
+    } else {
+      toast.error(`Bulk action failed: ${errors[0] ?? "unknown error"}`);
+    }
+  }
+
   /** Show confirmation before auto-shortlisting top candidates */
   function handleAutoShortlist() {
     const scored = [...filteredApplications]
@@ -411,16 +425,17 @@ export default function EmployerApplicationsPage() {
     const names = picked.map((a) => getCandidateName(a));
 
     try {
-      await bulkAction.mutateAsync({
+      const result = await bulkAction.mutateAsync({
         applicationIds: ids,
         action: "move_stage",
         params: { targetStage: "shortlisted" },
       });
+      reportBulkActionResult(result);
       setShortlistConfirm(null);
       // After successful shortlist, prompt user to schedule interviews
       setPostShortlistPrompt({ shortlistedIds: ids, candidateNames: names });
     } catch (err) {
-      console.error("Auto shortlist failed:", err);
+      toast.error(err instanceof Error ? err.message : "Failed to shortlist candidates");
     }
   }
 
@@ -580,7 +595,7 @@ export default function EmployerApplicationsPage() {
       return;
     }
     try {
-      await bulkAction.mutateAsync({
+      const result = await bulkAction.mutateAsync({
         applicationIds: selected,
         action,
         params: {
@@ -590,12 +605,13 @@ export default function EmployerApplicationsPage() {
           ...(emailOverride?.emailBody && { emailBody: emailOverride.emailBody }),
         },
       });
+      reportBulkActionResult(result);
       setSelected([]);
       setRejectionReason("");
       setShowRejectPrompt(false);
       setEmailPreviewModal(null);
-    } catch {
-      // error handled by React Query
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Bulk action failed");
     }
   }
 

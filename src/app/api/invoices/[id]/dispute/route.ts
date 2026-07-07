@@ -97,7 +97,7 @@ async function postHandler(
     await logActivity({
       ...actorFromCtx(ctx),
       action: `invoice.dispute_${body.status}`,
-      resource: "subscriptions",
+      resource: "invoices",
       resourceId: invoice._id.toString(),
       meta: { disputeId: body.disputeId, resolution: body.resolution },
       req,
@@ -136,7 +136,7 @@ async function postHandler(
   await logActivity({
     ...actorFromCtx(ctx),
     action: "invoice.dispute_raised",
-    resource: "subscriptions",
+    resource: "invoices",
     resourceId: invoice._id.toString(),
     meta: { reason: body.reason, category: body.category },
     req,
@@ -148,5 +148,5 @@ async function postHandler(
   }, { status: 201 });
 }
 
-export const GET = withAuth(getHandler, { resource: "subscriptions", action: "read" });
-export const POST = withAuth(postHandler, { resource: "subscriptions", action: "update" });
+export const GET = withAuth(getHandler, { resource: "invoices", action: "read" });
+export const POST = withAuth(postHandler, { resource: "invoices", action: "update" });

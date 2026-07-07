@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import AuditLog from "@/models/AuditLog";
 import { escapeRegex } from "@/lib/security/sanitize";
+import { getSuperAgentTeamUserIds } from "@/lib/auth/agentRestrictions";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -33,6 +34,24 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     query.createdAt = {};
     if (from) query.createdAt.$gte = new Date(from);
     if (to) query.createdAt.$lte = new Date(to + "T23:59:59.999Z");
+  }
+
+  // super_agent: restrict to their own + effective-scope agents' actions.
+  // admin: unrestricted (existing behavior).
+  if (ctx.role === "super_agent") {
+    const teamUserIds = await getSuperAgentTeamUserIds(ctx.userId);
+    if (actorId) {
+      const inScope = teamUserIds.some((id) => String(id) === actorId);
+      if (!inScope) {
+        return NextResponse.json(
+          { error: "Access restricted — you can only view audit logs for your own team." },
+          { status: 403 },
+        );
+      }
+      query.actorId = actorId;
+    } else {
+      query.actorId = { $in: teamUserIds };
+    }
   }
 
   const [logs, total] = await Promise.all([

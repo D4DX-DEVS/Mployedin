@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import type {
   IEmployerFeatureLimits,
   IJobSeekerFeatureLimits,
@@ -115,6 +116,7 @@ export function useCreateSubscriptionPlan() {
     },
     onSuccess: () =>
       qc.invalidateQueries({ queryKey: subscriptionPlanKeys.all }),
+    onError: (err: Error) => toast.error(err.message),
   });
 }
 
@@ -138,6 +140,7 @@ export function useUpdateSubscriptionPlan() {
     },
     onSuccess: () =>
       qc.invalidateQueries({ queryKey: subscriptionPlanKeys.all }),
+    onError: (err: Error) => toast.error(err.message),
   });
 }
 
@@ -156,5 +159,6 @@ export function useDeleteSubscriptionPlan() {
     },
     onSuccess: () =>
       qc.invalidateQueries({ queryKey: subscriptionPlanKeys.all }),
+    onError: (err: Error) => toast.error(err.message),
   });
 }

@@ -21,6 +21,19 @@ import { useParams } from "next/navigation";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
+/** Windowed page list: 1 … p-1 p p+1 … N (max 7 items). */
+function getPageItems(page: number, totalPages: number): (number | "ellipsis-l" | "ellipsis-r")[] {
+  if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+  const items: (number | "ellipsis-l" | "ellipsis-r")[] = [1];
+  const start = Math.max(2, page - 1);
+  const end = Math.min(totalPages - 1, page + 1);
+  if (start > 2) items.push("ellipsis-l");
+  for (let i = start; i <= end; i++) items.push(i);
+  if (end < totalPages - 1) items.push("ellipsis-r");
+  items.push(totalPages);
+  return items;
+}
+
 interface PaginationControlsProps {
   page: number;
   totalPages: number;
@@ -99,7 +112,29 @@ export function PaginationControls({
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        <span className="px-2 text-muted-foreground whitespace-nowrap tabular-nums">
+        {/* Numbered pages (sm+); compact x/y indicator on mobile */}
+        <div className="hidden sm:flex items-center gap-1">
+          {getPageItems(page, totalPages).map((item) =>
+            typeof item === "number" ? (
+              <Button
+                key={item}
+                variant={item === page ? "default" : "outline"}
+                size="icon"
+                className="h-8 w-8 tabular-nums"
+                onClick={() => onPageChange(item)}
+                aria-current={item === page ? "page" : undefined}
+                aria-label={`${t("page")} ${formatNumber(item, locale)}`}
+              >
+                {formatNumber(item, locale)}
+              </Button>
+            ) : (
+              <span key={item} className="px-1 text-muted-foreground select-none">
+                …
+              </span>
+            )
+          )}
+        </div>
+        <span className="px-2 text-muted-foreground whitespace-nowrap tabular-nums sm:hidden">
           {formatNumber(page, locale)} / {formatNumber(totalPages, locale)}
         </span>
         <Button

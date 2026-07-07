@@ -11,7 +11,12 @@ import { systemSettingsUpdateSchema } from "@/lib/validators/settings";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
 
-async function getHandler() {
+async function getHandler(_req: NextRequest, ctx: AuthCtx) {
+  // Settings include SMTP config — restrict to admin even if a custom
+  // permission grant gives another role "users.read".
+  if (ctx.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   await connectDB();
   // Use select("+smtp.smtpAppPassword") to include the password field for admin
   let settings = await SystemSettings.findOne().select("+smtp.smtpAppPassword").lean();

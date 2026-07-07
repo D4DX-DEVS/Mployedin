@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import {
   Search, Filter, CheckCircle2, Clock, AlertCircle, Pencil,
   Trash2, Inbox, CalendarDays, DollarSign, Sparkles, ChevronDown, ChevronUp, X, RotateCcw,
@@ -110,7 +111,12 @@ export default function AdminPlacementsPage() {
         updateTotal(data.total ?? 0);
         setTotalValue(data.totalSalaryValue ?? 0);
         setSalaryByCurrency(data.salaryByCurrency ?? {});
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Failed to load placements");
       }
+    } catch (error) {
+      toast.error("Failed to load placements");
     } finally {
       setLoading(false);
     }
@@ -137,39 +143,73 @@ export default function AdminPlacementsPage() {
       if (res.ok) {
         const data = await res.json();
         setAiInsights(data.reply ?? data.message ?? "No insights available.");
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Failed to generate insights");
+        setAiInsights(null);
       }
-    } catch {
-      setAiInsights("Unable to generate insights at this time.");
+    } catch (error) {
+      toast.error("Failed to generate insights");
+      setAiInsights(null);
     } finally {
       setAiLoading(false);
     }
   };
 
   const markCommission = async (id: string, paid: boolean) => {
-    await fetch(`/api/placements/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ commissionPaid: paid }),
-    });
-    load();
+    try {
+      const res = await fetch(`/api/placements/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ commissionPaid: paid }),
+      });
+      if (res.ok) {
+        toast.success(paid ? "Commission marked as paid" : "Commission marked as unpaid");
+        load();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Failed to update commission status");
+      }
+    } catch (error) {
+      toast.error("Failed to update commission status");
+    }
   };
 
   const handleEdit = async (values: Record<string, string>) => {
-    const res = await fetch(`/api/placements/${editItem!._id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...values, salary: values.salary ? Number(values.salary) : undefined }),
-    });
-    if (!res.ok) { const e = await res.json(); throw new Error(e.error ?? "Failed"); }
-    setEditItem(null);
-    load();
+    try {
+      const res = await fetch(`/api/placements/${editItem!._id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...values, salary: values.salary ? Number(values.salary) : undefined }),
+      });
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        toast.error(e.error || "Failed to update placement");
+        return;
+      }
+      toast.success("Placement updated successfully");
+      setEditItem(null);
+      load();
+    } catch (error) {
+      toast.error("Failed to update placement");
+    }
   };
 
   const handleDelete = async (id: string) => {
     const ok = await confirmDialog(t("deleteConfirmation"));
     if (!ok) return;
-    await fetch(`/api/placements/${id}`, { method: "DELETE" });
-    load();
+    try {
+      const res = await fetch(`/api/placements/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        toast.success("Placement deleted successfully");
+        load();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Failed to delete placement");
+      }
+    } catch (error) {
+      toast.error("Failed to delete placement");
+    }
   };
 
   const visaStatusOptions = [

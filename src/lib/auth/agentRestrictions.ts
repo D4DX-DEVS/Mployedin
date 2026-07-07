@@ -415,3 +415,80 @@ export async function buildAgentRegionFilter(
 ): Promise<Record<string, unknown>> {
   return buildRegionFilter(agentUserId, "agent");
 }
+
+/**
+ * Can this actor manage (assign/change/renew) a subscription for the target
+ * user? Admin: always. Agent: only employers assigned to them (via
+ * Employer.agentId or Agent.assignedEmployerIds). Super-agent: only employers
+ * whose agent is within their effective scope (team + region).
+ * ponytail: job_seeker targets are admin-only — no region model for seekers yet.
+ */
+export async function canManageSubscriptionTarget(
+  ctx: { userId: string; role: string },
+  targetUserId: string
+): Promise<boolean> {
+  if (ctx.role === "admin") return true;
+  if (ctx.role !== "agent" && ctx.role !== "super_agent") return false;
+  await connectDB();
+
+  const { Employer } = await import("@/models/Employer");
+  const employer = await Employer.findOne({ userId: targetUserId })
+    .select("_id agentId")
+    .lean();
+  if (!employer) return false; // non-employer targets are admin-only
+
+  if (ctx.role === "agent") {
+    const agentDoc = await Agent.findOne({ userId: ctx.userId })
+      .select("_id assignedEmployerIds")
+      .lean();
+    if (!agentDoc) return false;
+    const assigned = ((agentDoc.assignedEmployerIds as mongoose.Types.ObjectId[]) ?? [])
+      .map(String)
+      .includes(String(employer._id));
+    const isEmployersAgent =
+      !!employer.agentId && String(employer.agentId) === String(agentDoc._id);
+    return assigned || isEmployersAgent;
+  }
+
+  const scope = await getSuperAgentScope(ctx.userId);
+  if (!scope || scope.effectiveAgentIds.length === 0) return false;
+  return (
+    !!employer.agentId &&
+    scope.effectiveAgentIds.map(String).includes(String(employer.agentId))
+  );
+}
+
+/**
+ * User _ids (self + effective-scope agents) whose actions a super-agent may
+ * see on team-scoped views (e.g. audit logs). Returns [] when the SA has no
+ * team — callers MUST treat [] as "see nothing" (default-deny).
+ */
+export async function getSuperAgentTeamUserIds(
+  saUserId: string
+): Promise<mongoose.Types.ObjectId[]> {
+  const scope = await getSuperAgentScope(saUserId);
+  const teamUserIds: mongoose.Types.ObjectId[] = [new mongoose.Types.ObjectId(saUserId)];
+  if (scope && scope.effectiveAgentIds.length > 0) {
+    const agents = await Agent.find({ _id: { $in: scope.effectiveAgentIds } })
+      .select("userId")
+      .lean();
+    teamUserIds.push(...agents.map((a) => a.userId as mongoose.Types.ObjectId));
+  }
+  return deduplicateIds(teamUserIds);
+}
+
+/**
+ * Guard wrapper around canManageSubscriptionTarget — returns a 403 response
+ * to early-return from route handlers, or null when access is permitted.
+ */
+export async function requireSubscriptionTargetAccess(
+  ctx: { userId: string; role: string },
+  targetUserId: string
+): Promise<NextResponse | null> {
+  const allowed = await canManageSubscriptionTarget(ctx, targetUserId);
+  if (allowed) return null;
+  return NextResponse.json(
+    { error: "Access restricted — you can only manage subscriptions for employers assigned to you." },
+    { status: 403 }
+  );
+}

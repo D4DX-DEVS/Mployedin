@@ -305,7 +305,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   await logActivity({
     ...actorFromCtx(ctx),
     action: "invoice.bulk_create_recruitment",
-    resource: "subscriptions",
+    resource: "invoices",
     meta: { placementCount: placementIds.length, created, skipped, errors },
     req,
   });
@@ -317,4 +317,4 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   }, { status: 201 });
 }
 
-export const POST = withAuth(postHandler, { resource: "subscriptions", action: "create" });
+export const POST = withAuth(postHandler, { resource: "invoices", action: "create" });

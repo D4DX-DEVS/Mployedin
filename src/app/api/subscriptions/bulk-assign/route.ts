@@ -22,6 +22,7 @@ import Invoice from "@/models/Invoice";
 import SubscriptionHistory from "@/models/SubscriptionHistory";
 import { User } from "@/models/User";
 import { Employer } from "@/models/Employer";
+import { getSuperAgentEmployerIds } from "@/lib/auth/agentRestrictions";
 import type { UserRole } from "@/types/user";
 import { z } from "zod";
 import { validateBody } from "@/lib/validators";
@@ -51,6 +52,14 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
   const results: Array<{ userId: string; status: "assigned" | "skipped" | "error"; reason?: string }> = [];
 
+  // Super-agents may only bulk-assign to employers of agents in their scope.
+  // Precompute the allowed employer-id set once (null = admin, no restriction).
+  let saEmployerIdSet: Set<string> | null = null;
+  if (ctx.role === "super_agent") {
+    const allowedIds = await getSuperAgentEmployerIds(ctx.userId);
+    saEmployerIdSet = new Set(allowedIds.map(String));
+  }
+
   for (const userId of body.userIds) {
     try {
       // Verify user exists and role matches
@@ -62,6 +71,13 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       if (user.role !== plan.targetRole) {
         results.push({ userId, status: "skipped", reason: `Role mismatch: ${user.role} vs ${plan.targetRole}` });
         continue;
+      }
+      if (saEmployerIdSet) {
+        const employer = await Employer.findOne({ userId }).select("_id").lean();
+        if (!employer || !saEmployerIdSet.has(String(employer._id))) {
+          results.push({ userId, status: "skipped", reason: "Outside your assigned scope" });
+          continue;
+        }
       }
 
       // Check existing active subscription

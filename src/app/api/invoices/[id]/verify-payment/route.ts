@@ -131,7 +131,7 @@ async function postHandler(
     await logActivity({
       ...actorFromCtx(ctx),
       action: "invoice.payment_verified",
-      resource: "subscriptions",
+      resource: "invoices",
       resourceId: String(invoice._id),
       meta: { notificationIndex: body.notificationIndex, paymentMethod: notification.paymentMethod },
       req,
@@ -168,7 +168,7 @@ async function postHandler(
   await logActivity({
     ...actorFromCtx(ctx),
     action: "invoice.payment_rejected",
-    resource: "subscriptions",
+    resource: "invoices",
     resourceId: String(invoice._id),
     meta: { notificationIndex: body.notificationIndex, reason: body.notes },
     req,
@@ -181,4 +181,4 @@ async function postHandler(
   });
 }
 
-export const POST = withAuth(postHandler, { resource: "subscriptions", action: "read" });
+export const POST = withAuth(postHandler, { resource: "invoices", action: "read" });

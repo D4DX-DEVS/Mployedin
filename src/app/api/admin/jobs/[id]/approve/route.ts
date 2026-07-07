@@ -3,6 +3,8 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import Job from "@/models/Job";
 import Agent from "@/models/Agent";
+import { Employer } from "@/models/Employer";
+import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
@@ -35,6 +37,21 @@ async function handler(
     const managesEmployer = job.employerId && agentDoc.assignedEmployerIds?.map(String).includes(String(job.employerId));
     if (!ownsJob && !managesEmployer) {
       return NextResponse.json({ error: "You can only approve jobs you manage" }, { status: 403 });
+    }
+  }
+
+  // Super-agents can only approve jobs managed by agents in their scope
+  if (ctx.role === "super_agent") {
+    const scope = await getSuperAgentScope(ctx.userId);
+    const agentIds = (scope?.effectiveAgentIds ?? []).map(String);
+    const ownJob = !!job.agentId && agentIds.includes(String(job.agentId));
+    let managesEmployer = false;
+    if (!ownJob && job.employerId && agentIds.length > 0) {
+      const emp = await Employer.findById(job.employerId).select("agentId").lean();
+      managesEmployer = !!emp?.agentId && agentIds.includes(String(emp.agentId));
+    }
+    if (!ownJob && !managesEmployer) {
+      return NextResponse.json({ error: "You can only approve jobs within your team scope" }, { status: 403 });
     }
   }
 

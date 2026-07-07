@@ -16,6 +16,7 @@ import Subscription from "@/models/Subscription";
 import Invoice from "@/models/Invoice";
 import SubscriptionHistory from "@/models/SubscriptionHistory";
 import { Employer } from "@/models/Employer";
+import { requireSubscriptionTargetAccess } from "@/lib/auth/agentRestrictions";
 import type { UserRole } from "@/types/user";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string }
@@ -32,6 +33,10 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   if (!sub) {
     return NextResponse.json({ error: "Subscription not found" }, { status: 404 });
   }
+
+  // Agents/super-agents may only act on employers within their scope
+  const scopeCheck = await requireSubscriptionTargetAccess(ctx, String(sub.userId));
+  if (scopeCheck) return scopeCheck;
 
   if (!["active", "expired"].includes(sub.status)) {
     return NextResponse.json(

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CascadingLocationPicker } from "@/components/shared/CascadingLocationPicker";
@@ -94,7 +95,10 @@ export default function AdminSuperAgentsPage() {
     (async () => {
       try {
         const res = await fetch("/api/admin/agents?limit=200");
-        if (!res.ok) return;
+        if (!res.ok) {
+          toast.error("Failed to load available agents");
+          return;
+        }
         const data = await res.json();
         const agents = (data.agents ?? []).map((a: { _id: string; name: string; agentProfile?: { _id?: string } }) => ({
           _id: a.agentProfile?._id ?? a._id, // prefer Agent doc _id
@@ -103,7 +107,7 @@ export default function AdminSuperAgentsPage() {
         }));
         setAvailableAgents(agents);
       } catch (e) {
-        console.error(e);
+        toast.error("Failed to load available agents");
       }
     })();
   }, []);
@@ -112,13 +116,20 @@ export default function AdminSuperAgentsPage() {
     setLoading(true);
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
     if (search) params.set("search", search);
-    const res = await fetch(`/api/admin/super-agents?${params}`);
-    if (res.ok) {
-      const data = await res.json();
-      setSuperAgents(data.superAgents ?? []);
-      updateTotal(data.pagination?.total ?? 0);
+    try {
+      const res = await fetch(`/api/admin/super-agents?${params}`);
+      if (res.ok) {
+        const data = await res.json();
+        setSuperAgents(data.superAgents ?? []);
+        updateTotal(data.pagination?.total ?? 0);
+      } else {
+        toast.error("Failed to load super agents");
+      }
+    } catch (error) {
+      toast.error("Failed to load super agents");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [search, page, limit, updateTotal]);
 
   useEffect(() => { fetchSuperAgents(); }, [fetchSuperAgents]);
@@ -162,7 +173,9 @@ export default function AdminSuperAgentsPage() {
       });
       if (!res.ok) {
         const e = await res.json();
-        setAddError(e.error ?? t("validationNetworkError"));
+        const errorMsg = e.error ?? "Failed to create super agent";
+        setAddError(errorMsg);
+        toast.error(errorMsg);
         return;
       }
       setShowAdd(false);
@@ -170,9 +183,12 @@ export default function AdminSuperAgentsPage() {
       setAddCityIds([]);
       setAddStateIds([]);
       setAddAgentIds([]);
+      toast.success("Super agent created successfully");
       fetchSuperAgents();
-    } catch {
-      setAddError(t("validationNetworkError"));
+    } catch (error) {
+      const msg = "Failed to create super agent";
+      setAddError(msg);
+      toast.error(msg);
     } finally {
       setAddLoading(false);
     }
@@ -215,13 +231,18 @@ export default function AdminSuperAgentsPage() {
       });
       if (!res.ok) {
         const e = await res.json();
-        setEditError(e.error ?? t("validationNetworkError"));
+        const errorMsg = e.error ?? "Failed to update super agent";
+        setEditError(errorMsg);
+        toast.error(errorMsg);
         return;
       }
       setEditSA(null);
+      toast.success("Super agent updated successfully");
       fetchSuperAgents();
-    } catch {
-      setEditError(t("validationNetworkError"));
+    } catch (error) {
+      const msg = "Failed to update super agent";
+      setEditError(msg);
+      toast.error(msg);
     } finally {
       setEditLoading(false);
     }
@@ -230,23 +251,43 @@ export default function AdminSuperAgentsPage() {
   const handleDelete = async (id: string) => {
     const ok = await confirmDialog({ message: t("confirmDeactivateMessage"), confirmLabel: t("confirmDeactivateLabel") });
     if (!ok) return;
-    await fetch("/api/admin/users", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: id }),
-    });
-    fetchSuperAgents();
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: id }),
+      });
+      if (res.ok) {
+        toast.success("Super agent deactivated successfully");
+        fetchSuperAgents();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Failed to deactivate super agent");
+      }
+    } catch (error) {
+      toast.error("Failed to deactivate super agent");
+    }
   };
 
   const handlePermanentDelete = async (id: string) => {
     const ok = await confirmDialog({ title: t("confirmDeleteTitle"), message: t("confirmDeleteMessage"), confirmLabel: t("confirmDeleteLabel") });
     if (!ok) return;
-    await fetch("/api/admin/users", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: id, permanent: true }),
-    });
-    fetchSuperAgents();
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: id, permanent: true }),
+      });
+      if (res.ok) {
+        toast.success("Super agent deleted permanently");
+        fetchSuperAgents();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Failed to delete super agent");
+      }
+    } catch (error) {
+      toast.error("Failed to delete super agent");
+    }
   };
 
   const getLocationSummary = (profile: SAProfile | null) => {

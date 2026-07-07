@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,7 +46,12 @@ export default function AdminUserImpersonatePage() {
       if (res.ok) {
         const data = await res.json();
         setUsers(data.users ?? []);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Failed to load users");
       }
+    } catch (error) {
+      toast.error("Failed to load users");
     } finally {
       setLoading(false);
     }
@@ -65,7 +71,14 @@ export default function AdminUserImpersonatePage() {
         body: JSON.stringify({ userId }),
       });
       const data = await res.json();
-      setImpersonateResult(data);
+      if (res.ok && data.success) {
+        setImpersonateResult(data);
+        toast.success("Impersonation session started");
+      } else {
+        toast.error(data.error || "Failed to start impersonation");
+      }
+    } catch (error) {
+      toast.error("Failed to start impersonation");
     } finally {
       setImpersonating(null);
     }
@@ -86,12 +99,22 @@ export default function AdminUserImpersonatePage() {
           <Button
             size="sm"
             onClick={async () => {
-              await fetch("/api/admin/impersonate", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ exit: true }),
-              });
-              setImpersonateResult(null);
+              try {
+                const res = await fetch("/api/admin/impersonate", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ exit: true }),
+                });
+                if (res.ok) {
+                  setImpersonateResult(null);
+                  toast.success("Impersonation session ended");
+                } else {
+                  const err = await res.json().catch(() => ({}));
+                  toast.error(err.error || "Failed to exit impersonation");
+                }
+              } catch (error) {
+                toast.error("Failed to exit impersonation");
+              }
             }}
             className="h-8 px-3 text-xs bg-amber-600 hover:bg-amber-700 text-white"
           >

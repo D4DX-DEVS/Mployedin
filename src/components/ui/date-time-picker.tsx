@@ -154,6 +154,7 @@ export function DateTimePicker({
         <PopoverTrigger asChild>
           <button
             type="button"
+            aria-label={label ?? placeholder}
             className={cn(
               "w-full h-9 px-3 text-sm text-start flex items-center gap-2 rounded-lg border border-border bg-background transition-colors",
               "hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50",

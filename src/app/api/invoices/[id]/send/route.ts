@@ -142,7 +142,7 @@ async function handler(
   await logActivity({
     ...actorFromCtx(ctx),
     action: "invoice.email_sent",
-    resource: "subscriptions",
+    resource: "invoices",
     resourceId: String(invoice._id),
     meta: {
       to: recipientEmail,

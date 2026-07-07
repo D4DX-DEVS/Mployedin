@@ -70,40 +70,61 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
     if (!ids.length || !action) {
       return NextResponse.json({ error: "ids and action required." }, { status: 400 });
     }
-
-    const objectIds = ids
-      .filter((id) => mongoose.Types.ObjectId.isValid(id))
-      .map((id) => new mongoose.Types.ObjectId(id));
-
-    let affected = 0;
-
-    switch (action) {
-      case "setRole":
-        if (!role) return NextResponse.json({ error: "role required for setRole." }, { status: 400 });
-        { const r = await User.updateMany({ _id: { $in: objectIds } }, { $set: { role } }); affected = r.modifiedCount; }
-        break;
-      case "activate":
-        { const r = await User.updateMany({ _id: { $in: objectIds } }, { $set: { isActive: true } }); affected = r.modifiedCount; }
-        break;
-      case "deactivate":
-        { const r = await User.updateMany({ _id: { $in: objectIds } }, { $set: { isActive: false } }); affected = r.modifiedCount; }
-        break;
-      case "delete":
-        { const r = await User.deleteMany({ _id: { $in: objectIds } }); affected = r.deletedCount; }
-        break;
-      default:
-        return NextResponse.json({ error: "Unknown action." }, { status: 400 });
+    if (action === "setRole" && !role) {
+      return NextResponse.json({ error: "role required for setRole." }, { status: 400 });
     }
+    if (!["setRole", "activate", "deactivate", "delete"].includes(action)) {
+      return NextResponse.json({ error: "Unknown action." }, { status: 400 });
+    }
+
+    const results: Array<{ userId: string; status: "updated" | "skipped" | "error"; reason?: string }> = [];
+
+    for (const id of ids) {
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        results.push({ userId: id, status: "skipped", reason: "Invalid ID" });
+        continue;
+      }
+      if (id === ctx.userId && (action === "deactivate" || action === "delete")) {
+        results.push({ userId: id, status: "skipped", reason: "Cannot act on your own account" });
+        continue;
+      }
+      try {
+        let modified = false;
+        switch (action) {
+          case "setRole":
+            modified = (await User.updateOne({ _id: id }, { $set: { role } })).modifiedCount > 0;
+            break;
+          case "activate":
+            modified = (await User.updateOne({ _id: id }, { $set: { isActive: true } })).modifiedCount > 0;
+            break;
+          case "deactivate":
+            modified = (await User.updateOne({ _id: id }, { $set: { isActive: false } })).modifiedCount > 0;
+            break;
+          case "delete":
+            modified = (await User.deleteOne({ _id: id })).deletedCount > 0;
+            break;
+        }
+        if (modified) {
+          results.push({ userId: id, status: "updated" });
+        } else {
+          results.push({ userId: id, status: "skipped", reason: "Not found or already in that state" });
+        }
+      } catch {
+        results.push({ userId: id, status: "error", reason: "Unexpected error" });
+      }
+    }
+
+    const affected = results.filter((r) => r.status === "updated").length;
 
     await logActivity({
       ...actorFromCtx(ctx),
       action: `user.bulk_${action}`,
       resource: "users",
-      meta: { ids, action, role },
+      meta: { ids, action, role, affected, skipped: results.length - affected },
       req,
     });
 
-    return NextResponse.json({ success: true, affected });
+    return NextResponse.json({ success: true, affected, total: ids.length, results });
   }
 
   // ── Single-user mode (original)

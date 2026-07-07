@@ -85,7 +85,7 @@ async function postHandler(
   await logActivity({
     ...actorFromCtx(ctx),
     action: "invoice.credit_note",
-    resource: "subscriptions",
+    resource: "invoices",
     resourceId: String(invoice._id),
     meta: {
       creditNoteId: String(creditNote._id),
@@ -116,4 +116,4 @@ async function postHandler(
   }, { status: 201 });
 }
 
-export const POST = withAuth(postHandler, { resource: "subscriptions", action: "update" });
+export const POST = withAuth(postHandler, { resource: "invoices", action: "update" });

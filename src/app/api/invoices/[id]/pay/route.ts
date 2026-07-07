@@ -99,5 +99,5 @@ async function postHandler(
   });
 }
 
-export const GET = withAuth(getHandler, { resource: "subscriptions", action: "read" });
-export const POST = withAuth(postHandler, { resource: "subscriptions", action: "read" });
+export const GET = withAuth(getHandler, { resource: "invoices", action: "read" });
+export const POST = withAuth(postHandler, { resource: "invoices", action: "read" });

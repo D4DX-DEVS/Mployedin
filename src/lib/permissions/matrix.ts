@@ -11,6 +11,7 @@ export const ALL_RESOURCES: Resource[] = [
   "ai_cv", "ai_match", "ai_assistant", "tasks",
   "job_attributes", "location_data", "cms", "contact_submissions", "offers",
   "subscriptions", "exhibitions", "resources", "targets", "onboarding",
+  "invoices",
 ];
 
 /** All available actions */
@@ -48,6 +49,7 @@ const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
     resources: ["create", "read", "update", "delete"],
     targets: ["create", "read", "update", "delete", "export"],
     onboarding: ["create", "read", "update", "delete"],
+    invoices: ["create", "read", "update", "delete", "export"],
   },
   super_agent: {
     jobs: ["read", "approve", "export"],
@@ -68,6 +70,7 @@ const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
     targets: ["create", "read", "update"],
     // Read-only oversight of offers across the portfolio.
     offers: ["read"],
+    invoices: ["create", "read", "update"],
   },
   agent: {
     jobs: ["create", "read", "update", "export"],
@@ -90,6 +93,7 @@ const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
     // Agents create/manage offers on behalf of their assigned employers; the
     // route handlers enforce assigned-employer ownership.
     offers: ["create", "read", "update", "delete"],
+    invoices: ["create", "read"],
   },
   employer: {
     jobs: ["create", "read", "update", "delete"],

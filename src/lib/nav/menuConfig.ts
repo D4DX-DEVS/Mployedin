@@ -58,6 +58,14 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 descriptionAr: "إدارة الوظائف المنشورة",
               },
               {
+                title: "Job Approvals",
+                titleAr: "الموافقات على الوظائف",
+                href: p("/admin/approvals"),
+                icon: "CheckCircle",
+                description: "Review & approve pending jobs",
+                descriptionAr: "مراجعة الوظائف المعلقة والموافقة عليها",
+              },
+              {
                 title: "Applications",
                 titleAr: "الطلبات",
                 href: p("/admin/applications"),

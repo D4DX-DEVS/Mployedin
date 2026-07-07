@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { Search, Shield, Clock, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -97,7 +98,12 @@ export default function AuditLogsPage() {
         const data = await res.json();
         setLogs(data.logs);
         updateTotal(data.pagination.total);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Failed to load audit logs");
       }
+    } catch (error) {
+      toast.error("Failed to load audit logs");
     } finally {
       setLoading(false);
     }

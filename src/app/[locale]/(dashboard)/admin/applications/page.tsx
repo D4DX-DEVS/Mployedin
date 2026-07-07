@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -264,7 +265,13 @@ export default function AdminApplicationsPage() {
     try {
       const res = await fetch("/api/applications/ai-insights");
       if (res.ok) setAiInsights(await res.json());
-    } catch { /* swallow */ }
+      else {
+        const e = await res.json().catch(() => ({}));
+        toast.error(e.error ?? "Failed to load AI insights");
+      }
+    } catch {
+      toast.error("Failed to load AI insights");
+    }
     setAiLoading(false);
   }, []);
 
@@ -283,7 +290,11 @@ export default function AdminApplicationsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: q }),
       });
-      if (!res.ok) throw new Error("AI search failed");
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        toast.error(e.error ?? "AI search failed, showing keyword results instead");
+        throw new Error("AI search failed");
+      }
       const data = await res.json();
       const f = data.filters ?? {};
       setSearch(f.search ?? "");

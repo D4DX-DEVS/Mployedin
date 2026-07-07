@@ -29,7 +29,7 @@ async function logAccessDenied(req: NextRequest, ctx: AuthCtx, invoice: { _id?: 
   await logActivity({
     ...actorFromCtx(ctx),
     action: "invoice.access_denied",
-    resource: "subscriptions",
+    resource: "invoices",
     resourceId: String(invoice._id ?? "unknown"),
     meta: {
       operation,
@@ -185,7 +185,7 @@ async function postHandler(
   await logActivity({
     ...actorFromCtx(ctx),
     action: "invoice.payment_recorded",
-    resource: "subscriptions",
+    resource: "invoices",
     resourceId: invoice._id.toString(),
     meta: {
       paymentAmount: body.amount,
@@ -230,5 +230,5 @@ async function postHandler(
   });
 }
 
-export const GET = withAuth(getHandler, { resource: "subscriptions", action: "read" });
-export const POST = withAuth(postHandler, { resource: "subscriptions", action: "update" });
+export const GET = withAuth(getHandler, { resource: "invoices", action: "read" });
+export const POST = withAuth(postHandler, { resource: "invoices", action: "update" });
