@@ -271,7 +271,7 @@ function buildWeeklyDigestEmail({
     <div style="display:flex;gap:8px;flex-wrap:wrap">${statsHtml}</div>
     ${jobsHtml}
     <div style="text-align:center;margin-top:28px">
-      <a href="${base}/${isAr ? "ar" : "en"}/job-seeker/dashboard" style="display:inline-block;background:#0a2a6e;color:#fff;text-decoration:none;padding:12px 32px;border-radius:6px;font-size:14px;font-weight:600">
+      <a href="${base}/${isAr ? "ar" : "en"}/job-seeker" style="display:inline-block;background:#0a2a6e;color:#fff;text-decoration:none;padding:12px 32px;border-radius:6px;font-size:14px;font-weight:600">
         ${isAr ? "افتح لوحة التحكم" : "Go to Dashboard"}
       </a>
     </div>

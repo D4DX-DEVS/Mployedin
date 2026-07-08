@@ -10,7 +10,7 @@ import ExhibitionRequest, {
   EXHIBITION_PRIORITIES,
 } from "@/models/ExhibitionRequest";
 import Agent from "@/models/Agent";
-import SuperAgent from "@/models/SuperAgent";
+import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import { escapeRegex } from "@/lib/security/sanitize";
 
 async function getHandler(req: NextRequest, ctx: AuthContext) {
@@ -30,12 +30,16 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
   if (ctx.role === "agent") {
     query.agentId = ctx.userId;
   } else if (ctx.role === "super_agent") {
-    const saProfile = await SuperAgent.findOne({ userId: ctx.userId }).select("_id").lean();
-    if (saProfile) {
-      const agentProfiles = await Agent.find({ superAgentId: saProfile._id }).select("userId").lean();
-      query.agentId = { $in: agentProfiles.map((a) => a.userId) };
-    } else {
+    // Canonical SA scope: getSuperAgentScope(). Do not read sa.agentIds directly.
+    // ExhibitionRequest.agentId stores the Agent's User._id — map profile ids → userIds.
+    const scope = await getSuperAgentScope(ctx.userId);
+    const teamAgentDocIds = scope?.effectiveAgentIds ?? [];
+    if (teamAgentDocIds.length === 0) {
       query.agentId = { $in: [] };
+    } else {
+      const agentProfiles = await Agent.find({ _id: { $in: teamAgentDocIds } })
+        .select("userId").lean();
+      query.agentId = { $in: agentProfiles.map((a) => a.userId) };
     }
   }
 

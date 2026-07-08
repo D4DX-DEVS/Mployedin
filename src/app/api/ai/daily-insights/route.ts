@@ -38,10 +38,11 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
   let contextData = "";
 
   if (ctx.role === "job_seeker") {
-    const [seeker, recentApps] = await Promise.all([
-      JobSeeker.findOne({ userId: ctx.userId }).lean(),
-      Application.find({ jobSeekerId: ctx.userId, createdAt: { $gte: yesterday } }).lean(),
-    ]);
+    const seeker = await JobSeeker.findOne({ userId: ctx.userId }).lean();
+    // Application.jobSeekerId stores the JobSeeker profile _id, not the User id
+    const recentApps = seeker
+      ? await Application.find({ jobSeekerId: (seeker as { _id: unknown })._id, createdAt: { $gte: yesterday } }).lean()
+      : [];
 
     // Recalculate completeness on the fly so insights always reflect current state
     const doc = seeker as Record<string, unknown> | null;

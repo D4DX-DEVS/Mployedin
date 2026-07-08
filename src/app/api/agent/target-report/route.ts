@@ -97,7 +97,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
   // --- Business Volume (personal commissions) ---
   const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
-  const agentDocId = agentDoc ? String(agentDoc._id) : null;
+  const agentDocId = agentDoc?._id ?? null;
 
   let businessVolume: { month: number; approved: number; total: number; count: number }[] = [];
   let totalBusinessVolume = 0;

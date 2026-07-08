@@ -71,6 +71,8 @@ import {
   Crosshair,
   ReceiptText,
   Lightbulb,
+  Search,
+  Eye,
   type LucideProps,
 } from "lucide-react";
 import type { FC } from "react";
@@ -141,7 +143,9 @@ export type IconName =
   | "History"
   | "Crosshair"
   | "ReceiptText"
-  | "Lightbulb";
+  | "Lightbulb"
+  | "Search"
+  | "Eye";
 
 const ICON_MAP: Record<IconName, FC<LucideProps>> = {
   LayoutDashboard,
@@ -210,6 +214,8 @@ const ICON_MAP: Record<IconName, FC<LucideProps>> = {
   Crosshair,
   ReceiptText,
   Lightbulb,
+  Search,
+  Eye,
 };
 
 /** Resolve an icon name to its Lucide component. Falls back to a square placeholder. */

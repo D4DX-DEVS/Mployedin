@@ -96,7 +96,6 @@ export const GET = withAuth(async (_req: NextRequest, ctx: AuthCtx) => {
   // Per-agent performance — derive from live collections so figures match the
   // agents/reports/placements pages (the denormalized Agent.performance subdoc
   // can drift and previously produced phantom placement/commission totals).
-  const agentIdStrings = agentDocIds.map(String);
   const [placementsByAgent, leadsByAgent, employersByAgent, vacanciesByAgent] = await Promise.all([
     Placement.aggregate([
       { $match: { agentId: { $in: agentDocIds } } },
@@ -142,8 +141,8 @@ export const GET = withAuth(async (_req: NextRequest, ctx: AuthCtx) => {
     {
       $match: {
         $or: [
-          { agentId: { $in: agentIdStrings } },
-          { superAgentId: ctx.userId },
+          { agentId: { $in: agentDocIds } },
+          { superAgentId: scope.saProfileId },
         ],
       },
     },

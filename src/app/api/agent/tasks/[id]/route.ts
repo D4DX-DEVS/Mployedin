@@ -7,8 +7,17 @@ import mongoose from "mongoose";
 
 const AgentTask = mongoose.models.AgentTask;
 
+function requireAgentRole(ctx: AuthContext): NextResponse | null {
+  if (ctx.role !== "agent" && ctx.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  return null;
+}
+
 /* PATCH — Update task */
 async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<string, string>) {
+  const roleErr = requireAgentRole(ctx);
+  if (roleErr) return roleErr;
   await connectDB();
   const id = params?.id;
   if (!id || !mongoose.isValidObjectId(id)) {
@@ -40,6 +49,8 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
 
 /* DELETE — Delete task */
 async function deleteHandler(req: NextRequest, ctx: AuthContext, params?: Record<string, string>) {
+  const roleErr = requireAgentRole(ctx);
+  if (roleErr) return roleErr;
   await connectDB();
   const id = params?.id;
 

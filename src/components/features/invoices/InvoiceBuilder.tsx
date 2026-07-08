@@ -221,7 +221,9 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
   const [customPaymentTerms, setCustomPaymentTerms] = useState<Array<{ value: string; label: string }>>([]);
   const [showAddPaymentTerm, setShowAddPaymentTerm] = useState(false);
   const [customPaymentLabel, setCustomPaymentLabel] = useState("");
-  const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split("T")[0]);
+  // Starts empty (SSR-safe — no server clock in the initial render); the
+  // reset-on-open effect below fills in the user's local date.
+  const [invoiceDate, setInvoiceDate] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [notes, setNotes] = useState("");
   const [internalNotes, setInternalNotes] = useState("");
@@ -256,7 +258,9 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
       setLineItems([{ id: crypto.randomUUID(), description: "", quantity: 1, unitPrice: 0, amount: 0 }]);
       setTaxType("none"); setTaxPercent(0);
       setCurrency(defaultCurrency); setPaymentTerms("net_30"); setCustomPaymentDays(30);
-      setInvoiceDate(new Date().toISOString().split("T")[0]); setDueDate(""); setNotes(""); setInternalNotes("");
+      // toLocaleDateString("en-CA") = YYYY-MM-DD in the USER'S timezone;
+      // toISOString() would give the UTC date (wrong day near midnight for non-UTC users).
+      setInvoiceDate(new Date().toLocaleDateString("en-CA")); setDueDate(""); setNotes(""); setInternalNotes("");
       setInvoiceStatus(role === "agent" ? "pending_approval" : "issued");
       setAgentRate(0); setSuperAgentRate(0);
       setCommissionEnabled(false); setCustomAgentRate(0); setCustomSuperAgentRate(0);

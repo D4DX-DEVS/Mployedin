@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { withAuth } from "@/lib/auth/withAuth";
+import { withAuth, AuthContext } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import JobSeeker from "@/models/JobSeeker";
 import User from "@/models/User";
@@ -17,7 +17,11 @@ void User; // ensure User model is registered for populate
  * `profileVisibility: "visible"` — and filter by skills, location, availability
  * and experience. Only non-sensitive profile fields are returned (no email).
  */
-async function handler(req: NextRequest) {
+async function handler(req: NextRequest, ctx: AuthContext) {
+  if (!["employer", "agent", "super_agent", "admin"].includes(ctx.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   await connectDB();
 
   const { searchParams } = new URL(req.url);

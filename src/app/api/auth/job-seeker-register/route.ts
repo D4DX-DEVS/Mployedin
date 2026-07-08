@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
     const baseUrl = process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
     const locale = req.cookies.get("NEXT_LOCALE")?.value === "ar" ? "ar" : "en";
     const verifyUrl = `${baseUrl}/${locale}/verify-email?token=${rawToken}&email=${encodeURIComponent(normalizedEmail)}`;
-    const dashboardUrl = `${baseUrl}/${locale}/job-seeker/dashboard`;
+    const dashboardUrl = `${baseUrl}/${locale}/job-seeker`;
 
     // Send both emails in parallel, but await them before responding
     const [verifyResult, welcomeResult] = await Promise.allSettled([

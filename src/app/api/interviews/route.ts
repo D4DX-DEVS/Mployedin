@@ -62,15 +62,17 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
       { agentId: agent._id },
     ];
   } else if (ctx.role === "super_agent") {
-    const { Agent } = await import("@/models/Agent");
-    const agents = await Agent.find({ superAgentId: ctx.userId }).select("_id assignedEmployerIds").lean();
-    const allEmployerIds = agents.flatMap((a) => a.assignedEmployerIds ?? []);
-    const allAgentIds = agents.map((a) => a._id);
-    // S1: default-deny. Previously, an SA with no team agents fell through with an
-    // empty query and saw EVERY interview platform-wide. Now no scope → no data.
-    if (allEmployerIds.length === 0 && allAgentIds.length === 0) {
+    const { getSuperAgentScope } = await import("@/lib/auth/agentRestrictions");
+    const scope = await getSuperAgentScope(ctx.userId);
+    const agentDocIds = scope?.effectiveAgentIds ?? [];
+    if (agentDocIds.length === 0) {
       return NextResponse.json({ interviews: [], total: 0, page, limit, statusCounts: {} });
     }
+    const { Agent } = await import("@/models/Agent");
+    const agents = await Agent.find({ _id: { $in: agentDocIds } })
+      .select("_id assignedEmployerIds").lean();
+    const allEmployerIds = agents.flatMap((a) => a.assignedEmployerIds ?? []);
+    const allAgentIds = agents.map((a) => a._id);
     scopedEmployerIds = allEmployerIds;
     query.$or = [
       ...(allEmployerIds.length > 0 ? [{ employerId: { $in: allEmployerIds } }] : []),

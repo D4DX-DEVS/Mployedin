@@ -82,6 +82,11 @@ async function getHandler(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  // Track recruiter-side resume downloads for the job seeker's activity stats.
+  if (wantCv && ctx.role !== "job_seeker") {
+    await JobSeeker.updateOne({ _id: seeker._id }, { $inc: { "cv.downloadCount": 1 } });
+  }
+
   let signed: string;
   try {
     // `view=1` renders the file inline (in-app viewer); otherwise it downloads.

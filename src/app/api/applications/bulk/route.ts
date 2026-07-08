@@ -8,6 +8,8 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
 import { bulkActionSchema } from "@/lib/validators/applications";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
+import Agent from "@/models/Agent";
+import { getSuperAgentEmployerIds } from "@/lib/auth/agentRestrictions";
 import {
   notify,
   notifyRejected,
@@ -38,12 +40,24 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  // For employers: verify they own these applications
+  // Resolve which employer(s) this actor may touch. null = admin (unscoped).
+  let allowedEmployerIds: string[] | null = null;
   let employerId: string | null = null;
   if (ctx.role === "employer") {
     const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
     if (!emp) return NextResponse.json({ error: "Employer profile not found" }, { status: 404 });
     employerId = String(emp._id);
+    allowedEmployerIds = [employerId];
+  } else if (ctx.role === "agent") {
+    const agent = await Agent.findOne({ userId: ctx.userId }).select("_id assignedEmployerIds").lean();
+    if (!agent) return NextResponse.json({ error: "Agent profile not found" }, { status: 404 });
+    const owned = await Employer.find({ agentId: agent._id }).select("_id").lean();
+    allowedEmployerIds = [...new Set([
+      ...((agent.assignedEmployerIds as unknown[]) ?? []).map(String),
+      ...owned.map((e) => String(e._id)),
+    ])];
+  } else if (ctx.role === "super_agent") {
+    allowedEmployerIds = (await getSuperAgentEmployerIds(ctx.userId)).map(String);
   }
 
   // Build the update payload
@@ -66,7 +80,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
 
   // Fetch applications to validate ownership and push status history
   const query: Record<string, unknown> = { _id: { $in: applicationIds } };
-  if (employerId) query.employerId = employerId;
+  if (allowedEmployerIds) query.employerId = { $in: allowedEmployerIds };
 
   const applications = await Application.find(query)
     .select("_id status employerId jobSeekerId jobId rejectionReason statusHistory")
@@ -81,9 +95,9 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ error: "No matching applications found" }, { status: 404 });
   }
 
-  if (applications.length !== applicationIds.length && ctx.role === "employer") {
+  if (applications.length !== applicationIds.length && ctx.role !== "admin") {
     return NextResponse.json(
-      { error: "Some applications do not belong to your account" },
+      { error: "Some applications are outside your scope" },
       { status: 403 }
     );
   }

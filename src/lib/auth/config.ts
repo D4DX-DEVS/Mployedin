@@ -312,7 +312,7 @@ export const authConfig: NextAuthConfig = {
 
             // Send welcome email for new Firebase/Google users
             const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-            const dashboardUrl = `${baseUrl}/en/job-seeker/dashboard`;
+            const dashboardUrl = `${baseUrl}/en/job-seeker`;
             await sendEmail({
               to: email,
               ...EmailTemplates.jobSeekerWelcome(dbUser.name || "there", dashboardUrl),
@@ -683,7 +683,7 @@ export const authConfig: NextAuthConfig = {
         // Send welcome email for new OAuth users
         if (isNewUser && dbUser.email) {
           const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-          const dashboardUrl = `${baseUrl}/en/job-seeker/dashboard`;
+          const dashboardUrl = `${baseUrl}/en/job-seeker`;
           await sendEmail({
             to: dbUser.email,
             ...EmailTemplates.jobSeekerWelcome(dbUser.name || "there", dashboardUrl),

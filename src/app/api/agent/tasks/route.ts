@@ -20,21 +20,38 @@ const TaskSchema = new mongoose.Schema({
 
 const AgentTask = mongoose.models.AgentTask || mongoose.model("AgentTask", TaskSchema);
 
+function requireAgentRole(ctx: AuthContext): NextResponse | null {
+  if (ctx.role !== "agent" && ctx.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  return null;
+}
+
 /* GET — List agent tasks */
 async function getHandler(req: NextRequest, ctx: AuthContext) {
+  const roleErr = requireAgentRole(ctx);
+  if (roleErr) return roleErr;
   await connectDB();
 
   const url = new URL(req.url);
   const status = url.searchParams.get("status") ?? "";
   const search = url.searchParams.get("search") ?? "";
+  const page = Math.max(parseInt(url.searchParams.get("page") ?? "1", 10) || 1, 1);
+  const limit = Math.min(Math.max(parseInt(url.searchParams.get("limit") ?? "100", 10) || 100, 1), 100);
 
   const filter: Record<string, unknown> = { userId: ctx.userId };
   if (status && status !== "all") filter.status = status;
   if (search) filter.title = { $regex: escapeRegex(search), $options: "i" };
 
-  const items = await AgentTask.find(filter).sort({ createdAt: -1 }).limit(100).lean();
+  const [items, total] = await Promise.all([
+    AgentTask.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
+    AgentTask.countDocuments(filter),
+  ]);
 
   return NextResponse.json({
+    total,
+    page,
+    totalPages: Math.max(Math.ceil(total / limit), 1),
     items: items.map((t: Record<string, unknown>) => ({
       _id: String(t._id),
       title: t.title,
@@ -51,6 +68,8 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
 
 /* POST — Create task */
 async function postHandler(req: NextRequest, ctx: AuthContext) {
+  const roleErr = requireAgentRole(ctx);
+  if (roleErr) return roleErr;
   await connectDB();
 
   const body = await validateBody(req, agentTaskCreateSchema);

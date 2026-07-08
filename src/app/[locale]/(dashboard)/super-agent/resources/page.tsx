@@ -23,16 +23,10 @@ interface Resource {
   files: ResourceFile[]; createdAt: string;
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  standee_designs: "Standee Designs", brochures: "Brochures", flyers: "Flyers",
-  employer_kits: "Employer Kits", candidate_forms: "Candidate Forms", booth_designs: "Booth Designs",
-  presentation_decks: "Presentation Decks", exhibition_videos: "Exhibition Videos",
-  contracts: "Contracts", vendor_documents: "Vendor Documents", travel_templates: "Travel Templates",
-  branding_assets: "Branding Assets", compliance_docs: "Compliance Docs", other: "Other",
-};
-const CATEGORY_OPTIONS = [{ value: "all", label: "All Categories" }, ...Object.entries(CATEGORY_LABELS).map(([v, l]) => ({ value: v, label: l }))];
-const SORT_OPTIONS = [
-  { value: "newest", label: "Newest" }, { value: "popular", label: "Most Downloaded" }, { value: "a-z", label: "A \u2192 Z" },
+const CATEGORY_KEYS = [
+  "standee_designs", "brochures", "flyers", "employer_kits", "candidate_forms",
+  "booth_designs", "presentation_decks", "exhibition_videos", "contracts",
+  "vendor_documents", "travel_templates", "branding_assets", "compliance_docs", "other",
 ];
 
 function formatFileSize(bytes: number): string {
@@ -44,6 +38,15 @@ function formatFileSize(bytes: number): string {
 export default function ResourceDownloadsPage() {
   const t = useTranslations("resources");
   const tc = useTranslations("common");
+  const CATEGORY_OPTIONS = [
+    { value: "all", label: t("categories.all") },
+    ...CATEGORY_KEYS.map((k) => ({ value: k, label: t(`categories.${k}`) })),
+  ];
+  const SORT_OPTIONS = [
+    { value: "newest", label: t("sortNewest") },
+    { value: "popular", label: t("sortPopular") },
+    { value: "a-z", label: t("sortAZ") },
+  ];
   const [items, setItems] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(true);
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -81,7 +84,7 @@ export default function ResourceDownloadsPage() {
         <div className="max-w-2xl">
           <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
             <Sparkles className="h-3.5 w-3.5" />
-            Resources
+            {t("heroLabel")}
           </div>
           <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
             {t("downloadsTitle")}
@@ -97,10 +100,10 @@ export default function ResourceDownloadsPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input placeholder={t("searchPlaceholder")} value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 h-9 text-sm border-0 bg-transparent shadow-none focus-visible:ring-0" />
           </div>
-          <SearchableSelect options={CATEGORY_OPTIONS} value={categoryFilter} onValueChange={setCategoryFilter} placeholder="Category" />
-          <SearchableSelect options={SORT_OPTIONS} value={sortBy} onValueChange={setSortBy} placeholder="Sort" />
+          <SearchableSelect options={CATEGORY_OPTIONS} value={categoryFilter} onValueChange={setCategoryFilter} placeholder={t("filterCategory")} />
+          <SearchableSelect options={SORT_OPTIONS} value={sortBy} onValueChange={setSortBy} placeholder={t("sortLabel")} />
           {categoryFilter !== 'all' && (
-            <button onClick={() => setCategoryFilter('all')} className="text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2 shrink-0">Clear</button>
+            <button onClick={() => setCategoryFilter('all')} className="text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2 shrink-0">{t("clear")}</button>
           )}
         </div>
       </section>
@@ -118,7 +121,7 @@ export default function ResourceDownloadsPage() {
             </div>
             <h3 className="text-lg font-semibold text-foreground">{t("noResources")}</h3>
             <p className="mt-2 text-sm text-muted-foreground max-w-sm">
-              Resources uploaded by your team will appear here for download.
+              {t("noResourcesHint")}
             </p>
           </div>
         </section>
@@ -135,7 +138,7 @@ export default function ResourceDownloadsPage() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <h3 className="text-[15px] font-semibold text-foreground truncate">{item.title}</h3>
-                      <p className="text-xs text-muted-foreground">{CATEGORY_LABELS[item.category] ?? item.category}</p>
+                      <p className="text-xs text-muted-foreground">{CATEGORY_KEYS.includes(item.category) ? t(`categories.${item.category}`) : item.category}</p>
                     </div>
                   </div>
 
@@ -188,7 +191,7 @@ export default function ResourceDownloadsPage() {
           )}
           {previewUrl && (
             <div className="flex justify-end">
-              <Button variant="outline" size="sm" onClick={() => window.open(previewUrl.url, '_blank')}>Open in new tab</Button>
+              <Button variant="outline" size="sm" onClick={() => window.open(previewUrl.url, '_blank')}>{t("openInNewTab")}</Button>
             </div>
           )}
         </DialogContent>

@@ -22,7 +22,7 @@ import { PageHero } from "@/components/shared/PageHero";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  useMySubscription, useAvailablePlans, useSelfAssignFreePlan, useToggleAutoRenew,
+  useMySubscription, useAvailablePlans, useSelfAssignFreePlan,
   type MySubscription, type AvailablePlan,
 } from "@/hooks/useSubscription";
 import { useFeatureGateMap } from "@/hooks/useFeatureGate";
@@ -132,7 +132,6 @@ function ActiveView({
   rates: Record<string, number>;
 }) {
   const t = useTranslations("subscription");
-  const toggleAutoRenew = useToggleAutoRenew();
   const snap = subscription.planSnapshot;
   const limits = snap?.employerLimits as Record<string, unknown> | undefined;
   const usage = subscription.usage;
@@ -152,9 +151,9 @@ function ActiveView({
   const maxTeam = (limits?.maxTeamMembers as number) ?? 0;
 
   const featureList = [
-    { label: "Job Posting", detail: maxJobs === -1 ? "Unlimited" : `${maxJobs} Job Postings`, allowed: true },
-    { label: "Applicant Tracking", detail: `Up to ${maxApps === -1 ? "unlimited" : maxApps} applications/month`, allowed: true },
-    { label: "Team Collaboration", detail: `Up to ${maxTeam === -1 ? "unlimited" : maxTeam} team members`, allowed: true },
+    { label: t("jobPosting"), detail: maxJobs === -1 ? t("unlimited") : t("jobPostingsDetail", { count: maxJobs }), allowed: true },
+    { label: t("applicantTracking"), detail: t("applicantTrackingDetail", { max: maxApps === -1 ? t("unlimited") : maxApps }), allowed: true },
+    { label: t("teamCollaboration"), detail: t("teamCollaborationDetail", { max: maxTeam === -1 ? t("unlimited") : maxTeam }), allowed: true },
     { label: t("dataExport"), allowed: features.dataExport?.allowed ?? false },
     { label: t("analytics"), detail: `${(limits?.analyticsLevel as string) ?? "none"} level`, allowed: (limits?.analyticsLevel as string) !== "none" },
     { label: t("commTemplates"), allowed: features.commTemplates?.allowed ?? false },
@@ -188,33 +187,27 @@ function ActiveView({
 
           <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
             <div>
-              <p className="text-muted-foreground text-xs">Next Renewal</p>
-              <p className="font-medium">{formatDate(subscription.endDate)} ({remaining}d)</p>
+              <p className="text-muted-foreground text-xs">{t("nextRenewal")}</p>
+              <p className="font-medium">{formatDate(subscription.endDate)} {t("daysRemaining", { days: remaining })}</p>
             </div>
             <div>
-              <p className="text-muted-foreground text-xs">Auto Renew</p>
+              <p className="text-muted-foreground text-xs">{t("autoRenew")}</p>
               <div className="flex items-center gap-2 mt-0.5">
                 <Switch
                   checked={subscription.autoRenew}
-                  disabled={toggleAutoRenew.isPending}
-                  onCheckedChange={(checked) =>
-                    toggleAutoRenew.mutate(
-                      { subscriptionId: subscription._id, autoRenew: checked },
-                      { onError: (err) => toast.error(err.message) },
-                    )
-                  }
+                  onCheckedChange={() => toast.info(t("autoRenewAdminOnly"))}
                 />
                 <span className="text-sm font-medium">{subscription.autoRenew ? t("enabled") : t("disabled")}</span>
               </div>
             </div>
             <div>
-              <p className="text-muted-foreground text-xs">Billing Cycle</p>
+              <p className="text-muted-foreground text-xs">{t("billingCycleLabel")}</p>
               <p className="font-medium capitalize">{snap?.billingCycle ?? "monthly"}</p>
             </div>
             <div>
-              <p className="text-muted-foreground text-xs">Payment Method</p>
+              <p className="text-muted-foreground text-xs">{t("paymentMethodLabel")}</p>
               <p className="font-medium text-muted-foreground">
-                No payment method
+                {t("noPaymentMethod")}
                 <button onClick={() => toast.info(t("paymentIntegrationComingSoon"), { description: t("paymentIntegrationNotYetAvailable") })} className="text-sky-500 hover:text-sky-600 ml-1">Add</button>
               </p>
             </div>
@@ -225,7 +218,7 @@ function ActiveView({
       {/* ── 2. Usage Overview ── */}
       <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-4">
         <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-          <BarChart3 className="h-4 w-4" /> Usage Overview
+          <BarChart3 className="h-4 w-4" /> {t("usageOverview")}
         </h4>
         <div className="grid gap-4 sm:grid-cols-3">
           {usageItems.map((u) => {
@@ -253,8 +246,8 @@ function ActiveView({
         {hasWarning && (
           <div className="flex items-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3">
             <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
-            <p className="text-sm text-muted-foreground flex-1">You are nearing your plan limits. Upgrade your plan to increase capacity.</p>
-            <Button size="sm" variant="outline" className="shrink-0 border-amber-500/40 text-amber-600 hover:bg-amber-500/10" onClick={() => toast.info(t("contactAdminToUpgrade"))}>Upgrade Plan</Button>
+            <p className="text-sm text-muted-foreground flex-1">{t("nearingLimitsWarning")}</p>
+            <Button size="sm" variant="outline" className="shrink-0 border-amber-500/40 text-amber-600 hover:bg-amber-500/10" onClick={() => toast.info(t("contactAdminToUpgrade"))}>{t("upgradePlanButton")}</Button>
           </div>
         )}
       </section>
@@ -262,7 +255,7 @@ function ActiveView({
       {/* ── 3. Choose Your Plan ── */}
       {plans.length > 0 && (
         <section className="space-y-4">
-          <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><Crown className="h-4 w-4" /> Choose your plan</h4>
+          <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><Crown className="h-4 w-4" /> {t("chooseYourPlan")}</h4>
           <PricingGrid plans={plans} currentTier={currentTier} displayCurrency={displayCurrency} rates={rates} />
         </section>
       )}
@@ -270,7 +263,7 @@ function ActiveView({
       {/* ── 4. Included / Locked Features ── */}
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-3">
-          <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><Check className="h-4 w-4 text-emerald-500" /> Included in your plan</h4>
+          <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><Check className="h-4 w-4 text-emerald-500" /> {t("includedInPlan")}</h4>
           <ul className="space-y-2.5">
             {included.map((f) => (
               <li key={f.label} className="flex items-start gap-3">
@@ -285,14 +278,14 @@ function ActiveView({
         </section>
         {locked.length > 0 && (
           <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-3">
-            <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><X className="h-4 w-4 text-muted-foreground/50" /> Not included</h4>
+            <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><X className="h-4 w-4 text-muted-foreground/50" /> {t("notIncluded")}</h4>
             <ul className="space-y-2.5">
               {locked.map((f) => (
                 <li key={f.label} className="flex items-start gap-3 opacity-60">
                   <X className="h-4 w-4 text-muted-foreground/40 mt-0.5 shrink-0" />
                   <div>
                     <p className="text-sm font-medium">{f.label}</p>
-                    <p className="text-xs text-muted-foreground">Available on higher plans</p>
+                    <p className="text-xs text-muted-foreground">{t("availableOnHigherPlans")}</p>
                   </div>
                 </li>
               ))}
@@ -310,11 +303,11 @@ function ActiveView({
           <div className="flex items-center gap-3">
             <CreditCard className="h-5 w-5 text-muted-foreground" />
             <div>
-              <p className="text-sm font-semibold">Payment Method</p>
-              <p className="text-xs text-muted-foreground">No payment method added. Add a payment method to enable auto-renewal.</p>
+              <p className="text-sm font-semibold">{t("paymentMethodLabel")}</p>
+              <p className="text-xs text-muted-foreground">{t("addPaymentMethodPrompt")}</p>
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={() => toast.info(t("paymentSetupComingSoon"), { description: t("onlinePaymentNotYetAvailable") })}>Add Payment Method</Button>
+          <Button variant="outline" size="sm" onClick={() => toast.info(t("paymentSetupComingSoon"), { description: t("onlinePaymentNotYetAvailable") })}>{t("addPaymentMethodButton")}</Button>
         </div>
       </section>
     </div>
@@ -324,20 +317,21 @@ function ActiveView({
 // ── No Plan View ─────────────────────────────────────────────────────────────
 
 function NoPlanView({ plans, displayCurrency, rates }: { plans: AvailablePlan[]; displayCurrency: string; rates: Record<string, number> }) {
+  const t = useTranslations("subscription");
   const { mutate: selfAssign, isPending } = useSelfAssignFreePlan();
   return (
     <div className="space-y-6">
       <section className="rounded-2xl border border-sky-500/30 bg-gradient-to-br from-sky-500/5 to-transparent p-6 flex items-start gap-4">
         <div className="h-12 w-12 rounded-2xl bg-sky-500/10 flex items-center justify-center shrink-0"><Crown className="h-6 w-6 text-sky-500" /></div>
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-lg">Welcome to Mployedin</h3>
-          <p className="text-sm text-muted-foreground mt-1">Activate your free plan to start posting jobs and tracking applicants. Upgrade anytime to unlock more features and higher limits.</p>
+          <h3 className="font-semibold text-lg">{t("welcomeToMployedin")}</h3>
+          <p className="text-sm text-muted-foreground mt-1">{t("activateFreeDescription")}</p>
         </div>
-        <Button onClick={() => selfAssign()} disabled={isPending} className="shrink-0">{isPending ? "Activating…" : "Activate Free Plan"}</Button>
+        <Button onClick={() => selfAssign()} disabled={isPending} className="shrink-0">{isPending ? t("activating") : t("activateFreePlan")}</Button>
       </section>
       {plans.length > 0 && (
         <section className="space-y-4">
-          <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><Crown className="h-4 w-4" /> Choose the right plan for your team</h4>
+          <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><Crown className="h-4 w-4" /> {t("chooseRightPlanForTeam")}</h4>
           <PricingGrid plans={plans} showActivateFree displayCurrency={displayCurrency} rates={rates} />
         </section>
       )}
@@ -348,24 +342,25 @@ function NoPlanView({ plans, displayCurrency, rates }: { plans: AvailablePlan[];
 // ── Invoice Section ──────────────────────────────────────────────────────────
 
 function InvoiceSection({ invoices, displayCurrency, rates }: { invoices: InvoiceItem[]; displayCurrency: string; rates: Record<string, number> }) {
+  const t = useTranslations("subscription");
   const [expanded, setExpanded] = useState(invoices.length <= 3);
   const visible = expanded ? invoices : invoices.slice(0, 3);
 
   return (
     <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><FileText className="h-4 w-4" /> Billing & Invoices</h4>
-        <span className="text-xs text-muted-foreground">{invoices.length} invoice{invoices.length !== 1 ? "s" : ""}</span>
+        <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><FileText className="h-4 w-4" /> {t("billingAndInvoices")}</h4>
+        <span className="text-xs text-muted-foreground">{t("invoiceCountLabel", { count: invoices.length })}</span>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-xs text-muted-foreground border-b border-border/40">
-              <th className="pb-2 pr-4 font-medium">Invoice ID</th>
-              <th className="pb-2 pr-4 font-medium">Date</th>
-              <th className="pb-2 pr-4 font-medium">Plan</th>
-              <th className="pb-2 pr-4 font-medium">Amount</th>
-              <th className="pb-2 font-medium">Status</th>
+              <th className="pb-2 pr-4 font-medium">{t("invoiceIdHeader")}</th>
+              <th className="pb-2 pr-4 font-medium">{t("date")}</th>
+              <th className="pb-2 pr-4 font-medium">{t("plan")}</th>
+              <th className="pb-2 pr-4 font-medium">{t("amount")}</th>
+              <th className="pb-2 font-medium">{t("status")}</th>
             </tr>
           </thead>
           <tbody>
@@ -388,7 +383,7 @@ function InvoiceSection({ invoices, displayCurrency, rates }: { invoices: Invoic
       </div>
       {invoices.length > 3 && (
         <button onClick={() => setExpanded(!expanded)} className="text-xs text-sky-500 hover:text-sky-600 flex items-center gap-1 mx-auto">
-          {expanded ? <><ChevronUp className="h-3 w-3" /> Show less</> : <><ChevronDown className="h-3 w-3" /> View all {invoices.length} invoices</>}
+          {expanded ? <><ChevronUp className="h-3 w-3" /> {t("showLess")}</> : <><ChevronDown className="h-3 w-3" /> {t("viewAllInvoices", { count: invoices.length })}</>}
         </button>
       )}
     </section>

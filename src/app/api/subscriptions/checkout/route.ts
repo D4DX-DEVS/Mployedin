@@ -66,6 +66,9 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
     const session = await getPaymentGateway().createSession({
       invoiceId: "", // invoice is created post-payment by the webhook
+      // TODO(L1): this is actually the User _id, not the Employer profile _id —
+      // harmless while both gateway adapters are stubs; when wiring a real
+      // gateway, pass the Employer profile _id or rename the field to payerUserId.
       employerId: ctx.userId,
       amount: plan.price,
       currency: plan.currency,

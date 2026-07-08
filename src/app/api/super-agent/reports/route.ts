@@ -42,15 +42,15 @@ export const GET = withAuth(async (_req: NextRequest, ctx: AuthCtx) => {
     Placement.countDocuments({
       $or: [
         { agentId: { $in: agentDocIds } },
-        { superAgentId: ctx.userId },
+        { superAgentId: scope.saProfileId },
       ],
     }),
     Commission.aggregate([
       {
         $match: {
           $or: [
-            { agentId: { $in: agentDocIds.map(String) } },
-            { superAgentId: ctx.userId },
+            { agentId: { $in: agentDocIds } },
+            { superAgentId: scope.saProfileId },
           ],
         },
       },
@@ -85,7 +85,7 @@ export const GET = withAuth(async (_req: NextRequest, ctx: AuthCtx) => {
       { $group: { _id: "$agentId", count: { $sum: 1 } } },
     ]),
     Commission.aggregate([
-      { $match: { agentId: { $in: agentDocIds.map(String) } } },
+      { $match: { agentId: { $in: agentDocIds } } },
       { $group: { _id: "$agentId", total: { $sum: "$amount" } } },
     ]),
   ]);
@@ -121,7 +121,7 @@ export const GET = withAuth(async (_req: NextRequest, ctx: AuthCtx) => {
       { $group: { _id: { y: { $year: "$createdAt" }, m: { $month: "$createdAt" } }, count: { $sum: 1 } } },
     ]),
     Commission.aggregate([
-      { $match: { agentId: { $in: agentDocIds.map(String) }, createdAt: { $gte: sixMonthsAgo } } },
+      { $match: { agentId: { $in: agentDocIds }, createdAt: { $gte: sixMonthsAgo } } },
       { $group: { _id: { y: { $year: "$createdAt" }, m: { $month: "$createdAt" } }, total: { $sum: "$amount" } } },
     ]),
   ]);

@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { User, Calendar, Award } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -51,7 +52,7 @@ export default function ScorecardListPage() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
 
-  const { data, isLoading: loading } = useScorecards({ page, limit });
+  const { data, isLoading: loading, isError, refetch } = useScorecards({ page, limit });
   const scorecards = data?.scorecards ?? [];
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -99,6 +100,15 @@ export default function ScorecardListPage() {
         description={t("totalScorecards", { count: total })}
       />
 
+      {isError ? (
+        <div className="card-base text-center py-16">
+          <p className="text-sm font-semibold text-destructive">{tc("somethingWentWrong")}</p>
+          <Button onClick={() => refetch()} variant="outline" className="mt-4">
+            {tc("tryAgain")}
+          </Button>
+        </div>
+      ) : (
+      <>
       {/* Aggregate Feedback Trends */}
       <FeedbackTrendsPanel />
 
@@ -181,6 +191,8 @@ export default function ScorecardListPage() {
         onPageChange={setPage}
         onLimitChange={(l) => { setLimit(l); setPage(1); }}
       />
+      </>
+      )}
     </div>
   );
 }

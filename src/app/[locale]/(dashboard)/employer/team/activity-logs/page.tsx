@@ -125,10 +125,12 @@ function formatAction(action: string): string {
 /* ─── Component ─── */
 export default function TeamActivityLogsPage() {
   const t = useTranslations("employerActivityLogs");
+  const tc = useTranslations("employerCommon");
   const { locale } = useParams<{ locale: string }>();
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   // Filters
   const [selectedMember, setSelectedMember] = useState("all");
@@ -178,7 +180,12 @@ export default function TeamActivityLogsPage() {
         setLogs(data.logs);
         setMembers(data.members);
         updateTotal(data.pagination.total);
+        setError(false);
+      } else {
+        setError(true);
       }
+    } catch {
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -376,7 +383,14 @@ export default function TeamActivityLogsPage() {
       </div>
 
       {/* Activity Log */}
-      {loading ? (
+      {error ? (
+        <div className="card-base text-center py-16">
+          <p className="text-sm font-semibold text-destructive">{tc("somethingWentWrong")}</p>
+          <Button variant="outline" size="sm" className="mt-4" onClick={fetchLogs}>
+            {tc("tryAgain")}
+          </Button>
+        </div>
+      ) : loading ? (
         <div className="space-y-2">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="h-16 bg-muted rounded-lg animate-pulse" />

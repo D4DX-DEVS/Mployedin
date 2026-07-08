@@ -35,6 +35,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { SUPPORTED_CURRENCIES } from "@/lib/currency";
 import {
   Tooltip,
   TooltipContent,
@@ -86,7 +87,10 @@ type SettingsForm = z.infer<typeof settingsFormSchema>;
 
 // ─── Mock / static data ───────────────────────────────────────────────────────
 
-const CURRENCIES = ["USD", "AED", "SAR", "EGP", "KWD", "QAR", "BHD", "OMR"];
+const CURRENCY_OPTIONS = SUPPORTED_CURRENCIES.map((c) => ({
+  value: c.code,
+  label: c.symbol !== c.code ? `${c.symbol} ${c.code} — ${c.label}` : `${c.code} — ${c.label}`,
+}));
 
 const SPEED_OPTIONS: { value: SettingsForm["applySpeed"]; label: string; desc: string }[] = [
   { value: "safe", label: "Safe", desc: "Only jobs ≥ 85% match" },
@@ -835,8 +839,8 @@ export default function JobSeekerSettingsPage() {
                         name="salaryCurrency"
                         render={({ field }) => (
                           <SearchableSelect
-                            className="h-9 w-24 text-sm shrink-0"
-                            options={CURRENCIES.map((c) => ({ value: c, label: c }))}
+                            className="h-9 w-28 text-sm shrink-0"
+                            options={CURRENCY_OPTIONS}
                             value={field.value}
                             onValueChange={field.onChange}
                           />

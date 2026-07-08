@@ -3,10 +3,17 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import MployedinCalendar, {
-  type CalendarEvent,
-} from "@/components/shared/MployedinCalendar";
+import dynamic from "next/dynamic";
+import { type CalendarEvent } from "@/components/shared/MployedinCalendar";
+import { CalendarSkeleton } from "@/components/ui/loading/CalendarSkeleton";
 import { Users } from "lucide-react";
+
+// ssr:false — calendar renders "today" from the client clock; SSR would use the
+// server clock (UTC) and hydration-mismatch for users in other timezones.
+const MployedinCalendar = dynamic(
+  () => import("@/components/shared/MployedinCalendar"),
+  { ssr: false, loading: () => <CalendarSkeleton /> },
+);
 
 export default function AgentCalendarPage() {
   const t = useTranslations("agentCalendar");

@@ -108,6 +108,7 @@ const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
     ai_assistant: ["read"],
     offers: ["create", "read", "update", "delete"],
     subscriptions: ["read"],
+    invoices: ["read"],
     // Employer manages the post-hire onboarding workspace for their placements;
     // the route handlers enforce placement ownership.
     onboarding: ["read", "update"],
@@ -125,6 +126,7 @@ const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
     // handler enforces ownership and only permits status responses.
     offers: ["read", "update"],
     subscriptions: ["read"],
+    invoices: ["read"],
     // Hired candidates view their onboarding and upload/sign requested
     // documents; the route handler enforces ownership of the placement.
     onboarding: ["read", "update"],

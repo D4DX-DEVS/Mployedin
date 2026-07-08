@@ -6,6 +6,7 @@ import { teamAcceptSchema } from "@/lib/validators/team";
 import { CompanyUser } from "@/models/CompanyUser";
 import { Employer } from "@/models/Employer";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 
 /**
  * POST /api/employers/team/accept — accept a team invitation
@@ -13,6 +14,11 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 async function postHandler(req: NextRequest, ctx: { userId: string; role: string }) {
   if (ctx.role !== "employer") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const { allowed } = await checkRateLimit(`team-accept:${ctx.userId}`, RATE_LIMIT_CONFIGS.auth);
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many attempts. Please try again later." }, { status: 429 });
   }
 
   const { token } = (await validateBody(req, teamAcceptSchema)) as { token: string };

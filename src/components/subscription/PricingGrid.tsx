@@ -161,23 +161,25 @@ export function PricingGrid({
         {plans.map((plan) => {
           const isActive = currentTier === plan.tier;
           const isFreePlan = plan.price === 0;
-          const isMostPopular = plan.tier === 1 && plans.length > 2;
+          // 2-plan lists (e.g. job seeker: Free/Premium) highlight the paid plan;
+          // 3+-plan lists (e.g. employer: Free/Professional/Enterprise) highlight the middle tier.
+          const isMostPopular = plans.length === 2 ? plan.price > 0 : plan.tier === 1 && plans.length > 2;
           const highlights = getPlanHighlights(plan, isEmployer);
 
           return (
             <div
               key={plan._id}
-              className={`relative rounded-2xl border p-5 flex flex-col transition-shadow hover:shadow-md ${
+              className={`relative rounded-2xl border p-5 flex flex-col transition-all hover:shadow-md ${
                 isActive
-                  ? "border-sky-500 bg-gradient-to-b from-sky-500/5 to-transparent ring-1 ring-sky-500/20"
+                  ? "border-sky-500/40 bg-card"
                   : isMostPopular
-                    ? "border-amber-400 bg-gradient-to-b from-amber-500/5 to-transparent"
+                    ? "border-2 border-sky-500 bg-sky-500/[0.05] shadow-lg shadow-sky-500/10 sm:scale-[1.03] z-10"
                     : "border-border/60 bg-card"
               }`}
             >
               {isMostPopular && !isActive && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <Badge className="bg-amber-500 text-white text-[10px] px-2.5 py-0.5 shadow-sm font-semibold">
+                  <Badge className="bg-sky-600 text-white text-[10px] px-2.5 py-0.5 shadow-sm font-semibold">
                     {t("popular")}
                   </Badge>
                 </div>

@@ -99,6 +99,19 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     }
   }
 
+  // Super-agent may only invoice jobs handled by an agent within their scope (team + region).
+  if (ctx.role === "super_agent") {
+    const { getSuperAgentScope } = await import("@/lib/auth/agentRestrictions");
+    const scope = await getSuperAgentScope(ctx.userId);
+    const scopedAgentIds = (scope?.effectiveAgentIds ?? []).map(String);
+    if (!agentId || !scopedAgentIds.includes(String(agentId))) {
+      return NextResponse.json(
+        { error: "You can only create invoices for jobs handled by your team" },
+        { status: 403 }
+      );
+    }
+  }
+
   // Resolve default currency
   const defaultCurrency = (await SystemSettings.findOne().lean())?.defaultCurrency ?? "AED";
   const invoiceCurrency = currency ?? defaultCurrency;

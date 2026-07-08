@@ -106,6 +106,10 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const body = await validateBody(req, applicationUpdateSchema);
   const { status, note, rejectionReason, employerNotes, agentNotes, withdrawalReason, withdrawalNote } = body;
 
+  if (ctx.role === "job_seeker" && status && status !== "withdrawn") {
+    return NextResponse.json({ error: "Job seekers may only withdraw an application" }, { status: 403 });
+  }
+
   // Auto-reject rule: if employer has autoRejectBelow threshold and aiMatchScore is being implicitly set
   // Also apply when aiMatchScore already exists and new status change would pass auto-reject threshold
   const workflowSettings = emp?.workflow?.settings as WorkflowSettings | undefined;

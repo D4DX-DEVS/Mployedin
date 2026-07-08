@@ -942,7 +942,10 @@ export default function MployedinCalendar({
   const locale = useLocale();
   const isRtl = locale === "ar";
   const [view, setView] = useState<CalendarViewMode>("month");
-  // ponytail: client-only ("use client") calendar; new Date() in useState is safe, these values aren't server-rendered
+  // new Date() here is safe ONLY because every page imports this component via
+  // next/dynamic with ssr:false — it never renders on the server. If you add a
+  // static import somewhere, "today" comes from the server clock (UTC) and
+  // hydration mismatches for users in other timezones.
   const [currentDate, setCurrentDate] = useState<Date>(() => new Date());
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(

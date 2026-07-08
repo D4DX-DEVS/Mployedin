@@ -81,26 +81,27 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   } else if (myJobs && ctx.role === "employer") {
     // Employer fetching their own jobs — scope to their employerId, no status filter
     const empDoc = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
+    if (!empDoc) {
+      return NextResponse.json({ error: "Employer profile not found" }, { status: 404 });
+    }
 
-    if (empDoc) {
-      query.employerId = empDoc._id;
+    query.employerId = empDoc._id;
 
-      // Enforce job-level access for team members (hiring_manager / viewer)
-      const teamMember = await CompanyUser.findOne({
-        companyId: empDoc._id,
-        userId: ctx.userId,
-        status: "active",
-      }).select("companyRole jobAccess").lean();
+    // Enforce job-level access for team members (hiring_manager / viewer)
+    const teamMember = await CompanyUser.findOne({
+      companyId: empDoc._id,
+      userId: ctx.userId,
+      status: "active",
+    }).select("companyRole jobAccess").lean();
 
-      if (
-        teamMember &&
-        teamMember.companyRole !== "owner" &&
-        teamMember.companyRole !== "admin" &&
-        teamMember.jobAccess &&
-        teamMember.jobAccess.length > 0
-      ) {
-        query._id = { $in: teamMember.jobAccess };
-      }
+    if (
+      teamMember &&
+      teamMember.companyRole !== "owner" &&
+      teamMember.companyRole !== "admin" &&
+      teamMember.jobAccess &&
+      teamMember.jobAccess.length > 0
+    ) {
+      query._id = { $in: teamMember.jobAccess };
     }
   } else if (!myJobs) {
     query.status = "active";

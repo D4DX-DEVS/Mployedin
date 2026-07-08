@@ -76,6 +76,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     employer.posterCredits.used = 0;
     employer.posterCredits.resetDate = getNextResetDate();
   }
+  await employer.save();
 
   if (!hasCredits(employer.posterCredits, CREDITS_PER_GENERATION)) {
     return NextResponse.json(
@@ -83,6 +84,21 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       { status: 402 },
     );
   }
+
+  // ponytail: reserve credits atomically (not read-modify-write) so two
+  // concurrent requests can't both pass the check above and double-spend.
+  const reserved = await Employer.findOneAndUpdate(
+    { _id: employer._id, "posterCredits.used": { $lte: employer.posterCredits.limit - CREDITS_PER_GENERATION } },
+    { $inc: { "posterCredits.used": CREDITS_PER_GENERATION } },
+    { new: true },
+  ).select("posterCredits").lean();
+  if (!reserved) {
+    return NextResponse.json(
+      { error: "Insufficient poster credits. Please upgrade your plan.", creditsRemaining: 0 },
+      { status: 402 },
+    );
+  }
+  employer.posterCredits = reserved.posterCredits;
 
   // Get job data for smart prompting
   const job = await Job.findById(body.jobId).lean();
@@ -133,6 +149,8 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   try {
     images = await generateImages(prompts);
   } catch (err: any) {
+    // Generation failed after credits were reserved — refund them.
+    await Employer.updateOne({ _id: employer._id }, { $inc: { "posterCredits.used": -CREDITS_PER_GENERATION } });
     const msg = err?.message || "Image generation failed";
     const isBilling = msg.includes("billing") || msg.includes("quota") || msg.includes("rate limit");
     return NextResponse.json(
@@ -157,10 +175,6 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       };
     }),
   );
-
-  // Deduct credits
-  employer.posterCredits.used += CREDITS_PER_GENERATION;
-  await employer.save();
 
   // Save generation record
   const posterGen = await PosterGeneration.create({

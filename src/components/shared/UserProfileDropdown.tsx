@@ -22,6 +22,7 @@ import {
   FileText,
   BookOpen,
   Building2,
+  Crown,
   MoreHorizontal,
 } from "lucide-react";
 import {
@@ -268,6 +269,13 @@ export function UserProfileDropdown({
               >
                 <Building2 className="h-4 w-4" />
                 <span className="text-sm">{t("companies")}</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="cursor-pointer gap-2 rounded-md hover:bg-muted/50 transition-colors"
+                onSelect={() => router.push(`/${locale}/job-seeker/subscription`)}
+              >
+                <Crown className="h-4 w-4" />
+                <span className="text-sm">{t("subscription")}</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
             </>

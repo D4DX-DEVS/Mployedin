@@ -149,4 +149,9 @@ async function postHandler(
 }
 
 export const GET = withAuth(getHandler, { resource: "invoices", action: "read" });
-export const POST = withAuth(postHandler, { resource: "invoices", action: "update" });
+// POST deliberately gated on "read", not "update" (EMPLOYER-FIX-PLAN E3):
+// employer/job_seeker only hold invoices:read, and granting them "update" would
+// also open invoice PATCH / payments / credit-note routes. Real enforcement is
+// object-level: canAccessInvoice() scopes to owner/agent/SA-team, and the
+// resolve sub-action is additionally role-gated to admin/super_agent above.
+export const POST = withAuth(postHandler, { resource: "invoices", action: "read" });

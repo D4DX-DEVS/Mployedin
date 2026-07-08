@@ -262,6 +262,11 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
 }
 
 export const GET = withAuth(getHandler);
-export const POST = withAuth(
-  withSubscription(postHandler, { type: "limit", feature: "teamMembers" }),
+// ponytail: Team feature disabled for launch (EMPLOYER-FIX-PLAN E6, Option A) —
+// invite membership never reaches the invitee's session, ACLs are dead code.
+// Re-enable postHandler once session/JWT resolves active CompanyUser membership (Option B).
+export const POST = withAuth(async () =>
+  NextResponse.json({ error: "Team feature is temporarily disabled" }, { status: 501 })
 );
+void postHandler;
+void withSubscription;

@@ -102,6 +102,8 @@ export interface IJobSeeker extends Document {
     /** Cached full ATS report (checks, recommendations, etc.). */
     atsReport?: Record<string, unknown>;
     atsAnalyzedAt?: Date;
+    /** Times an employer/agent/admin downloaded this candidate's resume. */
+    downloadCount?: number;
   };
   // Skills & Experience
   skills: string[];
@@ -289,6 +291,7 @@ const JobSeekerSchema = new Schema<IJobSeeker>(
       atsScore: Number,
       atsReport: { type: Schema.Types.Mixed },
       atsAnalyzedAt: Date,
+      downloadCount: { type: Number, default: 0 },
     },
     skills: [String],
     suggestedSkills: [String],

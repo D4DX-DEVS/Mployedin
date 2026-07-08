@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import JobSeeker from "@/models/JobSeeker";
+import { enforceFeatureGate } from "@/lib/subscription/featureGate";
 
 /**
  * POST /api/job-seeker/profile-boost — Boost profile visibility for 7 days
@@ -36,13 +37,9 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   }
 
   await connectDB();
-  const seeker = await JobSeeker.findOne({ userId: ctx.userId });
-  if (!seeker) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
 
-  // Check if already boosted
-  if (seeker.isProfileBoosted && seeker.profileBoostedUntil && seeker.profileBoostedUntil > new Date()) {
-    return NextResponse.json({ error: "Profile is already boosted", boostedUntil: seeker.profileBoostedUntil }, { status: 400 });
-  }
+  const gateErr = await enforceFeatureGate(ctx.userId, ctx.role, { type: "toggle", feature: "profileVisibilityBoost" });
+  if (gateErr) return gateErr;
 
   // Parse optional headline update from body
   let headline: string | undefined;
@@ -53,7 +50,8 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     }
   } catch { /* no body */ }
 
-  const boostedUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const now = new Date();
+  const boostedUntil = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
   const update: Record<string, unknown> = {
     isProfileBoosted: true,
@@ -62,7 +60,27 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   };
   if (headline) update.headline = headline;
 
-  await JobSeeker.findByIdAndUpdate(seeker._id, update);
+  // Atomic grant: only succeeds if not currently boosted (no read-then-write race)
+  const granted = await JobSeeker.findOneAndUpdate(
+    {
+      userId: ctx.userId,
+      $or: [
+        { isProfileBoosted: { $ne: true } },
+        { profileBoostedUntil: { $lte: now } },
+        { profileBoostedUntil: null },
+      ],
+    },
+    update,
+  );
+
+  if (!granted) {
+    const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select("profileBoostedUntil").lean();
+    if (!seeker) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+    return NextResponse.json(
+      { error: "Profile is already boosted", boostedUntil: (seeker as { profileBoostedUntil?: Date }).profileBoostedUntil },
+      { status: 400 },
+    );
+  }
 
   return NextResponse.json({
     success: true,

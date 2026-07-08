@@ -4,6 +4,7 @@ import { withAuth } from "@/lib/auth/withAuth";
 import ReferralLink from "@/models/ReferralLink";
 import Agent from "@/models/Agent";
 import SuperAgent from "@/models/SuperAgent";
+import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import mongoose from "mongoose";
 import crypto from "crypto";
 import { validateBody } from "@/lib/validators";
@@ -50,16 +51,18 @@ async function handleGet(req: NextRequest, ctx: AuthCtx) {
   if (ctx.role === "agent") {
     ownerFilter.createdBy = new mongoose.Types.ObjectId(ctx.userId);
   } else if (ctx.role === "super_agent") {
-    let sa = await SuperAgent.findOne({ userId: ctx.userId }).select("_id agentIds").lean();
     // Auto-create super-agent profile if missing (data integrity recovery)
+    const sa = await SuperAgent.findOne({ userId: ctx.userId }).select("_id").lean();
     if (!sa) {
-      const created = await SuperAgent.create({ userId: ctx.userId });
-      sa = { _id: created._id, agentIds: [] } as typeof sa;
+      await SuperAgent.create({ userId: ctx.userId });
     }
 
+    // Canonical SA scope: getSuperAgentScope(). Do not read sa.agentIds directly.
+    const scope = await getSuperAgentScope(ctx.userId); // ctx.userId — NOT sa._id
+    const teamAgentDocIds = scope?.effectiveAgentIds ?? [];
     const agentUserIds: string[] = [];
-    if (sa.agentIds?.length) {
-      const agents = await Agent.find({ _id: { $in: sa.agentIds } }).select("userId").lean();
+    if (teamAgentDocIds.length > 0) {
+      const agents = await Agent.find({ _id: { $in: teamAgentDocIds } }).select("userId").lean();
       agentUserIds.push(...agents.map((a) => a.userId.toString()));
     }
     ownerFilter.createdBy = { $in: [new mongoose.Types.ObjectId(ctx.userId), ...agentUserIds.map((id) => new mongoose.Types.ObjectId(id))] };

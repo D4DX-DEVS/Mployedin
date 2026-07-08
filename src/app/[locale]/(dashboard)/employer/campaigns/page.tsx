@@ -187,10 +187,10 @@ export default function EmployerCampaignsPage() {
                 onClick={() => setPage(page - 1)}
                 className="h-9 rounded-xl"
               >
-                Previous
+                {t("previous")}
               </Button>
               <span className="text-sm text-muted-foreground">
-                Page {page} of {totalPages}
+                {t("pageInfo", { page, totalPages })}
               </span>
               <Button
                 variant="outline"
@@ -199,7 +199,7 @@ export default function EmployerCampaignsPage() {
                 onClick={() => setPage(page + 1)}
                 className="h-9 rounded-xl"
               >
-                Next
+                {t("next")}
               </Button>
             </div>
           )}

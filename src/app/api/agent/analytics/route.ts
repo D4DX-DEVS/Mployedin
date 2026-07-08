@@ -96,7 +96,7 @@ async function handler(_req: NextRequest, ctx: AuthContext) {
 
   // ── Commission Summary ──
   const commAgg = await Commission.aggregate([
-    { $match: { agentId: String(agentId) } },
+    { $match: { agentId } },
     {
       $group: {
         _id: "$status",

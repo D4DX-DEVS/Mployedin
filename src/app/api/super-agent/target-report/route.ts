@@ -138,7 +138,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
         createdAt: { $gte: new Date(year, 0, 1), $lte: new Date(year, 11, 31, 23, 59, 59, 999) },
         $or: [
           { agentId: { $in: agentDocIds } },
-          { superAgentId: ctx.userId },
+          { superAgentId: scope?.saProfileId },
         ],
       },
     },

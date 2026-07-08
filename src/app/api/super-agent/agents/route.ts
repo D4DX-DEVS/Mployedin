@@ -27,6 +27,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const sortBy = searchParams.get("sortBy") || "name"; // name | leadsCount | conversions | placements | conversionRate | avgResponseHours
   const sortOrder = searchParams.get("sortOrder") || "asc";
   const distinct = searchParams.get("distinct"); // return facets when "true"
+  const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
+  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "20")));
 
   // Dual-scoping: team agents + region-based agents
   const scope = await getSuperAgentScope(ctx.userId);
@@ -138,7 +140,11 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     performanceLevels: ["high_performer", "needs_attention", "slow_response", "no_activity"],
   } : undefined;
 
-  return NextResponse.json({ items, total: items.length, ...(facets ? { facets } : {}) });
+  const total = items.length;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+  const pageItems = items.slice((page - 1) * limit, page * limit);
+
+  return NextResponse.json({ items: pageItems, total, page, totalPages, ...(facets ? { facets } : {}) });
 }, { resource: "agents", action: "read" });
 
 /* ------------------------------------------------------------------ */

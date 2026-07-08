@@ -75,6 +75,27 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   }
   if (!seeker) return NextResponse.json({ error: "Job seeker profile not found" }, { status: 404 });
 
+  // Agents may only analyse seekers assigned to them (same gate as /api/job-seekers/[id])
+  if (ctx.role === "agent" && bodyJobSeekerId) {
+    const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
+    if (!agentDoc || !seeker.agentId || String(seeker.agentId) !== String(agentDoc._id)) {
+      return NextResponse.json({ error: "Forbidden — seeker not assigned to you" }, { status: 403 });
+    }
+  }
+
+  // Employers may only score seekers who applied to one of their jobs, or who
+  // opted into the discoverable talent pool (same population as talent-search).
+  if (ctx.role === "employer" && bodyJobSeekerId) {
+    const employer = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
+    const isApplicant = employer && await Application.exists({
+      jobSeekerId: seeker._id,
+      employerId: employer._id,
+    });
+    if (!isApplicant && seeker.profileVisibility !== "visible") {
+      return NextResponse.json({ error: "Forbidden — seeker not accessible" }, { status: 403 });
+    }
+  }
+
   // Safely extract nested fields
   const jobReqs = job.requirements as { skills?: string[]; experienceMin?: number; experienceMax?: number } | undefined;
   const jobLoc = job.location as { city?: string; country?: string; isRemote?: boolean } | undefined;

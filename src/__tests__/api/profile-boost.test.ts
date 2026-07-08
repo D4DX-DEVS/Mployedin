@@ -28,12 +28,18 @@ const mockSeeker = {
 
 const mockFindOne = jest.fn();
 const mockFindByIdAndUpdate = jest.fn().mockResolvedValue(true);
+const mockFindOneAndUpdate = jest.fn();
 jest.mock("@/models/JobSeeker", () => ({
   __esModule: true,
   default: {
     findOne: (...args: unknown[]) => mockFindOne(...args),
     findByIdAndUpdate: (...args: unknown[]) => mockFindByIdAndUpdate(...args),
+    findOneAndUpdate: (...args: unknown[]) => mockFindOneAndUpdate(...args),
   },
+}));
+
+jest.mock("@/lib/subscription/featureGate", () => ({
+  enforceFeatureGate: jest.fn().mockResolvedValue(null),
 }));
 
 // Mock withAuth to pass context
@@ -115,12 +121,7 @@ describe("Profile Boost API", () => {
     });
 
     it("activates boost for 7 days", async () => {
-      mockFindOne.mockResolvedValue({
-        ...mockSeeker,
-        isProfileBoosted: false,
-        profileBoostedUntil: null,
-        save: jest.fn().mockResolvedValue(true),
-      });
+      mockFindOneAndUpdate.mockResolvedValue({ ...mockSeeker, isProfileBoosted: true });
 
       const { POST } = await import("@/app/api/job-seeker/profile-boost/route");
       const req = new NextRequest("http://localhost/api/job-seeker/profile-boost", {
@@ -139,10 +140,11 @@ describe("Profile Boost API", () => {
 
     it("rejects boost if already active", async () => {
       const futureDate = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
-      mockFindOne.mockResolvedValue({
-        ...mockSeeker,
-        isProfileBoosted: true,
-        profileBoostedUntil: futureDate,
+      mockFindOneAndUpdate.mockResolvedValue(null);
+      mockFindOne.mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue({ profileBoostedUntil: futureDate }),
+        }),
       });
 
       const { POST } = await import("@/app/api/job-seeker/profile-boost/route");

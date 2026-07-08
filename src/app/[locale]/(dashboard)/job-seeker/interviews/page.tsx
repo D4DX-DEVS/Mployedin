@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { Video, MapPin, Calendar, Clock, ExternalLink, CheckCircle, AlertCircle, Check, X, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -69,6 +70,8 @@ export default function InterviewsPage() {
         const items = data.interviews ?? data.items ?? [];
         setInterviews(items);
         pagination.updateTotal(data.total ?? items.length);
+      } else {
+        toast.error(t("loadFailed"));
       }
     } finally {
       setLoading(false);

@@ -5,13 +5,22 @@ import { useTranslations } from "next-intl";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import MployedinCalendar, {
+import dynamic from "next/dynamic";
+import {
   type CalendarEvent,
   type BookingPayload,
   type BookingCandidate,
   type JobOption,
 } from "@/components/shared/MployedinCalendar";
+import { CalendarSkeleton } from "@/components/ui/loading/CalendarSkeleton";
 import { Briefcase } from "lucide-react";
+
+// ssr:false — calendar renders "today" from the client clock; SSR would use the
+// server clock (UTC) and hydration-mismatch for users in other timezones.
+const MployedinCalendar = dynamic(
+  () => import("@/components/shared/MployedinCalendar"),
+  { ssr: false, loading: () => <CalendarSkeleton /> },
+);
 
 export default function EmployerCalendarPage() {
   const t = useTranslations("employerCalendar");
@@ -37,7 +46,7 @@ export default function EmployerCalendarPage() {
             title: String(
               (i.jobSeekerId as { fullName?: string } | undefined)?.fullName ??
                 i.candidateName ??
-                "Candidate",
+                t("candidate"),
             ),
             subtitle: String(i.jobTitle ?? ""),
             type: (i.type as CalendarEvent["type"]) ?? "video",
@@ -147,8 +156,8 @@ export default function EmployerCalendarPage() {
       });
 
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "Booking failed" }));
-        throw new Error(err.error ?? "Failed to book interview");
+        const err = await res.json().catch(() => ({ error: t("bookingFailed") }));
+        throw new Error(err.error ?? t("bookingFailed"));
       }
 
       toast.success(t("interviewBookedSuccessfully"));

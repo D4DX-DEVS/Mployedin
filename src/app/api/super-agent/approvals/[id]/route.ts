@@ -45,40 +45,35 @@ async function patchHandler(
     const scope = await getSuperAgentScope(ctx.userId);
     const agentIds = (scope?.effectiveAgentIds ?? []).map(String);
 
-    // If the super-agent has assigned agents, enforce ownership
-    if (agentIds.length > 0) {
-      let isOwnedJob = false;
+    // Empty scope → deny (was previously an allow-all bypass).
+    let isOwnedJob = false;
+    if (job.agentId && agentIds.includes(String(job.agentId))) {
+      isOwnedJob = true;
+    }
+    if (!isOwnedJob && agentIds.length > 0) {
+      const managedAgents = await Agent.find({
+        _id: { $in: scope?.effectiveAgentIds ?? [] },
+      })
+        .select("assignedEmployerIds")
+        .lean();
+      const managedEmployerIds = managedAgents
+        .flatMap((a) => a.assignedEmployerIds ?? [])
+        .map(String);
 
-      if (job.agentId && agentIds.includes(String(job.agentId))) {
+      if (
+        job.employerId &&
+        managedEmployerIds.includes(String(job.employerId))
+      ) {
         isOwnedJob = true;
       }
-
-      if (!isOwnedJob) {
-        const managedAgents = await Agent.find({
-          _id: { $in: scope?.effectiveAgentIds ?? [] },
-        })
-          .select("assignedEmployerIds")
-          .lean();
-        const managedEmployerIds = managedAgents
-          .flatMap((a) => a.assignedEmployerIds ?? [])
-          .map(String);
-
-        if (
-          job.employerId &&
-          managedEmployerIds.includes(String(job.employerId))
-        ) {
-          isOwnedJob = true;
-        }
-      }
-
-      if (!isOwnedJob) {
-        return NextResponse.json(
-          { error: "Forbidden — this job is not under your agents" },
-          { status: 403 }
-        );
-      }
     }
-    // If agentIds is empty, allow action (matches GET route scoping behavior)
+
+    if (!isOwnedJob) {
+      return NextResponse.json(
+        { error: "Forbidden — this job is not under your agents" },
+        { status: 403 }
+      );
+    }
   }
 
   const body = await validateBody(req, approvalDecisionSchema);

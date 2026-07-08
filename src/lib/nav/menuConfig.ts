@@ -1369,21 +1369,16 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             descriptionAr: "عرض جميع الإشعارات",
           },
           {
+            // ponytail: "Team Members" invite child removed — feature disabled,
+            // see EMPLOYER-FIX-PLAN E6. Activity/Agent History children remain
+            // (unaffected, standalone read-only pages).
             title: "Team",
             titleAr: "الفريق",
-            href: p("/employer/team"),
+            href: p("/employer/team/activity-logs"),
             icon: "Users",
-            description: "Manage team members & roles",
-            descriptionAr: "إدارة أعضاء الفريق والأدوار",
+            description: "Team activity & history",
+            descriptionAr: "نشاط الفريق وسجله",
             children: [
-              {
-                title: "Team Members",
-                titleAr: "أعضاء الفريق",
-                href: p("/employer/team"),
-                icon: "Users",
-                description: "Manage team members & roles",
-                descriptionAr: "إدارة أعضاء الفريق والأدوار",
-              },
               {
                 title: "Activity Logs",
                 titleAr: "سجل النشاط",
@@ -1492,6 +1487,14 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 descriptionAr: "تصفح الوظائف المتاحة",
               },
               {
+                title: "Search",
+                titleAr: "البحث",
+                href: p("/job-seeker/search"),
+                icon: "Search",
+                description: "Search jobs, companies & more",
+                descriptionAr: "البحث عن الوظائف والشركات والمزيد",
+              },
+              {
                 title: "Applications",
                 titleAr: "طلباتي",
                 href: p("/job-seeker/applications"),
@@ -1562,6 +1565,22 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "FolderOpen",
                 description: "Showcase your projects & work",
                 descriptionAr: "اعرض مشاريعك وأعمالك",
+              },
+              {
+                title: "Profile Views",
+                titleAr: "من شاهد ملفك",
+                href: p("/job-seeker/profile-views"),
+                icon: "Eye",
+                description: "See who viewed your profile",
+                descriptionAr: "عرض من شاهد ملفك الشخصي",
+              },
+              {
+                title: "Profile Boost",
+                titleAr: "تعزيز الملف الشخصي",
+                href: p("/job-seeker/profile-boost"),
+                icon: "TrendingUp",
+                description: "Get your profile noticed by more recruiters",
+                descriptionAr: "اجعل ملفك الشخصي أكثر ظهورًا للمسؤولين عن التوظيف",
               },
             ],
           },

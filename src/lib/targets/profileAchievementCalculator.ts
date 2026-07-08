@@ -4,6 +4,7 @@
  * by querying the relevant collections.
  */
 
+import mongoose from "mongoose";
 import { connectDB } from "@/lib/db/mongoose";
 import Employer from "@/models/Employer";
 import Placement from "@/models/Placement";
@@ -33,11 +34,10 @@ function getDateRange(year: number, month?: number): DateRange {
 }
 
 async function getTeamAgentIds(superAgentUserId: string): Promise<string[]> {
-  const sa = await SuperAgent.findOne({ userId: superAgentUserId })
-    .select("agentIds")
-    .lean();
-  if (!sa) return [];
-  return (sa.agentIds ?? []).map(String);
+  // Canonical SA scope: getSuperAgentScope(). Do not read sa.agentIds directly.
+  const { getSuperAgentScope } = await import("@/lib/auth/agentRestrictions");
+  const scope = await getSuperAgentScope(superAgentUserId);
+  return (scope?.effectiveAgentIds ?? []).map(String);
 }
 
 async function getAgentDocId(userId: string): Promise<string | null> {
@@ -113,16 +113,20 @@ async function calcFinance(
   };
 
   if (role === "agent") {
-    const agentId = await getAgentDocId(userId);
-    if (!agentId) return 0;
-    matchStage.agentId = agentId;
+    const agentIdStr = await getAgentDocId(userId);
+    if (!agentIdStr) return 0;
+    matchStage.agentId = new mongoose.Types.ObjectId(agentIdStr);
   } else {
-    const teamAgentIds = await getTeamAgentIds(userId);
-    if (teamAgentIds.length === 0) return 0;
-    matchStage.$or = [
-      { agentId: { $in: teamAgentIds } },
-      { superAgentId: userId },
-    ];
+    const teamAgentIdStrs = await getTeamAgentIds(userId);
+    const sa = await SuperAgent.findOne({ userId }).select("_id").lean();
+    if (teamAgentIdStrs.length === 0 && !sa) return 0;
+    const orArms: Record<string, unknown>[] = [];
+    if (teamAgentIdStrs.length > 0) {
+      orArms.push({ agentId: { $in: teamAgentIdStrs.map((s) => new mongoose.Types.ObjectId(s)) } });
+    }
+    if (sa?._id) orArms.push({ superAgentId: sa._id });
+    if (orArms.length === 0) return 0;
+    matchStage.$or = orArms;
   }
 
   const result = await Commission.aggregate([

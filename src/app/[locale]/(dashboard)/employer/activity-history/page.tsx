@@ -101,7 +101,9 @@ function getDetailedDescription(entry: ActivityEntry, t: (key: string, values?: 
 
 export default function ActivityHistoryPage() {
   const t = useTranslations("employerActivity");
+  const tc = useTranslations("employerCommon");
   const [entries, setEntries] = useState<ActivityEntry[]>([]);
+  const [error, setError] = useState(false);
   const [pagination, setPagination] = useState<PaginationInfo>({
     page: 1, limit: 15, total: 0, totalPages: 0, hasNext: false, hasPrev: false,
   });
@@ -121,7 +123,12 @@ export default function ActivityHistoryPage() {
         const data = await res.json();
         setEntries(data.items);
         setPagination(data.pagination);
+        setError(false);
+      } else {
+        setError(true);
       }
+    } catch {
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -248,7 +255,14 @@ export default function ActivityHistoryPage() {
 
       {/* Activity List */}
       <section className="space-y-3">
-        {loading ? (
+        {error ? (
+          <div className="flex flex-col items-center justify-center rounded-[28px] border border-dashed border-slate-300 py-20 text-center dark:border-slate-700">
+            <p className="text-sm font-semibold text-destructive">{tc("somethingWentWrong")}</p>
+            <Button variant="outline" size="sm" className="mt-4 rounded-xl" onClick={handleRefresh}>
+              {tc("tryAgain")}
+            </Button>
+          </div>
+        ) : loading ? (
           <div className="space-y-3">
             {[1, 2, 3, 4, 5].map((i) => (
               <div

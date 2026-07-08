@@ -69,6 +69,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     employer.posterCredits.used = 0;
     employer.posterCredits.resetDate = getNextResetDate();
   }
+  await employer.save();
 
   if (!hasCredits(employer.posterCredits, CREDITS_PER_MORE_VARIATIONS)) {
     return NextResponse.json(
@@ -76,6 +77,21 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       { status: 402 },
     );
   }
+
+  // ponytail: reserve credits atomically (not read-modify-write) so two
+  // concurrent requests can't both pass the check above and double-spend.
+  const reserved = await Employer.findOneAndUpdate(
+    { _id: employer._id, "posterCredits.used": { $lte: employer.posterCredits.limit - CREDITS_PER_MORE_VARIATIONS } },
+    { $inc: { "posterCredits.used": CREDITS_PER_MORE_VARIATIONS } },
+    { new: true },
+  ).select("posterCredits").lean();
+  if (!reserved) {
+    return NextResponse.json(
+      { error: "Insufficient poster credits. Please upgrade your plan.", creditsRemaining: 0 },
+      { status: 402 },
+    );
+  }
+  employer.posterCredits = reserved.posterCredits;
 
   // Build prompts using stored settings (different variation indices)
   const existingCount = posterGen.variations.length;
@@ -100,6 +116,8 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   try {
     images = await generateImages(prompts);
   } catch (err: any) {
+    // Generation failed after credits were reserved — refund them.
+    await Employer.updateOne({ _id: employer._id }, { $inc: { "posterCredits.used": -CREDITS_PER_MORE_VARIATIONS } });
     const msg = err?.message || "Image generation failed";
     const isBilling = msg.includes("billing") || msg.includes("quota") || msg.includes("rate limit");
     return NextResponse.json(
@@ -128,10 +146,6 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   posterGen.variations.push(...newVariations);
   posterGen.creditsUsed += CREDITS_PER_MORE_VARIATIONS;
   await posterGen.save();
-
-  // Deduct credits
-  employer.posterCredits.used += CREDITS_PER_MORE_VARIATIONS;
-  await employer.save();
 
   await logActivity({
     ...actorFromCtx(ctx),

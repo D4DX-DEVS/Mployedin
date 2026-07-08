@@ -3,7 +3,9 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import Application from "@/models/Application";
 import { Employer } from "@/models/Employer";
+import Agent from "@/models/Agent";
 import User from "@/models/User";
+import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import { validateBody } from "@/lib/validators";
 import { noteCreateSchema } from "@/lib/validators/applications";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
@@ -25,7 +27,20 @@ async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<strin
     const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
     if (!emp || String(application.employerId) !== String(emp._id))
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  } else if (!["agent", "super_agent", "admin"].includes(ctx.role)) {
+  } else if (ctx.role === "agent") {
+    const agent = await Agent.findOne({ userId: ctx.userId }).select("_id assignedEmployerIds").lean();
+    const ok = Boolean(
+      agent && (
+        String(application.agentId) === String(agent._id) ||
+        ((agent.assignedEmployerIds as unknown[]) ?? []).some((e) => String(e) === String(application.employerId))
+      )
+    );
+    if (!ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  } else if (ctx.role === "super_agent") {
+    const scope = await getSuperAgentScope(ctx.userId);
+    const ok = Boolean(application.agentId && scope?.effectiveAgentIds.some((id) => String(id) === String(application.agentId)));
+    if (!ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  } else if (ctx.role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

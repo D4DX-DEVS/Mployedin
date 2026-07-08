@@ -1,20 +1,23 @@
-﻿"use client";
+"use client";
 
 /**
  * Job Seeker Subscription Page — Modern SaaS layout
  *
- * 1. Current Plan + Billing Info
- * 2. Usage Overview with warning indicators
- * 3. Choose Your Plan (pricing cards)
- * 4. Included / Locked Features
- * 5. Billing & Invoices
- * 6. Payment Method placeholder
+ * 1. Current Plan
+ * 2. Activity Overview (applications, profile views, resume downloads, AI score)
+ * 3. Upgrade banner (free tier or near-limit)
+ * 4. Choose Your Plan (pricing cards)
+ * 5. Why Upgrade to Premium (free tier only)
+ * 6. Included / Locked Features
+ * 7. FAQ
+ * 8. Billing & Invoices
+ * 9. Payment trust strip + Payment Method placeholder
  */
 
 import { useState } from "react";
 import {
-  Crown, FileText, BarChart3,
-  Check, X, AlertTriangle,
+  Crown, FileText, Download,
+  Check, X, AlertTriangle, Rocket,
   CreditCard, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -22,7 +25,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  useMySubscription, useAvailablePlans, useSelfAssignFreePlan, useToggleAutoRenew,
+  useMySubscription, useAvailablePlans, useSelfAssignFreePlan,
   type MySubscription, type AvailablePlan,
 } from "@/hooks/useSubscription";
 import { useFeatureGateMap } from "@/hooks/useFeatureGate";
@@ -31,6 +34,10 @@ import { useCurrencyPreference } from "@/hooks/useCurrencyPreference";
 import { useExchangeRates } from "@/hooks/useExchangeRates";
 import { CurrencySelector } from "@/components/shared/CurrencySelector";
 import { PricingGrid } from "@/components/subscription/PricingGrid";
+import { ActivityOverview } from "@/components/subscription/ActivityOverview";
+import { WhyUpgrade } from "@/components/subscription/WhyUpgrade";
+import { SubscriptionFAQ } from "@/components/subscription/SubscriptionFAQ";
+import { PaymentTrustStrip } from "@/components/subscription/PaymentTrustStrip";
 import { convertAndFormat } from "@/lib/currency";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
@@ -50,18 +57,6 @@ function daysUntil(d: string | undefined) {
 function pctUsed(used: number, max: number) {
   if (max <= 0) return 0;
   return Math.min(100, Math.round((used / max) * 100));
-}
-
-function barColor(pct: number) {
-  if (pct >= 100) return "bg-red-500";
-  if (pct >= 80) return "bg-amber-500";
-  return "bg-sky-500";
-}
-
-function barBg(pct: number) {
-  if (pct >= 100) return "bg-red-500/10";
-  if (pct >= 80) return "bg-amber-500/10";
-  return "bg-sky-500/10";
 }
 
 // ── Main Page ────────────────────────────────────────────────────────────────
@@ -131,16 +126,17 @@ function ActiveView({
   locale: string;
 }) {
   const t = useTranslations("jobSeekerExtra.subscription");
-  const toggleAutoRenew = useToggleAutoRenew();
   const snap = subscription.planSnapshot;
   const limits = snap?.jobSeekerLimits as Record<string, unknown> | undefined;
   const usage = subscription.usage;
   const remaining = daysUntil(subscription.endDate);
   const currentTier = snap?.tier ?? 0;
+  const isFreeTier = currentTier === 0;
 
   const maxApps = (limits?.maxApplicationsPerMonth as number) ?? 0;
   const usedApps = usage?.applicationsSubmitted ?? 0;
   const pct = maxApps === -1 ? 0 : pctUsed(usedApps, maxApps);
+  const nearLimit = pct >= 80 && maxApps !== -1;
 
   const featureList = [
     { label: "Applications", detail: `${maxApps === -1 ? "Unlimited" : maxApps} applications/month`, allowed: true },
@@ -155,9 +151,9 @@ function ActiveView({
   return (
     <div className="space-y-6">
       {/* ── 1. Current Plan ── */}
-      <section className="rounded-2xl border border-border/60 bg-card p-6">
-        <div className="flex flex-col sm:flex-row sm:items-start gap-4">
-          <div className="flex items-start gap-3 flex-1">
+      <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-3 flex-1 min-w-0">
             <div className="h-12 w-12 rounded-2xl bg-sky-500/10 flex items-center justify-center shrink-0">
               <Crown className="h-6 w-6 text-sky-500" />
             </div>
@@ -174,79 +170,78 @@ function ActiveView({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
-            <div>
-              <p className="text-muted-foreground text-xs">Next Renewal</p>
-              <p className="font-medium">{formatDate(subscription.endDate, locale)} ({remaining}d)</p>
+          {isFreeTier && (
+            <Button asChild size="sm" className="shrink-0">
+              <a href="#plans">{t("upgradeNow")}</a>
+            </Button>
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-4 text-sm border-t border-border/40 pt-4">
+          <div>
+            <p className="text-muted-foreground text-xs">Next Renewal</p>
+            <p className="font-medium">{formatDate(subscription.endDate, locale)} · {t("renewsIn", { count: remaining })}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground text-xs">Auto Renew</p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <Switch
+                checked={subscription.autoRenew}
+                onCheckedChange={() => toast.info(t("autoRenewAdminOnly"))}
+              />
+              <span className="text-sm font-medium">{subscription.autoRenew ? "Enabled" : "Disabled"}</span>
             </div>
-            <div>
-              <p className="text-muted-foreground text-xs">Auto Renew</p>
-              <div className="flex items-center gap-2 mt-0.5">
-                <Switch
-                  checked={subscription.autoRenew}
-                  disabled={toggleAutoRenew.isPending}
-                  onCheckedChange={(checked) =>
-                    toggleAutoRenew.mutate(
-                      { subscriptionId: subscription._id, autoRenew: checked },
-                      { onError: (err) => toast.error(err.message) },
-                    )
-                  }
-                />
-                <span className="text-sm font-medium">{subscription.autoRenew ? "Enabled" : "Disabled"}</span>
-              </div>
-            </div>
-            <div>
-              <p className="text-muted-foreground text-xs">Billing Cycle</p>
-              <p className="font-medium capitalize">{snap?.billingCycle ?? "monthly"}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground text-xs">Start Date</p>
-              <p className="font-medium">{formatDate(subscription.startDate, locale)}</p>
-            </div>
+          </div>
+          <div>
+            <p className="text-muted-foreground text-xs">Billing Cycle</p>
+            <p className="font-medium capitalize">{snap?.billingCycle ?? "monthly"}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground text-xs">Start Date</p>
+            <p className="font-medium">{formatDate(subscription.startDate, locale)}</p>
           </div>
         </div>
       </section>
 
-      {/* ── 2. Usage ── */}
-      <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-4">
-        <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-          <BarChart3 className="h-4 w-4" /> Usage Overview
-        </h4>
-        <div className={`rounded-xl border p-4 ${pct >= 80 ? "border-amber-500/40" : "border-border/40"}`}>
-          <div className="flex items-center gap-2 mb-3">
-            <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${barBg(pct)}`}>
-              <FileText className="h-5 w-5" />
-            </div>
-            <span className="text-sm font-medium">Applications This Month</span>
-          </div>
-          <div className="flex items-baseline justify-between mb-2">
-            <p className="text-2xl font-bold">{usedApps}<span className="text-sm font-normal text-muted-foreground"> / {maxApps === -1 ? "∞" : maxApps}</span></p>
-            {maxApps > 0 && maxApps !== -1 && (
-              <span className={`text-xs font-medium ${pct >= 100 ? "text-red-500" : pct >= 80 ? "text-amber-500" : "text-muted-foreground"}`}>{pct}% used</span>
-            )}
-          </div>
-          <div className="h-2 rounded-full bg-muted">
-            <div className={`h-full rounded-full transition-all ${barColor(pct)}`} style={{ width: `${maxApps === -1 ? 5 : Math.max(pct, 2)}%` }} />
-          </div>
-        </div>
-        {pct >= 80 && maxApps !== -1 && (
-          <div className="flex items-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3">
-            <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
-            <p className="text-sm text-muted-foreground flex-1">You are nearing your application limit. Upgrade for more applications.</p>
-            <Button size="sm" variant="outline" className="shrink-0 border-amber-500/40 text-amber-600 hover:bg-amber-500/10" onClick={() => toast.info(t("contactAdminToUpgrade"))}>Upgrade</Button>
-          </div>
-        )}
-      </section>
+      {/* ── 2. Activity Overview ── */}
+      <ActivityOverview appsUsed={usedApps} appsMax={maxApps} />
 
-      {/* ── 3. Choose Your Plan ── */}
+      {/* ── 3. Upgrade banner ── */}
+      {nearLimit ? (
+        <div className="flex items-center gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4">
+          <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
+          <p className="text-sm text-muted-foreground flex-1">You are nearing your application limit. Upgrade for more applications.</p>
+          <Button asChild size="sm" variant="outline" className="shrink-0 border-amber-500/40 text-amber-600 hover:bg-amber-500/10">
+            <a href="#plans">{t("upgradeNow")}</a>
+          </Button>
+        </div>
+      ) : isFreeTier && (
+        <div className="rounded-2xl border border-sky-500/30 bg-gradient-to-br from-sky-500/5 to-transparent p-5 flex items-center gap-4">
+          <div className="h-11 w-11 rounded-2xl bg-sky-500/10 flex items-center justify-center shrink-0">
+            <Rocket className="h-5 w-5 text-sky-500" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-sm">{t("unlockTitle")}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{t("unlockDescription")}</p>
+          </div>
+          <Button asChild size="sm" className="shrink-0">
+            <a href="#plans">{t("upgradeNow")}</a>
+          </Button>
+        </div>
+      )}
+
+      {/* ── 4. Choose Your Plan ── */}
       {plans.length > 0 && (
-        <section className="space-y-4">
+        <section id="plans" className="space-y-4 scroll-mt-6">
           <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><Crown className="h-4 w-4" /> Available Plans</h4>
           <PricingGrid plans={plans} currentTier={currentTier} displayCurrency={displayCurrency} rates={rates} />
         </section>
       )}
 
-      {/* ── 4. Included / Locked Features ── */}
+      {/* ── 5. Why Upgrade (free tier only) ── */}
+      {isFreeTier && <WhyUpgrade />}
+
+      {/* ── 6. Included / Locked Features ── */}
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-3">
           <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><Check className="h-4 w-4 text-emerald-500" /> Included</h4>
@@ -280,10 +275,14 @@ function ActiveView({
         )}
       </div>
 
-      {/* ── 5. Invoices ── */}
+      {/* ── 7. FAQ ── */}
+      <SubscriptionFAQ />
+
+      {/* ── 8. Invoices ── */}
       {invoices.length > 0 && <InvoiceSection invoices={invoices} displayCurrency={displayCurrency} rates={rates} locale={locale} />}
 
-      {/* ── 6. Payment Method ── */}
+      {/* ── 9. Payment trust + Payment Method ── */}
+      <PaymentTrustStrip />
       <section className="rounded-2xl border border-border/60 bg-card p-6">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -315,11 +314,14 @@ function NoPlanView({ plans, displayCurrency, rates }: { plans: AvailablePlan[];
         <Button onClick={() => selfAssign()} disabled={isPending} className="shrink-0">{isPending ? "Activating…" : "Activate Free Plan"}</Button>
       </section>
       {plans.length > 0 && (
-        <section className="space-y-4">
+        <section id="plans" className="space-y-4 scroll-mt-6">
           <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><Crown className="h-4 w-4" /> Available Plans</h4>
           <PricingGrid plans={plans} showActivateFree displayCurrency={displayCurrency} rates={rates} />
         </section>
       )}
+      <WhyUpgrade />
+      <SubscriptionFAQ />
+      <PaymentTrustStrip />
     </div>
   );
 }
@@ -327,6 +329,7 @@ function NoPlanView({ plans, displayCurrency, rates }: { plans: AvailablePlan[];
 // ── Invoice Section ──────────────────────────────────────────────────────────
 
 function InvoiceSection({ invoices, displayCurrency, rates, locale }: { invoices: InvoiceItem[]; displayCurrency: string; rates: Record<string, number>; locale: string }) {
+  const t = useTranslations("jobSeekerExtra.subscription");
   const [expanded, setExpanded] = useState(invoices.length <= 3);
   const visible = expanded ? invoices : invoices.slice(0, 3);
 
@@ -343,7 +346,8 @@ function InvoiceSection({ invoices, displayCurrency, rates, locale }: { invoices
               <th className="pb-2 pr-4 font-medium">Invoice ID</th>
               <th className="pb-2 pr-4 font-medium">Date</th>
               <th className="pb-2 pr-4 font-medium">Amount</th>
-              <th className="pb-2 font-medium">Status</th>
+              <th className="pb-2 pr-4 font-medium">Status</th>
+              <th className="pb-2 font-medium">{t("download")}</th>
             </tr>
           </thead>
           <tbody>
@@ -355,8 +359,18 @@ function InvoiceSection({ invoices, displayCurrency, rates, locale }: { invoices
                   {convertAndFormat(inv.amount, inv.currency ?? "AED", displayCurrency, rates)}
                   {displayCurrency !== (inv.currency ?? "AED") && <span className="block text-[10px] text-muted-foreground/50">{inv.amount} {inv.currency}</span>}
                 </td>
-                <td className="py-3">
+                <td className="py-3 pr-4">
                   <Badge variant="outline" className={`text-xs ${inv.status === "paid" ? "text-emerald-500 border-emerald-500/30" : inv.status === "void" ? "text-red-500 border-red-500/30" : "text-amber-500 border-amber-500/30"}`}>{inv.status}</Badge>
+                </td>
+                <td className="py-3">
+                  <a
+                    href={`/api/invoices/${inv._id}/pdf`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-sky-500 hover:text-sky-600"
+                  >
+                    <Download className="h-3.5 w-3.5" /> {t("download")}
+                  </a>
                 </td>
               </tr>
             ))}
