@@ -227,7 +227,7 @@ export default function EmployerWorkflowPage() {
             <Button
               onClick={handleSave}
               disabled={saveWorkflow.isPending || !dirty}
-              className="gap-2 rounded-xl bg-sky-600 text-white hover:bg-sky-700 disabled:bg-slate-300"
+              className="gap-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground"
               size="sm"
             >
               {saveWorkflow.isPending ? (
@@ -458,7 +458,7 @@ export default function EmployerWorkflowPage() {
                   size="sm"
                   onClick={addStage}
                   disabled={!newStageLabel.trim()}
-                  className="flex-1 rounded-xl bg-sky-600 text-white hover:bg-sky-700 sm:flex-none"
+                  className="flex-1 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 sm:flex-none"
                 >
                   {t("add")}
                 </Button>
@@ -684,7 +684,7 @@ export default function EmployerWorkflowPage() {
           <Button
             onClick={handleSave}
             disabled={saveWorkflow.isPending || !dirty}
-            className="w-full gap-2 rounded-xl bg-sky-600 text-white hover:bg-sky-700 lg:hidden disabled:bg-slate-300"
+            className="w-full gap-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 lg:hidden disabled:bg-muted disabled:text-muted-foreground"
           >
             {saveWorkflow.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />

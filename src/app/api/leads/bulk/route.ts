@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import Lead from "@/models/Lead";
 import Agent from "@/models/Agent";
+import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { z } from "zod";
 import { validateBody } from "@/lib/validators";
@@ -29,17 +30,23 @@ export const POST = withAuth(async (req: NextRequest, ctx: AuthCtx) => {
   const body = await validateBody(req, bulkActionSchema);
   const { leadIds, action, params } = body;
 
-  // Verify ownership
-  let agentId: string | undefined;
+  // Build filter — agents act only on their own leads; super-agents only on
+  // leads within their team/region scope (mirrors GET /api/leads). Without the
+  // super_agent branch the filter was unscoped, letting a super-agent bulk
+  // move/delete ANY lead platform-wide.
+  const filter: Record<string, unknown> = { _id: { $in: leadIds } };
   if (ctx.role === "agent") {
     const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
     if (!agentDoc) return NextResponse.json({ error: "Agent profile not found" }, { status: 404 });
-    agentId = String(agentDoc._id);
+    filter.agentId = String(agentDoc._id);
+  } else if (ctx.role === "super_agent") {
+    const scope = await getSuperAgentScope(ctx.userId);
+    if (!scope) return NextResponse.json({ error: "Super-agent profile not found" }, { status: 404 });
+    filter.$or = [
+      { superAgentId: scope.saProfileId },
+      { agentId: { $in: scope.effectiveAgentIds } },
+    ];
   }
-
-  // Build filter — agents can only act on their own leads
-  const filter: Record<string, unknown> = { _id: { $in: leadIds } };
-  if (agentId) filter.agentId = agentId;
 
   let result: { modified: number; deleted: number } = { modified: 0, deleted: 0 };
 

@@ -189,8 +189,8 @@ export default function AgentRegisterPage() {
         {/* Form Card */}
         <div className="rounded-2xl border border-border bg-card p-6 shadow-lg">
           {error && (
-            <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-950/30">
-              {error}
+            <div className="mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+              <p className="text-sm text-destructive text-center font-medium">{error}</p>
             </div>
           )}
 

@@ -122,6 +122,25 @@ export const jobApprovalSchema = z.object({
   approved: z.boolean(),
 });
 
+/**
+ * POST /api/auth/agent-register
+ * Password rule intentionally length-only (matches the previous manual check);
+ * tightening to the seeker complexity rules would break the existing agent
+ * signup form, which doesn't enforce them client-side.
+ */
+export const agentRegisterSchema = z.object({
+  fullName: z.string().min(1).max(200).trim(),
+  email: z.string().email().max(254).trim().toLowerCase(),
+  password: z.string().min(8, "Password must be at least 8 characters").max(128),
+  phone: z.string().max(30).trim().optional(),
+  country: z.string().max(100).optional(),
+  city: z.string().max(100).optional(),
+  experience: z.string().max(100).optional(),
+  specialization: z.string().max(100).optional(),
+  languages: z.string().max(300).optional(),
+  referralCode: z.string().max(50).optional(),
+});
+
 /** POST /api/auth/job-seeker-register */
 export const jobSeekerRegisterSchema = z.object({
   name: z.string().min(1).max(200).trim(),

@@ -26,9 +26,9 @@ import { useConfirm } from "@/hooks/useConfirm";
 const USER_ROLES = ["all", "job_seeker", "employer", "agent", "super_agent", "admin"];
 const TEMPLATE_TYPES_ARRAY = ["onboarding", "transactional", "marketing", "system"] as const;
 const fieldClassName =
-  "w-full rounded-2xl border border-slate-200 bg-slate-50/85 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-300 focus:bg-white focus:ring-4 focus:ring-sky-100";
+  "w-full rounded-2xl border border-border bg-muted/50 px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-primary/60 focus:bg-background focus:ring-4 focus:ring-primary/20";
 const panelClassName =
-  "rounded-[28px] border border-slate-200 bg-white/95 p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur";
+  "rounded-[28px] border border-border bg-card/95 p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur dark:shadow-[0_24px_60px_-46px_rgba(0,0,0,0.35)]";
 
 interface BroadcastForm {
   title: string;
@@ -340,7 +340,7 @@ export default function AdminCommunicationsPage() {
                 aria-pressed={active}
                 className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition ${
                   active
-                    ? "bg-sky-600 text-white shadow-sm"
+                    ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:bg-card hover:text-foreground"
                 }`}
               >
@@ -357,19 +357,19 @@ export default function AdminCommunicationsPage() {
           <form onSubmit={handleSend} className={`${panelClassName} space-y-6`}>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{tr("liveBroadcast")}</p>
-                <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950">{tr("sendMessageTitle")}</h2>
-                <p className="mt-1 text-sm text-slate-500">{tr("sendMessageDesc")}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tr("liveBroadcast")}</p>
+                <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{tr("sendMessageTitle")}</h2>
+                <p className="mt-1 text-sm text-muted-foreground">{tr("sendMessageDesc")}</p>
               </div>
-              <div className="rounded-2xl border border-sky-100 bg-sky-50/80 px-4 py-3 text-sm text-sky-900">
+              <div className="rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground">
                 <p className="font-semibold">{tr("channelsSelected", { count: form.channels.length })}</p>
-                <p className="mt-1 text-xs text-sky-700">{tr("channelDeliveryNote")}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{tr("channelDeliveryNote")}</p>
               </div>
             </div>
 
             <div className="grid gap-4 lg:grid-cols-2">
               <div className="space-y-2 lg:col-span-2">
-                <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                   {tr("titleLabel")} <span className="text-rose-500">*</span>
                 </label>
                 <input
@@ -382,7 +382,7 @@ export default function AdminCommunicationsPage() {
               </div>
 
               <div className="space-y-2 lg:col-span-2">
-                <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                   {tr("messageLabel")} <span className="text-rose-500">*</span>
                 </label>
                 <textarea
@@ -398,8 +398,8 @@ export default function AdminCommunicationsPage() {
 
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-3">
-                <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{tr("targetAudienceLabel")}</label>
-                <span className="text-xs text-slate-500">{selectedAudience}</span>
+                <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tr("targetAudienceLabel")}</label>
+                <span className="text-xs text-muted-foreground">{selectedAudience}</span>
               </div>
               <div className="flex flex-wrap gap-2">
                 {USER_ROLES.map((role) => {
@@ -412,8 +412,8 @@ export default function AdminCommunicationsPage() {
                       onClick={() => toggleRole(role)}
                       className={`rounded-full border px-3.5 py-2 text-sm font-medium capitalize transition ${
                         active
-                          ? "border-sky-200 bg-sky-600 text-white shadow-[0_16px_30px_-22px_rgba(2,132,199,0.7)]"
-                          : "border-slate-200 bg-white text-slate-600 hover:border-sky-200 hover:text-slate-950"
+                          ? "border-primary/40 bg-primary text-primary-foreground shadow-[0_16px_30px_-22px_rgba(2,132,199,0.7)]"
+                          : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground"
                       }`}
                     >
                       {formatRoleLabel(role)}
@@ -425,8 +425,8 @@ export default function AdminCommunicationsPage() {
 
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-3">
-                <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{tr("channelsLabel")}</label>
-                <span className="inline-flex items-center gap-1 text-xs text-slate-500">
+                <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tr("channelsLabel")}</label>
+                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                   <Clock className="h-3.5 w-3.5" />
                   {tr("sendsImmediately")}
                 </span>
@@ -442,8 +442,8 @@ export default function AdminCommunicationsPage() {
                       onClick={() => toggleChannel(channel.key)}
                       className={`rounded-full border px-3.5 py-2 text-sm font-medium transition ${
                         active
-                          ? "border-sky-200 bg-sky-50 text-sky-700"
-                          : "border-slate-200 bg-white text-slate-600 hover:border-sky-200 hover:text-slate-950"
+                          ? "border-primary/40 bg-primary/10 text-primary"
+                          : "border-border bg-card text-muted-foreground hover:border-primary/30 hover:text-foreground"
                       }`}
                     >
                       {channel.label}
@@ -460,14 +460,14 @@ export default function AdminCommunicationsPage() {
             ) : null}
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="text-sm text-slate-500">
+              <div className="text-sm text-muted-foreground">
                 {sentCount !== null ? (
                   <span className="font-medium text-emerald-600">{tr("sentToUsers", { count: sentCount })}</span>
                 ) : (
                   tr("messagesStored")
                 )}
               </div>
-              <Button type="submit" disabled={sending} className="h-11 gap-2 rounded-xl bg-sky-600 px-5 text-sm font-semibold text-white hover:bg-sky-700">
+              <Button type="submit" disabled={sending} size="lg" className="h-11 gap-2 rounded-xl px-5">
                 <Send className="h-4 w-4" />
                 {sending ? tr("sending") : tr("sendNow")}
               </Button>
@@ -476,16 +476,16 @@ export default function AdminCommunicationsPage() {
 
           <div className="space-y-6">
             <aside className={panelClassName}>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{tr("deliveryNotes")}</p>
-              <h3 className="mt-2 text-lg font-semibold tracking-tight text-slate-950">{tr("keepMessageClear")}</h3>
-              <div className="mt-4 space-y-3 text-sm text-slate-600">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tr("deliveryNotes")}</p>
+              <h3 className="mt-2 text-lg font-semibold tracking-tight text-foreground">{tr("keepMessageClear")}</h3>
+              <div className="mt-4 space-y-3 text-sm text-muted-foreground">
+                <div className="rounded-2xl border border-border bg-muted/70 px-4 py-3">
                   {tr("deliveryNote1")}
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+                <div className="rounded-2xl border border-border bg-muted/70 px-4 py-3">
                   {tr("deliveryNote2")}
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+                <div className="rounded-2xl border border-border bg-muted/70 px-4 py-3">
                   {tr("deliveryNote3")}
                 </div>
               </div>
@@ -494,8 +494,8 @@ export default function AdminCommunicationsPage() {
             <aside className={panelClassName}>
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{tr("quickStart")}</p>
-                  <h3 className="mt-2 text-lg font-semibold tracking-tight text-slate-950">{tr("recentTemplates")}</h3>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tr("quickStart")}</p>
+                  <h3 className="mt-2 text-lg font-semibold tracking-tight text-foreground">{tr("recentTemplates")}</h3>
                 </div>
                 <button
                   type="button"
@@ -510,30 +510,30 @@ export default function AdminCommunicationsPage() {
               <div className="mt-4 space-y-3">
                 {templatesLoading ? (
                   Array.from({ length: 3 }).map((_, index) => (
-                    <div key={index} className="h-24 animate-pulse rounded-2xl bg-slate-100" />
+                    <div key={index} className="h-24 animate-pulse rounded-2xl bg-secondary" />
                   ))
                 ) : quickTemplates.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center text-sm text-slate-500">
+                  <div className="rounded-2xl border border-dashed border-border bg-muted/60 px-4 py-8 text-center text-sm text-muted-foreground">
                     {tr("noTemplatesYet")}
                   </div>
                 ) : (
                   quickTemplates.map((template) => (
-                    <div key={template._id} className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+                    <div key={template._id} className="rounded-2xl border border-border bg-muted/60 p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="text-sm font-semibold text-slate-950">{template.name}</p>
-                          <p className="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">{formatTemplateType(template.type)}</p>
+                          <p className="text-sm font-semibold text-foreground">{template.name}</p>
+                          <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">{formatTemplateType(template.type)}</p>
                         </div>
                         <Button
                           type="button"
                           variant="outline"
                           onClick={() => handleUseTemplate(template)}
-                          className="h-9 rounded-xl border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
+                          className="h-9 rounded-xl border-border bg-card text-foreground hover:bg-secondary"
                         >
                           {tr("useTemplateButton")}
                         </Button>
                       </div>
-                      <p className="mt-3 line-clamp-2 text-sm text-slate-600">{template.subject}</p>
+                      <p className="mt-3 line-clamp-2 text-sm text-muted-foreground">{template.subject}</p>
                     </div>
                   ))
                 )}
@@ -547,9 +547,9 @@ export default function AdminCommunicationsPage() {
         <section className="space-y-6">
           <div className={`${panelClassName} flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between`}>
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{tr("reusableContent")}</p>
-              <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950">{tr("templateLibrary")}</h2>
-              <p className="mt-1 text-sm text-slate-500">{tr("templateLibraryDesc")}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tr("reusableContent")}</p>
+              <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{tr("templateLibrary")}</h2>
+              <p className="mt-1 text-sm text-muted-foreground">{tr("templateLibraryDesc")}</p>
             </div>
             <Button
               type="button"
@@ -559,7 +559,8 @@ export default function AdminCommunicationsPage() {
                 setTemplateForm({ name: "", type: "system", subject: "", body: "" });
                 setTemplateError("");
               }}
-              className="h-11 gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700"
+              size="lg"
+              className="h-11 gap-2 rounded-xl px-4"
             >
               <Plus className="h-4 w-4" />
               {showCreate ? tr("cancelButton") : tr("newTemplateButton")}
@@ -569,12 +570,12 @@ export default function AdminCommunicationsPage() {
           {showCreate ? (
             <form onSubmit={(e) => handleSaveTemplate(e)} className={`${panelClassName} space-y-5`}>
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{tr("createTemplateHeading")}</p>
-                <h3 className="mt-2 text-lg font-semibold tracking-tight text-slate-950">{tr("createTemplateSub")}</h3>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tr("createTemplateHeading")}</p>
+                <h3 className="mt-2 text-lg font-semibold tracking-tight text-foreground">{tr("createTemplateSub")}</h3>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                     {tr("nameLabel")} <span className="text-rose-500">*</span>
                   </label>
                   <input
@@ -586,7 +587,7 @@ export default function AdminCommunicationsPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                     {tr("typeLabel")} <span className="text-rose-500">*</span>
                   </label>
                   <Select value={templateForm.type} onValueChange={(v) => setTemplateForm((current) => ({ ...current, type: v }))}>
@@ -603,7 +604,7 @@ export default function AdminCommunicationsPage() {
                   </Select>
                 </div>
                 <div className="space-y-2 md:col-span-2">
-                  <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                     {tr("subjectLabel")} <span className="text-rose-500">*</span>
                   </label>
                   <input
@@ -615,7 +616,7 @@ export default function AdminCommunicationsPage() {
                   />
                 </div>
                 <div className="space-y-2 md:col-span-2">
-                  <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                     {tr("bodyLabel")} <span className="text-rose-500">*</span>
                   </label>
                   <textarea
@@ -636,7 +637,7 @@ export default function AdminCommunicationsPage() {
               ) : null}
 
               <div className="flex justify-end">
-                <Button type="submit" disabled={templateSaving} className="h-11 rounded-xl bg-sky-600 px-5 text-sm font-semibold text-white hover:bg-sky-700">
+                <Button type="submit" disabled={templateSaving} size="lg" className="h-11 rounded-xl px-5">
                   {templateSaving ? tr("saving") : tr("saveTemplate")}
                 </Button>
               </div>
@@ -646,27 +647,27 @@ export default function AdminCommunicationsPage() {
           <div className={`${panelClassName} space-y-4`}>
             {templatesLoading ? (
               Array.from({ length: 4 }).map((_, index) => (
-                <div key={index} className="h-28 animate-pulse rounded-2xl bg-slate-100" />
+                <div key={index} className="h-28 animate-pulse rounded-2xl bg-secondary" />
               ))
             ) : templates.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-14 text-center text-sm text-slate-500">
+              <div className="rounded-2xl border border-dashed border-border bg-muted/60 px-4 py-14 text-center text-sm text-muted-foreground">
                 <FileText className="mx-auto mb-3 h-8 w-8 text-slate-300" />
                 {tr("noTemplatesInLibrary")}
               </div>
             ) : (
               templates.map((template) => (
-                <div key={template._id} className="rounded-3xl border border-slate-200 bg-slate-50/50 p-5">
+                <div key={template._id} className="rounded-3xl border border-border bg-muted/50 p-5">
                   <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                     <div className="space-y-3">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-lg font-semibold tracking-tight text-slate-950">{template.name}</h3>
-                        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                        <h3 className="text-lg font-semibold tracking-tight text-foreground">{template.name}</h3>
+                        <span className="rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                           {formatTemplateType(template.type)}
                         </span>
                       </div>
-                      <p className="text-sm font-medium text-slate-700">{template.subject}</p>
-                      <p className="max-w-3xl whitespace-pre-wrap text-sm leading-6 text-slate-600">{template.body}</p>
-                      <p className="text-xs text-slate-500">Created {new Date(template.createdAt).toLocaleDateString()}</p>
+                      <p className="text-sm font-medium text-foreground">{template.subject}</p>
+                      <p className="max-w-3xl whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{template.body}</p>
+                      <p className="text-xs text-muted-foreground">Created {new Date(template.createdAt).toLocaleDateString()}</p>
                     </div>
 
                     <div className="flex flex-wrap gap-2">
@@ -674,7 +675,7 @@ export default function AdminCommunicationsPage() {
                         type="button"
                         variant="outline"
                         onClick={() => startEdit(template)}
-                        className="h-10 gap-2 rounded-xl border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
+                        className="h-10 gap-2 rounded-xl border-border bg-card text-foreground hover:bg-secondary"
                       >
                         <Pencil className="h-4 w-4" />
                         {tr("editButton")}
@@ -682,7 +683,8 @@ export default function AdminCommunicationsPage() {
                       <Button
                         type="button"
                         onClick={() => handleUseTemplate(template)}
-                        className="h-10 gap-2 rounded-xl bg-sky-600 text-sm font-semibold text-white hover:bg-sky-700"
+                        size="sm"
+                        className="h-10 gap-2 rounded-xl"
                       >
                         <Megaphone className="h-4 w-4" />
                         {tr("useTemplateAction")}
@@ -692,7 +694,7 @@ export default function AdminCommunicationsPage() {
                         variant="outline"
                         onClick={() => handleDeleteTemplate(template._id)}
                         disabled={deletingTemplateId === template._id}
-                        className="h-10 gap-2 rounded-xl border-rose-200 bg-white text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                        className="h-10 gap-2 rounded-xl border-rose-200 bg-card text-rose-600 hover:bg-rose-50 hover:text-rose-700"
                       >
                         <Trash2 className="h-4 w-4" />
                         {deletingTemplateId === template._id ? tr("deleting") : tr("deleteButton")}
@@ -701,10 +703,10 @@ export default function AdminCommunicationsPage() {
                   </div>
 
                   {editId === template._id ? (
-                    <form onSubmit={(e) => handleSaveTemplate(e, template._id)} className="mt-5 space-y-4 rounded-2xl border border-slate-200 bg-white p-4">
+                    <form onSubmit={(e) => handleSaveTemplate(e, template._id)} className="mt-5 space-y-4 rounded-2xl border border-border bg-card p-4">
                       <div className="grid gap-4 md:grid-cols-2">
                         <div className="space-y-2">
-                          <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{tr("nameLabel")}</label>
+                          <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tr("nameLabel")}</label>
                           <input
                             required
                             value={templateForm.name}
@@ -713,7 +715,7 @@ export default function AdminCommunicationsPage() {
                           />
                         </div>
                         <div className="space-y-2">
-                          <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{tr("templateType")}</label>
+                          <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tr("templateType")}</label>
                           <Select value={templateForm.type} onValueChange={(v) => setTemplateForm((current) => ({ ...current, type: v }))}>
                             <SelectTrigger className={fieldClassName}>
                               <SelectValue />
@@ -728,7 +730,7 @@ export default function AdminCommunicationsPage() {
                           </Select>
                         </div>
                         <div className="space-y-2 md:col-span-2">
-                          <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Subject</label>
+                          <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Subject</label>
                           <input
                             required
                             value={templateForm.subject}
@@ -737,7 +739,7 @@ export default function AdminCommunicationsPage() {
                           />
                         </div>
                         <div className="space-y-2 md:col-span-2">
-                          <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{tr("bodyLabel")}</label>
+                          <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tr("bodyLabel")}</label>
                           <textarea
                             required
                             rows={4}
@@ -755,10 +757,10 @@ export default function AdminCommunicationsPage() {
                       ) : null}
 
                       <div className="flex flex-wrap justify-end gap-2">
-                        <Button type="button" variant="outline" onClick={() => setEditId(null)} className="h-10 rounded-xl border-slate-200 bg-white text-slate-700 hover:bg-slate-100">
+                        <Button type="button" variant="outline" onClick={() => setEditId(null)} className="h-10 rounded-xl border-border bg-card text-foreground hover:bg-secondary">
                           {tr("cancelButton")}
                         </Button>
-                        <Button type="submit" disabled={templateSaving} className="h-10 rounded-xl bg-sky-600 text-sm font-semibold text-white hover:bg-sky-700">
+                        <Button type="submit" disabled={templateSaving} size="sm" className="h-10 rounded-xl">
                           {templateSaving ? tr("saving") : tr("saveTemplate")}
                         </Button>
                       </div>
@@ -774,41 +776,41 @@ export default function AdminCommunicationsPage() {
       {tab === "history" ? (
         <section className={`${panelClassName} space-y-4`}>
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{tr("broadcastHistoryHead")}</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950">{tr("recentActivityHeading")}</h2>
-            <p className="mt-1 text-sm text-slate-500">{tr("recentActivityDesc")}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tr("broadcastHistoryHead")}</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{tr("recentActivityHeading")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{tr("recentActivityDesc")}</p>
           </div>
 
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <Input placeholder={tr("searchPlaceholder")} value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} className="pl-9 h-9 text-sm border-slate-200 bg-white" />
+            <Input placeholder={tr("searchPlaceholder")} value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} className="pl-9 h-9 text-sm border-border bg-card" />
           </div>
 
           {historyLoading ? (
             Array.from({ length: 4 }).map((_, index) => (
-              <div key={index} className="h-24 animate-pulse rounded-2xl bg-slate-100" />
+              <div key={index} className="h-24 animate-pulse rounded-2xl bg-secondary" />
             ))
           ) : history.filter((r) => r.title.toLowerCase().includes(historySearch.toLowerCase()) || r.body?.toLowerCase().includes(historySearch.toLowerCase())).length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-14 text-center text-sm text-slate-500">
+            <div className="rounded-2xl border border-dashed border-border bg-muted/60 px-4 py-14 text-center text-sm text-muted-foreground">
               <History className="mx-auto mb-3 h-8 w-8 text-slate-300" />
               {history.length === 0 ? tr("noBroadcastsSent") : tr("noSearchResults")}
             </div>
           ) : (
             history.filter((r) => r.title.toLowerCase().includes(historySearch.toLowerCase()) || r.body?.toLowerCase().includes(historySearch.toLowerCase())).map((record) => (
-              <article key={record._id} className="rounded-3xl border border-slate-200 bg-slate-50/50 p-5">
+              <article key={record._id} className="rounded-3xl border border-border bg-muted/50 p-5">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-lg font-semibold tracking-tight text-slate-950">{record.title}</h3>
-                      <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                      <h3 className="text-lg font-semibold tracking-tight text-foreground">{record.title}</h3>
+                      <span className="rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                         {formatChannelLabel(record.channels?.[0] ?? "in_app")}
                       </span>
                     </div>
-                    <p className="max-w-3xl whitespace-pre-wrap text-sm leading-6 text-slate-600">{record.body}</p>
+                    <p className="max-w-3xl whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{record.body}</p>
                   </div>
-                  <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{tr("sentLabel")}</p>
-                    <p className="mt-2 font-medium text-slate-900">{new Date(record.createdAt).toLocaleString()}</p>
+                  <div className="rounded-2xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tr("sentLabel")}</p>
+                    <p className="mt-2 font-medium text-foreground">{new Date(record.createdAt).toLocaleString()}</p>
                   </div>
                 </div>
               </article>

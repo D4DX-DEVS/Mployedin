@@ -3,6 +3,34 @@
 import { useEffect } from "react";
 import { reportError } from "@/lib/observability/report-error";
 
+const STRINGS = {
+  en: {
+    title: "Something went wrong",
+    message: "An unexpected error occurred. Please try again.",
+    errorIdLabel: "Error ID:",
+    button: "Try Again"
+  },
+  ar: {
+    title: "حدث خطأ ما",
+    message: "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.",
+    errorIdLabel: "معرف الخطأ:",
+    button: "حاول مرة أخرى"
+  }
+};
+
+function getLocale(): string {
+  if (typeof document !== "undefined") {
+    const cookie = document.cookie.split("; ").find(c => c.startsWith("NEXT_LOCALE="));
+    if (cookie) {
+      return cookie.split("=")[1];
+    }
+    if (navigator.language.startsWith("ar")) {
+      return "ar";
+    }
+  }
+  return "en";
+}
+
 /**
  * Root-level error boundary (Next.js App Router convention).
  *
@@ -21,8 +49,12 @@ export default function GlobalError({
     reportError(error, { source: "global-error", digest: error.digest });
   }, [error]);
 
+  const locale = getLocale();
+  const isArabic = locale.startsWith("ar");
+  const strings = STRINGS[locale as keyof typeof STRINGS] || STRINGS.en;
+
   return (
-    <html lang="en">
+    <html lang={locale} dir={isArabic ? "rtl" : "ltr"}>
       <body
         style={{
           margin: 0,
@@ -36,12 +68,12 @@ export default function GlobalError({
           color: "#fafafa",
         }}
       >
-        <div style={{ textAlign: "center", maxWidth: 420, padding: "0 24px" }}>
+        <div style={{ textAlign: isArabic ? "right" : "center", maxWidth: 420, padding: "0 24px" }}>
           <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>
-            Something went wrong
+            {strings.title}
           </h2>
           <p style={{ fontSize: 14, opacity: 0.7, marginBottom: 16 }}>
-            An unexpected error occurred. Please try again.
+            {strings.message}
           </p>
           {error.digest && (
             <p
@@ -52,7 +84,7 @@ export default function GlobalError({
                 marginBottom: 16,
               }}
             >
-              Error ID: {error.digest}
+              {strings.errorIdLabel} {error.digest}
             </p>
           )}
           <button
@@ -68,7 +100,7 @@ export default function GlobalError({
               color: "#0a0a0a",
             }}
           >
-            Try Again
+            {strings.button}
           </button>
         </div>
       </body>

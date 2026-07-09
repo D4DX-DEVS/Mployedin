@@ -295,7 +295,7 @@ export default function AgentJobsPage() {
               <p className="text-xs text-muted-foreground">{t("portfolio.description")}</p>
             </div>
             <Link href={`/${locale}/agent/jobs/new`}>
-              <Button className="h-11 gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700">
+              <Button className="h-11 gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
                 <Plus className="h-4 w-4" />
                 {t("postJob")}
               </Button>

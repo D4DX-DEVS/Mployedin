@@ -50,7 +50,7 @@ const AI_FEATURE_LABELS: Record<AIFeatureKey, string> = {
 
 const TIER_COLORS: Record<number, string> = {
   0: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300",
-  1: "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200",
+  1: "bg-slate-200 text-foreground dark:bg-slate-700 dark:text-slate-200",
   2: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
   3: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300",
 };
@@ -338,7 +338,7 @@ export default function AdminSubscriptionPlansPage() {
         title={t("pageTitle")}
         description={t("pageDescription")}
         actions={
-          <Button onClick={openCreate} className="gap-2 rounded-xl bg-sky-600 text-white hover:bg-sky-700" size="sm">
+          <Button onClick={openCreate} className="gap-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90" size="sm">
             <Plus className="h-4 w-4" /> {t("newPlanButton")}
           </Button>
         }
@@ -353,7 +353,7 @@ export default function AdminSubscriptionPlansPage() {
           onClick={() => { setActiveTab("employer"); setShowForm(false); }}
           className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-colors ${
             activeTab === "employer"
-              ? "bg-sky-600 text-white"
+              ? "bg-primary text-primary-foreground"
               : "bg-muted text-muted-foreground hover:bg-muted/80"
           }`}
         >
@@ -363,7 +363,7 @@ export default function AdminSubscriptionPlansPage() {
           onClick={() => { setActiveTab("job_seeker"); setShowForm(false); }}
           className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-colors ${
             activeTab === "job_seeker"
-              ? "bg-sky-600 text-white"
+              ? "bg-primary text-primary-foreground"
               : "bg-muted text-muted-foreground hover:bg-muted/80"
           }`}
         >
@@ -391,7 +391,7 @@ export default function AdminSubscriptionPlansPage() {
                 onClick={() => setActiveSection(s)}
                 className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
                   activeSection === s
-                    ? "bg-sky-600 text-white"
+                    ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:bg-muted"
                 }`}
               >
@@ -708,7 +708,7 @@ export default function AdminSubscriptionPlansPage() {
             <Button
               onClick={handleSave}
               disabled={!form.name || isSaving}
-              className="gap-2 rounded-xl bg-sky-600 text-white hover:bg-sky-700"
+              className="gap-2 rounded-xl"
             >
               {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
               {editId ? t("updatePlanButton") : t("createPlanButton")}
@@ -730,7 +730,7 @@ export default function AdminSubscriptionPlansPage() {
               role: activeTab === "employer" ? t("noPlanEmptyDescriptionEmployer") : t("noPlanEmptyDescriptionJobSeeker")
             })}
           </p>
-          <Button onClick={openCreate} className="mt-4 gap-2 rounded-xl bg-sky-600 text-white hover:bg-sky-700" size="sm">
+          <Button onClick={openCreate} className="mt-4 gap-2 rounded-xl" size="sm">
             <Plus className="h-4 w-4" /> {t("createPlanButtonEmpty")}
           </Button>
         </div>

@@ -258,17 +258,17 @@ export default function AdminAnalyticsPage() {
                 }}
                 disabled={loading}
                 className={[
-                  "group rounded-[24px] border border-slate-200/80 bg-white p-4 text-left shadow-[0_16px_28px_-28px_rgba(15,23,42,0.1)] transition-all disabled:cursor-not-allowed disabled:opacity-60",
+                  "group rounded-[24px] border border-border/80 bg-card p-4 text-left shadow-[0_16px_28px_-28px_rgba(15,23,42,0.1)] transition-all disabled:cursor-not-allowed disabled:opacity-60",
                   activeTemplate === item.query && result
                     ? "border-sky-300 bg-sky-50/70 shadow-[0_22px_40px_-34px_rgba(2,132,199,0.18)]"
-                    : "hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50",
+                    : "hover:-translate-y-0.5 hover:border-border hover:bg-muted",
                 ].join(" ")}
               >
                 <div className="inline-flex rounded-2xl bg-sky-100 p-2.5 text-sky-700">
                   <BarChart3 className="h-4 w-4" />
                 </div>
                 <p className="mt-4 text-[15px] font-semibold text-foreground transition-colors group-hover:text-sky-700">{item.label}</p>
-                <p className="mt-2 text-sm leading-6 text-slate-600">{item.query}</p>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.query}</p>
               </button>
             ))}
           </div>
@@ -295,7 +295,7 @@ export default function AdminAnalyticsPage() {
                 }
               }}
               placeholder={t("customAnalyticsPlaceholder")}
-              className="min-h-[180px] rounded-[24px] border-slate-200 bg-white px-4 py-3 text-sm leading-6 shadow-none"
+              className="min-h-[180px] rounded-[24px] border-border bg-card px-4 py-3 text-sm leading-6 shadow-none"
             />
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -304,7 +304,7 @@ export default function AdminAnalyticsPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  className="rounded-xl border-border/80 bg-white hover:bg-slate-50"
+                  className="rounded-xl border-border/80 bg-card hover:bg-muted"
                   onClick={() => {
                     setQuery("");
                     setResult("");
@@ -341,7 +341,7 @@ export default function AdminAnalyticsPage() {
               <Button
                 type="button"
                 variant="outline"
-                className="rounded-xl border-border/80 bg-white hover:bg-slate-50"
+                className="rounded-xl border-border/80 bg-card hover:bg-muted"
                 disabled={!result || exporting !== null}
               >
                 {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
@@ -363,7 +363,7 @@ export default function AdminAnalyticsPage() {
           </DropdownMenu>
         </div>
 
-        <div className="mt-6 rounded-[24px] border border-slate-200/80 bg-white p-4">
+        <div className="mt-6 rounded-[24px] border border-border/80 bg-card p-4">
           {loading ? (
             <div className="space-y-3" aria-label={t("generatingAnalytics")}>
               <div className="sr-only" role="status" aria-live="polite">{t("generatingAnalyticsStatus")}</div>
@@ -377,7 +377,7 @@ export default function AdminAnalyticsPage() {
               <MarkdownRenderer content={result} />
             </div>
           ) : (
-            <div className="flex min-h-[220px] flex-col items-center justify-center rounded-[20px] border border-dashed border-slate-200 bg-slate-50/80 px-6 text-center">
+            <div className="flex min-h-[220px] flex-col items-center justify-center rounded-[20px] border border-dashed border-border bg-muted/80 px-6 text-center">
               <div className="rounded-2xl bg-sky-100 p-3 text-sky-700">
                 <BarChart3 className="h-5 w-5" />
               </div>

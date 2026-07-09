@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/dialog";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { ListSkeleton } from "@/components/shared/ListSkeleton";
 import type { ExportColumn } from "@/lib/export";
 import {
   Search, Inbox, Sparkles, Briefcase, ShieldCheck, FileText, Users, Plus,
@@ -353,7 +355,7 @@ export default function AdminJobsPage() {
               <p className="text-xs text-muted-foreground">{t("acrossPages", { totalPages })}</p>
             </div>
             <Link href="./new">
-              <Button className="h-11 gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700">
+              <Button size="lg" className="h-11 gap-2 rounded-xl px-4">
                 <Plus className="h-4 w-4" />
                 {t("postJob")}
               </Button>
@@ -543,31 +545,15 @@ export default function AdminJobsPage() {
 
       {/* ─── Job Cards ────────────────────────────────────────────────── */}
       {loading ? (
-        <div className="space-y-4">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="workspace-panel-surface h-40 animate-pulse rounded-[28px]" />
-          ))}
-        </div>
+        <ListSkeleton count={5} itemClassName="h-40 rounded-[28px]" className="space-y-4" />
       ) : jobs.length === 0 ? (
-        <div className="workspace-panel-surface rounded-[28px] px-6 py-16 text-center">
-          <div className="workspace-muted-pill mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-[24px]">
-            <Inbox className="h-7 w-7" />
-          </div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            {hasActiveFilters ? t("noMatchingJobs") : t("noJobsYet")}
-          </p>
-          <h3 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
-            {hasActiveFilters ? t("noMatchingJobsHeading") : t("noJobsYetHeading")}
-          </h3>
-          <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">
-            {hasActiveFilters ? t("noMatchingJobsDescription") : t("noJobsYetDescription")}
-          </p>
-          {hasActiveFilters && (
-            <Button onClick={resetFilters} variant="outline" className="mt-6 h-11 rounded-xl border-border bg-background/70 px-4 text-sm">
-              {t("clearFilters")}
-            </Button>
-          )}
-        </div>
+        <EmptyState
+          icon={Inbox}
+          title={hasActiveFilters ? t("noMatchingJobsHeading") : t("noJobsYetHeading")}
+          description={hasActiveFilters ? t("noMatchingJobsDescription") : t("noJobsYetDescription")}
+          action={hasActiveFilters ? <Button onClick={resetFilters} variant="outline" className="h-11 rounded-xl border-border bg-background/70 px-4 text-sm">{t("clearFilters")}</Button> : undefined}
+          className="workspace-panel-surface"
+        />
       ) : (
         <div className="space-y-4">
           {jobs.map((job) => {
@@ -589,30 +575,30 @@ export default function AdminJobsPage() {
                     </div>
                     <div className="mt-2.5 flex flex-wrap gap-1.5">
                       {job.employerId?.companyName && (
-                        <span className="flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">
+                        <span className="flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-slate-300">
                           <Building2 className="h-3 w-3" />
                           {job.employerId.companyName}
                         </span>
                       )}
-                      <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">{formatLocation(job.location)}</span>
+                      <span className="rounded-full border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-slate-300">{formatLocation(job.location)}</span>
                       {job.category && (
-                        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">{job.category}</span>
+                        <span className="rounded-full border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-slate-300">{job.category}</span>
                       )}
                       {salaryLabel && (
-                        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">{salaryLabel}</span>
+                        <span className="rounded-full border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-slate-300">{salaryLabel}</span>
                       )}
                       {(job.vacancies ?? 0) > 0 && (
-                        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">
+                        <span className="rounded-full border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-slate-300">
                           {t("openings", { count: job.vacancies ?? 0 })}
                         </span>
                       )}
-                      <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">{t("posted", { date: posted })}</span>
+                      <span className="rounded-full border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-slate-300">{t("posted", { date: posted })}</span>
                     </div>
 
                     {(job.requirements?.skills?.length ?? 0) > 0 && (
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         {job.requirements!.skills!.slice(0, 4).map((s) => (
-                          <Badge key={s} variant="outline" className="rounded-full border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-normal text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">{s}</Badge>
+                          <Badge key={s} variant="outline" className="rounded-full border-border bg-slate-50 px-2.5 py-1 text-xs font-normal text-muted-foreground dark:border-border dark:bg-background/80 dark:text-slate-300">{s}</Badge>
                         ))}
                       </div>
                     )}
@@ -650,7 +636,7 @@ export default function AdminJobsPage() {
                     <div className="grid grid-cols-2 gap-2">
                       <Button
                         size="sm"
-                        className="col-span-2 h-10 gap-2 rounded-xl bg-sky-600 px-3 text-sm font-semibold text-white hover:bg-sky-700"
+                        className="col-span-2 h-10 gap-2 rounded-xl px-3"
                         onClick={() => setSelectedJob(job)}
                       >
                         <Eye className="h-4 w-4" />

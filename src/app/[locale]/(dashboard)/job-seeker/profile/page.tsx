@@ -369,10 +369,10 @@ export default function JobSeekerProfilePage() {
   const totalExpMonths = profile?.totalExperienceMonths ?? 0;
   const hasExperience = totalExpYears > 0 || totalExpMonths > 0;
   const availabilityLabel = {
-    immediately: "Available immediately",
-    within_month: "Available within 1 month",
-    within_3_months: "Available within 3 months",
-    not_available: "Not looking currently",
+    immediately: t("setup.availabilityLabels.immediately"),
+    within_month: t("setup.availabilityLabels.within_month"),
+    within_3_months: t("setup.availabilityLabels.within_3_months"),
+    not_available: t("setup.availabilityLabels.not_available"),
   }[profile?.availabilityStatus ?? ""] ?? "";
 
   const lastUpdated = profile?.updatedAt
@@ -761,9 +761,9 @@ export default function JobSeekerProfilePage() {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1.5">
-                <span className="text-sm font-semibold">AI Career Insight</span>
+                <span className="text-sm font-semibold">{t("profile.aiCareerInsight")}</span>
                 <span className="inline-flex items-center rounded-full bg-violet-600 px-1.5 py-px text-[10px] font-bold text-white tracking-wide">
-                  SMART
+                  {t("profile.smartBadge")}
                 </span>
               </div>
               <p className="text-sm text-muted-foreground leading-relaxed">

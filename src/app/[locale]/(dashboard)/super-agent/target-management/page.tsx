@@ -844,7 +844,7 @@ export default function SuperAgentTargetProfilesPage() {
                         title={t("noAgentTargets")}
                         description="Distribute your targets to agents using the button above"
                         action={
-                          <Button size="sm" onClick={() => setShowDistribute(true)} className="mt-2 gap-2 rounded-lg bg-sky-600 text-white hover:bg-sky-700">
+                          <Button size="sm" onClick={() => setShowDistribute(true)} className="mt-2 gap-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90">
                             <SplitSquareVertical className="h-4 w-4" /> Distribute
                           </Button>
                         }

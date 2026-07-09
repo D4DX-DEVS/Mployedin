@@ -353,7 +353,18 @@
     "saved": "تم الحفظ",
     "superAgentWorkspace": "مساحة عمل الوكيل الرئيسي",
     "currency": "العملة",
-    "a11yFormProgress": "تقدم النموذج"
+    "a11yFormProgress": "تقدم النموذج",
+    "youreOffline": "أنت غير متصل بالإنترنت",
+    "offlineDescription": "يبدو أنك فقدت اتصالك بالإنترنت. يرجى التحقق من إعدادات الشبكة الخاصة بك والمحاولة مرة أخرى.",
+    "unknownCandidate": "مرشح غير معروف",
+    "location": "الموقع",
+    "experience": "الخبرة (سنوات)",
+    "candidate": "المرشح",
+    "round": "الجولة",
+    "type": "النوع",
+    "allCategories": "جميع الفئات",
+    "verified": "✓ موثق",
+    "add": "إضافة"
   },
   "table": {
     "search": "بحث...",
@@ -864,6 +875,7 @@
   },
   "jobSeekerApplications": {
     "documentTitle": "طلباتي · MPLOYEDIN",
+    "loadFailed": "فشل تحميل الطلبات",
     "title": "طلباتي",
     "summary": {
       "total": "الإجمالي:",
@@ -1375,6 +1387,12 @@
         "within_3_months": "خلال 3 أشهر",
         "not_available": "غير متاح"
       },
+      "availabilityLabels": {
+        "immediately": "متاح فوراً",
+        "within_month": "متاح خلال شهر",
+        "within_3_months": "متاح خلال 3 أشهر",
+        "not_available": "غير باحث عن عمل حالياً"
+      },
       "activelyLooking": "أبحث بنشاط",
       "activelyLookingDescription": "أظهر لأصحاب العمل أنك منفتح على الفرص",
       "noticePeriod": "فترة الإشعار (أيام)",
@@ -1528,7 +1546,9 @@
       "emptyAddProjects": "أضف مشاريع لتتميز أمام أصحاب العمل",
       "emptyAddEducation": "أضف التعليم",
       "emptyAddAccomplishments": "أضف الشهادات أو نماذج الأعمال أو المنشورات أو الملفات الإلكترونية",
-      "emptyAddSummary": "أضف ملخصًا مهنيًا"
+      "emptyAddSummary": "أضف ملخصًا مهنيًا",
+      "aiCareerInsight": "رؤية ذكية للمسار الوظيفي",
+      "smartBadge": "ذكي"
     },
     "settings": {
       "back": "رجوع",
@@ -1542,6 +1562,7 @@
       "saving": "جار الحفظ…",
       "saveSettings": "حفظ الإعدادات",
       "save": "حفظ",
+      "add": "إضافة",
       "fileHint": "JPEG أو PNG أو WebP · الحد الأقصى 2 ميغابايت",
       "unsavedChanges": "تغييرات غير محفوظة",
       "savedToast": "تم حفظ الإعدادات بنجاح",
@@ -3958,7 +3979,13 @@
     "interviewsLabel": "المقابلات",
     "notesLabel": "الملاحظات",
     "noActivityData": "لا توجد طلبات أو مقابلات أو ملاحظات بعد.",
-    "a11yClose": "إغلاق"
+    "a11yClose": "إغلاق",
+    "exportName": "الاسم",
+    "exportLocation": "الموقع",
+    "exportExperience": "الخبرة (سنوات)",
+    "exportSkills": "المهارات",
+    "exportAiMatch": "تطابق الذكاء الاصطناعي",
+    "exportAvailability": "التوفرية"
   },
   "scorecard": {
     "title": "بطاقة تقييم المقابلة",
@@ -6948,7 +6975,15 @@
     "clearFilters": "مسح الفلاتر",
     "page": "صفحة",
     "actions": "الإجراءات",
-    "view": "عرض"
+    "view": "عرض",
+    "candidate": "المرشح",
+    "email": "البريد الإلكتروني",
+    "role": "الدور",
+    "round": "الجولة",
+    "type": "النوع",
+    "scheduled": "مجدول",
+    "status": "الحالة",
+    "outcome": "النتيجة"
   },
   "employerCalendar": {
     "title": "تقويم المقابلات",
@@ -7315,7 +7350,12 @@
     "monthlyDistributionInfo": "سيظهر التوزيع الشهري بعد تقسيم الهدف السنوي على الأشهر.",
     "teamPerformanceLeaderboard": "لوحة متصدري أداء الفريق",
     "rankingsEyebrow": "التصنيفات",
-    "a11yTargetFlow": "مسار الهدف"
+    "a11yTargetFlow": "مسار الهدف",
+    "enterpriseTargets": "أهداف المؤسسة",
+    "searchSupervisors": "البحث عن المشرفين…",
+    "cloneYear": "استنساخ {year}",
+    "newTargetProfile": "ملف هدف جديد",
+    "reassignTargetProfile": "إعادة تعيين ملف الهدف"
   },
   "webhooks": {
     "title": "الويب هوك",

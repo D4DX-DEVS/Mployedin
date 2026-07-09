@@ -151,9 +151,22 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "20", 10) || 20));
 
+  // Admins see all batches; super-agents only the slice covering their own
+  // book (commissions stamped with their SuperAgent profile _id). Previously
+  // unscoped — any super-agent could read platform-wide payout totals.
+  const match: Record<string, unknown> = { status: "paid", paymentRef: { $exists: true, $ne: null } };
+  if (ctx.role === "super_agent") {
+    const SuperAgent = (await import("@/models/SuperAgent")).default;
+    const sa = await SuperAgent.findOne({ userId: ctx.userId }).select("_id").lean();
+    if (!sa) {
+      return NextResponse.json({ batches: [], total: 0, page, limit, pages: 0 });
+    }
+    match.superAgentId = sa._id;
+  }
+
   // Aggregate paid commissions grouped by paymentRef
   const batches = await Commission.aggregate([
-    { $match: { status: "paid", paymentRef: { $exists: true, $ne: null } } },
+    { $match: match },
     {
       $group: {
         _id: "$paymentRef",
@@ -171,7 +184,7 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
   ]);
 
   const totalPipeline = await Commission.aggregate([
-    { $match: { status: "paid", paymentRef: { $exists: true, $ne: null } } },
+    { $match: match },
     { $group: { _id: "$paymentRef" } },
     { $count: "total" },
   ]);

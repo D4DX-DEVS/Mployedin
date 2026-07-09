@@ -353,7 +353,18 @@
     "saved": "Saved",
     "superAgentWorkspace": "Super agent workspace",
     "currency": "Currency",
-    "a11yFormProgress": "Form progress"
+    "a11yFormProgress": "Form progress",
+    "youreOffline": "You're Offline",
+    "offlineDescription": "It looks like you've lost your internet connection. Please check your network settings and try again.",
+    "unknownCandidate": "Unknown candidate",
+    "location": "Location",
+    "experience": "Experience (yrs)",
+    "candidate": "Candidate",
+    "round": "Round",
+    "type": "Type",
+    "allCategories": "All Categories",
+    "verified": "✓ Verified",
+    "add": "Add"
   },
   "table": {
     "search": "Search...",
@@ -864,6 +875,7 @@
   },
   "jobSeekerApplications": {
     "documentTitle": "My Applications · MPLOYEDIN",
+    "loadFailed": "Failed to load applications",
     "title": "My Applications",
     "summary": {
       "total": "Total:",
@@ -1375,6 +1387,12 @@
         "within_3_months": "Within 3 Months",
         "not_available": "Not Available"
       },
+      "availabilityLabels": {
+        "immediately": "Available immediately",
+        "within_month": "Available within 1 month",
+        "within_3_months": "Available within 3 months",
+        "not_available": "Not looking currently"
+      },
       "activelyLooking": "Actively Looking",
       "activelyLookingDescription": "Signal to employers you're open to opportunities",
       "noticePeriod": "Notice Period (days)",
@@ -1528,7 +1546,9 @@
       "emptyAddProjects": "Add projects to stand out to employers",
       "emptyAddEducation": "Add education",
       "emptyAddAccomplishments": "Add certifications, work samples, publications, or online profiles",
-      "emptyAddSummary": "Add a professional summary"
+      "emptyAddSummary": "Add a professional summary",
+      "aiCareerInsight": "AI Career Insight",
+      "smartBadge": "SMART"
     },
     "settings": {
       "back": "Back",
@@ -1542,6 +1562,7 @@
       "saving": "Saving…",
       "saveSettings": "Save Settings",
       "save": "Save",
+      "add": "Add",
       "fileHint": "JPEG, PNG or WebP · max 2 MB",
       "unsavedChanges": "Unsaved changes",
       "savedToast": "Settings saved successfully",
@@ -3958,7 +3979,13 @@
     "interviewsLabel": "Interviews",
     "notesLabel": "Notes",
     "noActivityData": "No applications, interviews, or notes yet.",
-    "a11yClose": "Close"
+    "a11yClose": "Close",
+    "exportName": "Name",
+    "exportLocation": "Location",
+    "exportExperience": "Experience (yrs)",
+    "exportSkills": "Skills",
+    "exportAiMatch": "AI Match",
+    "exportAvailability": "Availability"
   },
   "scorecard": {
     "title": "Interview Scorecard",
@@ -6948,7 +6975,15 @@
     "clearFilters": "Clear filters",
     "page": "Page",
     "actions": "Actions",
-    "view": "View"
+    "view": "View",
+    "candidate": "Candidate",
+    "email": "Email",
+    "role": "Role",
+    "round": "Round",
+    "type": "Type",
+    "scheduled": "Scheduled",
+    "status": "Status",
+    "outcome": "Outcome"
   },
   "employerCalendar": {
     "title": "Interview Calendar",
@@ -7315,7 +7350,12 @@
     "monthlyDistributionInfo": "Monthly distribution will appear after this yearly target is split by month.",
     "teamPerformanceLeaderboard": "Team performance leaderboard",
     "rankingsEyebrow": "Rankings",
-    "a11yTargetFlow": "Target flow"
+    "a11yTargetFlow": "Target flow",
+    "enterpriseTargets": "Enterprise Targets",
+    "searchSupervisors": "Search supervisors…",
+    "cloneYear": "Clone {year}",
+    "newTargetProfile": "New Target Profile",
+    "reassignTargetProfile": "Reassign target profile"
   },
   "webhooks": {
     "title": "Webhooks",

@@ -333,11 +333,11 @@ export default function AdminTargetManagementPage() {
         description={t("description")}
         search={searchQuery}
         onSearchChange={setSearchQuery}
-        searchPlaceholder="Search supervisors…"
+        searchPlaceholder={t("searchSupervisors")}
         left={
           <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
             <Sparkles className="h-3.5 w-3.5" />
-            Enterprise Targets
+            {t("enterpriseTargets")}
           </div>
         }
         right={
@@ -349,14 +349,14 @@ export default function AdminTargetManagementPage() {
         actions={
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" className="h-9 gap-2 rounded-lg" onClick={handleExport} disabled={profiles.length === 0}>
-              <Download className="h-4 w-4" /> Export
+              <Download className="h-4 w-4" /> {t("common.export")}
             </Button>
             <Button variant="outline" size="sm" className="h-9 gap-2 rounded-lg" onClick={handleClone}>
-              <Copy className="h-4 w-4" /> Clone {yearFilter - 1}
+              <Copy className="h-4 w-4" /> {t("cloneYear", { year: yearFilter - 1 })}
             </Button>
             <Link href={`/${locale}/admin/target-management/create`}>
-              <Button className="h-9 gap-2 rounded-lg bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700">
-                <Plus className="h-4 w-4" /> New Target Profile
+              <Button className="h-9 gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
+                <Plus className="h-4 w-4" /> {t("newTargetProfile")}
               </Button>
             </Link>
           </div>
@@ -567,7 +567,7 @@ export default function AdminTargetManagementPage() {
                         description="Create unified target profiles for your supervisors to begin annual planning"
                         action={
                           <Link href={`/${locale}/admin/target-management/create`}>
-                            <Button size="sm" className="mt-2 gap-2 rounded-lg bg-sky-600 text-white hover:bg-sky-700">
+                            <Button size="sm" className="mt-2 gap-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90">
                               <Plus className="h-4 w-4" /> New Target Profile
                             </Button>
                           </Link>

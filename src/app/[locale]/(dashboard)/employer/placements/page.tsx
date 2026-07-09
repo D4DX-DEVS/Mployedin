@@ -104,7 +104,7 @@ export default function EmployerPlacementsPage() {
             </div>
             <Button
               asChild
-              className="h-11 gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700"
+              className="h-11 gap-2 rounded-xl px-4 text-sm font-semibold"
             >
               <Link href={`/${locale}/employer/analytics`}>
                 {t("openAnalytics")}
@@ -185,7 +185,7 @@ export default function EmployerPlacementsPage() {
                 variant="ghost"
                 size="sm"
                 className={filter === statusOption
-                  ? "rounded-full bg-sky-600 px-4 text-white hover:bg-sky-700 hover:text-white"
+                  ? "rounded-full bg-primary px-4 text-white hover:bg-primary/90"
                   : "rounded-full border border-border bg-background/80 px-4 text-muted-foreground hover:bg-background"
                 }
               >
@@ -230,7 +230,7 @@ export default function EmployerPlacementsPage() {
                 {error instanceof Error ? error.message : t("loadError")}
               </p>
             </div>
-            <Button className="h-11 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700" onClick={() => void refetch()}>
+            <Button className="h-11 rounded-xl px-4 text-sm font-semibold" onClick={() => void refetch()}>
               {t("retry")}
             </Button>
           </div>

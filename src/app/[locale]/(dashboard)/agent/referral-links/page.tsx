@@ -173,7 +173,7 @@ export default function AgentReferralLinksPage() {
             </div>
             <button
               onClick={() => setCreateOpen(true)}
-              className="inline-flex h-11 items-center gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-sky-700"
+              className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
             >
               <Plus className="h-4 w-4" />
               {t("newReferralLinkButton")}
@@ -251,7 +251,7 @@ export default function AgentReferralLinksPage() {
             <button
               onClick={handleCreate}
               disabled={createMutation.isPending}
-              className="inline-flex h-10 items-center gap-2 rounded-xl bg-sky-600 px-5 text-sm font-semibold text-white transition-colors hover:bg-sky-700 disabled:opacity-50"
+              className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
             >
               {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
               {t("createLinkButton")}

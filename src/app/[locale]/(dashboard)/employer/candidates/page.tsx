@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { AI_MATCH_HIGH_THRESHOLD } from "@/lib/constants";
 import { toast } from "sonner";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
 import { SaveToPoolDialog } from "@/components/features/employer/SaveToPoolDialog";
@@ -169,15 +170,16 @@ const scoreBadgeClass = (score?: number) => {
 };
 
 const cardSurfaceClass = (score?: number, savedForReview?: boolean) => {
+  // ponytail: light gradients with dark mode neutral shadow fallback
   if (savedForReview) {
-    return "border-sky-200 bg-[linear-gradient(180deg,_rgba(240,249,255,0.96),_rgba(255,255,255,0.98))] shadow-[0_24px_60px_-44px_rgba(14,165,233,0.45)] dark:border-sky-500/30 dark:bg-[linear-gradient(180deg,_rgba(8,47,73,0.92),_rgba(15,23,42,0.96))]";
+    return "border-sky-200 bg-[linear-gradient(180deg,_rgba(240,249,255,0.96),_rgba(255,255,255,0.98))] shadow-[0_24px_60px_-44px_rgba(14,165,233,0.45)] dark:border-sky-500/30 dark:bg-card dark:shadow-lg";
   }
 
   if (score != null && score >= 80) {
-    return "border-emerald-200 bg-[linear-gradient(180deg,_rgba(236,253,245,0.96),_rgba(255,255,255,0.98))] shadow-[0_24px_60px_-44px_rgba(16,185,129,0.35)] dark:border-emerald-500/25 dark:bg-[linear-gradient(180deg,_rgba(6,78,59,0.88),_rgba(15,23,42,0.96))]";
+    return "border-emerald-200 bg-[linear-gradient(180deg,_rgba(236,253,245,0.96),_rgba(255,255,255,0.98))] shadow-[0_24px_60px_-44px_rgba(16,185,129,0.35)] dark:border-emerald-500/25 dark:bg-card dark:shadow-lg";
   }
 
-  return "border-slate-200 bg-[linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96))] shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] dark:border-slate-700 dark:bg-[linear-gradient(180deg,_rgba(15,23,42,0.96),_rgba(2,6,23,0.98))]";
+  return "border-slate-200 bg-[linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96))] shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] dark:border-slate-700 dark:bg-card dark:shadow-lg";
 };
 
 const availabilityTone = (status?: string) => {
@@ -407,7 +409,7 @@ function CandidateMatchCard({
               size="sm"
               variant={isInReviewList ? "default" : "outline"}
               aria-label={isInReviewList ? t("savedForReview") : t("saveForReview")}
-              className={isInReviewList ? "h-8 w-8 rounded-lg bg-sky-600 p-0 text-white hover:bg-sky-700" : "h-8 w-8 rounded-lg border-border bg-background/80 p-0"}
+              className={isInReviewList ? "h-8 w-8 rounded-lg bg-primary p-0 text-primary-foreground hover:bg-primary/90" : "h-8 w-8 rounded-lg border-border bg-background/80 p-0"}
               onClick={(event) => {
                 stopRowClick(event);
                 onToggleReviewList(candidate._id);
@@ -699,11 +701,11 @@ function CandidateInsightsDialog({
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-5">
+            <div className="flex flex-wrap items-center gap-2 border-t border-border pt-5">
               <Button
                 size="sm"
                 variant={isInReviewList ? "default" : "outline"}
-                className={isInReviewList ? "h-10 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700" : "h-10 rounded-xl border-slate-200 bg-white px-4 text-sm"}
+                className={isInReviewList ? "h-10 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90" : "h-10 rounded-xl border-border bg-card px-4 text-sm"}
                 onClick={() => onToggleReviewList(candidate._id)}
               >
                 <Star className={`mr-2 h-3.5 w-3.5 ${isInReviewList ? "fill-current" : ""}`} />
@@ -933,12 +935,12 @@ export default function EmployerCandidatesPage() {
   const detailCandidate = candidates.find((candidate) => candidate._id === detailCandidateId) ?? null;
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
-    { header: "Name", key: "fullName", formatter: (v, r) => String(v ?? (r as Record<string, any>).userId?.name ?? "Unknown") },
-    { header: "Location", key: "currentLocation", formatter: (v) => String(v ?? "—") },
-    { header: "Experience (yrs)", key: "totalExperienceYears", formatter: (v) => v != null ? String(v) : "—" },
-    { header: "Skills", key: "skills", formatter: (v) => Array.isArray(v) ? v.slice(0, 5).join(", ") : "—" },
-    { header: "AI Match", key: "matchScore", formatter: (v) => v != null ? `${v}%` : "—" },
-    { header: "Availability", key: "availabilityStatus", formatter: (v) => String(v ?? "—") },
+    { header: t("exportName"), key: "fullName", formatter: (v, r) => String(v ?? (r as Record<string, any>).userId?.name ?? t("unknownCandidate")) },
+    { header: t("exportLocation"), key: "currentLocation", formatter: (v) => String(v ?? "—") },
+    { header: t("exportExperience"), key: "totalExperienceYears", formatter: (v) => v != null ? String(v) : "—" },
+    { header: t("exportSkills"), key: "skills", formatter: (v) => Array.isArray(v) ? v.slice(0, 5).join(", ") : "—" },
+    { header: t("exportAiMatch"), key: "matchScore", formatter: (v) => v != null ? `${v}%` : "—" },
+    { header: t("exportAvailability"), key: "availabilityStatus", formatter: (v) => String(v ?? "—") },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: candidates as unknown as Record<string, unknown>[],
@@ -1441,7 +1443,7 @@ export default function EmployerCandidatesPage() {
               <SlidersHorizontal className="mr-2 h-3.5 w-3.5" />
               {t("filters")}
               {activeFilterChips.length > 0 ? (
-                <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-sky-600 px-1.5 text-[11px] font-semibold text-white">
+                <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
                   {activeFilterChips.length}
                 </span>
               ) : null}
@@ -1449,7 +1451,7 @@ export default function EmployerCandidatesPage() {
             <Button
               onClick={runAIMatch}
               disabled={!selectedJob || !!matchProgress || structuredCandidates.length === 0}
-              className="h-9 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700"
+              className="h-9 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
             >
               {matchProgress ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-2 h-3.5 w-3.5" />}
               {matchProgress ? `${t("scoringProgress")} ${matchProgress.done}/${matchProgress.total}` : t("runAiMatch")}
@@ -1683,7 +1685,7 @@ export default function EmployerCandidatesPage() {
                   <Button
                     size="sm"
                     variant={savedOnly ? "default" : "outline"}
-                    className={savedOnly ? "h-10 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700" : "h-10 rounded-xl border-border bg-background/80 px-4 text-sm"}
+                    className={savedOnly ? "h-10 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90" : "h-10 rounded-xl border-border bg-background/80 px-4 text-sm"}
                     onClick={() => setSavedOnly((current) => !current)}
                   >
                     <Star className={`mr-2 h-3.5 w-3.5 ${savedOnly ? "fill-current" : ""}`} />
@@ -1750,7 +1752,7 @@ export default function EmployerCandidatesPage() {
             <div className="mt-3 space-y-2" aria-live="polite" aria-atomic="true">
               <div className="h-1.5 overflow-hidden rounded-full bg-muted/50">
                 <div
-                  className="h-full rounded-full bg-sky-600 transition-all duration-300"
+                  className="h-full rounded-full bg-primary transition-all duration-300"
                   style={{ width: `${(matchProgress.done / matchProgress.total) * 100}%` }}
                 />
               </div>
@@ -1789,7 +1791,7 @@ export default function EmployerCandidatesPage() {
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 size="sm"
-                className="h-9 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700"
+                className="h-9 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
                 onClick={() => setBulkPoolOpen(true)}
               >
                 <Layers className="mr-2 h-4 w-4" />
@@ -1819,16 +1821,11 @@ export default function EmployerCandidatesPage() {
           ))}
         </div>
       ) : filteredCandidates.length === 0 ? (
-        <div className="rounded-[24px] border border-slate-200 bg-[linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96))] px-6 py-12 text-center shadow-[0_20px_48px_-42px_rgba(15,23,42,0.28)]">
-          <Users className="mx-auto mb-4 h-12 w-12 text-slate-300" />
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Candidate view</p>
-          <h3 className="mt-3 text-xl font-semibold text-slate-950">{t("noCandidatesMatch")}</h3>
-          <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-500">
-            {hasSearchRefinements
-              ? t("adjustSearchHint")
-              : "No job seeker profiles exist yet, or the selected role does not have candidates on this page."}
-          </p>
-        </div>
+        <EmptyState
+          icon={Users}
+          title={t("noCandidatesMatch")}
+          description={hasSearchRefinements ? t("adjustSearchHint") : t("noProfilesYet")}
+        />
       ) : (
         <div className="space-y-2">
           {filteredCandidates.map((candidate) => {

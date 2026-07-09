@@ -278,7 +278,7 @@ export default function AdminPlacementsPage() {
             <Button
               onClick={fetchAiInsights}
               disabled={aiLoading}
-              className="h-11 gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700"
+              className="h-11 gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
             >
               {aiLoading ? <RotateCcw className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
               {aiLoading ? t("analyzing") : t("generateInsights")}

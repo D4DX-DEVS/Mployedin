@@ -37,6 +37,7 @@ import {
   X,
 } from "lucide-react";
 import { ScorecardForm } from "@/components/scorecards/ScorecardForm";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { FeatureGate } from "@/components/shared/FeatureGate";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
@@ -705,7 +706,7 @@ export default function EmployerApplicationsPage() {
   }
 
   return (
-    <div className="page-container employer-legacy-surface space-y-4 pb-2" style={{ paddingBottom: "4px" }}>
+    <div className="page-container employer-legacy-surface space-y-4 pb-1">
       <section className="workspace-hero-surface overflow-hidden rounded-[22px] px-4 py-3 sm:px-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
@@ -1434,19 +1435,11 @@ function TableView({
 
   if (!applications.length) {
     return (
-      <div className="workspace-panel-surface rounded-[24px] px-6 py-16 text-center">
-        <div className="workspace-tone-sky mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-[24px]">
-          <Inbox className="h-7 w-7" />
-        </div>
-        <h3 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
-          {hasActiveRefinement ? t("noApplications") : t("noApplications")}
-        </h3>
-        <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">
-          {hasActiveRefinement
-            ? t("noApplicationsDesc")
-            : t("noApplicationsDesc")}
-        </p>
-      </div>
+      <EmptyState
+        icon={Inbox}
+        title={t("noApplications")}
+        description={t("noApplicationsDesc")}
+      />
     );
   }
 
@@ -2683,7 +2676,7 @@ function BulkInterviewScheduleModal({
         </div>
         <div className="px-6 py-4 border-t border-border flex gap-2 justify-end">
           <Button variant="ghost" onClick={onCancel} className="h-9">Cancel</Button>
-          <Button onClick={handleSubmit} disabled={!scheduledAt || isPast || isLoading} className="h-9 bg-sky-600 text-white hover:bg-sky-700">
+          <Button onClick={handleSubmit} disabled={!scheduledAt || isPast || isLoading} className="h-9 bg-primary text-primary-foreground hover:bg-primary/90">
             <Calendar className="w-3.5 h-3.5 me-1" />
             {isLoading ? "Scheduling..." : `Schedule ${candidateCount} Interview${candidateCount > 1 ? "s" : ""}`}
           </Button>

@@ -127,7 +127,7 @@ export default function PlacementDetailPage() {
           <Badge variant="outline" className={STATUS_BADGE[status]}>{t(`status_${status}`)}</Badge>
           {status === "active" && (
             <>
-              <Button size="sm" className="gap-1.5 bg-sky-600 text-white hover:bg-sky-700" disabled={transitioning} onClick={() => void transition("completed")}>
+              <Button size="sm" className="gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90" disabled={transitioning} onClick={() => void transition("completed")}>
                 <CheckCircle2 className="h-4 w-4" /> {t("markCompleted")}
               </Button>
               <Button size="sm" variant="outline" className="gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10" disabled={transitioning} onClick={() => void transition("terminated")}>

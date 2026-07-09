@@ -103,7 +103,7 @@ export default function AdminResourcesPage() {
   const [showFilters, setShowFilters] = useState(false);
 
   const allCategoryOptions = [...DEFAULT_CATEGORY_OPTIONS, ...customCategories];
-  const filterCategoryOptions = [{ value: "all", label: "All Categories" }, ...allCategoryOptions];
+  const filterCategoryOptions = [{ value: "all", label: t("common.allCategories") }, ...allCategoryOptions];
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);

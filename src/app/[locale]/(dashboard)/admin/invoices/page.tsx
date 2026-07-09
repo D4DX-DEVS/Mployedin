@@ -65,46 +65,6 @@ interface Invoice {
   createdAt: string;
 }
 
-// ── Filter Options ───────────────────────────────────────────────────────────
-const STATUS_OPTIONS = [
-  { value: "all", label: "All Statuses" },
-  { value: "draft", label: "Draft" },
-  { value: "issued", label: "Issued" },
-  { value: "sent", label: "Sent" },
-  { value: "paid", label: "Paid" },
-  { value: "partially_paid", label: "Partially Paid" },
-  { value: "overdue", label: "Overdue" },
-  { value: "void", label: "Void" },
-  { value: "cancelled", label: "Cancelled" },
-  { value: "refunded", label: "Refunded" },
-  { value: "credit_note", label: "Credit Note" },
-];
-
-const CATEGORY_OPTIONS = [
-  { value: "all", label: "All Categories" },
-  { value: "recruitment", label: "Recruitment" },
-  { value: "subscription", label: "Subscription" },
-  { value: "premium_posting", label: "Premium Posting" },
-  { value: "featured_promotion", label: "Featured Promotion" },
-  { value: "exhibition", label: "Exhibition" },
-  { value: "bulk_hiring", label: "Bulk Hiring" },
-  { value: "consulting", label: "Consulting" },
-  { value: "custom_enterprise", label: "Custom Enterprise" },
-];
-
-const TYPE_OPTIONS = [
-  { value: "all", label: "All Types" },
-  { value: "new", label: "New" },
-  { value: "renewal", label: "Renewal" },
-  { value: "recruitment", label: "Recruitment" },
-  { value: "premium_posting", label: "Premium Posting" },
-  { value: "featured_promotion", label: "Featured Promotion" },
-  { value: "exhibition", label: "Exhibition" },
-  { value: "bulk_hiring", label: "Bulk Hiring" },
-  { value: "consulting", label: "Consulting" },
-  { value: "custom", label: "Custom" },
-];
-
 // ── Component ────────────────────────────────────────────────────────────────
 export default function AdminInvoicesPage() {
   const t = useTranslations("adminInvoices");
@@ -309,7 +269,7 @@ export default function AdminInvoicesPage() {
           </div>
         }
         actions={can("subscriptions", "create") ? (
-          <Button onClick={() => router.push("/admin/invoices/new")} className="h-9 gap-2 rounded-lg bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700">
+          <Button onClick={() => router.push("/admin/invoices/new")} size="sm" className="h-9 gap-2 rounded-lg px-4">
             <Plus className="h-4 w-4" /> {t("createInvoice")}
           </Button>
         ) : undefined}

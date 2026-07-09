@@ -152,7 +152,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const PRIORITY_BADGES: Record<string, string> = {
-  low: "border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-300",
+  low: "border-border bg-muted text-muted-foreground dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-300",
   medium: "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-300",
   high: "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-300",
   critical: "border-red-200 bg-red-50 text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300",

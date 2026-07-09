@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Search, Sparkles, MapPin, Clock, Briefcase, Loader2 } from "lucide-react";
 import { formatLocalizedLocation } from "@/lib/i18n/locations";
@@ -89,24 +91,27 @@ export default function JobSeekerNLSearchPage() {
               className="input-field w-full h-11 ps-9 pe-4 rounded-xl"
             />
           </div>
-          <button
+          <Button
             onClick={() => search()}
             disabled={!query.trim() || loading}
-            className="btn-primary h-11 rounded-xl disabled:opacity-50 flex items-center gap-2"
+            size="lg"
+            className="h-11 rounded-xl"
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-          </button>
+          </Button>
         </div>
 
         <div className="flex flex-wrap gap-1.5">
           {PROMPTS.map((prompt) => (
-            <button
+            <Button
               key={prompt}
               onClick={() => { const text = t(`prompts.${prompt}`); setQuery(text); search(text); }}
-              className="btn-pill text-xs sm:text-sm"
+              variant="outline"
+              size="sm"
+              className="text-xs sm:text-sm"
             >
               {t(`prompts.${prompt}`)}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -120,10 +125,10 @@ export default function JobSeekerNLSearchPage() {
           </p>
           <div className="space-y-3">
             {jobs.length === 0 ? (
-              <div className="card-base text-center py-12">
-                <Search className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                <p className="text-muted-foreground text-sm">{t("noResults")}</p>
-              </div>
+              <EmptyState
+                icon={Search}
+                title={t("noResults")}
+              />
             ) : (
               jobs.map((job) => (
                 <div key={job._id} className="card-base hover:shadow-md transition-all">

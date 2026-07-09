@@ -207,14 +207,14 @@ export default function EmployerInterviewsPage() {
   }
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
-    { header: "Candidate", key: "jobSeekerId", formatter: (_v, r) => (r as Record<string, any>).jobSeekerId?.fullName ?? "Candidate" },
-    { header: "Email", key: "jobSeekerId", formatter: (_v, r) => (r as Record<string, any>).jobSeekerId?.email ?? "—" },
-    { header: "Role", key: "jobId", formatter: (_v, r) => (r as Record<string, any>).jobId?.title ?? "Untitled role" },
-    { header: "Round", key: "interviewRound", formatter: (v) => `R${v ?? 1}` },
-    { header: "Type", key: "type", formatter: (v) => String(v ?? "in-person") },
-    { header: "Scheduled", key: "scheduledAt", formatter: (v) => v ? new Date(String(v)).toLocaleString() : "—" },
-    { header: "Status", key: "status", formatter: (v) => String(v ?? "—") },
-    { header: "Outcome", key: "outcome", formatter: (v) => String(v ?? "—") },
+    { header: tc("candidate"), key: "jobSeekerId", formatter: (_v, r) => (r as Record<string, any>).jobSeekerId?.fullName ?? tc("candidate") },
+    { header: tc("email"), key: "jobSeekerId", formatter: (_v, r) => (r as Record<string, any>).jobSeekerId?.email ?? "—" },
+    { header: tc("role"), key: "jobId", formatter: (_v, r) => (r as Record<string, any>).jobId?.title ?? "Untitled role" },
+    { header: tc("round"), key: "interviewRound", formatter: (v) => `R${v ?? 1}` },
+    { header: tc("type"), key: "type", formatter: (v) => String(v ?? "in-person") },
+    { header: tc("scheduled"), key: "scheduledAt", formatter: (v) => v ? new Date(String(v)).toLocaleString() : "—" },
+    { header: tc("status"), key: "status", formatter: (v) => String(v ?? "—") },
+    { header: tc("outcome"), key: "outcome", formatter: (v) => String(v ?? "—") },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: interviews as unknown as Record<string, unknown>[],
@@ -345,7 +345,7 @@ export default function EmployerInterviewsPage() {
             {can("interviews", "create") ? (
               <Button
                 asChild
-                className="h-11 gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700"
+                className="h-11 gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
               >
                 <Link href={`/${locale}/employer/interviews/bulk`}>
                   {t("bulkSchedule")}
@@ -572,7 +572,7 @@ export default function EmployerInterviewsPage() {
                 {error instanceof Error ? error.message : "The interview workspace could not load. Try again in a moment."}
               </p>
             </div>
-            <Button className="h-11 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700" onClick={() => void refetch()}>
+            <Button className="h-11 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90" onClick={() => void refetch()}>
               {tc("tryAgain")}
             </Button>
           </div>
@@ -1296,7 +1296,7 @@ function InterviewActionModal({
           <Button
             onClick={handleSubmit}
             disabled={submitting}
-            className="h-10 gap-2 rounded-xl bg-sky-600 px-5 text-sm font-semibold text-white hover:bg-sky-700"
+            className="h-10 gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
           >
             {submitting ? (
               <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />

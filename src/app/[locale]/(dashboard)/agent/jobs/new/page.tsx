@@ -292,7 +292,7 @@ export default function AgentJobPosterPage() {
           <Button
             type="submit"
             disabled={submitting || !canSubmit}
-            className="h-11 rounded-xl bg-sky-600 hover:bg-sky-700"
+            className="h-11 rounded-xl bg-primary hover:bg-primary/90"
           >
             {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {submitting ? t("form.posting") : t("form.submit")}

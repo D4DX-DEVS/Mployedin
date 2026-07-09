@@ -18,11 +18,11 @@ export default async function MaintenancePage({
 
   return (
     <div
-      className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-slate-50 to-slate-100 px-4 text-center"
+      className="flex min-h-screen flex-col items-center justify-center bg-background px-4 text-center"
       dir={isAr ? "rtl" : "ltr"}
     >
       <div className="mx-auto max-w-md space-y-6">
-        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 text-primary">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             className="h-10 w-10"
@@ -39,22 +39,22 @@ export default async function MaintenancePage({
           </svg>
         </div>
 
-        <h1 className="text-3xl font-bold text-slate-900">{t("title")}</h1>
-        <p className="text-lg text-slate-600">{t("subtitle")}</p>
+        <h1 className="text-3xl font-bold text-foreground">{t("title")}</h1>
+        <p className="text-lg text-muted-foreground">{t("subtitle")}</p>
 
-        <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-500">
+        <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
           {t("adminHint")}
         </div>
 
         <Link
           href={`/${locale}/login`}
-          className="inline-block rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+          className="inline-block rounded-lg bg-primary text-primary-foreground px-6 py-2.5 text-sm font-medium transition-colors hover:bg-primary/90"
         >
           {t("adminSignIn")}
         </Link>
       </div>
 
-      <p className="mt-12 text-xs text-slate-400">
+      <p className="mt-12 text-xs text-muted-foreground">
         &copy; {new Date().getFullYear()} MPLOYEDIN
       </p>
     </div>

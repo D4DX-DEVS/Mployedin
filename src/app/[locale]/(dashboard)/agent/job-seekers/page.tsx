@@ -178,8 +178,7 @@ export default function AgentJobSeekersPage() {
     title: t("exportTitle"),
   });
 
-  const completenessColor = (pct: number) =>
-    pct >= 80 ? "bg-green-500" : pct >= 50 ? "bg-yellow-500" : "bg-red-400";
+  const completenessColor = (pct: number) => "bg-primary";
 
   const availabilityLabel = (val?: string) => AVAILABILITY_OPTIONS.find((o) => o.value === val)?.label ?? val ?? "\u2014";
 

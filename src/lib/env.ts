@@ -42,6 +42,11 @@ const CHECKS: EnvCheck[] = [
         ? "CRON_SECRET must be at least 16 characters. Generate with: openssl rand -base64 24"
         : null,
   },
+  // Storage creds: spaces.ts falls back to "" so a missing key only surfaces as
+  // runtime upload failures deep in request handlers. Required in production
+  // (CV upload is a core flow); optional in dev where storage may be absent.
+  { name: "SPACES_ACCESS_KEY_ID", required: process.env.NODE_ENV === "production" },
+  { name: "SPACES_SECRET_ACCESS_KEY", required: process.env.NODE_ENV === "production" },
 ];
 
 let validated = false;

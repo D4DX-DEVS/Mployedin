@@ -281,7 +281,7 @@ export default function SuperAgentInvoicesPage() {
                         <TableCell>
                           {myComm ? (
                             <div className="text-xs">
-                              <p className="font-medium text-indigo-600 dark:text-indigo-400">{myComm.rate}% = {inv.currency} {myComm.amount.toLocaleString()}</p>
+                              <p className="font-medium text-primary">{myComm.rate}% = {inv.currency} {myComm.amount.toLocaleString()}</p>
                               <StatusBadge status={myComm.status} />
                             </div>
                           ) : <span className="text-xs text-muted-foreground">—</span>}

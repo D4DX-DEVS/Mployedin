@@ -160,7 +160,7 @@ export default function EmployerOffersPage() {
             </div>
             <Button
               asChild
-              className="h-11 gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700"
+              className="h-11 gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
             >
               <Link href={`/${locale}/employer/applications`}>
                 {t("openPipeline")}
@@ -260,7 +260,7 @@ export default function EmployerOffersPage() {
                 {error instanceof Error ? error.message : t("offerListDesc")}
               </p>
             </div>
-            <Button className="h-11 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700" onClick={() => void refetch()}>
+            <Button className="h-11 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90" onClick={() => void refetch()}>
               {tc("tryAgain")}
             </Button>
           </div>
@@ -289,7 +289,7 @@ export default function EmployerOffersPage() {
             <p className="mt-3 max-w-md text-sm leading-6 text-muted-foreground">
               {t("noOffersDesc")}
             </p>
-            <Button asChild className="mt-6 h-11 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700">
+            <Button asChild className="mt-6 h-11 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
               <Link href={`/${locale}/employer/applications`}>{t("openPipeline")}</Link>
             </Button>
           </div>

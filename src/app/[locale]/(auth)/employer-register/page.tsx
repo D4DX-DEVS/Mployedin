@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { Building2, FileCheck, UserCircle, CheckCircle, ChevronRight, ChevronLeft, Loader2, ShieldCheck } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { FormInput, FormSelect, FormFileDrop } from "@/components/shared/AppForm";
 
 type VerificationLevel = "basic" | "standard" | "premium";
@@ -545,21 +546,21 @@ export default function EmployerRegisterPage() {
           </button>
 
           {step < 3 ? (
-            <button
+            <Button
               onClick={handleNext}
-              className="btn-primary flex items-center gap-1.5 px-5 py-2.5 text-sm font-medium"
+              className="flex items-center gap-1.5 px-5 py-2.5 text-sm font-medium"
             >
               {t("next")} <NextIcon className="h-4 w-4" />
-            </button>
+            </Button>
           ) : (
-            <button
+            <Button
               onClick={handleSubmit}
               disabled={loading}
-              className="btn-primary flex items-center gap-2 px-5 py-2.5 text-sm font-medium disabled:opacity-60"
+              className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium disabled:opacity-60"
             >
               {loading && <Loader2 className="h-4 w-4 animate-spin" />}
               {loading ? t("creating") : t("completeRegistration")}
-            </button>
+            </Button>
           )}
         </div>
       </div>

@@ -173,7 +173,7 @@ export default function AdminNotificationsPage() {
               onClick={() => setTab(t.key)}
               className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
                 tab === t.key
-                  ? "bg-sky-600 text-white shadow-sm"
+                  ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:bg-card hover:text-foreground"
               }`}
             >

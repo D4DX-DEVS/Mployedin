@@ -294,7 +294,8 @@ export default function AdminInterviewOversightPage() {
             <Button
               variant={showInsights ? "default" : "outline"}
               onClick={() => setShowInsights(!showInsights)}
-              className="h-11 gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700 border-0"
+              size="lg"
+              className="h-11 gap-2 rounded-xl px-4 border-0"
             >
               <Sparkles className="h-4 w-4" />
               {t("aiInsights")}

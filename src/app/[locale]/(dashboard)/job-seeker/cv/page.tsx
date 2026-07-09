@@ -972,9 +972,9 @@ export default function CVBuilderPage() {
           ref={previewRef}
           className={`hidden lg:block sticky top-4 transition-all duration-300 ${previewExpanded ? "w-full" : "w-[45%]"}`}
         >
-          <div className="border rounded-xl bg-white shadow-sm overflow-hidden">
+          <div className="border border-border rounded-xl bg-card shadow-sm overflow-hidden">
             {/* Preview header */}
-            <div className="flex items-center justify-between px-4 py-2.5 border-b bg-muted/30">
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-muted/30">
               <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
                 <Eye className="w-3.5 h-3.5" />
                 {t("preview.resume")}

@@ -5,6 +5,8 @@ import Agent from "@/models/Agent";
 import bcrypt from "bcryptjs";
 import { logActivity } from "@/lib/audit/log";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
+import { validateBody } from "@/lib/validators";
+import { agentRegisterSchema } from "@/lib/validators/misc";
 import crypto from "crypto";
 import { sendEmail, EmailTemplates } from "@/lib/communications/email";
 import { hashOtp } from "@/lib/auth/emailVerification";
@@ -23,25 +25,20 @@ export async function POST(req: NextRequest) {
 
   await connectDB();
 
-  const body = await req.json();
+  // Schema validation (was a hand-rolled regex — inconsistent with the other
+  // registration endpoints and missed length caps on optional fields).
+  let parsed: import("zod").infer<typeof agentRegisterSchema>;
+  try {
+    parsed = await validateBody(req, agentRegisterSchema);
+  } catch (err) {
+    if (err instanceof NextResponse) return err;
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  }
   const {
     fullName, email, phone, password,
-    country, city, experience, specialization, languages,
+    country, city, specialization, languages,
     referralCode,
-  } = body;
-
-  /* Validate required fields */
-  if (!fullName || !email || !password) {
-    return NextResponse.json({ error: "Full name, email, and password are required" }, { status: 400 });
-  }
-
-  if (typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return NextResponse.json({ error: "Invalid email address" }, { status: 400 });
-  }
-
-  if (typeof password !== "string" || password.length < 8) {
-    return NextResponse.json({ error: "Password must be at least 8 characters" }, { status: 400 });
-  }
+  } = parsed;
 
   /* Check for existing user */
   const existing = await User.findOne({ email: email.toLowerCase() });

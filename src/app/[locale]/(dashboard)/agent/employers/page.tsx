@@ -262,7 +262,7 @@ export default function AgentEmployersPage() {
             <div className="flex flex-col gap-2">
               <button
                 onClick={() => setOnboardOpen(true)}
-                className="inline-flex h-11 items-center gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-sky-700"
+                className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
               >
                 <UserPlus className="h-4 w-4" />
                 {t("onboardEmployerButton")}
@@ -364,7 +364,7 @@ export default function AgentEmployersPage() {
             <div className="flex items-center gap-2 shrink-0">
               <button
                 onClick={handleCopyReferral}
-                className="inline-flex h-9 items-center gap-2 rounded-xl bg-sky-600 px-3 text-xs font-semibold text-white transition-colors hover:bg-sky-700"
+                className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
               >
                 {referralCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                 {referralCopied ? t("referralCopied") : tc("copy")}
@@ -516,7 +516,7 @@ export default function AgentEmployersPage() {
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5">
                   {em.isAgentVerified && (
-                    <span className="whitespace-nowrap text-[10px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full font-medium">✓ Verified</span>
+                    <span className="whitespace-nowrap text-[10px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full font-medium">{t("common.verified")}</span>
                   )}
                   <StatusBadge status={em.isActive ? "active" : "inactive"} />
                 </div>

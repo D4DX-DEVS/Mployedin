@@ -1,3 +1,5 @@
+import { ListSkeleton } from "@/components/shared/ListSkeleton";
+
 export default function ApplicationsLoading() {
   return (
     <div className="page-container animate-in fade-in duration-300">
@@ -18,11 +20,7 @@ export default function ApplicationsLoading() {
         ))}
       </div>
       {/* Table rows skeleton */}
-      <div className="space-y-2">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="rounded-lg border border-border bg-card p-3 h-16 animate-pulse" style={{ opacity: 1 - i * 0.1 }} />
-        ))}
-      </div>
+      <ListSkeleton count={8} layout="list" itemClassName="h-16" className="space-y-2" />
     </div>
   );
 }

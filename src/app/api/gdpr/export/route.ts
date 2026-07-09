@@ -22,11 +22,17 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 
   await connectDB();
 
-  const [user, seekerProfile, applications, interviews, notifications] = await Promise.all([
+  // Application.jobSeekerId / Interview.jobSeekerId reference the JobSeeker
+  // PROFILE _id, not the User _id — querying by ctx.userId always returned
+  // empty arrays, making the export incomplete. Resolve the profile first.
+  const seekerProfile = await JobSeeker.findOne({ userId: ctx.userId }).lean<{ _id: unknown } | null>();
+
+  const [user, applications, interviews, notifications] = await Promise.all([
     User.findById(ctx.userId).select("-passwordHash").lean(),
-    JobSeeker.findOne({ userId: ctx.userId }).lean(),
-    Application.find({ jobSeekerId: ctx.userId }).populate("jobId", "title location").lean(),
-    Interview.find({ jobSeekerId: ctx.userId }).lean(),
+    seekerProfile
+      ? Application.find({ jobSeekerId: seekerProfile._id }).populate("jobId", "title location").lean()
+      : [],
+    seekerProfile ? Interview.find({ jobSeekerId: seekerProfile._id }).lean() : [],
     Notification.find({ userId: ctx.userId }).lean(),
   ]);
 

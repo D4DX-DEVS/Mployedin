@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { InlineSearchSelect } from "@/components/shared/InlineSearchSelect";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { ROLE_COLORS } from "@/lib/ui/statusColors";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -42,14 +43,6 @@ interface User {
   createdAt: string;
   lastLoginAt?: string;
 }
-
-const ROLE_COLORS: Record<string, string> = {
-  admin: "bg-red-100 text-red-700 border-red-200",
-  super_agent: "bg-purple-100 text-purple-700 border-purple-200",
-  agent: "bg-blue-100 text-blue-700 border-blue-200",
-  employer: "bg-amber-100 text-amber-700 border-amber-200",
-  job_seeker: "bg-emerald-100 text-emerald-700 border-emerald-200",
-};
 
 const ROLES = ["admin", "super_agent", "agent", "employer", "job_seeker"];
 

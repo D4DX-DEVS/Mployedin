@@ -184,7 +184,7 @@ function TemplateThumbnail({ template, themeColor }: { template: TemplateDefinit
   };
 
   return (
-    <svg viewBox="0 0 60 44" className="w-full rounded border border-gray-200 bg-white" preserveAspectRatio="xMidYMid meet">
+    <svg viewBox="0 0 60 44" className="w-full rounded border border-border bg-card" preserveAspectRatio="xMidYMid meet">
       {layouts[template.id] ?? layouts.classic}
     </svg>
   );

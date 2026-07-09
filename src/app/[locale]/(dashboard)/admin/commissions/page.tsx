@@ -319,7 +319,8 @@ export default function AdminCommissionsPage() {
         actions={can("commissions", "create") ? (
           <Button
             onClick={() => setShowAdd(true)}
-            className="h-9 gap-2 rounded-lg bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700"
+            size="sm"
+            className="h-9 gap-2 rounded-lg px-4"
           >
             <Plus className="h-4 w-4" />
             {t("addCommissionButton")}

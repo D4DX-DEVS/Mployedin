@@ -294,7 +294,8 @@ export default function EditStaticPage() {
             <Button
               type="submit"
               disabled={saving}
-              className="h-11 gap-2 rounded-xl bg-sky-600 px-6 text-sm font-semibold text-white hover:bg-sky-700"
+              size="lg"
+              className="h-11 gap-2 rounded-xl px-6"
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               {saving ? t("savingButton") : t("updatePageButton")}

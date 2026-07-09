@@ -164,7 +164,7 @@ export default function AgentInvoicesPage() {
           </div>
         }
         actions={
-          <Button onClick={() => setShowBuilder(true)} className="h-9 gap-2 rounded-lg bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700">
+          <Button onClick={() => setShowBuilder(true)} className="h-10 gap-1.5 rounded-xl text-xs font-semibold">
             <Plus className="h-4 w-4" /> {t("createInvoiceButton")}
           </Button>
         }
@@ -260,7 +260,7 @@ export default function AgentInvoicesPage() {
                         <TableCell className="hidden xl:table-cell">
                           {myComm ? (
                             <div className="text-xs">
-                              <p className="font-medium text-sky-600 dark:text-sky-400">{myComm.rate}% = {inv.currency} {myComm.amount.toLocaleString()}</p>
+                              <p className="font-medium text-primary">{myComm.rate}% = {inv.currency} {myComm.amount.toLocaleString()}</p>
                               <StatusBadge status={myComm.status} />
                             </div>
                           ) : <span className="text-xs text-muted-foreground">—</span>}

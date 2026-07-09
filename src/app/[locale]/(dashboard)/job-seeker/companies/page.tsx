@@ -11,6 +11,9 @@ import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select";
 import { PaginationControls } from "@/components/shared/PaginationControls";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { ListSkeleton } from "@/components/shared/ListSkeleton";
 import { usePagination } from "@/hooks/usePagination";
 import { formatLocalizedLocation } from "@/lib/i18n/locations";
 import {
@@ -81,10 +84,10 @@ export default function CompaniesListPage() {
   return (
     <div className="space-y-6">
       <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t("title")}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {t("description")}
-        </p>
+        <PageHeader
+          title={t("title")}
+          description={t("description")}
+        />
       </section>
 
       <section className="workspace-panel-surface rounded-[28px] p-5 space-y-3">
@@ -120,26 +123,12 @@ export default function CompaniesListPage() {
 
       <section className="workspace-panel-surface rounded-[28px] p-5">
         {loading ? (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="workspace-glass-panel rounded-2xl p-5">
-                <div className="flex items-start gap-3">
-                  <Skeleton className="h-12 w-12 rounded-xl" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-32" />
-                    <Skeleton className="h-3 w-20" />
-                  </div>
-                </div>
-                <Skeleton className="mt-3 h-3 w-full" />
-                <Skeleton className="mt-2 h-3 w-2/3" />
-              </div>
-            ))}
-          </div>
+          <ListSkeleton count={6} layout="grid" itemClassName="h-40" />
         ) : companies.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <Inbox className="h-12 w-12 text-muted-foreground/40" />
-            <p className="mt-4 text-sm font-medium text-muted-foreground">{t("empty")}</p>
-          </div>
+          <EmptyState
+            icon={Inbox}
+            title={t("empty")}
+          />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {companies.map((c) => (

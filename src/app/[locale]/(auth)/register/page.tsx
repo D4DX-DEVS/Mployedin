@@ -140,7 +140,7 @@ export default function RegisterPage() {
             onChange={(e) => setName(e.target.value)}
             required
             autoComplete="name"
-            className="h-11 px-4 bg-transparent transition-all focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:border-primary/40 rounded-lg"
+            className="h-12 px-4 rounded-xl border-border/70 bg-background/70 transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/15"
           />
         </div>
 
@@ -154,7 +154,7 @@ export default function RegisterPage() {
             onChange={(e) => setEmail(e.target.value)}
             required
             autoComplete="email"
-            className="h-11 px-4 bg-transparent transition-all focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:border-primary/40 rounded-lg"
+            className="h-12 px-4 rounded-xl border-border/70 bg-background/70 transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/15"
           />
         </div>
 
@@ -168,7 +168,7 @@ export default function RegisterPage() {
             onChange={(e) => setPassword(e.target.value)}
             required
             autoComplete="new-password"
-            className="h-11 px-4 bg-transparent transition-all focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:border-primary/40 rounded-lg"
+            className="h-12 px-4 rounded-xl border-border/70 bg-background/70 transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/15"
           />
         </div>
 
@@ -182,7 +182,7 @@ export default function RegisterPage() {
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
             autoComplete="new-password"
-            className="h-11 px-4 bg-transparent transition-all focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:border-primary/40 rounded-lg"
+            className="h-12 px-4 rounded-xl border-border/70 bg-background/70 transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/15"
           />
         </div>
 
@@ -214,7 +214,7 @@ export default function RegisterPage() {
 
         <Button
           type="submit"
-          className="w-full h-11 text-base font-medium shadow-sm transition-all rounded-lg"
+          className="h-12 w-full rounded-xl text-base font-medium shadow-lg shadow-primary/20 transition-all hover:-translate-y-0.5"
           disabled={loading}
         >
           {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
@@ -235,7 +235,7 @@ export default function RegisterPage() {
         <Button
           variant="outline"
           type="button"
-          className="h-11 bg-transparent hover:bg-muted/50 border-border font-medium transition-colors"
+          className="h-12 rounded-xl border-border/70 bg-background/60 font-medium transition-colors hover:bg-muted/60"
           onClick={handleGoogleSignIn}
           disabled={googleLoading}
         >
@@ -254,7 +254,7 @@ export default function RegisterPage() {
         <Button
           variant="outline"
           type="button"
-          className="h-11 bg-transparent hover:bg-muted/50 border-border font-medium transition-colors"
+          className="h-12 rounded-xl border-border/70 bg-background/60 font-medium transition-colors hover:bg-muted/60"
           onClick={() => { setAppleLoading(true); setError(""); signIn("apple", { callbackUrl: "/api/auth/post-login-redirect" }); }}
           disabled={appleLoading}
         >
@@ -270,7 +270,7 @@ export default function RegisterPage() {
         <Button
           variant="outline"
           type="button"
-          className="h-11 bg-transparent hover:bg-muted/50 border-border font-medium transition-colors"
+          className="h-12 rounded-xl border-border/70 bg-background/60 font-medium transition-colors hover:bg-muted/60"
           onClick={() => { setLinkedInLoading(true); setError(""); signIn("linkedin", { callbackUrl: "/api/auth/post-login-redirect" }); }}
           disabled={linkedInLoading}
         >

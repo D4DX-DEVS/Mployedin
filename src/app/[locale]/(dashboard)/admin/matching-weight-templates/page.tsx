@@ -162,7 +162,7 @@ export default function AdminMatchingWeightTemplatesPage() {
         title={tr("pageTitle")}
         description={tr("pageDescription")}
         actions={
-          <Button onClick={openCreate} className="gap-2 rounded-xl bg-sky-600 text-white hover:bg-sky-700" size="sm">
+          <Button onClick={openCreate} className="gap-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90" size="sm">
             <Plus className="h-4 w-4" /> {tr("newTemplateButton")}
           </Button>
         }
@@ -275,7 +275,7 @@ export default function AdminMatchingWeightTemplatesPage() {
             <Button
               onClick={handleSave}
               disabled={!form.name.trim() || !isTotalValid || isSaving}
-              className="gap-2 rounded-xl bg-sky-600 text-white hover:bg-sky-700"
+              className="gap-2 rounded-xl"
             >
               {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               {editId ? tr("updateButton") : tr("createButton")}
@@ -295,7 +295,7 @@ export default function AdminMatchingWeightTemplatesPage() {
           <p className="mb-4 mt-1 text-xs text-muted-foreground">
             {tr("emptyStateDescription")}
           </p>
-          <Button onClick={openCreate} size="sm" className="gap-1.5 rounded-xl bg-sky-600 text-white hover:bg-sky-700">
+          <Button onClick={openCreate} size="sm" className="gap-1.5 rounded-xl">
             <Plus className="h-3.5 w-3.5" /> {tr("createFirstButton")}
           </Button>
         </div>

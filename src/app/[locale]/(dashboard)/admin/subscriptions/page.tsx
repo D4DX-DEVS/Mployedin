@@ -59,10 +59,10 @@ function daysUntil(d: string | undefined) {
 }
 
 const STATUS_CONFIG: Record<string, { color: string; icon: typeof CheckCircle }> = {
-  active: { color: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30", icon: CheckCircle },
-  expired: { color: "bg-amber-500/10 text-amber-400 border-amber-500/30", icon: AlertTriangle },
-  cancelled: { color: "bg-red-500/10 text-red-400 border-red-500/30", icon: XCircle },
-  suspended: { color: "bg-orange-500/10 text-orange-400 border-orange-500/30", icon: AlertTriangle },
+  active: { color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30 dark:text-emerald-400", icon: CheckCircle },
+  expired: { color: "bg-amber-500/10 text-amber-600 border-amber-500/30 dark:text-amber-400", icon: AlertTriangle },
+  cancelled: { color: "bg-red-500/10 text-red-600 border-red-500/30 dark:text-red-400", icon: XCircle },
+  suspended: { color: "bg-orange-500/10 text-orange-600 border-orange-500/30 dark:text-orange-400", icon: AlertTriangle },
 };
 
 
@@ -157,7 +157,7 @@ export default function AdminSubscriptionsPage() {
         <Button
           size="sm"
           variant={activeTab === "table" ? "default" : "outline"}
-          className={activeTab === "table" ? "bg-sky-600 hover:bg-sky-700" : ""}
+          className={activeTab === "table" ? "bg-primary hover:bg-primary/90" : ""}
           onClick={() => setActiveTab("table")}
         >
           <Users className="h-3.5 w-3.5 mr-1.5" />
@@ -166,7 +166,7 @@ export default function AdminSubscriptionsPage() {
         <Button
           size="sm"
           variant={activeTab === "manage" ? "default" : "outline"}
-          className={activeTab === "manage" ? "bg-sky-600 hover:bg-sky-700" : ""}
+          className={activeTab === "manage" ? "bg-primary hover:bg-primary/90" : ""}
           onClick={() => setActiveTab("manage")}
         >
           <Search className="h-3.5 w-3.5 mr-1.5" />
@@ -308,7 +308,7 @@ function SubscribersTable() {
             onClick={() => { setFilters((f) => ({ ...f, role: opt.value, planId: undefined })); resetPage(); }}
             className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-colors ${
               filters.role === opt.value
-                ? "bg-sky-600 text-white"
+                ? "bg-primary text-primary-foreground"
                 : "bg-muted text-muted-foreground hover:bg-muted/80"
             }`}
           >
@@ -418,7 +418,7 @@ function SubscribersTable() {
                   <RotateCcw className="h-3.5 w-3.5" /> {t("clearFiltersBtn")}
                 </Button>
                 <Button
-                  size="sm" className="bg-sky-600 hover:bg-sky-700 gap-1.5"
+                  size="sm" className="bg-primary hover:bg-primary/90 gap-1.5"
                   onClick={() => { setFilters((f) => ({ ...f, search: searchInput || undefined })); resetPage(); }}
                 >
                   <Search className="h-3.5 w-3.5" /> {t("applyFiltersBtn")}
@@ -608,7 +608,7 @@ function ExpandedDetail({ sub }: { sub: AdminSubscriptionItem }) {
             onClick={(e) => { e.stopPropagation(); setActiveSection(tab.key); }}
             className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
               activeSection === tab.key
-                ? "bg-sky-600 text-white"
+                ? "bg-primary text-primary-foreground"
                 : "bg-muted/50 text-muted-foreground hover:bg-muted"
             }`}
           >
@@ -957,7 +957,7 @@ function UserSubscriptionPanel({
           </div>
 
           <Button
-            className="w-full gap-2 bg-sky-600 hover:bg-sky-700"
+            className="w-full gap-2 bg-primary hover:bg-primary/90"
             onClick={() => setShowAssignForm(!showAssignForm)}
           >
             <Crown className="h-4 w-4" />
@@ -1140,7 +1140,7 @@ function AssignPlanForm({
           />
           <div className="flex gap-2">
             <Button
-              className="bg-sky-600 hover:bg-sky-700 gap-2"
+              className="bg-primary hover:bg-primary/90 gap-2"
               disabled={assignMut.isPending}
               onClick={handleAssign}
             >
@@ -1224,7 +1224,7 @@ function ChangePlanForm({
           />
           <div className="flex gap-2">
             <Button
-              className="bg-sky-600 hover:bg-sky-700 gap-1.5"
+              className="bg-primary hover:bg-primary/90 gap-1.5"
               size="sm"
               disabled={changeMut.isPending}
               onClick={handleChange}
@@ -1402,7 +1402,7 @@ function BulkAssignSection() {
           <Button
             onClick={handleBulkAssign}
             disabled={!selectedPlanId || userIds.length === 0 || bulkMut.isPending}
-            className="bg-sky-600 hover:bg-sky-700"
+            className="bg-primary hover:bg-primary/90"
           >
             {bulkMut.isPending ? (
               <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t("bulkAssigningLabel")}</>

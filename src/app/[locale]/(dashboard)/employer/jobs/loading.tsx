@@ -1,3 +1,5 @@
+import { ListSkeleton } from "@/components/shared/ListSkeleton";
+
 export default function JobsLoading() {
   return (
     <div className="page-container animate-in fade-in duration-300">
@@ -12,11 +14,7 @@ export default function JobsLoading() {
         <div className="h-9 w-64 bg-muted/40 rounded-md animate-pulse" />
         <div className="h-9 w-44 bg-muted/40 rounded-md animate-pulse" />
       </div>
-      <div className="space-y-3">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="rounded-lg border border-border bg-card p-4 sm:p-5 h-24 animate-pulse" style={{ opacity: 1 - i * 0.15 }} />
-        ))}
-      </div>
+      <ListSkeleton count={5} layout="list" itemClassName="h-24" className="space-y-3" />
     </div>
   );
 }

@@ -1319,33 +1319,33 @@ function PerformanceTab({ performance }: { performance: PerformanceData }) {
         </div>
 
         {jobs.length === 0 ? (
-          <p className="px-6 py-12 text-center text-slate-500">{t("noJobsCreated")}</p>
+          <p className="px-6 py-12 text-center text-muted-foreground">{t("noJobsCreated")}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[920px] text-sm">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50/80">
-                  <th className="text-left py-3 px-4 font-semibold text-slate-700">{t("jobTitleCol")}</th>
-                  <th className="text-center py-3 px-4 font-semibold text-slate-700">{t("statusCol")}</th>
-                  <th className="text-right py-3 px-4 font-semibold text-slate-700">{t("viewsCard")}</th>
-                  <th className="text-right py-3 px-4 font-semibold text-slate-700">{t("uniqueCol")}</th>
-                  <th className="text-right py-3 px-4 font-semibold text-slate-700">{t("applicationsCard")}</th>
-                  <th className="text-right py-3 px-4 font-semibold text-slate-700">{t("convRateCol")}</th>
-                  <th className="text-right py-3 px-4 font-semibold text-slate-700">{t("avgMatchCol")}</th>
-                  <th className="text-right py-3 px-4 font-semibold text-slate-700">{t("daysActiveCol")}</th>
+                <tr className="border-b border-border bg-muted/50">
+                  <th className="text-left py-3 px-4 font-semibold text-foreground">{t("jobTitleCol")}</th>
+                  <th className="text-center py-3 px-4 font-semibold text-foreground">{t("statusCol")}</th>
+                  <th className="text-right py-3 px-4 font-semibold text-foreground">{t("viewsCard")}</th>
+                  <th className="text-right py-3 px-4 font-semibold text-foreground">{t("uniqueCol")}</th>
+                  <th className="text-right py-3 px-4 font-semibold text-foreground">{t("applicationsCard")}</th>
+                  <th className="text-right py-3 px-4 font-semibold text-foreground">{t("convRateCol")}</th>
+                  <th className="text-right py-3 px-4 font-semibold text-foreground">{t("avgMatchCol")}</th>
+                  <th className="text-right py-3 px-4 font-semibold text-foreground">{t("daysActiveCol")}</th>
                 </tr>
               </thead>
               <tbody>
                 {jobs.map((job) => (
-                  <tr key={job.jobId} className="border-b border-slate-100 transition hover:bg-sky-50/40">
-                    <td className="py-3 px-4 text-slate-900 font-medium max-w-[200px] truncate">{job.title}</td>
+                  <tr key={job.jobId} className="border-b border-border/40 transition hover:bg-muted/30">
+                    <td className="py-3 px-4 text-foreground font-medium max-w-[200px] truncate">{job.title}</td>
                     <td className="text-center py-3 px-4">
                       <span
                         className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                           job.status === "active"
                             ? "bg-green-100 text-green-700"
                             : job.status === "closed"
-                            ? "bg-slate-100 text-slate-600"
+                            ? "bg-muted text-muted-foreground"
                             : job.status === "expired"
                             ? "bg-red-100 text-red-600"
                             : "bg-amber-100 text-amber-700"
@@ -1354,9 +1354,9 @@ function PerformanceTab({ performance }: { performance: PerformanceData }) {
                         {job.status}
                       </span>
                     </td>
-                    <td className="text-right py-3 px-4 text-slate-700">{job.views}</td>
-                    <td className="text-right py-3 px-4 text-slate-600">{job.uniqueViews}</td>
-                    <td className="text-right py-3 px-4 text-slate-700 font-semibold">{job.applications}</td>
+                    <td className="text-right py-3 px-4 text-foreground">{job.views}</td>
+                    <td className="text-right py-3 px-4 text-muted-foreground">{job.uniqueViews}</td>
+                    <td className="text-right py-3 px-4 text-foreground font-semibold">{job.applications}</td>
                     <td className="text-right py-3 px-4">
                       <span
                         className={`font-semibold ${
@@ -1370,10 +1370,10 @@ function PerformanceTab({ performance }: { performance: PerformanceData }) {
                         {job.conversionRate}%
                       </span>
                     </td>
-                    <td className="text-right py-3 px-4 text-slate-600">
+                    <td className="text-right py-3 px-4 text-muted-foreground">
                       {job.avgMatchScore > 0 ? `${job.avgMatchScore}%` : "—"}
                     </td>
-                    <td className="text-right py-3 px-4 text-slate-500">{job.daysActive}</td>
+                    <td className="text-right py-3 px-4 text-muted-foreground">{job.daysActive}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1403,10 +1403,10 @@ function PerformanceTab({ performance }: { performance: PerformanceData }) {
                   }`}
                 >
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-slate-900">{job.title}</p>
-                    <p className="text-sm text-slate-600 mt-0.5">{job.insight}</p>
+                    <p className="text-sm font-medium text-foreground">{job.title}</p>
+                    <p className="text-sm text-muted-foreground mt-0.5">{job.insight}</p>
                   </div>
-                  <span className="text-xs text-slate-500 shrink-0">
+                  <span className="text-xs text-muted-foreground/60 shrink-0">
                     {t("viewsAppsSummary", { views: job.views, apps: job.applications })}
                   </span>
                 </div>
@@ -1466,7 +1466,7 @@ function ResponseTimeTab({ data }: { data: ResponseTimeData }) {
         />
 
         {distribution.every((d) => d.count === 0) ? (
-          <p className="text-center text-slate-500 py-8">{t("noResponseTimeData")}</p>
+          <p className="text-center text-muted-foreground py-8">{t("noResponseTimeData")}</p>
         ) : (
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={distribution} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
@@ -1482,7 +1482,7 @@ function ResponseTimeTab({ data }: { data: ResponseTimeData }) {
 
       {perJob.length > 0 && (
         <AnalyticsPanel className="overflow-hidden p-0">
-          <div className="border-b border-slate-200 px-5 py-5 sm:px-6">
+          <div className="border-b border-border px-5 py-5 sm:px-6">
             <AnalyticsSectionHeader
               title={t("responseTimeByJob")}
               description={t("responseTimeByJobDesc")}
@@ -1495,17 +1495,17 @@ function ResponseTimeTab({ data }: { data: ResponseTimeData }) {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] text-sm">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50/80">
-                  <th className="text-left py-3 px-4 font-semibold text-slate-700">{t("jobTitleCol")}</th>
-                  <th className="text-right py-3 px-4 font-semibold text-slate-700">{t("avgResponseCol")}</th>
-                  <th className="text-right py-3 px-4 font-semibold text-slate-700">{t("medianLabel")}</th>
-                  <th className="text-right py-3 px-4 font-semibold text-slate-700">{t("measuredCol")}</th>
+                <tr className="border-b border-border bg-muted/50">
+                  <th className="text-left py-3 px-4 font-semibold text-foreground">{t("jobTitleCol")}</th>
+                  <th className="text-right py-3 px-4 font-semibold text-foreground">{t("avgResponseCol")}</th>
+                  <th className="text-right py-3 px-4 font-semibold text-foreground">{t("medianLabel")}</th>
+                  <th className="text-right py-3 px-4 font-semibold text-foreground">{t("measuredCol")}</th>
                 </tr>
               </thead>
               <tbody>
                 {perJob.map((job) => (
-                  <tr key={job.jobId} className="border-b border-slate-100 transition hover:bg-sky-50/40">
-                    <td className="py-3 px-4 text-slate-900 font-medium max-w-[250px] truncate">{job.title}</td>
+                  <tr key={job.jobId} className="border-b border-border/40 transition hover:bg-muted/30">
+                    <td className="py-3 px-4 text-foreground font-medium max-w-[250px] truncate">{job.title}</td>
                     <td className="text-right py-3 px-4">
                       <span
                         className={`font-semibold ${
@@ -1519,8 +1519,8 @@ function ResponseTimeTab({ data }: { data: ResponseTimeData }) {
                         {formatHoursLabel(job.avgHours, t)}
                       </span>
                     </td>
-                    <td className="text-right py-3 px-4 text-slate-600">{formatHoursLabel(job.medianHours, t)}</td>
-                    <td className="text-right py-3 px-4 text-slate-500">{job.count}</td>
+                    <td className="text-right py-3 px-4 text-muted-foreground">{formatHoursLabel(job.medianHours, t)}</td>
+                    <td className="text-right py-3 px-4 text-muted-foreground">{job.count}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1591,7 +1591,7 @@ function OffersTab({ data }: { data: OfferAnalyticsData }) {
         />
 
         {data.totalOffers === 0 ? (
-          <p className="py-10 text-center text-slate-500">{t("noOfferData")}</p>
+          <p className="py-10 text-center text-muted-foreground">{t("noOfferData")}</p>
         ) : (
           <div className="grid gap-6 lg:grid-cols-2">
             <ResponsiveContainer width="100%" height={260}>
@@ -1628,11 +1628,11 @@ function OffersTab({ data }: { data: OfferAnalyticsData }) {
                   <div key={row.status} className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2">
                       <div className="h-3 w-3 rounded-full" style={{ backgroundColor: OFFER_STATUS_COLORS[row.status] || "#94a3b8" }} />
-                      <span className="text-slate-700">{t(`offerStatus_${row.status}`)}</span>
+                      <span className="text-foreground">{t(`offerStatus_${row.status}`)}</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="font-semibold text-slate-900">{row.count}</span>
-                      <span className="w-10 text-right text-slate-500">{pct}%</span>
+                      <span className="font-semibold text-foreground">{row.count}</span>
+                      <span className="w-10 text-right text-muted-foreground">{pct}%</span>
                     </div>
                   </div>
                 );
@@ -1695,7 +1695,7 @@ function DiversityTab({ data }: { data: DiversityReportData }) {
         </div>
       </section>
 
-      <div className="rounded-2xl border border-sky-100 bg-sky-50/70 px-4 py-3 text-xs leading-5 text-sky-800">
+      <div className="rounded-2xl border border-border bg-card px-4 py-3 text-xs leading-5 text-foreground">
         {t("diversityPrivacyNote")}
       </div>
 
@@ -1708,7 +1708,7 @@ function DiversityTab({ data }: { data: DiversityReportData }) {
             eyebrow={t("inclusionEyebrow")}
           />
           {genderChartData.length === 0 ? (
-            <p className="py-8 text-center text-slate-500">{t("noDiversityData")}</p>
+            <p className="py-8 text-center text-muted-foreground">{t("noDiversityData")}</p>
           ) : (
             <ResponsiveContainer width="100%" height={250}>
               <PieChart>
@@ -1732,7 +1732,7 @@ function DiversityTab({ data }: { data: DiversityReportData }) {
             eyebrow={t("inclusionEyebrow")}
           />
           {ageChartData.length === 0 ? (
-            <p className="py-8 text-center text-slate-500">{t("noDiversityData")}</p>
+            <p className="py-8 text-center text-muted-foreground">{t("noDiversityData")}</p>
           ) : (
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={ageChartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
@@ -1755,7 +1755,7 @@ function DiversityTab({ data }: { data: DiversityReportData }) {
           eyebrow={t("inclusionEyebrow")}
         />
         {ethnicityEntries.length === 0 ? (
-          <p className="py-8 text-center text-slate-500">{t("noDiversityData")}</p>
+          <p className="py-8 text-center text-muted-foreground">{t("noDiversityData")}</p>
         ) : (
           <div className="space-y-3">
             {ethnicityEntries.map(([ethnicity, count]) => {
@@ -1763,10 +1763,10 @@ function DiversityTab({ data }: { data: DiversityReportData }) {
               return (
                 <div key={ethnicity}>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-700">{ethnicity}</span>
-                    <span className="text-slate-500">{count} · {pct}%</span>
+                    <span className="text-foreground">{ethnicity}</span>
+                    <span className="text-muted-foreground">{count} · {pct}%</span>
                   </div>
-                  <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-100">
+                  <div className="mt-1 h-2 overflow-hidden rounded-full bg-muted">
                     <div className="h-full rounded-full bg-indigo-500" style={{ width: `${pct}%` }} />
                   </div>
                 </div>

@@ -16,6 +16,9 @@ import { adminBroadcastSender } from "@/lib/inngest/adminBroadcast";
 // TODO: Re-add autoApplyFunction & autoApplyDailyReset when auto-apply feature is ready
 // import { autoApplyFunction, autoApplyDailyReset } from "@/lib/inngest/autoApply";
 
+// Route is intentionally public: the Inngest SDK's serve() verifies the
+// HMAC signature of every request against INNGEST_SIGNING_KEY before
+// dispatching to any function (https://www.inngest.com/docs/platform/signing-keys).
 export const { GET, POST, PUT } = serve({
   client: inngest,
   functions: [

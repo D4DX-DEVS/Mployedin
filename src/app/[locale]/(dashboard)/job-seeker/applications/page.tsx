@@ -4,12 +4,17 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
 import { FileText, MapPin, Calendar, Clock, ChevronRight, ChevronDown, Star, LogOut, Loader2, X, AlertTriangle, Search, SlidersHorizontal, Building2, Video, DollarSign, Briefcase, ExternalLink, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { ListSkeleton } from "@/components/shared/ListSkeleton";
+import { scoreTier } from "@/lib/ui/statusColors";
 import { usePagination } from "@/hooks/usePagination";
 import { useDebounce } from "@/hooks/useDebounce";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -142,7 +147,16 @@ export default function ApplicationsPage() {
         if (activeTab === "all" && !debouncedSearch && !dateFrom && !dateTo) {
           setOverallTotal(data.pagination?.total ?? 0);
         }
+      } else {
+        // 4xx/5xx previously fell through silently — stale list, no feedback.
+        setApplications([]);
+        toast.error(t("loadFailed"));
       }
+    } catch {
+      // Network failure previously surfaced as an unhandled rejection with an
+      // unexplained empty screen.
+      setApplications([]);
+      toast.error(t("loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -202,9 +216,9 @@ export default function ApplicationsPage() {
         <div className="border-b border-border/60 px-3.5 py-3 sm:px-4 sm:py-3.5 lg:px-5 lg:py-4">
           <div className="flex flex-col gap-2.5">
             <div className="flex flex-col gap-1.5 lg:flex-row lg:items-center lg:justify-between">
-              <div className="min-w-0">
-                <h1 className="text-[28px] font-semibold tracking-tight text-foreground">{t("title")}</h1>
-              </div>
+              <PageHeader
+                title={t("title")}
+              />
 
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-muted-foreground sm:text-sm">
                 <span><span className="text-foreground">{t("summary.total")}</span> {formatNumber(overallTotal)}</span>
@@ -353,27 +367,22 @@ export default function ApplicationsPage() {
               transition={{ duration: 0.22, ease: "easeOut" }}
             >
               {loading ? (
-                <div className="space-y-2.5">
-                  {Array.from({ length: 5 }).map((_, index) => (
-                    <div
-                      key={index}
-                      className="h-20 animate-pulse rounded-[20px] border border-border/60 bg-muted/40"
-                    />
-                  ))}
-                </div>
+                <ListSkeleton count={5} layout="list" itemClassName="h-20" className="space-y-2.5" />
               ) : applications.length === 0 ? (
-                <div className="rounded-[28px] border border-dashed border-border/70 bg-muted/10 px-6 py-16 text-center">
-                  <FileText className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
-                  <h3 className="text-lg font-semibold text-foreground">{t("emptyTitle")}</h3>
-                  <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-                    {activeTab === "all"
+                <EmptyState
+                  icon={FileText}
+                  title={t("emptyTitle")}
+                  description={
+                    activeTab === "all"
                       ? t("emptyAll")
-                      : t("emptyStatus", { status: activeStatusLabel.toLowerCase() })}
-                  </p>
-                  <Button size="sm" className="mt-5" onClick={() => router.push(`/${locale}/job-seeker/jobs`)}>
-                    {t("browseJobs")}
-                  </Button>
-                </div>
+                      : t("emptyStatus", { status: activeStatusLabel.toLowerCase() })
+                  }
+                  action={
+                    <Button size="sm" onClick={() => router.push(`/${locale}/job-seeker/jobs`)}>
+                      {t("browseJobs")}
+                    </Button>
+                  }
+                />
               ) : (
                 <div className="space-y-2.5">
                   {applications.map((app) => (
@@ -571,11 +580,7 @@ function ApplicationCard({
                 <span
                   className={cn(
                     "inline-flex items-center rounded-full border px-2 py-1 text-[11px] font-semibold leading-none shadow-sm",
-                    app.aiMatchScore >= 70
-                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                      : app.aiMatchScore >= 50
-                        ? "border-amber-200 bg-amber-50 text-amber-700"
-                        : "border-border/70 bg-muted/20 text-muted-foreground"
+                    scoreTier(app.aiMatchScore)
                   )}
                 >
                   {t("match", { score: app.aiMatchScore.toLocaleString(numberLocale) })}

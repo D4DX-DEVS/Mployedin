@@ -726,7 +726,7 @@ export default function AgentLeadsPage() {
               <p className="mt-1 text-xl font-bold text-foreground">{pagination.total}</p>
             </div>
             {can("leads", "create") && (
-              <Button onClick={openAdd} className="h-11 rounded-xl bg-sky-600 px-5 text-sm font-semibold text-white shadow-sm hover:bg-sky-700">
+              <Button onClick={openAdd} className="h-11 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90">
                 <Plus className="mr-1.5 h-4 w-4" />{t("newLead")}
               </Button>
             )}

@@ -167,7 +167,7 @@ export default function AdminTerritoryPage() {
             <Button
               size="sm"
               onClick={() => setShowForm((v) => !v)}
-              className="h-10 gap-1.5 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700"
+              className="h-10 gap-1.5 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
             >
               {showForm ? <><X className="h-3.5 w-3.5" /> {tr("cancelButtonLabel")}</> : <><Plus className="h-3.5 w-3.5" /> {tr("newTerritoryButtonLabel")}</>}
             </Button>
@@ -213,7 +213,7 @@ export default function AdminTerritoryPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button type="submit" size="sm" disabled={saving} className="bg-sky-600 hover:bg-sky-700 text-white">
+              <Button type="submit" size="sm" disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground">
                 {saving ? tr("savingButtonText") : tr("createButtonText")}
               </Button>
             </form>

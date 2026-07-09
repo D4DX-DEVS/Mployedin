@@ -293,7 +293,7 @@ export default function EmployerMatchingWeightsPage() {
                     <span>{weights[key]}%</span>
                   </div>
                   <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted/50">
-                    <div className="h-full rounded-full bg-sky-600 transition-all duration-300" style={{ width: `${weights[key]}%` }} />
+                    <div className="h-full rounded-full bg-primary transition-all duration-300" style={{ width: `${weights[key]}%` }} />
                   </div>
                 </div>
               ))}
@@ -353,7 +353,7 @@ export default function EmployerMatchingWeightsPage() {
             <Button
               onClick={handleSave}
               disabled={saveWeights.isPending || !isTotalValid}
-              className="gap-2 rounded-xl bg-sky-600 text-white hover:bg-sky-700 disabled:bg-slate-300"
+              className="gap-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground"
             >
               {saveWeights.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : saved ? <CheckCircle className="h-4 w-4" /> : <Save className="h-4 w-4" />}
               {saveWeights.isPending ? t("saving") : saved ? "✓" : t("save")}
@@ -385,7 +385,7 @@ export default function EmployerMatchingWeightsPage() {
                   </div>
                   <div className="h-2 overflow-hidden rounded-full bg-muted/50">
                     <div
-                      className="h-full rounded-full bg-sky-600 transition-all duration-300"
+                      className="h-full rounded-full bg-primary transition-all duration-300"
                       style={{ width: `${weights[key]}%` }}
                     />
                   </div>
