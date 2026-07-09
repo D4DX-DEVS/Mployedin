@@ -51,7 +51,7 @@ export const DELETE = withAuth(async (req: NextRequest, ctx) => {
 
   const anonymizedEmail = `deleted_${ctx.userId}@anonymized.mployedin.com`;
 
-  await Promise.all([
+  const [, seekerBefore] = await Promise.all([
     // Anonymize user account
     User.findByIdAndUpdate(ctx.userId, {
       name: "Deleted User",
@@ -64,8 +64,8 @@ export const DELETE = withAuth(async (req: NextRequest, ctx) => {
     // or $unset silently no-ops: `cv` (holds originalUrl + parsed resume text)
     // and `experience` were previously misnamed `cvUrl`/`workExperience`, so
     // that PII survived "erasure". Also clear financial PII (bank/IBAN).
-    // ponytail: the S3 object at cv.originalUrl still lingers (private bucket) —
-    // add a storage delete if hard-erasure of the file becomes a requirement.
+    // findOneAndUpdate returns the PRE-update doc, so `seekerBefore` still
+    // carries cv.originalUrl for the storage hard-delete below.
     JobSeeker.findOneAndUpdate(
       { userId: ctx.userId },
       {
@@ -81,10 +81,23 @@ export const DELETE = withAuth(async (req: NextRequest, ctx) => {
           iban: 1,
         },
       }
-    ),
+    ).select("cv").lean<{ cv?: { originalUrl?: string } } | null>(),
     // Delete notifications
     Notification.deleteMany({ userId: ctx.userId }),
   ]);
+
+  // Hard-delete the CV file from storage — DB erasure alone left the S3 object
+  // behind. Best-effort: a storage failure must not fail the erasure itself
+  // (fields are already unset; the bucket is private).
+  const cvUrl = seekerBefore?.cv?.originalUrl;
+  if (cvUrl) {
+    try {
+      const { deleteFile } = await import("@/lib/storage/spaces");
+      await deleteFile(cvUrl);
+    } catch {
+      /* best-effort */
+    }
+  }
 
   // Log the erasure
   await logActivity({
