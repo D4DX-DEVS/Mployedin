@@ -3,6 +3,9 @@ import { withAuth } from "@/lib/auth/withAuth";
 import type { AuthContext } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import JobSeeker from "@/models/JobSeeker";
+import Employer from "@/models/Employer";
+import Application from "@/models/Application";
+import TalentPool from "@/models/TalentPool";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { downloadBuffer } from "@/lib/storage/spaces";
 
@@ -36,8 +39,10 @@ interface SeekerDoc {
  * attachment`; proxying lets us force `inline` and avoids CSP frame-src /
  * CORS restrictions on the third-party domain.
  *
- * The [id] param is the JobSeeker _id. Employers, agents and admins may view
- * any candidate in the talent pool; job seekers may view their own CV.
+ * The [id] param is the JobSeeker _id. An employer may view a candidate's CV
+ * only if that candidate applied to one of the employer's jobs or sits in one
+ * of the employer's talent pools; admins may view any; job seekers may view
+ * their own CV.
  */
 async function getHandler(
   _req: NextRequest,
@@ -57,12 +62,26 @@ async function getHandler(
     seeker = (await JobSeeker.findOne({ userId: ctx.userId })
       .select("userId cv documents")
       .lean()) as SeekerDoc | null;
-  } else if (
-    ctx.role === "employer" ||
-    ctx.role === "agent" ||
-    ctx.role === "super_agent" ||
-    ctx.role === "admin"
-  ) {
+  } else if (ctx.role === "admin") {
+    // Platform operator — may view any candidate CV for support.
+    seeker = (await JobSeeker.findById(id)
+      .select("userId cv documents")
+      .lean()) as SeekerDoc | null;
+  } else if (ctx.role === "employer") {
+    // An employer may view a candidate's CV only if that candidate applied to
+    // one of the employer's jobs OR sits in one of the employer's talent pools.
+    // Without this gate any employer could stream any seeker's resume (PII IDOR).
+    const employer = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
+    if (!employer) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    const [hasApplication, inTalentPool] = await Promise.all([
+      Application.exists({ jobSeekerId: id, employerId: employer._id }),
+      TalentPool.exists({ employerId: employer._id, "candidates.jobSeekerId": id }),
+    ]);
+    if (!hasApplication && !inTalentPool) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
     seeker = (await JobSeeker.findById(id)
       .select("userId cv documents")
       .lean()) as SeekerDoc | null;

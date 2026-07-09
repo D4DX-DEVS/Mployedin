@@ -60,18 +60,25 @@ export const DELETE = withAuth(async (req: NextRequest, ctx) => {
       isActive: false,
       deletedAt: new Date(),
     }),
-    // Delete job seeker profile data
+    // Delete job seeker profile data. Field names MUST match the schema exactly
+    // or $unset silently no-ops: `cv` (holds originalUrl + parsed resume text)
+    // and `experience` were previously misnamed `cvUrl`/`workExperience`, so
+    // that PII survived "erasure". Also clear financial PII (bank/IBAN).
+    // ponytail: the S3 object at cv.originalUrl still lingers (private bucket) —
+    // add a storage delete if hard-erasure of the file becomes a requirement.
     JobSeeker.findOneAndUpdate(
       { userId: ctx.userId },
       {
         $unset: {
-          cvUrl: 1,
+          cv: 1,
           skills: 1,
-          workExperience: 1,
+          experience: 1,
           education: 1,
           languages: 1,
           nationality: 1,
           passportNumber: 1,
+          bankAccountNumber: 1,
+          iban: 1,
         },
       }
     ),

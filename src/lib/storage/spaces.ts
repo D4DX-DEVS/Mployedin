@@ -82,6 +82,14 @@ export type UploadFolder =
   | "exports"
   | "other";
 
+/**
+ * Folders that hold PII / sensitive files. These default to a PRIVATE ACL so a
+ * caller that forgets `private: true` can never accidentally publish a CV, an
+ * identity document, or a data export. A caller may still force `private: false`
+ * for a deliberately public file in one of these folders.
+ */
+const PRIVATE_FOLDERS = new Set<UploadFolder>(["cvs", "documents", "exports"]);
+
 // ─── Upload – Buffer / Blob ───────────────────────────────────────────────────
 
 /**
@@ -137,7 +145,7 @@ export async function uploadBuffer(
     Key: key,
     Body: body,
     ContentType: options.contentType ?? "application/octet-stream",
-    ACL: options.private ? "private" : "public-read",
+    ACL: (options.private ?? PRIVATE_FOLDERS.has(folder)) ? "private" : "public-read",
     ...(options.fileName && { ContentDisposition: `inline; filename="${options.fileName}"` }),
   };
 
@@ -214,7 +222,7 @@ export async function uploadLarge(
       Key: key,
       Body: stream as any,
       ContentType: options.contentType ?? "application/octet-stream",
-      ACL: options.private ? "private" : "public-read",
+      ACL: (options.private ?? PRIVATE_FOLDERS.has(folder)) ? "private" : "public-read",
     },
   });
 

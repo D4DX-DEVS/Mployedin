@@ -11,6 +11,7 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { sendEmail, EmailTemplates } from "@/lib/communications/email";
 import { autoAssignDefaultPlan } from "@/lib/subscription/autoAssign";
+import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import { notify, getSuperAgentUserId } from "@/lib/notifications/trigger";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
@@ -54,7 +55,19 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     if (!agentDoc || String(lead.agentId) !== String(agentDoc._id)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-  } else if (ctx.role === "super_agent" || ctx.role === "admin") {
+  } else if (ctx.role === "super_agent") {
+    // Scope super-agents to their own team/region — they must not convert
+    // another team's lead (cross-team commission fraud).
+    const scope = await getSuperAgentScope(ctx.userId);
+    const inScope = Boolean(
+      scope && (
+        String((lead as { superAgentId?: unknown }).superAgentId ?? "") === String(scope.saProfileId) ||
+        scope.effectiveAgentIds.map(String).includes(String(lead.agentId ?? ""))
+      )
+    );
+    if (!inScope) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    agentDoc = await Agent.findById(lead.agentId).select("_id userId").lean();
+  } else if (ctx.role === "admin") {
     // Allowed — resolve agent from the lead
     agentDoc = await Agent.findById(lead.agentId).select("_id userId").lean();
   } else {

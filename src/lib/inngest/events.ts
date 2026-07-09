@@ -89,6 +89,17 @@ export interface NotificationWeeklyDigestEvent {
   };
 }
 
+export interface AdminBroadcastEvent {
+  name: "admin/broadcast";
+  data: {
+    title: string;
+    message: string;
+    targetRoles?: string[];
+    targetAll?: boolean;
+    channels: string[];
+  };
+}
+
 /**
  * Union of all notification events flowing through Inngest.
  */
@@ -97,4 +108,5 @@ export type NotificationEvent =
   | NotificationDailyDigestEvent
   | NotificationReEngagementEvent
   | NotificationProfileCompletionEvent
-  | NotificationWeeklyDigestEvent;
+  | NotificationWeeklyDigestEvent
+  | AdminBroadcastEvent;

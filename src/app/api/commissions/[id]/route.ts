@@ -104,9 +104,16 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   if (body.disputeResolution && !commission.resolvedAt) {
     update.resolvedBy = ctx.userId;
     update.resolvedAt = new Date();
-    // If dispute is resolved, revert status back to the pre-dispute status
+    // If dispute is resolved, revert status back to the pre-dispute status.
+    // A previously-paid commission must return to "paid" — never "approved" —
+    // otherwise the next payout batch (which matches status:"approved") would
+    // pay it a second time with a fresh paymentRef (double payout).
     if (body.disputeResolution === "resolved" && !body.status) {
-      update.status = commission.approvedAt ? "approved" : "pending";
+      update.status = commission.paidAt
+        ? "paid"
+        : commission.approvedAt
+          ? "approved"
+          : "pending";
     }
   }
 

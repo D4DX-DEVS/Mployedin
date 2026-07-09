@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import OfferLetter, { OfferLetterTemplate } from "@/models/OfferLetter";
 import Employer from "@/models/Employer";
+import Offer from "@/models/Offer";
 import { logActivity } from "@/lib/audit/log";
 import mongoose from "mongoose";
 
@@ -65,10 +66,21 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
   if (!offerId || !candidateName || !candidateEmail) {
     return NextResponse.json({ error: "offerId, candidateName, candidateEmail required" }, { status: 400 });
   }
+  if (!mongoose.isValidObjectId(offerId)) {
+    return NextResponse.json({ error: "Invalid offerId" }, { status: 400 });
+  }
+
+  // Ownership: the offer must belong to the caller's employer. Without this an
+  // employer could attach a letter to another employer's offer (cross-tenant IDOR).
+  const offer = await Offer.findById(offerId).select("employerId").lean();
+  if (!offer || String((offer as { employerId?: unknown }).employerId) !== String(employer._id)) {
+    return NextResponse.json({ error: "Offer not found or not yours" }, { status: 403 });
+  }
 
   let content = body.content || "";
   if (templateId && mongoose.isValidObjectId(templateId)) {
-    const template = await OfferLetterTemplate.findById(templateId).lean();
+    // Scope to this employer — never render another employer's private template.
+    const template = await OfferLetterTemplate.findOne({ _id: templateId, employerId: employer._id }).lean();
     if (template) {
       content = template.content;
       // Replace variables

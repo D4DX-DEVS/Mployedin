@@ -210,21 +210,30 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   const { applicationId, jobId, jobSeekerId, employerId, startDate, salary, currency, visaStatus, notes } = body;
 
   const { logActivity, actorFromCtx } = await import("@/lib/audit/log");
-  const placement = await Placement.create({
-    applicationId,
-    jobId,
-    jobSeekerId,
-    employerId,
-    agentId: body.agentId,
-    superAgentId: body.superAgentId,
-    placedAt: new Date(),
-    startDate: startDate ? new Date(startDate) : undefined,
-    salary,
-    currency: currency ?? "AED",
-    visaStatus: visaStatus ?? "pending",
-    commissionPaid: false,
-    notes,
-  });
+  let placement;
+  try {
+    placement = await Placement.create({
+      applicationId,
+      jobId,
+      jobSeekerId,
+      employerId,
+      agentId: body.agentId,
+      superAgentId: body.superAgentId,
+      placedAt: new Date(),
+      startDate: startDate ? new Date(startDate) : undefined,
+      salary,
+      currency: currency ?? "AED",
+      visaStatus: visaStatus ?? "pending",
+      commissionPaid: false,
+      notes,
+    });
+  } catch (err) {
+    // Unique index on applicationId → this application is already placed.
+    if ((err as { code?: number }).code === 11000) {
+      return NextResponse.json({ error: "A placement already exists for this application" }, { status: 409 });
+    }
+    throw err;
+  }
 
   // Increment agent performance counter
   if (body.agentId) {

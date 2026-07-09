@@ -21,7 +21,7 @@ export interface ISubscriptionHistory extends Document {
   toPlanId?: mongoose.Types.ObjectId;
   fromPlanName?: string;
   toPlanName?: string;
-  performedBy: mongoose.Types.ObjectId;
+  performedBy?: mongoose.Types.ObjectId;
   performedByRole: string;
   reason?: string;
   meta?: Record<string, unknown>;
@@ -42,7 +42,9 @@ const SubscriptionHistorySchema = new Schema<ISubscriptionHistory>(
     toPlanId: { type: Schema.Types.ObjectId, ref: "SubscriptionPlan" },
     fromPlanName: String,
     toPlanName: String,
-    performedBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    // Optional: system-initiated events (auto-renewal, expiry, online purchase)
+    // have no human actor — performedByRole:"system" conveys the actor instead.
+    performedBy: { type: Schema.Types.ObjectId, ref: "User" },
     performedByRole: { type: String, required: true },
     reason: String,
     meta: { type: Schema.Types.Mixed },

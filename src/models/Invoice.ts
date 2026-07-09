@@ -371,30 +371,41 @@ InvoiceSchema.index({ dueDate: 1, status: 1 });
 InvoiceSchema.index({ invoiceNumber: 1 });
 
 // ── Pre-save: auto-calculate totals ──────────────────────────────────────────
+// All derived amounts are computed in integer minor units (cents/fils) so IEEE754
+// float intermediates can never accumulate drift, then stored back as decimal.
+const toCents = (n: number) => Math.round((n || 0) * 100);
+const fromCents = (c: number) => c / 100;
+
 InvoiceSchema.pre("save", function () {
   // Subtotal from line items if present
   if (this.lineItems && this.lineItems.length > 0) {
-    this.subtotal = this.lineItems.reduce((sum, item) => sum + item.amount, 0);
+    this.subtotal = fromCents(this.lineItems.reduce((sum, item) => sum + toCents(item.amount), 0));
   }
 
+  const subtotalC = toCents(this.subtotal);
+
   // Discount
-  this.discountAmount = Math.round((this.subtotal * (this.discountPercent || 0)) / 100 * 100) / 100;
-  const afterDiscount = this.subtotal - this.discountAmount;
+  const discountC = Math.round((subtotalC * (this.discountPercent || 0)) / 100);
+  this.discountAmount = fromCents(discountC);
+  const afterDiscountC = subtotalC - discountC;
 
   // Tax
-  this.taxAmount = Math.round((afterDiscount * (this.taxPercent || 0)) / 100 * 100) / 100;
+  const taxC = Math.round((afterDiscountC * (this.taxPercent || 0)) / 100);
+  this.taxAmount = fromCents(taxC);
 
   // Total
-  this.totalAmount = Math.round((afterDiscount + this.taxAmount + (this.serviceCharge || 0)) * 100) / 100;
+  const totalC = afterDiscountC + taxC + toCents(this.serviceCharge || 0);
+  this.totalAmount = fromCents(totalC);
   this.amount = this.totalAmount;
 
   // Paid & balance
-  this.paidAmount = (this.payments || []).reduce((sum, p) => sum + p.amount, 0);
-  this.balanceDue = Math.max(0, Math.round((this.totalAmount - this.paidAmount - (this.refundedAmount || 0)) * 100) / 100);
+  const paidC = (this.payments || []).reduce((sum, p) => sum + toCents(p.amount), 0);
+  this.paidAmount = fromCents(paidC);
+  this.balanceDue = fromCents(Math.max(0, totalC - paidC - toCents(this.refundedAmount || 0)));
 
   // Platform revenue
-  const totalCommission = (this.commissions || []).reduce((sum, c) => sum + c.amount, 0);
-  this.platformRevenue = Math.round((this.totalAmount - totalCommission) * 100) / 100;
+  const totalCommissionC = (this.commissions || []).reduce((sum, c) => sum + toCents(c.amount), 0);
+  this.platformRevenue = fromCents(totalC - totalCommissionC);
 
   // Auto-update status based on payments
   if (!(INVOICE_TERMINAL_STATUSES as readonly string[]).includes(this.status)) {

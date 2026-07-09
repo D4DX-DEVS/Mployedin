@@ -5,7 +5,7 @@ import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { enforceDailyAiQuota } from "@/lib/ai/dailyQuota";
 import { sanitizeChatMessages, sanitizeAIInput, AI_TOKEN_LIMITS } from "@/lib/ai/sanitize";
 import { GEMINI_MODELS } from "@/lib/ai/gemini";
-import { getAssistantSystemPrompt, type AssistantContext } from "@/lib/ai/assistantPrompts";
+import { getAssistantSystemPrompt, SCOPE_GUARD, type AssistantContext } from "@/lib/ai/assistantPrompts";
 import { connectDB } from "@/lib/db/mongoose";
 import { validateBody } from "@/lib/validators";
 import { aiChatSchema } from "@/lib/validators/ai";
@@ -19,6 +19,9 @@ import Lead from "@/models/Lead";
 import Application from "@/models/Application";
 import Interview from "@/models/Interview";
 import Placement from "@/models/Placement";
+import SavedJob from "@/models/SavedJob";
+import Offer from "@/models/Offer";
+import ProfileView from "@/models/ProfileView";
 import Commission from "@/models/Commission";
 import BlogPost from "@/models/BlogPost";
 import FAQ from "@/models/FAQ";
@@ -87,7 +90,7 @@ export async function POST(req: NextRequest) {
         const [user, profile] = await Promise.all([
           User.findById(session.user.id).select("name email").lean(),
           JobSeeker.findOne({ userId: session.user.id })
-            .select("skills experience education languages certifications headline workStatus totalExperienceYears totalExperienceMonths currentLocation preferredCountries preferredRoles preferredSalary preferredJobType availabilityStatus industry nationality")
+            .select("skills experience education languages certifications headline workStatus totalExperienceYears totalExperienceMonths currentLocation preferredCountries preferredRoles preferredSalary preferredJobType availabilityStatus industry nationality cv.originalUrl cv.atsScore cv.atsReport.rating cv.atsReport.recommendations cv.atsAnalyzedAt cv.rawText cv.parsedAt")
             .lean(),
         ]);
 
@@ -137,20 +140,144 @@ export async function POST(req: NextRequest) {
             profileContext = `\n\n## User Profile (use this to personalize responses — do NOT ask for info already available here)\n${parts.join("\n")}`;
           }
 
+          // Application history + interviews + saved jobs — so AI can exclude
+          // applied jobs and answer "what did I apply to / any interviews?"
+          const [appliedJobIds, recentApps, upcomingInterviews, savedJobIds, pendingOffers, profileViewsThisWeek] = await Promise.all([
+            Application.find({ jobSeekerId: profile._id }).distinct("jobId"),
+            Application.find({ jobSeekerId: profile._id })
+              .select("jobId status aiMatchScore matchGaps appliedAt")
+              .sort({ appliedAt: -1 })
+              .limit(10)
+              .populate("jobId", "title")
+              .lean(),
+            Interview.find({
+              jobSeekerId: profile._id,
+              status: { $in: ["scheduled", "confirmed", "rescheduled"] },
+              scheduledAt: { $gte: new Date() },
+            })
+              .select("jobId scheduledAt")
+              .sort({ scheduledAt: 1 })
+              .limit(5)
+              .populate("jobId", "title")
+              .lean(),
+            SavedJob.find({ jobSeekerId: session.user.id }).distinct("jobId"),
+            Offer.find({
+              jobSeekerId: profile._id,
+              status: { $in: ["pending", "countered"] },
+              expiresAt: { $gte: new Date() },
+            })
+              .select("jobId salary expiresAt status")
+              .populate("jobId", "title")
+              .lean(),
+            ProfileView.countDocuments({
+              jobSeekerId: session.user.id,
+              viewedAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+            }),
+          ]);
+
+          let activityContext = "";
+          if (recentApps.length) {
+            const appLines = recentApps.map((a) => {
+              const title = (a.jobId as unknown as { title?: string } | null)?.title ?? "a job";
+              const date = a.appliedAt ? ` (applied ${new Date(a.appliedAt).toISOString().slice(0, 10)})` : "";
+              const score = a.aiMatchScore != null ? ` | match score ${a.aiMatchScore}%` : "";
+              const gaps = a.matchGaps?.length ? ` | skill gaps: ${a.matchGaps.slice(0, 3).join(", ")}` : "";
+              return `- ${title}: ${a.status.replace(/_/g, " ")}${date}${score}${gaps}`;
+            });
+            activityContext += `\n\n## User's Applications (${appliedJobIds.length} total — jobs already applied to are EXCLUDED from the live jobs list below; never recommend a job the user already applied to)\n${appLines.join("\n")}`;
+          } else {
+            activityContext += `\n\n## User's Applications\nThe user has not applied to any jobs yet.`;
+          }
+          if (upcomingInterviews.length) {
+            const intLines = upcomingInterviews.map((i) => {
+              const title = (i.jobId as unknown as { title?: string } | null)?.title ?? "a job";
+              return `- ${title}: ${new Date(i.scheduledAt).toUTCString()}`;
+            });
+            activityContext += `\n\n## Upcoming Interviews\n${intLines.join("\n")}`;
+          }
+          if (pendingOffers.length) {
+            const offerLines = pendingOffers.map((o) => {
+              const title = (o.jobId as unknown as { title?: string } | null)?.title ?? "a job";
+              const sal = o.salary ? ` | ${o.salary.currency} ${o.salary.amount.toLocaleString()}/${o.salary.period}` : "";
+              return `- ${title}: ${o.status}${sal} | expires ${new Date(o.expiresAt).toISOString().slice(0, 10)}`;
+            });
+            activityContext += `\n\n## Pending Job Offers (remind the user to respond before expiry)\n${offerLines.join("\n")}`;
+          }
+          if (profileViewsThisWeek > 0) {
+            activityContext += `\n\n## Profile Engagement\n${profileViewsThisWeek} employer view(s) of the user's profile in the last 7 days — mention as encouragement when relevant.`;
+          }
+
+          // Profile completeness — nudge material when user asks how to improve chances
+          const missingSections: string[] = [];
+          if (!profile.headline) missingSections.push("headline");
+          if (!profile.skills?.length) missingSections.push("skills");
+          if (!profile.experience?.length) missingSections.push("work experience");
+          if (!profile.education?.length) missingSections.push("education");
+          if (!profile.languages?.length) missingSections.push("languages");
+          if (!profile.certifications?.length) missingSections.push("certifications");
+          if (!profile.preferredRoles?.length) missingSections.push("preferred roles");
+          if (!profile.currentLocation) missingSections.push("current location");
+          if (missingSections.length) {
+            activityContext += `\n\n## Profile Gaps\nMissing profile sections: ${missingSections.join(", ")}. If the user asks how to improve their chances or visibility, suggest completing these first.`;
+          }
+
+          // CV / ATS analysis — cached result from the platform's ATS checker
+          const cv = profile.cv as
+            | { originalUrl?: string; atsScore?: number; atsAnalyzedAt?: Date; atsReport?: { rating?: string; recommendations?: string[] }; rawText?: string; parsedAt?: Date }
+            | undefined;
+          if (cv?.atsScore != null) {
+            const recs = cv.atsReport?.recommendations?.slice(0, 5) ?? [];
+            activityContext += `\n\n## CV / ATS Analysis (real cached result from MPLOYEDIN's ATS checker — this IS the user's actual ATS score, share it when asked)\n- ATS score: ${cv.atsScore}/100${cv.atsReport?.rating ? ` (${cv.atsReport.rating})` : ""}${cv.atsAnalyzedAt ? ` | analyzed ${new Date(cv.atsAnalyzedAt).toISOString().slice(0, 10)}` : ""}${recs.length ? `\n- Top recommendations:\n${recs.map((r) => `  - ${r}`).join("\n")}` : ""}`;
+          } else if (cv?.originalUrl) {
+            activityContext += `\n\n## CV / ATS Analysis\nThe user has uploaded a CV but has not run the ATS check yet. Tell them to run the ATS analysis from their CV section to get a real score — do NOT invent a score.`;
+          } else {
+            activityContext += `\n\n## CV / ATS Analysis\nThe user has not uploaded a CV yet. Suggest uploading one from their profile so employers and the ATS checker can read it.`;
+          }
+          if (cv?.rawText) {
+            const cvText = sanitizeAIInput(cv.rawText, 4000);
+            activityContext += `\n\n## CV Content (text extracted from the user's actual uploaded CV${cv.parsedAt ? `, parsed ${new Date(cv.parsedAt).toISOString().slice(0, 10)}` : ""} — answer CV questions from this, quote it when useful, and point out mismatches between the CV and the profile data above)\n"""\n${cvText}\n"""`;
+          }
+
           // Fetch real active jobs from MPLOYEDIN database matching user's skills
           const userSkills: string[] = profile.skills ?? [];
-          const skillFilter = userSkills.length > 0
-            ? { "requirements.skills": { $in: userSkills } }
+          // ponytail: case-insensitive skill match tolerant of ".js" suffix ("React" ↔ "React.js")
+          const skillRegexes = userSkills.map((s) => {
+            const base = s.trim().replace(/\.js$/i, "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            return new RegExp(`^${base}(\\.js)?$`, "i");
+          });
+          const skillFilter = skillRegexes.length > 0
+            ? { "requirements.skills": { $in: skillRegexes } }
             : {};
 
-          const liveJobs = await Job.find({
+          const savedSet = new Set(savedJobIds.map(String));
+          const candidateJobs = await Job.find({
             status: "active",
+            _id: { $nin: appliedJobIds },
             ...skillFilter,
           })
-            .select("_id title category location requirements salary tags description")
+            .select("_id title category location requirements salary tags description workMode")
             .sort({ createdAt: -1 })
-            .limit(10)
+            .limit(30)
             .lean();
+
+          // Rank by profile preferences (country, role, work mode); stable sort keeps newest first within ties
+          const prefCountries = (profile.preferredCountries ?? []).map((c: string) => c.toLowerCase());
+          const prefRoles = (profile.preferredRoles ?? []).map((r: string) => r.toLowerCase());
+          const prefMode = profile.preferredJobType;
+          const liveJobs = candidateJobs
+            .map((j) => {
+              let score = 0;
+              const country = j.location?.country?.toLowerCase() ?? "";
+              if (prefCountries.includes(country)) score += 2;
+              if (j.location?.isRemote && prefMode !== "onsite") score += 2;
+              const title = j.title.toLowerCase();
+              if (prefRoles.some((r: string) => title.includes(r))) score += 2;
+              if (prefMode && prefMode !== "any" && j.workMode === prefMode) score += 1;
+              return { j, score };
+            })
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 10)
+            .map((x) => x.j);
 
           if (liveJobs.length > 0) {
             const jobLines = liveJobs.map((j) => {
@@ -163,12 +290,14 @@ export async function POST(req: NextRequest) {
               const skills = j.requirements?.skills?.slice(0, 5).join(", ") ?? "";
               const locale = currentPage?.match(/^\/(en|ar)\//)?.[1] ?? "en";
               const link = `/${locale}/job-seeker/jobs/${j._id}`;
-              return `- [${j.title}](${link}) | ${loc}${sal} | Skills: ${skills}`;
+              const saved = savedSet.has(String(j._id)) ? " | (user saved this job)" : "";
+              return `- [${j.title}](${link}) | ${loc}${sal} | Skills: ${skills}${saved}`;
             });
             jobsContext = `\n\n## Live Jobs on MPLOYEDIN (ONLY reference these — never invent jobs)\n${jobLines.join("\n")}\n\nFormat EVERY job recommendation as a markdown link exactly like: [Job Title](/en/job-seeker/jobs/ID). CRITICAL: Use ONLY the relative URLs provided above (starting with /). NEVER prepend a domain like https://mployedin.com or https://www.mployedin.com. Never show raw IDs. Always copy the link EXACTLY as provided in the list above so users can click to view the job. Tell the user they can click the job title to view and apply. Do NOT mention any job not in this list.`;
           } else {
-            jobsContext = `\n\n## Live Jobs on MPLOYEDIN\nNo active jobs currently match the user's skill set. Tell the user honestly that there are no matching roles right now and suggest they check their job feed for the latest listings or update their skills.`;
+            jobsContext = `\n\n## Live Jobs on MPLOYEDIN\nNo active jobs currently match the user's skill set (jobs already applied to are excluded). Tell the user honestly that there are no new matching roles right now and suggest they check their job feed for the latest listings or update their skills.`;
           }
+          jobsContext = activityContext + jobsContext;
         }
       } catch (err) {
         logger.error({ err }, "[AI Chat] Failed to fetch user profile");
@@ -352,10 +481,11 @@ ${recentJobLines || "  (no jobs yet)"}`;
 
           const [users, allLeads, teamPlacementCount, pendingApprovals, teamJobs] = await Promise.all([
             User.find({ _id: { $in: agentUserIds } }).select("name email").lean(),
-            Lead.find({ agentId: { $in: agentUserIdStrs } })
+            // Lead/Placement.agentId ref the Agent doc, not the User
+            Lead.find({ agentId: { $in: agentIds } })
               .select("agentId status createdAt convertedAt followUpAt activityLog")
               .lean(),
-            Placement.countDocuments({ agentId: { $in: agentUserIdStrs } }),
+            Placement.countDocuments({ agentId: { $in: agentIds } }),
             Job.countDocuments(pendingApprovalFilter),
             Job.countDocuments({ postedBy: { $in: agentUserIds }, status: "active" }),
           ]);
@@ -363,9 +493,9 @@ ${recentJobLines || "  (no jobs yet)"}`;
           const userMap = new Map(users.map((u) => [u._id.toString(), u]));
 
           // Per-agent breakdown for AI context
-          const agentLines = agentUserIdStrs.map((uid) => {
-            const user = userMap.get(uid);
-            const agentLeads = allLeads.filter((l) => l.agentId?.toString() === uid);
+          const agentLines = agentDocs.map((agentDoc) => {
+            const user = userMap.get(agentDoc.userId?.toString() ?? "");
+            const agentLeads = allLeads.filter((l) => l.agentId?.toString() === agentDoc._id.toString());
             const converted = agentLeads.filter((l) => l.status === "converted").length;
             const rate = agentLeads.length > 0 ? Math.round((converted / agentLeads.length) * 100) : 0;
             const overdue = agentLeads.filter(
@@ -439,14 +569,51 @@ Use this data to answer questions about team performance, identify underperforme
         await connectDB();
         const agentProfile = await Agent.findOne({ userId: session.user.id }).select("_id").lean();
         if (agentProfile) {
-          const [activeJobs, totalApps, openLeads, scheduledInterviews, placements] = await Promise.all([
-            Job.countDocuments({ postedBy: session.user.id, status: "active" }),
+          const [activeJobsList, totalApps, myLeads, upcomingInterviews, placements] = await Promise.all([
+            Job.find({ postedBy: session.user.id, status: "active" })
+              .select("title location.country")
+              .sort({ createdAt: -1 })
+              .limit(10)
+              .lean(),
             Application.countDocuments({ agentId: agentProfile._id }),
-            Lead.countDocuments({ agentId: agentProfile._id, status: { $nin: ["converted", "lost"] } }),
-            Interview.countDocuments({ agentId: agentProfile._id, status: "scheduled" }),
+            Lead.find({ agentId: agentProfile._id })
+              .select("companyName status followUpAt")
+              .lean(),
+            Interview.find({
+              agentId: agentProfile._id,
+              status: { $in: ["scheduled", "confirmed", "rescheduled"] },
+              scheduledAt: { $gte: new Date() },
+            })
+              .select("scheduledAt jobId")
+              .sort({ scheduledAt: 1 })
+              .limit(5)
+              .populate("jobId", "title")
+              .lean(),
             Placement.countDocuments({ agentId: agentProfile._id }),
           ]);
-          roleStatsContext = `\n\n## Pipeline Stats (live data — use naturally in responses)\n- Active job postings: ${activeJobs}\n- Total applications: ${totalApps}\n- Open leads: ${openLeads}\n- Scheduled interviews: ${scheduledInterviews}\n- Placements: ${placements}`;
+
+          const pipeline: Record<string, number> = {};
+          for (const l of myLeads) pipeline[l.status] = (pipeline[l.status] ?? 0) + 1;
+          const pipelineLine = Object.entries(pipeline).map(([s, c]) => `${s}: ${c}`).join(" | ") || "(no leads)";
+          const overdue = myLeads.filter(
+            (l) => l.followUpAt && new Date(l.followUpAt) < new Date() && !["converted", "lost"].includes(l.status)
+          );
+          const overdueLines = overdue.slice(0, 5).map((l) => `  - ${l.companyName} (${l.status})`).join("\n");
+          const jobLines = activeJobsList.map((j) => `  - ${j.title} (${j.location?.country ?? "?"})`).join("\n");
+          const interviewLines = upcomingInterviews.map((i) => {
+            const title = (i.jobId as unknown as { title?: string } | null)?.title ?? "a job";
+            return `  - ${title}: ${new Date(i.scheduledAt).toUTCString()}`;
+          }).join("\n");
+
+          roleStatsContext = `\n\n## Pipeline Stats (live data — use naturally in responses)
+- Active job postings: ${activeJobsList.length}${jobLines ? `\n${jobLines}` : ""}
+- Total applications: ${totalApps}
+- Placements: ${placements}
+
+### Lead Pipeline
+${pipelineLine}
+${overdue.length ? `\n### Overdue Follow-ups (${overdue.length} — nudge the user to act on these)\n${overdueLines}` : ""}
+${interviewLines ? `\n### Upcoming Interviews\n${interviewLines}` : ""}`;
         }
       } catch (err) {
         logger.error({ err }, "[AI Chat] Failed to fetch agent stats");
@@ -456,7 +623,7 @@ Use this data to answer questions about team performance, identify underperforme
     // ─── Employer data injection (job_creator / interview_ai / screening_ai) ─
     // Grounds the recruitment assistant with the employer's OWN jobs and applicants
     // so Screening/Interview AI can rank real candidates without manual CV pasting.
-    if (userRole === "employer" && ["job_creator", "interview_ai", "screening_ai"].includes(context ?? "")) {
+    if (userRole === "employer" && ["job_creator", "interview_ai", "screening_ai", "employer_assist"].includes(context ?? "")) {
       try {
         await connectDB();
         const employer = await Employer.findOne({ userId: session.user.id }).select("_id companyName").lean();
@@ -473,6 +640,21 @@ Use this data to answer questions about team performance, identify underperforme
           const jobIds = jobs.map((j) => j._id);
           const jobTitleMap = new Map(jobs.map((j) => [j._id.toString(), j.title]));
 
+          // Per-job applicant pipeline counts
+          const appCounts = jobIds.length
+            ? await Application.aggregate([
+                { $match: { jobId: { $in: jobIds }, status: { $ne: "withdrawn" } } },
+                { $group: { _id: { jobId: "$jobId", status: "$status" }, count: { $sum: 1 } } },
+              ])
+            : [];
+          const countsByJob = new Map<string, Record<string, number>>();
+          for (const c of appCounts as Array<{ _id: { jobId: unknown; status: string }; count: number }>) {
+            const jid = String(c._id.jobId);
+            const m = countsByJob.get(jid) ?? {};
+            m[c._id.status] = c.count;
+            countsByJob.set(jid, m);
+          }
+
           const jobLines = jobs.map((j) => {
             const loc = j.location?.isRemote
               ? "Remote"
@@ -481,7 +663,12 @@ Use this data to answer questions about team performance, identify underperforme
             const exp = j.requirements
               ? `${j.requirements.experienceMin ?? 0}–${j.requirements.experienceMax ?? "?"} yrs`
               : "";
-            return `- ${j.title} (id: ${j._id}) | status: ${j.status} | ${loc}${exp ? ` | Experience: ${exp}` : ""}${skills ? ` | Required skills: ${skills}` : ""}`;
+            const counts = countsByJob.get(j._id.toString());
+            const total = counts ? Object.values(counts).reduce((a, b) => a + b, 0) : 0;
+            const pipeline = counts
+              ? ` | Applicants: ${total} (${Object.entries(counts).map(([s, c]) => `${c} ${s.replace(/_/g, " ")}`).join(", ")})`
+              : " | Applicants: 0";
+            return `- ${j.title} (id: ${j._id}) | status: ${j.status} | ${loc}${exp ? ` | Experience: ${exp}` : ""}${skills ? ` | Required skills: ${skills}` : ""}${pipeline}`;
           });
 
           const jobsBlock = jobLines.length
@@ -562,7 +749,27 @@ Use this data to answer questions about team performance, identify underperforme
             }
           }
 
-          roleStatsContext = jobsBlock + applicantsBlock;
+          // Upcoming interviews — lets Interview AI answer "what's scheduled this week?"
+          const employerInterviews = await Interview.find({
+            employerId,
+            status: { $in: ["scheduled", "confirmed", "rescheduled"] },
+            scheduledAt: { $gte: new Date() },
+          })
+            .select("jobId jobSeekerId scheduledAt status")
+            .sort({ scheduledAt: 1 })
+            .limit(10)
+            .populate("jobId", "title")
+            .populate("jobSeekerId", "fullName")
+            .lean();
+          const interviewsBlock = employerInterviews.length
+            ? `\n\n## Upcoming Interviews\n${employerInterviews.map((i) => {
+                const title = (i.jobId as unknown as { title?: string } | null)?.title ?? "a job";
+                const who = (i.jobSeekerId as unknown as { fullName?: string } | null)?.fullName ?? "a candidate";
+                return `- ${who} for "${title}" — ${new Date(i.scheduledAt).toUTCString()} (${i.status})`;
+              }).join("\n")}`
+            : "";
+
+          roleStatsContext = jobsBlock + applicantsBlock + interviewsBlock;
         }
       } catch (err) {
         logger.error({ err }, "[AI Chat] Failed to fetch employer data");
@@ -575,7 +782,7 @@ Use this data to answer questions about team performance, identify underperforme
 
     const dataAwareContexts = [
       "admin_assist", "super_agent_assist", "agent_assist",
-      "job_creator", "interview_ai", "screening_ai",
+      "job_creator", "interview_ai", "screening_ai", "employer_assist",
     ];
 
     if (currentPage && dataAwareContexts.includes(context ?? "")) {
@@ -709,7 +916,7 @@ Use this data to answer questions about team performance, identify underperforme
 
 function getSystemPrompt(context: string, profileContext: string, jobsContext: string, roleStatsContext: string): string {
   const base =
-    "You are an AI assistant for MPLOYEDIN, an AI-powered international recruitment platform for the Gulf region. Be helpful, professional, and concise.";
+    "You are an AI assistant for MPLOYEDIN, an AI-powered international recruitment platform for the Gulf region. Be helpful, professional, and concise." + SCOPE_GUARD;
 
   // Role-specific assistant contexts — use dedicated prompts with stats injection
   const assistantContexts: AssistantContext[] = [
@@ -756,7 +963,7 @@ IMPORTANT: The user's profile is provided below. Use it to give personalized res
     interview_prep:
       profileAwareBase + "\n\nHelp candidates prepare for interviews with role-specific tips based on their profile and target roles.",
     employer_assist:
-      base + " Help employers with job postings, candidate evaluation, and hiring.",
+      base + " Help employers with job postings, candidate evaluation, and hiring." + roleStatsContext,
     general_assist: profileAwareBase,
   };
 

@@ -31,6 +31,17 @@ const CHECKS: EnvCheck[] = [
         ? "ENCRYPTION_KEY must be 64 hex characters (32 bytes). Generate with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
         : null,
   },
+  {
+    // All 16 cron routes reject every call when this is unset (verifyCronRequest
+    // fails closed with 500). Validate at boot so a missing secret surfaces at
+    // deploy time instead of silently breaking scheduled jobs in production.
+    name: "CRON_SECRET",
+    required: true,
+    validate: (v) =>
+      v.length < 16
+        ? "CRON_SECRET must be at least 16 characters. Generate with: openssl rand -base64 24"
+        : null,
+  },
 ];
 
 let validated = false;

@@ -94,8 +94,11 @@ export function totpAuthUri(email: string, secretBase32: string, issuer = "MPLOY
 /** Generate `count` single-use recovery codes (returned plaintext, store only hashes). */
 export function generateRecoveryCodes(count = 8): string[] {
   return Array.from({ length: count }, () => {
-    const raw = crypto.randomBytes(5).toString("hex"); // 10 hex chars
-    return `${raw.slice(0, 5)}-${raw.slice(5)}`;
+    // 80 bits per code: rate-limiting already blocks online guessing; this also
+    // makes offline cracking of a leaked hash infeasible. Old 40-bit codes keep
+    // validating (same hash fn) until the user regenerates.
+    const raw = crypto.randomBytes(10).toString("hex"); // 20 hex chars
+    return `${raw.slice(0, 5)}-${raw.slice(5, 10)}-${raw.slice(10, 15)}-${raw.slice(15)}`;
   });
 }
 

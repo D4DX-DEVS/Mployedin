@@ -296,6 +296,9 @@ export async function ensureIndexes() {
 
   // ── Subscriptions ─────────────────────────────────────────────────────────
   await safeCreateIndexes(db, "subscriptions", [
+    // At most one ACTIVE subscription per (user, role). Blocks the race where two
+    // concurrent purchase/assign flows each create an active subscription.
+    { key: { userId: 1, targetRole: 1 }, unique: true, partialFilterExpression: { status: "active" } },
     { key: { userId: 1, targetRole: 1, status: 1 } },
     { key: { endDate: 1, status: 1 } },
     { key: { planId: 1 } },

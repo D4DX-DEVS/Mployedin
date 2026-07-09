@@ -9,20 +9,36 @@ import { leadUpdateSchema } from "@/lib/validators/leads";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { calculateLeadScore, deriveQualification } from "@/lib/leads/scoring";
 import { autoRouteLead } from "@/lib/leads/autoRouter";
+import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
 /** Verify agent owns this lead, or user is super_agent/admin */
 async function verifyLeadAccess(leadId: string, ctx: AuthCtx) {
-  const lead = await Lead.findById(leadId).lean() as { agentId?: unknown } | null;
+  const lead = await Lead.findById(leadId).lean() as { agentId?: unknown; superAgentId?: unknown } | null;
   if (!lead) return { lead: null, error: NextResponse.json({ error: "Not found" }, { status: 404 }) };
   if (ctx.role === "agent") {
     const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
     if (!agentDoc || String(lead.agentId) !== String(agentDoc._id)) {
       return { lead: null, error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
     }
+  } else if (ctx.role === "super_agent") {
+    // Scope super-agents to their own team/region. Without this a super_agent
+    // could read/modify/delete/convert leads owned by another team's agents
+    // (cross-team data + commission fraud).
+    const scope = await getSuperAgentScope(ctx.userId);
+    const inScope = Boolean(
+      scope && (
+        String(lead.superAgentId ?? "") === String(scope.saProfileId) ||
+        scope.effectiveAgentIds.map(String).includes(String(lead.agentId ?? ""))
+      )
+    );
+    if (!inScope) {
+      return { lead: null, error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
+    }
   }
+  // admin (and any other leads-permitted role) falls through to full access.
   return { lead, error: null };
 }
 

@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import Application from "@/models/Application";
 import JobSeeker from "@/models/JobSeeker";
+import Employer from "@/models/Employer";
 import { logActivity } from "@/lib/audit/log";
 
 /**
@@ -17,7 +18,18 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
   const application = await Application.findById(id).lean();
   if (!application) return NextResponse.json({ error: "Application not found" }, { status: 404 });
 
-  const jobSeeker = await JobSeeker.findOne({ userId: application.candidateId })
+  // Response exposes candidate PII (phone, CV URL) — only the employer that
+  // owns this application, or an admin, may trigger the parse.
+  if (ctx.role === "employer") {
+    const employer = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
+    if (!employer || String(application.employerId) !== String(employer._id)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  } else if (ctx.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const jobSeeker = await JobSeeker.findById(application.jobSeekerId)
     .select("firstName lastName skills experience education cv summary phone location")
     .lean();
 

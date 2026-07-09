@@ -4,6 +4,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import User from "@/models/User";
 import JobSeeker from "@/models/JobSeeker";
 import Employer from "@/models/Employer";
+import { checkRateLimit } from "@/lib/security/rateLimit";
 import mongoose from "mongoose";
 
 /**
@@ -12,6 +13,12 @@ import mongoose from "mongoose";
  * Used by the messaging UI to render the chat header for pending conversations.
  */
 async function handler(req: NextRequest, ctx: { userId: string }, params?: Record<string, string>) {
+  // Rate-limit per caller to blunt enumeration of the user/role directory.
+  const { allowed } = await checkRateLimit(`user-profile:${ctx.userId}`, { limit: 60, windowSec: 60, prefix: "uprof" });
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   await connectDB();
 
   const targetId = params?.userId ?? "";

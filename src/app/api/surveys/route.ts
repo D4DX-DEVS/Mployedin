@@ -4,6 +4,7 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { SurveyTemplate, SurveyResponse } from "@/models/CandidateSurvey";
 import Employer from "@/models/Employer";
 import Application from "@/models/Application";
+import JobSeeker from "@/models/JobSeeker";
 import { logActivity } from "@/lib/audit/log";
 import mongoose from "mongoose";
 
@@ -20,7 +21,9 @@ async function getHandler(req: NextRequest, ctx: { userId: string; role: string 
     if (!applicationId) return NextResponse.json({ error: "applicationId required" }, { status: 400 });
 
     const application = await Application.findById(applicationId).lean();
-    if (!application || application.candidateId?.toString() !== ctx.userId) {
+    // Applications store jobSeekerId (JobSeeker._id), not the User id.
+    const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select("_id").lean();
+    if (!application || !seeker || String(application.jobSeekerId) !== String(seeker._id)) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
@@ -69,7 +72,9 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
     }
 
     const application = await Application.findById(applicationId).lean();
-    if (!application || application.candidateId?.toString() !== ctx.userId) {
+    // Applications store jobSeekerId (JobSeeker._id), not the User id.
+    const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select("_id").lean();
+    if (!application || !seeker || String(application.jobSeekerId) !== String(seeker._id)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 

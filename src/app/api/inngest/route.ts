@@ -12,6 +12,7 @@ import { emailSequenceSenderCron } from "@/lib/inngest/emailSequenceSender";
 import { extractionDraftExpiryCron } from "@/lib/inngest/extractionDraftExpiry";
 import { aiChatDraftExpiryCron } from "@/lib/inngest/aiChatDraftExpiry";
 import { scheduledCronFunctions } from "@/lib/inngest/scheduledCrons";
+import { adminBroadcastSender } from "@/lib/inngest/adminBroadcast";
 // TODO: Re-add autoApplyFunction & autoApplyDailyReset when auto-apply feature is ready
 // import { autoApplyFunction, autoApplyDailyReset } from "@/lib/inngest/autoApply";
 
@@ -34,5 +35,7 @@ export const { GET, POST, PUT } = serve({
     aiChatDraftExpiryCron,
     // Scheduled crons migrated off GitHub Actions (replaces scheduled-crons.yml)
     ...scheduledCronFunctions,
+    // Delivers admin broadcasts off the request path (100k+ recipients).
+    adminBroadcastSender,
   ],
 });

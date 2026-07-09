@@ -6,8 +6,7 @@ import User from "@/models/User";
 import { logActivity } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
 import { communicationSchema } from "@/lib/validators/admin";
-import { sendEmail } from "@/lib/communications/email";
-import logger from "@/lib/logger";
+import { inngest } from "@/lib/inngest/client";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
 
@@ -35,6 +34,11 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx) {
 }
 
 async function handler(req: NextRequest, ctx: AuthCtx) {
+  // Broadcasting to all users (targetAll) is an admin-only superpower — a
+  // super_agent/agent must never be able to mass-mail the whole platform.
+  if (ctx.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   await connectDB();
 
   if (req.method === "POST") {
@@ -44,69 +48,37 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       return NextResponse.json({ error: "title and message required" }, { status: 400 });
     }
 
-    // Find target users
+    const selectedChannels = channels ?? ["in_app"];
+
+    // Count recipients cheaply (index-only) for the response; the actual
+    // per-user notification + email fan-out is offloaded to Inngest so a
+    // targetAll broadcast (100k+ users) never runs on the request path
+    // (which would blow the serverless timeout + memory).
     const userQuery: Record<string, unknown> = { isActive: true };
     if (!targetAll && targetRoles && targetRoles.length > 0) {
       userQuery.role = targetRoles.length === 1 ? targetRoles[0] : { $in: targetRoles };
     }
+    const recipientCount = await User.countDocuments(userQuery);
 
-    const selectedChannels = channels ?? ["in_app"];
-
-    // Fetch recipients — include email only if needed
-    const needsEmail = selectedChannels.includes("email");
-    const users = await User.find(userQuery).select(`_id${needsEmail ? " email name" : ""}`).lean() as Array<{ _id: unknown; email?: string; name?: string }>;
-    const recipientIds = users.map((u) => u._id);
-
-    // Create in-app notifications in bulk
-    if (selectedChannels.includes("in_app")) {
-      const notifications = recipientIds.map((userId) => ({
-        userId,
-        type: "system",
-        title,
-        body: message,
-        channels: selectedChannels,
-        isSent: true,
-        sentAt: new Date(),
-      }));
-      await Notification.insertMany(notifications, { ordered: false });
-    }
-
-    // Dispatch emails
-    if (needsEmail) {
-      const emailPromises = users.map((u) => {
-        if (!u.email) return Promise.resolve();
-        return sendEmail({
-          to: u.email,
-          subject: title,
-          html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#fff;border-radius:8px;border:1px solid #e5e7eb;">
-            <div style="background:#0a2a6e;padding:20px 24px;border-radius:6px 6px 0 0;text-align:center;margin-bottom:24px;">
-              <h1 style="color:#fff;margin:0;font-size:20px;letter-spacing:1px;">MPLOYEDIN</h1>
-            </div>
-            <h2 style="color:#0a2a6e;margin:0 0 16px;">${title}</h2>
-            <p style="color:#374151;font-size:15px;line-height:1.6;white-space:pre-wrap;">${message}</p>
-          </div>`,
-        }).catch((err: unknown) => {
-          logger.error({ email: u.email, err }, `[broadcast] email failed`);
-        });
-      });
-      await Promise.allSettled(emailPromises);
-    }
-
-    // WhatsApp: no integration — channel stored in DB for future use
+    await inngest.send({
+      name: "admin/broadcast",
+      data: { title, message, targetRoles, targetAll: Boolean(targetAll), channels: selectedChannels },
+    });
 
     await logActivity({
       actorId: ctx.userId,
       actorRole: ctx.role,
       action: "communication.broadcast",
       resource: "notifications",
-      meta: { title, targetRoles: targetRoles ?? "all", recipientCount: recipientIds.length, channels: selectedChannels },
+      meta: { title, targetRoles: targetRoles ?? "all", recipientCount, channels: selectedChannels },
       req,
     });
 
     return NextResponse.json({
       success: true,
-      sent: recipientIds.length,
-      message: `Broadcast sent to ${recipientIds.length} users`,
+      sent: recipientCount,
+      queued: true,
+      message: `Broadcast queued for ${recipientCount} users`,
     });
   }
 

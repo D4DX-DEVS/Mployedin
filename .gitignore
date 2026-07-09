@@ -146,3 +146,14 @@ employer-job-new.jpeg
 
 mployedin\IMPORTED-USERS.md
 SKELETON-PROGRESSIVE-LOADING-AUDIT.md
+
+# ===== Audit/scratch docs the patterns above miss (local only) =====
+# Session audit workspaces (e.g. AUDIT-2026-07-09/) + their SUMMARY.txt
+AUDIT-*/
+# Findings / access-control / plan / audit variants not caught by *-AUDIT.md / *-PLAN.md
+*-FINDINGS.md
+ACCESS-CONTROL-*.md
+*_AUDIT.md
+*-AUDIT-*.md
+*-PLAN-VERIFIED.md
+PLAN.md

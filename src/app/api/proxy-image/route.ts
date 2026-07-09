@@ -60,6 +60,11 @@ export async function GET(req: NextRequest) {
     }
 
     const contentType = response.headers.get("content-type") ?? "image/png";
+    // Never proxy non-image content (e.g. HTML from a compromised bucket) —
+    // this endpoint must not become an XSS vehicle on our origin.
+    if (!contentType.toLowerCase().startsWith("image/")) {
+      return NextResponse.json({ error: "Upstream is not an image" }, { status: 502 });
+    }
     const buffer = await response.arrayBuffer();
 
     return new NextResponse(buffer, {
@@ -68,6 +73,7 @@ export async function GET(req: NextRequest) {
         "Content-Type": contentType,
         "Cache-Control": "public, max-age=86400, s-maxage=86400",
         "Access-Control-Allow-Origin": "*",
+        "X-Content-Type-Options": "nosniff",
       },
     });
   } catch {

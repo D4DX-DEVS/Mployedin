@@ -74,7 +74,9 @@ async function postHandler(req: NextRequest, ctx: AuthContext) {
   // a commission won't match it again, so no double payout.
   const ids = commissions.map((c) => c._id);
   const updateResult = await Commission.updateMany(
-    { _id: { $in: ids }, status: "approved" },
+    // paidAt:null guards against ever re-paying a commission that already has a
+    // payment recorded, independent of how it re-entered the "approved" state.
+    { _id: { $in: ids }, status: "approved", paidAt: null },
     {
       $set: {
         status: "paid",

@@ -4,6 +4,7 @@ import { withAuth } from "@/lib/auth/withAuth";
 import DiversityResponse from "@/models/DiversityResponse";
 import Employer from "@/models/Employer";
 import Application from "@/models/Application";
+import JobSeeker from "@/models/JobSeeker";
 import mongoose from "mongoose";
 
 // GET: Employer gets aggregated diversity report (anonymized)
@@ -67,8 +68,10 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
   const application = await Application.findById(applicationId).lean();
   if (!application) return NextResponse.json({ error: "Application not found" }, { status: 404 });
 
-  // Verify the user owns this application
-  if (application.candidateId?.toString() !== ctx.userId) {
+  // Verify the user owns this application. Applications store jobSeekerId
+  // (JobSeeker._id), not the User id, so resolve the caller's profile first.
+  const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select("_id").lean();
+  if (!seeker || String(application.jobSeekerId) !== String(seeker._id)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 

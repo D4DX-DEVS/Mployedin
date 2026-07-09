@@ -21,6 +21,8 @@ interface DuplicateCheckInput {
   excludeId?: string;
   /** Scope to this agent's leads only */
   agentId?: string;
+  /** Super-agent scope: leads routed to this SA or owned by these agents */
+  superAgentScope?: { saProfileId: string; agentIds: string[] };
 }
 
 /**
@@ -55,6 +57,19 @@ export async function checkLeadDuplicates(
   const filter: Record<string, any> = { $or: orClauses };
   if (input.excludeId) filter._id = { $ne: input.excludeId };
   if (input.agentId) filter.agentId = input.agentId;
+  if (input.superAgentScope) {
+    // Wrap the match clauses in $and so the scope $or doesn't collide with them.
+    filter.$and = [
+      { $or: filter.$or },
+      {
+        $or: [
+          { superAgentId: input.superAgentScope.saProfileId },
+          { agentId: { $in: input.superAgentScope.agentIds } },
+        ],
+      },
+    ];
+    delete filter.$or;
+  }
 
   const candidates = await Lead.find(filter)
     .select("companyName contactPerson contactEmail contactPhone status createdAt")

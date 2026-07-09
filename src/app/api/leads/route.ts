@@ -4,6 +4,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import Lead from "@/models/Lead";
 import Agent from "@/models/Agent";
 import { escapeRegex, pick } from "@/lib/security/sanitize";
+import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import { validateBody } from "@/lib/validators";
 import { leadCreateSchema } from "@/lib/validators/leads";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
@@ -27,6 +28,19 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
     if (!agentDoc) return NextResponse.json({ error: "Agent profile not found" }, { status: 404 });
     filter.agentId = agentDoc._id;
+  } else if (ctx.role === "super_agent") {
+    // Super-agents are scoped to their own team/region — never the whole platform.
+    // Match leads routed to this SA, or owned by any agent in their effective scope.
+    const scope = await getSuperAgentScope(ctx.userId);
+    if (!scope) return NextResponse.json({ error: "Super-agent profile not found" }, { status: 404 });
+    filter.$and = [
+      {
+        $or: [
+          { superAgentId: scope.saProfileId },
+          { agentId: { $in: scope.effectiveAgentIds } },
+        ],
+      },
+    ];
   }
 
   if (status) filter.status = status;
@@ -50,7 +64,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   ]);
 
   return NextResponse.json({ items, total, page, totalPages: Math.ceil(total / limit) });
-});
+}, { resource: "leads", action: "read" });
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   const rl = await checkRateLimitDual(req, ctx.userId, RATE_LIMIT_CONFIGS.leads);

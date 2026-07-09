@@ -5,6 +5,7 @@ import Employer from "@/models/Employer";
 import Application from "@/models/Application";
 import Interview from "@/models/Interview";
 import JobSeeker from "@/models/JobSeeker";
+import TalentPool from "@/models/TalentPool";
 import { isValidObjectId } from "@/lib/security/sanitize";
 
 /**
@@ -29,11 +30,29 @@ async function handler(req: NextRequest, ctx: { userId: string }, params?: Recor
 
   const seeker = await JobSeeker.findById(jobSeekerId)
     .populate("userId", "name email avatar")
-    .select("userId currentLocation skills experience education languages preferredSalary preferredJobType availabilityStatus profileCompleteness badges createdAt cv.originalUrl certifications headline summary totalExperienceYears preferredLocations preferredRoles noticePeriod workStatus")
+    .select("userId currentLocation skills experience education languages preferredSalary preferredJobType availabilityStatus profileCompleteness badges createdAt cv.originalUrl certifications headline summary totalExperienceYears preferredLocations preferredRoles noticePeriod workStatus profileVisibility")
     .lean();
 
   if (!seeker) {
     return NextResponse.json({ error: "Candidate not found" }, { status: 404 });
+  }
+
+  // Access rule (mirrors /api/employer/talent-search + candidates/[id]/cv):
+  // a relationship (application to this employer, or membership in one of this
+  // employer's talent pools) grants the full profile; otherwise the seeker must
+  // have opted into discoverability, and contact/salary details are withheld.
+  const [hasApplication, inTalentPool] = await Promise.all([
+    Application.exists({ jobSeekerId, employerId: employer._id }),
+    TalentPool.exists({ employerId: employer._id, "candidates.jobSeekerId": jobSeekerId }),
+  ]);
+  const hasRelationship = Boolean(hasApplication || inTalentPool);
+  if (!hasRelationship && seeker.profileVisibility !== "visible") {
+    return NextResponse.json({ error: "Candidate not found" }, { status: 404 });
+  }
+  if (!hasRelationship) {
+    const user = seeker.userId as { email?: string } | null;
+    if (user) delete user.email;
+    delete (seeker as { preferredSalary?: unknown }).preferredSalary;
   }
 
   const [applications, interviews] = await Promise.all([

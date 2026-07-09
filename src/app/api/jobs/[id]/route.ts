@@ -41,7 +41,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 
   // Ownership check
   if (ctx.role === "employer") {
-    const emp = await Employer.findOne({ userId: ctx.userId }).select("_id domainVerified").lean();
+    const emp = await Employer.findOne({ userId: ctx.userId }).select("_id verifiedAt isAgentVerified").lean();
     if (!emp || String(job.employerId) !== String(emp._id)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -51,7 +51,8 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     // CTA succeed for unverified employers and matches the POST createHandler
     // behavior. Admins approve via /api/admin/jobs/[id]/approve.
     const bodyRecord2 = body as Record<string, unknown>;
-    if (bodyRecord2.status === "active" && !emp.domainVerified) {
+    const employerVerified = Boolean(emp.verifiedAt) || Boolean(emp.isAgentVerified);
+    if (bodyRecord2.status === "active" && !employerVerified) {
       bodyRecord2.status = "pending_approval";
     }
   } else if (ctx.role === "agent") {

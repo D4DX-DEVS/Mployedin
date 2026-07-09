@@ -7,7 +7,14 @@ import { validateBody } from "@/lib/validators";
 import { messageCreateSchema } from "@/lib/validators/messages";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 
+// Internal staff collaboration channels (general/employers/leads/agents).
+// Only staff roles may read or post — job seekers must never see these.
+const STAFF_ROLES = ["admin", "super_agent", "agent"];
+
 async function GET(req: NextRequest, ctx: { userId: string; role: string }) {
+  if (!STAFF_ROLES.includes(ctx.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   await connectDB();
   const { searchParams } = new URL(req.url);
   const channel = searchParams.get("channel") || "general";
@@ -24,6 +31,9 @@ async function GET(req: NextRequest, ctx: { userId: string; role: string }) {
 }
 
 async function POST(req: NextRequest, ctx: { userId: string; role: string; locale?: string }) {
+  if (!STAFF_ROLES.includes(ctx.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   await connectDB();
   const body = await validateBody(req, messageCreateSchema);
   const { channel = "general", content } = body;
