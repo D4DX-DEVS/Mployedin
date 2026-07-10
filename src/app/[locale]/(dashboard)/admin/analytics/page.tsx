@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -233,10 +234,7 @@ export default function AdminAnalyticsPage() {
           <Sparkles className="h-3.5 w-3.5" />
           {t("adminWorkspace")}
         </div>
-        <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("analyticsTitle")}</h1>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-          {t("analyticsDescription")}
-        </p>
+        <PageHeader className="mt-4" title={t("analyticsTitle")} description={t("analyticsDescription")} />
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">

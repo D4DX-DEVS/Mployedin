@@ -91,8 +91,8 @@ export default function AgentChatPage() {
   };
 
   return (
-    <div className="page-container agent-legacy-surface flex flex-col space-y-6">
-      <section className="workspace-hero-surface agent-legacy-hero overflow-hidden rounded-[28px] p-6 sm:p-7">
+    <div className="page-container flex flex-col space-y-6">
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">

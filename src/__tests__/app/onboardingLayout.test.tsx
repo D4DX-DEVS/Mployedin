@@ -5,6 +5,10 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import OnboardingLayout from "@/app/[locale]/(onboarding)/layout";
 
+jest.mock("@/lib/auth/config", () => ({
+  auth: jest.fn().mockResolvedValue({ user: { id: "u1", role: "job_seeker" } }),
+}));
+
 jest.mock("@/components/shared/SessionWrapper", () => ({
   SessionWrapper: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));

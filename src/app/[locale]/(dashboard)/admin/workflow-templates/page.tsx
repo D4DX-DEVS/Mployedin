@@ -159,10 +159,7 @@ export default function AdminWorkflowTemplatesPage() {
             <Sparkles className="h-3.5 w-3.5" />
             {tr("adminWorkspaceLabel")}
           </div>
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{tr("pageTitle")}</h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-            {tr("pageDescription")}
-          </p>
+          <PageHeader className="mt-4" title={tr("pageTitle")} description={tr("pageDescription")} />
         </section>
         {[1, 2, 3].map((i) => (
           <div key={i} className="h-24 animate-pulse rounded-2xl border border-border bg-background/70" />
@@ -181,10 +178,7 @@ export default function AdminWorkflowTemplatesPage() {
               <Sparkles className="h-3.5 w-3.5" />
               {tr("adminWorkspaceLabel")}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{tr("pageTitle")}</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              {tr("pageDescription")}
-            </p>
+            <PageHeader className="mt-4" title={tr("pageTitle")} description={tr("pageDescription")} />
           </div>
           <Button onClick={openCreate} className="gap-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90" size="sm">
             <Plus className="h-4 w-4" /> {tr("newTemplateButton")}

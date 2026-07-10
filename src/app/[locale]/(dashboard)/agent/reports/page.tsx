@@ -40,13 +40,13 @@ interface ReportResult { content: string; generatedAt: string }
 /* ─── Helpers ─── */
 
 function TrendBadge({ trend }: { trend: TrendData }) {
-  if (trend.direction === "up") return <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-emerald-600"><ArrowUpRight className="h-3 w-3" />+{trend.delta}%</span>;
-  if (trend.direction === "down") return <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-red-500"><ArrowDownRight className="h-3 w-3" />{trend.delta}%</span>;
+  if (trend.direction === "up") return <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-status-selected"><ArrowUpRight className="h-3 w-3" />+{trend.delta}%</span>;
+  if (trend.direction === "down") return <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-status-rejected"><ArrowDownRight className="h-3 w-3" />{trend.delta}%</span>;
   return <span className="text-xs text-muted-foreground">—</span>;
 }
 
 const FUNNEL_STAGES = ["new", "contacted", "interested", "negotiating", "converted", "lost"] as const;
-const FUNNEL_COLORS: Record<string, string> = { new: "bg-sky-400", contacted: "bg-indigo-400", interested: "bg-violet-400", negotiating: "bg-amber-400", converted: "bg-emerald-400", lost: "bg-rose-400" };
+const FUNNEL_COLORS: Record<string, string> = { new: "bg-status-applied/50", contacted: "bg-status-interview/50", interested: "bg-status-interview/60", negotiating: "bg-status-shortlisted/50", converted: "bg-status-selected/50", lost: "bg-status-rejected/50" };
 
 export default function AgentReportsPage() {
   const t = useTranslations("agentReports");
@@ -111,7 +111,7 @@ export default function AgentReportsPage() {
   const totalFunnel = analytics ? Object.values(analytics.leadFunnel).reduce((s, v) => s + v, 0) : 0;
 
   return (
-    <div className="page-container agent-legacy-surface space-y-6">
+    <div className="page-container space-y-6">
       <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
@@ -130,7 +130,7 @@ export default function AgentReportsPage() {
       {/* ─── KPI Cards with Trends ─── */}
       {analyticsLoading ? (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-32 animate-pulse rounded-[24px] border border-border/70 bg-card/90" />)}
+          {Array.from({ length: 4 }).map((_, i) => <div key={i} className="min-w-0 h-32 animate-pulse rounded-[24px] border border-border/70 bg-card/90" />)}
         </div>
       ) : analytics && (
         <>
@@ -141,7 +141,7 @@ export default function AgentReportsPage() {
               { label: t("kpiPlacements30d"), value: analytics.trends.placements.current, trend: analytics.trends.placements, icon: <TrendingUp className="h-5 w-5" />, tone: "workspace-tone-emerald" },
               { label: t("kpiInterviews30d"), value: analytics.trends.interviews.current, trend: analytics.trends.interviews, icon: <CalendarCheck2 className="h-5 w-5" />, tone: "workspace-tone-amber" },
             ].map((kpi) => (
-              <div key={kpi.label} className="workspace-glass-panel rounded-[24px] p-4">
+              <div key={kpi.label} className="min-w-0 workspace-glass-panel rounded-[24px] p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{kpi.label}</p>
@@ -162,9 +162,9 @@ export default function AgentReportsPage() {
               { label: t("overdueFollowups"), value: analytics.kpis.overdueFollowUps, icon: <Flame className="h-4 w-4" />, alert: analytics.kpis.overdueFollowUps > 0 },
               { label: t("scheduledInterviews"), value: analytics.kpis.scheduledInterviews, icon: <CalendarCheck2 className="h-4 w-4" /> },
             ].map((s) => (
-              <div key={s.label} className={`workspace-glass-panel rounded-2xl p-4 ${s.alert ? "border-amber-200 dark:border-amber-800/40" : ""}`}>
+              <div key={s.label} className={`min-w-0 workspace-glass-panel rounded-2xl p-4 ${s.alert ? "border-status-shortlisted/20 dark:border-status-shortlisted/10" : ""}`}>
                 <div className="flex items-center gap-2 text-muted-foreground">{s.icon}<p className="text-[11px] font-semibold uppercase tracking-[0.16em]">{s.label}</p></div>
-                <p className={`mt-2 text-2xl font-semibold ${s.alert ? "text-amber-600" : "text-foreground"}`}>{s.value}</p>
+                <p className={`mt-2 text-2xl font-semibold ${s.alert ? "text-status-shortlisted" : "text-foreground"}`}>{s.value}</p>
               </div>
             ))}
           </section>
@@ -206,11 +206,11 @@ export default function AgentReportsPage() {
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
               {[
-                { label: t("commissionPending"), data: analytics.commissions.pending, color: "text-amber-600" },
-                { label: t("commissionApproved"), data: analytics.commissions.approved, color: "text-sky-600" },
-                { label: t("commissionPaid"), data: analytics.commissions.paid, color: "text-emerald-600" },
+                { label: t("commissionPending"), data: analytics.commissions.pending, color: "text-status-shortlisted" },
+                { label: t("commissionApproved"), data: analytics.commissions.approved, color: "text-status-applied" },
+                { label: t("commissionPaid"), data: analytics.commissions.paid, color: "text-status-selected" },
               ].map((c) => (
-                <div key={c.label} className="workspace-glass-panel rounded-2xl p-4 text-center">
+                <div key={c.label} className="min-w-0 workspace-glass-panel rounded-2xl p-4 text-center">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{c.label}</p>
                   <p className={`mt-2 text-2xl font-semibold ${c.color}`}>{c.data?.count ?? 0}</p>
                   <p className="mt-1 text-xs text-muted-foreground">{(c.data?.total ?? 0).toLocaleString()} AED</p>
@@ -244,9 +244,9 @@ export default function AgentReportsPage() {
                         <TableCell className="text-right text-muted-foreground">{m.placements}</TableCell>
                         <TableCell className="text-right">
                           {m.trend > 0 ? (
-                            <span className="inline-flex items-center gap-0.5 text-emerald-600 text-xs font-semibold"><ArrowUpRight className="h-3 w-3" />+{m.trend}%</span>
+                            <span className="inline-flex items-center gap-0.5 text-status-selected text-xs font-semibold"><ArrowUpRight className="h-3 w-3" />+{m.trend}%</span>
                           ) : m.trend < 0 ? (
-                            <span className="inline-flex items-center gap-0.5 text-red-500 text-xs font-semibold"><ArrowDownRight className="h-3 w-3" />{m.trend}%</span>
+                            <span className="inline-flex items-center gap-0.5 text-status-rejected text-xs font-semibold"><ArrowDownRight className="h-3 w-3" />{m.trend}%</span>
                           ) : (
                             <span className="text-muted-foreground text-xs">—</span>
                           )}
@@ -272,7 +272,7 @@ export default function AgentReportsPage() {
               key={template.labelKey}
               onClick={() => { setQuery(template.query); generateReport(template.query); }}
               disabled={loading}
-              className="workspace-subtle-surface rounded-2xl p-4 text-left text-sm transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card hover:shadow-[0_20px_44px_-36px_rgba(2,132,199,0.45)] disabled:opacity-50"
+              className="min-w-0 workspace-subtle-surface rounded-2xl p-4 text-left text-sm transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card hover:shadow-[0_20px_44px_-36px_rgba(2,132,199,0.45)] disabled:opacity-50"
             >
               <BarChart3 className="mb-2 h-4 w-4 text-primary" />
               <div className="font-semibold text-foreground">{t(template.labelKey)}</div>

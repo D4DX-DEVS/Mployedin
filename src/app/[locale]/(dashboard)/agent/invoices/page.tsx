@@ -3,24 +3,20 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
 import { useInvoiceAnalytics } from "@/hooks/useInvoiceAnalytics";
 import { useCurrencyPreference } from "@/hooks/useCurrencyPreference";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
-  Plus, Sparkles, RotateCcw, CalendarDays, ArrowRight, Inbox,
-  Eye, BarChart3, FileText, RefreshCw,
+  Plus, Sparkles, RotateCcw, ArrowRight,
+  BarChart3, FileText, RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
+import { InvoiceTable } from "@/components/shared/InvoiceTable";
 import type { ExportColumn } from "@/lib/export";
 
 import { InvoiceBuilder } from "@/components/features/invoices/InvoiceBuilder";
@@ -54,7 +50,6 @@ interface Invoice {
 export default function AgentInvoicesPage() {
   const t = useTranslations("agentInvoices");
   const tc = useTranslations("common");
-  const tt = useTranslations("table");
   const tconf = useTranslations("confirm");
 
   const STATUS_OPTIONS = [
@@ -218,66 +213,12 @@ export default function AgentInvoicesPage() {
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sectionLabel")}</p>
               <h3 className="text-lg font-semibold text-foreground">{t("sectionHeading")}</h3>
             </div>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-border/80 bg-secondary/72 hover:bg-secondary/72">
-                    <TableHead>{t("tableHeaderInvoiceNumber")}</TableHead>
-                    <TableHead>{t("tableHeaderEmployer")}</TableHead>
-                    <TableHead className="hidden md:table-cell">{t("tableHeaderJob")}</TableHead>
-                    <TableHead className="hidden lg:table-cell">{t("tableHeaderCategory")}</TableHead>
-                    <TableHead className="text-right">{t("tableHeaderTotal")}</TableHead>
-                    <TableHead className="text-right">{t("tableHeaderPaid")}</TableHead>
-                    <TableHead className="text-right">{t("tableHeaderBalance")}</TableHead>
-                    <TableHead className="hidden xl:table-cell">{t("tableHeaderMyCommission")}</TableHead>
-                    <TableHead>{tc("status")}</TableHead>
-                    <TableHead className="hidden md:table-cell">{t("tableHeaderDueDate")}</TableHead>
-                    <TableHead className="text-right">{tc("actions")}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i} className="border-border/70 hover:bg-transparent">
-                      {Array.from({ length: 10 }).map((_, j) => <TableCell key={j}><div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" /></TableCell>)}
-                    </TableRow>
-                  )) : invoices.length === 0 ? (
-                    <TableRow className="border-border/70 hover:bg-transparent">
-                      <TableCell colSpan={10} className="px-6 py-14 text-center">
-                        <div className="flex flex-col items-center gap-3"><div className="workspace-muted-pill rounded-[20px] p-3"><Inbox className="h-6 w-6" /></div><div><p className="text-sm font-semibold">{t("emptyStateTitle")}</p><p className="mt-1 text-sm text-muted-foreground">{t("emptyStateDescription")}</p></div></div>
-                      </TableCell>
-                    </TableRow>
-                  ) : invoices.map((inv) => {
-                    const myComm = inv.commissions?.find(c => c.role === "agent");
-                    return (
-                      <TableRow key={inv._id} className="border-border/70 cursor-pointer hover:bg-secondary/30" onClick={() => setSelectedInvoiceId(inv._id)}>
-                        <TableCell><p className="font-mono text-sm font-medium">{inv.invoiceNumber}</p></TableCell>
-                        <TableCell><p className="max-w-[130px] truncate font-medium">{inv.employerId?.companyName ?? "—"}</p></TableCell>
-                        <TableCell className="hidden md:table-cell"><p className="max-w-[120px] truncate text-sm text-muted-foreground">{inv.jobId?.title ?? "—"}</p></TableCell>
-                        <TableCell className="hidden lg:table-cell"><span className="text-[10px] capitalize text-muted-foreground">{inv.category?.replace(/_/g, " ")}</span></TableCell>
-                        <TableCell className="text-right font-semibold">{inv.currency} {(inv.totalAmount ?? 0).toLocaleString()}</TableCell>
-                        <TableCell className="text-right text-sm text-emerald-600 dark:text-emerald-400">{inv.currency} {(inv.paidAmount ?? 0).toLocaleString()}</TableCell>
-                        <TableCell className="text-right text-sm text-amber-600 dark:text-amber-400">{inv.currency} {(inv.balanceDue ?? 0).toLocaleString()}</TableCell>
-                        <TableCell className="hidden xl:table-cell">
-                          {myComm ? (
-                            <div className="text-xs">
-                              <p className="font-medium text-primary">{myComm.rate}% = {inv.currency} {myComm.amount.toLocaleString()}</p>
-                              <StatusBadge status={myComm.status} />
-                            </div>
-                          ) : <span className="text-xs text-muted-foreground">—</span>}
-                        </TableCell>
-                        <TableCell><StatusBadge status={inv.status} /></TableCell>
-                        <TableCell className="hidden md:table-cell text-xs text-muted-foreground">{inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : "—"}</TableCell>
-                        <TableCell>
-                          <div className="flex justify-end" onClick={e => e.stopPropagation()}>
-                            <Button variant="ghost" size="sm" onClick={() => setSelectedInvoiceId(inv._id)} className="h-7 w-7 p-0"><Eye className="h-3.5 w-3.5" /></Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+            <InvoiceTable
+              invoices={invoices}
+              loading={loading}
+              role="agent"
+              onSelect={setSelectedInvoiceId}
+            />
             <div className="border-t border-border/80 px-4 py-3 sm:px-5">
               <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
             </div>

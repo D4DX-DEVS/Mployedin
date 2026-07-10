@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo, Fragment } from "react";
 import { useTranslations } from "next-intl";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -389,10 +390,7 @@ export default function AdminJobSeekersPage() {
               <Sparkles className="h-3.5 w-3.5" />
               {tr("heroAdminWorkspace")}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{tr("heroTitle")}</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              {tr("heroDescription")}
-            </p>
+            <PageHeader title={tr("heroTitle")} description={tr("heroDescription")} />
           </div>
         </div>
       </section>
@@ -459,12 +457,10 @@ export default function AdminJobSeekersPage() {
         {/* Header with filters & actions */}
         <div className="flex flex-col gap-3 border-b border-border/80 px-5 py-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h1 className="text-lg font-semibold text-foreground">{tr("mainTitle")}</h1>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                {total > 0 ? tr("candidatesFound", { count: total }) : tr("mainSubtitle")}
-              </p>
-            </div>
+            <PageHeader
+              title={tr("mainTitle")}
+              description={total > 0 ? tr("candidatesFound", { count: total }) : tr("mainSubtitle")}
+            />
             <div className="flex flex-wrap items-center gap-2">
               {/* Generate Embeddings (admin only) */}
               <Button

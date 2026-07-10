@@ -17,6 +17,7 @@ import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { TableToolbar } from "@/components/shared/TableToolbar";
@@ -250,23 +251,21 @@ export default function AdminPlacementsPage() {
   });
 
   return (
-    <div className="page-container employer-legacy-surface space-y-6">
+    <div className="page-container space-y-6">
       {ConfirmDialogNode}
 
       {/* ─── Hero ─────────────────────────────────────────────────────── */}
       <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
+            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-status-applied dark:text-sky-300">
               <Sparkles className="h-3.5 w-3.5" />
               {t("recruitmentControl")}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-              {t("placementTracking")}
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              {t("placementTrackingDescription")}
-            </p>
+            <PageHeader
+              title={t("placementTracking")}
+              description={t("placementTrackingDescription")}
+            />
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -289,10 +288,10 @@ export default function AdminPlacementsPage() {
         {/* Stats Row */}
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {([
-            { label: t("totalPlacements"), value: total, note: t("allTime"), icon: Users, tone: "text-sky-600", chip: "bg-sky-50 dark:bg-sky-950/30" },
-            { label: t("pendingVisa"), value: pendingVisa, note: t("awaitingApproval"), icon: Clock, tone: "text-amber-600", chip: "bg-amber-50 dark:bg-amber-950/30" },
-            { label: t("unpaidCommission"), value: unpaidCommissions, note: t("needsCollection"), icon: DollarSign, tone: "text-red-500", chip: "bg-red-50 dark:bg-red-950/30" },
-            { label: t("totalSalaryValue"), value: formatSalaryValue(totalValue), note: Object.keys(salaryByCurrency).length > 0 ? Object.entries(salaryByCurrency).slice(0, 2).map(([c, v]) => `${formatSalaryValue(v)} ${c}`).join(t("currencyBreakdownSeparator")) : t("noData"), icon: TrendingUp, tone: "text-emerald-600", chip: "bg-emerald-50 dark:bg-emerald-950/30" },
+            { label: t("totalPlacements"), value: total, note: t("allTime"), icon: Users, tone: "text-status-applied", chip: "bg-status-applied-bg dark:bg-sky-950/30" },
+            { label: t("pendingVisa"), value: pendingVisa, note: t("awaitingApproval"), icon: Clock, tone: "text-status-shortlisted", chip: "bg-status-shortlisted-bg dark:bg-amber-950/30" },
+            { label: t("unpaidCommission"), value: unpaidCommissions, note: t("needsCollection"), icon: DollarSign, tone: "text-red-500", chip: "bg-status-rejected-bg dark:bg-red-950/30" },
+            { label: t("totalSalaryValue"), value: formatSalaryValue(totalValue), note: Object.keys(salaryByCurrency).length > 0 ? Object.entries(salaryByCurrency).slice(0, 2).map(([c, v]) => `${formatSalaryValue(v)} ${c}`).join(t("currencyBreakdownSeparator")) : t("noData"), icon: TrendingUp, tone: "text-status-selected", chip: "bg-status-selected-bg dark:bg-emerald-950/30" },
           ] as const).map(({ label, value, note, icon: Icon, tone, chip }) => (
             <div key={label} className="workspace-glass-panel rounded-2xl p-4">
               <div className="flex items-start justify-between gap-3">
@@ -313,7 +312,7 @@ export default function AdminPlacementsPage() {
         {aiInsights && (
           <div className="mt-4 rounded-[20px] border border-sky-200/50 bg-sky-50/50 p-4 dark:border-sky-800/30 dark:bg-sky-950/20">
             <div className="mb-2 flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-sky-600 dark:text-sky-400" />
+              <Sparkles className="h-4 w-4 text-status-applied dark:text-sky-400" />
               <span className="text-sm font-semibold text-sky-800 dark:text-sky-300">{t("aiPlacementInsights")}</span>
             </div>
             <div className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{aiInsights}</div>
@@ -532,7 +531,7 @@ export default function AdminPlacementsPage() {
                           variant="ghost"
                           size="xs"
                           onClick={() => markCommission(p._id, true)}
-                          className="text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                          className="text-emerald-700 hover:bg-status-selected-bg dark:hover:bg-emerald-950/30"
                         >
                           {t("markPaid")}
                         </Button>
@@ -542,7 +541,7 @@ export default function AdminPlacementsPage() {
                           variant="ghost"
                           size="xs"
                           onClick={() => setEditItem(p)}
-                          className="text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30"
+                          className="text-status-applied hover:bg-blue-50 dark:hover:bg-blue-950/30"
                           title={t("edit")}
                         >
                           <Pencil className="h-3.5 w-3.5" />
@@ -553,7 +552,7 @@ export default function AdminPlacementsPage() {
                           variant="ghost"
                           size="xs"
                           onClick={() => handleDelete(p._id)}
-                          className="text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                          className="text-status-rejected hover:bg-status-rejected-bg dark:hover:bg-red-950/30"
                           title={t("delete")}
                         >
                           <Trash2 className="h-3.5 w-3.5" />

@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { useConfirm } from "@/hooks/useConfirm";
 import { toast } from "sonner";
@@ -303,22 +304,20 @@ export default function AdminWebhooksPage() {
   };
 
   return (
-    <div className="page-container employer-legacy-surface space-y-6">
+    <div className="page-container space-y-6">
 
       {/* ─── Hero ─────────────────────────────────────────────────────── */}
       <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
+            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-status-applied dark:text-sky-300">
               <WebhookIcon className="h-3.5 w-3.5" />
               Integration Hub
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-              Webhooks
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Manage outbound webhook integrations for your accounting system — track delivery status, retry failures, and monitor endpoint health.
-            </p>
+            <PageHeader
+              title="Webhooks"
+              description="Manage outbound webhook integrations for your accounting system — track delivery status, retry failures, and monitor endpoint health."
+            />
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -344,13 +343,13 @@ export default function AdminWebhooksPage() {
 
                 {/* Secret display (only on create success) */}
                 {newSecret && (
-                  <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-4 mb-4">
-                    <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-2">
+                  <div className="rounded-lg border border-status-shortlisted/20 bg-status-shortlisted-bg dark:bg-amber-950/30 p-4 mb-4">
+                    <p className="text-sm font-medium text-status-shortlisted dark:text-amber-200 mb-2">
                       <AlertCircle className="h-4 w-4 inline mr-1" />
                       Save this signing secret — it won&apos;t be shown again:
                     </p>
                     <div className="flex items-center gap-2">
-                      <code className="flex-1 text-xs break-all font-mono bg-white dark:bg-black/40 p-2 rounded">
+                      <code className="flex-1 text-xs break-all font-mono bg-card dark:bg-black/40 p-2 rounded">
                         {newSecret}
                       </code>
                       <Button variant="ghost" size="sm" onClick={copySecret}>
@@ -433,10 +432,10 @@ export default function AdminWebhooksPage() {
         {/* Stats Row */}
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {([
-            { label: "Active", value: activeCount, note: "Listening for events", icon: CheckCircle2, tone: "text-emerald-600", chip: "bg-emerald-50 dark:bg-emerald-950/30" },
+            { label: "Active", value: activeCount, note: "Listening for events", icon: CheckCircle2, tone: "text-status-selected", chip: "bg-status-selected-bg dark:bg-emerald-950/30" },
             { label: "Inactive", value: inactiveCount, note: "Paused endpoints", icon: XCircle, tone: "text-muted-foreground", chip: "bg-muted/30" },
-            { label: "Healthy", value: healthyCount, note: "Last delivery OK", icon: Activity, tone: "text-sky-600", chip: "bg-sky-50 dark:bg-sky-950/30" },
-            { label: "Failed", value: failedCount, note: "Needs attention", icon: AlertCircle, tone: "text-red-500", chip: "bg-red-50 dark:bg-red-950/30" },
+            { label: "Healthy", value: healthyCount, note: "Last delivery OK", icon: Activity, tone: "text-status-applied", chip: "bg-status-applied-bg dark:bg-sky-950/30" },
+            { label: "Failed", value: failedCount, note: "Needs attention", icon: AlertCircle, tone: "text-red-500", chip: "bg-status-rejected-bg dark:bg-red-950/30" },
           ] as const).map(({ label, value, note, icon: Icon, tone, chip }) => (
             <div key={label} className="workspace-glass-panel rounded-2xl p-4">
               <div className="flex items-start justify-between gap-3">
@@ -601,7 +600,7 @@ export default function AdminWebhooksPage() {
                       ? new Date(wh.lastTriggeredAt).toLocaleDateString()
                       : "—"}
                     {wh.lastStatus && (
-                      <span className={`ml-1 ${wh.lastStatus === "success" ? "text-emerald-600" : "text-red-500"}`}>
+                      <span className={`ml-1 ${wh.lastStatus === "success" ? "text-status-selected" : "text-red-500"}`}>
                         ({wh.lastStatus})
                       </span>
                     )}
@@ -684,7 +683,7 @@ export default function AdminWebhooksPage() {
             {/* Summary bar */}
             {!logLoading && logEntries.length > 0 && (
               <div className="flex items-center gap-4 border-b border-border/40 px-5 py-2.5 text-xs">
-                <span className="flex items-center gap-1.5 text-emerald-600">
+                <span className="flex items-center gap-1.5 text-status-selected">
                   <CheckCircle2 className="h-3 w-3" />
                   {logEntries.filter((e) => e.status === "success").length} success
                 </span>
@@ -719,11 +718,11 @@ export default function AdminWebhooksPage() {
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                           {entry.status === "success" ? (
-                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-50 dark:bg-emerald-950/30">
+                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-status-selected-bg dark:bg-emerald-950/30">
                               <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
                             </span>
                           ) : (
-                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-red-50 dark:bg-red-950/30">
+                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-status-rejected-bg dark:bg-red-950/30">
                               <XCircle className="h-3.5 w-3.5 text-red-500" />
                             </span>
                           )}
@@ -735,7 +734,7 @@ export default function AdminWebhooksPage() {
                       </div>
                       <div className="flex items-center gap-3 pl-8 text-xs text-muted-foreground">
                         {entry.statusCode && (
-                          <span className={entry.statusCode < 400 ? "text-emerald-600" : "text-red-500"}>
+                          <span className={entry.statusCode < 400 ? "text-status-selected" : "text-red-500"}>
                             HTTP {entry.statusCode}
                           </span>
                         )}

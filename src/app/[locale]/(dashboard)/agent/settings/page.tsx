@@ -124,7 +124,7 @@ function SaveFeedback({ saving, saved, hasChanges, onSave, label }: {
         {saving ? t("save.saving") : label ?? t("save.default")}
       </Button>
       {saved && (
-        <span className="text-sm text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+        <span className="text-sm text-status-selected flex items-center gap-1">
           <CheckCircle2 className="w-3.5 h-3.5" /> {t("save.saved")}
         </span>
       )}
@@ -722,10 +722,10 @@ function NotificationsTab() {
         <div className="rounded-xl border border-amber-200/60 bg-amber-50/50 dark:border-amber-800/40 dark:bg-amber-950/20 p-4">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+              <AlertTriangle className="w-4 h-4 text-status-shortlisted dark:text-amber-400 mt-0.5 shrink-0" />
               <div>
-                <p className="text-sm font-medium text-amber-800 dark:text-amber-300">{t("notifications.pausedTitle")}</p>
-                <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+                <p className="text-sm font-medium text-status-shortlisted dark:text-amber-300">{t("notifications.pausedTitle")}</p>
+                <p className="text-xs text-status-shortlisted dark:text-amber-400 mt-1">
                   {t("notifications.pausedDescription")}
                 </p>
               </div>
@@ -1366,7 +1366,7 @@ function SecurityTab() {
               <Shield className="w-4 h-4 text-muted-foreground" />
               <div>
                 <p className="text-[11px] text-muted-foreground">{t("security.accountStatus")}</p>
-                <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">{t("security.active")}</p>
+                <p className="text-sm font-medium text-status-selected dark:text-emerald-400">{t("security.active")}</p>
               </div>
             </div>
           </div>
@@ -1429,9 +1429,9 @@ export default function AgentSettingsPage() {
   const common = useTranslations("agentCommon");
 
   return (
-    <div className="page-container agent-legacy-surface space-y-6">
+    <div className="page-container space-y-6">
       {/* Hero */}
-      <section className="workspace-hero-surface agent-legacy-hero overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="max-w-3xl">
           <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
             <Sparkles className="h-3.5 w-3.5" />

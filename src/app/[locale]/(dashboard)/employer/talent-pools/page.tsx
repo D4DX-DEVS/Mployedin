@@ -26,6 +26,7 @@ import { useConfirm } from "@/hooks/useConfirm";
 import { useDebounce } from "@/hooks/useDebounce";
 import RelativeDate from "@/components/shared/RelativeDate";
 import { PaginationControls } from "@/components/shared/PaginationControls";
+import { PageHeader } from "@/components/shared/PageHeader";
 import {
   Layers,
   Loader2,
@@ -175,19 +176,17 @@ export default function EmployerTalentPoolsPage() {
               <Layers className="h-3.5 w-3.5" />
               {t("title")}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-              {t("title")}
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              {t("subtitle")}
-            </p>
+            <PageHeader
+              title={t("title")}
+              description={t("subtitle")}
+              actions={pools.length > 0 ? (
+                <Button onClick={() => setCreateOpen(true)} className="shrink-0">
+                  <Plus className="mr-2 h-4 w-4" />
+                  {t("createPool")}
+                </Button>
+              ) : undefined}
+            />
           </div>
-          {pools.length > 0 && (
-            <Button onClick={() => setCreateOpen(true)} className="shrink-0">
-              <Plus className="mr-2 h-4 w-4" />
-              {t("createPool")}
-            </Button>
-          )}
         </div>
 
         {pools.length > 0 && (

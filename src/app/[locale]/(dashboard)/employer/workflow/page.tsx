@@ -33,13 +33,13 @@ const DEFAULT_STAGES: WorkflowStage[] = [
 ];
 
 const STAGE_COLORS: Record<string, string> = {
-  new: "bg-blue-500",
-  screening: "bg-violet-500",
+  new: "bg-sky-500",
+  screening: "bg-indigo-500",
   shortlisted: "bg-amber-500",
   interview_scheduled: "bg-purple-500",
   interview_completed: "bg-indigo-500",
   offer_extended: "bg-emerald-500",
-  accepted: "bg-green-500",
+  accepted: "bg-emerald-500",
   rejected: "bg-red-500",
 };
 
@@ -164,7 +164,7 @@ export default function EmployerWorkflowPage() {
 
   if (loading)
     return (
-      <div className="page-container employer-legacy-surface space-y-4">
+      <div className="page-container space-y-4">
         <div className="h-40 animate-pulse rounded-[28px] border border-border bg-background/70" />
         <div className="grid gap-4 lg:grid-cols-[1.35fr,0.65fr]">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -200,7 +200,7 @@ export default function EmployerWorkflowPage() {
 
   return (
     <FeatureGate feature="workflowCustomization">
-    <div className="page-container employer-legacy-surface space-y-6">
+    <div className="page-container space-y-6">
       <PageHeader
         title={t("title")}
         description={t("description")}
@@ -318,7 +318,7 @@ export default function EmployerWorkflowPage() {
 
       {/* Template saved banner */}
       {templateSaved && (
-        <div className="flex items-center gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-200">
+        <div className="flex items-center gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-status-selected dark:text-emerald-200">
           <CheckCircle className="h-4 w-4" />
           {t("templateSaved")}
         </div>
@@ -326,7 +326,7 @@ export default function EmployerWorkflowPage() {
 
       {/* Unsaved changes banner */}
       {dirty && (
-        <div className="flex items-center gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+        <div className="flex items-center gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-status-shortlisted dark:text-amber-200">
           <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
           {t("unsavedChanges")}
         </div>
@@ -334,7 +334,7 @@ export default function EmployerWorkflowPage() {
 
       {/* Error banner */}
       {error && (
-        <div className="flex items-center justify-between rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">
+        <div className="flex items-center justify-between rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-status-rejected dark:text-red-200">
           <span>{error}</span>
           <button onClick={() => setError(null)} className="font-medium text-red-400 hover:text-red-600 dark:text-red-300 dark:hover:text-red-200">✕</button>
         </div>
@@ -343,7 +343,7 @@ export default function EmployerWorkflowPage() {
       <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-7">
         <div className="grid gap-6 xl:grid-cols-[1.15fr,0.85fr]">
           <div>
-            <div className="flex items-center gap-2 text-sm font-medium text-sky-700 dark:text-sky-300">
+            <div className="flex items-center gap-2 text-sm font-medium text-status-applied dark:text-sky-300">
               <Sparkles className="h-4 w-4" />
               {t("pipelineAutomation")}
             </div>
@@ -356,17 +356,17 @@ export default function EmployerWorkflowPage() {
 
             <div className="mt-6 grid gap-3 sm:grid-cols-3">
               <div className="workspace-glass-panel rounded-2xl p-4">
-                <Settings2 className="h-5 w-5 text-sky-600 dark:text-sky-300" />
+                <Settings2 className="h-5 w-5 text-status-applied dark:text-sky-300" />
                 <p className="mt-3 text-sm font-semibold text-foreground">{activeStages.length} {t("activeStages")}</p>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("activeStagesDesc")}</p>
               </div>
               <div className="workspace-glass-panel rounded-2xl p-4">
-                <Sparkles className="h-5 w-5 text-sky-600 dark:text-sky-300" />
+                <Sparkles className="h-5 w-5 text-status-applied dark:text-sky-300" />
                 <p className="mt-3 text-sm font-semibold text-foreground">{automatedStages} {t("automatedSteps")}</p>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("automatedStepsDesc")}</p>
               </div>
               <div className="workspace-glass-panel rounded-2xl p-4">
-                <Bell className="h-5 w-5 text-sky-600 dark:text-sky-300" />
+                <Bell className="h-5 w-5 text-status-applied dark:text-sky-300" />
                 <p className="mt-3 text-sm font-semibold text-foreground">{saveStateLabel}</p>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("liveConfigDesc")}</p>
               </div>
@@ -425,7 +425,7 @@ export default function EmployerWorkflowPage() {
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("workflowBuilder")}</p>
               <h3 className="mt-2 flex items-center gap-2 text-lg font-semibold text-foreground">
-                <Settings2 className="h-4 w-4 text-sky-600" /> {t("pipelineStages")}
+                <Settings2 className="h-4 w-4 text-status-applied" /> {t("pipelineStages")}
               </h3>
               <p className="mt-1 text-sm text-muted-foreground">
                 {t("builderDesc")}
@@ -583,7 +583,7 @@ export default function EmployerWorkflowPage() {
             <div className="space-y-2">
               <div className="flex items-start gap-3">
                 <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-violet-500/10">
-                  <Sparkles className="h-4 w-4 text-violet-600 dark:text-violet-300" />
+                  <Sparkles className="h-4 w-4 text-status-interview dark:text-violet-300" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
@@ -610,7 +610,7 @@ export default function EmployerWorkflowPage() {
             <div className="space-y-2">
               <div className="flex items-start gap-3">
                 <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-sky-500/10">
-                  <Bell className="h-4 w-4 text-blue-600 dark:text-sky-300" />
+                  <Bell className="h-4 w-4 text-status-applied dark:text-sky-300" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
@@ -640,12 +640,12 @@ export default function EmployerWorkflowPage() {
             <div className="space-y-3">
               <div className="flex items-start gap-3">
                 <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-red-500/10">
-                  <ShieldAlert className="h-4 w-4 text-red-600 dark:text-red-300" />
+                  <ShieldAlert className="h-4 w-4 text-status-rejected dark:text-red-300" />
                 </div>
                 <div className="flex-1">
                   <div className="flex justify-between items-baseline">
                     <p className="text-sm font-medium text-foreground">{t("autoRejectThreshold")}</p>
-                    <span className="text-lg font-bold text-sky-700 dark:text-sky-300">{autoRejectBelow}%</span>
+                    <span className="text-lg font-bold text-status-applied dark:text-sky-300">{autoRejectBelow}%</span>
                   </div>
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     {t.rich("autoRejectThresholdDesc", {

@@ -56,6 +56,7 @@ import {
 } from "recharts";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { useTranslations, useLocale } from "next-intl";
 import Link from "next/link";
 
@@ -287,9 +288,9 @@ export default function EmployerAnalyticsPage() {
 
   if (isLoading) {
     return (
-      <div className="page-container employer-legacy-surface space-y-6">
+      <div className="page-container space-y-6">
         <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-          <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
+          <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-status-applied dark:text-sky-300">
             <Sparkles className="h-3.5 w-3.5" />
             {t("title")}
           </div>
@@ -305,21 +306,21 @@ export default function EmployerAnalyticsPage() {
           {[1, 2, 3, 4].map((i) => (
             <div
               key={i}
-              className="h-[120px] animate-pulse rounded-[28px] border border-slate-200 bg-[linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.94))] shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)]"
+              className="workspace-panel-surface h-[120px] animate-pulse rounded-[28px]"
             />
           ))}
         </div>
 
-        <div className="h-[360px] animate-pulse rounded-[28px] border border-slate-200 bg-[linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96))] shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)]" />
+        <div className="workspace-panel-surface h-[360px] animate-pulse rounded-[28px]" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="page-container employer-legacy-surface space-y-6">
+      <div className="page-container space-y-6">
         <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-          <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
+          <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-status-applied dark:text-sky-300">
             <Sparkles className="h-3.5 w-3.5" />
             {t("title")}
           </div>
@@ -337,13 +338,13 @@ export default function EmployerAnalyticsPage() {
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-red-500">
                 {tc("somethingWentWrong")}
               </p>
-              <p className="mt-2 text-sm leading-6 text-red-700 dark:text-red-200">
+              <p className="mt-2 text-sm leading-6 text-status-rejected dark:text-red-200">
                 Error: {error instanceof Error ? error.message : String(error)}
               </p>
             </div>
             <button
               onClick={handleRefresh}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-background/80 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-500/10 dark:text-red-200"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-background/80 px-4 py-2 text-sm font-semibold text-status-rejected transition hover:bg-red-500/10 dark:text-red-200"
             >
               <RefreshCw className="h-4 w-4" />
               {tc("tryAgain")}
@@ -355,20 +356,18 @@ export default function EmployerAnalyticsPage() {
   }
 
   return (
-    <div className="page-container employer-legacy-surface space-y-6">
+    <div className="page-container space-y-6">
       <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
+            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-status-applied dark:text-sky-300">
               <activeTabMeta.icon className="h-3.5 w-3.5" />
               {t(activeTab === "response" ? "responseTime" : activeTab)}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-              {t("title")}
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              {t("description")}
-            </p>
+            <PageHeader
+              title={t("title")}
+              description={t("description")}
+            />
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
@@ -400,7 +399,7 @@ export default function EmployerAnalyticsPage() {
                 <button
                   onClick={handleRefresh}
                   disabled={refreshing}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background/80 text-muted-foreground transition hover:border-sky-500/25 hover:text-sky-700 dark:hover:text-sky-300 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background/80 text-muted-foreground transition hover:border-sky-500/25 hover:text-status-applied dark:hover:text-sky-300 disabled:cursor-not-allowed disabled:opacity-60"
                   title={t("refreshNow")}
                   aria-label={t("refreshNow")}
                 >
@@ -410,7 +409,7 @@ export default function EmployerAnalyticsPage() {
                 </button>
                 <button
                   onClick={handleExportCSV}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background/80 text-muted-foreground transition hover:border-emerald-500/25 hover:text-emerald-700 dark:hover:text-emerald-300"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background/80 text-muted-foreground transition hover:border-emerald-500/25 hover:text-status-selected dark:hover:text-emerald-300"
                   title={t("exportCsv")}
                   aria-label={t("exportCsv")}
                 >
@@ -451,7 +450,7 @@ export default function EmployerAnalyticsPage() {
                     "inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold transition",
                     activeTab === tab.key
                       ? "bg-slate-950 text-white shadow-[0_16px_36px_-28px_rgba(15,23,42,0.9)]"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900"
+                      : "bg-secondary/75 text-muted-foreground hover:bg-slate-200 hover:text-foreground"
                   )}
                 >
                   <Icon className="h-4 w-4" />
@@ -461,11 +460,11 @@ export default function EmployerAnalyticsPage() {
             })}
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-600">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+          <div className="rounded-2xl border border-border bg-secondary/65/80 px-4 py-3 text-sm text-muted-foreground">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               {t("currentLens")}
             </p>
-            <p className="mt-1 font-medium text-slate-900">{t(activeTabMeta.key === "response" ? "responseTimeDesc" : `${activeTabMeta.key}Desc`)}</p>
+            <p className="mt-1 font-medium text-foreground">{t(activeTabMeta.key === "response" ? "responseTimeDesc" : `${activeTabMeta.key}Desc`)}</p>
           </div>
         </div>
       </AnalyticsPanel>
@@ -637,7 +636,7 @@ function PipelineTab({
               eyebrow={t("jobFilter")}
             />
             <div className="min-w-full lg:min-w-[280px] xl:min-w-[340px]">
-              <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+              <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 {t("selectedJob")}
               </label>
               <SearchableSelect
@@ -655,19 +654,19 @@ function PipelineTab({
       )}
 
       {pipeline.stalledCount > 0 && (
-        <div className="rounded-[28px] border border-amber-200 bg-[linear-gradient(180deg,_rgba(255,251,235,0.98),_rgba(255,247,237,0.96))] p-5 shadow-[0_24px_60px_-46px_rgba(245,158,11,0.38)]">
+        <div className="workspace-panel-surface rounded-[28px] border-status-shortlisted/20 p-5">
           <div className="flex items-start gap-4">
-            <div className="rounded-2xl bg-amber-100 p-3 text-amber-600">
+            <div className="rounded-2xl bg-status-shortlisted-bg p-3 text-status-shortlisted">
               <AlertTriangle className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-600">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-shortlisted">
                 {t("actionNeeded")}
               </p>
               <p className="mt-2 text-lg font-semibold text-amber-950">
                 {t("stalledCandidates", { count: pipeline.stalledCount })}
               </p>
-              <p className="mt-1 text-sm leading-6 text-amber-800">
+              <p className="mt-1 text-sm leading-6 text-status-shortlisted">
                 {t("stalledHint")}
               </p>
             </div>
@@ -694,7 +693,7 @@ function PipelineTab({
         />
 
         {funnelChartData.every((d) => d.count === 0) ? (
-          <p className="py-10 text-center text-slate-500">{t("noApplicationData")}</p>
+          <p className="py-10 text-center text-muted-foreground">{t("noApplicationData")}</p>
         ) : (
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={funnelChartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
@@ -787,7 +786,7 @@ function PipelineTab({
                       <Link
                         href={`/${locale}/employer/applications?jobId=${job.jobId}`}
                         title={t("viewApplications", { title: job.title })}
-                        className="hover:text-sky-700 hover:underline dark:hover:text-sky-300"
+                        className="hover:text-status-applied hover:underline dark:hover:text-sky-300"
                       >
                         {job.title}
                       </Link>
@@ -838,7 +837,7 @@ function PipelineTab({
                 <button
                   onClick={() => setPerJobPage(Math.max(1, perJobPage - 1))}
                   disabled={perJobMeta.page <= 1}
-                  className="inline-flex items-center gap-1 rounded-xl border border-border bg-background/80 px-3 py-1.5 text-xs font-semibold text-foreground transition hover:border-sky-500/25 hover:text-sky-700 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:text-sky-300"
+                  className="inline-flex items-center gap-1 rounded-xl border border-border bg-background/80 px-3 py-1.5 text-xs font-semibold text-foreground transition hover:border-sky-500/25 hover:text-status-applied disabled:cursor-not-allowed disabled:opacity-50 dark:hover:text-sky-300"
                 >
                   <ChevronLeft className="h-3.5 w-3.5 rtl:rotate-180" />
                   {t("previousPage")}
@@ -849,7 +848,7 @@ function PipelineTab({
                 <button
                   onClick={() => setPerJobPage(Math.min(perJobMeta.totalPages, perJobPage + 1))}
                   disabled={perJobMeta.page >= perJobMeta.totalPages}
-                  className="inline-flex items-center gap-1 rounded-xl border border-border bg-background/80 px-3 py-1.5 text-xs font-semibold text-foreground transition hover:border-sky-500/25 hover:text-sky-700 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:text-sky-300"
+                  className="inline-flex items-center gap-1 rounded-xl border border-border bg-background/80 px-3 py-1.5 text-xs font-semibold text-foreground transition hover:border-sky-500/25 hover:text-status-applied disabled:cursor-not-allowed disabled:opacity-50 dark:hover:text-sky-300"
                 >
                   {t("nextPage")}
                   <ChevronRight className="h-3.5 w-3.5 rtl:rotate-180" />
@@ -872,7 +871,7 @@ function PipelineTab({
         </div>
 
         {data.topJobs.length === 0 ? (
-          <p className="px-6 py-12 text-center text-slate-500">{t("noJobApplications")}</p>
+          <p className="px-6 py-12 text-center text-muted-foreground">{t("noJobApplications")}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[560px] text-sm">
@@ -945,12 +944,12 @@ function HistoricalTab({
     <div className="space-y-6">
       <AnalyticsPanel>
         <div className="flex flex-wrap items-center gap-3">
-          <div className="rounded-2xl bg-slate-100 p-2 text-slate-600">
+          <div className="rounded-2xl bg-secondary/75 p-2 text-muted-foreground">
             <Calendar className="h-4 w-4" />
           </div>
           <div className="me-2">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{t("dateRange")}</p>
-            <p className="mt-1 text-sm font-medium text-slate-900">{t("dateRangeDesc")}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("dateRange")}</p>
+            <p className="mt-1 text-sm font-medium text-foreground">{t("dateRangeDesc")}</p>
           </div>
           {((["7d", "30d", "90d", "180d"] as DateRange[]).map((r) => (
             <button
@@ -959,7 +958,7 @@ function HistoricalTab({
               className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
                 dateRange === r
                   ? "bg-slate-950 text-white shadow-[0_16px_36px_-28px_rgba(15,23,42,0.9)]"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  : "bg-secondary/75 text-muted-foreground hover:bg-slate-200"
               }`}
             >
               {r === "7d" ? t("days7") : r === "30d" ? t("days30") : r === "90d" ? t("days90") : t("days180")}
@@ -970,7 +969,7 @@ function HistoricalTab({
             className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
               dateRange === "custom"
                 ? "bg-slate-950 text-white shadow-[0_16px_36px_-28px_rgba(15,23,42,0.9)]"
-                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                : "bg-secondary/75 text-muted-foreground hover:bg-slate-200"
             }`}
           >
             {t("customRange")}
@@ -983,7 +982,7 @@ function HistoricalTab({
                 onChange={setCustomStart}
                 placeholder={t("startDate")}
               />
-              <span className="text-slate-400">{t("rangeTo")}</span>
+              <span className="text-muted-foreground">{t("rangeTo")}</span>
               <DateTimePicker
                 mode="date"
                 value={customEnd}
@@ -992,7 +991,7 @@ function HistoricalTab({
               />
             </div>
           )}
-          <span className="ms-auto rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500">
+          <span className="ms-auto rounded-full border border-border bg-card px-3 py-1 text-xs text-muted-foreground">
             {historical.dateRange.start} — {historical.dateRange.end} · {historical.totalApplications} {t("histApplications")}
           </span>
         </div>
@@ -1007,7 +1006,7 @@ function HistoricalTab({
         />
 
         {trendChartData.length === 0 ? (
-          <p className="text-center text-slate-500 py-8">{t("noDataPeriod")}</p>
+          <p className="text-center text-muted-foreground py-8">{t("noDataPeriod")}</p>
         ) : (
           <ResponsiveContainer width="100%" height={280}>
             <AreaChart data={trendChartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
@@ -1042,7 +1041,7 @@ function HistoricalTab({
           />
 
           {sourceChartData.length === 0 ? (
-            <p className="text-center text-slate-500 py-8">{t("noSourceData")}</p>
+            <p className="text-center text-muted-foreground py-8">{t("noSourceData")}</p>
           ) : (
             <>
               <ResponsiveContainer width="100%" height={250}>
@@ -1081,11 +1080,11 @@ function HistoricalTab({
                         className="w-3 h-3 rounded-full"
                         style={{ backgroundColor: SOURCE_COLORS[s.source] || "#94a3b8" }}
                       />
-                      <span className="text-slate-700">{s.label}</span>
+                      <span className="text-foreground/85">{s.label}</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="font-semibold text-slate-900">{s.count}</span>
-                      <span className="text-slate-500 w-10 text-right">{s.pct}%</span>
+                      <span className="font-semibold text-foreground">{s.count}</span>
+                      <span className="text-muted-foreground w-10 text-right">{s.pct}%</span>
                     </div>
                   </div>
                 ))}
@@ -1103,28 +1102,28 @@ function HistoricalTab({
           />
 
           {historical.dropOff.length === 0 ? (
-            <p className="text-center text-slate-500 py-8">{t("noDataAvailable")}</p>
+            <p className="text-center text-muted-foreground py-8">{t("noDataAvailable")}</p>
           ) : (
             <div className="space-y-4">
               {historical.dropOff.map((d) => (
                 <div key={d.stage}>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm text-slate-700">
+                    <span className="text-sm text-foreground/85">
                       {d.stageName} → {d.nextStageName}
                     </span>
                     <span
                       className={`text-sm font-semibold ${
                         d.dropOffPct > 70
-                          ? "text-red-600"
+                          ? "text-status-rejected"
                           : d.dropOffPct > 40
-                          ? "text-amber-600"
-                          : "text-green-600"
+                          ? "text-status-shortlisted"
+                          : "text-status-selected"
                       }`}
                     >
                       {t("dropOffSuffix", { pct: d.dropOffPct })}
                     </span>
                   </div>
-                  <div className="w-full bg-slate-100 rounded-full h-2.5">
+                  <div className="w-full bg-secondary/75 rounded-full h-2.5">
                     <div
                       className={`h-2.5 rounded-full transition-all ${
                         d.dropOffPct > 70
@@ -1136,7 +1135,7 @@ function HistoricalTab({
                       style={{ width: `${100 - d.dropOffPct}%` }}
                     />
                   </div>
-                  <div className="flex justify-between text-xs text-slate-400 mt-1">
+                  <div className="flex justify-between text-xs text-muted-foreground mt-1">
                     <span>{t("atStage", { count: d.count, stage: d.stageName })}</span>
                     <span>{t("reachedStage", { count: d.nextCount, stage: d.nextStageName })}</span>
                   </div>
@@ -1156,7 +1155,7 @@ function HistoricalTab({
         />
 
         {historical.timeToHire.length === 0 ? (
-          <p className="text-center text-slate-500 py-8">
+          <p className="text-center text-muted-foreground py-8">
             {t("notEnoughHistory")}
           </p>
         ) : (
@@ -1190,23 +1189,23 @@ function HistoricalTab({
               </BarChart>
             </ResponsiveContainer>
 
-            <div className="mt-6 overflow-x-auto rounded-[24px] border border-slate-200">
+            <div className="mt-6 overflow-x-auto rounded-[24px] border border-border">
               <table className="w-full min-w-[640px] text-sm">
                 <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50/80">
-                    <th className="text-left py-3 px-4 font-semibold text-slate-700">{t("stageTransitionCol")}</th>
-                    <th className="text-right py-3 px-4 font-semibold text-slate-700">{t("avgDaysCol")}</th>
-                    <th className="text-right py-3 px-4 font-semibold text-slate-700">{t("medianDaysCol")}</th>
-                    <th className="text-right py-3 px-4 font-semibold text-slate-700">{t("transitionsCol")}</th>
+                  <tr className="border-b border-border bg-secondary/65/80">
+                    <th className="text-left py-3 px-4 font-semibold text-foreground/85">{t("stageTransitionCol")}</th>
+                    <th className="text-right py-3 px-4 font-semibold text-foreground/85">{t("avgDaysCol")}</th>
+                    <th className="text-right py-3 px-4 font-semibold text-foreground/85">{t("medianDaysCol")}</th>
+                    <th className="text-right py-3 px-4 font-semibold text-foreground/85">{t("transitionsCol")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {historical.timeToHire.map((t) => (
-                    <tr key={t.transition} className="border-b border-slate-100 hover:bg-slate-50">
-                      <td className="py-3 px-4 text-slate-900 font-medium">{t.transition}</td>
-                      <td className="text-right py-3 px-4 text-slate-700 font-semibold">{t.avgDays}</td>
-                      <td className="text-right py-3 px-4 text-slate-600">{t.medianDays}</td>
-                      <td className="text-right py-3 px-4 text-slate-500">{t.count}</td>
+                    <tr key={t.transition} className="border-b border-slate-100 hover:bg-secondary/65">
+                      <td className="py-3 px-4 text-foreground font-medium">{t.transition}</td>
+                      <td className="text-right py-3 px-4 text-foreground/85 font-semibold">{t.avgDays}</td>
+                      <td className="text-right py-3 px-4 text-muted-foreground">{t.medianDays}</td>
+                      <td className="text-right py-3 px-4 text-muted-foreground">{t.count}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1218,7 +1217,7 @@ function HistoricalTab({
 
       {historical.perJobTimeToHire.length > 0 && (
         <AnalyticsPanel className="overflow-hidden p-0">
-          <div className="border-b border-slate-200 px-5 py-5 sm:px-6">
+          <div className="border-b border-border px-5 py-5 sm:px-6">
             <AnalyticsSectionHeader
               title={t("timeInStageByJob")}
               description={t("timeInStageByJobDesc")}
@@ -1231,11 +1230,11 @@ function HistoricalTab({
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] text-sm">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50/80">
-                  <th className="text-left py-3 px-4 font-semibold text-slate-700">{t("jobCol")}</th>
-                  <th className="text-left py-3 px-4 font-semibold text-slate-700">{t("transitionCol")}</th>
-                  <th className="text-right py-3 px-4 font-semibold text-slate-700">{t("avgDaysCol")}</th>
-                  <th className="text-right py-3 px-4 font-semibold text-slate-700">{t("countCol")}</th>
+                <tr className="border-b border-border bg-secondary/65/80">
+                  <th className="text-left py-3 px-4 font-semibold text-foreground/85">{t("jobCol")}</th>
+                  <th className="text-left py-3 px-4 font-semibold text-foreground/85">{t("transitionCol")}</th>
+                  <th className="text-right py-3 px-4 font-semibold text-foreground/85">{t("avgDaysCol")}</th>
+                  <th className="text-right py-3 px-4 font-semibold text-foreground/85">{t("countCol")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -1243,31 +1242,31 @@ function HistoricalTab({
                   job.stages.map((s, idx) => (
                     <tr
                       key={`${job.jobId}-${s.transition}`}
-                      className="border-b border-slate-100 hover:bg-slate-50"
+                      className="border-b border-slate-100 hover:bg-secondary/65"
                     >
                       {idx === 0 && (
                         <td
-                          className="py-3 px-4 text-slate-900 font-medium max-w-[200px] truncate"
+                          className="py-3 px-4 text-foreground font-medium max-w-[200px] truncate"
                           rowSpan={job.stages.length}
                         >
                           {job.title}
                         </td>
                       )}
-                      <td className="py-3 px-4 text-slate-700">{s.transition}</td>
-                      <td className="text-right py-3 px-4 text-slate-700 font-semibold">
+                      <td className="py-3 px-4 text-foreground/85">{s.transition}</td>
+                      <td className="text-right py-3 px-4 text-foreground/85 font-semibold">
                         <span
                           className={`${
                             s.avgDays > 7
-                              ? "text-red-600"
+                              ? "text-status-rejected"
                               : s.avgDays > 3
-                              ? "text-amber-600"
-                              : "text-green-600"
+                              ? "text-status-shortlisted"
+                              : "text-status-selected"
                           }`}
                         >
                           {s.avgDays}
                         </span>
                       </td>
-                      <td className="text-right py-3 px-4 text-slate-500">{s.count}</td>
+                      <td className="text-right py-3 px-4 text-muted-foreground">{s.count}</td>
                     </tr>
                   ))
                 )}
@@ -1308,7 +1307,7 @@ function PerformanceTab({ performance }: { performance: PerformanceData }) {
       </section>
 
       <AnalyticsPanel className="overflow-hidden p-0">
-        <div className="border-b border-slate-200 px-5 py-5 sm:px-6">
+        <div className="border-b border-border px-5 py-5 sm:px-6">
           <AnalyticsSectionHeader
             title={t("jobPerformanceBreakdown")}
             description={t("jobPerformanceBreakdownDesc")}
@@ -1343,12 +1342,12 @@ function PerformanceTab({ performance }: { performance: PerformanceData }) {
                       <span
                         className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                           job.status === "active"
-                            ? "bg-green-100 text-green-700"
+                            ? "bg-status-selected-bg text-status-selected"
                             : job.status === "closed"
                             ? "bg-muted text-muted-foreground"
                             : job.status === "expired"
-                            ? "bg-red-100 text-red-600"
-                            : "bg-amber-100 text-amber-700"
+                            ? "bg-status-rejected-bg text-status-rejected"
+                            : "bg-status-shortlisted-bg text-status-shortlisted"
                         }`}
                       >
                         {job.status}
@@ -1361,10 +1360,10 @@ function PerformanceTab({ performance }: { performance: PerformanceData }) {
                       <span
                         className={`font-semibold ${
                           job.conversionRate >= 10
-                            ? "text-green-600"
+                            ? "text-status-selected"
                             : job.conversionRate >= 3
-                            ? "text-amber-600"
-                            : "text-red-600"
+                            ? "text-status-shortlisted"
+                            : "text-status-rejected"
                         }`}
                       >
                         {job.conversionRate}%
@@ -1398,8 +1397,8 @@ function PerformanceTab({ performance }: { performance: PerformanceData }) {
                   key={job.jobId}
                   className={`flex items-start gap-3 p-3 rounded-lg ${
                     job.insight?.includes("Excellent")
-                      ? "border border-green-200 bg-green-50"
-                      : "border border-amber-200 bg-amber-50"
+                      ? "border border-status-selected/20 bg-status-selected-bg"
+                      : "border border-status-shortlisted/20 bg-status-shortlisted-bg"
                   }`}
                 >
                   <div className="flex-1">
@@ -1510,10 +1509,10 @@ function ResponseTimeTab({ data }: { data: ResponseTimeData }) {
                       <span
                         className={`font-semibold ${
                           job.avgHours > 168
-                            ? "text-red-600"
+                            ? "text-status-rejected"
                             : job.avgHours > 48
-                            ? "text-amber-600"
-                            : "text-green-600"
+                            ? "text-status-shortlisted"
+                            : "text-status-selected"
                         }`}
                       >
                         {formatHoursLabel(job.avgHours, t)}
@@ -1535,12 +1534,12 @@ function ResponseTimeTab({ data }: { data: ResponseTimeData }) {
 /* ── Sub-components ── */
 
 const COLOR_MAP: Record<string, { text: string; icon: string; surface: string; border: string }> = {
-  blue: { text: "text-sky-700", icon: "text-sky-600", surface: "bg-sky-50", border: "border-sky-100" },
-  indigo: { text: "text-indigo-700", icon: "text-indigo-600", surface: "bg-indigo-50", border: "border-indigo-100" },
-  purple: { text: "text-violet-700", icon: "text-violet-600", surface: "bg-violet-50", border: "border-violet-100" },
-  amber: { text: "text-amber-700", icon: "text-amber-600", surface: "bg-amber-50", border: "border-amber-100" },
-  green: { text: "text-emerald-700", icon: "text-emerald-600", surface: "bg-emerald-50", border: "border-emerald-100" },
-  red: { text: "text-rose-700", icon: "text-rose-600", surface: "bg-rose-50", border: "border-rose-100" },
+  blue: { text: "text-status-applied", icon: "text-status-applied", surface: "bg-status-applied-bg", border: "border-border" },
+  indigo: { text: "text-indigo-700", icon: "text-status-interview", surface: "bg-status-interview-bg", border: "border-status-interview/20" },
+  purple: { text: "text-status-interview", icon: "text-status-interview", surface: "bg-status-interview-bg", border: "border-status-interview/20" },
+  amber: { text: "text-status-shortlisted", icon: "text-status-shortlisted", surface: "bg-status-shortlisted-bg", border: "border-status-shortlisted/20" },
+  green: { text: "text-emerald-700", icon: "text-status-selected", surface: "bg-status-selected-bg", border: "border-status-selected/20" },
+  red: { text: "text-rose-700", icon: "text-status-rejected", surface: "bg-status-rejected-bg", border: "border-status-rejected/20" },
 };
 
 function formatHoursLabel(
@@ -1679,7 +1678,7 @@ function DiversityTab({ data }: { data: DiversityReportData }) {
           icon={Users}
           eyebrow={t("inclusionEyebrow")}
         />
-        <p className="py-10 text-center text-slate-500">{t("noDiversityData")}</p>
+        <p className="py-10 text-center text-muted-foreground">{t("noDiversityData")}</p>
       </AnalyticsPanel>
     );
   }
@@ -1922,7 +1921,7 @@ function RateBadge({
     <span
       className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full ${
         highlight
-          ? "border border-emerald-200 bg-emerald-50 font-semibold text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300"
+          ? "border border-status-selected/20 bg-status-selected-bg font-semibold text-status-selected dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300"
           : "border border-border bg-background/80 text-foreground/85"
       }`}
     >

@@ -13,6 +13,7 @@ import {
   type JobOption,
 } from "@/components/shared/MployedinCalendar";
 import { CalendarSkeleton } from "@/components/ui/loading/CalendarSkeleton";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { Briefcase } from "lucide-react";
 
 // ssr:false — calendar renders "today" from the client clock; SSR would use the
@@ -172,12 +173,10 @@ export default function EmployerCalendarPage() {
     <div className="page-container space-y-6">
       {/* Hero */}
       <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-          {t("title")}
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {t("description")}
-        </p>
+        <PageHeader
+          title={t("title")}
+          description={t("description")}
+        />
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           <div className="workspace-glass-panel rounded-2xl p-4">

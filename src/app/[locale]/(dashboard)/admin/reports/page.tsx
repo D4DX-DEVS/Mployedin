@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { PageHeader } from "@/components/shared/PageHeader";
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -312,10 +313,7 @@ export default function AdminReportsPage() {
           <Sparkles className="h-3.5 w-3.5" />
           {t("adminWorkspace")}
         </div>
-        <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("reportsAndAnalytics")}</h1>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-          {t("platformDemandDescription")}
-        </p>
+        <PageHeader className="mt-4" title={t("reportsAndAnalytics")} description={t("platformDemandDescription")} />
       </section>
 
       <section className="workspace-panel-surface overflow-hidden rounded-[20px]">

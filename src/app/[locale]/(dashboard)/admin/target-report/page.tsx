@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -275,10 +276,7 @@ export default function AdminTargetReportPage() {
               <Sparkles className="h-3.5 w-3.5" />
               Admin workspace
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">Target Report</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Consolidated performance report — {yearFilter}. Track employer, employee, and finance targets across your organization.
-            </p>
+            <PageHeader title="Target Report" description={`Consolidated performance report — ${yearFilter}. Track employer, employee, and finance targets across your organization.`} />
           </div>
           <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:min-w-[220px]">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Coverage</p>

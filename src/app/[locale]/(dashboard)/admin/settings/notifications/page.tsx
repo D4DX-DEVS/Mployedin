@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import { PageHeader } from "@/components/shared/PageHeader";
 import {
   Bell, Mail, Clock, Users, Send, BarChart3, Shield, Loader2,
   CheckCircle2, AlertTriangle, Save, PowerOff, UserX, Pause, Zap,
@@ -143,10 +144,7 @@ export default function AdminNotificationsPage() {
               <Sparkles className="h-3.5 w-3.5" />
               {t("adminWorkspaceLabel")}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("notificationControlCenter")}</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              {t("notificationControlCenterDescription")}
-            </p>
+            <PageHeader className="mt-4" title={t("notificationControlCenter")} description={t("notificationControlCenterDescription")} />
           </div>
           <div className="flex items-center gap-2">
             {config?.globalDefaults.maintenanceMode && (

@@ -68,49 +68,49 @@ function getStageConfig(t: ReturnType<typeof useTranslations>): Record<LeadStatu
   return {
     new: {
       label: t("stageNew"),
-      color: "text-sky-700 dark:text-sky-300",
-      bgColor: "bg-sky-50 dark:bg-sky-500/10",
-      borderColor: "border-sky-200 dark:border-sky-500/30",
+      color: "text-status-applied",
+      bgColor: "bg-status-applied-bg",
+      borderColor: "border-status-applied/20",
       icon: <Sparkles className="h-4 w-4" />,
       description: t("stageNewDescription"),
     },
     contacted: {
       label: t("stageContacted"),
-      color: "text-indigo-700 dark:text-indigo-300",
-      bgColor: "bg-indigo-50 dark:bg-indigo-500/10",
-      borderColor: "border-indigo-200 dark:border-indigo-500/30",
+      color: "text-status-interview",
+      bgColor: "bg-status-interview-bg",
+      borderColor: "border-status-interview/20",
       icon: <Phone className="h-4 w-4" />,
       description: t("stageContactedDescription"),
     },
     interested: {
       label: t("stageInterested"),
-      color: "text-amber-700 dark:text-amber-300",
-      bgColor: "bg-amber-50 dark:bg-amber-500/10",
-      borderColor: "border-amber-200 dark:border-amber-500/30",
+      color: "text-status-shortlisted",
+      bgColor: "bg-status-shortlisted-bg",
+      borderColor: "border-status-shortlisted/20",
       icon: <TrendingUp className="h-4 w-4" />,
       description: t("stageInterestedDescription"),
     },
     negotiating: {
       label: t("stageNegotiating"),
-      color: "text-purple-700 dark:text-purple-300",
-      bgColor: "bg-purple-50 dark:bg-purple-500/10",
-      borderColor: "border-purple-200 dark:border-purple-500/30",
+      color: "text-status-interview",
+      bgColor: "bg-status-interview-bg",
+      borderColor: "border-status-interview/20",
       icon: <Target className="h-4 w-4" />,
       description: t("stageNegotiatingDescription"),
     },
     converted: {
       label: t("stageWon"),
-      color: "text-emerald-700 dark:text-emerald-300",
-      bgColor: "bg-emerald-50 dark:bg-emerald-500/10",
-      borderColor: "border-emerald-200 dark:border-emerald-500/30",
+      color: "text-status-selected",
+      bgColor: "bg-status-selected-bg",
+      borderColor: "border-status-selected/20",
       icon: <Building2 className="h-4 w-4" />,
       description: t("stageWonDescription"),
     },
     lost: {
       label: t("stageLost"),
-      color: "text-rose-700 dark:text-rose-300",
-      bgColor: "bg-rose-50 dark:bg-rose-500/10",
-      borderColor: "border-rose-200 dark:border-rose-500/30",
+      color: "text-status-rejected",
+      bgColor: "bg-status-rejected-bg",
+      borderColor: "border-status-rejected/20",
       icon: <XCircle className="h-4 w-4" />,
       description: t("stageLostDescription"),
     },
@@ -118,10 +118,10 @@ function getStageConfig(t: ReturnType<typeof useTranslations>): Record<LeadStatu
 }
 
 const TEMP_STYLES: Record<string, string> = {
-  hot: "border-rose-300 bg-rose-50 text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-300",
-  warm: "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300",
-  cold: "border-sky-300 bg-sky-50 text-sky-800 dark:border-sky-500/30 dark:bg-sky-500/15 dark:text-sky-300",
-  qualified: "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300",
+  hot: "border-status-rejected/20 bg-status-rejected-bg text-status-rejected",
+  warm: "border-status-shortlisted/20 bg-status-shortlisted-bg text-status-shortlisted",
+  cold: "border-status-applied/20 bg-status-applied-bg text-status-applied",
+  qualified: "border-status-selected/20 bg-status-selected-bg text-status-selected",
 };
 
 interface LeadScoreResult {
@@ -292,7 +292,7 @@ function LeadCard({
         {lead.followUpAt && (
           <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-medium ${
             isOverdue
-              ? "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400"
+              ? "bg-status-rejected-bg text-rose-700 dark:bg-rose-500/10 dark:text-rose-400"
               : "bg-muted text-muted-foreground"
           }`}>
             <Calendar className="h-3 w-3" />
@@ -306,7 +306,7 @@ function LeadCard({
           </span>
         )}
         {lead.expectedRevenue != null && lead.expectedRevenue > 0 && (
-          <span className="ml-auto text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+          <span className="ml-auto text-[10px] font-semibold text-status-selected">
             {lead.expectedRevenueCurrency ?? "AED"} {lead.expectedRevenue.toLocaleString()}
           </span>
         )}
@@ -318,7 +318,7 @@ function LeadCard({
           <button
             onClick={() => onScore(lead._id)}
             disabled={scoring}
-            className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-amber-100 hover:text-amber-600 dark:hover:bg-amber-500/15"
+            className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-status-shortlisted-bg hover:text-amber-600 dark:hover:bg-amber-500/15"
             title={t("aiScore")}
           >
             {scoring ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Flame className="h-3.5 w-3.5" />}
@@ -327,7 +327,7 @@ function LeadCard({
             <button
               onClick={() => onConvert(lead)}
               disabled={converting}
-              className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-emerald-100 hover:text-emerald-600 dark:hover:bg-emerald-500/15"
+              className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-status-selected-bg hover:text-status-selected"
               title={t("convertToEmployer")}
             >
               {converting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Building2 className="h-3.5 w-3.5" />}
@@ -686,11 +686,11 @@ export default function AgentLeadsPage() {
   }, [leads]);
 
   return (
-    <div className="page-container agent-legacy-surface space-y-5">
+    <div className="page-container space-y-5">
       {ConfirmDialogNode}
 
       {/* ──── Hero Header ──── */}
-      <section className="workspace-hero-surface agent-legacy-hero overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
@@ -712,14 +712,14 @@ export default function AgentLeadsPage() {
                 {leads.filter((l) => !["converted", "lost"].includes(l.status)).length}
               </p>
               {totalPipelineValue > 0 && (
-                <p className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+                <p className="text-[10px] font-medium text-status-selected">
                   AED {totalPipelineValue.toLocaleString()}
                 </p>
               )}
             </div>
             <div className="workspace-glass-panel rounded-2xl px-4 py-3">
               <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{t("kpiWon")}</p>
-              <p className="mt-1 text-xl font-bold text-emerald-600 dark:text-emerald-400">{stageCounts.converted}</p>
+              <p className="mt-1 text-xl font-bold text-status-selected">{stageCounts.converted}</p>
             </div>
             <div className="workspace-glass-panel rounded-2xl px-4 py-3">
               <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{t("kpiTotal")}</p>
@@ -987,7 +987,7 @@ export default function AgentLeadsPage() {
                             {lead.followUpAt ? (
                               <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium ${
                                 isOverdue
-                                  ? "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400"
+                                  ? "bg-status-rejected-bg text-rose-700 dark:bg-rose-500/10 dark:text-rose-400"
                                   : "bg-muted text-muted-foreground"
                               }`}>
                                 <Calendar className="h-3 w-3" />
@@ -1012,7 +1012,7 @@ export default function AgentLeadsPage() {
                               <button
                                 onClick={() => scoreLead(lead._id)}
                                 disabled={scoringLeadId === lead._id}
-                                className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-500/10"
+                                className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-status-shortlisted-bg hover:text-amber-600 dark:hover:bg-amber-500/10"
                                 title={t("aiScore")}
                               >
                                 {scoringLeadId === lead._id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Flame className="h-4 w-4" />}
@@ -1021,7 +1021,7 @@ export default function AgentLeadsPage() {
                                 <button
                                   onClick={() => convertLead(lead)}
                                   disabled={convertingLeadId === lead._id}
-                                  className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-500/10"
+                                  className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-status-selected-bg hover:text-status-selected"
                                   title={t("convertToEmployer")}
                                 >
                                   {convertingLeadId === lead._id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Building2 className="h-4 w-4" />}
@@ -1039,7 +1039,7 @@ export default function AgentLeadsPage() {
                               {can("leads", "delete") && (
                                 <button
                                   onClick={() => handleDelete(lead._id)}
-                                  className="hidden rounded-lg p-1.5 text-muted-foreground transition hover:bg-rose-50 hover:text-rose-600 group-hover:inline-flex dark:hover:bg-rose-500/10"
+                                  className="hidden rounded-lg p-1.5 text-muted-foreground transition hover:bg-status-rejected-bg hover:text-status-rejected group-hover:inline-flex"
                                   title={tc("delete")}
                                 >
                                   <Trash2 className="h-4 w-4" />
@@ -1083,45 +1083,45 @@ export default function AgentLeadsPage() {
               <div className="space-y-5">
                 {/* Contact info */}
                 <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
+                  <div className="min-w-0">
                     <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("detailContact")}</span>
                     <p className="mt-1 font-medium text-foreground">{detailLead.contactPerson}</p>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{tc("email")}</span>
                     <p className="mt-1 text-foreground">{detailLead.contactEmail || "\u2014"}</p>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{tc("phone")}</span>
                     <p className="mt-1 text-foreground">{detailLead.contactPhone || "\u2014"}</p>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("detailLocation")}</span>
                     <p className="mt-1 text-foreground">{detailLead.country || "\u2014"}</p>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("detailIndustry")}</span>
                     <p className="mt-1 text-foreground">{detailLead.industry || "\u2014"}</p>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("detailSource")}</span>
                     <p className="mt-1 text-foreground">{detailLead.source || "\u2014"}</p>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("detailRevenue")}</span>
-                    <p className="mt-1 font-semibold text-emerald-600 dark:text-emerald-400">
+                    <p className="mt-1 font-semibold text-status-selected">
                       {detailLead.expectedRevenue ? `${detailLead.expectedRevenueCurrency ?? "AED"} ${detailLead.expectedRevenue.toLocaleString()}` : "\u2014"}
                     </p>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("detailExhibition")}</span>
                     <p className="mt-1 text-foreground">{exhibition?.eventName || "\u2014"}</p>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("detailFollowUp")}</span>
                     <p className="mt-1 text-foreground">{detailLead.followUpAt ? new Date(detailLead.followUpAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "\u2014"}</p>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("detailCreated")}</span>
                     <p className="mt-1 text-foreground">{new Date(detailLead.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</p>
                   </div>
@@ -1153,7 +1153,7 @@ export default function AgentLeadsPage() {
                               isActive
                                 ? `${sConfig.bgColor} ${sConfig.borderColor} ${sConfig.color} border shadow-sm`
                                 : isPast
-                                  ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
+                                  ? "bg-status-selected-bg text-status-selected"
                                   : "border border-border/50 text-muted-foreground/50 hover:border-border hover:text-muted-foreground"
                             }`}
                             title={isActive ? t("currentStage", { stage: sConfig.label }) : t("moveToStage", { stage: sConfig.label })}
@@ -1162,7 +1162,7 @@ export default function AgentLeadsPage() {
                             {sConfig.label}
                           </button>
                           {i < 4 && (
-                            <div className={`mx-1 h-px w-4 ${isPast ? "bg-emerald-300 dark:bg-emerald-500/50" : "bg-border/40"}`} />
+                            <div className={`mx-1 h-px w-4 ${isPast ? "bg-status-selected" : "bg-border/40"}`} />
                           )}
                         </div>
                       );
@@ -1224,7 +1224,7 @@ export default function AgentLeadsPage() {
           }, 500);
         }}
         warningNode={duplicates.length > 0 ? (
-          <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+          <div className="flex items-start gap-2 rounded-lg border border-status-shortlisted/20 bg-status-shortlisted-bg px-3 py-2.5 text-sm text-status-shortlisted dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <div>
               <p className="font-semibold">{t("duplicatesFoundWarning")}</p>
@@ -1232,15 +1232,15 @@ export default function AgentLeadsPage() {
                 {duplicates.map((d) => (
                   <li key={d._id}>
                     <span className="font-medium">{d.companyName}</span>
-                    {d.contactEmail && <span className="text-amber-600 dark:text-amber-400"> &middot; {d.contactEmail}</span>}
-                    <span className="ml-1 rounded bg-amber-100 px-1 py-0.5 text-[10px] font-semibold uppercase dark:bg-amber-500/20">
+                    {d.contactEmail && <span className="text-status-shortlisted dark:text-amber-400"> &middot; {d.contactEmail}</span>}
+                    <span className="ml-1 rounded bg-status-shortlisted-bg px-1 py-0.5 text-[10px] font-semibold uppercase dark:bg-amber-500/20">
                       {d.matchType} match &middot; {d.confidence}
                     </span>
                     <span className="ml-1 text-amber-500">({d.status})</span>
                   </li>
                 ))}
               </ul>
-              <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">{t("duplicatesWarningOnly")}</p>
+              <p className="mt-1 text-[11px] text-status-shortlisted dark:text-amber-400">{t("duplicatesWarningOnly")}</p>
             </div>
           </div>
         ) : undefined}

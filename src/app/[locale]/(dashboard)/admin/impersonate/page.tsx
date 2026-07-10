@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -126,10 +127,7 @@ export default function AdminUserImpersonatePage() {
       <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
         {/* Compact header row */}
         <div className="flex flex-col gap-3 border-b border-border/80 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-lg font-semibold text-foreground">{t("title")}</h1>
-            <p className="mt-0.5 text-xs text-muted-foreground">{t("description")}</p>
-          </div>
+          <PageHeader title={t("title")} description={t("description")} />
           <div className="flex items-center gap-2">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />

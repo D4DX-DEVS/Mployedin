@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { toast } from "sonner";
 import { usePagination } from "@/hooks/usePagination";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -291,8 +292,7 @@ export default function AdminActivityTimelinePage() {
             <Activity className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t("title")}</h1>
-            <p className="text-sm text-muted-foreground">{t("description")}</p>
+            <PageHeader title={t("title")} description={t("description")} />
           </div>
         </div>
       </section>

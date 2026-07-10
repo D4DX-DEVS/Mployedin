@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Search, UserCheck, UserX, Shield, ChevronDown, Inbox, Plus, Settings2, Check, Sparkles } from "lucide-react";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -257,10 +258,10 @@ export default function AdminUsersPage() {
               <Sparkles className="h-3.5 w-3.5" />
               {t("adminWorkspace")}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("userManagement")}</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              {t("userManagementDesc", { total: total.toLocaleString() })}
-            </p>
+            <PageHeader
+              title={t("userManagement")}
+              description={t("userManagementDesc", { total: total.toLocaleString() })}
+            />
           </div>
         </div>
       </section>

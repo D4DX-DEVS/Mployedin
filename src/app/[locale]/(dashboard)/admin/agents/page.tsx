@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { toast } from "sonner";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -330,10 +331,7 @@ export default function AdminAgentsPage() {
               <Sparkles className="h-3.5 w-3.5" />
               {tr("adminWorkspace")}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{tr("agents")}</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              {tr("heroDescription")}
-            </p>
+            <PageHeader title={tr("agents")} description={tr("heroDescription")} />
           </div>
         </div>
       </section>

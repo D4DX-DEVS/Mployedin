@@ -251,9 +251,9 @@ export default function AgentInterviewsPage() {
   const totalAll = Object.values(statusCounts).reduce((a, b) => a + b, 0);
 
   return (
-    <div className="page-container agent-legacy-surface space-y-6">
+    <div className="page-container space-y-6">
       {/* ── Hero Section ───────────────────────────────────────────── */}
-      <section className="workspace-hero-surface agent-legacy-hero overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary"><Sparkles className="h-3.5 w-3.5" />{t("badgeAgentWorkspace")}</div>

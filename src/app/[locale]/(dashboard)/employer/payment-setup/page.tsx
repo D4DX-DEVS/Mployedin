@@ -10,6 +10,7 @@ import {
   CreditCard, Shield, CheckCircle2, AlertTriangle, Lock,
   Building2, Banknote, Zap,
 } from "lucide-react";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { csrfFetch } from "@/lib/security/csrf-client";
 
 /* ------------------------------------------------------------------ */
@@ -95,12 +96,10 @@ export default function EmployerPaymentSetupPage() {
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10">
             <CreditCard className="h-6 w-6 text-primary" />
           </div>
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t("title")}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {t("subtitle")}
-            </p>
-          </div>
+          <PageHeader
+            title={t("title")}
+            description={t("subtitle")}
+          />
         </div>
 
         {/* Status */}

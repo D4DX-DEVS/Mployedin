@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import { PageHeader } from "@/components/shared/PageHeader";
 import {
   ArrowRight,
   Clock,
@@ -312,10 +313,7 @@ export default function AdminCommunicationsPage() {
               <Sparkles className="h-3.5 w-3.5" />
               {tr("adminWorkspace")}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{tr("communicationsCenterHeading")}</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              {tr("communicationsCenterDesc")}
-            </p>
+            <PageHeader className="mt-4" title={tr("communicationsCenterHeading")} description={tr("communicationsCenterDesc")} />
           </div>
         </div>
       </section>

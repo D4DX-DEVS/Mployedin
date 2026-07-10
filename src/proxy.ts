@@ -108,6 +108,22 @@ export default auth(async function middleware(req: NextRequest) {
       const csrfError = validateCsrf(req);
       if (csrfError) return withSecurityHeaders(csrfError);
     }
+    // Defense-in-depth: role-owned API namespaces (mirrors ROLE_ROUTES for
+    // pages). Only namespaces with a single owning role are gated here —
+    // /api/admin/* is NOT, because employer pages legitimately read
+    // admin-published templates. Anonymous requests fall through to each
+    // route's withAuth() 401.
+    const apiRole = (req as unknown as { auth?: { user?: { role: UserRole } } }).auth?.user?.role;
+    if (apiRole) {
+      const forbidden =
+        (pathname.startsWith("/api/super-agent/") && apiRole !== "super_agent" && apiRole !== "admin") ||
+        (pathname.startsWith("/api/agent/") && apiRole !== "agent" && apiRole !== "admin");
+      if (forbidden) {
+        return withSecurityHeaders(
+          NextResponse.json({ error: "Forbidden" }, { status: 403 })
+        );
+      }
+    }
     return withSecurityHeaders(NextResponse.next());
   }
 

@@ -3,6 +3,7 @@
 import { useState, FormEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -69,12 +70,7 @@ export default function NewStaticPage() {
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
               {t("workspaceLabel")}
             </div>
-            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-              {t("pageTitle")}
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {t("pageDescription")}
-            </p>
+            <PageHeader className="mt-4" title={t("pageTitle")} description={t("pageDescription")} />
           </div>
         </div>
       </section>

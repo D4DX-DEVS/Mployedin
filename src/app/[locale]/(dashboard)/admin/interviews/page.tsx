@@ -8,6 +8,7 @@ import {
   TrendingUp, AlertTriangle, Clock, BarChart3, RotateCcw, CheckCircle2,
   Filter, ChevronDown, ChevronUp,
 } from "lucide-react";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
@@ -65,7 +66,7 @@ function computeAiInsights(interviews: Interview[], t: ReturnType<typeof useTran
       total,
       performance: completionRate >= 70 ? t("goodPerformance") : t("considerFollowUps"),
     }),
-    color: completionRate >= 70 ? "text-emerald-600" : "text-amber-600",
+    color: completionRate >= 70 ? "text-status-selected" : "text-status-shortlisted",
   });
 
   if (noShow > 0) {
@@ -79,7 +80,7 @@ function computeAiInsights(interviews: Interview[], t: ReturnType<typeof useTran
         rate: noShowRate,
         message: noShowRate > 15 ? t("noShowHighRate") : t("noShowAcceptable"),
       }),
-      color: noShowRate > 15 ? "text-destructive" : "text-amber-600",
+      color: noShowRate > 15 ? "text-destructive" : "text-status-shortlisted",
     });
   }
 
@@ -94,7 +95,7 @@ function computeAiInsights(interviews: Interview[], t: ReturnType<typeof useTran
         plural: upcoming.length !== 1 ? t("upcomingPlural") : "",
         overdue: overdueCount > 0 ? t("overdueMessage", { count: overdueCount }) : t("allOnTrack"),
       }),
-      color: overdueCount > 0 ? "text-amber-600" : "text-blue-600",
+      color: overdueCount > 0 ? "text-status-shortlisted" : "text-status-applied",
     });
   }
 
@@ -267,22 +268,20 @@ export default function AdminInterviewOversightPage() {
   const noShowCount = interviews.filter((i) => i.status === "no_show").length;
 
   return (
-    <div className="page-container employer-legacy-surface space-y-6">
+    <div className="page-container space-y-6">
 
       {/* ─── Hero ─────────────────────────────────────────────────────── */}
       <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
+            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-status-applied dark:text-sky-300">
               <Sparkles className="h-3.5 w-3.5" />
               {t("recruitmentControl")}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-              {t("interviewOversight")}
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              {t("monitorAllInterviews")}
-            </p>
+            <PageHeader
+              title={t("interviewOversight")}
+              description={t("monitorAllInterviews")}
+            />
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -306,10 +305,10 @@ export default function AdminInterviewOversightPage() {
         {/* Stats Row */}
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {([
-            { labelKey: "scheduled", value: scheduledCount, noteKey: "upcoming", icon: Calendar, tone: "text-sky-600", chip: "bg-sky-50 dark:bg-sky-950/30" },
-            { labelKey: "completed", value: completedCount, noteKey: "finished", icon: CheckCircle2, tone: "text-emerald-600", chip: "bg-emerald-50 dark:bg-emerald-950/30" },
-            { labelKey: "cancelled", value: cancelledCount, noteKey: "calledOff", icon: RotateCcw, tone: "text-amber-600", chip: "bg-amber-50 dark:bg-amber-950/30" },
-            { labelKey: "noShows", value: noShowCount, noteKey: "missed", icon: AlertTriangle, tone: "text-red-500", chip: "bg-red-50 dark:bg-red-950/30" },
+            { labelKey: "scheduled", value: scheduledCount, noteKey: "upcoming", icon: Calendar, tone: "text-status-applied", chip: "bg-status-applied-bg dark:bg-sky-950/30" },
+            { labelKey: "completed", value: completedCount, noteKey: "finished", icon: CheckCircle2, tone: "text-status-selected", chip: "bg-status-selected-bg dark:bg-emerald-950/30" },
+            { labelKey: "cancelled", value: cancelledCount, noteKey: "calledOff", icon: RotateCcw, tone: "text-status-shortlisted", chip: "bg-status-shortlisted-bg dark:bg-amber-950/30" },
+            { labelKey: "noShows", value: noShowCount, noteKey: "missed", icon: AlertTriangle, tone: "text-red-500", chip: "bg-status-rejected-bg dark:bg-red-950/30" },
           ] as const).map(({ labelKey, value, noteKey, icon: Icon, tone, chip }) => (
             <div key={labelKey} className="workspace-glass-panel rounded-2xl p-4">
               <div className="flex items-start justify-between gap-3">

@@ -22,6 +22,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { cn } from "@/lib/utils";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -51,18 +52,18 @@ interface PaginationInfo {
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const ACTION_META: Record<string, { label: string; color: string; icon: typeof History }> = {
-  create: { label: "Created", color: "bg-green-100 text-green-700 border-green-200 dark:bg-green-500/15 dark:text-green-300 dark:border-green-500/30", icon: FilePlus },
-  update: { label: "Updated", color: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-500/30", icon: FileEdit },
-  delete: { label: "Deleted", color: "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/15 dark:text-red-300 dark:border-red-500/30", icon: Trash2 },
-  start: { label: "Session Started", color: "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-500/15 dark:text-purple-300 dark:border-purple-500/30", icon: LogIn },
-  exit: { label: "Session Ended", color: "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-500/15 dark:text-slate-300 dark:border-slate-500/30", icon: LogOut },
-  write: { label: "Modified", color: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30", icon: FileText },
+  create: { label: "Created", color: "bg-status-selected-bg text-status-selected border-status-selected/20 dark:bg-green-500/15 dark:text-green-300 dark:border-green-500/30", icon: FilePlus },
+  update: { label: "Updated", color: "bg-status-applied-bg text-status-applied border-status-applied/20 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-500/30", icon: FileEdit },
+  delete: { label: "Deleted", color: "bg-status-rejected-bg text-status-rejected border-status-rejected/20 dark:bg-red-500/15 dark:text-red-300 dark:border-red-500/30", icon: Trash2 },
+  start: { label: "Session Started", color: "bg-status-interview-bg text-status-interview border-status-interview/20 dark:bg-purple-500/15 dark:text-purple-300 dark:border-purple-500/30", icon: LogIn },
+  exit: { label: "Session Ended", color: "bg-secondary/75 text-muted-foreground border-border dark:bg-slate-500/15 dark:text-muted-foreground dark:border-slate-500/30", icon: LogOut },
+  write: { label: "Modified", color: "bg-status-shortlisted-bg text-status-shortlisted border-status-shortlisted/20 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30", icon: FileText },
 };
 
 const ROLE_META: Record<string, { label: string; color: string }> = {
-  admin: { label: "Admin", color: "bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-400" },
-  super_agent: { label: "Super Agent", color: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400" },
-  agent: { label: "Agent", color: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400" },
+  admin: { label: "Admin", color: "bg-status-interview-bg text-status-interview dark:bg-purple-500/15 dark:text-purple-400" },
+  super_agent: { label: "Super Agent", color: "bg-status-applied-bg text-status-applied dark:bg-blue-500/15 dark:text-blue-400" },
+  agent: { label: "Agent", color: "bg-status-shortlisted-bg text-status-shortlisted dark:bg-amber-500/15 dark:text-amber-400" },
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -164,23 +165,21 @@ export default function ActivityHistoryPage() {
   };
 
   return (
-    <div className="page-container employer-legacy-surface space-y-6">
+    <div className="page-container space-y-6">
       {/* Hero + Filters Combined */}
       <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="flex flex-col gap-6">
           {/* Top: Title + Stats */}
           <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
             <div className="max-w-3xl">
-              <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
+              <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-status-applied dark:text-sky-300">
                 <Sparkles className="h-3.5 w-3.5" />
                 {t("title")}
               </div>
-              <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-                {t("title")}
-              </h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-                {t("description")}
-              </p>
+              <PageHeader
+                title={t("title")}
+                description={t("description")}
+              />
             </div>
 
             {/* Stats pills */}
@@ -202,7 +201,7 @@ export default function ActivityHistoryPage() {
           </div>
 
           {/* Bottom: Inline Filters */}
-          <div className="flex flex-wrap items-end gap-3 border-t border-slate-200/50 pt-5 dark:border-slate-700/50">
+          <div className="flex flex-wrap items-end gap-3 border-t border-border/50 pt-5 dark:border-slate-700/50">
             <div className="flex flex-col gap-1.5">
               <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 {t("actionType")}
@@ -256,7 +255,7 @@ export default function ActivityHistoryPage() {
       {/* Activity List */}
       <section className="space-y-3">
         {error ? (
-          <div className="flex flex-col items-center justify-center rounded-[28px] border border-dashed border-slate-300 py-20 text-center dark:border-slate-700">
+          <div className="flex flex-col items-center justify-center rounded-[28px] border border-dashed border-border py-20 text-center dark:border-slate-700">
             <p className="text-sm font-semibold text-destructive">{tc("somethingWentWrong")}</p>
             <Button variant="outline" size="sm" className="mt-4 rounded-xl" onClick={handleRefresh}>
               {tc("tryAgain")}
@@ -267,12 +266,12 @@ export default function ActivityHistoryPage() {
             {[1, 2, 3, 4, 5].map((i) => (
               <div
                 key={i}
-                className="h-[92px] animate-pulse rounded-[20px] border border-slate-200 bg-[linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.94))] dark:border-slate-800 dark:bg-slate-900/60"
+                className="workspace-panel-surface h-[92px] animate-pulse rounded-[20px] dark:border-slate-800 dark:bg-slate-900/60"
               />
             ))}
           </div>
         ) : entries.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-[28px] border border-dashed border-slate-300 py-20 text-center dark:border-slate-700">
+          <div className="flex flex-col items-center justify-center rounded-[28px] border border-dashed border-border py-20 text-center dark:border-slate-700">
             <History className="h-14 w-14 text-muted-foreground/30 mb-5" />
             <h3 className="text-lg font-semibold text-foreground">{t("noActivity")}</h3>
             <p className="text-sm text-muted-foreground mt-2 max-w-md">{t("noActivityDescription")}</p>
@@ -280,7 +279,7 @@ export default function ActivityHistoryPage() {
         ) : (
           entries.map((entry) => {
             const actionMeta = ACTION_META[entry.action] ?? ACTION_META.write;
-            const roleMeta = ROLE_META[entry.actorRole] ?? { label: entry.actorRole, color: "bg-slate-100 text-slate-700" };
+            const roleMeta = ROLE_META[entry.actorRole] ?? { label: entry.actorRole, color: "bg-secondary/75 text-foreground/85" };
             const actionLabel = ACTION_META[entry.action] ? t(entry.action) : t("write");
             const roleLabelKey: Record<string, string> = { admin: "roleAdmin", super_agent: "roleSuperAgent", agent: "roleAgent" };
             const roleLabel = roleLabelKey[entry.actorRole] ? t(roleLabelKey[entry.actorRole]) : entry.actorRole;
@@ -289,7 +288,7 @@ export default function ActivityHistoryPage() {
             return (
               <div
                 key={entry.id}
-                className="flex items-start gap-4 rounded-[20px] border border-slate-200 bg-[linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.94))] p-4 sm:p-5 shadow-[0_2px_12px_-4px_rgba(15,23,42,0.06)] transition-all hover:shadow-[0_6px_20px_-6px_rgba(15,23,42,0.1)] dark:border-slate-800 dark:bg-[linear-gradient(135deg,_rgba(15,23,42,0.98),_rgba(30,41,59,0.94))]"
+                className="workspace-panel-surface flex items-start gap-4 rounded-[20px] p-4 sm:p-5 transition-all hover:shadow-[0_6px_20px_-6px_rgba(15,23,42,0.1)] dark:border-slate-800 dark:bg-[linear-gradient(135deg,_rgba(15,23,42,0.98),_rgba(30,41,59,0.94))]"
               >
                 {/* Action Icon */}
                 <div className={cn(
@@ -334,7 +333,7 @@ export default function ActivityHistoryPage() {
                       </span>
                     )}
                     {entry.path && entry.action !== "start" && entry.action !== "exit" && (
-                      <span className="flex items-center gap-1.5 font-mono text-[11px] bg-slate-100 dark:bg-slate-800 rounded px-1.5 py-0.5">
+                      <span className="flex items-center gap-1.5 font-mono text-[11px] bg-secondary/75 dark:bg-slate-500 rounded px-1.5 py-0.5">
                         <ArrowUpRight className="h-3 w-3 shrink-0" />
                         {entry.method} {getResourceFromPath(entry.path)}
                       </span>
@@ -349,7 +348,7 @@ export default function ActivityHistoryPage() {
 
       {/* Pagination */}
       {pagination.totalPages > 1 && (
-        <div className="flex items-center justify-between rounded-[20px] border border-slate-200 bg-white/90 px-5 py-3.5 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/80">
+        <div className="flex items-center justify-between rounded-[20px] border border-border bg-card/90 px-5 py-3.5 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/80">
           <p className="text-sm text-muted-foreground">
             {t("showingRange", {
               from: String((pagination.page - 1) * pagination.limit + 1),

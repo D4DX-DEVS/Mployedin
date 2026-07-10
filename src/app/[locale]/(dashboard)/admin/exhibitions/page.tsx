@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -679,13 +680,7 @@ export default function AdminExhibitionsPage() {
               <CalendarDays className="h-3.5 w-3.5" />
               {t("adminOperations")}
             </div>
-            <h1 className="mt-4 flex items-center gap-2 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-              <CalendarDays className="h-7 w-7 text-primary" />
-              {t("exhibitionOperationsCenter")}
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              {t("manageExhibitionRequests")}
-            </p>
+            <PageHeader title={t("exhibitionOperationsCenter")} description={t("manageExhibitionRequests")} />
           </div>
           <div className="flex shrink-0 flex-col gap-3 sm:flex-row xl:items-start">
             <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:min-w-[200px]">

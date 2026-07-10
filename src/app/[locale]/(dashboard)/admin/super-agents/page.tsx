@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CascadingLocationPicker } from "@/components/shared/CascadingLocationPicker";
@@ -332,10 +333,7 @@ export default function AdminSuperAgentsPage() {
       {ConfirmDialogNode}
       <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
         <div className="flex flex-col gap-3 border-b border-border/80 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-lg font-semibold text-foreground">{t("pageTitle")}</h1>
-            <p className="mt-0.5 text-xs text-muted-foreground">{t("pageSubtitle")}</p>
-          </div>
+          <PageHeader title={t("pageTitle")} description={t("pageSubtitle")} />
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />

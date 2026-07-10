@@ -12889,6 +12889,21 @@
     "hoursAgo": "{hours}h ago",
     "daysAgo": "{days}d ago"
   },
+  "invoiceTable": {
+    "invoiceNumber": "Invoice #",
+    "employer": "Employer",
+    "job": "Job",
+    "agent": "Agent",
+    "category": "Category",
+    "total": "Total",
+    "paid": "Paid",
+    "balance": "Balance",
+    "commission": "My Commission",
+    "dueDate": "Due Date",
+    "emptyTitle": "No invoices yet",
+    "emptyDescriptionAgent": "Create your first invoice to start tracking commissions.",
+    "emptyDescriptionSuperAgent": "Team invoices will appear here when agents create them."
+  },
   "agentInvoices": {
     "title": "My Invoices & Commissions",
     "description": "View and create recruitment invoices for your assigned jobs. Track your commission earnings and payment status.",

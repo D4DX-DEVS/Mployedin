@@ -46,7 +46,7 @@ export default async function EmployerDashboard({ params }: { params: Promise<{ 
   } = await getEmployerDashboardStats(userId);
 
   return (
-    <div className="page-container employer-legacy-surface space-y-5 sm:space-y-6">
+    <div className="page-container space-y-5 sm:space-y-6">
       {/* ── Hero: AI Hiring Summary + mascot + Create-with-AI CTA ── */}
       <SmartHeader
         userName={userName}
@@ -82,7 +82,7 @@ export default async function EmployerDashboard({ params }: { params: Promise<{ 
           empty). ponytail: on a brand-new account both columns can be empty — the
           SetupGuide below covers that cold-start state. */}
       <div className="grid items-start gap-4 sm:gap-5 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+        <div className="min-w-0 lg:col-span-2">
           <AIRecommendedCandidatesCard
             highMatchCount={highMatchCount}
             band90PlusCount={band90PlusCount}
@@ -103,7 +103,8 @@ export default async function EmployerDashboard({ params }: { params: Promise<{ 
       </div>
 
       {/* ── Continue working: resume drafts, side by side, equal height (each self-hides when empty) ── */}
-      <div className="grid gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-3">
+      {/* ponytail: auto-fit so a lone visible card fills the row instead of leaving empty tracks (siblings self-hide when empty) */}
+      <div className="grid gap-4 sm:gap-5 [grid-template-columns:repeat(auto-fit,minmax(320px,1fr))]">
         <DraftJobsCard locale={locale} />
         <AIChatDraftsCard locale={locale} />
         <DraftExtractionsCard locale={locale} />

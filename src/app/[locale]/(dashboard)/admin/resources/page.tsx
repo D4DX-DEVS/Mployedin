@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -215,12 +216,7 @@ export default function AdminResourcesPage() {
               <Sparkles className="h-3.5 w-3.5" />
               Resource Center
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-              Resource Management
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
-              Manage exhibition materials, documents, templates & branding assets for your team.
-            </p>
+            <PageHeader className="mt-4" title="Resource Management" description="Manage exhibition materials, documents, templates & branding assets for your team." />
           </div>
           <Button onClick={() => { resetForm(); setShowForm(true); }} size="lg" className="shrink-0">
             <Plus className="h-4 w-4 mr-2" /> Add Resource

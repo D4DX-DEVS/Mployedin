@@ -52,12 +52,12 @@ interface Activity {
 const STAGES: LeadStatus[] = ["new", "contacted", "interested", "negotiating", "converted", "lost"];
 
 const STAGE_CONFIG: Record<LeadStatus, { label: string; color: string; bgColor: string; borderColor: string; icon: React.ReactNode }> = {
-  new: { label: "New", color: "text-sky-700 dark:text-sky-300", bgColor: "bg-sky-50 dark:bg-sky-500/10", borderColor: "border-sky-200 dark:border-sky-500/30", icon: <Sparkles className="h-4 w-4" /> },
-  contacted: { label: "Contacted", color: "text-indigo-700 dark:text-indigo-300", bgColor: "bg-indigo-50 dark:bg-indigo-500/10", borderColor: "border-indigo-200 dark:border-indigo-500/30", icon: <Phone className="h-4 w-4" /> },
-  interested: { label: "Interested", color: "text-amber-700 dark:text-amber-300", bgColor: "bg-amber-50 dark:bg-amber-500/10", borderColor: "border-amber-200 dark:border-amber-500/30", icon: <TrendingUp className="h-4 w-4" /> },
-  negotiating: { label: "Negotiating", color: "text-purple-700 dark:text-purple-300", bgColor: "bg-purple-50 dark:bg-purple-500/10", borderColor: "border-purple-200 dark:border-purple-500/30", icon: <Target className="h-4 w-4" /> },
-  converted: { label: "Won", color: "text-emerald-700 dark:text-emerald-300", bgColor: "bg-emerald-50 dark:bg-emerald-500/10", borderColor: "border-emerald-200 dark:border-emerald-500/30", icon: <Building2 className="h-4 w-4" /> },
-  lost: { label: "Lost", color: "text-rose-700 dark:text-rose-300", bgColor: "bg-rose-50 dark:bg-rose-500/10", borderColor: "border-rose-200 dark:border-rose-500/30", icon: <XCircle className="h-4 w-4" /> },
+  new: { label: "New", color: "text-status-applied dark:text-sky-300", bgColor: "bg-status-applied-bg dark:bg-sky-500/10", borderColor: "border-border dark:border-sky-500/30", icon: <Sparkles className="h-4 w-4" /> },
+  contacted: { label: "Contacted", color: "text-indigo-700 dark:text-indigo-300", bgColor: "bg-status-interview-bg dark:bg-indigo-500/10", borderColor: "border-status-interview/20 dark:border-indigo-500/30", icon: <Phone className="h-4 w-4" /> },
+  interested: { label: "Interested", color: "text-status-shortlisted dark:text-amber-300", bgColor: "bg-status-shortlisted-bg dark:bg-amber-500/10", borderColor: "border-status-shortlisted/20 dark:border-amber-500/30", icon: <TrendingUp className="h-4 w-4" /> },
+  negotiating: { label: "Negotiating", color: "text-status-interview dark:text-purple-300", bgColor: "bg-purple-50 dark:bg-purple-500/10", borderColor: "border-status-interview/20 dark:border-purple-500/30", icon: <Target className="h-4 w-4" /> },
+  converted: { label: "Won", color: "text-emerald-700 dark:text-emerald-300", bgColor: "bg-status-selected-bg dark:bg-emerald-500/10", borderColor: "border-status-selected/20 dark:border-emerald-500/30", icon: <Building2 className="h-4 w-4" /> },
+  lost: { label: "Lost", color: "text-rose-700 dark:text-rose-300", bgColor: "bg-status-rejected-bg dark:bg-rose-500/10", borderColor: "border-status-rejected/20 dark:border-rose-500/30", icon: <XCircle className="h-4 w-4" /> },
 };
 
 const ACTIVITY_TYPES = [
@@ -82,10 +82,10 @@ const ACTIVITY_ICONS: Record<string, React.ReactNode> = {
 };
 
 const TEMP_STYLES: Record<string, string> = {
-  hot: "border-rose-300 bg-rose-50 text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-300",
-  warm: "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300",
-  cold: "border-sky-300 bg-sky-50 text-sky-800 dark:border-sky-500/30 dark:bg-sky-500/15 dark:text-sky-300",
-  qualified: "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300",
+  hot: "border-status-rejected/20 bg-status-rejected-bg text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-300",
+  warm: "border-status-shortlisted/20 bg-status-shortlisted-bg text-status-shortlisted dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300",
+  cold: "border-sky-300 bg-status-applied-bg text-sky-800 dark:border-sky-500/30 dark:bg-sky-500/15 dark:text-sky-300",
+  qualified: "border-status-selected/20 bg-status-selected-bg text-status-selected dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300",
 };
 
 /* ─── Page ───────────────────────────────────────────────────────────── */
@@ -175,9 +175,9 @@ export default function LeadDetailPage() {
     : daysSinceCreated;
 
   return (
-    <div className="page-container agent-legacy-surface space-y-5">
+    <div className="page-container space-y-5">
       {/* Header */}
-      <section className="workspace-hero-surface agent-legacy-hero overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-2xl">
             <Link href="../leads" className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition hover:text-foreground">
@@ -209,7 +209,7 @@ export default function LeadDetailPage() {
             </div>
             <div className="workspace-glass-panel rounded-xl px-3 py-2 text-center">
               <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{t("lastTouchLabel")}</p>
-              <p className={`text-sm font-bold ${daysSinceLastActivity > 7 ? "text-rose-600" : "text-foreground"}`}>{daysSinceLastActivity}d ago</p>
+              <p className={`text-sm font-bold ${daysSinceLastActivity > 7 ? "text-status-rejected" : "text-foreground"}`}>{daysSinceLastActivity}d ago</p>
             </div>
           </div>
         </div>
@@ -229,7 +229,7 @@ export default function LeadDetailPage() {
                     isActive
                       ? `${sConfig.bgColor} ${sConfig.borderColor} ${sConfig.color} border shadow-sm`
                       : isPast
-                        ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
+                        ? "bg-status-selected-bg text-status-selected dark:bg-emerald-500/10 dark:text-emerald-400"
                         : "border border-border/50 text-muted-foreground/50 hover:border-border hover:text-muted-foreground"
                   }`}
                 >
@@ -243,7 +243,7 @@ export default function LeadDetailPage() {
             <button
               onClick={() => updateStatus("lost")}
               disabled={updatingStatus}
-              className="ml-2 inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2.5 py-1.5 text-[11px] font-semibold text-rose-600 transition hover:bg-rose-50 dark:border-rose-500/30 dark:text-rose-400"
+              className="ml-2 inline-flex items-center gap-1 rounded-lg border border-status-rejected/20 px-2.5 py-1.5 text-[11px] font-semibold text-status-rejected transition hover:bg-status-rejected-bg dark:border-rose-500/30 dark:text-rose-400"
             >
               <XCircle className="h-3.5 w-3.5" />{t("markLost")}
             </button>
@@ -252,7 +252,7 @@ export default function LeadDetailPage() {
             <button
               onClick={() => updateStatus("new")}
               disabled={updatingStatus}
-              className="ml-2 inline-flex items-center gap-1 rounded-lg border border-sky-200 px-2.5 py-1.5 text-[11px] font-semibold text-sky-600 transition hover:bg-sky-50 dark:border-sky-500/30 dark:text-sky-400"
+              className="ml-2 inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-[11px] font-semibold text-status-applied transition hover:bg-status-applied-bg dark:border-sky-500/30 dark:text-sky-400"
             >
               <Sparkles className="h-3.5 w-3.5" />{t("reopen")}
             </button>
@@ -295,7 +295,7 @@ export default function LeadDetailPage() {
 
           {/* Lost reason */}
           {lead.lostReason && lead.status === "lost" && (
-            <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 dark:border-rose-500/30 dark:bg-rose-500/10">
+            <div className="mt-4 rounded-xl border border-status-rejected/20 bg-status-rejected-bg p-3 dark:border-rose-500/30 dark:bg-rose-500/10">
               <h3 className="text-xs font-bold uppercase tracking-wider text-rose-700 dark:text-rose-300">{t("lostReasonLabel")}</h3>
               <p className="mt-1 text-sm text-rose-800 dark:text-rose-200">{lead.lostReason}</p>
             </div>
@@ -418,7 +418,7 @@ function InfoRow({ icon, label, value, isLink, highlight }: {
       {isLink ? (
         <a href={`mailto:${value}`} className="ml-auto truncate text-xs font-medium text-primary hover:underline">{value}</a>
       ) : (
-        <span className={`ml-auto truncate text-xs font-medium ${highlight ? "text-rose-600 dark:text-rose-400" : "text-foreground"}`}>{value}</span>
+        <span className={`ml-auto truncate text-xs font-medium ${highlight ? "text-status-rejected dark:text-rose-400" : "text-foreground"}`}>{value}</span>
       )}
     </div>
   );

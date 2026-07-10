@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { toast } from "sonner";
 import { Search, Shield, Clock, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -119,10 +120,7 @@ export default function AuditLogsPage() {
           <Sparkles className="h-3.5 w-3.5" />
           {t("adminWorkspace")}
         </div>
-        <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("auditLogs")}</h1>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-          {total.toLocaleString()} {t("logEntriesDescription")}
-        </p>
+        <PageHeader className="mt-4" title={t("auditLogs")} description={`${total.toLocaleString()} ${t("logEntriesDescription")}`} />
       </section>
 
       <TableToolbar

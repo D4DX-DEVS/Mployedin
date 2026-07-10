@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
 import { useConfirm } from "@/hooks/useConfirm";
@@ -132,12 +133,7 @@ export default function ContactSubmissionsPage() {
               <Sparkles className="h-3.5 w-3.5" />
               {t("cmsWorkspace")}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-              {t("contactInbox")}
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              {t("heroDescription")}
-            </p>
+            <PageHeader title={t("contactInbox")} description={t("heroDescription")} />
           </div>
 
           <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">

@@ -146,7 +146,7 @@ export default function AgentReferralLinksPage() {
   });
 
   return (
-    <div className="page-container agent-legacy-surface space-y-6">
+    <div className="page-container space-y-6">
       {ConfirmDialogNode}
 
       {/* Hero */}
@@ -183,7 +183,7 @@ export default function AgentReferralLinksPage() {
 
         {/* Stats grid */}
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="workspace-glass-panel rounded-2xl p-4">
+          <div className="min-w-0 workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statTotalLinks")}</p>
@@ -193,7 +193,7 @@ export default function AgentReferralLinksPage() {
               <div className="workspace-tone-sky rounded-2xl p-2.5"><Link2 className="h-5 w-5" /></div>
             </div>
           </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
+          <div className="min-w-0 workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tc("active")}</p>
@@ -203,7 +203,7 @@ export default function AgentReferralLinksPage() {
               <div className="workspace-tone-emerald rounded-2xl p-2.5"><Check className="h-5 w-5" /></div>
             </div>
           </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
+          <div className="min-w-0 workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statRegistrations")}</p>
@@ -213,7 +213,7 @@ export default function AgentReferralLinksPage() {
               <div className="workspace-tone-indigo rounded-2xl p-2.5"><Users className="h-5 w-5" /></div>
             </div>
           </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
+          <div className="min-w-0 workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statConversion")}</p>
@@ -331,7 +331,7 @@ export default function AgentReferralLinksPage() {
                     </button>
                     <button
                       onClick={() => handleToggleActive(link)}
-                      className={`inline-flex h-8 items-center rounded-lg border px-2.5 text-xs font-medium ${link.isActive ? "border-amber-200 text-amber-600 hover:bg-amber-50" : "border-green-200 text-green-600 hover:bg-green-50"}`}
+                      className={`inline-flex h-8 items-center rounded-lg border px-2.5 text-xs font-medium ${link.isActive ? "border-status-shortlisted/20 text-status-shortlisted hover:bg-status-shortlisted/10" : "border-status-selected/20 text-status-selected hover:bg-status-selected/10"}`}
                     >
                       {link.isActive ? t("disableButton") : t("enableButton")}
                     </button>
@@ -340,7 +340,7 @@ export default function AgentReferralLinksPage() {
                         onClick={() => handleDelete(link._id)}
                         disabled={deleteMutation.isPending}
                         title={t("deleteButtonTitle")}
-                        className="inline-flex h-8 items-center rounded-lg border border-red-200 px-2.5 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                        className="inline-flex h-8 items-center rounded-lg border border-status-rejected/20 px-2.5 text-xs font-medium text-status-rejected hover:bg-status-rejected/10 disabled:opacity-50"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -364,7 +364,7 @@ export default function AgentReferralLinksPage() {
                       <div className="space-y-2">
                         {link.registrations.map((reg, i) => (
                           <div key={i} className="flex items-center gap-3 rounded-xl bg-secondary/40 px-4 py-3">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-100 text-sky-600">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-status-applied-bg text-status-applied">
                               <Building2 className="h-4 w-4" />
                             </div>
                             <div className="flex-1">

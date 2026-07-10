@@ -119,10 +119,10 @@ export function AIChatDraftsCard({ locale, variant = "card" }: AIChatDraftsCardP
 
   // ── Card variant (employer dashboard) ───────────────────────────────────
   return (
-    <section className="workspace-panel-surface flex flex-col rounded-[24px] p-5">
+    <section className="workspace-panel-surface flex flex-col rounded-[24px] p-4">
       {ConfirmDialogNode}
-      <div className="mb-4 flex items-center gap-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-500/15 dark:text-sky-300">
+      <div className="mb-3 flex items-center gap-2.5">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-500/15 dark:text-sky-300">
           <Bot className="h-4 w-4" />
         </span>
         <div className="min-w-0">
@@ -131,26 +131,26 @@ export function AIChatDraftsCard({ locale, variant = "card" }: AIChatDraftsCardP
         </div>
       </div>
 
-      <ul className="space-y-2">
+      {/* ponytail: compact inline rows — meta on one line, hides on narrow to keep height down */}
+      <ul className="space-y-1.5">
         {drafts.slice(0, 3).map((d) => (
           <li
             key={d._id}
-            className="group flex items-center gap-2 rounded-2xl border border-border/60 bg-background/70 p-2.5 transition-all hover:-translate-y-px hover:border-sky-400/40 hover:shadow-sm"
+            className="group flex items-center gap-2 rounded-xl border border-border/60 bg-background/70 px-2.5 py-1.5 transition-all hover:border-sky-400/40 hover:shadow-sm"
           >
-            <Link href={continueHref(d._id)} className="flex min-w-0 flex-1 items-center gap-3">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-sky-600 dark:bg-sky-500/20 dark:text-sky-300">
-                <Bot className="h-4 w-4" />
+            <Link href={continueHref(d._id)} className="flex min-w-0 flex-1 items-center gap-2.5">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-100 text-sky-600 dark:bg-sky-500/20 dark:text-sky-300">
+                <Bot className="h-3.5 w-3.5" />
               </span>
-              <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 flex-1 items-center gap-2">
                 <p className="truncate text-sm font-medium text-foreground">{d.title}</p>
-                <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
-                  <span>{t("messageCount", { count: d.messageCount })}</span>
+                <div className="flex shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground">
                   {d.hasExtractedJob && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
+                    <span className="hidden items-center gap-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 sm:inline-flex">
                       {t("draftReady")}
                     </span>
                   )}
-                  <span className="inline-flex items-center gap-1">
+                  <span className="hidden items-center gap-1 whitespace-nowrap sm:inline-flex">
                     <Clock className="h-3 w-3" />
                     {relativeTime(d.updatedAt, locale)}
                   </span>
@@ -166,7 +166,7 @@ export function AIChatDraftsCard({ locale, variant = "card" }: AIChatDraftsCardP
               disabled={discardingId === d._id}
               onClick={() => handleDiscard(d)}
               aria-label={t("discardAriaLabel")}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
             >
               {discardingId === d._id ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />

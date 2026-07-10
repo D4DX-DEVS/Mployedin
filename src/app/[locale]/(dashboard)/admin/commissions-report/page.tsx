@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslations } from "next-intl";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -210,10 +211,7 @@ export default function AdminCommissionsReportPage() {
               <Sparkles className="h-3.5 w-3.5" />
               {t("adminWorkspace")}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("commissionReportTitle")}</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              {t("reportDescription", { year: yearFilter })}
-            </p>
+            <PageHeader title={t("commissionReportTitle")} description={t("reportDescription", { year: yearFilter })} />
           </div>
           <div className="flex items-center gap-2">
             <Select value={String(yearFilter)} onValueChange={(v) => setYearFilter(Number(v))}>

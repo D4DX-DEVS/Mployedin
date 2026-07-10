@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import RelativeDate from "@/components/shared/RelativeDate";
 import { PaginationControls } from "@/components/shared/PaginationControls";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { useConfirm } from "@/hooks/useConfirm";
 import {
   useJobTemplateLibrary,
@@ -109,10 +110,10 @@ export default function EmployerJobTemplatesPage() {
 
       {/* Hero */}
       <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t("title")}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{t("description")}</p>
-        </div>
+        <PageHeader
+          title={t("title")}
+          description={t("description")}
+        />
 
         <div className="mt-5 workspace-glass-panel rounded-2xl p-4 sm:w-64">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("totalTemplates")}</p>

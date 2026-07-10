@@ -189,9 +189,9 @@ export default function AgentJobSeekersPage() {
   const withTitles = seekers.filter((seeker) => Boolean(getCurrentTitle(seeker))).length;
 
   return (
-    <div className="page-container agent-legacy-surface space-y-6">
+    <div className="page-container space-y-6">
       {/* Hero */}
-      <section className="workspace-hero-surface agent-legacy-hero overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
@@ -457,9 +457,9 @@ export default function AgentJobSeekersPage() {
                 </TableCell>
                 <TableCell>
                   <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium leading-none ${
-                    s.availabilityStatus === "immediately" ? "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-400"
-                    : s.availabilityStatus === "not_available" ? "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-400"
-                    : "bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-400"
+                    s.availabilityStatus === "immediately" ? "bg-status-selected-bg text-status-selected dark:bg-green-950 dark:text-green-400"
+                    : s.availabilityStatus === "not_available" ? "bg-status-rejected-bg text-status-rejected dark:bg-red-950 dark:text-red-400"
+                    : "bg-status-shortlisted-bg text-status-shortlisted dark:bg-amber-950 dark:text-amber-400"
                   }`}>
                     {availabilityLabel(s.availabilityStatus)}
                   </span>

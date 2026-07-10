@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -122,10 +123,10 @@ function InsightIcon({ type }: { type: string }) {
 function ScoreBadge({ score }: { score?: number }) {
   if (score == null) return <span className="text-xs text-muted-foreground">—</span>;
   const color =
-    score >= 80 ? "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-400"
-    : score >= 60 ? "text-blue-600 bg-blue-50 dark:bg-blue-950/30 dark:text-blue-400"
-    : score >= 40 ? "text-amber-600 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400"
-    : "text-red-600 bg-red-50 dark:bg-red-950/30 dark:text-red-400";
+    score >= 80 ? "text-status-selected bg-status-selected-bg dark:bg-emerald-950/30 dark:text-emerald-400"
+    : score >= 60 ? "text-status-applied bg-status-applied-bg dark:bg-blue-950/30 dark:text-blue-400"
+    : score >= 40 ? "text-status-shortlisted bg-status-shortlisted-bg dark:bg-amber-950/30 dark:text-amber-400"
+    : "text-status-rejected bg-status-rejected-bg dark:bg-red-950/30 dark:text-red-400";
   return (
     <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${color}`}>
       <Brain className="h-3 w-3" />
@@ -344,22 +345,20 @@ export default function AdminApplicationsPage() {
   ];
 
   return (
-    <div className="page-container employer-legacy-surface space-y-6">
+    <div className="page-container space-y-6">
 
       {/* ─── Hero ─────────────────────────────────────────────────────── */}
       <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
+            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-status-applied dark:text-sky-300">
               <Sparkles className="h-3.5 w-3.5" />
               {t("recruitmentControl")}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-              {t("applications")}
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              {t("applicationsDescription")}
-            </p>
+            <PageHeader
+              title={t("applications")}
+              description={t("applicationsDescription")}
+            />
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -386,10 +385,10 @@ export default function AdminApplicationsPage() {
         {/* Stats Row */}
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {([
-            { label: t("totalApps"), value: stats?.totalAll ?? 0, note: t("allApplications"), icon: FileText, tone: "text-sky-600", chip: "bg-sky-50 dark:bg-sky-950/30" },
-            { label: t("today"), value: stats?.todayCount ?? 0, note: t("newToday"), icon: TrendingUp, tone: "text-emerald-600", chip: "bg-emerald-50 dark:bg-emerald-950/30" },
-            { label: t("aiScored"), value: stats?.scoredCount ?? 0, note: `${t("avgColon")} ${stats?.avgAiScore ?? 0}%`, icon: Brain, tone: "text-violet-600", chip: "bg-violet-50 dark:bg-violet-950/30" },
-            { label: t("inShortlist"), value: stats?.byStatus?.["shortlisted"] ?? 0, note: t("pipelineLabel"), icon: Users, tone: "text-amber-600", chip: "bg-amber-50 dark:bg-amber-950/30" },
+            { label: t("totalApps"), value: stats?.totalAll ?? 0, note: t("allApplications"), icon: FileText, tone: "text-status-applied", chip: "bg-status-applied-bg dark:bg-sky-950/30" },
+            { label: t("today"), value: stats?.todayCount ?? 0, note: t("newToday"), icon: TrendingUp, tone: "text-status-selected", chip: "bg-status-selected-bg dark:bg-emerald-950/30" },
+            { label: t("aiScored"), value: stats?.scoredCount ?? 0, note: `${t("avgColon")} ${stats?.avgAiScore ?? 0}%`, icon: Brain, tone: "text-status-interview", chip: "bg-status-interview-bg dark:bg-violet-950/30" },
+            { label: t("inShortlist"), value: stats?.byStatus?.["shortlisted"] ?? 0, note: t("pipelineLabel"), icon: Users, tone: "text-status-shortlisted", chip: "bg-status-shortlisted-bg dark:bg-amber-950/30" },
           ] as const).map(({ label, value, note, icon: Icon, tone, chip }) => (
             <div key={label} className="workspace-glass-panel rounded-2xl p-4">
               <div className="flex items-start justify-between gap-3">
@@ -432,9 +431,9 @@ export default function AdminApplicationsPage() {
                   {aiInsights.healthScore != null && (
                     <div className="flex flex-col items-center gap-1">
                       <div className={`text-3xl font-bold ${
-                        aiInsights.healthScore >= 70 ? "text-emerald-600 dark:text-emerald-400"
-                        : aiInsights.healthScore >= 40 ? "text-amber-600 dark:text-amber-400"
-                        : "text-red-600 dark:text-red-400"
+                        aiInsights.healthScore >= 70 ? "text-status-selected dark:text-emerald-400"
+                        : aiInsights.healthScore >= 40 ? "text-status-shortlisted dark:text-amber-400"
+                        : "text-status-rejected dark:text-red-400"
                       }`}>
                         {aiInsights.healthScore}
                       </div>
@@ -460,7 +459,7 @@ export default function AdminApplicationsPage() {
 
                 {aiInsights.recommendations.length > 0 && (
                   <div className="rounded-xl border border-sky-200/50 bg-sky-50/50 p-3 space-y-1.5 dark:border-sky-800/30 dark:bg-sky-950/20">
-                    <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-sky-700 dark:text-sky-400">
+                    <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-status-applied dark:text-sky-400">
                       <Zap className="h-3.5 w-3.5" /> {t("recommendations")}
                     </p>
                     {aiInsights.recommendations.map((rec, i) => (
@@ -720,10 +719,10 @@ export default function AdminApplicationsPage() {
               const appliedDate = new Date(app.appliedAt ?? app.createdAt).toLocaleDateString(undefined, { day: "2-digit", month: "short" });
               const aiScoreLabel = app.aiMatchScore != null ? `${app.aiMatchScore}% match` : null;
               const aiScoreColor = app.aiMatchScore != null
-                ? app.aiMatchScore >= 80 ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
-                  : app.aiMatchScore >= 60 ? "bg-sky-50 text-sky-700 dark:bg-sky-950/30 dark:text-sky-400"
-                  : app.aiMatchScore >= 40 ? "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400"
-                  : "bg-rose-50 text-rose-600 dark:bg-rose-950/30 dark:text-rose-400"
+                ? app.aiMatchScore >= 80 ? "bg-status-selected-bg text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
+                  : app.aiMatchScore >= 60 ? "bg-status-applied-bg text-status-applied dark:bg-sky-950/30 dark:text-sky-400"
+                  : app.aiMatchScore >= 40 ? "bg-status-shortlisted-bg text-status-shortlisted dark:bg-amber-950/30 dark:text-amber-400"
+                  : "bg-status-rejected-bg text-status-rejected dark:bg-rose-950/30 dark:text-rose-400"
                 : "";
 
               return (
@@ -733,7 +732,7 @@ export default function AdminApplicationsPage() {
                 >
                   {/* Candidate */}
                   <div className="flex min-w-0 items-center gap-3.5">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 shadow-inner dark:text-sky-300">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-status-applied shadow-inner dark:text-sky-300">
                       <User className="h-5 w-5" />
                     </div>
                     <div className="min-w-0">

@@ -1,8 +1,7 @@
 import type { ReactNode } from "react";
 import { requireRole } from "@/lib/auth/requireRole";
-import { SuperAgentShell } from "./SuperAgentShell";
 
-export default async function SuperAgentLayout({
+export default async function AdminLayout({
   children,
   params,
 }: {
@@ -10,6 +9,6 @@ export default async function SuperAgentLayout({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  await requireRole(locale, ["super_agent", "admin"]);
-  return <SuperAgentShell>{children}</SuperAgentShell>;
+  await requireRole(locale, ["admin"]);
+  return children;
 }

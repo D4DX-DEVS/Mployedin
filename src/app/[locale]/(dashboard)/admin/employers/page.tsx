@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -204,10 +205,7 @@ export default function AdminEmployersPage() {
               <Sparkles className="h-3.5 w-3.5" />
               {t("adminWorkspace")}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("pageTitle")}</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              {t("pageDescription")}
-            </p>
+            <PageHeader title={t("pageTitle")} description={t("pageDescription")} />
           </div>
         </div>
       </section>

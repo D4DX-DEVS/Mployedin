@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { toast } from "sonner";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -200,8 +201,7 @@ export default function AdminGdprPage() {
             <Shield className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t("pageTitle")}</h1>
-            <p className="text-sm text-muted-foreground">{t("pageDescription")}</p>
+            <PageHeader title={t("pageTitle")} description={t("pageDescription")} />
           </div>
         </div>
 

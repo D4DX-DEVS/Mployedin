@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "next/navigation";
+import { PageHeader } from "@/components/shared/PageHeader";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -313,12 +314,7 @@ export default function CreateTargetProfilePage() {
             <div className="workspace-tone-sky rounded-xl p-2.5">
               <Target className="h-5 w-5" />
             </div>
-            <div>
-              <h1 className="text-lg font-semibold tracking-tight">Create Target Profiles</h1>
-              <p className="text-xs text-muted-foreground">
-                Set annual targets for supervisors in a tabular format
-              </p>
-            </div>
+            <PageHeader title="Create Target Profiles" description="Set annual targets for supervisors in a tabular format" />
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">

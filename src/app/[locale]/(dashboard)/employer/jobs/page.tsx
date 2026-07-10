@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { TableToolbar } from "@/components/shared/TableToolbar";
-import { PageHero } from "@/components/shared/PageHero";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { DraftExtractionsCard, DraftJobsCard } from "@/components/features/employer/dashboard";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useTableExport } from "@/hooks/useTableExport";
@@ -28,12 +28,12 @@ import { useDebounce } from "@/hooks/useDebounce";
 import type { ExportColumn } from "@/lib/export";
 
 const STATUS_COLORS: Record<string, string> = {
-  active: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-500/30",
-  draft: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-500/30",
-  pending_approval: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-500/30",
-  paused: "bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-500/30",
+  active: "bg-status-selected-bg text-emerald-700 border-status-selected/20 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-500/30",
+  draft: "bg-status-shortlisted-bg text-status-shortlisted border-status-shortlisted/20 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-500/30",
+  pending_approval: "bg-status-applied-bg text-status-applied border-status-applied/20 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-500/30",
+  paused: "bg-status-applied-bg text-status-applied border-border dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-500/30",
   closed: "bg-muted text-muted-foreground",
-  expired: "bg-red-100 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-500/30",
+  expired: "bg-status-rejected-bg text-status-rejected border-status-rejected/20 dark:bg-red-950/40 dark:text-red-300 dark:border-red-500/30",
 };
 
 // Map job.status → human label key. Avoids rendering raw snake_case status strings.
@@ -402,42 +402,35 @@ export default function EmployerJobsPage() {
   }
 
   return (
-    <div className="page-container employer-legacy-surface space-y-6">
+    <div className="page-container space-y-6">
       {ConfirmDialogNode}
-      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
-        <div className="flex flex-col gap-4 sm:gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-3xl">
-            <div className="workspace-glass-panel hidden items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary sm:inline-flex">
-              <Sparkles className="h-3.5 w-3.5" />
-              {t("heroBadge")}
+      <div className="workspace-glass-panel hidden items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary sm:inline-flex">
+        <Sparkles className="h-3.5 w-3.5" />
+        {t("heroBadge")}
+      </div>
+      <PageHeader
+        title={t("heroTitle")}
+        description={t("heroSubtitle")}
+        actions={can("jobs", "create") && (isLoading || jobs.length > 0 || hasActiveFilters) ? (
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("portfolioLabel")}</p>
+              <p className="mt-1 text-lg font-semibold text-foreground">{total} {t("totalJobsSuffix")}</p>
+              <p className="text-xs text-muted-foreground">{t("portfolioDescription")}</p>
             </div>
-            <h1 className="text-xl font-semibold tracking-tight text-foreground sm:mt-4 sm:text-3xl md:text-[2rem]">
-              {t("heroTitle")}
-            </h1>
-            <p className="mt-1.5 max-w-2xl text-sm leading-6 text-muted-foreground line-clamp-2 sm:mt-3 sm:line-clamp-none">
-              {t("heroSubtitle")}
-            </p>
+            <Button
+              onClick={() => router.push(`/${locale}/employer/jobs/new`)}
+              className="h-11 gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+            >
+              <Plus className="h-4 w-4" />
+              {t("postAJob")}
+            </Button>
           </div>
+        ) : undefined}
+      />
 
-          {can("jobs", "create") && (isLoading || jobs.length > 0 || hasActiveFilters) ? (
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("portfolioLabel")}</p>
-                <p className="mt-1 text-lg font-semibold text-foreground">{total} {t("totalJobsSuffix")}</p>
-                <p className="text-xs text-muted-foreground">{t("portfolioDescription")}</p>
-              </div>
-              <Button
-                onClick={() => router.push(`/${locale}/employer/jobs/new`)}
-                className="h-11 gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
-              >
-                <Plus className="h-4 w-4" />
-                {t("postAJob")}
-              </Button>
-            </div>
-          ) : null}
-        </div>
-
-        <div className="mt-4 grid grid-cols-2 gap-2 sm:mt-6 sm:gap-3 xl:grid-cols-4">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
+        <div className="mt-0 grid grid-cols-2 gap-2 sm:mt-0 sm:gap-3 xl:grid-cols-4">
           <div className="workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -724,35 +717,35 @@ export default function EmployerJobsPage() {
                       <Badge className={`${STATUS_COLORS[job.status] ?? ""} border px-2 py-0.5 text-[11px] font-medium`}>
                         {t(getStatusLabelKey(job.status))}
                       </Badge>
-                      {job.clonedFrom ? <Badge variant="outline" className="border-blue-200 bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300"><Copy className="mr-1 h-3 w-3" />{t("clonedBadge")}</Badge> : null}
+                      {job.clonedFrom ? <Badge variant="outline" className="border-status-applied/20 bg-status-applied-bg px-2 py-0.5 text-[11px] font-medium text-status-applied dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300"><Copy className="mr-1 h-3 w-3" />{t("clonedBadge")}</Badge> : null}
                     </div>
                     {job.status === "draft" ? (
-                      <p className="mt-1 text-[11px] font-medium text-amber-700 dark:text-amber-300">{t("draftHint")}</p>
+                      <p className="mt-1 text-[11px] font-medium text-status-shortlisted dark:text-amber-300">{t("draftHint")}</p>
                     ) : null}
                     {job.status === "pending_approval" ? (
-                      <p className="mt-1 text-[11px] font-medium text-blue-700 dark:text-blue-300">{t("inReviewHint")}</p>
+                      <p className="mt-1 text-[11px] font-medium text-status-applied dark:text-blue-300">{t("inReviewHint")}</p>
                     ) : null}
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
-                      <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">{formatLocation(job)}</span>
+                      <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-muted-foreground">{formatLocation(job)}</span>
                       {job.category ? (
-                        <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">{job.category}</span>
+                        <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-muted-foreground">{job.category}</span>
                       ) : null}
-                      <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">{formatSalary(job)}</span>
+                      <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-muted-foreground">{formatSalary(job)}</span>
                       {job.vacancies != null ? (
-                        <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">
+                        <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-muted-foreground">
                           {job.vacancies} {job.vacancies === 1 ? t("openingSingular") : t("openingPlural")}
                         </span>
                       ) : null}
-                      <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">{t("postedPrefix")} {posted}</span>
+                      <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-muted-foreground">{t("postedPrefix")} {posted}</span>
                       {expires ? (
-                        <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">{t("expiresPrefix")} {expires}</span>
+                        <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-muted-foreground">{t("expiresPrefix")} {expires}</span>
                       ) : null}
                     </div>
 
                     {job.requirements?.skills?.length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         {job.requirements.skills.slice(0, 4).map((s) => (
-                          <Badge key={s} variant="outline" className="rounded-full border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-normal text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">{s}</Badge>
+                          <Badge key={s} variant="outline" className="rounded-full border-border bg-secondary/65 px-2.5 py-1 text-xs font-normal text-muted-foreground dark:border-border dark:bg-background/80 dark:text-muted-foreground">{s}</Badge>
                         ))}
                       </div>
                     )}
@@ -792,32 +785,32 @@ export default function EmployerJobsPage() {
 
                       {/* Contextual status action stays visible — it is the primary lifecycle control */}
                       {can("jobs", "update") && job.status === "draft" && (
-                        <Button size="sm" variant="outline" className="col-span-2 h-9 gap-1.5 rounded-xl border-emerald-200 px-3 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-500/30 dark:text-emerald-300 dark:hover:bg-emerald-950/40" onClick={() => { void handleSubmitForApproval(job); }} disabled={isSubmitting}>
+                        <Button size="sm" variant="outline" className="col-span-2 h-9 gap-1.5 rounded-xl border-status-selected/20 px-3 text-emerald-700 hover:bg-status-selected-bg dark:border-emerald-500/30 dark:text-emerald-300 dark:hover:bg-emerald-950/40" onClick={() => { void handleSubmitForApproval(job); }} disabled={isSubmitting}>
                         <Send className="h-3.5 w-3.5" /> {isSubmitting ? t("submittingForApprovalButton") : t("submitForApprovalButton")}
                         </Button>
                       )}
                       {can("jobs", "update") && job.status === "pending_approval" && (
-                        <Button size="sm" variant="outline" className="col-span-2 h-9 gap-1.5 rounded-xl border-amber-200 px-3 text-amber-700 hover:bg-amber-50 dark:border-amber-500/30 dark:text-amber-300 dark:hover:bg-amber-950/40" onClick={() => { void handleWithdrawJob(job); }} disabled={isWithdrawing}>
+                        <Button size="sm" variant="outline" className="col-span-2 h-9 gap-1.5 rounded-xl border-status-shortlisted/20 px-3 text-status-shortlisted hover:bg-status-shortlisted-bg dark:border-amber-500/30 dark:text-amber-300 dark:hover:bg-amber-950/40" onClick={() => { void handleWithdrawJob(job); }} disabled={isWithdrawing}>
                           <Undo2 className="h-3.5 w-3.5" /> {isWithdrawing ? t("withdrawingButton") : t("withdrawButton")}
                         </Button>
                       )}
                       {can("jobs", "update") && job.status === "active" && (
-                        <Button size="sm" variant="outline" className="h-9 gap-2 rounded-xl border-sky-200 px-3 text-sky-700 hover:bg-sky-50 dark:border-sky-500/30 dark:text-sky-300 dark:hover:bg-sky-950/40" onClick={() => { void handlePauseJob(job); }} disabled={isPausing}>
+                        <Button size="sm" variant="outline" className="h-9 gap-2 rounded-xl border-border px-3 text-status-applied hover:bg-status-applied-bg dark:border-sky-500/30 dark:text-sky-300 dark:hover:bg-sky-950/40" onClick={() => { void handlePauseJob(job); }} disabled={isPausing}>
                           <PauseCircle className="h-4 w-4" /> {isPausing ? t("pausingButton") : t("pauseButton")}
                         </Button>
                       )}
                       {can("jobs", "update") && job.status === "active" && (
-                        <Button size="sm" variant="outline" className="h-9 gap-2 rounded-xl border-orange-200 px-3 text-orange-700 hover:bg-orange-50 dark:border-orange-500/30 dark:text-orange-300 dark:hover:bg-orange-950/40" onClick={() => { void handleDeactivateJob(job); }} disabled={isDeactivating}>
+                        <Button size="sm" variant="outline" className="h-9 gap-2 rounded-xl border-status-shortlisted/20 px-3 text-status-shortlisted hover:bg-status-shortlisted-bg dark:border-orange-500/30 dark:text-orange-300 dark:hover:bg-orange-950/40" onClick={() => { void handleDeactivateJob(job); }} disabled={isDeactivating}>
                           <Clock className="h-4 w-4" /> {isDeactivating ? t("deactivatingButton") : t("deactivateButton")}
                         </Button>
                       )}
                       {can("jobs", "update") && job.status === "paused" && (
-                        <Button size="sm" variant="outline" className="h-9 gap-1.5 rounded-xl border-emerald-200 px-3 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-500/30 dark:text-emerald-300 dark:hover:bg-emerald-950/40" onClick={() => { void handleResumeJob(job); }} disabled={isActivating}>
+                        <Button size="sm" variant="outline" className="h-9 gap-1.5 rounded-xl border-status-selected/20 px-3 text-emerald-700 hover:bg-status-selected-bg dark:border-emerald-500/30 dark:text-emerald-300 dark:hover:bg-emerald-950/40" onClick={() => { void handleResumeJob(job); }} disabled={isActivating}>
                           <PlayCircle className="h-3.5 w-3.5" /> {isActivating ? t("resumingButton") : t("resumeButton")}
                         </Button>
                       )}
                       {can("jobs", "update") && job.status === "paused" && (
-                        <Button size="sm" variant="outline" className="h-9 gap-2 rounded-xl border-orange-200 px-3 text-orange-700 hover:bg-orange-50 dark:border-orange-500/30 dark:text-orange-300 dark:hover:bg-orange-950/40" onClick={() => { void handleDeactivateJob(job); }} disabled={isDeactivating}>
+                        <Button size="sm" variant="outline" className="h-9 gap-2 rounded-xl border-status-shortlisted/20 px-3 text-status-shortlisted hover:bg-status-shortlisted-bg dark:border-orange-500/30 dark:text-orange-300 dark:hover:bg-orange-950/40" onClick={() => { void handleDeactivateJob(job); }} disabled={isDeactivating}>
                           <Clock className="h-4 w-4" /> {isDeactivating ? t("deactivatingButton") : t("deactivateButton")}
                         </Button>
                       )}
@@ -861,7 +854,7 @@ export default function EmployerJobsPage() {
                               disabled={savingTemplateId === job._id || savedTemplateIds.has(job._id)}
                             >
                               {savedTemplateIds.has(job._id) ? (
-                                <><CheckCircle className="h-4 w-4 text-emerald-600" /> {t("templateSavedButton")}</>
+                                <><CheckCircle className="h-4 w-4 text-status-selected" /> {t("templateSavedButton")}</>
                               ) : savingTemplateId === job._id ? (
                                 <><BookTemplate className="h-4 w-4" /> {t("templateSavingButton")}</>
                               ) : (

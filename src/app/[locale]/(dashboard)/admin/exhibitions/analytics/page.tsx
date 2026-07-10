@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { toast } from "sonner";
 import {
   Activity,
@@ -263,13 +264,7 @@ export default function AdminExhibitionAnalyticsPage() {
               <Badge className="border-sky-500/20 bg-sky-500/10 text-sky-700 dark:text-sky-300 hover:bg-sky-500/10">{t("yearBadge", { year: data.year })}</Badge>
             </div>
             <div>
-              <h1 className="flex items-center gap-2 text-3xl font-semibold tracking-tight text-foreground">
-                <BarChart3 className="h-7 w-7 text-primary" />
-                {t("pageTitle")}
-              </h1>
-              <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-                {t("pageDescription")}
-              </p>
+              <PageHeader title={t("pageTitle")} description={t("pageDescription")} />
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
               <HeroStat

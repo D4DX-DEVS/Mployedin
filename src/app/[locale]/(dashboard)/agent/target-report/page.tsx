@@ -92,7 +92,7 @@ function formatCurrency(value: number, currency = "AED"): string {
 }
 
 function GrowthIndicator({ value }: { value: number }) {
-  if (value > 0) return <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-emerald-600"><ArrowUpRight className="h-3 w-3" />+{value}%</span>;
+  if (value > 0) return <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-status-selected"><ArrowUpRight className="h-3 w-3" />+{value}%</span>;
   if (value < 0) return <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-red-500"><ArrowDownRight className="h-3 w-3" />{value}%</span>;
   return <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-muted-foreground"><Minus className="h-3 w-3" />0%</span>;
 }
@@ -248,7 +248,7 @@ export default function AgentTargetReportPage() {
   const currency = profile.currency ?? "AED";
 
   return (
-    <div className="page-container agent-legacy-surface space-y-6 print:space-y-4">
+    <div className="page-container space-y-6 print:space-y-4">
       {/* ═══════ HERO ═══════ */}
       <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">

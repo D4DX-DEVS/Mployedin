@@ -270,7 +270,7 @@ export default function AgentJobsPage() {
   /*  RENDER                                                          */
   /* ================================================================ */
   return (
-    <div className="page-container agent-legacy-surface space-y-6">
+    <div className="page-container space-y-6">
       {/* ──────── HERO ──────── */}
       {/* ──────── HERO + UNIFIED FILTERS ──────── */}
       <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
@@ -331,7 +331,7 @@ export default function AgentJobsPage() {
           >
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/20 to-sky-500/20">
-                <Filter className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                <Filter className="h-4 w-4 text-status-interview dark:text-violet-400" />
               </div>
               <div className="text-left">
                 <h2 className="text-sm font-semibold text-foreground">{t("filters.title")}</h2>
@@ -397,9 +397,9 @@ export default function AgentJobsPage() {
 
                 {/* AI summary banner */}
                 {aiSummary && (
-                  <div className="flex items-center gap-2 rounded-xl border border-violet-200 bg-violet-50/60 px-3 py-2 dark:border-violet-800/40 dark:bg-violet-950/30">
-                    <Sparkles className="h-3.5 w-3.5 shrink-0 text-violet-600 dark:text-violet-400" />
-                    <p className="flex-1 text-xs text-violet-700 dark:text-violet-300">{aiSummary}</p>
+                  <div className="flex items-center gap-2 rounded-xl border border-status-interview/20 bg-violet-50/60 px-3 py-2 dark:border-violet-800/40 dark:bg-violet-950/30">
+                    <Sparkles className="h-3.5 w-3.5 shrink-0 text-status-interview dark:text-violet-400" />
+                    <p className="flex-1 text-xs text-status-interview dark:text-violet-300">{aiSummary}</p>
                     <button onClick={clearAiFilters} className="shrink-0 rounded p-0.5 hover:bg-violet-200/60 dark:hover:bg-violet-800/40">
                       <X className="h-3.5 w-3.5 text-violet-500" />
                     </button>
@@ -478,7 +478,7 @@ export default function AgentJobsPage() {
             <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("results.title")}</h2>
           </div>
           <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">
-            <ArrowRight className="h-3.5 w-3.5 text-sky-600" />
+            <ArrowRight className="h-3.5 w-3.5 text-status-applied" />
             {t("results.summary", { total: pagination.total, pages: pagination.totalPages })}
           </div>
         </div>
@@ -574,7 +574,7 @@ export default function AgentJobsPage() {
                               title={t("actions.viewJob")}
                               aria-label={t("actions.viewJobFor", { title: job.title })}
                             >
-                              <Eye className="h-4 w-4 text-sky-600" />
+                              <Eye className="h-4 w-4 text-status-applied" />
                             </Button>
                           </Link>
                         </div>

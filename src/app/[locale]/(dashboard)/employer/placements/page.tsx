@@ -9,6 +9,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Users, Briefcase, TrendingUp, Inbox, Sparkles, ArrowRight, CircleCheckBig, ClipboardList } from "lucide-react";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { TableToolbar } from "@/components/shared/TableToolbar";
@@ -80,22 +81,15 @@ export default function EmployerPlacementsPage() {
   useEffect(() => { setPage(1); }, [filter, visaFilter]);
 
   return (
-    <div className="page-container employer-legacy-surface space-y-6">
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-3xl">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
-              <Sparkles className="h-3.5 w-3.5" />
-              {t("workspace")}
-            </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-              {t("title")}
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              {t("description")}
-            </p>
-          </div>
-
+    <div className="page-container space-y-6">
+      <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+        <Sparkles className="h-3.5 w-3.5" />
+        {t("workspace")}
+      </div>
+      <PageHeader
+        title={t("title")}
+        description={t("description")}
+        actions={
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("currentResults")}</p>
@@ -112,41 +106,43 @@ export default function EmployerPlacementsPage() {
               </Link>
             </Button>
           </div>
-        </div>
+        }
+      />
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+        <div className="mt-0 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {[
             {
               labelKey: "totalHired" as const,
               value: stats.total,
               noteKey: "totalHiredNote" as const,
               icon: Users,
-              tone: "text-sky-600",
-              chip: "bg-sky-50",
+              tone: "text-status-applied",
+              chip: "bg-status-applied-bg",
             },
             {
               labelKey: "currentlyActive" as const,
               value: stats.active,
               noteKey: "currentlyActiveNote" as const,
               icon: Briefcase,
-              tone: "text-emerald-600",
-              chip: "bg-emerald-50",
+              tone: "text-status-selected",
+              chip: "bg-status-selected-bg",
             },
             {
               labelKey: "completed" as const,
               value: stats.completed,
               noteKey: "completedNote" as const,
               icon: CircleCheckBig,
-              tone: "text-violet-600",
-              chip: "bg-violet-50",
+              tone: "text-status-interview",
+              chip: "bg-status-interview-bg",
             },
             {
               labelKey: "thisMonth" as const,
               value: stats.thisMonth,
               noteKey: "thisMonthNote" as const,
               icon: TrendingUp,
-              tone: "text-amber-600",
-              chip: "bg-amber-50",
+              tone: "text-status-shortlisted",
+              chip: "bg-status-shortlisted-bg",
             },
           ].map(({ labelKey, value, noteKey, icon: Icon, tone, chip }) => (
             <div key={labelKey} className="workspace-glass-panel rounded-2xl p-4">
@@ -224,7 +220,7 @@ export default function EmployerPlacementsPage() {
         <section className="workspace-panel-surface rounded-[28px] border border-red-500/20 p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-red-600">{t("placementList")}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-rejected">{t("placementList")}</p>
               <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("unableToLoad")}</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
                 {error instanceof Error ? error.message : t("loadError")}
@@ -237,7 +233,7 @@ export default function EmployerPlacementsPage() {
         </section>
       ) : (
       <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
-        <div className="flex flex-col gap-3 border-b border-slate-100 pb-5 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("placementList")}</p>
             <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("tableTitle")}</h2>
@@ -280,7 +276,7 @@ export default function EmployerPlacementsPage() {
                 <TableRow>
                   <TableCell colSpan={6} className="py-16 text-center">
                     <div className="flex flex-col items-center gap-3">
-                      <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-sky-50 text-sky-600">
+                      <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-status-applied-bg text-status-applied">
                         <Inbox className="h-6 w-6" />
                       </div>
                       <div>
@@ -302,7 +298,7 @@ export default function EmployerPlacementsPage() {
                     <div className="space-y-2">
                       <p className="font-medium text-foreground">{placement.jobTitle ?? t("untitledRole")}</p>
                       {placement.type ? (
-                        <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium capitalize text-slate-600 dark:bg-slate-800/80 dark:text-slate-300">
+                        <span className="inline-flex rounded-full bg-secondary/75 px-2.5 py-1 text-[11px] font-medium capitalize text-muted-foreground dark:bg-secondary/75 dark:text-muted-foreground">
                           {placement.type}
                         </span>
                       ) : null}

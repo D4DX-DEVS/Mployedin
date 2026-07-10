@@ -21,8 +21,8 @@ import {
   Send, Ban, Loader2, BookOpen, Search, Filter, ChevronDown, ChevronUp, X,
 } from "lucide-react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { PaginationControls } from "@/components/shared/PaginationControls";
-import { PageHero } from "@/components/shared/PageHero";
 import { usePermissions } from "@/hooks/usePermissions";
 import { AIInterviewQuestionsPanel } from "@/components/features/employer/AIInterviewQuestionsPanel";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -264,10 +264,10 @@ export default function EmployerInterviewsPage() {
 
   function getOutcomeLabel(outcome?: string) {
     switch (outcome) {
-      case "passed": return { label: "Passed", color: "text-emerald-700 bg-emerald-50 border-emerald-200" };
-      case "failed": return { label: "Rejected", color: "text-red-700 bg-red-50 border-red-200" };
-      case "hold": return { label: "On Hold", color: "text-amber-700 bg-amber-50 border-amber-200" };
-      case "no_show": return { label: "No Show", color: "text-gray-700 bg-gray-50 border-gray-200" };
+      case "passed": return { label: "Passed", color: "text-emerald-700 bg-status-selected-bg border-status-selected/20" };
+      case "failed": return { label: "Rejected", color: "text-status-rejected bg-status-rejected-bg border-status-rejected/20" };
+      case "hold": return { label: "On Hold", color: "text-status-shortlisted bg-status-shortlisted-bg border-status-shortlisted/20" };
+      case "no_show": return { label: "No Show", color: "text-muted-foreground bg-secondary/75 border-border" };
       default: return null;
     }
   }
@@ -294,7 +294,7 @@ export default function EmployerInterviewsPage() {
   }
 
   return (
-    <div className="page-container employer-legacy-surface space-y-6">
+    <div className="page-container space-y-6">
       {ConfirmDialogNode}
       {aiTarget && (
         <AIInterviewQuestionsPanel
@@ -321,21 +321,14 @@ export default function EmployerInterviewsPage() {
       )}
 
       {/* ── Hero Section ──────────────────────────────────────────────── */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-3xl">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              {t("title")}
-            </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-              {t("subtitle")}
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              {t("description")}
-            </p>
-          </div>
-
+      <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+        <Sparkles className="h-3.5 w-3.5" />
+        {t("title")}
+      </div>
+      <PageHeader
+        title={t("subtitle")}
+        description={t("description")}
+        actions={
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("currentView")}</p>
@@ -381,14 +374,16 @@ export default function EmployerInterviewsPage() {
               {t("exportCalendar")}
             </Button>
           </div>
-        </div>
+        }
+      />
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+        <div className="mt-0 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {[
-            { label: t("scheduled"), value: scheduledTotal, note: t("scheduledDesc"), icon: CalendarDays, tone: "text-sky-600", chip: "bg-sky-50" },
-            { label: t("completed"), value: completedTotal, note: t("completedDesc"), icon: CircleCheckBig, tone: "text-emerald-600", chip: "bg-emerald-50" },
-            { label: t("needsAttention"), value: attentionTotal, note: t("needsAttentionDesc"), icon: RotateCcw, tone: "text-amber-600", chip: "bg-amber-50" },
-            { label: t("confirmed"), value: confirmedTotal, note: t("confirmedDesc"), icon: Clock3, tone: "text-violet-600", chip: "bg-violet-50" },
+            { label: t("scheduled"), value: scheduledTotal, note: t("scheduledDesc"), icon: CalendarDays, tone: "text-status-applied", chip: "bg-status-applied-bg" },
+            { label: t("completed"), value: completedTotal, note: t("completedDesc"), icon: CircleCheckBig, tone: "text-status-selected", chip: "bg-status-selected-bg" },
+            { label: t("needsAttention"), value: attentionTotal, note: t("needsAttentionDesc"), icon: RotateCcw, tone: "text-status-shortlisted", chip: "bg-status-shortlisted-bg" },
+            { label: t("confirmed"), value: confirmedTotal, note: t("confirmedDesc"), icon: Clock3, tone: "text-status-interview", chip: "bg-status-interview-bg" },
           ].map(({ label, value, note, icon: Icon, tone, chip }) => (
             <div key={label} className="workspace-glass-panel rounded-2xl p-4">
               <div className="flex items-start justify-between gap-3">
@@ -566,7 +561,7 @@ export default function EmployerInterviewsPage() {
         <section className="workspace-panel-surface rounded-[28px] border border-destructive/30 p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-red-600">{t("interviewList")}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-rejected">{t("interviewList")}</p>
               <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{tc("somethingWentWrong")}</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
                 {error instanceof Error ? error.message : "The interview workspace could not load. Try again in a moment."}
@@ -668,7 +663,7 @@ export default function EmployerInterviewsPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700 border border-indigo-200">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-status-interview-bg px-2.5 py-1 text-xs font-semibold text-indigo-700 border border-status-interview/20">
                         R{round}
                       </span>
                       {(() => {
@@ -715,7 +710,7 @@ export default function EmployerInterviewsPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-8 rounded-xl px-3 text-xs font-semibold text-sky-700 hover:bg-sky-50 hover:text-sky-800"
+                          className="h-8 rounded-xl px-3 text-xs font-semibold text-status-applied hover:bg-status-applied-bg hover:text-sky-800"
                           onClick={() => openAIQuestions(iv)}
                           title="Generate AI interview questions"
                         >
@@ -725,7 +720,7 @@ export default function EmployerInterviewsPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-8 rounded-xl px-3 text-xs font-semibold text-violet-700 hover:bg-violet-50 hover:text-violet-800"
+                          className="h-8 rounded-xl px-3 text-xs font-semibold text-status-interview hover:bg-status-interview-bg hover:text-violet-800"
                           onClick={() => generatePrepBrief(iv._id)}
                           disabled={loadingPrepBriefId === iv._id}
                           title={t("prepBrief")}
@@ -746,19 +741,19 @@ export default function EmployerInterviewsPage() {
                           {isScheduled && (
                             <>
                               <Button variant="ghost" size="sm"
-                                className="h-7 rounded-lg px-2.5 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-50"
+                                className="h-7 rounded-lg px-2.5 text-[11px] font-semibold text-emerald-700 hover:bg-status-selected-bg"
                                 onClick={() => setModal({ kind: "complete", interview: iv })}>
                                 <CheckCircle2 className="me-1 h-3 w-3" />
                                 {t("complete")}
                               </Button>
                               <Button variant="ghost" size="sm"
-                                className="h-7 rounded-lg px-2.5 text-[11px] font-semibold text-blue-700 hover:bg-blue-50"
+                                className="h-7 rounded-lg px-2.5 text-[11px] font-semibold text-status-applied hover:bg-status-applied-bg"
                                 onClick={() => setModal({ kind: "reschedule", interview: iv })}>
                                 <CalendarClock className="me-1 h-3 w-3" />
                                 {t("reschedule")}
                               </Button>
                               <Button variant="ghost" size="sm"
-                                className="h-7 rounded-lg px-2.5 text-[11px] font-semibold text-red-700 hover:bg-red-50"
+                                className="h-7 rounded-lg px-2.5 text-[11px] font-semibold text-status-rejected hover:bg-status-rejected-bg"
                                 onClick={async () => {
                                   const ok = await confirm({
                                     title: t("cancelAction"),
@@ -780,13 +775,13 @@ export default function EmployerInterviewsPage() {
                           {isPassed && (
                             <>
                               <Button variant="ghost" size="sm"
-                                className="h-7 rounded-lg px-2.5 text-[11px] font-semibold text-indigo-700 hover:bg-indigo-50"
+                                className="h-7 rounded-lg px-2.5 text-[11px] font-semibold text-indigo-700 hover:bg-status-interview-bg"
                                 onClick={() => setModal({ kind: "next-round", interview: iv })}>
                                 <Forward className="me-1 h-3 w-3" />
                                 {t("nextRound")}
                               </Button>
                               <Button variant="ghost" size="sm"
-                                className="h-7 rounded-lg px-2.5 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-50"
+                                className="h-7 rounded-lg px-2.5 text-[11px] font-semibold text-emerald-700 hover:bg-status-selected-bg"
                                 onClick={() => setModal({ kind: "offer", interview: iv })}>
                                 <FileText className="me-1 h-3 w-3" />
                                 {t("makeOffer")}
@@ -797,7 +792,7 @@ export default function EmployerInterviewsPage() {
                           {/* Completed but no outcome yet → show "Set Outcome" */}
                           {isCompleted && !iv.outcome && (
                             <Button variant="ghost" size="sm"
-                              className="h-7 rounded-lg px-2.5 text-[11px] font-semibold text-amber-700 hover:bg-amber-50"
+                              className="h-7 rounded-lg px-2.5 text-[11px] font-semibold text-status-shortlisted hover:bg-status-shortlisted-bg"
                               onClick={() => setModal({ kind: "complete", interview: iv })}>
                               <AlertTriangle className="me-1 h-3 w-3" />
                               {t("setOutcome")}
@@ -859,10 +854,10 @@ export default function EmployerInterviewsPage() {
                       {Object.entries(prepBrief.timeAllocation).map(([key, mins]) => (
                         <div
                           key={key}
-                          className="flex flex-1 flex-col items-center rounded-xl bg-violet-50 p-2 dark:bg-violet-500/10"
+                          className="flex flex-1 flex-col items-center rounded-xl bg-status-interview-bg p-2 dark:bg-violet-500/10"
                           style={{ flex: mins }}
                         >
-                          <span className="text-lg font-semibold text-violet-700 dark:text-violet-300">{mins}m</span>
+                          <span className="text-lg font-semibold text-status-interview dark:text-violet-300">{mins}m</span>
                           <span className="text-[10px] capitalize text-muted-foreground">{key}</span>
                         </div>
                       ))}
@@ -872,7 +867,7 @@ export default function EmployerInterviewsPage() {
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   {/* Key Strengths */}
-                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-500/20 dark:bg-emerald-500/10">
+                  <div className="rounded-2xl border border-status-selected/20 bg-status-selected-bg/60 p-4 dark:border-emerald-500/20 dark:bg-emerald-500/10">
                     <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">{t("keyStrengths")}</p>
                     <ul className="mt-2 space-y-1.5">
                       {prepBrief.keyStrengths.map((s) => (
@@ -885,8 +880,8 @@ export default function EmployerInterviewsPage() {
                   </div>
 
                   {/* Areas to Probe */}
-                  <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4 dark:border-amber-500/20 dark:bg-amber-500/10">
-                    <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">{t("areasToProbe")}</p>
+                  <div className="rounded-2xl border border-status-shortlisted/20 bg-status-shortlisted-bg/60 p-4 dark:border-amber-500/20 dark:bg-amber-500/10">
+                    <p className="text-xs font-semibold text-status-shortlisted dark:text-amber-300">{t("areasToProbe")}</p>
                     <ul className="mt-2 space-y-1.5">
                       {prepBrief.areasToProbe.map((a) => (
                         <li key={a} className="flex items-start gap-2 text-xs text-muted-foreground">
@@ -914,7 +909,7 @@ export default function EmployerInterviewsPage() {
 
                 {/* Red Flags */}
                 {prepBrief.redFlags.length > 0 && (
-                  <div className="rounded-2xl border border-rose-200 bg-rose-50/60 p-4 dark:border-rose-500/20 dark:bg-rose-500/10">
+                  <div className="rounded-2xl border border-status-rejected/20 bg-status-rejected-bg/60 p-4 dark:border-rose-500/20 dark:bg-rose-500/10">
                     <p className="text-xs font-semibold text-rose-700 dark:text-rose-300">{t("redFlags")}</p>
                     <ul className="mt-2 space-y-1.5">
                       {prepBrief.redFlags.map((r) => (
@@ -1128,10 +1123,10 @@ function InterviewActionModal({
                 <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("interviewOutcome")}</label>
                 <div className="grid grid-cols-2 gap-2">
                   {[
-                    { value: "passed", label: t("passedMoveForward"), icon: CheckCircle2, color: "border-emerald-300 bg-emerald-50 text-emerald-700" },
-                    { value: "failed", label: t("rejected"), icon: XCircle, color: "border-red-300 bg-red-50 text-red-700" },
-                    { value: "hold", label: t("onHold"), icon: Clock3, color: "border-amber-300 bg-amber-50 text-amber-700" },
-                    { value: "no_show", label: t("noShow"), icon: AlertTriangle, color: "border-gray-300 bg-gray-50 text-gray-700" },
+                    { value: "passed", label: t("passedMoveForward"), icon: CheckCircle2, color: "border-status-selected/20 bg-status-selected-bg text-emerald-700" },
+                    { value: "failed", label: t("rejected"), icon: XCircle, color: "border-status-rejected/20 bg-status-rejected-bg text-status-rejected" },
+                    { value: "hold", label: t("onHold"), icon: Clock3, color: "border-status-shortlisted/20 bg-status-shortlisted-bg text-status-shortlisted" },
+                    { value: "no_show", label: t("noShow"), icon: AlertTriangle, color: "border-border bg-secondary/75 text-muted-foreground" },
                   ].map(({ value, label, icon: Icon, color }) => (
                     <button key={value}
                       onClick={() => setOutcome(value)}

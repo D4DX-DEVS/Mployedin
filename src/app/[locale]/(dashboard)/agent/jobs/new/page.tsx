@@ -119,33 +119,33 @@ export default function AgentJobPosterPage() {
   );
 
   return (
-    <div className="page-container agent-legacy-surface space-y-6">
-      <section className="workspace-hero-surface agent-legacy-hero overflow-hidden rounded-[28px] p-6 sm:p-7">
+    <div className="page-container space-y-6">
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-sky-100 bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 backdrop-blur"><Sparkles className="h-3.5 w-3.5" />{common("workspace")}</div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-950 sm:text-[2rem]">{t("title")}</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">{t("description")}</p>
+            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/90 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-status-applied backdrop-blur"><Sparkles className="h-3.5 w-3.5" />{common("workspace")}</div>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("title")}</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">{t("description")}</p>
           </div>
-          <Button variant="outline" onClick={() => router.back()} className="rounded-xl border-white/80 bg-white/80 hover:border-sky-200 hover:text-sky-700">
+          <Button variant="outline" onClick={() => router.back()} className="rounded-xl border-border/75 bg-card/90 hover:border-border hover:text-status-applied">
             <ArrowRight className="h-4 w-4" />
             {common("back")}
           </Button>
         </div>
       </section>
 
-      <section className="rounded-[28px] border border-slate-200 bg-white/95 p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur sm:p-6 space-y-3">
+      <section className="rounded-[28px] border border-border bg-card/90 p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur sm:p-6 space-y-3">
         <div className="flex items-center gap-2">
-          <Building2 className="h-4 w-4 text-sky-600" />
-          <h3 className="text-sm font-semibold text-slate-950">{t("employer.title")}</h3>
+          <Building2 className="h-4 w-4 text-status-applied" />
+          <h3 className="text-sm font-semibold text-foreground">{t("employer.title")}</h3>
         </div>
         {loadingEmployers ? (
-          <div className="flex items-center gap-2 text-sm text-slate-500">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
             {t("employer.loading")}
           </div>
         ) : employers.length === 0 ? (
-          <div className="flex items-center gap-2 rounded-2xl bg-amber-50 p-3 text-sm text-amber-600">
+          <div className="flex items-center gap-2 rounded-2xl bg-status-shortlisted-bg p-3 text-sm text-status-shortlisted">
             <AlertCircle className="h-4 w-4" />
             {t("employer.empty")}
           </div>
@@ -165,10 +165,10 @@ export default function AgentJobPosterPage() {
         )}
       </section>
 
-      <form onSubmit={handleSubmit} className="rounded-[28px] border border-slate-200 bg-white/95 p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur sm:p-6 space-y-5">
+      <form onSubmit={handleSubmit} className="rounded-[28px] border border-border bg-card/90 p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur sm:p-6 space-y-5">
         <div className="flex items-center gap-2 mb-1">
-          <Briefcase className="h-4 w-4 text-sky-600" />
-          <h3 className="text-sm font-semibold text-slate-950">{t("form.title")}</h3>
+          <Briefcase className="h-4 w-4 text-status-applied" />
+          <h3 className="text-sm font-semibold text-foreground">{t("form.title")}</h3>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -63,15 +63,15 @@ export default function NewLeadPage() {
   );
 
   return (
-    <div className="page-container agent-legacy-surface space-y-6">
-      <section className="workspace-hero-surface agent-legacy-hero overflow-hidden rounded-[28px] p-6 sm:p-7">
+    <div className="page-container space-y-6">
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-sky-100 bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 backdrop-blur"><Sparkles className="h-3.5 w-3.5" />{t("agentWorkspace")}</div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-950 sm:text-[2rem]">{t("pageTitle")}</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">{t("pageDescription")}</p>
+            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/90 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-status-applied backdrop-blur"><Sparkles className="h-3.5 w-3.5" />{t("agentWorkspace")}</div>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("pageTitle")}</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">{t("pageDescription")}</p>
           </div>
-          <Link href=".." className="inline-flex items-center gap-2 rounded-xl border border-white/80 bg-white/80 px-4 py-3 text-sm font-semibold text-slate-700 transition-colors hover:border-sky-200 hover:text-sky-700">
+          <Link href=".." className="inline-flex items-center gap-2 rounded-xl border border-border/75 bg-card/90 px-4 py-3 text-sm font-semibold text-foreground/85 transition-colors hover:border-border hover:text-status-applied">
             <ArrowRight className="h-4 w-4" />
             {t("backToPipeline")}
           </Link>
@@ -79,10 +79,10 @@ export default function NewLeadPage() {
       </section>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <section className="rounded-[28px] border border-slate-200 bg-white/95 p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur sm:p-6">
+        <section className="rounded-[28px] border border-border bg-card/90 p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur sm:p-6">
           <div className="flex items-center gap-2">
-            <Building2 className="h-4 w-4 text-sky-600" />
-            <p className="text-sm font-semibold text-slate-950">{t("sectionCompanyAndContact")}</p>
+            <Building2 className="h-4 w-4 text-status-applied" />
+            <p className="text-sm font-semibold text-foreground">{t("sectionCompanyAndContact")}</p>
           </div>
 
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -95,7 +95,7 @@ export default function NewLeadPage() {
             <div className="space-y-1">
               <label className="text-sm font-medium">{t("labelIndustry")}</label>
               <Select value={form.industry} onValueChange={(value) => set("industry", value)}>
-                <SelectTrigger className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">
+                <SelectTrigger className="h-11 w-full rounded-xl border border-border bg-secondary/65 px-3 text-sm text-foreground/85">
                   <SelectValue placeholder={t("selectIndustryPlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
@@ -120,7 +120,7 @@ export default function NewLeadPage() {
             <div className="space-y-1">
               <label className="text-sm font-medium">{t("labelSource")}</label>
               <Select value={form.source} onValueChange={(value) => set("source", value)}>
-                <SelectTrigger className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">
+                <SelectTrigger className="h-11 w-full rounded-xl border border-border bg-secondary/65 px-3 text-sm text-foreground/85">
                   <SelectValue placeholder={t("selectSourcePlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
@@ -145,10 +145,10 @@ export default function NewLeadPage() {
           </div>
         </section>
 
-        <section className="rounded-[28px] border border-slate-200 bg-white/95 p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur sm:p-6 space-y-4">
+        <section className="rounded-[28px] border border-border bg-card/90 p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur sm:p-6 space-y-4">
           <div className="flex items-center gap-2">
-            <CalendarClock className="h-4 w-4 text-sky-600" />
-            <p className="text-sm font-semibold text-slate-950">{t("sectionContextAndNotes")}</p>
+            <CalendarClock className="h-4 w-4 text-status-applied" />
+            <p className="text-sm font-semibold text-foreground">{t("sectionContextAndNotes")}</p>
           </div>
 
           <div className="space-y-1">
@@ -157,7 +157,7 @@ export default function NewLeadPage() {
               value={form.notes}
               onChange={(e) => set("notes", e.target.value)}
               rows={4}
-              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-100"
+              className="w-full rounded-2xl border border-border bg-secondary/65 px-4 py-3 text-sm text-foreground/85 outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-100"
             />
           </div>
 
@@ -171,7 +171,7 @@ export default function NewLeadPage() {
             </button>
             <Link
               href=".."
-              className="inline-flex h-11 items-center rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-600 transition-colors hover:border-sky-200 hover:text-sky-700"
+              className="inline-flex h-11 items-center rounded-xl border border-border px-4 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:text-status-applied"
             >
               {tc("cancel")}
             </Link>

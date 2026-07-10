@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { DollarSign, CalendarDays, Clock3, CircleCheckBig, ArrowRight, Eye, X, Sparkles, FileText, Briefcase, FileDown } from "lucide-react";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -20,12 +21,12 @@ import type { ExportColumn } from "@/lib/export";
 
 function getStatusColor(status: OfferStatus): string {
   switch (status) {
-    case "pending": return "bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30";
-    case "accepted": return "bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30";
-    case "declined": return "bg-red-100 text-red-700 border-red-300 dark:bg-red-500/15 dark:text-red-300 dark:border-red-500/30";
-    case "expired": return "bg-gray-100 text-gray-600 border-gray-300 dark:bg-slate-800/80 dark:text-slate-300 dark:border-slate-700";
-    case "withdrawn": return "bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-500/15 dark:text-orange-300 dark:border-orange-500/30";
-    default: return "bg-gray-100 text-gray-600 border-gray-300 dark:bg-slate-800/80 dark:text-slate-300 dark:border-slate-700";
+    case "pending": return "bg-status-shortlisted-bg text-status-shortlisted border-status-shortlisted/20 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30";
+    case "accepted": return "bg-status-selected-bg text-emerald-700 border-status-selected/20 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30";
+    case "declined": return "bg-status-rejected-bg text-status-rejected border-status-rejected/20 dark:bg-red-500/15 dark:text-red-300 dark:border-red-500/30";
+    case "expired": return "bg-secondary/75 text-muted-foreground border-border dark:bg-slate-500/80 dark:text-muted-foreground dark:border-slate-700";
+    case "withdrawn": return "bg-status-shortlisted-bg text-status-shortlisted border-status-shortlisted/20 dark:bg-amber-500/15 dark:text-orange-300 dark:border-orange-500/30";
+    default: return "bg-secondary/75 text-muted-foreground border-border dark:bg-slate-500/80 dark:text-muted-foreground dark:border-slate-700";
   }
 }
 
@@ -136,22 +137,15 @@ export default function EmployerOffersPage() {
   }
 
   return (
-    <div className="page-container employer-legacy-surface space-y-6">
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-3xl">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
-              <Sparkles className="h-3.5 w-3.5" />
-              {t("title")}
-            </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-              {t("description")}
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              {t("subtitle")}
-            </p>
-          </div>
-
+    <div className="page-container space-y-6">
+      <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+        <Sparkles className="h-3.5 w-3.5" />
+        {t("title")}
+      </div>
+      <PageHeader
+        title={t("description")}
+        description={t("subtitle")}
+        actions={
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("currentView")}</p>
@@ -168,41 +162,43 @@ export default function EmployerOffersPage() {
               </Link>
             </Button>
           </div>
-        </div>
+        }
+      />
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+        <div className="mt-0 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {[
             {
               label: t("pending"),
               value: pendingCount,
               note: t("pendingNote"),
               icon: Clock3,
-              tone: "text-amber-600",
-              chip: "bg-amber-50",
+              tone: "text-status-shortlisted",
+              chip: "bg-status-shortlisted-bg",
             },
             {
               label: t("accepted"),
               value: acceptedCount,
               note: t("acceptedNote"),
               icon: CircleCheckBig,
-              tone: "text-emerald-600",
-              chip: "bg-emerald-50",
+              tone: "text-status-selected",
+              chip: "bg-status-selected-bg",
             },
             {
               label: t("expired"),
               value: expiringSoonCount,
               note: t("expiringNote"),
               icon: CalendarDays,
-              tone: "text-sky-600",
-              chip: "bg-sky-50",
+              tone: "text-status-applied",
+              chip: "bg-status-applied-bg",
             },
             {
               label: t("responded"),
               value: respondedCount,
               note: t("respondedNote"),
               icon: FileText,
-              tone: "text-violet-600",
-              chip: "bg-violet-50",
+              tone: "text-status-interview",
+              chip: "bg-status-interview-bg",
             },
           ].map(({ label, value, note, icon: Icon, tone, chip }) => (
             <div key={label} className="workspace-glass-panel rounded-2xl p-4">
@@ -254,7 +250,7 @@ export default function EmployerOffersPage() {
         <section className="workspace-panel-surface rounded-[28px] border border-red-500/20 p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-red-600">{t("offerList")}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-rejected">{t("offerList")}</p>
               <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{tc("somethingWentWrong")}</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
                 {error instanceof Error ? error.message : t("offerListDesc")}
@@ -282,7 +278,7 @@ export default function EmployerOffersPage() {
       ) : offers.length === 0 ? (
         <section className="workspace-panel-surface rounded-[28px] p-6">
           <div className="flex flex-col items-center py-14 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-sky-50 text-sky-600">
+            <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-status-applied-bg text-status-applied">
               <DollarSign className="h-7 w-7" />
             </div>
             <h2 className="mt-5 text-2xl font-semibold tracking-tight text-foreground">{t("noOffers")}</h2>
@@ -296,7 +292,7 @@ export default function EmployerOffersPage() {
         </section>
       ) : (
         <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
-          <div className="flex flex-col gap-3 border-b border-slate-100 pb-5 sm:flex-row sm:items-end sm:justify-between">
+          <div className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("offerList")}</p>
               <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("offerListDesc")}</h2>
@@ -364,7 +360,7 @@ export default function EmployerOffersPage() {
                       <div className="text-sm text-muted-foreground">
                         {formatDate(offer.expiresAt)}
                         {isExpiring(offer) ? (
-                          <span className="mt-1 block text-xs font-semibold text-amber-600">{t("expired")}</span>
+                          <span className="mt-1 block text-xs font-semibold text-status-shortlisted">{t("expired")}</span>
                         ) : null}
                       </div>
                     </TableCell>
@@ -377,7 +373,7 @@ export default function EmployerOffersPage() {
                         </Button>
                         {offer.status === "pending" && !isExpired(offer) ? (
                           <Button size="sm" variant="ghost"
-                            className="h-8 rounded-xl px-3 text-xs font-semibold text-red-600 hover:bg-red-50 hover:text-red-700"
+                            className="h-8 rounded-xl px-3 text-xs font-semibold text-status-rejected hover:bg-status-rejected-bg hover:text-status-rejected"
                             onClick={() => setWithdrawingId(offer._id)}>
                             <X className="me-1 h-3.5 w-3.5" />
                             {t("withdraw")}
@@ -487,9 +483,9 @@ export default function EmployerOffersPage() {
                 </div>
               )}
               {detailOffer.declineReason && (
-                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-red-600">{t("declineReason")}</p>
-                  <p className="mt-2 text-sm leading-6 text-red-700">{detailOffer.declineReason}</p>
+                <div className="rounded-2xl border border-status-rejected/20 bg-status-rejected-bg px-4 py-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-rejected">{t("declineReason")}</p>
+                  <p className="mt-2 text-sm leading-6 text-status-rejected">{detailOffer.declineReason}</p>
                 </div>
               )}
               <div className="flex flex-wrap items-center gap-2 border-t border-border/60 pt-4">

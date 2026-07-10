@@ -152,14 +152,14 @@ export default function AgentCommissionsPage() {
   const statusColor = (status: string) => {
     if (status === "paid") return "text-[hsl(var(--status-selected))]";
     if (status === "approved") return "text-[hsl(var(--status-applied))]";
-    if (status === "disputed") return "text-red-600";
+    if (status === "disputed") return "text-status-rejected";
     return "text-[hsl(var(--status-shortlisted))]";
   };
 
   return (
-    <div className="page-container agent-legacy-surface space-y-6">
+    <div className="page-container space-y-6">
       {/* ── Hero ── */}
-      <section className="workspace-hero-surface agent-legacy-hero overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary"><Sparkles className="h-3.5 w-3.5" />{t("agentWorkspace")}</div>
@@ -171,10 +171,10 @@ export default function AgentCommissionsPage() {
         {summary && (
           <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              { key: "pending", value: summary.pending, color: "text-amber-600", tone: "workspace-tone-amber", icon: Clock },
-              { key: "approved", value: summary.approved, color: "text-blue-600", tone: "workspace-tone-sky", icon: TrendingUp },
-              { key: "paid", value: summary.paid, color: "text-green-600", tone: "workspace-tone-emerald", icon: DollarSign },
-              { key: "disputed", value: summary.disputed ?? 0, color: "text-red-600", tone: "workspace-tone-rose", icon: X },
+              { key: "pending", value: summary.pending, color: "text-status-shortlisted", tone: "workspace-tone-amber", icon: Clock },
+              { key: "approved", value: summary.approved, color: "text-status-applied", tone: "workspace-tone-sky", icon: TrendingUp },
+              { key: "paid", value: summary.paid, color: "text-status-selected", tone: "workspace-tone-emerald", icon: DollarSign },
+              { key: "disputed", value: summary.disputed ?? 0, color: "text-status-rejected", tone: "workspace-tone-rose", icon: X },
             ].map(({ key, value, color, tone, icon: Icon }) => (
               <div key={key} className="workspace-glass-panel rounded-2xl p-4">
                 <div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t(`summaryCard${key.charAt(0).toUpperCase() + key.slice(1)}Label`)}</p><p className={`mt-3 text-2xl font-semibold tracking-tight ${color}`}>{formatCurrency(value, currencyCode)}</p><p className="mt-1 text-xs text-muted-foreground">{t(`summaryCard${key.charAt(0).toUpperCase() + key.slice(1)}Value`)}</p></div><div className={`rounded-2xl p-2.5 ${tone}`}><Icon className="h-5 w-5" /></div></div>

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { PageHeader } from "@/components/shared/PageHeader";
 import {
   ArrowRight,
   HelpCircle,
@@ -115,12 +116,7 @@ export default function CmsOverviewPage() {
               <Sparkles className="h-3.5 w-3.5" />
               {t("cmsWorkspaceLabel")}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-              {t("pageTitle")}
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              {t("pageDescription")}
-            </p>
+            <PageHeader title={t("pageTitle")} description={t("pageDescription")} />
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">

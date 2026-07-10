@@ -163,37 +163,37 @@ function safeSerializeCandidateMatchSessionState(state: { selectedJobId: string;
 }
 
 const scoreBadgeClass = (score?: number) => {
-  if (score == null) return "border border-slate-200 bg-white text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-300";
-  if (score >= 80) return "border border-emerald-300 bg-emerald-50 text-emerald-800 shadow-sm dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300";
-  if (score >= 60) return "border border-amber-300 bg-amber-50 text-amber-800 shadow-sm dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300";
-  return "border border-rose-300 bg-rose-50 text-rose-700 shadow-sm dark:border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-300";
+  if (score == null) return "border border-border bg-card text-muted-foreground shadow-sm dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-300";
+  if (score >= 80) return "border border-status-selected/20 bg-status-selected-bg text-status-selected shadow-sm dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300";
+  if (score >= 60) return "border border-status-shortlisted/20 bg-status-shortlisted-bg text-status-shortlisted shadow-sm dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300";
+  return "border border-status-rejected/20 bg-status-rejected-bg text-status-rejected shadow-sm dark:border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-300";
 };
 
 const cardSurfaceClass = (score?: number, savedForReview?: boolean) => {
   // ponytail: light gradients with dark mode neutral shadow fallback
   if (savedForReview) {
-    return "border-sky-200 bg-[linear-gradient(180deg,_rgba(240,249,255,0.96),_rgba(255,255,255,0.98))] shadow-[0_24px_60px_-44px_rgba(14,165,233,0.45)] dark:border-sky-500/30 dark:bg-card dark:shadow-lg";
+    return "border-status-applied/20 workspace-panel-surface shadow-[0_24px_60px_-44px_rgba(14,165,233,0.45)] dark:border-sky-500/30 dark:bg-card dark:shadow-lg";
   }
 
   if (score != null && score >= 80) {
-    return "border-emerald-200 bg-[linear-gradient(180deg,_rgba(236,253,245,0.96),_rgba(255,255,255,0.98))] shadow-[0_24px_60px_-44px_rgba(16,185,129,0.35)] dark:border-emerald-500/25 dark:bg-card dark:shadow-lg";
+    return "border-status-selected/20 workspace-panel-surface shadow-[0_24px_60px_-44px_rgba(16,185,129,0.35)] dark:border-emerald-500/25 dark:bg-card dark:shadow-lg";
   }
 
-  return "border-slate-200 bg-[linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96))] shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] dark:border-slate-700 dark:bg-card dark:shadow-lg";
+  return "border-border workspace-panel-surface shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] dark:border-slate-700 dark:bg-card dark:shadow-lg";
 };
 
 const availabilityTone = (status?: string) => {
   switch (status) {
     case "immediately":
-      return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300";
+      return "border-status-selected/20 bg-status-selected-bg text-status-selected dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300";
     case "within_month":
-      return "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-500/30 dark:bg-sky-500/15 dark:text-sky-300";
+      return "border-status-applied/20 bg-status-applied-bg text-status-applied dark:border-sky-500/30 dark:bg-sky-500/15 dark:text-sky-300";
     case "within_3_months":
-      return "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300";
+      return "border-status-shortlisted/20 bg-status-shortlisted-bg text-status-shortlisted dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300";
     case "not_available":
-      return "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-300";
+      return "border-status-rejected/20 bg-status-rejected-bg text-status-rejected dark:border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-300";
     default:
-      return "border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-300";
+      return "border-border bg-secondary/75 text-muted-foreground dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-300";
   }
 };
 
@@ -341,7 +341,7 @@ function CandidateMatchCard({
             <AvatarImage src={candidate.userId.avatar} alt={candidateDisplayName} />
           ) : null}
           <AvatarFallback
-            className={`text-sm font-semibold ${isInReviewList ? "bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300" : "bg-slate-100 text-slate-700 dark:bg-slate-800/80 dark:text-slate-300"}`}
+            className={`text-sm font-semibold ${isInReviewList ? "bg-status-applied-bg text-status-applied dark:bg-sky-500/15 dark:text-sky-300" : "bg-secondary/75 text-foreground dark:bg-slate-800/80 dark:text-slate-300"}`}
           >
             {(candidateDisplayName[0] ?? "?").toUpperCase()}
           </AvatarFallback>
@@ -357,7 +357,7 @@ function CandidateMatchCard({
               </span>
             ) : null}
             {isInReviewList ? (
-              <span className="hidden rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700 dark:border-sky-500/30 dark:bg-sky-500/15 dark:text-sky-300 lg:inline-flex">
+              <span className="hidden rounded-full border border-border bg-status-applied-bg px-2 py-0.5 text-[10px] font-semibold text-status-applied dark:border-sky-500/30 dark:bg-sky-500/15 dark:text-sky-300 lg:inline-flex">
                 {t("savedLabel")}
               </span>
             ) : null}
@@ -371,7 +371,7 @@ function CandidateMatchCard({
               return (
                 <span
                   key={skill}
-                  className={`inline-flex max-w-full items-center rounded-full px-2 py-0.5 font-medium ${isRequired ? "bg-sky-50 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300" : "bg-slate-100 text-slate-600 dark:bg-slate-800/80 dark:text-slate-300"}`}
+                  className={`inline-flex max-w-full items-center rounded-full px-2 py-0.5 font-medium ${isRequired ? "bg-status-applied-bg text-status-applied dark:bg-sky-500/15 dark:text-sky-300" : "bg-secondary/75 text-muted-foreground dark:bg-slate-800/80 dark:text-slate-300"}`}
                 >
                   <span className="truncate">{skill}</span>
                 </span>
@@ -379,7 +379,7 @@ function CandidateMatchCard({
             })}
             {overflowSkillCount > 0 ? <span>+{overflowSkillCount} {t("moreSuffix")}</span> : null}
             {selectedJobData && matchedSkills.length === 0 && missingSkills.length > 0 ? (
-              <span className="text-amber-700 dark:text-amber-300">{missingSkills.length === 1 ? t("skillGap", { count: missingSkills.length }) : t("skillGaps", { count: missingSkills.length })}</span>
+              <span className="text-status-shortlisted dark:text-amber-300">{missingSkills.length === 1 ? t("skillGap", { count: missingSkills.length }) : t("skillGaps", { count: missingSkills.length })}</span>
             ) : null}
           </div>
         </div>
@@ -508,7 +508,7 @@ function CandidateInsightsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent hideClose className="max-h-[88vh] max-w-5xl overflow-hidden rounded-[32px] border-border bg-background p-0 shadow-[0_40px_120px_-48px_rgba(15,23,42,0.5)]">
         <div className="max-h-[88vh] overflow-y-auto">
-          <div className="relative border-b border-border bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.16),_transparent_34%),linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(239,246,255,0.94))] px-6 py-6 dark:bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.16),_transparent_34%),linear-gradient(135deg,_rgba(2,6,23,0.96),_rgba(15,23,42,0.92))] sm:px-8">
+          <div className="relative border-b border-border workspace-hero-surface px-6 py-6 sm:px-8">
             <button
               type="button"
               onClick={() => onOpenChange(false)}
@@ -523,7 +523,7 @@ function CandidateInsightsDialog({
                   <div className="flex flex-wrap items-center gap-2">
                     <DialogTitle className="text-2xl font-semibold tracking-tight text-foreground">{getCandidateDisplayName(candidate)}</DialogTitle>
                     {isInReviewList ? (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-background/80 px-2.5 py-1 text-[11px] font-semibold text-sky-700 dark:border-sky-500/30 dark:text-sky-300">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-status-applied/20 bg-background/80 px-2.5 py-1 text-[11px] font-semibold text-status-applied dark:border-sky-500/30 dark:text-sky-300">
                         <CheckCircle2 className="h-3 w-3" />
                         {t("reviewList")}
                       </span>
@@ -605,7 +605,7 @@ function CandidateInsightsDialog({
                   {candidate.matchBreakdown ? (
                     <div className="workspace-glass-panel rounded-[24px] p-5">
                       <div className="mb-4 flex items-center gap-2">
-                        <BarChart3 className="h-4 w-4 text-sky-600" />
+                        <BarChart3 className="h-4 w-4 text-status-applied" />
                         <p className="text-sm font-semibold text-foreground">{t("scoreBreakdown")}</p>
                       </div>
                       <div className="space-y-3">
@@ -630,8 +630,8 @@ function CandidateInsightsDialog({
               ) : null}
 
               <div className="space-y-4">
-                <div className="rounded-[24px] border border-slate-200 bg-white p-5">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{t("keySkills")}</p>
+                <div className="rounded-[24px] border border-border bg-card p-5">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("keySkills")}</p>
                   <div className="mt-4 flex flex-wrap gap-2">
                     {(candidate.skills ?? []).map((skill) => {
                       const isRequired = matchedSkills.some((matchedSkill) => normalizeText(matchedSkill) === normalizeText(skill));
@@ -639,7 +639,7 @@ function CandidateInsightsDialog({
                       return (
                         <span
                           key={skill}
-                          className={`rounded-full px-2.5 py-1 text-xs font-medium ${isRequired ? "border border-sky-200 bg-sky-50 text-sky-700" : "border border-slate-200 bg-slate-50 text-slate-600"}`}
+                          className={`rounded-full px-2.5 py-1 text-xs font-medium ${isRequired ? "border border-status-applied/20 bg-status-applied-bg text-status-applied" : "border border-border bg-secondary/75 text-muted-foreground"}`}
                         >
                           {skill}
                         </span>
@@ -649,9 +649,9 @@ function CandidateInsightsDialog({
                 </div>
 
                 {candidate.strengths?.length ? (
-                  <div className="rounded-[24px] border border-emerald-200 bg-emerald-50/60 p-5">
-                    <p className="text-sm font-semibold text-emerald-700">{t("strengths")}</p>
-                    <ul className="mt-3 space-y-2 text-sm text-slate-600">
+                  <div className="rounded-[24px] border border-status-selected/20 bg-status-selected-bg p-5">
+                    <p className="text-sm font-semibold text-status-selected">{t("strengths")}</p>
+                    <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
                       {candidate.strengths.map((strength) => (
                         <li key={strength} className="flex gap-2">
                           <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
@@ -663,30 +663,30 @@ function CandidateInsightsDialog({
                 ) : null}
 
                 {(candidate.gaps?.length || selectedJobData) ? (
-                  <div className="rounded-[24px] border border-slate-200 bg-white p-5">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{t("roleContext")}</p>
+                  <div className="rounded-[24px] border border-border bg-card p-5">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("roleContext")}</p>
                     {selectedJobData ? (
-                      <div className="mt-3 space-y-3 text-sm text-slate-600">
+                      <div className="mt-3 space-y-3 text-sm text-muted-foreground">
                         <div>
-                          <p className="font-semibold text-slate-950">{selectedJobData.title}</p>
-                          <p className="mt-1 text-xs text-slate-500">
+                          <p className="font-semibold text-foreground">{selectedJobData.title}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
                             {selectedJobData.location?.isRemote
                               ? t("remoteRole")
                               : [selectedJobData.location?.city, selectedJobData.location?.country].filter(Boolean).join(", ") || t("locationNotSpecified")}
                           </p>
                         </div>
                         <div>
-                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{t("matchedRequirements")}</p>
+                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("matchedRequirements")}</p>
                           <p className="mt-1">{matchedSkills.length > 0 ? matchedSkills.join(", ") : t("noRequirementsMatched")}</p>
                         </div>
                       </div>
                     ) : (
-                      <p className="mt-3 text-sm text-slate-600">{t("chooseJobBenchmark")}</p>
+                      <p className="mt-3 text-sm text-muted-foreground">{t("chooseJobBenchmark")}</p>
                     )}
                     {candidate.gaps?.length ? (
-                      <div className="mt-4 border-t border-slate-100 pt-4">
-                        <p className="text-sm font-semibold text-rose-600">{t("gaps")}</p>
-                        <ul className="mt-3 space-y-2 text-sm text-slate-600">
+                      <div className="mt-4 border-t border-border pt-4">
+                        <p className="text-sm font-semibold text-status-rejected">{t("gaps")}</p>
+                        <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
                           {candidate.gaps.map((gap) => (
                             <li key={gap} className="flex gap-2">
                               <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-rose-500" />
@@ -721,9 +721,9 @@ function CandidateInsightsDialog({
 
 /* ── AI Screening Results Panel ──────────────────────────────────── */
 const RECOMMENDATION_STYLES: Record<string, string> = {
-  shortlist: "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300",
-  consider: "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300",
-  pass: "border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-300",
+  shortlist: "border-status-selected/20 bg-status-selected-bg text-status-selected dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300",
+  consider: "border-status-shortlisted/20 bg-status-shortlisted-bg text-status-shortlisted dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300",
+  pass: "border-status-rejected/20 bg-status-rejected-bg text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-300",
 };
 
 interface ScreeningPanelProps {
@@ -745,7 +745,7 @@ function AIScreeningResultsPanel({ results, jobTitle, totalReviewed, onClose }: 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-sky-600" />
+            <ShieldCheck className="h-5 w-5 text-status-applied" />
             <h2 className="text-lg font-semibold text-foreground">{t("aiScreeningResults")}</h2>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -760,15 +760,15 @@ function AIScreeningResultsPanel({ results, jobTitle, totalReviewed, onClose }: 
 
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="workspace-glass-panel rounded-2xl p-3 text-center">
-          <p className="text-2xl font-semibold text-emerald-600 dark:text-emerald-400">{shortlistCount}</p>
+          <p className="text-2xl font-semibold text-status-selected dark:text-emerald-400">{shortlistCount}</p>
           <p className="text-xs font-medium text-muted-foreground">{t("shortlist")}</p>
         </div>
         <div className="workspace-glass-panel rounded-2xl p-3 text-center">
-          <p className="text-2xl font-semibold text-amber-600 dark:text-amber-400">{considerCount}</p>
+          <p className="text-2xl font-semibold text-status-shortlisted dark:text-amber-400">{considerCount}</p>
           <p className="text-xs font-medium text-muted-foreground">{t("consider")}</p>
         </div>
         <div className="workspace-glass-panel rounded-2xl p-3 text-center">
-          <p className="text-2xl font-semibold text-rose-600 dark:text-rose-400">{passCount}</p>
+          <p className="text-2xl font-semibold text-status-rejected dark:text-rose-400">{passCount}</p>
           <p className="text-xs font-medium text-muted-foreground">{t("pass")}</p>
         </div>
       </div>
@@ -812,7 +812,7 @@ function AIScreeningResultsPanel({ results, jobTitle, totalReviewed, onClose }: 
                       <ul className="mt-1 space-y-1">
                         {candidate.strengths.map((s) => (
                           <li key={s} className="flex items-start gap-2 text-xs">
-                            <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                            <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-status-selected dark:text-emerald-400" />
                             <span>{s}</span>
                           </li>
                         ))}
@@ -1348,7 +1348,7 @@ export default function EmployerCandidatesPage() {
   }
 
   return (
-    <div className="page-container employer-legacy-surface space-y-4">
+    <div className="page-container space-y-4">
       {viewingCv && (
         <ResumeViewerModal
           url={viewingCv.url}
@@ -1406,7 +1406,7 @@ export default function EmployerCandidatesPage() {
                 {selectedJobData ? t("benchmark", { title: selectedJobData.title }) : t("talentPoolView")}
               </span>
               {isRefreshingCandidates ? (
-                <span className="rounded-full border border-sky-500/20 bg-sky-500/10 px-2.5 py-1 text-[11px] font-medium text-sky-700 backdrop-blur dark:text-sky-300">
+                <span className="rounded-full border border-sky-500/20 bg-sky-500/10 px-2.5 py-1 text-[11px] font-medium text-status-applied backdrop-blur dark:text-sky-300">
                   {t("refreshing")}
                 </span>
               ) : null}
@@ -1512,7 +1512,7 @@ export default function EmployerCandidatesPage() {
       {!jobsLoading && !hasJobsError && jobs.length === 0 && (
           <div className="rounded-[24px] border border-amber-500/20 bg-amber-500/10 p-4 text-amber-900 shadow-[0_16px_40px_-36px_rgba(245,158,11,0.45)] dark:text-amber-100">
             <div className="flex items-start gap-3">
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-status-shortlisted" />
           <div className="space-y-1">
             <p className="text-sm font-semibold">{t("noPublishedJobs")}</p>
               <p className="text-sm text-amber-800/90 dark:text-amber-100/80">{t("publishJobFirst")}</p>
@@ -1640,7 +1640,7 @@ export default function EmployerCandidatesPage() {
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs font-medium text-muted-foreground">{workflowState.title}</span>
                 {reviewCount > 0 ? (
-                  <span className="rounded-full border border-sky-500/20 bg-sky-500/10 px-2.5 py-1 text-[11px] font-medium text-sky-700 dark:text-sky-300">
+                  <span className="rounded-full border border-sky-500/20 bg-sky-500/10 px-2.5 py-1 text-[11px] font-medium text-status-applied dark:text-sky-300">
                     {reviewCount} {t("savedCount")}
                   </span>
                 ) : null}
@@ -1724,7 +1724,7 @@ export default function EmployerCandidatesPage() {
                     <button
                       key={suggestion}
                       type="button"
-                      className="rounded-full border border-border bg-background/80 px-3 py-1 text-xs font-medium text-muted-foreground transition hover:border-sky-500/20 hover:text-sky-700 dark:hover:text-sky-300"
+                      className="rounded-full border border-border bg-background/80 px-3 py-1 text-xs font-medium text-muted-foreground transition hover:border-sky-500/20 hover:text-status-applied dark:hover:text-sky-300"
                       onClick={() => setAiQuery(suggestion)}
                     >
                       {suggestion}
@@ -1740,7 +1740,7 @@ export default function EmployerCandidatesPage() {
                 matchFeedback.type === "error"
                   ? "border-destructive/20 bg-destructive/5 text-foreground"
                   : matchFeedback.type === "success"
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-200"
+                    ? "border-status-selected/20 bg-status-selected-bg text-emerald-900 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-200"
                     : "border-border bg-background/60 text-foreground/85"
               }`}
             >
@@ -1766,7 +1766,7 @@ export default function EmployerCandidatesPage() {
       <div ref={layoutRef} className="@container/cands">
       <div className="grid gap-4 @4xl/cands:grid-cols-[minmax(340px,380px)_minmax(0,1fr)]">
         {/* Center: candidate list */}
-        <div className="sticky top-4 flex h-[calc(100vh-1.5rem)] min-w-0 flex-col gap-3">
+        <div className="min-w-0 sticky top-4 flex h-[calc(100vh-1.5rem)] flex-col gap-3">
       {/* Toolbar — Select all (left) + bulk actions + Export (right) on one horizontal section */}
       <TableToolbar
         className="flex-wrap rounded-[20px] border border-border bg-card px-4 py-2.5"
@@ -1817,7 +1817,7 @@ export default function EmployerCandidatesPage() {
       {loading ? (
         <div className="space-y-2">
           {Array.from({ length: 6 }).map((_, index) => (
-            <div key={index} className="h-[88px] animate-pulse rounded-[22px] border border-slate-200 bg-[linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96))] shadow-[0_18px_40px_-40px_rgba(15,23,42,0.22)]" />
+            <div key={index} className="workspace-panel-surface h-[88px] animate-pulse rounded-[22px]" />
           ))}
         </div>
       ) : filteredCandidates.length === 0 ? (

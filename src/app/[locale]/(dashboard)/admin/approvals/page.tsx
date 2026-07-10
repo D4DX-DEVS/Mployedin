@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { toast } from "sonner";
 import { Eye, Briefcase, MapPin, Building2, Clock, Search, DollarSign, Calendar, Globe, Users, UserCheck, FileText, Sparkles, Inbox, Check, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -230,12 +231,7 @@ export default function AdminApprovalsPage() {
             <Sparkles className="h-3.5 w-3.5" />
             {t("allJobs")}
           </div>
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-            {t("platformJobsOverview")}
-          </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-            {t("platformJobsDescription")}
-          </p>
+          <PageHeader className="mt-4" title={t("platformJobsOverview")} description={t("platformJobsDescription")} />
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-4">

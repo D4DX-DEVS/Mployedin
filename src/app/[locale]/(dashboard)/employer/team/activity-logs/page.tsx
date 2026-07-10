@@ -71,19 +71,19 @@ const ACTION_ICONS: Record<string, React.ReactNode> = {
 };
 
 const ACTION_COLORS: Record<string, string> = {
-  "login.success": "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
-  "login.failed": "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300",
-  "job.create": "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300",
-  "job.update": "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
-  "job.delete": "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300",
-  "interview.create": "bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300",
-  "interview.update": "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
-  "application.update": "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300",
+  "login.success": "bg-status-selected-bg text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
+  "login.failed": "bg-status-rejected-bg text-status-rejected dark:bg-red-500/15 dark:text-red-300",
+  "job.create": "bg-status-applied-bg text-status-applied dark:bg-sky-500/15 dark:text-blue-300",
+  "job.update": "bg-status-shortlisted-bg text-status-shortlisted dark:bg-amber-500/15 dark:text-amber-300",
+  "job.delete": "bg-status-rejected-bg text-status-rejected dark:bg-red-500/15 dark:text-red-300",
+  "interview.create": "bg-status-interview-bg text-status-interview dark:bg-purple-500/15 dark:text-purple-300",
+  "interview.update": "bg-status-shortlisted-bg text-status-shortlisted dark:bg-amber-500/15 dark:text-amber-300",
+  "application.update": "bg-status-interview-bg text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300",
   "offer.create": "bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300",
-  "team.invite": "bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300",
-  "team.update_member": "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
-  "team.remove_member": "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300",
-  "scorecard.create": "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300",
+  "team.invite": "bg-status-applied-bg text-status-applied dark:bg-sky-500/15 dark:text-sky-300",
+  "team.update_member": "bg-status-shortlisted-bg text-status-shortlisted dark:bg-amber-500/15 dark:text-amber-300",
+  "team.remove_member": "bg-status-rejected-bg text-status-rejected dark:bg-red-500/15 dark:text-red-300",
+  "scorecard.create": "bg-status-interview-bg text-status-interview dark:bg-indigo-500/15 dark:text-violet-300",
 };
 
 function getResourceOptions(t: ReturnType<typeof useTranslations>) {
@@ -206,7 +206,7 @@ export default function TeamActivityLogsPage() {
   ];
 
   return (
-    <div className="page-container employer-legacy-surface">
+    <div className="page-container">
       {/* Header */}
       <PageHero
         title={t("title")}
@@ -231,14 +231,14 @@ export default function TeamActivityLogsPage() {
               value: members.length,
               icon: Users,
               color: "text-primary",
-              bg: "bg-white border-border dark:bg-card dark:border-border",
+              bg: "bg-card border-border dark:bg-card dark:border-border",
             },
             {
               label: t("totalActivities"),
               value: total,
               icon: Activity,
-              color: "text-emerald-600",
-              bg: "bg-white border-border dark:bg-card dark:border-border",
+              color: "text-status-selected",
+              bg: "bg-card border-border dark:bg-card dark:border-border",
             },
             {
               label: t("today"),
@@ -247,15 +247,15 @@ export default function TeamActivityLogsPage() {
                   new Date(l.createdAt).toDateString() === new Date().toDateString()
               ).length,
               icon: Calendar,
-              color: "text-blue-600",
-              bg: "bg-white border-border dark:bg-card dark:border-border",
+              color: "text-status-applied",
+              bg: "bg-card border-border dark:bg-card dark:border-border",
             },
             {
               label: t("loginEvents"),
               value: logs.filter((l) => l.action.startsWith("login")).length,
               icon: LogIn,
-              color: "text-amber-600",
-              bg: "bg-white border-border dark:bg-card dark:border-border",
+              color: "text-status-shortlisted",
+              bg: "bg-card border-border dark:bg-card dark:border-border",
             },
           ].map((s) => (
             <div

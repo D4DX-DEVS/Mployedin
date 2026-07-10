@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
@@ -105,11 +106,11 @@ function getSourceLabel(job: Job, t: ReturnType<typeof useTranslations>) {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  active: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-500/30",
-  draft: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-500/30",
-  paused: "bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-500/30",
+  active: "bg-status-selected-bg text-emerald-700 border-status-selected/20 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-500/30",
+  draft: "bg-status-shortlisted-bg text-status-shortlisted border-status-shortlisted/20 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-500/30",
+  paused: "bg-sky-100 text-status-applied border-border dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-500/30",
   closed: "bg-muted text-muted-foreground",
-  expired: "bg-red-100 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-500/30",
+  expired: "bg-status-rejected-bg text-status-rejected border-status-rejected/20 dark:bg-red-950/40 dark:text-red-300 dark:border-red-500/30",
 };
 
 const JOB_SUMMARY_MAX_LENGTH = 180;
@@ -330,22 +331,17 @@ export default function AdminJobsPage() {
   }
 
   return (
-    <div className="page-container employer-legacy-surface space-y-6">
+    <div className="page-container space-y-6">
 
       {/* ─── Hero ─────────────────────────────────────────────────────── */}
       <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
+            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
               <Sparkles className="h-3.5 w-3.5" />
               {t("recruitmentControl")}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-              {t("jobListings")}
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              {t("jobListingsDescription")}
-            </p>
+            <PageHeader className="mt-4" title={t("jobListings")} description={t("jobListingsDescription")} />
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -366,10 +362,10 @@ export default function AdminJobsPage() {
         {/* Stats Row */}
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {([
-            { label: t("totalJobs"), value: total, note: t("totalJobsNote"), icon: Briefcase, tone: "text-sky-600", chip: "bg-sky-50 dark:bg-sky-950/30" },
-            { label: t("active"), value: activeJobs, note: t("activeNote"), icon: ShieldCheck, tone: "text-emerald-600", chip: "bg-emerald-50 dark:bg-emerald-950/30" },
-            { label: t("pendingReview"), value: pendingJobs, note: t("pendingReviewNote"), icon: FileText, tone: "text-amber-600", chip: "bg-amber-50 dark:bg-amber-950/30" },
-            { label: t("applicants"), value: totalApplicants, note: t("applicantsNote"), icon: Users, tone: "text-violet-600", chip: "bg-violet-50 dark:bg-violet-950/30" },
+            { label: t("totalJobs"), value: total, note: t("totalJobsNote"), icon: Briefcase, tone: "text-status-applied", chip: "bg-status-applied-bg dark:bg-sky-950/30" },
+            { label: t("active"), value: activeJobs, note: t("activeNote"), icon: ShieldCheck, tone: "text-status-selected", chip: "bg-status-selected-bg dark:bg-emerald-950/30" },
+            { label: t("pendingReview"), value: pendingJobs, note: t("pendingReviewNote"), icon: FileText, tone: "text-status-shortlisted", chip: "bg-status-shortlisted-bg dark:bg-amber-950/30" },
+            { label: t("applicants"), value: totalApplicants, note: t("applicantsNote"), icon: Users, tone: "text-status-interview", chip: "bg-status-interview-bg dark:bg-violet-950/30" },
           ] as const).map(({ label, value, note, icon: Icon, tone, chip }) => (
             <div key={label} className="workspace-glass-panel rounded-2xl p-4">
               <div className="flex items-start justify-between gap-3">
@@ -538,7 +534,7 @@ export default function AdminJobsPage() {
 
       {/* ─── Error ────────────────────────────────────────────────────── */}
       {errorMessage && (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50/90 px-4 py-3 text-sm text-rose-700 shadow-sm dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">
+        <div className="rounded-2xl border border-status-rejected/20 bg-rose-50/90 px-4 py-3 text-sm text-rose-700 shadow-sm dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">
           {errorMessage}
         </div>
       )}
@@ -598,7 +594,7 @@ export default function AdminJobsPage() {
                     {(job.requirements?.skills?.length ?? 0) > 0 && (
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         {job.requirements!.skills!.slice(0, 4).map((s) => (
-                          <Badge key={s} variant="outline" className="rounded-full border-border bg-slate-50 px-2.5 py-1 text-xs font-normal text-muted-foreground dark:border-border dark:bg-background/80 dark:text-slate-300">{s}</Badge>
+                          <Badge key={s} variant="outline" className="rounded-full border-border bg-secondary/65 px-2.5 py-1 text-xs font-normal text-muted-foreground dark:border-border dark:bg-background/80 dark:text-slate-300">{s}</Badge>
                         ))}
                       </div>
                     )}
@@ -656,7 +652,7 @@ export default function AdminJobsPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-9 gap-1.5 rounded-xl border-amber-200 px-3 text-xs font-semibold text-amber-700 hover:bg-amber-50"
+                          className="h-9 gap-1.5 rounded-xl border-status-shortlisted/20 px-3 text-xs font-semibold text-status-shortlisted hover:bg-status-shortlisted-bg"
                           onClick={() => handleRejectJob(job._id)}
                         >
                           <XCircle className="h-3.5 w-3.5" /> {t("reject")}

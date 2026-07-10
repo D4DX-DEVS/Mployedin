@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { toast } from "sonner";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
@@ -298,10 +299,7 @@ export default function AdminCommissionsPage() {
               <Sparkles className="h-3.5 w-3.5" />
               {t("financeWorkspace")}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("commissionsTitle")}</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              {t("commissionsDescription")}
-            </p>
+            <PageHeader title={t("commissionsTitle")} description={t("commissionsDescription")} />
           </div>
           <div className="flex items-center gap-3">
             <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">

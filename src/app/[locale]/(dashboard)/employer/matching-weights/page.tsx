@@ -122,7 +122,7 @@ export default function EmployerMatchingWeightsPage() {
   const saveStateLabel = saveWeights.isPending ? "Saving changes" : saved ? "Weights saved" : "Ready to update";
 
   if (loading) return (
-    <div className="page-container employer-legacy-surface space-y-4">
+    <div className="page-container space-y-4">
       <div className="h-40 animate-pulse rounded-[28px] border border-border bg-background/70" />
       <div className="grid gap-4 lg:grid-cols-[1.35fr,0.65fr]">
         <div className="h-[28rem] animate-pulse rounded-[28px] border border-border bg-background/70" />
@@ -133,7 +133,7 @@ export default function EmployerMatchingWeightsPage() {
 
   return (
     <FeatureGate feature="matchingWeightCustomization">
-    <div className="page-container employer-legacy-surface space-y-6">
+    <div className="page-container space-y-6">
       <PageHeader
         title={t("title")}
         description={t("description")}
@@ -236,14 +236,14 @@ export default function EmployerMatchingWeightsPage() {
 
       {/* Template saved banner */}
       {templateSaved && (
-        <div className="flex items-center gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-200">
+        <div className="flex items-center gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-status-selected dark:text-emerald-200">
           <CheckCircle className="h-4 w-4" />
           {t("templateSavedSuccess")}
         </div>
       )}
 
       {error && (
-        <div className="flex items-center justify-between rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">
+        <div className="flex items-center justify-between rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-status-rejected dark:text-red-200">
           <span>{error}</span>
           <button onClick={() => setError(null)} className="font-medium text-red-400 hover:text-red-600 dark:text-red-300 dark:hover:text-red-200">✕</button>
         </div>
@@ -252,7 +252,7 @@ export default function EmployerMatchingWeightsPage() {
       <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-7">
         <div className="grid gap-6 xl:grid-cols-[1.1fr,0.9fr]">
           <div>
-            <div className="flex items-center gap-2 text-sm font-medium text-sky-700 dark:text-sky-300">
+            <div className="flex items-center gap-2 text-sm font-medium text-status-applied dark:text-sky-300">
               <Sparkles className="h-4 w-4" />
               {t("rankingControls")}
             </div>
@@ -265,17 +265,17 @@ export default function EmployerMatchingWeightsPage() {
 
             <div className="mt-6 grid gap-3 sm:grid-cols-3">
               <div className="workspace-glass-panel rounded-2xl p-4">
-                <Scale className="h-5 w-5 text-sky-600 dark:text-sky-300" />
+                <Scale className="h-5 w-5 text-status-applied dark:text-sky-300" />
                 <p className="mt-3 text-sm font-semibold text-foreground">{t("totalAt")} {total}%</p>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("totalMustBe100")}</p>
               </div>
               <div className="workspace-glass-panel rounded-2xl p-4">
-                <Target className="h-5 w-5 text-sky-600 dark:text-sky-300" />
+                <Target className="h-5 w-5 text-status-applied dark:text-sky-300" />
                 <p className="mt-3 text-sm font-semibold text-foreground">{t("topPriority")} {t(WEIGHT_LABEL_KEYS[topPriority])}</p>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("currentStrongest")} {weights[topPriority]}%.</p>
               </div>
               <div className="workspace-glass-panel rounded-2xl p-4">
-                <BarChart3 className="h-5 w-5 text-sky-600 dark:text-sky-300" />
+                <BarChart3 className="h-5 w-5 text-status-applied dark:text-sky-300" />
                 <p className="mt-3 text-sm font-semibold text-foreground">{saveStateLabel}</p>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("readyToUpdateDesc")}</p>
               </div>
@@ -309,11 +309,11 @@ export default function EmployerMatchingWeightsPage() {
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("weightBuilder")}</p>
               <h3 className="mt-2 flex items-center gap-2 text-lg font-semibold text-foreground">
-                <Sliders className="h-4 w-4 text-sky-600" /> {t("weightConfig")}
+                <Sliders className="h-4 w-4 text-status-applied" /> {t("weightConfig")}
               </h3>
               <p className="mt-1 text-sm text-muted-foreground">{t("adjustPercentages")}</p>
             </div>
-            <span className={`rounded-full px-3 py-1 text-sm font-semibold ${isTotalValid ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-red-500/10 text-red-600 dark:text-red-300"}`}>
+            <span className={`rounded-full px-3 py-1 text-sm font-semibold ${isTotalValid ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-red-500/10 text-status-rejected dark:text-red-300"}`}>
               {t("totalLabel")} {total}% {isTotalValid ? "✓" : t("need100")}
             </span>
           </div>
@@ -395,7 +395,7 @@ export default function EmployerMatchingWeightsPage() {
 
             <div className={`mt-4 rounded-2xl p-4 text-sm ${isTotalValid
               ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-              : "bg-amber-500/10 text-amber-700 dark:text-amber-300"
+              : "bg-amber-500/10 text-status-shortlisted dark:text-amber-300"
             }`}>
               {isTotalValid
                 ? `✓ ${t("balancedCorrectly")}`

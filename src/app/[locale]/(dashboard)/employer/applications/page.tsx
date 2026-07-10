@@ -39,6 +39,7 @@ import {
 import { ScorecardForm } from "@/components/scorecards/ScorecardForm";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { FeatureGate } from "@/components/shared/FeatureGate";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -117,18 +118,18 @@ function usePipelineStages() {
 
 function getAiMatchBadgeClass(score?: number): string {
   if (score == null) {
-    return "border border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-300";
+    return "border border-border bg-secondary/75 text-muted-foreground dark:border-slate-700 dark:bg-slate-500/80 dark:text-muted-foreground";
   }
   if (score >= 80) {
-    return "border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300";
+    return "border border-status-selected/20 bg-status-selected-bg text-status-selected dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300";
   }
   if (score >= 70) {
-    return "border border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-500/30 dark:bg-sky-500/15 dark:text-sky-300";
+    return "border border-status-applied/20 bg-status-applied-bg text-status-applied dark:border-sky-500/30 dark:bg-sky-500/15 dark:text-sky-300";
   }
   if (score >= 50) {
-    return "border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300";
+    return "border border-status-shortlisted/20 bg-status-shortlisted-bg text-status-shortlisted dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300";
   }
-  return "border border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-300";
+  return "border border-status-rejected/20 bg-status-rejected-bg text-status-rejected dark:border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-300";
 }
 
 function getCurrentRole(app: Applicant): string {
@@ -706,61 +707,55 @@ export default function EmployerApplicationsPage() {
   }
 
   return (
-    <div className="page-container employer-legacy-surface space-y-4 pb-1">
-      <section className="workspace-hero-surface overflow-hidden rounded-[22px] px-4 py-3 sm:px-5">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="min-w-0">
-            <h1 className="text-[1.45rem] font-semibold tracking-tight text-foreground">
-              {selectedJob ? `${selectedJob.title} — ${t("title")}` : t("title")}
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">{isLoading ? "—" : filteredApplications.length}</span> {t("applicants")}
-              <span className="px-2 text-border">•</span>
-              <span className="font-medium text-foreground">{isLoading ? "—" : highMatchCount}</span> {t("highMatch")}
-              <span className="px-2 text-border">•</span>
-              <span className="font-medium text-foreground">{isLoading ? "—" : interviewCount}</span> {t("interviews")}
-              <span className="px-2 text-border">•</span>
-              <span className="font-medium text-foreground">{isLoading ? "—" : selectedStageCount}</span> {t("selected")}
-            </p>
+    <div className="page-container space-y-4 pb-1">
+      <PageHeader
+        title={selectedJob ? `${selectedJob.title} — ${t("title")}` : t("title")}
+        actions={canUpdate ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-9 rounded-xl border-border bg-background/80 px-3 text-xs font-medium"
+              onClick={toggleAll}
+              disabled={!filteredApplications.length}
+            >
+              {allVisibleSelected ? <CheckSquare className="me-2 h-3.5 w-3.5 text-status-applied dark:text-sky-300" /> : <Square className="me-2 h-3.5 w-3.5 text-muted-foreground" />}
+              {allVisibleSelected ? t("clearVisible") : t("selectVisible")}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-9 rounded-xl border-border bg-background/80 px-3 text-xs"
+              disabled={bulkAiMatch.isPending || applications.every((a) => a.aiMatchScore != null)}
+              onClick={handleBulkAiMatch}
+            >
+              <Sparkles className={`me-2 h-3.5 w-3.5 ${bulkAiMatch.isPending ? "animate-pulse text-primary" : ""}`} />
+              {bulkMatchProgress
+                ? t("scoringCandidate", { done: bulkMatchProgress.done, total: bulkMatchProgress.total })
+                : t("scoreAll")}
+            </Button>
+            <Button
+              size="sm"
+              className="h-9 rounded-xl bg-emerald-700 px-3 text-xs font-semibold text-white hover:bg-emerald-800"
+              disabled={bulkAction.isPending || !filteredApplications.some((a) => a.aiMatchScore != null && a.status === "applied")}
+              onClick={handleAutoShortlist}
+            >
+              <CheckCheck className="me-2 h-3.5 w-3.5" />
+              {t("shortlistTop")}
+            </Button>
           </div>
+        ) : undefined}
+      />
 
-          {canUpdate ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-9 rounded-xl border-border bg-background/80 px-3 text-xs font-medium"
-                onClick={toggleAll}
-                disabled={!filteredApplications.length}
-              >
-                {allVisibleSelected ? <CheckSquare className="me-2 h-3.5 w-3.5 text-sky-600 dark:text-sky-300" /> : <Square className="me-2 h-3.5 w-3.5 text-muted-foreground" />}
-                {allVisibleSelected ? t("clearVisible") : t("selectVisible")}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-9 rounded-xl border-border bg-background/80 px-3 text-xs"
-                disabled={bulkAiMatch.isPending || applications.every((a) => a.aiMatchScore != null)}
-                onClick={handleBulkAiMatch}
-              >
-                <Sparkles className={`me-2 h-3.5 w-3.5 ${bulkAiMatch.isPending ? "animate-pulse text-primary" : ""}`} />
-                {bulkMatchProgress
-                  ? t("scoringCandidate", { done: bulkMatchProgress.done, total: bulkMatchProgress.total })
-                  : t("scoreAll")}
-              </Button>
-              <Button
-                size="sm"
-                className="h-9 rounded-xl bg-emerald-700 px-3 text-xs font-semibold text-white hover:bg-emerald-800"
-                disabled={bulkAction.isPending || !filteredApplications.some((a) => a.aiMatchScore != null && a.status === "applied")}
-                onClick={handleAutoShortlist}
-              >
-                <CheckCheck className="me-2 h-3.5 w-3.5" />
-                {t("shortlistTop")}
-              </Button>
-            </div>
-          ) : null}
-        </div>
-      </section>
+      <div className="text-sm text-muted-foreground">
+        <span className="font-medium text-foreground">{isLoading ? "—" : filteredApplications.length}</span> {t("applicants")}
+        <span className="px-2 text-border">•</span>
+        <span className="font-medium text-foreground">{isLoading ? "—" : highMatchCount}</span> {t("highMatch")}
+        <span className="px-2 text-border">•</span>
+        <span className="font-medium text-foreground">{isLoading ? "—" : interviewCount}</span> {t("interviews")}
+        <span className="px-2 text-border">•</span>
+        <span className="font-medium text-foreground">{isLoading ? "—" : selectedStageCount}</span> {t("selected")}
+      </div>
 
       <section className="workspace-panel-surface rounded-[22px] p-3 sm:p-4">
 
@@ -774,7 +769,7 @@ export default function EmployerApplicationsPage() {
           {/* Primary filter row: Job selector + search + status + toggle */}
           <div className="grid gap-2 xl:grid-cols-[minmax(180px,1fr)_minmax(0,1.8fr)_minmax(160px,0.7fr)_auto_auto]">
             <SearchableSelect
-              className="h-10 w-full rounded-xl border-sky-200 bg-sky-50/50 dark:border-sky-500/30 dark:bg-sky-500/10"
+              className="h-10 w-full rounded-xl border-border bg-status-applied-bg/50 dark:border-sky-500/30 dark:bg-sky-500/10"
               options={[
                 { value: "", label: t("allJobs") },
                 ...employerJobs.map((j) => ({ value: j._id, label: j.title })),
@@ -817,7 +812,7 @@ export default function EmployerApplicationsPage() {
               <Button
                 size="sm"
                 variant="outline"
-                className={scoreRange[0] === 70 && scoreRange[1] === 100 ? "h-10 rounded-xl border-emerald-200 bg-emerald-50 px-3 text-sm text-emerald-700 hover:bg-emerald-50 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/20" : "h-10 rounded-xl border-border bg-background/80 px-3 text-sm"}
+                className={scoreRange[0] === 70 && scoreRange[1] === 100 ? "h-10 rounded-xl border-status-selected/20 bg-status-selected-bg px-3 text-sm text-emerald-700 hover:bg-status-selected-bg dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/20" : "h-10 rounded-xl border-border bg-background/80 px-3 text-sm"}
                 onClick={() => setScoreRange(scoreRange[0] === 70 && scoreRange[1] === 100 ? [0, 100] : [70, 100])}
               >
                 <span className="mr-2 h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
@@ -827,8 +822,8 @@ export default function EmployerApplicationsPage() {
 
           {/* Selected job info strip */}
           {selectedJob && (
-            <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-sky-200/60 bg-sky-50/40 px-3 py-2 text-xs text-muted-foreground dark:border-sky-500/20 dark:bg-sky-500/5">
-              <BriefcaseBusiness className="h-3.5 w-3.5 text-sky-600 dark:text-sky-300" />
+            <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-status-applied-bg/40 px-3 py-2 text-xs text-muted-foreground dark:border-sky-500/20 dark:bg-sky-500/5">
+              <BriefcaseBusiness className="h-3.5 w-3.5 text-status-applied dark:text-sky-300" />
               <span className="font-semibold text-foreground">{selectedJob.title}</span>
               <span className="text-border">•</span>
               <span>{selectedJob.location.city}, {selectedJob.location.country}</span>
@@ -889,7 +884,7 @@ export default function EmployerApplicationsPage() {
             <label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
               {t("experienceYears")}
               {selectedJob && (selectedJob.requirements.experienceMin > 0 || selectedJob.requirements.experienceMax < 30) ? (
-                <span className="ms-1 font-normal normal-case text-sky-600 dark:text-sky-300">
+                <span className="ms-1 font-normal normal-case text-status-applied dark:text-sky-300">
                   {t("jobRequires", { min: selectedJob.requirements.experienceMin, max: selectedJob.requirements.experienceMax })}
                 </span>
               ) : null}
@@ -932,7 +927,7 @@ export default function EmployerApplicationsPage() {
             <label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
               {t("skills")}
               {selectedJob && selectedJob.requirements.skills.length > 0 ? (
-                <span className="ms-1 font-normal normal-case text-sky-600 dark:text-sky-300">
+                <span className="ms-1 font-normal normal-case text-status-applied dark:text-sky-300">
                   {t("skillsRequired", { count: selectedJob.requirements.skills.length })}
                 </span>
               ) : null}
@@ -947,8 +942,8 @@ export default function EmployerApplicationsPage() {
                       type="button"
                       className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
                         isActive
-                          ? "border-sky-300 bg-sky-100 text-sky-800 dark:border-sky-500/40 dark:bg-sky-500/20 dark:text-sky-200"
-                          : "border-border bg-background/70 text-muted-foreground hover:border-sky-200 hover:bg-sky-50 dark:hover:border-sky-500/30 dark:hover:bg-sky-500/10"
+                          ? "border-sky-300 bg-status-applied-bg text-sky-800 dark:border-sky-500/40 dark:bg-sky-500/20 dark:text-sky-200"
+                          : "border-border bg-background/70 text-muted-foreground hover:border-border hover:bg-status-applied-bg dark:hover:border-sky-500/30 dark:hover:bg-sky-500/10"
                       }`}
                       onClick={() =>
                         setSkillsFilter((prev) =>
@@ -1038,7 +1033,7 @@ export default function EmployerApplicationsPage() {
               onClick={() => openEmailPreview("move_stage", "shortlisted")} disabled={bulkAction.isPending}>
               {t("moveToShortlisted")}
             </Button>
-            <Button size="sm" variant="outline" className="h-10 rounded-xl border-violet-300/40 bg-background/80 px-4 text-sm text-violet-700 hover:bg-violet-500/10 dark:text-violet-300"
+            <Button size="sm" variant="outline" className="h-10 rounded-xl border-violet-200/40 bg-background/80 px-4 text-sm text-status-interview hover:bg-violet-500/10 dark:text-violet-300"
               onClick={openBulkInterviewModal} disabled={createInterview.isPending}>
               <Calendar className="me-2 h-3.5 w-3.5" />
               {t("scheduleInterview")}
@@ -1079,7 +1074,7 @@ export default function EmployerApplicationsPage() {
         <div className="flex flex-col gap-4 rounded-[24px] border border-emerald-500/20 bg-emerald-500/10 p-5">
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/20">
-              <CheckCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-300" />
+              <CheckCheck className="h-5 w-5 text-status-selected dark:text-emerald-300" />
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-foreground">
@@ -1110,7 +1105,7 @@ export default function EmployerApplicationsPage() {
                       const v = Math.max(1, Math.min(shortlistConfirm.total, Number(e.target.value) || 1));
                       setShortlistCount(v);
                     }}
-                    className="h-8 w-14 rounded-lg border border-emerald-300/60 bg-background/80 text-center text-sm font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-400 dark:border-emerald-500/30"
+                    className="h-8 w-14 rounded-lg border border-emerald-200/60 bg-background/80 text-center text-sm font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-400 dark:border-emerald-500/30"
                   />
                   <Button
                     type="button" size="sm" variant="outline"
@@ -1137,7 +1132,7 @@ export default function EmployerApplicationsPage() {
                           : "border-border/40 bg-muted/30 opacity-50"
                       }`}
                     >
-                      <span className="w-4 text-center text-[10px] font-bold text-emerald-600 dark:text-emerald-300">
+                      <span className="w-4 text-center text-[10px] font-bold text-status-selected dark:text-emerald-300">
                         {idx + 1}
                       </span>
                       <span className="font-medium text-foreground">{getCandidateName(app)}</span>
@@ -1145,10 +1140,10 @@ export default function EmployerApplicationsPage() {
                         <span
                           className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                             app.aiMatchScore >= 80
-                              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300"
+                              ? "bg-status-selected-bg text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300"
                               : app.aiMatchScore >= 60
-                                ? "bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300"
-                                : "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300"
+                                ? "bg-status-applied-bg text-status-applied dark:bg-sky-500/20 dark:text-sky-300"
+                                : "bg-status-shortlisted-bg text-status-shortlisted dark:bg-amber-500/20 dark:text-amber-300"
                           }`}
                         >
                           {app.aiMatchScore}%
@@ -1182,7 +1177,7 @@ export default function EmployerApplicationsPage() {
         <div className="flex flex-col gap-3 rounded-[24px] border border-violet-500/20 bg-violet-500/10 p-5">
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-violet-500/20">
-              <Calendar className="h-5 w-5 text-violet-600 dark:text-violet-300" />
+              <Calendar className="h-5 w-5 text-status-interview dark:text-violet-300" />
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-foreground">
@@ -1223,7 +1218,7 @@ export default function EmployerApplicationsPage() {
         <div className="min-w-0 space-y-3">
           {applicationsQuery.isError ? (
             <div className="workspace-panel-surface rounded-[24px] px-6 py-16 text-center">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-[24px] bg-rose-50 text-rose-500 dark:bg-rose-500/15 dark:text-rose-400">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-[24px] bg-status-rejected-bg text-rose-500 dark:bg-rose-500/15 dark:text-rose-400">
                 <Inbox className="h-7 w-7" />
               </div>
               <h3 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
@@ -1469,7 +1464,7 @@ function TableView({
           const appliedDate = new Date(app.appliedAt).toLocaleDateString(locale === "ar" ? "ar-SA" : "en-US", { day: "numeric", month: "short", year: "numeric" });
           const scorecard = scorecardMap?.[app._id];
           const matchScore = app.aiMatchScore;
-          const matchColor = matchScore != null ? (matchScore >= 80 ? "text-emerald-600" : matchScore >= 70 ? "text-sky-600" : matchScore >= 50 ? "text-amber-600" : "text-rose-500") : "text-muted-foreground";
+          const matchColor = matchScore != null ? (matchScore >= 80 ? "text-status-selected" : matchScore >= 70 ? "text-status-applied" : matchScore >= 50 ? "text-status-shortlisted" : "text-rose-500") : "text-muted-foreground";
           const matchText = matchScore != null ? (matchScore >= 80 ? t("matchExcellent") : matchScore >= 70 ? t("matchVeryGood") : matchScore >= 50 ? t("matchGood") : t("matchLow")) : "";
 
           return (
@@ -1478,7 +1473,7 @@ function TableView({
               data-testid={`applicant-row-${app._id}`}
               aria-label={t("applicantRowFor", { name: candidateName })}
               onClick={() => onOpenDetails?.(app)}
-              className={`group cursor-pointer px-4 py-3 transition-all duration-200 hover:bg-sky-50/50 dark:hover:bg-sky-500/5 lg:grid lg:items-center lg:gap-3 ${
+              className={`group cursor-pointer px-4 py-3 transition-all duration-200 hover:bg-status-applied-bg/50 dark:hover:bg-sky-500/5 lg:grid lg:items-center lg:gap-3 ${
                 isSelected ? "bg-sky-500/10" : "bg-transparent"
               }`}
               style={{ gridTemplateColumns: "28px 1.4fr 1fr 80px 1.2fr 80px 100px" }}
@@ -1495,7 +1490,7 @@ function TableView({
                     }}
                     className="text-muted-foreground transition hover:text-foreground"
                   >
-                    {isSelected ? <CheckSquare className="h-5 w-5 text-sky-600 dark:text-sky-300" /> : <Square className="h-5 w-5" />}
+                    {isSelected ? <CheckSquare className="h-5 w-5 text-status-applied dark:text-sky-300" /> : <Square className="h-5 w-5" />}
                   </button>
                 ) : null}
               </div>
@@ -1504,7 +1499,7 @@ function TableView({
               <div className="flex min-w-0 items-center gap-3">
                 <Avatar className="h-10 w-10 shrink-0 ring-2 ring-background shadow-sm">
                   {avatarUrl ? <AvatarImage src={avatarUrl} alt={candidateName} className="object-cover" /> : null}
-                  <AvatarFallback className="bg-sky-100 text-xs font-semibold text-sky-700 dark:bg-sky-500/15 dark:text-sky-300">
+                  <AvatarFallback className="bg-status-applied-bg text-xs font-semibold text-status-applied dark:bg-sky-500/15 dark:text-sky-300">
                     {candidateInitials}
                   </AvatarFallback>
                 </Avatar>
@@ -1512,7 +1507,7 @@ function TableView({
                   <div className="flex items-center gap-1.5">
                     <a
                       href={`/${locale}/employer/candidates/${app.jobSeekerId?._id}`}
-                      className="truncate text-sm font-semibold text-foreground hover:text-sky-700 hover:underline dark:hover:text-sky-300"
+                      className="truncate text-sm font-semibold text-foreground hover:text-status-applied hover:underline dark:hover:text-sky-300"
                       onClick={(event) => event.stopPropagation()}
                     >
                       {candidateName}
@@ -1551,7 +1546,7 @@ function TableView({
                   </span>
                 ))}
                 {extraSkillsCount > 0 ? (
-                  <span className="rounded-md border border-border bg-muted/50 px-2 py-0.5 text-[11px] font-medium text-sky-700 dark:text-sky-300">
+                  <span className="rounded-md border border-border bg-muted/50 px-2 py-0.5 text-[11px] font-medium text-status-applied dark:text-sky-300">
                     +{extraSkillsCount}
                   </span>
                 ) : null}
@@ -1626,7 +1621,7 @@ function StageStepper({ currentStatus, appliedDate }: { currentStatus: string; a
                 >
                   {reached ? <Check className="h-3.5 w-3.5" /> : i + 1}
                 </span>
-                <span className={`whitespace-nowrap text-[10px] font-medium ${isCurrent ? "text-sky-700 dark:text-sky-300" : "text-muted-foreground"}`}>
+                <span className={`whitespace-nowrap text-[10px] font-medium ${isCurrent ? "text-status-applied dark:text-sky-300" : "text-muted-foreground"}`}>
                   {step.label}
                 </span>
               </div>
@@ -1724,9 +1719,9 @@ function ApplicationDetailsPanel({
     : t("matchLow");
   const matchLabelColor = app.aiMatchScore == null
     ? "text-muted-foreground"
-    : app.aiMatchScore >= 80 ? "text-emerald-600 dark:text-emerald-400"
-    : app.aiMatchScore >= 70 ? "text-sky-600 dark:text-sky-400"
-    : app.aiMatchScore >= 50 ? "text-amber-600 dark:text-amber-400"
+    : app.aiMatchScore >= 80 ? "text-status-selected dark:text-emerald-400"
+    : app.aiMatchScore >= 70 ? "text-status-applied dark:text-sky-400"
+    : app.aiMatchScore >= 50 ? "text-status-shortlisted dark:text-amber-400"
     : "text-rose-500 dark:text-rose-400";
   const resumeDoc = app.documents?.find((doc) => doc.type === "resume");
   const resumeDocIndex = app.documents?.findIndex((doc) => doc.type === "resume") ?? -1;
@@ -1824,7 +1819,7 @@ function ApplicationDetailsPanel({
             <div className="flex min-w-0 items-start gap-3">
               <Avatar className="h-14 w-14 shrink-0 ring-2 ring-background shadow-sm">
                 {avatarUrl ? <AvatarImage src={avatarUrl} alt={candidateName} className="object-cover" /> : null}
-                <AvatarFallback className="bg-sky-100 text-lg font-bold text-sky-700 dark:bg-sky-500/15 dark:text-sky-300">
+                <AvatarFallback className="bg-status-applied-bg text-lg font-bold text-status-applied dark:bg-sky-500/15 dark:text-sky-300">
                   {candidateInitials}
                 </AvatarFallback>
               </Avatar>
@@ -1832,7 +1827,7 @@ function ApplicationDetailsPanel({
                 <div className="flex items-center gap-1.5">
                   <a
                     href={`/${locale}/employer/candidates/${app.jobSeekerId?._id}`}
-                    className="truncate text-lg font-bold tracking-tight text-foreground hover:text-sky-700 hover:underline dark:hover:text-sky-300"
+                    className="truncate text-lg font-bold tracking-tight text-foreground hover:text-status-applied hover:underline dark:hover:text-sky-300"
                   >
                     {candidateName}
                   </a>
@@ -1938,7 +1933,7 @@ function ApplicationDetailsPanel({
                 key={tab.key}
                 type="button"
                 onClick={() => setActiveTab(tab.key)}
-                className={`whitespace-nowrap border-b-2 py-2.5 text-sm font-medium transition ${activeTab === tab.key ? "border-sky-500 text-sky-700 dark:text-sky-300" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+                className={`whitespace-nowrap border-b-2 py-2.5 text-sm font-medium transition ${activeTab === tab.key ? "border-sky-500 text-status-applied dark:text-sky-300" : "border-transparent text-muted-foreground hover:text-foreground"}`}
               >
                 {tab.label}
               </button>
@@ -1979,8 +1974,8 @@ function ApplicationDetailsPanel({
                 ) : (
                   <div className="mt-3">
                     {onGenerateAiMatch ? (
-                      <Button size="sm" variant="ghost" className="h-8 rounded-xl px-3 text-xs text-sky-700 hover:bg-sky-500/10 dark:text-sky-300" disabled={aiMatchPendingId === app._id} onClick={() => onGenerateAiMatch(app)}>
-                        <Sparkles className={`mr-1.5 h-3.5 w-3.5 ${aiMatchPendingId === app._id ? "animate-pulse text-sky-600" : ""}`} />
+                      <Button size="sm" variant="ghost" className="h-8 rounded-xl px-3 text-xs text-status-applied hover:bg-sky-500/10 dark:text-sky-300" disabled={aiMatchPendingId === app._id} onClick={() => onGenerateAiMatch(app)}>
+                        <Sparkles className={`mr-1.5 h-3.5 w-3.5 ${aiMatchPendingId === app._id ? "animate-pulse text-status-applied" : ""}`} />
                         {t("generateScore")}
                       </Button>
                     ) : (
@@ -2086,7 +2081,7 @@ function ApplicationDetailsPanel({
                 ) : <div />}
                 {app.matchGaps?.length ? (
                   <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4">
-                    <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">{t("watchouts")}</p>
+                    <p className="text-xs font-semibold text-status-shortlisted dark:text-amber-300">{t("watchouts")}</p>
                     <ul className="mt-2 space-y-1.5 text-xs text-muted-foreground">
                       {app.matchGaps.map((g) => (
                         <li key={g} className="flex gap-1.5">
@@ -2116,12 +2111,12 @@ function ApplicationDetailsPanel({
                   </Button>
                 ) : null}
                 {onChangeStatus && app.status === "applied" ? (
-                  <Button variant="outline" size="sm" className="h-9 rounded-xl border-border text-[11px] text-sky-700 dark:text-sky-300" disabled={statusPending} onClick={() => handleQuickStageChange("shortlisted")}>
+                  <Button variant="outline" size="sm" className="h-9 rounded-xl border-border text-[11px] text-status-applied dark:text-sky-300" disabled={statusPending} onClick={() => handleQuickStageChange("shortlisted")}>
                     <CheckCheck className="me-1.5 h-3.5 w-3.5" /> {t("shortlistAction")}
                   </Button>
                 ) : null}
                 {!(["rejected", "offer"]).includes(app.status) && onChangeStatus ? (
-                  <Button size="sm" variant="ghost" className="h-9 rounded-xl bg-rose-500/10 text-[11px] text-rose-600 hover:bg-rose-500/15 dark:text-rose-300" onClick={() => setNextStage("rejected")}>
+                  <Button size="sm" variant="ghost" className="h-9 rounded-xl bg-rose-500/10 text-[11px] text-status-rejected hover:bg-rose-500/15 dark:text-rose-300" onClick={() => setNextStage("rejected")}>
                     {t("rejectAction")}
                   </Button>
                 ) : null}
@@ -2187,7 +2182,7 @@ function ApplicationDetailsPanel({
 
           {activeTab === "timeline" ? (
             <div className="workspace-glass-panel rounded-[24px] p-6 text-center">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500/10 text-sky-600 dark:text-sky-300">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500/10 text-status-applied dark:text-sky-300">
                 <History className="h-6 w-6" />
               </div>
               <p className="mt-3 text-sm font-semibold text-foreground">{t("timeline")}</p>
@@ -2202,7 +2197,7 @@ function ApplicationDetailsPanel({
 
           {activeTab === "notes" ? (
             <div className="workspace-glass-panel rounded-[24px] p-6 text-center">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-500/10 text-violet-600 dark:text-violet-300">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-500/10 text-status-interview dark:text-violet-300">
                 <FileText className="h-6 w-6" />
               </div>
               <p className="mt-3 text-sm font-semibold text-foreground">{t("notes")}</p>
@@ -2215,7 +2210,7 @@ function ApplicationDetailsPanel({
 
           {activeTab === "messages" ? (
             <div className="workspace-glass-panel rounded-[24px] p-6 text-center">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500/10 text-sky-600 dark:text-sky-300">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500/10 text-status-applied dark:text-sky-300">
                 <Mail className="h-6 w-6" />
               </div>
               <p className="mt-3 text-sm font-semibold text-foreground">{t("tabMessages")}</p>
@@ -2240,7 +2235,7 @@ function ApplicationDetailsPanel({
                 </div>
               ) : (
                 <div className="mt-3 text-center">
-                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-300">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10 text-status-shortlisted dark:text-amber-300">
                     <Award className="h-6 w-6" />
                   </div>
                   <p className="mt-3 text-sm text-muted-foreground">{t("scorecardEmptyHint")}</p>
@@ -2496,7 +2491,7 @@ function BulkInterviewScheduleModal({
       <div className="bg-background rounded-lg border border-border shadow-lg max-w-lg w-full mx-4">
         <div className="px-6 py-4 border-b border-border">
           <h2 className="text-lg font-semibold flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-sky-600" />
+            <Calendar className="h-5 w-5 text-status-applied" />
             Bulk Schedule Interviews
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
@@ -2600,14 +2595,14 @@ function BulkInterviewScheduleModal({
                     <DateTimePicker mode="time" value={brk.end}
                       onChange={(v) => updateBreak(idx, "end", v)} />
                   </div>
-                  <button onClick={() => removeBreak(idx)} className="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
+                  <button onClick={() => removeBreak(idx)} className="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-red-500 hover:bg-status-rejected-bg dark:hover:bg-rose-500/10 transition-colors">
                     <X className="h-3.5 w-3.5" />
                   </button>
                 </div>
               ))}
               {breaks.length < 10 && (
                 <button onClick={addBreak}
-                  className="flex items-center gap-1.5 text-xs text-sky-600 hover:text-sky-700 font-medium mt-1">
+                  className="flex items-center gap-1.5 text-xs text-status-applied hover:text-status-applied font-medium mt-1">
                   <Plus className="h-3.5 w-3.5" /> Add Break
                 </button>
               )}
@@ -2634,8 +2629,8 @@ function BulkInterviewScheduleModal({
 
           {/* Time slots preview */}
           {previewItems.length > 0 && (
-            <div className="rounded-xl border border-sky-200/60 bg-sky-50/40 dark:border-sky-500/20 dark:bg-sky-500/5 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-700 dark:text-sky-300 mb-3">
+            <div className="rounded-xl border border-border/60 bg-status-applied-bg/40 dark:border-sky-500/20 dark:bg-sky-500/5 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-status-applied dark:text-sky-300 mb-3">
                 Auto-calculated Schedule{dayCount > 1 ? ` · ${dayCount} Days` : ""}
               </p>
               <div className="space-y-1 max-h-56 overflow-y-auto">
@@ -2644,27 +2639,27 @@ function BulkInterviewScheduleModal({
                     {item.kind === "day" ? (
                       <div className="flex items-center gap-2 py-1.5 mt-1 first:mt-0">
                         <div className="flex-1 border-t border-sky-300/40 dark:border-sky-600/30" />
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400">{item.date}</span>
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-status-applied dark:text-sky-400">{item.date}</span>
                         <div className="flex-1 border-t border-sky-300/40 dark:border-sky-600/30" />
                       </div>
                     ) : item.kind === "break" ? (
-                      <div className="flex items-center gap-2 py-1 my-0.5 rounded-md bg-amber-50/60 dark:bg-amber-500/5 px-3">
-                        <Clock className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                        <span className="flex-1 text-xs font-medium text-amber-700 dark:text-amber-300 truncate">{item.label}</span>
-                        <span className="font-mono text-[11px] text-amber-600 dark:text-amber-400">{item.start} – {item.end}</span>
+                      <div className="flex items-center gap-2 py-1 my-0.5 rounded-md bg-status-shortlisted-bg/60 dark:bg-amber-500/5 px-3">
+                        <Clock className="h-3.5 w-3.5 text-status-shortlisted dark:text-amber-400 shrink-0" />
+                        <span className="flex-1 text-xs font-medium text-status-shortlisted dark:text-amber-300 truncate">{item.label}</span>
+                        <span className="font-mono text-[11px] text-status-shortlisted dark:text-amber-400">{item.start} – {item.end}</span>
                       </div>
                     ) : (
                       <div className="flex items-center gap-3 text-sm">
-                        <span className="w-6 text-center text-xs font-bold text-sky-600 dark:text-sky-300">{item.index}</span>
+                        <span className="w-6 text-center text-xs font-bold text-status-applied dark:text-sky-300">{item.index}</span>
                         <span className="flex-1 truncate font-medium text-foreground">{item.name}</span>
-                        <span className="font-mono text-xs text-sky-700 dark:text-sky-300">{item.start} – {item.end}</span>
+                        <span className="font-mono text-xs text-status-applied dark:text-sky-300">{item.start} – {item.end}</span>
                       </div>
                     )}
                   </div>
                 ))}
               </div>
               {lastSlotEnd && (
-                <div className="mt-3 text-xs text-muted-foreground border-t border-sky-200/40 dark:border-sky-500/15 pt-2 space-y-0.5">
+                <div className="mt-3 text-xs text-muted-foreground border-t border-border/40 dark:border-sky-500/15 pt-2 space-y-0.5">
                   <p>
                     Total: {totalMinutes} min · Interviews: {interviewMinutes} min
                     (ends at {lastSlotEnd.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })})
@@ -2754,7 +2749,7 @@ ${rejectionReason ? `<p><em>Reason: ${rejectionReason}</em></p>` : ""}
       <div className="bg-background rounded-lg border border-border shadow-lg max-w-2xl w-full mx-4">
         <div className="px-6 py-4 border-b border-border">
           <h2 className="text-lg font-semibold flex items-center gap-2">
-            <Mail className="h-5 w-5 text-sky-600" />
+            <Mail className="h-5 w-5 text-status-applied" />
             {action === "send_message" ? "Send Bulk Email" : `${statusLabel} — Email Preview`}
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
@@ -2764,7 +2759,7 @@ ${rejectionReason ? `<p><em>Reason: ${rejectionReason}</em></p>` : ""}
           </p>
         </div>
         <div className="px-6 py-4 space-y-4 max-h-[calc(100vh-240px)] overflow-y-auto">
-          <div className="rounded-xl border border-sky-200/60 bg-sky-50/30 dark:border-sky-500/20 dark:bg-sky-500/5 px-4 py-3">
+          <div className="rounded-xl border border-border/60 bg-status-applied-bg/30 dark:border-sky-500/20 dark:bg-sky-500/5 px-4 py-3">
             <p className="text-xs text-muted-foreground mb-1">
               Available placeholders: <code className="text-[10px]">{`{{candidateName}}`}</code> <code className="text-[10px]">{`{{jobTitle}}`}</code> <code className="text-[10px]">{`{{companyName}}`}</code> <code className="text-[10px]">{`{{status}}`}</code>
             </p>
@@ -2791,7 +2786,7 @@ ${rejectionReason ? `<p><em>Reason: ${rejectionReason}</em></p>` : ""}
           {/* Live preview */}
           <div>
             <label className="block text-xs font-medium mb-2">Preview</label>
-            <div className="rounded-xl border border-border bg-white dark:bg-slate-950 p-4 text-sm">
+            <div className="rounded-xl border border-border bg-card dark:bg-slate-950 p-4 text-sm">
               <div className="border-b border-border pb-2 mb-3">
                 <p className="text-xs text-muted-foreground">Subject:</p>
                 <p className="font-medium">{subject.replace(/\{\{jobTitle\}\}/g, jobTitle).replace(/\{\{companyName\}\}/g, "Company")}</p>
@@ -3074,13 +3069,13 @@ function ActivityTimelinePanel({
 }) {
   const t = useTranslations("employerApplications");
   const actionLabels: Record<string, { label: string; color: string }> = {
-    "application.created": { label: "Applied", color: "bg-blue-500" },
+    "application.created": { label: "Applied", color: "bg-sky-500" },
     "application.status_changed": { label: "Status Changed", color: "bg-amber-500" },
     "application.shortlisted": { label: "Shortlisted", color: "bg-amber-500" },
     "application.interview_scheduled": { label: "Interview Scheduled", color: "bg-purple-500" },
     "application.offer_sent": { label: "Offer Sent", color: "bg-cyan-500" },
     "application.selected": { label: "Selected", color: "bg-emerald-500" },
-    "application.rejected": { label: "Rejected", color: "bg-red-500" },
+    "application.rejected": { label: "Rejected", color: "bg-rose-500" },
     "application.withdrawn": { label: "Withdrawn", color: "bg-gray-500" },
   };
 
@@ -3232,7 +3227,7 @@ function ActivityTimelinePanel({
                         </div>
 
                         {entry.changes?.after && Object.keys(entry.changes.after).length > 0 && (
-                          <div className="mt-3 rounded-2xl border border-border/45 bg-slate-50/80 p-3 dark:bg-slate-950/30">
+                          <div className="mt-3 rounded-2xl border border-border/45 bg-secondary/65/80 p-3 dark:bg-slate-950/30">
                             <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Updated Fields</p>
                             <div className="grid gap-2">
                               {Object.entries(entry.changes.after).map(([key, val]) => (

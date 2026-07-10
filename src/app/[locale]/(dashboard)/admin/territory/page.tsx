@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -149,10 +150,7 @@ export default function AdminTerritoryPage() {
               <Sparkles className="h-3.5 w-3.5" />
               {tr("adminWorkspaceBadge")}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{tr("pageTitle")}</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              {tr("pageDescription")}
-            </p>
+            <PageHeader className="mt-4" title={tr("pageTitle")} description={tr("pageDescription")} />
           </div>
           <div className="flex items-center gap-2">
             <div className="relative">

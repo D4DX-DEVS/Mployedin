@@ -243,7 +243,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                   </span>
                 )}
                 {isOverdue && (
-                  <Badge variant="outline" className="gap-1 border-rose-300 bg-rose-50 text-rose-700 text-[10px] dark:border-rose-800 dark:bg-rose-950/30 dark:text-rose-400">
+                  <Badge variant="outline" className="gap-1 border-status-rejected/20 bg-status-rejected-bg text-rose-700 text-[10px] dark:border-rose-800 dark:bg-rose-950/30 dark:text-rose-400">
                     <AlertTriangle className="h-2.5 w-2.5" /> {t("overdueStatus")}
                   </Badge>
                 )}
@@ -279,7 +279,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
           {canPay && balanceDue > 0 && (
             <Button
               variant="outline" size="sm"
-              className="gap-1.5 rounded-lg border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
+              className="gap-1.5 rounded-lg border-status-selected/20 text-emerald-700 hover:bg-status-selected-bg dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
               onClick={() => setActiveTab("pay")}
             >
               <Send className="h-3.5 w-3.5" />
@@ -297,7 +297,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
           </Button>
 
           {isPaid && (
-            <Badge variant="outline" className="ml-auto gap-1 border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400">
+            <Badge variant="outline" className="ml-auto gap-1 border-status-selected/20 bg-status-selected-bg text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400">
               <CheckCircle2 className="h-3 w-3" /> {t("fullyPaid")}
             </Badge>
           )}
@@ -307,20 +307,20 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
         {canPay && balanceDue > 0 && daysUntilDue !== null && (
           <div className={`flex items-center gap-3 rounded-xl border p-3 text-sm ${
             daysUntilDue < 0
-              ? "border-rose-200 bg-rose-50/50 dark:border-rose-900/50 dark:bg-rose-950/20"
+              ? "border-status-rejected/20 bg-status-rejected-bg/50 dark:border-rose-900/50 dark:bg-rose-950/20"
               : daysUntilDue <= 7
-                ? "border-amber-200 bg-amber-50/50 dark:border-amber-900/50 dark:bg-amber-950/20"
-                : "border-blue-200 bg-blue-50/50 dark:border-blue-900/50 dark:bg-blue-950/20"
+                ? "border-status-shortlisted/20 bg-status-shortlisted-bg/50 dark:border-amber-900/50 dark:bg-amber-950/20"
+                : "border-status-applied/20 bg-status-applied-bg/50 dark:border-blue-900/50 dark:bg-blue-950/20"
           }`}>
             <Clock className={`h-4 w-4 shrink-0 ${
-              daysUntilDue < 0 ? "text-rose-600" : daysUntilDue <= 7 ? "text-amber-600" : "text-blue-600"
+              daysUntilDue < 0 ? "text-status-rejected" : daysUntilDue <= 7 ? "text-status-shortlisted" : "text-status-applied"
             }`} />
             <span className={
               daysUntilDue < 0
                 ? "text-rose-700 dark:text-rose-300"
                 : daysUntilDue <= 7
-                  ? "text-amber-700 dark:text-amber-300"
-                  : "text-blue-700 dark:text-blue-300"
+                  ? "text-status-shortlisted dark:text-amber-300"
+                  : "text-status-applied dark:text-blue-300"
             }>
               {daysUntilDue < 0
                 ? t("overdueBy", { days: Math.abs(daysUntilDue) })
@@ -338,13 +338,13 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
             <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{t("summaryTotal")}</p>
             <p className="mt-0.5 text-base font-bold">{fmt(invoice.totalAmount)}</p>
           </div>
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50/30 p-3 text-center dark:border-emerald-900/50 dark:bg-emerald-950/10">
-            <p className="text-[10px] font-medium uppercase tracking-wider text-emerald-600 dark:text-emerald-400">{t("summaryPaid")}</p>
+          <div className="rounded-xl border border-status-selected/20 bg-status-selected-bg/30 p-3 text-center dark:border-emerald-900/50 dark:bg-emerald-950/10">
+            <p className="text-[10px] font-medium uppercase tracking-wider text-status-selected dark:text-emerald-400">{t("summaryPaid")}</p>
             <p className="mt-0.5 text-base font-bold text-emerald-700 dark:text-emerald-300">{fmt(invoice.paidAmount ?? 0)}</p>
           </div>
-          <div className="rounded-xl border border-amber-200 bg-amber-50/30 p-3 text-center dark:border-amber-900/50 dark:bg-amber-950/10">
-            <p className="text-[10px] font-medium uppercase tracking-wider text-amber-600 dark:text-amber-400">{t("summaryBalance")}</p>
-            <p className="mt-0.5 text-base font-bold text-amber-700 dark:text-amber-300">{fmt(balanceDue)}</p>
+          <div className="rounded-xl border border-status-shortlisted/20 bg-status-shortlisted-bg/30 p-3 text-center dark:border-amber-900/50 dark:bg-amber-950/10">
+            <p className="text-[10px] font-medium uppercase tracking-wider text-status-shortlisted dark:text-amber-400">{t("summaryBalance")}</p>
+            <p className="mt-0.5 text-base font-bold text-status-shortlisted dark:text-amber-300">{fmt(balanceDue)}</p>
           </div>
           <div className="rounded-xl border border-border/70 p-3 text-center">
             <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{t("summaryDue")}</p>
@@ -438,7 +438,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
               <div className="space-y-1.5 text-sm">
                 <div className="flex justify-between"><span className="text-muted-foreground">{t("subtotal")}</span><span>{fmt(invoice.subtotal)}</span></div>
                 {invoice.discountAmount && invoice.discountAmount > 0 && (
-                  <div className="flex justify-between"><span className="text-muted-foreground">{t("discount", { percent: invoice.discountPercent ?? 0 })}</span><span className="text-rose-600">-{fmt(invoice.discountAmount)}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">{t("discount", { percent: invoice.discountPercent ?? 0 })}</span><span className="text-status-rejected">-{fmt(invoice.discountAmount)}</span></div>
                 )}
                 {invoice.taxAmount > 0 && (
                   <div className="flex justify-between">
@@ -473,8 +473,8 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
           {/* ──── Payment Tab ──── */}
           <TabsContent value="pay" className="space-y-4">
             {isPaid ? (
-              <div className="flex flex-col items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50/50 p-6 text-center dark:border-emerald-900/50 dark:bg-emerald-950/20">
-                <CheckCircle2 className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
+              <div className="flex flex-col items-center gap-3 rounded-xl border border-status-selected/20 bg-status-selected-bg/50 p-6 text-center dark:border-emerald-900/50 dark:bg-emerald-950/20">
+                <CheckCircle2 className="h-10 w-10 text-status-selected dark:text-emerald-400" />
                 <div>
                   <p className="text-lg font-semibold text-emerald-700 dark:text-emerald-300">{t("invoiceFullyPaid")}</p>
                   <p className="mt-1 text-sm text-muted-foreground">{t("thankYou")}</p>
@@ -501,7 +501,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                       <p className="text-sm font-semibold">{t("payOnline")}</p>
                     </div>
                     {!gatewayEnabled && (
-                      <Badge variant="outline" className="text-[10px] border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+                      <Badge variant="outline" className="text-[10px] border-status-shortlisted/20 bg-status-shortlisted-bg text-status-shortlisted dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
                         {t("comingSoon")}
                       </Badge>
                     )}
@@ -513,8 +513,8 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                       disabled={!gatewayEnabled}
                       onClick={handlePayNow}
                     >
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-100 dark:bg-violet-950/30">
-                        <CreditCard className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-status-interview-bg dark:bg-violet-950/30">
+                        <CreditCard className="h-4 w-4 text-status-interview dark:text-violet-400" />
                       </div>
                       <div>
                         <p className="font-medium">{t("creditDebitCard")}</p>
@@ -527,8 +527,8 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                       disabled={!gatewayEnabled}
                       onClick={handlePayNow}
                     >
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-green-100 dark:bg-green-950/30">
-                        <Smartphone className="h-4 w-4 text-green-600 dark:text-green-400" />
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-status-selected-bg dark:bg-green-950/30">
+                        <Smartphone className="h-4 w-4 text-status-selected dark:text-green-400" />
                       </div>
                       <div>
                         <p className="font-medium">{t("upiMobile")}</p>
@@ -541,8 +541,8 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                       disabled={!gatewayEnabled}
                       onClick={handlePayNow}
                     >
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-950/30">
-                        <ExternalLink className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-status-applied-bg dark:bg-blue-950/30">
+                        <ExternalLink className="h-4 w-4 text-status-applied dark:text-blue-400" />
                       </div>
                       <div>
                         <p className="font-medium">{t("netBanking")}</p>
@@ -555,7 +555,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                       disabled={!gatewayEnabled}
                       onClick={handlePayNow}
                     >
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-100 dark:bg-orange-950/30">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-status-shortlisted-bg dark:bg-orange-950/30">
                         <Banknote className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                       </div>
                       <div>
@@ -567,9 +567,9 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                 </div>
 
                 {/* Manual / Bank Transfer Section */}
-                <div className="rounded-xl border border-emerald-200/60 bg-emerald-50/20 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/10">
+                <div className="rounded-xl border border-emerald-200/60 bg-status-selected-bg/20 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/10">
                   <div className="mb-3 flex items-center gap-2">
-                    <Building2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                    <Building2 className="h-4 w-4 text-status-selected dark:text-emerald-400" />
                     <p className="text-sm font-semibold">{t("bankTransfer")}</p>
                   </div>
                   <p className="mb-4 text-xs text-muted-foreground">
@@ -642,7 +642,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
               <div className="space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("paymentRecords")}</p>
                 {invoice.payments.map((p, i) => (
-                  <div key={i} className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50/50 p-3 dark:border-emerald-900/50 dark:bg-emerald-950/20">
+                  <div key={i} className="flex items-center justify-between rounded-xl border border-status-selected/20 bg-status-selected-bg/50 p-3 dark:border-emerald-900/50 dark:bg-emerald-950/20">
                     <div>
                       <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">{fmt(p.amount)}</p>
                       <p className="text-xs text-muted-foreground">
@@ -651,7 +651,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                     </div>
                     <div className="text-right">
                       <p className="text-xs text-muted-foreground">{new Date(p.date).toLocaleDateString()}</p>
-                      <CheckCircle2 className="ml-auto mt-0.5 h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                      <CheckCircle2 className="ml-auto mt-0.5 h-3.5 w-3.5 text-status-selected dark:text-emerald-400" />
                     </div>
                   </div>
                 ))}
@@ -859,7 +859,7 @@ export default function EmployerInvoicesPage() {
   });
 
   return (
-    <div className="page-container employer-legacy-surface space-y-6">
+    <div className="page-container space-y-6">
       <PageHero
         title={t("title")}
         description={t("description")}
@@ -905,22 +905,22 @@ export default function EmployerInvoicesPage() {
           <p className="text-xs text-muted-foreground">{t("totalBilled")}</p>
           <p className="mt-1 text-xl font-bold">{fmt(summary.totalAmount)}</p>
         </div>
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/20">
-          <p className="text-xs text-emerald-600 dark:text-emerald-400">{t("totalPaid")}</p>
+        <div className="rounded-2xl border border-status-selected/20 bg-status-selected-bg/50 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/20">
+          <p className="text-xs text-status-selected dark:text-emerald-400">{t("totalPaid")}</p>
           <p className="mt-1 text-xl font-bold text-emerald-700 dark:text-emerald-300">{fmt(summary.totalPaid)}</p>
         </div>
-        <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-4 dark:border-amber-900/50 dark:bg-amber-950/20">
-          <p className="text-xs text-amber-600 dark:text-amber-400">{t("outstandingBalance")}</p>
-          <p className="mt-1 text-xl font-bold text-amber-700 dark:text-amber-300">{fmt(summary.totalBalance)}</p>
+        <div className="rounded-2xl border border-status-shortlisted/20 bg-status-shortlisted-bg/50 p-4 dark:border-amber-900/50 dark:bg-amber-950/20">
+          <p className="text-xs text-status-shortlisted dark:text-amber-400">{t("outstandingBalance")}</p>
+          <p className="mt-1 text-xl font-bold text-status-shortlisted dark:text-amber-300">{fmt(summary.totalBalance)}</p>
         </div>
-        <div className="rounded-2xl border border-rose-200 bg-rose-50/50 p-4 dark:border-rose-900/50 dark:bg-rose-950/20">
-          <p className="text-xs text-rose-600 dark:text-rose-400">{t("overdue")}</p>
+        <div className="rounded-2xl border border-status-rejected/20 bg-status-rejected-bg/50 p-4 dark:border-rose-900/50 dark:bg-rose-950/20">
+          <p className="text-xs text-status-rejected dark:text-rose-400">{t("overdue")}</p>
           <p className="mt-1 text-xl font-bold text-rose-700 dark:text-rose-300">{summary.overdue}</p>
         </div>
       </div>
 
       {/* Invoice Table */}
-      {errorMessage && <div className="rounded-2xl border border-rose-200 bg-rose-50/90 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">{errorMessage}</div>}
+      {errorMessage && <div className="rounded-2xl border border-status-rejected/20 bg-status-rejected-bg/90 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">{errorMessage}</div>}
 
       <section className="workspace-panel-surface overflow-hidden rounded-[24px]">
         <div className="flex flex-col gap-2 border-b border-border/80 px-4 py-4 sm:px-5">
@@ -953,7 +953,7 @@ export default function EmployerInvoicesPage() {
               <div className="flex items-center justify-between gap-3 text-sm">
                 <span className="font-semibold">{inv.currency} {(inv.totalAmount ?? 0).toLocaleString()}</span>
                 {(inv.balanceDue ?? 0) > 0 && (
-                  <span className="text-amber-600 dark:text-amber-400">{t("balance")}: {inv.currency} {(inv.balanceDue ?? 0).toLocaleString()}</span>
+                  <span className="text-status-shortlisted dark:text-amber-400">{t("balance")}: {inv.currency} {(inv.balanceDue ?? 0).toLocaleString()}</span>
                 )}
               </div>
               <p className="text-xs text-muted-foreground">{t("dueDate")}: {inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : "—"}</p>
@@ -995,8 +995,8 @@ export default function EmployerInvoicesPage() {
                   <TableCell><p className="max-w-[160px] truncate text-sm">{inv.jobId?.title ?? "—"}</p></TableCell>
                   <TableCell><span className="text-[10px] capitalize text-muted-foreground">{inv.category?.replace(/_/g, " ")}</span></TableCell>
                   <TableCell className="text-right font-semibold">{inv.currency} {(inv.totalAmount ?? 0).toLocaleString()}</TableCell>
-                  <TableCell className="text-right text-sm text-emerald-600 dark:text-emerald-400">{inv.currency} {(inv.paidAmount ?? 0).toLocaleString()}</TableCell>
-                  <TableCell className="text-right text-sm text-amber-600 dark:text-amber-400">{inv.currency} {(inv.balanceDue ?? 0).toLocaleString()}</TableCell>
+                  <TableCell className="text-right text-sm text-status-selected dark:text-emerald-400">{inv.currency} {(inv.paidAmount ?? 0).toLocaleString()}</TableCell>
+                  <TableCell className="text-right text-sm text-status-shortlisted dark:text-amber-400">{inv.currency} {(inv.balanceDue ?? 0).toLocaleString()}</TableCell>
                   <TableCell><StatusBadge status={inv.status} /></TableCell>
                   <TableCell className="text-xs text-muted-foreground">{inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : "—"}</TableCell>
                   <TableCell>

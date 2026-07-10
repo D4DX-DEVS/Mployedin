@@ -12889,6 +12889,21 @@
     "hoursAgo": "منذ {hours} ساعة",
     "daysAgo": "منذ {days} يوم"
   },
+  "invoiceTable": {
+    "invoiceNumber": "رقم الفاتورة",
+    "employer": "صاحب العمل",
+    "job": "الوظيفة",
+    "agent": "الوكيل",
+    "category": "الفئة",
+    "total": "الإجمالي",
+    "paid": "المدفوع",
+    "balance": "الرصيد المتبقي",
+    "commission": "عمولتي",
+    "dueDate": "تاريخ الاستحقاق",
+    "emptyTitle": "لا توجد فواتير حتى الآن",
+    "emptyDescriptionAgent": "أنشئ فاتورتك الأولى لبدء تتبع العمولات.",
+    "emptyDescriptionSuperAgent": "ستظهر فواتير الفريق هنا عندما ينشئها الوكلاء."
+  },
   "agentInvoices": {
     "title": "فواتيري والعمولات الخاصة بي",
     "description": "عرض وإنشاء فواتير التوظيف للوظائف المسندة إليك. تتبع أرباحك من العمولات وحالة الدفع.",

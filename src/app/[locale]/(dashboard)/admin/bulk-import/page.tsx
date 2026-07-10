@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { useTranslations } from "next-intl";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -187,8 +188,7 @@ export default function AdminBulkImportPage() {
             <Upload className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t("title")}</h1>
-            <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
+            <PageHeader title={t("title")} description={t("subtitle")} />
           </div>
         </div>
 
