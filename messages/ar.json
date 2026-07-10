@@ -363,8 +363,7 @@
     "round": "الجولة",
     "type": "النوع",
     "allCategories": "جميع الفئات",
-    "verified": "✓ موثق",
-    "add": "إضافة"
+    "verified": "✓ موثق"
   },
   "table": {
     "search": "بحث...",
@@ -1548,7 +1547,15 @@
       "emptyAddAccomplishments": "أضف الشهادات أو نماذج الأعمال أو المنشورات أو الملفات الإلكترونية",
       "emptyAddSummary": "أضف ملخصًا مهنيًا",
       "aiCareerInsight": "رؤية ذكية للمسار الوظيفي",
-      "smartBadge": "ذكي"
+      "smartBadge": "ذكي",
+      "setup": {
+        "availabilityLabels": {
+          "immediately": "فوراً",
+          "within_month": "خلال شهر",
+          "within_3_months": "خلال 3 أشهر",
+          "not_available": "غير متاح"
+        }
+      }
     },
     "settings": {
       "back": "رجوع",
@@ -7219,7 +7226,10 @@
     "deactivate": "إلغاء التفعيل",
     "a11yAddNewCategory": "إضافة فئة جديدة",
     "a11yDelete": "حذف",
-    "a11yDownloadHistory": "سجل التنزيلات"
+    "a11yDownloadHistory": "سجل التنزيلات",
+    "common": {
+      "allCategories": "جميع الفئات"
+    }
   },
   "targets": {
     "title": "إدارة الأهداف",
@@ -7355,7 +7365,10 @@
     "searchSupervisors": "البحث عن المشرفين…",
     "cloneYear": "استنساخ {year}",
     "newTargetProfile": "ملف هدف جديد",
-    "reassignTargetProfile": "إعادة تعيين ملف الهدف"
+    "reassignTargetProfile": "إعادة تعيين ملف الهدف",
+    "common": {
+      "export": "تصدير"
+    }
   },
   "webhooks": {
     "title": "الويب هوك",

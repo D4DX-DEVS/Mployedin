@@ -44,13 +44,13 @@ export default function AgentPlacementsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
   // Build STATUS_OPTIONS dynamically with translations
   const STATUS_OPTIONS = [
-    { value: "", label: t("statusAllStatuses") },
+    { value: "all", label: t("statusAllStatuses") },
     { value: "pending", label: t("statusPending") },
     { value: "offer", label: t("statusOffer") },
     { value: "completed", label: t("statusCompleted") },
@@ -66,7 +66,7 @@ export default function AgentPlacementsPage() {
   const fetchPlacements = useCallback(async () => {
     setLoading(true);
     const params = pagination.paginationParams();
-    if (statusFilter) params.set("status", statusFilter);
+    if (statusFilter && statusFilter !== "all") params.set("status", statusFilter);
     if (debouncedSearch) params.set("search", debouncedSearch);
     if (dateFrom) params.set("dateFrom", dateFrom);
     if (dateTo) params.set("dateTo", dateTo);
@@ -83,13 +83,13 @@ export default function AgentPlacementsPage() {
   useEffect(() => { pagination.resetPage(); }, [statusFilter, debouncedSearch, dateFrom, dateTo]);
 
   const clearAllFilters = () => {
-    setStatusFilter("");
+    setStatusFilter("all");
     setSearch("");
     setDateFrom("");
     setDateTo("");
   };
 
-  const hasActiveFilters = statusFilter || debouncedSearch || dateFrom || dateTo;
+  const hasActiveFilters = (statusFilter !== "all") || debouncedSearch || dateFrom || dateTo;
 
   const completedPlacements = placements.filter((placement) => placement.status === "completed" || placement.status === "hired").length;
   const signedOffers = placements.filter((placement) => placement.status === "offer" || placement.status === "signed").length;
@@ -183,10 +183,10 @@ export default function AgentPlacementsPage() {
 
         {hasActiveFilters && (
           <div className="mt-4 flex flex-wrap gap-2">
-            {statusFilter && (
+            {statusFilter !== "all" && (
               <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
                 <Filter className="h-3 w-3" />{t("filterTagStatus")}: {STATUS_OPTIONS.find(o => o.value === statusFilter)?.label}
-                <button type="button" onClick={() => setStatusFilter("")} className="ml-0.5 hover:text-primary/70"><X className="h-3 w-3" /></button>
+                <button type="button" onClick={() => setStatusFilter("all")} className="ml-0.5 hover:text-primary/70"><X className="h-3 w-3" /></button>
               </span>
             )}
             {(dateFrom || dateTo) && (

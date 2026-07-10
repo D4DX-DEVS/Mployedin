@@ -363,8 +363,7 @@
     "round": "Round",
     "type": "Type",
     "allCategories": "All Categories",
-    "verified": "✓ Verified",
-    "add": "Add"
+    "verified": "✓ Verified"
   },
   "table": {
     "search": "Search...",
@@ -1548,7 +1547,15 @@
       "emptyAddAccomplishments": "Add certifications, work samples, publications, or online profiles",
       "emptyAddSummary": "Add a professional summary",
       "aiCareerInsight": "AI Career Insight",
-      "smartBadge": "SMART"
+      "smartBadge": "SMART",
+      "setup": {
+        "availabilityLabels": {
+          "immediately": "Immediately",
+          "within_month": "Within a month",
+          "within_3_months": "Within 3 months",
+          "not_available": "Not available"
+        }
+      }
     },
     "settings": {
       "back": "Back",
@@ -7219,7 +7226,10 @@
     "deactivate": "Deactivate",
     "a11yAddNewCategory": "Add new category",
     "a11yDelete": "Delete",
-    "a11yDownloadHistory": "Download history"
+    "a11yDownloadHistory": "Download history",
+    "common": {
+      "allCategories": "All Categories"
+    }
   },
   "targets": {
     "title": "Target Management",
@@ -7355,7 +7365,10 @@
     "searchSupervisors": "Search supervisors…",
     "cloneYear": "Clone {year}",
     "newTargetProfile": "New Target Profile",
-    "reassignTargetProfile": "Reassign target profile"
+    "reassignTargetProfile": "Reassign target profile",
+    "common": {
+      "export": "Export"
+    }
   },
   "webhooks": {
     "title": "Webhooks",

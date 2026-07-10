@@ -324,7 +324,7 @@ export default function AdminReportsPage() {
                 <div>
                   <div className="flex items-center gap-2">
                     <span className={`h-2 w-2 rounded-full ${kpi.indicatorClassName}`} />
-                    <p className="text-xs font-semibold text-muted-foreground">{t(kpi.label)}</p>
+                    <p className="text-xs font-semibold text-muted-foreground">{kpi.label}</p>
                   </div>
                   <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{loading ? <span className="inline-block h-7 w-16 animate-pulse rounded bg-muted" /> : kpi.value}</p>
                 </div>
