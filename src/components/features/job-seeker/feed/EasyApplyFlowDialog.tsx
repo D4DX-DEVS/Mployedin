@@ -313,7 +313,13 @@ export function EasyApplyFlowDialog({
         return;
       }
       if (!res.ok) {
-        setError(data?.error ?? t("errors.applyFailed"));
+        // Plan-quota errors get a friendly upgrade prompt instead of the raw
+        // server code ("LIMIT_EXCEEDED" / "SUBSCRIPTION_REQUIRED").
+        if (data?.error === "LIMIT_EXCEEDED" || data?.error === "SUBSCRIPTION_REQUIRED") {
+          setError(t("errors.planLimitReached"));
+        } else {
+          setError(data?.error ?? t("errors.applyFailed"));
+        }
         return;
       }
       onApplied(jobId);

@@ -607,6 +607,7 @@
       "loadFailed": "Could not load your CVs. Please try again.",
       "uploadFailed": "Upload failed. Please try again.",
       "applyFailed": "Failed to apply. Please try again.",
+      "planLimitReached": "You've reached your plan's application limit. Upgrade your plan to continue applying.",
       "cancel": "Cancel",
       "apply": "Submit Application",
       "applying": "Applying…"
@@ -673,6 +674,7 @@
         "loadFailed": "Could not load your details. Please try again.",
         "uploadFailed": "Upload failed. Please try again.",
         "applyFailed": "Failed to apply. Please try again.",
+        "planLimitReached": "You've reached your plan's application limit. Upgrade your plan to continue applying.",
         "selectCv": "Please select or upload a CV first.",
         "requiredQuestion": "Please answer: {label}"
       }
@@ -990,7 +992,8 @@
     "empty": "No companies found",
     "openJobs": "{count} open jobs",
     "remote": "Remote",
-    "loadFailed": "Failed to load companies"
+    "loadFailed": "Failed to load companies",
+    "retry": "Try Again"
   },
   "jobSeekerCourses": {
     "title": "Courses & Training",
@@ -1171,6 +1174,7 @@
       "title": "Who Viewed Your Profile",
       "description": "See which companies and recruiters are checking out your CV",
       "unable": "Unable to load profile views",
+      "retry": "Try Again",
       "total": "Total views",
       "last7": "Last 7 days",
       "last30": "Last 30 days",

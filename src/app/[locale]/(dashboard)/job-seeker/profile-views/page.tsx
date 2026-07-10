@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Eye, Building2, TrendingUp, Calendar, User } from "lucide-react";
+import { Eye, Building2, TrendingUp, Calendar, User, RotateCcw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/shared/EmptyState";
 
 interface ProfileViewItem {
   _id: string;
@@ -28,17 +30,23 @@ export default function ProfileViewsPage() {
   const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
   const [stats, setStats] = useState<ViewStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch("/api/job-seeker/profile-views");
-        if (res.ok) setStats(await res.json());
-      } catch { /* ignore */ } finally {
-        setLoading(false);
-      }
-    })();
+  const load = useCallback(async () => {
+    setLoading(true);
+    setLoadError(false);
+    try {
+      const res = await fetch("/api/job-seeker/profile-views");
+      if (res.ok) setStats(await res.json());
+      else setLoadError(true);
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   if (loading) {
     return (
@@ -53,7 +61,21 @@ export default function ProfileViewsPage() {
     );
   }
 
-  if (!stats) return <div className="p-6 text-muted-foreground">{t("unable")}</div>;
+  if (loadError || !stats) {
+    return (
+      <div className="p-6">
+        <EmptyState
+          icon={Eye}
+          title={t("unable")}
+          action={
+            <Button variant="outline" size="sm" onClick={load}>
+              <RotateCcw className="me-1 h-4 w-4" /> {t("retry")}
+            </Button>
+          }
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">

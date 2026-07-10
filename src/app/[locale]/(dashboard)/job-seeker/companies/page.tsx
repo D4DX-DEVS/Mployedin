@@ -49,6 +49,7 @@ export default function CompaniesListPage() {
   const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
   const [companies, setCompanies] = useState<CompanyItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [search, setSearch] = useState("");
   const [industryFilter, setIndustryFilter] = useState("");
   const [industries, setIndustries] = useState<string[]>([]);
@@ -56,6 +57,7 @@ export default function CompaniesListPage() {
 
   const fetchCompanies = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const params = pagination.paginationParams();
       if (search) params.set("search", search);
@@ -71,8 +73,12 @@ export default function CompaniesListPage() {
           )).sort();
           setIndustries(uniqueIndustries);
         }
+      } else {
+        setLoadError(true);
+        toast.error(t("loadFailed"));
       }
     } catch {
+      setLoadError(true);
       toast.error(t("loadFailed"));
     } finally {
       setLoading(false);
@@ -124,6 +130,16 @@ export default function CompaniesListPage() {
       <section className="workspace-panel-surface rounded-[28px] p-5">
         {loading ? (
           <ListSkeleton count={6} layout="grid" itemClassName="h-40" />
+        ) : loadError ? (
+          <EmptyState
+            icon={Inbox}
+            title={t("loadFailed")}
+            action={
+              <Button variant="outline" size="sm" onClick={fetchCompanies}>
+                <RotateCcw className="me-1 h-4 w-4" /> {t("retry")}
+              </Button>
+            }
+          />
         ) : companies.length === 0 ? (
           <EmptyState
             icon={Inbox}
