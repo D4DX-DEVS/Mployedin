@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { AI_MATCH_HIGH_THRESHOLD } from "@/lib/constants";
@@ -182,6 +182,7 @@ function useContainerWide(minWidth: number) {
 }
 
 export default function EmployerApplicationsPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const { locale } = useParams<{ locale: string }>();
   const initialJobId = searchParams.get("jobId") ?? searchParams.get("job") ?? "";
@@ -190,7 +191,14 @@ export default function EmployerApplicationsPage() {
   const tc = useTranslations("employerCommon");
   const pipelineStages = usePipelineStages();
 
-  const [page, setPage] = useState(1);
+  const [page, setPageState] = useState(() => Number(searchParams.get("page")) || 1);
+
+  function setPage(next: number) {
+    setPageState(next);
+    const params = new URLSearchParams(window.location.search);
+    if (next > 1) params.set("page", String(next)); else params.delete("page");
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }
   const [limit, setLimit] = useState(10);
   const [statusFilter, setStatusFilter] = useState("all");
   const [selected, setSelected] = useState<string[]>([]);
@@ -343,7 +351,14 @@ export default function EmployerApplicationsPage() {
       : `${t("title")} · MPLOYEDIN`;
   }, [selectedJob]);
 
-  useEffect(() => { setPage(1); setSelected([]); }, [statusFilter, scoreRange, daysFilter, searchQuery, jobFilter, experienceRange, skillsFilter, nationalityFilter]);
+  // Reset page when filters change (skip the initial mount so a page restored from the URL survives)
+  const skipFilterResetRef = useRef(true);
+  useEffect(() => {
+    if (skipFilterResetRef.current) { skipFilterResetRef.current = false; return; }
+    setPage(1);
+    setSelected([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter, scoreRange, daysFilter, searchQuery, jobFilter, experienceRange, skillsFilter, nationalityFilter]);
 
   function updateApplicationStatus(id: string, status: string, reason?: string) {
     return updateStatus.mutateAsync({ id, status, rejectionReason: reason });

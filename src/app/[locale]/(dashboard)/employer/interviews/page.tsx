@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -71,10 +71,18 @@ interface PrepBriefResult {
 export default function EmployerInterviewsPage() {
   const { locale } = useParams<{ locale: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const t = useTranslations("employerInterviews");
   const tc = useTranslations("employerCommon");
   const { confirm, ConfirmDialogNode } = useConfirm();
-  const [page, setPage] = useState(1);
+  const [page, setPageState] = useState(() => Number(searchParams.get("page")) || 1);
+
+  function setPage(next: number) {
+    setPageState(next);
+    const params = new URLSearchParams(window.location.search);
+    if (next > 1) params.set("page", String(next)); else params.delete("page");
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }
   const [limit, setLimit] = useState(10);
   const { can } = usePermissions();
   const [aiTarget, setAiTarget] = useState<AIQuestionsTarget | null>(null);

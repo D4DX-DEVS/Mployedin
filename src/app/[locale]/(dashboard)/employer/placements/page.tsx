@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,10 +19,20 @@ import { usePlacements, type Placement } from "@/hooks/usePlacements";
 import type { ExportColumn } from "@/lib/export";
 
 export default function EmployerPlacementsPage() {
+  const router = useRouter();
   const { locale } = useParams<{ locale: string }>();
+  const searchParams = useSearchParams();
   const t = useTranslations("employerPlacements");
   const { can } = usePermissions();
-  const [page, setPage] = useState(1);
+
+  const [page, setPageState] = useState(() => Number(searchParams.get("page")) || 1);
+
+  function setPage(next: number) {
+    setPageState(next);
+    const params = new URLSearchParams(window.location.search);
+    if (next > 1) params.set("page", String(next)); else params.delete("page");
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }
   const [limit, setLimit] = useState(10);
   const [filter, setFilter] = useState("all");
   const [visaFilter, setVisaFilter] = useState("all");
@@ -77,8 +87,13 @@ export default function EmployerPlacementsPage() {
     return `${placement.salary.currency} ${placement.salary.amount.toLocaleString()}`;
   }
 
-  // Reset page when filter changes
-  useEffect(() => { setPage(1); }, [filter, visaFilter]);
+  // Reset page when filters change (skip the initial mount so a page restored from the URL survives)
+  const skipFilterResetRef = useRef(true);
+  useEffect(() => {
+    if (skipFilterResetRef.current) { skipFilterResetRef.current = false; return; }
+    setPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter, visaFilter]);
 
   return (
     <div className="page-container space-y-6">

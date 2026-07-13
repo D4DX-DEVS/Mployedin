@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -30,10 +30,18 @@ export default function EmployerJobTemplatesPage() {
   const t = useTranslations("employerJobTemplates");
   const router = useRouter();
   const { locale } = useParams<{ locale: string }>();
+  const searchParams = useSearchParams();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
 
+  const [page, setPageState] = useState(() => Number(searchParams.get("page")) || 1);
+
+  function setPage(next: number) {
+    setPageState(next);
+    const params = new URLSearchParams(window.location.search);
+    if (next > 1) params.set("page", String(next)); else params.delete("page");
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }
   const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const { data, isLoading: loading, isError, refetch } = useJobTemplateLibrary({ search, page, limit });
   const templates = data?.templates ?? [];

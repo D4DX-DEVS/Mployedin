@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { AI_MATCH_HIGH_THRESHOLD } from "@/lib/constants";
 import { toast } from "sonner";
@@ -864,8 +864,19 @@ export default function EmployerCandidatesPage() {
     unscored: t("unscored"),
   }), [t]);
 
+  const searchParams = useSearchParams();
+
   const [selectedJob, setSelectedJob] = useState("");
-  const [page, setPage] = useState(1);
+  const [pageState, setPageState] = useState(() => Number(searchParams.get("page")) || 1);
+
+  function setPage(next: number) {
+    setPageState(next);
+    const params = new URLSearchParams(window.location.search);
+    if (next > 1) params.set("page", String(next)); else params.delete("page");
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }
+
+  const page = pageState;
   const [limit, setLimit] = useState(20);
   const [search, setSearch] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
@@ -1098,8 +1109,12 @@ export default function EmployerCandidatesPage() {
     );
   }, [reviewListIds, selectedJob]);
 
+  // Reset page when filters change (skip the initial mount so a page restored from the URL survives)
+  const skipFilterResetRef = useRef(true);
   useEffect(() => {
+    if (skipFilterResetRef.current) { skipFilterResetRef.current = false; return; }
     setPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch, selectedJob]);
 
   useEffect(() => {

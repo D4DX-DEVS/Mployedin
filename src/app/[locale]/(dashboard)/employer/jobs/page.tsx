@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Plus, Edit2, Eye, Clock, CheckCircle, FileText, Trash2, Copy, Users, BriefcaseBusiness, ShieldCheck, BookTemplate, Search, Sparkles, ArrowRight, GitBranch, SlidersHorizontal, PauseCircle, PlayCircle, MoreHorizontal, Image as ImageIcon, Send, Undo2, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
@@ -57,11 +57,19 @@ type PendingJobAction = "activate" | "deactivate" | "pause" | "delete" | "submit
 export default function EmployerJobsPage() {
   const router = useRouter();
   const { locale } = useParams<{ locale: string }>();
+  const searchParams = useSearchParams();
   const t = useTranslations("employerJobs");
   const { can } = usePermissions();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
 
-  const [page, setPage] = useState(1);
+  const [page, setPageState] = useState(() => Number(searchParams.get("page")) || 1);
+
+  function setPage(next: number) {
+    setPageState(next);
+    const params = new URLSearchParams(window.location.search);
+    if (next > 1) params.set("page", String(next)); else params.delete("page");
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }
   const [limit, setLimit] = useState(10);
   const [statusFilter, setStatusFilter] = useState("all");
   const [workModeFilter, setWorkModeFilter] = useState("all");
@@ -87,8 +95,13 @@ export default function EmployerJobsPage() {
     .map((skill) => skill.trim())
     .filter(Boolean);
 
-  // Reset page when filters change
-  useEffect(() => { setPage(1); }, [statusFilter, workModeFilter, salaryVisibilityFilter, debouncedSearch, debouncedLocation, debouncedSkills]);
+  // Reset page when filters change (skip the initial mount so a page restored from the URL survives)
+  const skipFilterResetRef = useRef(true);
+  useEffect(() => {
+    if (skipFilterResetRef.current) { skipFilterResetRef.current = false; return; }
+    setPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter, workModeFilter, salaryVisibilityFilter, debouncedSearch, debouncedLocation, debouncedSkills]);
 
   // Pre-apply status filter from deep-link query (?status=active|draft|paused|closed|expired)
   // Used by the employer dashboard quick-filter tabs.

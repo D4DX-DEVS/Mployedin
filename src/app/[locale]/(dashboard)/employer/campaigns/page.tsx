@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -74,13 +75,22 @@ function Stat({ icon, label, value }: { icon: ReactNode; label: string; value: n
 }
 
 export default function EmployerCampaignsPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const t = useTranslations("emailSequences");
   const { data: sequences = [], isLoading, isError } = useEmailSequences();
   const [createOpen, setCreateOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
+  const [page, setPageState] = useState(() => Number(searchParams.get("page")) || 1);
+
+  function setPage(next: number) {
+    setPageState(next);
+    const params = new URLSearchParams(window.location.search);
+    if (next > 1) params.set("page", String(next)); else params.delete("page");
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }
   const [limit, setLimit] = useState(10);
 
   const filteredSequences = sequences.filter((seq) => {

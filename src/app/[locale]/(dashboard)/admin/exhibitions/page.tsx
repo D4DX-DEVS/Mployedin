@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { toast } from "sonner";
@@ -355,6 +356,8 @@ function quoteCsv(value: string | number | undefined | null) {
 }
 
 export default function AdminExhibitionsPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const t = useTranslations("adminExhibitions");
   const { confirm } = useConfirm();
   const [items, setItems] = useState<ExhibitionRequest[]>([]);
@@ -367,7 +370,14 @@ export default function AdminExhibitionsPage() {
   const [budgetRange, setBudgetRange] = useState("all");
   const [reviewerFilter, setReviewerFilter] = useState("all");
   const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
+  const [page, setPageState] = useState(() => Number(searchParams.get("page")) || 1);
+
+  function setPage(next: number) {
+    setPageState(next);
+    const params = new URLSearchParams(window.location.search);
+    if (next > 1) params.set("page", String(next)); else params.delete("page");
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [actionItem, setActionItem] = useState<ExhibitionRequest | null>(null);
   const [actionStatus, setActionStatus] = useState("");
@@ -439,9 +449,12 @@ export default function AdminExhibitionsPage() {
     fetchItems();
   }, [fetchItems]);
 
+  const skipFilterResetRef = useRef(true);
   useEffect(() => {
+    if (skipFilterResetRef.current) { skipFilterResetRef.current = false; return; }
     setPage(1);
     setSelectedIds(new Set());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter, priorityFilter, stageFilter, dateRange, countryFilter, budgetRange, reviewerFilter, search]);
 
   const countries = useMemo(() => {
@@ -967,13 +980,13 @@ export default function AdminExhibitionsPage() {
                   {t("showing", { start: (page - 1) * pageSize + 1, end: Math.min(page * pageSize, filteredItems.length), total: filteredItems.length })}
                 </p>
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" disabled={page === 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>
+                  <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" disabled={page === 1} onClick={() => setPage(Math.max(1, page - 1))}>
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
                   <span className="rounded-lg border border-border/60 bg-background px-3 py-1 text-xs font-semibold">
                     {page} / {totalPages}
                   </span>
-                  <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" disabled={page === totalPages} onClick={() => setPage((value) => Math.min(totalPages, value + 1))}>
+                  <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" disabled={page === totalPages} onClick={() => setPage(Math.min(totalPages, page + 1))}>
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>

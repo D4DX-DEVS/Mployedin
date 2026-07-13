@@ -17,6 +17,8 @@ export const GEMINI_MODELS = {
   flash: "google/gemini-3.1-flash-lite-preview",
   pro: "google/gemini-2.5-pro",
   flashLite: "google/gemini-2.5-flash",
+  // ponytail: same OpenRouter endpoint, just a different model id — override via env if needed
+  gpt: process.env.OPENROUTER_TEXT_MODEL || "openai/gpt-4o-mini",
 } as const;
 
 type GeminiModel = (typeof GEMINI_MODELS)[keyof typeof GEMINI_MODELS];

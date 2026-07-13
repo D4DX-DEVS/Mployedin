@@ -100,7 +100,7 @@ export function buildPosterPrompt(opts: {
     "",
     `Aspect ratio: ${aspectLabel}`,
     `Composition: ${artDirection}`,
-    `Dominant color palette: ${palette}. Commit to this palette — do NOT default to generic dark blue.`,
+    `Dominant color palette: ${palette}. Commit to this palette — do NOT default to generic dark blue. If "Mood / theme" above names specific colors, follow those instead and ignore this palette.`,
     `Visual approach: ${VARIATION_SUFFIXES[(paletteSeed + variationIndex) % VARIATION_SUFFIXES.length]}`,
     "",
     "ABSOLUTE REQUIREMENTS:",

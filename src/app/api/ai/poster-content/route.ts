@@ -109,7 +109,7 @@ Benefits: ${benefits.length > 0 ? benefits.join(", ") : "Standard package"}
 Vacancies: ${body.vacancies ?? 1}
 === END JOB DATA ===`;
 
-  const raw = redactPII(await generateText(prompt, GEMINI_MODELS.flash, 2000))
+  const raw = redactPII(await generateText(prompt, GEMINI_MODELS.gpt, 2000))
     .replace(/```json\n?|```/g, "")
     .trim();
 

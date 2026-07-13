@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { useParams, useSearchParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { DollarSign, CalendarDays, Clock3, CircleCheckBig, ArrowRight, Eye, X, Sparkles, FileText, Briefcase, FileDown } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ function getStatusColor(status: OfferStatus): string {
 }
 
 export default function EmployerOffersPage() {
+  const router = useRouter();
   const { locale } = useParams<{ locale: string }>();
   const searchParams = useSearchParams();
   const t = useTranslations("employerOffers");
@@ -45,7 +46,14 @@ export default function EmployerOffersPage() {
     { value: "withdrawn", label: t("withdrawn") },
   ];
 
-  const [page, setPage] = useState(1);
+  const [page, setPageState] = useState(() => Number(searchParams.get("page")) || 1);
+
+  function setPage(next: number) {
+    setPageState(next);
+    const params = new URLSearchParams(window.location.search);
+    if (next > 1) params.set("page", String(next)); else params.delete("page");
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }
   const [limit, setLimit] = useState(10);
   const [statusFilter, setStatusFilter] = useState("all");
   const [jobFilter, setJobFilter] = useState(searchParams.get("jobId") ?? "all");
@@ -77,7 +85,13 @@ export default function EmployerOffersPage() {
       .catch(() => {});
   }, []);
 
-  useEffect(() => { setPage(1); }, [statusFilter, jobFilter]);
+  // Reset page when filters change (skip the initial mount so a page restored from the URL survives)
+  const skipFilterResetRef = useRef(true);
+  useEffect(() => {
+    if (skipFilterResetRef.current) { skipFilterResetRef.current = false; return; }
+    setPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter, jobFilter]);
 
   async function handleWithdraw(offerId: string) {
     try {

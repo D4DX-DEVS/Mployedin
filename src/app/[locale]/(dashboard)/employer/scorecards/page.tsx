@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { User, Calendar, Award } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -47,9 +47,18 @@ function getScoreBadgeColor(score: number) {
 }
 
 export default function ScorecardListPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const t = useTranslations("employerScorecards");
   const tc = useTranslations("employerCommon");
-  const [page, setPage] = useState(1);
+  const [page, setPageState] = useState(() => Number(searchParams.get("page")) || 1);
+
+  function setPage(next: number) {
+    setPageState(next);
+    const params = new URLSearchParams(window.location.search);
+    if (next > 1) params.set("page", String(next)); else params.delete("page");
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }
   const [limit, setLimit] = useState(10);
 
   const { data, isLoading: loading, isError, refetch } = useScorecards({ page, limit });

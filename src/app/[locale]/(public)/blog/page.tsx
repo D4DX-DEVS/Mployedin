@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Search, Calendar, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,9 @@ interface BlogPost {
 }
 
 export default function BlogListingPage() {
+  const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const locale = pathname.split("/")[1] || "en";
   const isAr = locale === "ar";
   const t = useTranslations("landing");
@@ -30,7 +32,15 @@ export default function BlogListingPage() {
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
+  const [page, setPageState] = useState(() => Number(searchParams.get("page")) || 1);
+
+  function setPage(next: number) {
+    setPageState(next);
+    const params = new URLSearchParams(window.location.search);
+    if (next > 1) params.set("page", String(next)); else params.delete("page");
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }
+
   const [totalPages, setTotalPages] = useState(1);
   const limit = 9;
 

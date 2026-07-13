@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Image, Trash2, ExternalLink, Eye, Download, QrCode, Plus } from "lucide-react";
 import Link from "next/link";
@@ -55,11 +55,19 @@ function getPageWindow(current: number, total: number): (number | "…")[] {
 export function MyPostersPage() {
   const locale = useLocale();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const t = useTranslations("myPosters");
   const queryClient = useQueryClient();
   const { credits } = usePosterCredits();
   const { confirm, ConfirmDialogNode } = useConfirm();
-  const [page, setPage] = useState(1);
+  const [page, setPageState] = useState(() => Number(searchParams.get("page")) || 1);
+
+  function setPage(next: number) {
+    setPageState(next);
+    const params = new URLSearchParams(window.location.search);
+    if (next > 1) params.set("page", String(next)); else params.delete("page");
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }
   const [limit, setLimit] = useState(12);
 
   const { data, isLoading } = useQuery({
@@ -236,7 +244,7 @@ export function MyPostersPage() {
                 <button
                   type="button"
                   disabled={page <= 1}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  onClick={() => setPage(Math.max(1, page - 1))}
                   className="px-3 py-1.5 rounded-md border text-sm disabled:opacity-50"
                 >
                   {t("previous")}
@@ -261,7 +269,7 @@ export function MyPostersPage() {
                 <button
                   type="button"
                   disabled={page >= data.pagination.pages}
-                  onClick={() => setPage((p) => Math.min(data.pagination.pages, p + 1))}
+                  onClick={() => setPage(Math.min(data.pagination.pages, page + 1))}
                   className="px-3 py-1.5 rounded-md border text-sm disabled:opacity-50"
                 >
                   {t("next")}

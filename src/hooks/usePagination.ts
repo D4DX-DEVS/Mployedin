@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useCallback, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 const DEFAULT_PAGE_SIZE = 10;
 
@@ -24,20 +25,36 @@ export interface UsePaginationReturn extends PaginationState {
   paginationParams: () => URLSearchParams;
 }
 
+// Keeps page/limit mirrored into the URL (?page=&limit=) so browser back/forward
+// after visiting a detail page restores the list to the page the user was on,
+// instead of always reopening at page 1.
 export function usePagination(initialLimit: number = DEFAULT_PAGE_SIZE): UsePaginationReturn {
-  const [page, setPageRaw] = useState(1);
-  const [limit, setLimitRaw] = useState(initialLimit);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const [page, setPageRaw] = useState(() => Number(searchParams.get("page")) || 1);
+  const [limit, setLimitRaw] = useState(() => Number(searchParams.get("limit")) || initialLimit);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
+  const syncUrl = useCallback((nextPage: number, nextLimit: number) => {
+    const params = new URLSearchParams(window.location.search);
+    if (nextPage > 1) params.set("page", String(nextPage)); else params.delete("page");
+    if (nextLimit !== DEFAULT_PAGE_SIZE) params.set("limit", String(nextLimit)); else params.delete("limit");
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }, [router]);
+
   const setPage = useCallback((p: number) => {
-    setPageRaw(Math.max(1, p));
-  }, []);
+    const next = Math.max(1, p);
+    setPageRaw(next);
+    syncUrl(next, limit);
+  }, [limit, syncUrl]);
 
   const setLimit = useCallback((newLimit: number) => {
     setLimitRaw(newLimit);
     setPageRaw(1); // reset to first page on limit change
-  }, []);
+    syncUrl(1, newLimit);
+  }, [syncUrl]);
 
   const updateTotal = useCallback(
     (newTotal: number) => {
@@ -47,7 +64,10 @@ export function usePagination(initialLimit: number = DEFAULT_PAGE_SIZE): UsePagi
     [limit],
   );
 
-  const resetPage = useCallback(() => setPageRaw(1), []);
+  const resetPage = useCallback(() => {
+    setPageRaw(1);
+    syncUrl(1, limit);
+  }, [limit, syncUrl]);
 
   const paginationParams = useCallback(() => {
     const params = new URLSearchParams();

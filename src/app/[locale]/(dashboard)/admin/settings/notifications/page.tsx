@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/PageHeader";
 import {
@@ -317,13 +318,22 @@ function CronJobsTab({
 
 function EmailLogsTab() {
   const t = useTranslations("adminSettingsNotifications");
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [logs, setLogs] = useState<EmailLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
+  const [page, setPageState] = useState(() => Number(searchParams.get("page")) || 1);
   const [totalPages, setTotalPages] = useState(1);
   const [statusFilter, setStatusFilter] = useState("__all__");
   const [sourceFilter, setSourceFilter] = useState("__all__");
   const [stats24h, setStats24h] = useState<Record<string, number>>({});
+
+  function setPage(next: number) {
+    setPageState(next);
+    const params = new URLSearchParams(window.location.search);
+    if (next > 1) params.set("page", String(next)); else params.delete("page");
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
@@ -421,8 +431,8 @@ function EmailLogsTab() {
           <div className="flex items-center justify-between px-4 py-2 border-t border-border/30 bg-muted/20">
             <span className="text-xs text-muted-foreground">{t("emailLogsPaginationLabel", { page: page, totalPages: totalPages })}</span>
             <div className="flex gap-1">
-              <Button variant="ghost" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}><ChevronLeft className="w-3 h-3" /></Button>
-              <Button variant="ghost" size="sm" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}><ChevronRight className="w-3 h-3" /></Button>
+              <Button variant="ghost" size="sm" onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1}><ChevronLeft className="w-3 h-3" /></Button>
+              <Button variant="ghost" size="sm" onClick={() => setPage(Math.min(totalPages, page + 1))} disabled={page === totalPages}><ChevronRight className="w-3 h-3" /></Button>
             </div>
           </div>
         )}
