@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { csrfFetch } from "@/lib/security/csrf-client";
 
 import { jobFormSchema, JOB_FORM_STEPS, type JobFormValues } from "./jobFormSchema";
 import { useJobFormDraft, useDebounce } from "./useJobFormDraft";
@@ -237,9 +238,17 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
       },
     });
     try {
-      navigator.sendBeacon("/api/jobs/auto-draft", payload);
+      // sendBeacon can't set the x-csrf-token header, so the middleware always
+      // rejected these saves with 403 — keepalive fetch survives unload AND
+      // carries the CSRF header.
+      void csrfFetch("/api/jobs/auto-draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+        keepalive: true,
+      }).catch(() => {});
     } catch {
-      // sendBeacon can throw if the page is being discarded — ignore.
+      // fetch can throw if the page is being discarded — ignore.
     }
   }, []);
 

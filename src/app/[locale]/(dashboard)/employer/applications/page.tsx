@@ -2,6 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { csrfFetch } from "@/lib/security/csrf-client";
+import { applicationKeys } from "@/hooks/useApplications";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -63,6 +66,7 @@ import {
   useFetchInterviewForApp,
   useUpdateApplicationStatus,
 } from "@/hooks/useApplications";
+import { buildJobFilterOptions } from "@/lib/jobs/duplicateJobLabels";
 import { useDebounce } from "@/hooks/useDebounce";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useTableExport } from "@/hooks/useTableExport";
@@ -72,7 +76,7 @@ import type { ExportColumn } from "@/lib/export";
 
 interface Applicant {
   _id: string;
-  jobId: { _id: string; title: string };
+  jobId: { _id: string; title: string; requirements?: { skills?: string[]; preferredSkills?: string[] } };
   jobSeekerId: {
     _id?: string;
     userId?: { _id?: string; name?: string; avatar?: string } | string;
@@ -85,6 +89,7 @@ interface Applicant {
   };
   status: string;
   aiMatchScore?: number;
+  viewedByEmployerAt?: string;
   appliedAt: string;
   coverLetter?: string;
   matchBreakdown?: { skills: number; experience: number; overall: number };
@@ -146,8 +151,18 @@ function getLocationExperienceSummary(app: Applicant, formatYears: (years: numbe
   return summary.filter(Boolean).join(" • ") || "";
 }
 
-function getApplicantTags(app: Applicant): string[] {
-  return (app.jobSeekerId?.skills ?? []).slice(0, 3);
+// Skills that overlap the job's required/preferred skills come first (highlighted);
+// falls back to the candidate's first skills when there is no overlap or no job data.
+function getApplicantSkills(app: Applicant): { matching: string[]; other: string[] } {
+  const candidateSkills = app.jobSeekerId?.skills ?? [];
+  const jobSkills = [
+    ...(app.jobId?.requirements?.skills ?? []),
+    ...(app.jobId?.requirements?.preferredSkills ?? []),
+  ].map((s) => s.toLowerCase().trim());
+  if (jobSkills.length === 0) return { matching: [], other: candidateSkills.slice(0, 3) };
+  const matching = candidateSkills.filter((s) => jobSkills.includes(s.toLowerCase().trim()));
+  const other = candidateSkills.filter((s) => !matching.includes(s));
+  return { matching: matching.slice(0, 3), other: other.slice(0, Math.max(0, 3 - matching.length)) };
 }
 
 function getCandidateAvatar(app: Applicant): string | undefined {
@@ -200,7 +215,8 @@ export default function EmployerApplicationsPage() {
     router.replace(`?${params.toString()}`, { scroll: false });
   }
   const [limit, setLimit] = useState(10);
-  const [statusFilter, setStatusFilter] = useState("all");
+  // ?status=applied deep-links from the dashboard "New Applications" card
+  const [statusFilter, setStatusFilter] = useState(() => searchParams.get("status") ?? "all");
   const [selected, setSelected] = useState<string[]>([]);
   const [rejectionReason, setRejectionReason] = useState("");
   const [showRejectPrompt, setShowRejectPrompt] = useState(false);
@@ -272,8 +288,16 @@ export default function EmployerApplicationsPage() {
     employmentType?: string;
     workMode?: string;
     status: string;
+    createdAt?: string;
   }
   const [employerJobs, setEmployerJobs] = useState<EmployerJob[]>([]);
+
+  // Sort order for the list. API supports appliedAt/aiMatchScore; "newest" is the default.
+  const [sortOption, setSortOption] = useState<"newest" | "oldest" | "score">("newest");
+  const [sortBy, sortOrder]: ["appliedAt" | "aiMatchScore", "asc" | "desc"] =
+    sortOption === "oldest" ? ["appliedAt", "asc"]
+    : sortOption === "score" ? ["aiMatchScore", "desc"]
+    : ["appliedAt", "desc"];
 
   // Debounce user inputs to avoid excessive API calls
   const debouncedSearch = useDebounce(searchQuery, 350);
@@ -293,6 +317,8 @@ export default function EmployerApplicationsPage() {
     experienceMax: debouncedExperienceRange[1] ?? undefined,
     skills: skillsFilter.length > 0 ? skillsFilter : undefined,
     nationality: debouncedNationality.trim() || undefined,
+    sortBy,
+    sortOrder,
     fetchJobs: !jobsLoaded,
   });
   const updateStatus = useUpdateApplicationStatus();
@@ -304,6 +330,7 @@ export default function EmployerApplicationsPage() {
   const timelineQuery = useApplicationTimeline(timelinePanel?.appId ?? null);
   const computeAiMatch = useComputeAiMatch();
   const bulkAiMatch = useBulkAiMatch();
+  const qc = useQueryClient();
 
   // ── Derived values ────────────────────────────────────────────────
   const applications = (applicationsQuery.data?.applications ?? []) as Applicant[];
@@ -323,6 +350,13 @@ export default function EmployerApplicationsPage() {
 
   // Selected job's details (for dynamic filter hints)
   const selectedJob = employerJobs.find((j) => j._id === jobFilter) ?? null;
+
+  // Job filter options — duplicate titles get a "Latest" tag + posting date/time (see helper).
+  const jobOptions = buildJobFilterOptions(employerJobs, {
+    allLabel: t("allJobs"),
+    latestLabel: t("latestPosting"),
+    dateLocale: locale === "ar" ? "ar-SA" : "en-US",
+  });
 
   // Fetch scorecards for all visible applications in one batched request
   const applicationIds = applications.map((a) => a._id);
@@ -358,7 +392,7 @@ export default function EmployerApplicationsPage() {
     setPage(1);
     setSelected([]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter, scoreRange, daysFilter, searchQuery, jobFilter, experienceRange, skillsFilter, nationalityFilter]);
+  }, [statusFilter, scoreRange, daysFilter, searchQuery, jobFilter, experienceRange, skillsFilter, nationalityFilter, sortOption]);
 
   function updateApplicationStatus(id: string, status: string, reason?: string) {
     return updateStatus.mutateAsync({ id, status, rejectionReason: reason });
@@ -406,6 +440,18 @@ export default function EmployerApplicationsPage() {
       setBulkMatchProgress(null);
     }
   }
+
+  // Auto-generate AI match scores for unscored visible applications on first load —
+  // employers see scores without clicking each candidate ("Score All" still exists).
+  const autoScoredRef = useRef(false);
+  useEffect(() => {
+    if (autoScoredRef.current || isLoading || applications.length === 0) return;
+    autoScoredRef.current = true;
+    if (applications.some((a) => a.aiMatchScore == null)) {
+      void handleBulkAiMatch();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, applications]);
 
   /** Surface the itemized processed/total/errors result from a bulk action as a toast. */
   function reportBulkActionResult(result: { processed?: number; total?: number; errors?: string[] }) {
@@ -499,10 +545,11 @@ export default function EmployerApplicationsPage() {
     scheduledAt: string; type: string; duration: number; location?: string; meetLink?: string; instructions?: string;
   }) {
     if (!interviewModal) return;
+    const appId = interviewModal.appId;
     try {
       const result = await createInterview.mutateAsync({
         candidates: [{
-          applicationId: interviewModal.appId,
+          applicationId: appId,
           jobSeekerId: interviewModal.jobSeekerId,
         }],
         jobId: interviewModal.jobId,
@@ -512,8 +559,13 @@ export default function EmployerApplicationsPage() {
         throw new Error("Failed to schedule interview");
       }
       setInterviewModal(null);
+      // Reflect the stage change on the open panel, confirm it, then take the user to the interview.
+      setDetailPanel((prev) => (prev && prev._id === appId ? { ...prev, status: "interview_scheduled" } : prev));
+      toast.success(t("interviewScheduledToast"));
+      router.push(`/${locale}/employer/interviews`);
     } catch (err) {
       console.error("Failed to create interview:", err);
+      toast.error(err instanceof Error ? err.message : t("interviewScheduleFailed"));
     }
   }
 
@@ -538,6 +590,16 @@ export default function EmployerApplicationsPage() {
   function openDetailPanel(app: Applicant, trigger?: HTMLElement | null) {
     detailTriggerRef.current = trigger ?? null;
     setDetailPanel(app);
+    // First open clears the "New" badge (fire-and-forget; list refetches on success)
+    if (!app.viewedByEmployerAt) {
+      csrfFetch(`/api/applications/${app._id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ markViewed: true }),
+      })
+        .then((r) => { if (r.ok) qc.invalidateQueries({ queryKey: applicationKeys.lists() }); })
+        .catch(() => {});
+    }
   }
 
   function closeDetailPanel() {
@@ -692,8 +754,11 @@ export default function EmployerApplicationsPage() {
       });
       setSelected([]);
       setBulkInterviewModal(false);
+      toast.success(t("interviewScheduledToast"));
+      router.push(`/${locale}/employer/interviews`);
     } catch (err) {
       console.error("Bulk interview scheduling failed:", err);
+      toast.error(err instanceof Error ? err.message : t("interviewScheduleFailed"));
     }
   }
 
@@ -718,7 +783,16 @@ export default function EmployerApplicationsPage() {
       return;
     }
 
-    await updateApplicationStatus(app._id, nextStatus, reason);
+    try {
+      await updateApplicationStatus(app._id, nextStatus, reason);
+      // Keep the open detail panel in sync — the list refetches, but the panel renders
+      // from its own snapshot, so without this the stage change never shows.
+      setDetailPanel((prev) => (prev && prev._id === app._id ? { ...prev, status: nextStatus } : prev));
+      const stageLabel = pipelineStages.find((s) => s.value === nextStatus)?.label ?? nextStatus;
+      toast.success(t("stageUpdatedTo", { stage: stageLabel }));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("stageUpdateFailed"));
+    }
   }
 
   return (
@@ -781,14 +855,11 @@ export default function EmployerApplicationsPage() {
             className="mb-3"
           />
 
-          {/* Primary filter row: Job selector + search + status + toggle */}
-          <div className="grid gap-2 xl:grid-cols-[minmax(180px,1fr)_minmax(0,1.8fr)_minmax(160px,0.7fr)_auto_auto]">
+          {/* Primary filter row: Job selector + search + status + sort + toggle */}
+          <div className="grid gap-2 xl:grid-cols-[minmax(170px,1fr)_minmax(0,1.5fr)_minmax(150px,0.7fr)_minmax(150px,0.7fr)_auto_auto]">
             <SearchableSelect
               className="h-10 w-full rounded-xl border-border bg-status-applied-bg/50 dark:border-sky-500/30 dark:bg-sky-500/10"
-              options={[
-                { value: "", label: t("allJobs") },
-                ...employerJobs.map((j) => ({ value: j._id, label: j.title })),
-              ]}
+              options={jobOptions}
               value={jobFilter}
               onValueChange={(v) => {
                 setJobFilter(v);
@@ -816,6 +887,18 @@ export default function EmployerApplicationsPage() {
                 value={statusFilter}
                 onValueChange={setStatusFilter}
                 placeholder={t("allStatuses")}
+              />
+              <SearchableSelect
+                className="h-10 w-full rounded-xl border-border bg-background/70"
+                options={[
+                  { value: "newest", label: t("sortNewest") },
+                  { value: "oldest", label: t("sortOldest") },
+                  { value: "score", label: t("sortScore") },
+                ]}
+                value={sortOption}
+                onValueChange={(v) => setSortOption(v as typeof sortOption)}
+                placeholder={t("sortLabel")}
+                ariaLabel={t("sortLabel")}
               />
               <Button size="sm" variant="outline" onClick={() => setShowFilters(!showFilters)} className="h-10 rounded-xl border-border bg-background/80 px-3 text-sm">
                 <Filter className="mr-2 h-3.5 w-3.5" />
@@ -1474,8 +1557,10 @@ function TableView({
           const currentRole = getCurrentRole(app);
           const location = app.jobSeekerId?.currentLocation ?? "";
           const experienceYears = app.jobSeekerId?.totalExperienceYears;
-          const topSkills = getApplicantTags(app);
-          const extraSkillsCount = (app.jobSeekerId?.skills?.length ?? 0) - topSkills.length;
+          const { matching: matchingSkills, other: otherSkills } = getApplicantSkills(app);
+          const shownSkillsCount = matchingSkills.length + otherSkills.length;
+          const extraSkillsCount = (app.jobSeekerId?.skills?.length ?? 0) - shownSkillsCount;
+          const isNew = app.status === "applied" && !app.viewedByEmployerAt;
           const appliedDate = new Date(app.appliedAt).toLocaleDateString(locale === "ar" ? "ar-SA" : "en-US", { day: "numeric", month: "short", year: "numeric" });
           const scorecard = scorecardMap?.[app._id];
           const matchScore = app.aiMatchScore;
@@ -1528,6 +1613,15 @@ function TableView({
                       {candidateName}
                     </a>
                     <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-sky-500" />
+                    {isNew ? (
+                      <span
+                        data-testid={`new-badge-${app._id}`}
+                        className="shrink-0 rounded-full bg-sky-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-600 dark:text-sky-300"
+                      >
+                        {t("newBadge")}
+                      </span>
+                    ) : null}
+                    <StatusBadge status={app.status} className="shrink-0" />
                   </div>
                   <p className="truncate text-xs text-muted-foreground">
                     {location}
@@ -1553,9 +1647,14 @@ function TableView({
                 )}
               </div>
 
-              {/* Skills */}
+              {/* Skills — job-matching skills first (highlighted), then others */}
               <div className="hidden min-w-0 lg:flex lg:flex-wrap lg:gap-1">
-                {topSkills.map((skill) => (
+                {matchingSkills.map((skill) => (
+                  <span key={skill} className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-300">
+                    ✓ {skill}
+                  </span>
+                ))}
+                {otherSkills.map((skill) => (
                   <span key={skill} className="rounded-md border border-border bg-muted/50 px-2 py-0.5 text-[11px] text-muted-foreground">
                     {skill}
                   </span>
@@ -1697,16 +1796,6 @@ function ApplicationDetailsPanel({
   const t = useTranslations("employerApplications");
   const tc = useTranslations("employerCommon");
   const pipelineStages = usePipelineStages();
-  const statusLabelMap: Record<string, string> = {
-    applied: t("applied"),
-    shortlisted: t("shortlisted"),
-    interview_scheduled: t("interview"),
-    offer: t("offer"),
-    selected: t("selected"),
-    hired: t("hired"),
-    rejected: t("rejected"),
-    withdrawn: t("withdrawn"),
-  };
   const currentRole = getCurrentRole(app);
   const candidateName = getCandidateName(app);
   const avatarUrl = getCandidateAvatar(app);
@@ -1714,7 +1803,6 @@ function ApplicationDetailsPanel({
   const candidateExperienceYears = app.jobSeekerId?.totalExperienceYears;
   const displayDateLocale = locale === "ar" ? "ar-SA" : "en-US";
   const appliedDate = new Date(app.appliedAt).toLocaleDateString(displayDateLocale);
-  const currentStageLabel = statusLabelMap[app.status] ?? app.status.replace(/_/g, " ");
   const matchItems = app.matchBreakdown
     ? [
         { label: t("skills"), value: app.matchBreakdown.skills },
@@ -1959,6 +2047,29 @@ function ApplicationDetailsPanel({
         <div className="min-h-0 flex-1 overflow-y-auto bg-muted/20 px-4 py-4 sm:px-5">
           {activeTab === "overview" ? (
           <div className="space-y-4">
+            {/* Reject confirmation — shown when "Rejected" is picked from Move Stage */}
+            {nextStage === "rejected" && onChangeStatus ? (
+              <div className="rounded-2xl border border-rose-500/20 bg-rose-500/5 p-4">
+                <p className="text-xs font-semibold text-status-rejected dark:text-rose-300">{t("rejectAction")}</p>
+                <textarea
+                  value={rejectReason}
+                  onChange={(event) => setRejectReason(event.target.value)}
+                  placeholder={t("rejectionReasonRequired")}
+                  maxLength={500}
+                  autoFocus
+                  className="mt-2 h-16 w-full rounded-xl border border-border bg-background/80 px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-rose-300"
+                />
+                <div className="mt-2 flex justify-end gap-2">
+                  <Button size="sm" variant="ghost" className="h-9 rounded-xl px-4 text-xs" onClick={() => { setNextStage(""); setRejectReason(""); }}>
+                    {t("cancel")}
+                  </Button>
+                  <Button size="sm" variant="destructive" className="h-9 rounded-xl px-4 text-xs" disabled={!rejectReason.trim() || statusPending} onClick={handleApplyStageChange}>
+                    {statusPending ? t("updating") : t("rejectAction")}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+
             {/* Row 1: AI Match Score | Application Overview (2 equal cards) */}
             <div className="grid grid-cols-2 gap-4">
               <div className="workspace-glass-panel rounded-2xl p-4">
@@ -2003,14 +2114,6 @@ function ApplicationDetailsPanel({
               <div className="workspace-glass-panel rounded-2xl p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("applicationOverview")}</p>
                 <div className="mt-3 space-y-2 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-muted-foreground">{t("appliedDateLabel")}</span>
-                    <span className="text-[11px] font-semibold text-foreground">{appliedDate}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-muted-foreground">{t("currentStageLabel")}</span>
-                    <StatusBadge status={app.status} label={currentStageLabel} />
-                  </div>
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] text-muted-foreground">{t("appliedRoles")}</span>
                     <span className="text-[11px] font-semibold text-foreground">{(app.otherApplicationsCount ?? 0) > 0 ? t("otherRolesCount", { count: app.otherApplicationsCount ?? 0 }) : "1"}</span>
@@ -2138,34 +2241,6 @@ function ApplicationDetailsPanel({
               </div>
             </div>
 
-            {/* Row 6: Stage Management (full width) */}
-            {onChangeStatus ? (
-              <div className="workspace-glass-panel rounded-2xl p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("stageManagement")}</p>
-                <p className="mt-2 text-[10px] text-muted-foreground">{t("moveToStage")}</p>
-                <div className="mt-1.5 flex items-center gap-2">
-                  <SearchableSelect
-                    className="h-9 flex-1 rounded-xl border-border bg-background/80 text-xs"
-                    options={[{ value: "", label: t("moveToStage") }, ...stageOptions]}
-                    value={nextStage}
-                    onValueChange={setNextStage}
-                    placeholder={t("moveToStage")}
-                  />
-                  <Button size="sm" className="h-9 shrink-0 rounded-xl px-4 text-xs" disabled={!nextStage || statusPending || (nextStage === "rejected" && !rejectReason.trim())} onClick={handleApplyStageChange}>
-                    {statusPending ? t("updating") : t("updateStage")}
-                  </Button>
-                </div>
-                {nextStage === "rejected" ? (
-                  <textarea
-                    value={rejectReason}
-                    onChange={(event) => setRejectReason(event.target.value)}
-                    placeholder={t("rejectionReasonRequired")}
-                    maxLength={500}
-                    className="mt-2 h-16 w-full rounded-xl border border-border bg-background/80 px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-rose-300"
-                  />
-                ) : null}
-              </div>
-            ) : null}
           </div>
           ) : null}
 

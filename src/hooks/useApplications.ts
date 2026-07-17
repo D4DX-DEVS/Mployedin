@@ -15,6 +15,8 @@ export interface ApplicationsFilters {
   experienceMax?: number;
   skills?: string[];
   nationality?: string;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
   fetchJobs?: boolean;
 }
 
@@ -46,6 +48,8 @@ export function useApplications(filters: ApplicationsFilters) {
       if (filters.experienceMax != null) params.set("experienceMax", String(filters.experienceMax));
       if (filters.skills?.length) params.set("skills", filters.skills.join(","));
       if (filters.nationality?.trim()) params.set("nationality", filters.nationality.trim());
+      if (filters.sortBy) params.set("sortBy", filters.sortBy);
+      if (filters.sortOrder) params.set("sortOrder", filters.sortOrder);
       if (filters.fetchJobs) params.set("fetchJobs", "true");
       const res = await fetch(`/api/applications?${params}`);
       if (!res.ok) throw new Error("Failed to fetch applications");

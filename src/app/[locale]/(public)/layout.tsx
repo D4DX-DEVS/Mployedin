@@ -5,6 +5,7 @@ import PublicFooter from "@/components/shared/PublicFooter";
 import CookieConsent from "@/components/shared/CookieConsent";
 import { SessionWrapper } from "@/components/shared/SessionWrapper";
 import { DashboardProviders } from "@/components/shared/DashboardProviders";
+import { CsrfProvider } from "@/components/shared/CsrfProvider";
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://mployedin-8a4rc.ondigitalocean.app";
 
@@ -73,6 +74,9 @@ export default async function PublicLayout({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema) }}
       />
       <SessionWrapper disableIdleTimeout>
+        {/* Easy Apply and other public-page mutations need the CSRF fetch patch
+            installed — without it POSTs from shared/public pages 403. */}
+        <CsrfProvider>
         <DashboardProviders>
           <div className="flex min-h-screen flex-col">
             <PublicHeader locale={locale} />
@@ -81,6 +85,7 @@ export default async function PublicLayout({
             <CookieConsent locale={locale} />
           </div>
         </DashboardProviders>
+        </CsrfProvider>
       </SessionWrapper>
     </NextIntlClientProvider>
   );

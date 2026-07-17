@@ -37,7 +37,8 @@ export function DashboardStatCards({
       labelKey: "needsReview",
       descKey: "needsReviewDesc",
       value: newApplications,
-      href: `/${locale}/employer/applications`,
+      // Deep-link straight to new (unactioned) applications
+      href: `/${locale}/employer/applications?status=applied`,
       Icon: FileText,
       chip: "bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300",
     },

@@ -53,6 +53,8 @@ export interface IApplication extends Document {
   aiMatchScore?: number;
   /** Set once the employer notifies this candidate via the AI-match "Notify" action. */
   aiMatchNotifiedAt?: Date;
+  /** Set the first time the employer opens this application — drives the "New" badge. */
+  viewedByEmployerAt?: Date;
   matchBreakdown?: IAIMatchBreakdown;
   matchNotes?: string;
   matchStrengths?: string[];
@@ -115,6 +117,7 @@ const ApplicationSchema = new Schema<IApplication>(
     documents: [ApplicationDocumentSchema],
     aiMatchScore: Number,
     aiMatchNotifiedAt: Date,
+    viewedByEmployerAt: Date,
     matchBreakdown: {
       skills: Number,
       experience: Number,

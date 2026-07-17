@@ -87,7 +87,9 @@ export async function POST(req: NextRequest) {
     if (existingDraft) {
       await Job.updateOne({ _id: existingDraft._id }, { $set: draftData });
     } else {
-      await Job.create(draftData);
+      // Drafts are intentionally partial (description/location may be empty) —
+      // schema validation would 500 a title-only draft. Publishing re-validates.
+      await new Job(draftData).save({ validateBeforeSave: false });
     }
 
     return new NextResponse(null, { status: 204 });

@@ -104,10 +104,30 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   }
 
   const body = await validateBody(req, applicationUpdateSchema);
-  const { status, note, rejectionReason, employerNotes, agentNotes, withdrawalReason, withdrawalNote } = body;
+  const { status, note, rejectionReason, employerNotes, agentNotes, withdrawalReason, withdrawalNote, markViewed } = body;
 
   if (ctx.role === "job_seeker" && status && status !== "withdrawn") {
     return NextResponse.json({ error: "Job seekers may only withdraw an application" }, { status: 403 });
+  }
+
+  // First employer open — stamp once; drives the "New" badge in the list.
+  if (markViewed && ctx.role !== "job_seeker" && !application.viewedByEmployerAt) {
+    application.viewedByEmployerAt = new Date();
+  }
+
+  // A pure view-stamp must not run workflow automation (auto-reject/auto-progress
+  // below would otherwise fire from merely opening the detail panel).
+  const onlyMarkViewed =
+    markViewed &&
+    !status &&
+    rejectionReason === undefined &&
+    employerNotes === undefined &&
+    agentNotes === undefined &&
+    withdrawalReason === undefined &&
+    withdrawalNote === undefined;
+  if (onlyMarkViewed) {
+    await application.save();
+    return NextResponse.json({ application });
   }
 
   // Auto-reject rule: if employer has autoRejectBelow threshold and aiMatchScore is being implicitly set

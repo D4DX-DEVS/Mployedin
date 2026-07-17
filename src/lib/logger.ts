@@ -12,22 +12,26 @@ import pino from "pino";
 
 const isDev = process.env.NODE_ENV !== "production";
 
-const logger = pino({
-  level: isDev ? "debug" : "info",
-  // In production emit JSON; in development use human-readable output
-  ...(isDev && {
-    transport: {
-      target: "pino/file",
-      options: { destination: 1 }, // stdout with newline-delimited JSON (pretty not available at runtime without pino-pretty)
+// Reuse a single logger across Next.js dev HMR reloads. Otherwise every hot reload
+// re-evaluates this module and creates a new pino stream, stacking unpipe/error/close
+// listeners on the stdout WriteStream until Node warns of a leak
+// (MaxListenersExceededWarning). The default pino stream already writes newline-delimited
+// JSON to stdout — no transport worker needed.
+const globalForLogger = globalThis as unknown as { __mployedinLogger?: pino.Logger };
+
+const logger =
+  globalForLogger.__mployedinLogger ??
+  pino({
+    level: isDev ? "debug" : "info",
+    base: { service: "mployedin" },
+    timestamp: pino.stdTimeFunctions.isoTime,
+    redact: {
+      // Never log these fields — strip silently
+      paths: ["password", "passwordHash", "token", "refreshToken", "idToken", "nationalId", "passportNumber", "iban", "bankAccountNumber"],
+      censor: "[REDACTED]",
     },
-  }),
-  base: { service: "mployedin" },
-  timestamp: pino.stdTimeFunctions.isoTime,
-  redact: {
-    // Never log these fields — strip silently
-    paths: ["password", "passwordHash", "token", "refreshToken", "idToken", "nationalId", "passportNumber", "iban", "bankAccountNumber"],
-    censor: "[REDACTED]",
-  },
-});
+  });
+
+globalForLogger.__mployedinLogger = logger;
 
 export default logger;

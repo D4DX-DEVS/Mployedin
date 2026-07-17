@@ -309,7 +309,8 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       .limit(limit)
       .populate({
         path: "jobId",
-        select: "title location salary category employerId",
+        // requirements powers the "matching skills" column in the employer list
+        select: "title location salary category employerId requirements",
         populate: { path: "employerId", select: "companyName logo" },
       })
       .populate({
@@ -333,7 +334,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   }
 
   // Optionally return employer's jobs list for the job filter dropdown
-  let employerJobs: Array<{ _id: string; title: string; requirements: { skills: string[]; experienceMin: number; experienceMax: number; education?: string; languages?: string[] }; salary: { min: number; max: number; currency: string; period?: string }; location: { country: string; city: string; isRemote: boolean }; employmentType?: string; workMode?: string; status: string }> = [];
+  let employerJobs: Array<{ _id: string; title: string; requirements: { skills: string[]; experienceMin: number; experienceMax: number; education?: string; languages?: string[] }; salary: { min: number; max: number; currency: string; period?: string }; location: { country: string; city: string; isRemote: boolean }; employmentType?: string; workMode?: string; status: string; createdAt?: Date }> = [];
   if (fetchJobs && (ctx.role === "employer" || ctx.role === "agent" || ctx.role === "super_agent" || ctx.role === "admin")) {
     const jobQuery: Record<string, unknown> = {};
     if (ctx.role === "employer") {
@@ -350,7 +351,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       }
     }
     employerJobs = await Job.find({ ...jobQuery, status: { $in: ["active", "closed"] } })
-      .select("title requirements salary location employmentType workMode status")
+      .select("title requirements salary location employmentType workMode status createdAt")
       .sort({ createdAt: -1 })
       .limit(200)
       .lean();

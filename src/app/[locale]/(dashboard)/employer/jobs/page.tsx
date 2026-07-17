@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { TableToolbar } from "@/components/shared/TableToolbar";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { PageHero } from "@/components/shared/PageHero";
 import { DraftExtractionsCard, DraftJobsCard } from "@/components/features/employer/dashboard";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useTableExport } from "@/hooks/useTableExport";
@@ -417,33 +417,30 @@ export default function EmployerJobsPage() {
   return (
     <div className="page-container space-y-6">
       {ConfirmDialogNode}
-      <div className="workspace-glass-panel hidden items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary sm:inline-flex">
-        <Sparkles className="h-3.5 w-3.5" />
-        {t("heroBadge")}
-      </div>
-      <PageHeader
+      <PageHero
         title={t("heroTitle")}
         description={t("heroSubtitle")}
+        eyebrow={t("heroBadge")}
         actions={can("jobs", "create") && (isLoading || jobs.length > 0 || hasActiveFilters) ? (
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <>
             <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("portfolioLabel")}</p>
               <p className="mt-1 text-lg font-semibold text-foreground">{total} {t("totalJobsSuffix")}</p>
               <p className="text-xs text-muted-foreground">{t("portfolioDescription")}</p>
             </div>
             <Button
-              onClick={() => router.push(`/${locale}/employer/jobs/new`)}
+              onClick={() => router.push(`/${locale}/employer/jobs/ai-create`)}
               className="h-11 gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
             >
               <Plus className="h-4 w-4" />
               {t("postAJob")}
             </Button>
-          </div>
+          </>
         ) : undefined}
       />
 
-      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
-        <div className="mt-0 grid grid-cols-2 gap-2 sm:mt-0 sm:gap-3 xl:grid-cols-4">
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
           <div className="workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -494,164 +491,161 @@ export default function EmployerJobsPage() {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setFiltersOpen((v) => !v)}
-          aria-expanded={filtersOpen}
-          className="workspace-glass-panel mt-6 flex w-full items-center justify-between gap-3 rounded-2xl px-4 py-3 text-left transition-colors hover:bg-primary/5"
-        >
-          <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
-            <SlidersHorizontal className="h-4 w-4 text-primary" />
-            {t("filterHeading")}
-            {hasActiveFilters && (
-              <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
-            )}
-          </span>
-          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${filtersOpen ? "rotate-180" : ""}`} />
-        </button>
-      </section>
+        {/* Filter jobs — toggle + filters live in one card and expand in place */}
+        <div className="workspace-panel-surface overflow-hidden rounded-2xl">
+          <button
+            type="button"
+            onClick={() => setFiltersOpen((v) => !v)}
+            aria-expanded={filtersOpen}
+            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-primary/5"
+          >
+            <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <SlidersHorizontal className="h-4 w-4 text-primary" />
+              {t("filterHeading")}
+              {hasActiveFilters && (
+                <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
+              )}
+            </span>
+            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${filtersOpen ? "rotate-180" : ""}`} />
+          </button>
+
+          {filtersOpen && (
+            <div className="border-t border-border/60 p-4 sm:p-5">
+              <p className="text-sm text-muted-foreground">{t("filterDescription")}</p>
+
+              <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_220px_220px]">
+                <div className="relative min-w-0">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder={t("searchJobsPlaceholder")}
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="h-11 rounded-xl border-border bg-background/70 pl-9 text-sm shadow-none"
+                  />
+                </div>
+                <SearchableSelect
+                  className="h-11 w-full rounded-xl border-border bg-background/70"
+                  options={[
+                    { value: "all", label: t("allStatuses") },
+                    { value: "active", label: t("statusActive") },
+                    { value: "paused", label: t("statusPaused") },
+                    { value: "draft", label: t("statusDraft") },
+                    { value: "closed", label: t("statusClosed") },
+                    { value: "expired", label: t("statusExpired") },
+                  ]}
+                  value={statusFilter}
+                  onValueChange={setStatusFilter}
+                  placeholder={t("allStatuses")}
+                />
+                <SearchableSelect
+                  className="h-11 w-full rounded-xl border-border bg-background/70"
+                  options={[
+                    { value: "default", label: t("sortDefault") },
+                    { value: "applications_desc", label: t("sortMostApplications") },
+                    { value: "applications_asc", label: t("sortFewestApplications") },
+                    { value: "newest", label: t("sortNewest") },
+                    { value: "oldest", label: t("sortOldest") },
+                  ]}
+                  value={sortByFilter}
+                  onValueChange={setSortByFilter}
+                  placeholder={t("sortDefault")}
+                />
+              </div>
+
+              <div className="mt-3 grid gap-3 xl:grid-cols-[220px_220px_220px_minmax(0,1fr)_minmax(0,1fr)_150px]">
+                <SearchableSelect
+                  className="h-11 w-full rounded-xl border-border bg-background/70"
+                  options={[
+                    { value: "all", label: t("allWorkModes") },
+                    { value: "onsite", label: t("workModeOnsite") },
+                    { value: "hybrid", label: t("workModeHybrid") },
+                    { value: "remote", label: t("workModeRemote") },
+                  ]}
+                  value={workModeFilter}
+                  onValueChange={setWorkModeFilter}
+                  placeholder={t("allWorkModes")}
+                />
+                <SearchableSelect
+                  className="h-11 w-full rounded-xl border-border bg-background/70"
+                  options={[
+                    { value: "all", label: t("allSalaryVisibility") },
+                    { value: "shown", label: t("salaryShown") },
+                    { value: "hidden", label: t("salaryHiddenFilter") },
+                  ]}
+                  value={salaryVisibilityFilter}
+                  onValueChange={setSalaryVisibilityFilter}
+                  placeholder={t("allSalaryVisibility")}
+                />
+                <div className="relative min-w-0">
+                  <Input
+                    placeholder={t("filterByLocationPlaceholder")}
+                    value={locationFilter}
+                    onChange={(e) => setLocationFilter(e.target.value)}
+                    className="h-11 rounded-xl border-border bg-background/70 text-sm shadow-none"
+                  />
+                </div>
+                <div className="relative min-w-0">
+                  <Input
+                    placeholder={t("skillsPlaceholder")}
+                    value={skillsFilter}
+                    onChange={(e) => setSkillsFilter(e.target.value)}
+                    className="h-11 rounded-xl border-border bg-background/70 text-sm shadow-none"
+                  />
+                </div>
+                <div className="relative min-w-0 xl:col-span-2">
+                  <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-sky-500" />
+                  <Input
+                    placeholder={t("aiSearchPlaceholder")}
+                    value={aiQuery}
+                    onChange={(e) => setAiQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        void handleApplyAiSearch();
+                      }
+                    }}
+                    className="h-11 rounded-xl border-border bg-background/70 pl-9 text-sm shadow-none"
+                  />
+                </div>
+              </div>
+
+              <div className="workspace-subtle-surface mt-3 flex flex-col gap-3 rounded-2xl p-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-medium text-foreground">{t("needFasterCut")}</p>
+                  <p className="text-sm text-muted-foreground">{t("aiFilterDescription")}</p>
+                  {aiSummary ? <p className="mt-2 text-sm text-primary">{aiSummary}</p> : null}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    onClick={() => { void handleApplyAiSearch(); }}
+                    disabled={!aiQuery.trim() || isApplyingAiSearch}
+                    className="h-11 gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    {isApplyingAiSearch ? t("applyingAiSearch") : t("applyAiSearch")}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={resetFilters}
+                    disabled={!hasActiveFilters && !aiQuery && !aiSummary}
+                    className="h-11 rounded-xl border-border bg-background/70 px-4 text-sm"
+                  >
+                    {t("clearFilters")}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* ── Resume unfinished work (banners — self-hide when none) ── */}
       <div className={`grid gap-3 ${jobDraftsCount > 0 && aiDraftsCount > 0 ? "sm:grid-cols-2" : "grid-cols-1"}`}>
         <DraftJobsCard locale={locale} variant="banner" onCountChange={setJobDraftsCount} />
         <DraftExtractionsCard locale={locale} variant="banner" onCountChange={setAiDraftsCount} />
       </div>
-
-      {filtersOpen && (
-      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("browseRolesLabel")}</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("filterHeading")}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{t("filterDescription")}</p>
-          </div>
-        </div>
-
-        <div className="mt-5 grid gap-3 xl:grid-cols-[minmax(0,1fr)_220px_220px]">
-          <div className="relative min-w-0">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder={t("searchJobsPlaceholder")}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="h-11 rounded-xl border-border bg-background/70 pl-9 text-sm shadow-none"
-            />
-          </div>
-          <SearchableSelect
-            className="h-11 w-full rounded-xl border-border bg-background/70"
-            options={[
-              { value: "all", label: t("allStatuses") },
-              { value: "active", label: t("statusActive") },
-              { value: "paused", label: t("statusPaused") },
-              { value: "draft", label: t("statusDraft") },
-              { value: "closed", label: t("statusClosed") },
-              { value: "expired", label: t("statusExpired") },
-            ]}
-            value={statusFilter}
-            onValueChange={setStatusFilter}
-            placeholder={t("allStatuses")}
-          />
-          <SearchableSelect
-            className="h-11 w-full rounded-xl border-border bg-background/70"
-            options={[
-              { value: "default", label: t("sortDefault") },
-              { value: "applications_desc", label: t("sortMostApplications") },
-              { value: "applications_asc", label: t("sortFewestApplications") },
-              { value: "newest", label: t("sortNewest") },
-              { value: "oldest", label: t("sortOldest") },
-            ]}
-            value={sortByFilter}
-            onValueChange={setSortByFilter}
-            placeholder={t("sortDefault")}
-          />
-        </div>
-
-        <div className="mt-3 grid gap-3 xl:grid-cols-[220px_220px_220px_minmax(0,1fr)_minmax(0,1fr)_150px]">
-          <SearchableSelect
-            className="h-11 w-full rounded-xl border-border bg-background/70"
-            options={[
-              { value: "all", label: t("allWorkModes") },
-              { value: "onsite", label: t("workModeOnsite") },
-              { value: "hybrid", label: t("workModeHybrid") },
-              { value: "remote", label: t("workModeRemote") },
-            ]}
-            value={workModeFilter}
-            onValueChange={setWorkModeFilter}
-            placeholder={t("allWorkModes")}
-          />
-          <SearchableSelect
-            className="h-11 w-full rounded-xl border-border bg-background/70"
-            options={[
-              { value: "all", label: t("allSalaryVisibility") },
-              { value: "shown", label: t("salaryShown") },
-              { value: "hidden", label: t("salaryHiddenFilter") },
-            ]}
-            value={salaryVisibilityFilter}
-            onValueChange={setSalaryVisibilityFilter}
-            placeholder={t("allSalaryVisibility")}
-          />
-          <div className="relative min-w-0">
-            <Input
-              placeholder={t("filterByLocationPlaceholder")}
-              value={locationFilter}
-              onChange={(e) => setLocationFilter(e.target.value)}
-              className="h-11 rounded-xl border-border bg-background/70 text-sm shadow-none"
-            />
-          </div>
-          <div className="relative min-w-0">
-            <Input
-              placeholder={t("skillsPlaceholder")}
-              value={skillsFilter}
-              onChange={(e) => setSkillsFilter(e.target.value)}
-              className="h-11 rounded-xl border-border bg-background/70 text-sm shadow-none"
-            />
-          </div>
-          <div className="relative min-w-0 xl:col-span-2">
-            <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-sky-500" />
-            <Input
-              placeholder={t("aiSearchPlaceholder")}
-              value={aiQuery}
-              onChange={(e) => setAiQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  void handleApplyAiSearch();
-                }
-              }}
-              className="h-11 rounded-xl border-border bg-background/70 pl-9 text-sm shadow-none"
-            />
-          </div>
-        </div>
-
-        <div className="workspace-subtle-surface mt-3 flex flex-col gap-3 rounded-2xl p-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-medium text-foreground">{t("needFasterCut")}</p>
-            <p className="text-sm text-muted-foreground">{t("aiFilterDescription")}</p>
-            {aiSummary ? <p className="mt-2 text-sm text-primary">{aiSummary}</p> : null}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              onClick={() => { void handleApplyAiSearch(); }}
-              disabled={!aiQuery.trim() || isApplyingAiSearch}
-              className="h-11 gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
-            >
-              <Sparkles className="h-4 w-4" />
-              {isApplyingAiSearch ? t("applyingAiSearch") : t("applyAiSearch")}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={resetFilters}
-              disabled={!hasActiveFilters && !aiQuery && !aiSummary}
-              className="h-11 rounded-xl border-border bg-background/70 px-4 text-sm"
-            >
-              {t("clearFilters")}
-            </Button>
-          </div>
-        </div>
-      </section>
-      )}
 
       {isError ? (
         <div className="workspace-panel-surface rounded-[28px] px-6 py-12 text-center">
@@ -691,7 +685,7 @@ export default function EmployerJobsPage() {
             </Button>
           ) : (
             <Button
-              onClick={() => router.push(`/${locale}/employer/jobs/new`)}
+              onClick={() => router.push(`/${locale}/employer/jobs/ai-create`)}
               className="mt-6 h-11 gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
             >
               <Plus className="h-4 w-4" />

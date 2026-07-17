@@ -1219,6 +1219,14 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 descriptionAr: "تصفح والبحث عن المرشحين",
               },
               {
+                title: "Applications",
+                titleAr: "الطلبات",
+                href: p("/employer/applications"),
+                icon: "FileText",
+                description: "Review candidate applications",
+                descriptionAr: "مراجعة طلبات المرشحين",
+              },
+              {
                 title: "Talent Pools",
                 titleAr: "مجموعات المواهب",
                 href: p("/employer/talent-pools"),

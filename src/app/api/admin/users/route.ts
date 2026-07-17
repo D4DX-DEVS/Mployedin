@@ -16,6 +16,37 @@ import logger from "@/lib/logger";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
+/**
+ * Role changes must also create the role's profile document — job posting,
+ * employer settings, and drafts all 404/403 when Employer/JobSeeker is missing
+ * (admin-converted employers previously couldn't post jobs at all).
+ */
+async function ensureRoleProfile(user: { _id: unknown; name?: string; email?: string }, role: string): Promise<void> {
+  if (role === "employer") {
+    const { Employer } = await import("@/models/Employer");
+    const exists = await Employer.exists({ userId: user._id });
+    if (!exists) {
+      await Employer.create({
+        userId: user._id,
+        companyName: user.name || "My Company",
+        companyEmail: user.email,
+      });
+    }
+  } else if (role === "job_seeker") {
+    const JobSeeker = (await import("@/models/JobSeeker")).default;
+    const exists = await JobSeeker.exists({ userId: user._id });
+    if (!exists) {
+      await JobSeeker.create({ userId: user._id, fullName: user.name ?? "", isOnboarded: false });
+    }
+  } else if (role === "agent") {
+    const exists = await Agent.exists({ userId: user._id });
+    if (!exists) await Agent.create({ userId: user._id, commissionRate: 0 });
+  } else if (role === "super_agent") {
+    const exists = await SuperAgent.exists({ userId: user._id });
+    if (!exists) await SuperAgent.create({ userId: user._id, overrideRate: 0 });
+  }
+}
+
 // GET /api/admin/users — paginated user list (admin only)
 async function getHandler(req: NextRequest, ctx: AuthCtx) {
   if (ctx.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -91,9 +122,13 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
       try {
         let modified = false;
         switch (action) {
-          case "setRole":
+          case "setRole": {
             modified = (await User.updateOne({ _id: id }, { $set: { role } })).modifiedCount > 0;
+            // Idempotent — also heals accounts converted before this fix existed.
+            const u = await User.findById(id).select("name email").lean();
+            if (u && role) await ensureRoleProfile(u, role);
             break;
+          }
           case "activate":
             modified = (await User.updateOne({ _id: id }, { $set: { isActive: true } })).modifiedCount > 0;
             break;
@@ -155,6 +190,10 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
   ).select("-passwordHash").lean();
 
   if (!updated) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+  if (role) {
+    await ensureRoleProfile(updated as { _id: unknown; name?: string; email?: string }, role as string);
+  }
 
   await logActivity({
     ...actorFromCtx(ctx),
@@ -252,6 +291,10 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
         assignedStateIds: assignedStateIds ?? [],
         agentIds: agentIds ?? [],
       });
+    }
+
+    if (role === "employer" || role === "job_seeker") {
+      await ensureRoleProfile(user, role);
     }
   } catch (profileErr) {
     // If profile creation fails, clean up the user document

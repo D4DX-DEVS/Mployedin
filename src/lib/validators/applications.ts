@@ -50,6 +50,8 @@ export const applicationUpdateSchema = z
       .enum(["accepted_elsewhere", "salary_too_low", "bad_experience", "too_slow_process", "changed_mind", "personal_reasons", "other"])
       .optional(),
     withdrawalNote: z.string().max(500).trim().optional(),
+    // Employer opened the application — stamps viewedByEmployerAt (clears "New" badge)
+    markViewed: z.boolean().optional(),
   })
   .refine(
     (data) => data.status !== "rejected" || !!data.rejectionReason,
