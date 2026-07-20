@@ -516,7 +516,7 @@ export default function AgentEmployersPage() {
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5">
                   {em.isAgentVerified && (
-                    <span className="whitespace-nowrap text-[10px] bg-green-500/10 text-status-selected px-2 py-0.5 rounded-full font-medium">{t("common.verified")}</span>
+                    <span className="whitespace-nowrap text-[10px] bg-green-500/10 text-status-selected px-2 py-0.5 rounded-full font-medium">{tc("verified")}</span>
                   )}
                   <StatusBadge status={em.isActive ? "active" : "inactive"} />
                 </div>

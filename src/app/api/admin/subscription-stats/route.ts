@@ -34,6 +34,7 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
     tierDistribution,
     roleCounts,
     expiringSoon,
+    expiringSoonCount,
     revenueStats,
     recentActivity,
     monthlyTrend,
@@ -74,6 +75,12 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
       .limit(20)
       .populate("userId", "name email")
       .lean(),
+
+    // 4b. True count of subscriptions expiring within 30 days (list above is capped at 20)
+    Subscription.countDocuments({
+      status: "active",
+      endDate: { $gte: now, $lte: in30Days },
+    }),
 
     // 5. Revenue — sum of paid invoices this month + all time
     Invoice.aggregate([
@@ -191,6 +198,7 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
       planName: t._id.name,
       count: t.count,
     })),
+    expiringSoonCount,
     expiringSoon: expiringSoon.map((s) => ({
       _id: s._id,
       userId: s.userId,

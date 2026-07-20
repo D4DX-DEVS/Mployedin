@@ -495,10 +495,24 @@ export const authConfig: NextAuthConfig = {
         if (passwordChangedAfterToken || dueForPeriodicCheck) {
           await connectDB();
           const dbUser = await User.findById(token.id)
-            .select("passwordChangedAt isActive")
-            .lean() as { passwordChangedAt?: Date; isActive?: boolean } | null;
+            .select("passwordChangedAt isActive role permissionMode customPermissions")
+            .lean() as {
+              passwordChangedAt?: Date;
+              isActive?: boolean;
+              role?: UserRole;
+              permissionMode?: string;
+              customPermissions?: Record<string, string[]>;
+            } | null;
 
           if (!dbUser?.isActive) return null;
+
+          // Admin role/permission changes must reach live sessions — the token
+          // caches these at login, so refresh them on the same periodic check
+          // (previously an admin-converted employer got 403 on job posting
+          // until they logged out and back in).
+          token.role = dbUser.role ?? token.role;
+          token.permissionMode = dbUser.permissionMode ?? "role_default";
+          token.customPermissions = dbUser.customPermissions ?? undefined;
 
           if (dbUser.passwordChangedAt) {
             const changedAt = Math.floor(

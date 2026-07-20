@@ -283,6 +283,11 @@ Rules:
       });
       (updateData as Record<string, unknown>)["cv.originalUrl"] = uploaded.url;
       (updateData as Record<string, unknown>)["cv.parsedAt"] = new Date();
+      // New CV file → old ATS analysis is stale; clear it so the next check re-parses.
+      (updateData as Record<string, unknown>)["cv.atsScore"] = null;
+      (updateData as Record<string, unknown>)["cv.atsReport"] = null;
+      (updateData as Record<string, unknown>)["cv.rawText"] = null;
+      (updateData as Record<string, unknown>)["cv.atsAnalyzedAt"] = null;
     } catch {
       // Non-fatal — extraction data still saved even if file upload fails
       logger.warn("[CV Extract] File upload to Spaces failed — continuing without storing URL");

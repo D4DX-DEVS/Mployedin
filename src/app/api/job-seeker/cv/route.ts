@@ -57,7 +57,11 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
 
   await JobSeeker.updateOne(
     { userId: ctx.userId },
-    { $set: { "cv.originalUrl": result.url, "cv.parsedAt": new Date() } }
+    {
+      $set: { "cv.originalUrl": result.url, "cv.parsedAt": new Date() },
+      // New CV → old ATS analysis is stale. Clear it so the next check re-parses.
+      $unset: { "cv.atsScore": "", "cv.atsReport": "", "cv.rawText": "", "cv.atsAnalyzedAt": "" },
+    }
   );
 
   await logActivity({

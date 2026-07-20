@@ -6,33 +6,13 @@ import { validateBody } from "@/lib/validators";
 import { matchingWeightsSchema } from "@/lib/validators/misc";
 import { logActivity } from "@/lib/audit/log";
 
-interface MatchingWeights {
-  skills: number;
-  experience: number;
-  education: number;
-  location: number;
-  salary: number;
-  languages: number;
-  availability: number;
-  behaviorSignals: number;
-}
-
-const DEFAULT_WEIGHTS: MatchingWeights = {
-  skills: 27,
-  experience: 23,
-  education: 13,
-  location: 9,
-  salary: 9,
-  languages: 5,
-  availability: 4,
-  behaviorSignals: 10,
-};
+import { sanitizeMatchingWeights } from "@/lib/ai/matchingWeights";
 
 async function GET(_req: NextRequest, ctx: { userId: string }) {
   await connectDB();
   const employer = await Employer.findOne({ userId: ctx.userId }).select("matchingWeights").lean();
 
-  return NextResponse.json({ weights: employer?.matchingWeights ?? DEFAULT_WEIGHTS });
+  return NextResponse.json({ weights: sanitizeMatchingWeights(employer?.matchingWeights) });
 }
 
 async function PATCH(req: NextRequest, ctx: { userId: string }) {

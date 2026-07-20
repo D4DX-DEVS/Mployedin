@@ -5,6 +5,7 @@ import MatchingWeightTemplate from "@/models/MatchingWeightTemplate";
 import { validateBody } from "@/lib/validators";
 import { matchingWeightTemplateSchema } from "@/lib/validators/misc";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { sanitizeMatchingWeights } from "@/lib/ai/matchingWeights";
 import type { UserRole } from "@/types/user";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -18,7 +19,9 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx) {
   const templates = await MatchingWeightTemplate.find({ scope: "system" })
     .sort({ isDefault: -1, createdAt: -1 })
     .lean();
-  return NextResponse.json({ templates });
+  // Legacy templates may still carry the old 8-key weight shape.
+  const sanitized = templates.map((t) => ({ ...t, weights: sanitizeMatchingWeights(t.weights) }));
+  return NextResponse.json({ templates: sanitized });
 }
 
 /** POST — create a new system matching weight template */

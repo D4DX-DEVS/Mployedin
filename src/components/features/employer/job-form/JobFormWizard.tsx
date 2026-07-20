@@ -328,7 +328,7 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
       });
 
       if (res.ok) {
-        const data = (await res.json()) as { job: { _id: string } };
+        const data = (await res.json()) as { job: { _id: string; status?: string } };
         const jobId = draftId ?? String(data.job._id);
         // Mark as published so the unmount/beforeunload auto-draft save is skipped
         // (otherwise leaving this page would recreate the just-posted job as a draft).
@@ -337,6 +337,16 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
         try {
           clearDraft();
         } catch { /* ignore */ }
+        if (data.job.status === "pending_approval") {
+          // Unverified employers: the API reroutes publish to the moderation
+          // queue — say so instead of claiming the job is live.
+          toast.info(t("pendingApprovalTitle"), {
+            description: t("pendingApprovalDescription"),
+            duration: 8000,
+          });
+          router.push(`/${locale}/employer/jobs/${jobId}`);
+          return;
+        }
         toast.success(t("postSuccess"), {
           description: t("postSuccessDescription"),
           action: {

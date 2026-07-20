@@ -250,65 +250,35 @@ const WORKFLOW_TEMPLATES = [
 
 const MATCHING_WEIGHT_TEMPLATES = [
   {
-    name: "Balanced Default",
-    description: "Well-rounded scoring for general positions. Skills and experience lead.",
-    weights: { skills: 27, experience: 23, education: 13, location: 9, salary: 9, languages: 5, availability: 4, behaviorSignals: 10 },
+    name: "Balanced Hiring",
+    description: "Well-rounded scoring for general positions. Skills and relevant experience lead.",
+    weights: { skills: 40, experience: 30, education: 15, industryExperience: 10, preferredQualifications: 5 },
     tags: ["general", "default"],
     isDefault: true,
   },
   {
-    name: "Skills-Heavy (Tech)",
+    name: "Technical Role (Skills-Focused)",
     description: "Prioritizes technical skills match for engineering and developer roles.",
-    weights: { skills: 35, experience: 20, education: 8, location: 5, salary: 8, languages: 4, availability: 5, behaviorSignals: 15 },
+    weights: { skills: 50, experience: 25, education: 10, industryExperience: 10, preferredQualifications: 5 },
     tags: ["tech", "engineering", "software"],
   },
   {
-    name: "Experience-First (Senior)",
-    description: "Emphasizes years of experience for senior and leadership positions.",
-    weights: { skills: 20, experience: 35, education: 10, location: 7, salary: 8, languages: 5, availability: 5, behaviorSignals: 10 },
+    name: "Senior / Leadership (Experience-Focused)",
+    description: "Emphasizes relevant and industry experience for senior and leadership positions.",
+    weights: { skills: 25, experience: 40, education: 10, industryExperience: 20, preferredQualifications: 5 },
     tags: ["senior", "leadership", "management"],
   },
   {
-    name: "Education-Focused (Academic)",
-    description: "Weights education heavily for research, academic, and medical roles.",
-    weights: { skills: 18, experience: 15, education: 30, location: 5, salary: 7, languages: 10, availability: 5, behaviorSignals: 10 },
-    tags: ["academic", "research", "medical"],
+    name: "Graduate / Entry Level",
+    description: "Skills and education matter most when candidates have little work history.",
+    weights: { skills: 45, experience: 10, education: 30, industryExperience: 5, preferredQualifications: 10 },
+    tags: ["graduate", "entry-level", "internship"],
   },
   {
-    name: "Location-Priority (On-site)",
-    description: "Location match is critical for on-site and field roles.",
-    weights: { skills: 22, experience: 18, education: 10, location: 25, salary: 8, languages: 5, availability: 4, behaviorSignals: 8 },
-    tags: ["onsite", "field", "local"],
-  },
-  {
-    name: "Culture Fit (Startup)",
-    description: "High weight on behavior signals and culture fit for startup environments.",
-    weights: { skills: 22, experience: 15, education: 5, location: 8, salary: 8, languages: 5, availability: 7, behaviorSignals: 30 },
-    tags: ["startup", "culture", "team-fit"],
-  },
-  {
-    name: "Language-Critical (International)",
-    description: "For roles requiring specific language proficiency, like translation or international sales.",
-    weights: { skills: 20, experience: 15, education: 10, location: 8, salary: 7, languages: 25, availability: 5, behaviorSignals: 10 },
-    tags: ["international", "multilingual", "translation"],
-  },
-  {
-    name: "Fast-Hire (High Volume)",
-    description: "Availability and basic skills matter most for quick-fill positions.",
-    weights: { skills: 20, experience: 15, education: 5, location: 10, salary: 10, languages: 5, availability: 25, behaviorSignals: 10 },
-    tags: ["high-volume", "retail", "hospitality"],
-  },
-  {
-    name: "Salary-Sensitive (Budget Roles)",
-    description: "When budget is a hard constraint and salary alignment is critical.",
-    weights: { skills: 22, experience: 18, education: 10, location: 8, salary: 25, languages: 5, availability: 4, behaviorSignals: 8 },
-    tags: ["budget", "cost-sensitive"],
-  },
-  {
-    name: "Remote-Optimized",
-    description: "For distributed teams — languages, availability, and behavior signals get higher weight.",
-    weights: { skills: 25, experience: 18, education: 8, location: 3, salary: 8, languages: 12, availability: 12, behaviorSignals: 14 },
-    tags: ["remote", "distributed", "async"],
+    name: "Regulated / Licensed (Education-Focused)",
+    description: "Weights education, licenses, and certifications heavily for medical, legal, and compliance roles.",
+    weights: { skills: 25, experience: 25, education: 35, industryExperience: 10, preferredQualifications: 5 },
+    tags: ["academic", "medical", "legal", "compliance"],
   },
 ];
 
@@ -323,21 +293,29 @@ async function main() {
   const existingWorkflows = await WorkflowTemplate.countDocuments({ scope: "system" });
   const existingWeights = await MatchingWeightTemplate.countDocuments({ scope: "system" });
 
-  if (existingWorkflows > 0 || existingWeights > 0) {
+  // node scripts/seed-templates.mjs --reset-weights → replace system weight
+  // templates (e.g. after the 8-key → 5-key weight model migration).
+  const resetWeights = process.argv.includes("--reset-weights") && existingWeights > 0;
+  if (resetWeights) {
+    console.log(`Deleting ${existingWeights} old system weight templates...`);
+    await MatchingWeightTemplate.deleteMany({ scope: "system" });
+  } else if (existingWorkflows > 0 || existingWeights > 0) {
     console.log(`Found ${existingWorkflows} workflow templates and ${existingWeights} weight templates.`);
-    console.log("Skipping seed to avoid duplicates. Delete existing system templates first to re-seed.");
+    console.log("Skipping seed to avoid duplicates. Re-run with --reset-weights to replace system weight templates.");
     await mongoose.disconnect();
     process.exit(0);
   }
 
-  console.log("Seeding workflow templates...");
-  for (const wt of WORKFLOW_TEMPLATES) {
-    await WorkflowTemplate.create({
-      ...wt,
-      scope: "system",
-      createdBy: SYSTEM_USER_ID,
-    });
-    console.log(`  ✓ ${wt.name}`);
+  if (existingWorkflows === 0) {
+    console.log("Seeding workflow templates...");
+    for (const wt of WORKFLOW_TEMPLATES) {
+      await WorkflowTemplate.create({
+        ...wt,
+        scope: "system",
+        createdBy: SYSTEM_USER_ID,
+      });
+      console.log(`  ✓ ${wt.name}`);
+    }
   }
 
   console.log("Seeding matching weight templates...");

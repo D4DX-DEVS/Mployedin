@@ -3,6 +3,7 @@ import connectDB from "@/lib/db/mongoose";
 import Application from "@/models/Application";
 import Interview from "@/models/Interview";
 import Job from "@/models/Job";
+import Placement from "@/models/Placement";
 import User from "@/models/User";
 import {
   Activity,
@@ -270,6 +271,12 @@ function formatStatusLabel(status: string | null | undefined, t: DashboardTransl
       return t("statuses.offer");
     case "hired":
       return t("statuses.hired");
+    case "shortlisted":
+      return t("statuses.shortlisted");
+    case "rejected":
+      return t("statuses.rejected");
+    case "withdrawn":
+      return t("statuses.withdrawn");
     default:
       return t("statuses.unknown");
   }
@@ -357,13 +364,13 @@ async function getFastStats(locale: string): Promise<AdminStats> {
       role: "employer",
       $or: [{ lastLogin: { $lt: sevenDaysAgo } }, { lastLogin: { $exists: false } }, { lastLogin: null }],
     }),
-    Job.countDocuments({ status: "active" }),
-    Job.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
-    Job.countDocuments({ createdAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo } }),
+    Job.countDocuments({ status: "active", deletedAt: null }),
+    Job.countDocuments({ createdAt: { $gte: thirtyDaysAgo }, deletedAt: null }),
+    Job.countDocuments({ createdAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo }, deletedAt: null }),
     Application.countDocuments(),
     Application.countDocuments(getApplicationDateFilter(thirtyDaysAgo)),
     Application.countDocuments(getApplicationDateFilter(sixtyDaysAgo, thirtyDaysAgo)),
-    Application.countDocuments({ status: "hired" }),
+    Placement.countDocuments(),
     Interview.countDocuments(),
     User.aggregate<UsersByRoleRow>([
       { $group: { _id: "$role", count: { $sum: 1 } } },
@@ -485,7 +492,14 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
   const applicationsPerActiveJob = stats.activeJobs > 0 ? stats.totalApplications / stats.activeJobs : 0;
   const placementRate = stats.totalApplications > 0 ? (stats.totalPlacements / stats.totalApplications) * 100 : 0;
 
-  const roleDistribution = stats.usersByRole.map((role, index) => {
+  const KNOWN_ROLES = new Set(["admin", "super_agent", "agent", "employer", "job_seeker"]);
+  const knownRoles = stats.usersByRole.filter((role) => KNOWN_ROLES.has(String(role._id)));
+  const otherCount = stats.usersByRole
+    .filter((role) => !KNOWN_ROLES.has(String(role._id)))
+    .reduce((sum, role) => sum + role.count, 0);
+  const mergedRoles = otherCount > 0 ? [...knownRoles, { _id: null, count: otherCount }] : knownRoles;
+
+  const roleDistribution = mergedRoles.map((role, index) => {
     const percentage = stats.totalUsers > 0 ? Math.round((role.count / stats.totalUsers) * 100) : 0;
 
     return {

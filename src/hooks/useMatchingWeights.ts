@@ -5,11 +5,8 @@ export interface MatchingWeights {
   skills: number;
   experience: number;
   education: number;
-  location: number;
-  salary: number;
-  languages: number;
-  availability: number;
-  behaviorSignals: number;
+  industryExperience: number;
+  preferredQualifications: number;
 }
 
 interface MatchingWeightsResponse {

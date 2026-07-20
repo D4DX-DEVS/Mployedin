@@ -6,11 +6,8 @@ export interface IMatchingWeightValues {
   skills: number;
   experience: number;
   education: number;
-  location: number;
-  salary: number;
-  languages: number;
-  availability: number;
-  behaviorSignals: number;
+  industryExperience: number;
+  preferredQualifications: number;
 }
 
 export interface IMatchingWeightTemplate extends Document {
@@ -43,11 +40,8 @@ const MatchingWeightTemplateSchema = new Schema<IMatchingWeightTemplate>(
       skills: { type: Number, required: true, min: 0, max: 100 },
       experience: { type: Number, required: true, min: 0, max: 100 },
       education: { type: Number, required: true, min: 0, max: 100 },
-      location: { type: Number, required: true, min: 0, max: 100 },
-      salary: { type: Number, required: true, min: 0, max: 100 },
-      languages: { type: Number, required: true, min: 0, max: 100 },
-      availability: { type: Number, required: true, min: 0, max: 100 },
-      behaviorSignals: { type: Number, required: true, min: 0, max: 100 },
+      industryExperience: { type: Number, required: true, min: 0, max: 100 },
+      preferredQualifications: { type: Number, required: true, min: 0, max: 100 },
     },
     tags: [{ type: String, maxlength: 50 }],
     isDefault: { type: Boolean, default: false },

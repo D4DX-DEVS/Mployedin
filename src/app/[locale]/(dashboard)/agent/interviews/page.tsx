@@ -343,12 +343,12 @@ export default function AgentInterviewsPage() {
           {/* Status */}
           <div>
             <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{tc("status")}</label>
-            <Select value={status} onValueChange={setStatus}>
+            <Select value={status || "all"} onValueChange={(v) => setStatus(v === "all" ? "" : v)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {STATUS_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                {STATUS_OPTIONS.map((o) => <SelectItem key={o.value || "all"} value={o.value || "all"}>{o.label}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -384,12 +384,12 @@ export default function AgentInterviewsPage() {
           {/* Type */}
           <div>
             <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("filterType")}</label>
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <Select value={typeFilter || "all"} onValueChange={(v) => setTypeFilter(v === "all" ? "" : v)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {TYPE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                {TYPE_OPTIONS.map((o) => <SelectItem key={o.value || "all"} value={o.value || "all"}>{o.label}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -397,12 +397,12 @@ export default function AgentInterviewsPage() {
           {/* Outcome */}
           <div>
             <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("filterOutcome")}</label>
-            <Select value={outcomeFilter} onValueChange={setOutcomeFilter}>
+            <Select value={outcomeFilter || "all"} onValueChange={(v) => setOutcomeFilter(v === "all" ? "" : v)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {OUTCOME_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                {OUTCOME_OPTIONS.map((o) => <SelectItem key={o.value || "all"} value={o.value || "all"}>{o.label}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

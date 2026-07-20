@@ -6,6 +6,7 @@ import Employer from "@/models/Employer";
 import { validateBody } from "@/lib/validators";
 import { matchingWeightTemplateSchema } from "@/lib/validators/misc";
 import { logActivity } from "@/lib/audit/log";
+import { sanitizeMatchingWeights } from "@/lib/ai/matchingWeights";
 import type { UserRole } from "@/types/user";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -32,7 +33,9 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx) {
     .sort({ scope: 1, isDefault: -1, createdAt: -1 })
     .lean();
 
-  return NextResponse.json({ templates });
+  // Legacy templates may still carry the old 8-key weight shape.
+  const sanitized = templates.map((t) => ({ ...t, weights: sanitizeMatchingWeights(t.weights) }));
+  return NextResponse.json({ templates: sanitized });
 }
 
 /** POST — employer creates a custom matching weight template */

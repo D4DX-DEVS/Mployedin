@@ -9,12 +9,9 @@ import type { UserRole } from "@/models/User";
 import { validateBody } from "@/lib/validators";
 import { matchingWeightsSchema } from "@/lib/validators/misc";
 
-interface AuthCtx { userId: string; role: UserRole; locale: string; }
+import { sanitizeMatchingWeights } from "@/lib/ai/matchingWeights";
 
-const DEFAULT_WEIGHTS = {
-  skills: 27, experience: 23, education: 13, location: 9,
-  salary: 9, languages: 5, availability: 4, behaviorSignals: 10,
-};
+interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
 // GET /api/jobs/[id]/matching-weights — get per-job weights (falls back to employer default)
 async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
@@ -26,13 +23,13 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
 
   // If job has its own weights, return them
   if (job.matchingWeights && Object.keys(job.matchingWeights).length > 0) {
-    return NextResponse.json({ weights: job.matchingWeights, source: "job" });
+    return NextResponse.json({ weights: sanitizeMatchingWeights(job.matchingWeights), source: "job" });
   }
 
   // Fall back to employer-level weights
   const employer = await Employer.findById(job.employerId).select("matchingWeights").lean();
   return NextResponse.json({
-    weights: employer?.matchingWeights ?? DEFAULT_WEIGHTS,
+    weights: sanitizeMatchingWeights(employer?.matchingWeights),
     source: "employer",
   });
 }

@@ -125,7 +125,7 @@ export default function CmsOverviewPage() {
               <p className="mt-1 text-lg font-semibold text-foreground">
                 {loading ? <span className="inline-block h-6 w-10 animate-pulse rounded bg-muted" /> : totalRecords.toLocaleString()} {t("recordsText")}
               </p>
-              <p className="text-xs text-muted-foreground">{allCards.length} {t("contentModulesLabel", { count: allCards.length })}</p>
+              <p className="text-xs text-muted-foreground">{t("contentModulesLabel", { count: allCards.length })}</p>
             </div>
           </div>
         </div>

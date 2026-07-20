@@ -1376,7 +1376,6 @@ export default function EmployerCandidatesPage() {
           gaps={viewingCv.gaps}
           jobSeekerId={viewingCv.jobSeekerId}
           jobId={selectedJob || undefined}
-          initialAtsScore={viewingCv.atsScore}
         />
       )}
 

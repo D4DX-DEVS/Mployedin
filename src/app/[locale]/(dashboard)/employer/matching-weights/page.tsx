@@ -17,36 +17,27 @@ import {
 } from "@/hooks/useMatchingWeightTemplates";
 
 const DEFAULT_WEIGHTS: MatchingWeights = {
-  skills: 27,
-  experience: 23,
-  education: 13,
-  location: 9,
-  salary: 9,
-  languages: 5,
-  availability: 4,
-  behaviorSignals: 10,
+  skills: 40,
+  experience: 30,
+  education: 15,
+  industryExperience: 10,
+  preferredQualifications: 5,
 };
 
 const WEIGHT_LABEL_KEYS: Record<keyof MatchingWeights, string> = {
   skills: "skillsMatch",
-  experience: "yearsOfExperience",
-  education: "educationLevel",
-  location: "locationPreference",
-  salary: "salaryExpectation",
-  languages: "languageMatch",
-  availability: "availability",
-  behaviorSignals: "behaviorSignals",
+  experience: "relevantExperience",
+  education: "educationCerts",
+  industryExperience: "industryExperience",
+  preferredQualifications: "preferredQualifications",
 };
 
 const WEIGHT_DESC_KEYS: Record<keyof MatchingWeights, string> = {
   skills: "skillsMatchDesc",
-  experience: "yearsOfExperienceDesc",
-  education: "educationLevelDesc",
-  location: "locationPreferenceDesc",
-  salary: "salaryExpectationDesc",
-  languages: "languageMatchDesc",
-  availability: "availabilityDesc",
-  behaviorSignals: "behaviorSignalsDesc",
+  experience: "relevantExperienceDesc",
+  education: "educationCertsDesc",
+  industryExperience: "industryExperienceDesc",
+  preferredQualifications: "preferredQualificationsDesc",
 };
 
 export default function EmployerMatchingWeightsPage() {
@@ -66,9 +57,17 @@ export default function EmployerMatchingWeightsPage() {
   const [templateName, setTemplateName] = useState("");
   const [templateSaved, setTemplateSaved] = useState(false);
 
-  // Seed local state from server data
+  // Seed local state from server data. Pick only known keys so a stale
+  // legacy 8-key payload can never leak unknown keys into render.
   useEffect(() => {
-    if (serverWeights) setWeights(serverWeights);
+    if (!serverWeights) return;
+    setWeights((prev) => {
+      const next = { ...DEFAULT_WEIGHTS };
+      for (const k of Object.keys(next) as Array<keyof MatchingWeights>) {
+        if (typeof serverWeights[k] === "number") next[k] = serverWeights[k];
+      }
+      return { ...prev, ...next };
+    });
   }, [serverWeights]);
 
   useEffect(() => {

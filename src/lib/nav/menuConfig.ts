@@ -1194,37 +1194,47 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             description: "Overview & key metrics",
             descriptionAr: "نظرة عامة والمقاييس الرئيسية",
           },
+          // Daily-drivers are top-level — one click, no flyout. The "Hiring"
+          // group keeps only the less-frequent pipeline pages.
           {
-            title: "Hiring",
-            titleAr: "التوظيف",
+            title: "Jobs",
+            titleAr: "الوظائف",
             href: p("/employer/jobs"),
             icon: "Briefcase",
-            description: "Manage hiring pipeline",
-            descriptionAr: "إدارة عملية التوظيف",
+            description: "Post & manage job listings",
+            descriptionAr: "نشر وإدارة الوظائف",
+          },
+          {
+            title: "Applications",
+            titleAr: "الطلبات",
+            href: p("/employer/applications"),
+            icon: "FileText",
+            description: "Review candidate applications",
+            descriptionAr: "مراجعة طلبات المرشحين",
+          },
+          {
+            title: "Interviews",
+            titleAr: "المقابلات",
+            href: p("/employer/interviews"),
+            icon: "Calendar",
+            description: "Schedule & track interviews",
+            descriptionAr: "جدولة وتتبع المقابلات",
+          },
+          {
+            title: "Candidates",
+            titleAr: "المرشحون",
+            href: p("/employer/candidates"),
+            icon: "UserSearch",
+            description: "Browse candidates & talent pools",
+            descriptionAr: "تصفح المرشحين ومجموعات المواهب",
             children: [
               {
-                title: "Jobs",
-                titleAr: "الوظائف",
-                href: p("/employer/jobs"),
-                icon: "Briefcase",
-                description: "Post & manage job listings",
-                descriptionAr: "نشر وإدارة الوظائف",
-              },
-              {
-                title: "Candidates",
-                titleAr: "المرشحون",
+                title: "All Candidates",
+                titleAr: "كل المرشحين",
                 href: p("/employer/candidates"),
                 icon: "UserSearch",
                 description: "Browse & search candidates",
                 descriptionAr: "تصفح والبحث عن المرشحين",
-              },
-              {
-                title: "Applications",
-                titleAr: "الطلبات",
-                href: p("/employer/applications"),
-                icon: "FileText",
-                description: "Review candidate applications",
-                descriptionAr: "مراجعة طلبات المرشحين",
               },
               {
                 title: "Talent Pools",
@@ -1234,14 +1244,16 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 description: "Saved candidate pools for future roles",
                 descriptionAr: "مجموعات المرشحين المحفوظة للوظائف المستقبلية",
               },
-              {
-                title: "Interviews",
-                titleAr: "المقابلات",
-                href: p("/employer/interviews"),
-                icon: "Calendar",
-                description: "Schedule & track interviews",
-                descriptionAr: "جدولة وتتبع المقابلات",
-              },
+            ],
+          },
+          {
+            title: "Hiring",
+            titleAr: "التوظيف",
+            href: p("/employer/offers"),
+            icon: "UserCheck",
+            description: "Offers, placements & background checks",
+            descriptionAr: "العروض والتوظيفات والتحقق من الخلفية",
+            children: [
               {
                 title: "Offers",
                 titleAr: "العروض",
@@ -1277,20 +1289,20 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             descriptionAr: "أدوات التوظيف والأتمتة",
             children: [
               {
-                title: "Default Workflow",
-                titleAr: "سير العمل الافتراضي",
+                title: "Hiring Workflows",
+                titleAr: "مسارات التوظيف",
                 href: p("/employer/workflow"),
                 icon: "GitBranch",
                 description: "Default pipeline for new jobs (override per job)",
                 descriptionAr: "المسار الافتراضي للوظائف الجديدة (يمكن تخصيصه لكل وظيفة)",
               },
               {
-                title: "Default Matching Weights",
-                titleAr: "أوزان المطابقة الافتراضية",
+                title: "AI Matching Preferences",
+                titleAr: "تفضيلات المطابقة الذكية",
                 href: p("/employer/matching-weights"),
                 icon: "SlidersHorizontal",
-                description: "Default AI scoring for new jobs (override per job)",
-                descriptionAr: "الأوزان الافتراضية للمطابقة الذكية (يمكن تخصيصها لكل وظيفة)",
+                description: "How AI weighs skills, experience & fit (override per job)",
+                descriptionAr: "كيف يوازن الذكاء الاصطناعي المهارات والخبرة (يمكن تخصيصها لكل وظيفة)",
               },
               {
                 title: "Communication Templates",
@@ -1319,22 +1331,13 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             ],
           },
           {
-            title: "Marketing",
-            titleAr: "التسويق",
+            // ponytail: single-item "Marketing" group flattened to a direct link
+            title: "Job Posters",
+            titleAr: "ملصقات الوظائف",
             href: p("/employer/my-posters"),
             icon: "Image",
-            description: "Recruitment marketing tools",
-            descriptionAr: "أدوات التسويق للتوظيف",
-            children: [
-              {
-                title: "My Posters",
-                titleAr: "ملصقاتي",
-                href: p("/employer/my-posters"),
-                icon: "Image",
-                description: "AI-generated recruitment posters",
-                descriptionAr: "ملصقات التوظيف المولدة بالذكاء الاصطناعي",
-              },
-            ],
+            description: "AI-generated recruitment posters",
+            descriptionAr: "ملصقات التوظيف المولدة بالذكاء الاصطناعي",
           },
           {
             title: "Calendar",
@@ -1343,14 +1346,6 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             icon: "CalendarDays",
             description: "Interview calendar view",
             descriptionAr: "عرض تقويم المقابلات",
-          },
-          {
-            title: "Payment Setup",
-            titleAr: "إعداد الدفع",
-            href: p("/employer/payment-setup"),
-            icon: "CreditCard",
-            description: "Configure payment gateway",
-            descriptionAr: "إعداد بوابة الدفع",
           },
           {
             title: "Analytics",
@@ -1378,12 +1373,12 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
           },
           {
             // ponytail: "Team Members" invite child removed — feature disabled,
-            // see EMPLOYER-FIX-PLAN E6. Activity/Agent History children remain
-            // (unaffected, standalone read-only pages).
-            title: "Team",
-            titleAr: "الفريق",
+            // see EMPLOYER-FIX-PLAN E6. Group renamed "Activity" since it only
+            // holds logs; restore "Team" name when member management ships.
+            title: "Activity",
+            titleAr: "النشاط",
             href: p("/employer/team/activity-logs"),
-            icon: "Users",
+            icon: "Activity",
             description: "Team activity & history",
             descriptionAr: "نشاط الفريق وسجله",
             children: [
@@ -1436,6 +1431,14 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "FileText",
                 description: "View invoices and payment history",
                 descriptionAr: "عرض الفواتير وسجل الدفعات",
+              },
+              {
+                title: "Payment Setup",
+                titleAr: "إعداد الدفع",
+                href: p("/employer/payment-setup"),
+                icon: "CreditCard",
+                description: "Configure payment gateway",
+                descriptionAr: "إعداد بوابة الدفع",
               },
             ],
           },

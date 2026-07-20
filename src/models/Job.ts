@@ -67,11 +67,8 @@ export interface IMatchingWeights {
   skills: number;
   experience: number;
   education: number;
-  location: number;
-  salary: number;
-  languages: number;
-  availability: number;
-  behaviorSignals: number;
+  industryExperience: number;
+  preferredQualifications: number;
 }
 
 export type ScreeningQuestionType = "text" | "textarea" | "select" | "checkbox" | "radio" | "number" | "date";
@@ -212,11 +209,8 @@ const JobSchema = new Schema<IJob>(
       skills: Number,
       experience: Number,
       education: Number,
-      location: Number,
-      salary: Number,
-      languages: Number,
-      availability: Number,
-      behaviorSignals: Number,
+      industryExperience: Number,
+      preferredQualifications: Number,
     },
     screeningQuestions: [{
       id: { type: String, required: true },
@@ -284,7 +278,12 @@ JobSchema.index({ "location.country": 1 });
 JobSchema.index({ "requirements.skills": 1 });
 JobSchema.index({ createdAt: -1 });
 JobSchema.index({ isFeatured: -1, createdAt: -1 });
-JobSchema.index({ title: "text", description: "text", tags: "text" });
+// Must match lib/db/indexes.ts `jobs_text_search` — Mongo allows only one text
+// index per collection, so a mismatch here silently blocks the weighted one.
+JobSchema.index(
+  { title: "text", description: "text", "requirements.skills": "text" },
+  { name: "jobs_text_search", weights: { title: 10, "requirements.skills": 5, description: 1 } }
+);
 JobSchema.index(
   { status: 1, "poster.approvalStatus": 1, createdAt: -1 },
   { partialFilterExpression: { status: "active" } }

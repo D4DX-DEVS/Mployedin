@@ -25,7 +25,8 @@ import type { ExportColumn } from "@/lib/export";
 interface Interview {
   _id: string;
   scheduledAt: string;
-  status: "scheduled" | "completed" | "cancelled" | "no_show";
+  status: "scheduled" | "confirmed" | "rescheduled" | "completed" | "cancelled" | "no_show";
+  outcome?: string;
   type: string;
   location?: string;
   meetLink?: string;
@@ -53,8 +54,8 @@ function computeAiInsights(interviews: Interview[], t: ReturnType<typeof useTran
   const total = interviews.length;
   const completed = interviews.filter((i) => i.status === "completed").length;
   const cancelled = interviews.filter((i) => i.status === "cancelled").length;
-  const noShow = interviews.filter((i) => i.status === "no_show").length;
-  const scheduled = interviews.filter((i) => i.status === "scheduled").length;
+  const noShow = interviews.filter((i) => i.outcome === "no_show").length;
+  const scheduled = interviews.filter((i) => ["scheduled", "confirmed", "rescheduled"].includes(i.status)).length;
 
   const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
   insights.push({
@@ -85,7 +86,7 @@ function computeAiInsights(interviews: Interview[], t: ReturnType<typeof useTran
   }
 
   if (scheduled > 0) {
-    const upcoming = interviews.filter((i) => i.status === "scheduled" && new Date(i.scheduledAt) > new Date());
+    const upcoming = interviews.filter((i) => ["scheduled", "confirmed", "rescheduled"].includes(i.status) && new Date(i.scheduledAt) > new Date());
     const overdueCount = scheduled - upcoming.length;
     insights.push({
       icon: "clock",
@@ -130,6 +131,8 @@ const TYPE_ICON = { video: Video, offline: MapPin, hybrid: Blend } as const;
 export default function AdminInterviewOversightPage() {
   const t = useTranslations("adminInterviews");
   const [interviews, setInterviews] = useState<Interview[]>([]);
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
+  const [serverNoShow, setServerNoShow] = useState<number | null>(null);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -231,6 +234,8 @@ export default function AdminInterviewOversightPage() {
       if (res.ok) {
         const data = await res.json();
         setInterviews(data.interviews ?? []);
+        setStatusCounts(data.statusCounts ?? {});
+        setServerNoShow(typeof data.noShowCount === "number" ? data.noShowCount : null);
         updateTotal(data.total ?? 0);
       } else {
         const err = await res.json().catch(() => ({}));
@@ -261,11 +266,15 @@ export default function AdminInterviewOversightPage() {
     title: "Interviews",
   });
 
-  // Compute hero stats from loaded data
-  const scheduledCount = interviews.filter((i) => i.status === "scheduled").length;
-  const completedCount = interviews.filter((i) => i.status === "completed").length;
-  const cancelledCount = interviews.filter((i) => i.status === "cancelled").length;
-  const noShowCount = interviews.filter((i) => i.status === "no_show").length;
+  // Platform-wide hero stats from the API; fall back to current-page data.
+  // "Upcoming" groups scheduled + confirmed + rescheduled; no-shows come from outcome.
+  const hasServerCounts = Object.keys(statusCounts).length > 0;
+  const scheduledCount = hasServerCounts
+    ? (statusCounts.scheduled ?? 0) + (statusCounts.confirmed ?? 0) + (statusCounts.rescheduled ?? 0)
+    : interviews.filter((i) => ["scheduled", "confirmed", "rescheduled"].includes(i.status)).length;
+  const completedCount = hasServerCounts ? (statusCounts.completed ?? 0) : interviews.filter((i) => i.status === "completed").length;
+  const cancelledCount = hasServerCounts ? (statusCounts.cancelled ?? 0) : interviews.filter((i) => i.status === "cancelled").length;
+  const noShowCount = serverNoShow ?? interviews.filter((i) => i.outcome === "no_show").length;
 
   return (
     <div className="page-container space-y-6">

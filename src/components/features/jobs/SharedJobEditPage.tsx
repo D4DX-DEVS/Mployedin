@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
   ArrowLeft, Sparkles, Plus, X, ChevronDown, ChevronUp,
   Briefcase, MapPin, DollarSign, Settings2, Tags,
@@ -503,8 +504,15 @@ export function SharedJobEditPage({
     if (publish) payload.status = "active";
 
     try {
-      await updateJob.mutateAsync({ jobId: id, updates: payload });
+      const result = (await updateJob.mutateAsync({ jobId: id, updates: payload })) as { job?: { status?: string } };
       setSubmitState("saved");
+      // Unverified employers get rerouted to the moderation queue by the API —
+      // tell them explicitly instead of silently redirecting.
+      if (publish && result?.job?.status === "pending_approval") {
+        toast.info(t("pendingApprovalTitle"), { description: t("pendingApprovalDescription"), duration: 8000 });
+      } else if (publish) {
+        toast.success(t("publishedTitle"));
+      }
       setTimeout(() => router.push(afterSaveHref), 900);
     } catch (err) {
       setGlobalError(err instanceof Error ? err.message : "Failed to update job");

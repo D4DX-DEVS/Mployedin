@@ -175,6 +175,16 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
 
   // Permission updates
   if (permissionMode !== undefined) {
+    // Custom mode with no grants would deny every resource — lock the user out.
+    if (
+      permissionMode === "custom" &&
+      (!customPermissions || Object.keys(customPermissions as Record<string, unknown>).length === 0)
+    ) {
+      return NextResponse.json(
+        { error: "Custom permission mode requires at least one permission grant." },
+        { status: 400 }
+      );
+    }
     updateData.permissionMode = permissionMode;
     if (permissionMode === "custom" && customPermissions) {
       updateData.customPermissions = customPermissions;

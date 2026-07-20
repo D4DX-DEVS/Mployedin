@@ -144,6 +144,7 @@ export default function AdminJobsPage() {
   const { locale } = useParams<{ locale: string }>();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
+  const [approvalCounts, setApprovalCounts] = useState<Record<string, number>>({});
   const [serverApplicants, setServerApplicants] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -213,6 +214,7 @@ export default function AdminJobsPage() {
       const data = await res.json();
       setJobs(data.jobs ?? data.items ?? []);
       setStatusCounts(data.statusCounts ?? {});
+      setApprovalCounts(data.approvalCounts ?? {});
       setServerApplicants(typeof data.totalApplicants === "number" ? data.totalApplicants : null);
       updateTotal(data.pagination?.total ?? data.total ?? data.totalCount ?? ((data.totalPages ?? 1) * limit));
     } catch (error: unknown) {
@@ -263,7 +265,7 @@ export default function AdminJobsPage() {
   };
 
   const activeJobs = statusCounts.active ?? jobs.filter((j) => j.status === "active").length;
-  const pendingJobs = statusCounts.pending_approval ?? jobs.filter((j) => j.status === "pending_approval").length;
+  const pendingJobs = approvalCounts.pending ?? statusCounts.pending_approval ?? jobs.filter((j) => j.status === "pending_approval").length;
   const totalApplicants = serverApplicants ?? jobs.reduce((sum, j) => sum + (j.applicantsCount ?? 0), 0);
 
   const hasActiveFilters = search || status !== "all" || selectedEmployer !== "all" || selectedAgent !== "all" || workMode !== "all" || employmentType !== "all" || locationFilter || skillsFilter;

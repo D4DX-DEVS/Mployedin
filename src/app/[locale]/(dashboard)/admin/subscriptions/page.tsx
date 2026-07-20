@@ -79,6 +79,7 @@ interface OverviewStats {
 interface StatsData {
   overview: OverviewStats;
   expiringSoon: { _id: string }[];
+  expiringSoonCount?: number;
 }
 
 async function fetchStats(): Promise<StatsData> {
@@ -122,7 +123,7 @@ export default function AdminSubscriptionsPage() {
   });
 
   const overview = stats?.overview;
-  const expiringSoonCount = stats?.expiringSoon?.length ?? 0;
+  const expiringSoonCount = stats?.expiringSoonCount ?? stats?.expiringSoon?.length ?? 0;
 
   return (
     <div className="page-container space-y-6">

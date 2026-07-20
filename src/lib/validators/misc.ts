@@ -74,11 +74,8 @@ const matchingWeightValuesSchema = z.object({
   skills: z.number().min(0).max(100),
   experience: z.number().min(0).max(100),
   education: z.number().min(0).max(100),
-  location: z.number().min(0).max(100),
-  salary: z.number().min(0).max(100),
-  languages: z.number().min(0).max(100),
-  availability: z.number().min(0).max(100),
-  behaviorSignals: z.number().min(0).max(100),
+  industryExperience: z.number().min(0).max(100),
+  preferredQualifications: z.number().min(0).max(100),
 });
 
 /** Create/Update a matching weight template */

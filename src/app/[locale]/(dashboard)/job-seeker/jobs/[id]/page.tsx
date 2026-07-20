@@ -119,7 +119,28 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
     .lean()
     .catch(() => null);
 
-  if (!job || job.status !== "active") notFound();
+  if (!job) notFound();
+
+  if (job.status !== "active") {
+    // Job exists but is under review, paused, closed or expired — show a
+    // friendly page instead of a raw 404 (metadata above already resolves).
+    return (
+      <div className="mx-auto flex max-w-lg flex-col items-center gap-4 px-4 py-24 text-center">
+        <h1 className="text-2xl font-semibold">{job.title}</h1>
+        <p className="text-muted-foreground">
+          {job.status === "pending_approval"
+            ? t("notAvailablePending")
+            : t("notAvailableClosed")}
+        </p>
+        <Link
+          href={`/${locale}/job-seeker/jobs`}
+          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+        >
+          {t("browseOtherJobs")}
+        </Link>
+      </div>
+    );
+  }
 
   const employer = job.employerId as PopulatedEmployer | null;
 

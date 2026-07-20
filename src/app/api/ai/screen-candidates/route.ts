@@ -11,6 +11,7 @@ import { Application } from "@/models/Application";
 import { JobSeeker } from "@/models/JobSeeker";
 import { validateBody } from "@/lib/validators";
 import { aiScreenCandidatesSchema } from "@/lib/validators/ai";
+import { resolveJobMatchingWeights, formatWeightsForPrompt } from "@/lib/ai/matchingWeights";
 import { logActivity } from "@/lib/audit/log";
 import logger from "@/lib/logger";
 
@@ -60,12 +61,17 @@ export async function POST(req: NextRequest) {
     await connectDB();
 
     const job = await Job.findById(jobId)
-      .select("title requirements salary location employerId")
+      .select("title requirements salary location employerId matchingWeights")
       .lean();
 
     if (!job) {
       return NextResponse.json({ error: "Job not found" }, { status: 404 });
     }
+
+    const weights = await resolveJobMatchingWeights({
+      jobWeights: (job as { matchingWeights?: unknown }).matchingWeights,
+      employerId: (job as { employerId?: unknown }).employerId as string | undefined,
+    });
 
     // Ownership check — user must be the employer or admin
     const userId = (session.user as unknown as { id: string }).id;
@@ -140,12 +146,8 @@ Experience: ${jobReqs.requirements?.experienceMin ?? 0}–${jobReqs.requirements
 CANDIDATES:
 ${JSON.stringify(candidateSummaries, null, 2)}
 
-Scoring criteria:
-- Required skills match: 40%
-- Experience level: 25%
-- Education: 15%
-- Languages: 10%
-- Other factors: 10%
+Scoring criteria (the employer's configured priorities — weight each accordingly):
+${formatWeightsForPrompt(weights)}
 
 For each candidate provide a JSON object with:
 - id (from input)

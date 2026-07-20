@@ -14,6 +14,7 @@ import Job from "@/models/Job";
 import JobSeeker from "@/models/JobSeeker";
 import { generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
 import { AI_TOKEN_LIMITS, redactPII, sanitizeAIInput } from "@/lib/ai/sanitize";
+import { resolveJobMatchingWeights, formatWeightsForPrompt } from "@/lib/ai/matchingWeights";
 
 function sanitizeAiList(values: string[] | undefined, maxItems = 20, maxLength = 80): string {
   const cleaned = (values ?? [])
@@ -50,13 +51,18 @@ export const aiScreenApplication = inngest.createFunction(
 
       const [job, seeker] = await Promise.all([
         Job.findById(application.jobId)
-          .select("title description requirements location")
+          .select("title description requirements location employerId matchingWeights")
           .lean(),
         JobSeeker.findById(application.jobSeekerId)
           .select("skills languages experience totalExperienceYears")
           .lean(),
       ]);
       if (!job || !seeker) return { skipped: true, reason: "job or seeker not found" };
+
+      const weights = await resolveJobMatchingWeights({
+        jobWeights: (job as { matchingWeights?: unknown }).matchingWeights,
+        employerId: (job as { employerId?: unknown }).employerId as string | undefined,
+      });
 
       const jobReqs = job.requirements as { skills?: string[]; experienceMin?: number; experienceMax?: number } | undefined;
       const jobLoc = job.location as { city?: string; country?: string; isRemote?: boolean } | undefined;
@@ -85,6 +91,9 @@ Current Title: ${currentTitle}
 Skills: ${sanitizeAiList(seeker.skills as string[] | undefined, 25, 60)}
 Years of Experience: ${sanitizeAIInput(String(seeker.totalExperienceYears ?? "N/A"), 20)}
 Languages: ${seekerLangs}
+
+Weight the overall score by the employer's configured scoring priorities:
+${formatWeightsForPrompt(weights)}
 
 Return JSON only: {"score":<0-100>,"breakdown":{"skills":<0-100>,"experience":<0-100>,"location":<0-100>},"strengths":[],"gaps":[]}`;
 

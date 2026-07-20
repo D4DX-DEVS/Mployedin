@@ -14,26 +14,23 @@ import {
 } from "@/hooks/useJobMatchingWeights";
 
 const DEFAULT_WEIGHTS: MatchingWeights = {
-  skills: 27, experience: 23, education: 13, location: 9,
-  salary: 9, languages: 5, availability: 4, behaviorSignals: 10,
+  skills: 40, experience: 30, education: 15,
+  industryExperience: 10, preferredQualifications: 5,
 };
 
 const WEIGHT_LABELS: Record<keyof MatchingWeights, string> = {
-  skills: "Skills Match", experience: "Years of Experience",
-  education: "Education Level", location: "Location Preference",
-  salary: "Salary Expectation", languages: "Language Match",
-  availability: "Availability", behaviorSignals: "Behavior Signals",
+  skills: "Skills Match", experience: "Relevant Experience",
+  education: "Education & Certifications",
+  industryExperience: "Role / Industry Experience",
+  preferredQualifications: "Preferred Qualifications",
 };
 
 const WEIGHT_DESCRIPTIONS: Record<keyof MatchingWeights, string> = {
   skills: "How closely the candidate's technical skills match the job requirements",
-  experience: "Weight given to years of relevant work experience",
-  education: "Degree level and field of study relevance",
-  location: "Candidate's location vs. job country/city preferences",
-  salary: "Candidate's salary expectations vs. offered range",
-  languages: "Match on required language proficiencies",
-  availability: "Immediate availability for joining",
-  behaviorSignals: "AI-inferred soft skills, communication style, and culture fit signals",
+  experience: "Depth and relevance of experience for this specific role, not just total years",
+  education: "Degree, field of study, licenses and certifications relevant to the role",
+  industryExperience: "Experience in the same role type or industry",
+  preferredQualifications: "Nice-to-have qualifications listed on the job",
 };
 
 interface Props { jobId: string; }

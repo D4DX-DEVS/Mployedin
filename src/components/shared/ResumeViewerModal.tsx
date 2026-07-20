@@ -7,10 +7,10 @@ import {
   X, Download, FileText, ZoomIn, ZoomOut, RotateCw,
   MapPin, Briefcase, Star, XCircle, Calendar, Brain,
   CheckCircle2, MoreHorizontal, Maximize2, Minimize2,
-  AlertTriangle, Loader2, RefreshCw, ShieldCheck,
+  AlertTriangle, Loader2, ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useAtsCheck, type AtsReport, type AtsCheckStatus } from "@/hooks/useCandidates";
+import { useAtsCheck, type AtsReport } from "@/hooks/useCandidates";
 
 interface CandidateInfo {
   role?: string;
@@ -41,10 +41,8 @@ interface ResumeViewerModalProps {
   onStatusChange?: (status: string) => void;
   /** JobSeeker _id — enables the ATS compatibility analysis panel. */
   jobSeekerId?: string;
-  /** Optional job _id — adds keyword-coverage to the ATS report. */
+  /** Job _id — the keyword-match panel only renders when a job is in context. */
   jobId?: string;
-  /** Cached ATS score to show immediately before the live analysis returns. */
-  initialAtsScore?: number;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; pill: string }> = {
@@ -113,171 +111,77 @@ function getInitials(name?: string) {
   return name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
 }
 
-function atsColors(score: number) {
-  if (score >= 85) return { text: "text-emerald-600", bar: "bg-emerald-500" };
-  if (score >= 70) return { text: "text-lime-600", bar: "bg-lime-500" };
-  if (score >= 50) return { text: "text-amber-500", bar: "bg-amber-500" };
-  return { text: "text-red-500", bar: "bg-red-500" };
-}
-
-function CheckStatusIcon({ status }: { status: AtsCheckStatus }) {
-  if (status === "pass") return <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />;
-  if (status === "warn") return <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />;
-  return <XCircle className="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" />;
-}
-
 /**
- * ATS compatibility panel. Self-contained: when a jobSeekerId is supplied it
- * runs the deterministic ATS analysis (cached server-side) and renders the
- * parseability score, per-check results, optional job keyword coverage and the
- * concrete fixes a candidate would need to be ATS-friendly.
+ * Job keyword-match panel. Only meaningful when a candidate is viewed against a
+ * specific job (jobId), so the caller gates on jobId. It reports how many of the
+ * job's required skills appear in the CV's extracted text, and warns when the CV
+ * can't be text-parsed (so the employer reads the original before deciding).
+ * The job-agnostic "readability %" is deliberately not shown — a healthy parse
+ * is not information an employer needs; only a failed one is.
  */
-function AtsPanel({
-  jobSeekerId,
-  jobId,
-  initialScore,
-}: {
-  jobSeekerId: string;
-  jobId?: string;
-  initialScore?: number;
-}) {
+function AtsPanel({ jobSeekerId, jobId }: { jobSeekerId: string; jobId: string }) {
   const t = useTranslations("resumeViewerModal");
   const ats = useAtsCheck();
   const [report, setReport] = useState<AtsReport | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const ranFor = useRef<string | null>(null);
 
   useEffect(() => {
-    const key = `${jobSeekerId}:${jobId ?? ""}`;
+    const key = `${jobSeekerId}:${jobId}`;
     if (ranFor.current === key) return;
     ranFor.current = key;
-    setError(null);
-    ats
-      .mutateAsync({ jobSeekerId, jobId })
-      .then(setReport)
-      .catch((e: Error) => setError(e.message));
+    // Failure is non-fatal here — the employer can still read the CV. ponytail: swallow, no scary red box for a nicety.
+    ats.mutateAsync({ jobSeekerId, jobId }).then(setReport).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobSeekerId, jobId]);
 
-  function rerun() {
-    setError(null);
-    setReport(null);
-    ats
-      .mutateAsync({ jobSeekerId, jobId, force: true })
-      .then(setReport)
-      .catch((e: Error) => setError(e.message));
-  }
-
   const loading = ats.isPending && !report;
-  const score = report?.atsScore ?? initialScore;
-  const colors = score != null ? atsColors(score) : { text: "", bar: "" };
+  const cov = report?.keywordCoverage;
+  const badParse = report?.parseable === false;
+
+  // Loaded, parses fine, no coverage to show → nothing worth a panel.
+  if (!loading && !cov && !badParse) return null;
 
   return (
     <>
       <div className="h-px bg-border/60 mx-4" />
-      <div className="p-5 space-y-4">
+      <div className="p-5 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-primary" />
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">ATS Compatibility</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("jobKeywordMatch")}</p>
           </div>
-          <button
-            type="button"
-            onClick={rerun}
-            disabled={ats.isPending}
-            title="Re-run analysis"
-            className="text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${ats.isPending ? "animate-spin" : ""}`} />
-          </button>
+          {cov && <span className="text-sm font-bold tabular-nums">{cov.coverage}%</span>}
         </div>
 
         {loading && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
             <Loader2 className="w-4 h-4 animate-spin" />
             {t("readingCv")}
           </div>
         )}
 
-        {error && !loading && (
-          <div className="text-xs text-red-500 space-y-2">
-            <p>{error}</p>
-            <Button variant="outline" size="sm" className="h-7 text-xs" onClick={rerun}>{t("tryAgain")}</Button>
+        {cov && (
+          <div className="space-y-1.5">
+            <div className="h-2 rounded-full bg-muted overflow-hidden">
+              <div
+                className={`h-full rounded-full ${cov.coverage >= 60 ? "bg-emerald-500" : cov.coverage >= 30 ? "bg-amber-500" : "bg-red-500"}`}
+                style={{ width: `${cov.coverage}%` }}
+              />
+            </div>
+            {cov.missing.length > 0 && (
+              <p className="text-[11px] text-muted-foreground">
+                {t("missing")}: {cov.missing.slice(0, 8).join(", ")}
+                {cov.missing.length > 8 ? "…" : ""}
+              </p>
+            )}
           </div>
         )}
 
-        {report && !loading && (
-          <>
-            {/* Score */}
-            <div className="flex items-center gap-3">
-              <span className={`text-4xl font-extrabold tabular-nums leading-none ${colors.text}`}>
-                {report.atsScore}<span className="text-2xl">%</span>
-              </span>
-              <div className="flex-1 space-y-1">
-                <div className="h-2.5 rounded-full bg-muted overflow-hidden">
-                  <div className={`h-full rounded-full transition-all duration-700 ${colors.bar}`} style={{ width: `${report.atsScore}%` }} />
-                </div>
-                <p className="text-[11px] capitalize text-muted-foreground">{report.rating} · {report.fileType.toUpperCase()}</p>
-              </div>
-            </div>
-
-            {!report.parseable && (
-              <div className="flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/5 p-2.5 text-[11px] text-red-600 dark:text-red-400">
-                <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                <span>{t("notParseable")}</span>
-              </div>
-            )}
-
-            {/* Per-check results */}
-            <ul className="space-y-2">
-              {report.checks.map((c) => (
-                <li key={c.id} className="flex items-start gap-2 text-[11px]">
-                  <CheckStatusIcon status={c.status} />
-                  <div className="min-w-0">
-                    <p className="font-medium text-foreground/90 leading-tight">{c.label}</p>
-                    <p className="text-muted-foreground leading-tight">{c.detail}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-
-            {/* Job keyword coverage */}
-            {report.keywordCoverage && (
-              <div className="space-y-1.5">
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>{t("jobKeywordMatch")}</span>
-                  <span className="font-medium tabular-nums">{report.keywordCoverage.coverage}%</span>
-                </div>
-                <div className="h-2 rounded-full bg-muted overflow-hidden">
-                  <div
-                    className={`h-full rounded-full ${report.keywordCoverage.coverage >= 60 ? "bg-emerald-500" : report.keywordCoverage.coverage >= 30 ? "bg-amber-500" : "bg-red-500"}`}
-                    style={{ width: `${report.keywordCoverage.coverage}%` }}
-                  />
-                </div>
-                {report.keywordCoverage.missing.length > 0 && (
-                  <p className="text-[11px] text-muted-foreground">
-                    {t("missing")}: {report.keywordCoverage.missing.slice(0, 8).join(", ")}
-                    {report.keywordCoverage.missing.length > 8 ? "…" : ""}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Recommendations */}
-            {report.recommendations.length > 0 && (
-              <div className="space-y-1.5">
-                <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">{t("howToImprove")}</p>
-                <ul className="space-y-1">
-                  {report.recommendations.slice(0, 5).map((r, i) => (
-                    <li key={i} className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
-                      <span className="text-amber-500 shrink-0 font-bold mt-0.5">·</span>
-                      {r}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </>
+        {badParse && (
+          <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-2.5 text-[11px] text-amber-600 dark:text-amber-400">
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+            <span>{t("notParseable")}</span>
+          </div>
         )}
       </div>
     </>
@@ -299,10 +203,13 @@ export function ResumeViewerModal({
   onStatusChange,
   jobSeekerId,
   jobId,
-  initialAtsScore,
 }: ResumeViewerModalProps) {
   const t = useTranslations("resumeViewerModal");
-  const isPdf = url.toLowerCase().includes(".pdf") || url.includes("application/pdf");
+  // Only URLs with a clear image extension render as <img>; everything else
+  // (including extension-less signed URLs) goes through the document path,
+  // where the fetched blob's mime type decides embeddability.
+  const isImage = /\.(png|jpe?g|webp|gif|bmp)([?#]|$)/i.test(url);
+  const isPdf = !isImage;
   const [imgScale, setImgScale] = useState(1);
   const [imgRotation, setImgRotation] = useState(0);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -310,7 +217,6 @@ export function ResumeViewerModal({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [previewFailed, setPreviewFailed] = useState(false);
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
-  const previewLoadedRef = useRef(false);
 
   const displayName = fileName ?? (candidateName ? `${candidateName}'s CV` : "Resume");
   const hasRightPanel = !!(candidate || aiMatchScore != null || jobSeekerId);
@@ -334,7 +240,6 @@ export function ResumeViewerModal({
   // failed fetch falls back to a download prompt.
   useEffect(() => {
     if (!isPdf) return;
-    previewLoadedRef.current = false;
     setPdfBlobUrl(null);
 
     const canViewPdf =
@@ -350,6 +255,13 @@ export function ResumeViewerModal({
     let objectUrl: string | null = null;
     const controller = new AbortController();
 
+    // Fail only if the bytes haven't arrived yet — once the blob exists the
+    // iframe renders from memory and can't meaningfully hang, so a slow
+    // download must not flip an already-working preview to the fallback.
+    const timer = setTimeout(() => {
+      if (!cancelled && !objectUrl) setPreviewFailed(true);
+    }, 20000);
+
     fetch(url, { credentials: "same-origin", signal: controller.signal })
       .then((res) => {
         if (!res.ok) throw new Error(`CV preview failed: ${res.status}`);
@@ -357,16 +269,16 @@ export function ResumeViewerModal({
       })
       .then((blob) => {
         if (cancelled) return;
+        // Non-PDF documents (doc/docx/…) can't be framed by the browser.
+        if (blob.type && !blob.type.includes("pdf")) throw new Error("not embeddable");
         objectUrl = URL.createObjectURL(blob);
+        clearTimeout(timer);
         setPdfBlobUrl(objectUrl);
+        setPreviewFailed(false);
       })
       .catch(() => {
         if (!cancelled) setPreviewFailed(true);
       });
-
-    const timer = setTimeout(() => {
-      if (!previewLoadedRef.current) setPreviewFailed(true);
-    }, 8000);
 
     return () => {
       cancelled = true;
@@ -529,7 +441,6 @@ export function ResumeViewerModal({
               ) : pdfBlobUrl ? (
                 <iframe
                   src={pdfBlobUrl}
-                  onLoad={() => { previewLoadedRef.current = true; }}
                   className="w-full h-full rounded-lg border border-border/30 shadow-sm bg-white"
                   title={displayName}
                 />
@@ -686,9 +597,9 @@ export function ResumeViewerModal({
                 </>
               )}
 
-              {/* ── ATS Compatibility (employer-facing) ── */}
-              {jobSeekerId && (
-                <AtsPanel jobSeekerId={jobSeekerId} jobId={jobId} initialScore={initialAtsScore} />
+              {/* ── Job keyword match (only against a specific job) ── */}
+              {jobSeekerId && jobId && (
+                <AtsPanel jobSeekerId={jobSeekerId} jobId={jobId} />
               )}
 
               {/* ── Divider + Action Buttons (sticky bottom) ── */}

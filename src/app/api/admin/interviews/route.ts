@@ -70,7 +70,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     }
   }
 
-  const [interviews, totalCount] = await Promise.all([
+  const [interviews, totalCount, statusAgg, noShowCount] = await Promise.all([
     Interview.find(filter)
       .populate({ path: "jobSeekerId", select: "userId", populate: { path: "userId", select: "name email" } })
       .populate("employerId", "companyName")
@@ -81,7 +81,17 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       .limit(limit)
       .lean(),
     Interview.countDocuments(filter),
+    Interview.aggregate([
+      { $match: filter },
+      { $group: { _id: "$status", count: { $sum: 1 } } },
+    ]),
+    Interview.countDocuments({ ...filter, outcome: "no_show" }),
   ]);
+
+  const statusCounts: Record<string, number> = {};
+  for (const s of statusAgg) {
+    if (s._id) statusCounts[s._id] = s.count;
+  }
 
   // Remap populated fields to match frontend expectations
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -104,5 +114,5 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     total = mapped.length;
   }
 
-  return NextResponse.json({ interviews: mapped, total });
+  return NextResponse.json({ interviews: mapped, total, statusCounts, noShowCount });
 }, { resource: "interviews", action: "read" });

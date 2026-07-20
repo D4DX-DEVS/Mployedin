@@ -128,3 +128,30 @@ describe("jwt update() cannot forge authorization fields", () => {
     expect(mockUserFindById).not.toHaveBeenCalled(); // no auth field → no DB read
   });
 });
+
+describe("periodic DB re-check propagates admin role/permission changes", () => {
+  test("stale token role is refreshed from DB on the updateAge check", async () => {
+    // Admin flipped job_seeker → employer in the DB; token still carries the
+    // login-time role. The 5-min periodic check must pick up the new role.
+    mockUserFindById.mockReturnValue(
+      leanTo({ isActive: true, role: "employer", permissionMode: "role_default" })
+    );
+    const staleIat = Math.floor(Date.now() / 1000) - 10 * 60; // past updateAge window
+
+    const out = await jwt({
+      token: { id: "u6", role: "job_seeker", iat: staleIat },
+    });
+
+    expect(out.role).toBe("employer");
+    expect(out.permissionMode).toBe("role_default");
+  });
+
+  test("deactivated user still gets session killed (regression guard)", async () => {
+    mockUserFindById.mockReturnValue(leanTo({ isActive: false, role: "employer" }));
+    const staleIat = Math.floor(Date.now() / 1000) - 10 * 60;
+
+    const out = await jwt({ token: { id: "u7", role: "employer", iat: staleIat } });
+
+    expect(out).toBeNull();
+  });
+});

@@ -21,7 +21,6 @@ import {
   ChevronDown,
   Clock,
   DollarSign,
-  ExternalLink,
   FileText,
   Filter,
   History,
@@ -559,10 +558,15 @@ export default function EmployerApplicationsPage() {
         throw new Error("Failed to schedule interview");
       }
       setInterviewModal(null);
-      // Reflect the stage change on the open panel, confirm it, then take the user to the interview.
+      // Reflect the stage change on the open panel and stay put — reviewing other
+      // candidates continues; the toast links to the interview list instead.
       setDetailPanel((prev) => (prev && prev._id === appId ? { ...prev, status: "interview_scheduled" } : prev));
-      toast.success(t("interviewScheduledToast"));
-      router.push(`/${locale}/employer/interviews`);
+      toast.success(t("interviewScheduledToast"), {
+        action: {
+          label: t("viewInterviews"),
+          onClick: () => router.push(`/${locale}/employer/interviews`),
+        },
+      });
     } catch (err) {
       console.error("Failed to create interview:", err);
       toast.error(err instanceof Error ? err.message : t("interviewScheduleFailed"));
@@ -754,8 +758,12 @@ export default function EmployerApplicationsPage() {
       });
       setSelected([]);
       setBulkInterviewModal(false);
-      toast.success(t("interviewScheduledToast"));
-      router.push(`/${locale}/employer/interviews`);
+      toast.success(t("interviewScheduledToast"), {
+        action: {
+          label: t("viewInterviews"),
+          onClick: () => router.push(`/${locale}/employer/interviews`),
+        },
+      });
     } catch (err) {
       console.error("Bulk interview scheduling failed:", err);
       toast.error(err instanceof Error ? err.message : t("interviewScheduleFailed"));
@@ -1347,6 +1355,7 @@ export default function EmployerApplicationsPage() {
               getCandidateName={getCandidateName}
               onViewCv={(app) => setViewingCv(buildViewingCv(app))}
               hasActiveRefinement={hasActiveRefinement}
+              compact={Boolean(isWide && detailPanel)}
             />
           )}
         </div>
@@ -1499,7 +1508,7 @@ export default function EmployerApplicationsPage() {
 }
 
 function TableView({
-  applications, selected, onToggle, onGenerateAiMatch, aiMatchPendingId, scorecardMap, onOpenDetails, getCandidateName, onViewCv, hasActiveRefinement
+  applications, selected, onToggle, onGenerateAiMatch, aiMatchPendingId, scorecardMap, onOpenDetails, getCandidateName, onViewCv, hasActiveRefinement, compact
 }: {
   applications: Applicant[];
   selected: string[];
@@ -1511,6 +1520,7 @@ function TableView({
   getCandidateName: (app: Applicant) => string;
   onViewCv?: (app: Applicant) => void;
   hasActiveRefinement?: boolean;
+  compact?: boolean;
 }) {
   const { locale } = useParams<{ locale: string }>();
   const t = useTranslations("employerApplications");
@@ -1526,6 +1536,12 @@ function TableView({
     withdrawn: t("withdrawn"),
   };
 
+  // When the detail panel is open the list is squeezed — drop the middle
+  // columns (all shown in the panel) so the candidate cell can't overflow.
+  const gridCols = compact
+    ? "28px minmax(0,1fr) 72px 100px"
+    : "28px 1.4fr 1fr 80px 1.2fr 80px 100px";
+
   if (!applications.length) {
     return (
       <EmptyState
@@ -1538,13 +1554,13 @@ function TableView({
 
   return (
     <section className="workspace-panel-surface overflow-hidden rounded-[24px]">
-      <div className="hidden items-center gap-3 border-b border-border/70 bg-background/50 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground lg:grid" style={{ gridTemplateColumns: "28px 1.4fr 1fr 80px 1.2fr 80px 100px" }}>
+      <div className="hidden items-center gap-3 border-b border-border/70 bg-background/50 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground lg:grid" style={{ gridTemplateColumns: gridCols }}>
         <span />
         <span>{t("candidate")}</span>
-        <span>{t("roleMatchSkills").split(",")[0]?.trim()}</span>
+        {!compact && <span>{t("roleMatchSkills").split(",")[0]?.trim()}</span>}
         <span>{t("matchLabel")}</span>
-        <span>{t("skills")}</span>
-        <span>{t("appliedOn")}</span>
+        {!compact && <span>{t("skills")}</span>}
+        {!compact && <span>{t("appliedOn")}</span>}
         <span className="text-right">{t("actions")}</span>
       </div>
 
@@ -1576,7 +1592,7 @@ function TableView({
               className={`group cursor-pointer px-4 py-3 transition-all duration-200 hover:bg-status-applied-bg/50 dark:hover:bg-sky-500/5 lg:grid lg:items-center lg:gap-3 ${
                 isSelected ? "bg-sky-500/10" : "bg-transparent"
               }`}
-              style={{ gridTemplateColumns: "28px 1.4fr 1fr 80px 1.2fr 80px 100px" }}
+              style={{ gridTemplateColumns: gridCols }}
             >
               {/* Checkbox */}
               <div className="hidden lg:block">
@@ -1630,10 +1646,13 @@ function TableView({
                 </div>
               </div>
 
-              {/* Role & Experience */}
-              <div className="hidden min-w-0 lg:block">
-                <p className="truncate text-sm font-medium text-foreground">{currentRole || app.jobId?.title || t("roleNotSpecified")}</p>
-              </div>
+              {/* Role — the job this candidate applied to (their own headline goes below) */}
+              {!compact && (
+                <div className="hidden min-w-0 lg:block">
+                  <p className="truncate text-sm font-medium text-foreground">{app.jobId?.title || t("roleNotSpecified")}</p>
+                  {currentRole ? <p className="truncate text-xs text-muted-foreground">{currentRole}</p> : null}
+                </div>
+              )}
 
               {/* Match */}
               <div className="hidden lg:block">
@@ -1648,26 +1667,28 @@ function TableView({
               </div>
 
               {/* Skills — job-matching skills first (highlighted), then others */}
-              <div className="hidden min-w-0 lg:flex lg:flex-wrap lg:gap-1">
-                {matchingSkills.map((skill) => (
-                  <span key={skill} className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-300">
-                    ✓ {skill}
-                  </span>
-                ))}
-                {otherSkills.map((skill) => (
-                  <span key={skill} className="rounded-md border border-border bg-muted/50 px-2 py-0.5 text-[11px] text-muted-foreground">
-                    {skill}
-                  </span>
-                ))}
-                {extraSkillsCount > 0 ? (
-                  <span className="rounded-md border border-border bg-muted/50 px-2 py-0.5 text-[11px] font-medium text-status-applied dark:text-sky-300">
-                    +{extraSkillsCount}
-                  </span>
-                ) : null}
-              </div>
+              {!compact && (
+                <div className="hidden min-w-0 lg:flex lg:flex-wrap lg:gap-1">
+                  {matchingSkills.map((skill) => (
+                    <span key={skill} className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-300">
+                      ✓ {skill}
+                    </span>
+                  ))}
+                  {otherSkills.map((skill) => (
+                    <span key={skill} className="rounded-md border border-border bg-muted/50 px-2 py-0.5 text-[11px] text-muted-foreground">
+                      {skill}
+                    </span>
+                  ))}
+                  {extraSkillsCount > 0 ? (
+                    <span className="rounded-md border border-border bg-muted/50 px-2 py-0.5 text-[11px] font-medium text-status-applied dark:text-sky-300">
+                      +{extraSkillsCount}
+                    </span>
+                  ) : null}
+                </div>
+              )}
 
               {/* Applied On */}
-              <div className="hidden text-xs text-muted-foreground lg:block">{appliedDate}</div>
+              {!compact && <div className="hidden text-xs text-muted-foreground lg:block">{appliedDate}</div>}
 
               {/* Actions */}
               <div className="hidden items-center justify-end gap-1.5 lg:flex">
@@ -1795,6 +1816,10 @@ function ApplicationDetailsPanel({
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const t = useTranslations("employerApplications");
   const tc = useTranslations("employerCommon");
+  const [noteText, setNoteText] = useState("");
+  const [noteSaving, setNoteSaving] = useState(false);
+  const [noteSaved, setNoteSaved] = useState(false);
+  useEffect(() => { setNoteText(""); setNoteSaved(false); }, [app._id]);
   const pipelineStages = usePipelineStages();
   const currentRole = getCurrentRole(app);
   const candidateName = getCandidateName(app);
@@ -1837,6 +1862,26 @@ function ApplicationDetailsPanel({
     }
     if (resumeDoc && resumeDocIndex >= 0 && onViewDocument) {
       onViewDocument(app, `/api/applications/${app._id}/documents/download?i=${resumeDocIndex}&view=1#${encodeURIComponent(resumeDoc.name)}`);
+    }
+  }
+
+  async function handleAddNote() {
+    const content = noteText.trim();
+    if (!content || noteSaving) return;
+    setNoteSaving(true);
+    try {
+      const res = await fetch(`/api/applications/${app._id}/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      });
+      if (!res.ok) throw new Error("Failed to save note");
+      setNoteText("");
+      setNoteSaved(true);
+    } catch {
+      setNoteSaved(false); // keep the draft so the user can retry
+    } finally {
+      setNoteSaving(false);
     }
   }
 
@@ -1937,6 +1982,9 @@ function ApplicationDetailsPanel({
                   <BadgeCheck className="h-4 w-4 shrink-0 text-sky-500" />
                 </div>
                 <p className="truncate text-sm font-medium text-foreground/80">{currentRole || t("roleNotSpecified")}</p>
+                {app.jobId?.title ? (
+                  <p className="truncate text-xs text-muted-foreground">{t("appliedForJob", { title: app.jobId.title })}</p>
+                ) : null}
                 <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
                   <MapPin className="h-3 w-3 shrink-0" />
                   <span className="truncate">
@@ -2029,7 +2077,6 @@ function ApplicationDetailsPanel({
               { key: "resume", label: t("tabResume") },
               { key: "timeline", label: t("tabTimeline") },
               { key: "notes", label: t("tabNotes") },
-              { key: "messages", label: t("tabMessages") },
               { key: "scorecard", label: t("tabScorecard") },
             ] as const).map((tab) => (
               <button
@@ -2118,10 +2165,6 @@ function ApplicationDetailsPanel({
                     <span className="text-[11px] text-muted-foreground">{t("appliedRoles")}</span>
                     <span className="text-[11px] font-semibold text-foreground">{(app.otherApplicationsCount ?? 0) > 0 ? t("otherRolesCount", { count: app.otherApplicationsCount ?? 0 }) : "1"}</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-muted-foreground">{t("sourceLabel")}</span>
-                    <span className="text-[11px] font-semibold text-foreground">LinkedIn</span>
-                  </div>
                 </div>
                 {(app.otherApplicationsCount ?? 0) > 0 ? (
                   <Button variant="outline" size="sm" className="mt-3 h-8 w-full rounded-xl border-border text-[11px]">
@@ -2131,21 +2174,7 @@ function ApplicationDetailsPanel({
               </div>
             </div>
 
-            {/* Row 2: Resume (full width, compact) */}
-            {hasResume ? (
-              <div className="workspace-glass-panel flex items-center gap-3 rounded-2xl p-4">
-                <div className="flex h-10 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-500/10 text-rose-500">
-                  <FileText className="h-5 w-5" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-semibold text-foreground">{resumeDoc?.name ?? t("docResume")}</p>
-                  <p className="text-[10px] text-muted-foreground">324 KB</p>
-                </div>
-                <Button variant="outline" size="sm" className="h-8 shrink-0 rounded-xl border-border px-3 text-[11px]" onClick={handleViewResume}>
-                  <ExternalLink className="me-1.5 h-3.5 w-3.5" /> {t("viewResume")}
-                </Button>
-              </div>
-            ) : null}
+            {/* Resume lives in its own tab — no duplicate quick card here. */}
 
             {/* Row 3: Skills | Experience (2 cards) */}
             <div className="grid grid-cols-2 gap-4">
@@ -2217,11 +2246,8 @@ function ApplicationDetailsPanel({
             <div className="workspace-glass-panel rounded-2xl p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("quickActions")}</p>
               <div className="mt-3 grid grid-cols-3 gap-2">
-                <Button variant="outline" size="sm" className="h-9 rounded-xl border-border text-[11px]">
+                <Button variant="outline" size="sm" className="h-9 rounded-xl border-border text-[11px]" onClick={() => setActiveTab("notes")}>
                   <Plus className="me-1.5 h-3.5 w-3.5" /> {t("addNote")}
-                </Button>
-                <Button variant="outline" size="sm" className="h-9 rounded-xl border-border text-[11px]">
-                  <Send className="me-1.5 h-3.5 w-3.5" /> {t("sendMessage")}
                 </Button>
                 {onOpenScorecard ? (
                   <Button variant="outline" size="sm" className="h-9 rounded-xl border-border text-[11px]" onClick={() => onOpenScorecard({ applicationId: app._id })}>
@@ -2286,30 +2312,29 @@ function ApplicationDetailsPanel({
           ) : null}
 
           {activeTab === "notes" ? (
-            <div className="workspace-glass-panel rounded-[24px] p-6 text-center">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-500/10 text-status-interview dark:text-violet-300">
-                <FileText className="h-6 w-6" />
+            <div className="workspace-glass-panel rounded-[24px] p-5 space-y-3">
+              <div className="flex items-center gap-2">
+                <FileText className="h-4 w-4 text-status-interview dark:text-violet-300" />
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("notes")}</p>
               </div>
-              <p className="mt-3 text-sm font-semibold text-foreground">{t("notes")}</p>
-              <p className="mx-auto mt-1 max-w-xs text-xs text-muted-foreground">Add private notes about this candidate for your team.</p>
-              <Button variant="outline" size="sm" className="mt-4 rounded-xl border-border bg-background/80 text-sm">
-                <Plus className="me-2 h-3.5 w-3.5" /> {t("addNote")}
-              </Button>
+              <p className="text-xs text-muted-foreground">Add private notes about this candidate for your team.</p>
+              <textarea
+                value={noteText}
+                onChange={(e) => { setNoteText(e.target.value); setNoteSaved(false); }}
+                placeholder={t("addNote")}
+                maxLength={2000}
+                className="h-28 w-full rounded-xl border border-border bg-background/80 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-sky-300"
+              />
+              <div className="flex items-center justify-between">
+                {noteSaved ? <span className="text-xs text-emerald-600 dark:text-emerald-400">Saved</span> : <span />}
+                <Button size="sm" className="h-9 rounded-xl px-4 text-xs" disabled={!noteText.trim() || noteSaving} onClick={handleAddNote}>
+                  <Plus className="me-1.5 h-3.5 w-3.5" /> {noteSaving ? t("updating") : t("addNote")}
+                </Button>
+              </div>
+              {/* ponytail: composer only — listing past notes needs `notes` on the Applicant type + a GET route. Add when the team wants to read history here. */}
             </div>
           ) : null}
 
-          {activeTab === "messages" ? (
-            <div className="workspace-glass-panel rounded-[24px] p-6 text-center">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500/10 text-status-applied dark:text-sky-300">
-                <Mail className="h-6 w-6" />
-              </div>
-              <p className="mt-3 text-sm font-semibold text-foreground">{t("tabMessages")}</p>
-              <p className="mx-auto mt-1 max-w-xs text-xs text-muted-foreground">Communication history with this candidate will appear here.</p>
-              <Button variant="outline" size="sm" className="mt-4 rounded-xl border-border bg-background/80 text-sm">
-                <Send className="me-2 h-3.5 w-3.5" /> {t("sendMessage")}
-              </Button>
-            </div>
-          ) : null}
 
           {activeTab === "scorecard" ? (
             <div className="workspace-glass-panel rounded-[24px] p-6">

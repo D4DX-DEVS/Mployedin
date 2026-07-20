@@ -22,14 +22,11 @@ import {
 import type { MatchingWeights } from "@/hooks/useMatchingWeights";
 
 const DEFAULT_WEIGHTS: MatchingWeights = {
-  skills: 27,
-  experience: 23,
-  education: 13,
-  location: 9,
-  salary: 9,
-  languages: 5,
-  availability: 4,
-  behaviorSignals: 10,
+  skills: 40,
+  experience: 30,
+  education: 15,
+  industryExperience: 10,
+  preferredQualifications: 5,
 };
 
 interface TemplateFormState {
@@ -77,11 +74,8 @@ export default function AdminMatchingWeightTemplatesPage() {
     skills: tr("skillsMatchLabel"),
     experience: tr("experienceLabel"),
     education: tr("educationLabel"),
-    location: tr("locationLabel"),
-    salary: tr("salaryLabel"),
-    languages: tr("languagesLabel"),
-    availability: tr("availabilityLabel"),
-    behaviorSignals: tr("behaviorSignalsLabel"),
+    industryExperience: tr("industryExperienceLabel"),
+    preferredQualifications: tr("preferredQualificationsLabel"),
   };
 
   const total = Object.values(form.weights).reduce((a, b) => a + b, 0);
