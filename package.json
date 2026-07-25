@@ -96,6 +96,9 @@
     "zod": "^4.3.6",
     "zustand": "^5.0.11"
   },
+  "optionalDependencies": {
+    "gcp-metadata": "^7.0.1"
+  },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.5",
     "@eslint/js": "^10.0.1",
