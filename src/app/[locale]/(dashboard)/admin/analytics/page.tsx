@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { PageHero } from "@/components/shared/PageHero";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -228,14 +228,11 @@ export default function AdminAnalyticsPage() {
 
   return (
     <div className="page-container space-y-4">
-      {/* ── Hero Section ── */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-          <Sparkles className="h-3.5 w-3.5" />
-          {t("adminWorkspace")}
-        </div>
-        <PageHeader className="mt-4" title={t("analyticsTitle")} description={t("analyticsDescription")} />
-      </section>
+      <PageHero
+        title={t("analyticsTitle")}
+        description={t("analyticsDescription")}
+        eyebrow={t("adminWorkspace")}
+      />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
         <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label={t("a11yAnalyticsTemplates")}>

@@ -12,6 +12,7 @@ import {
   Github, Globe, Image, Edit,
 } from "lucide-react";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { PageHero } from "@/components/shared/PageHero";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -101,19 +102,16 @@ export default function PortfolioPage() {
 
   return (
     <div className="space-y-6">
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t("title")}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {t("description")}
-            </p>
-          </div>
+      <PageHero
+        icon={FolderOpen}
+        title={t("title")}
+        description={t("description")}
+        actions={
           <Button onClick={() => setShowForm(!showForm)}>
             <Plus className="me-1 h-4 w-4" /> {t("addProject")}
           </Button>
-        </div>
-      </section>
+        }
+      />
 
       {showForm && (
         <section className="workspace-panel-surface rounded-[28px] p-5 space-y-4">

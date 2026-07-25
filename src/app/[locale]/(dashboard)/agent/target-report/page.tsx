@@ -15,7 +15,7 @@ import {
 import {
   Building2, Users,
   CalendarDays, RotateCcw, FileText, X, Target,
-  CircleDollarSign, Activity, Sparkles,
+  CircleDollarSign, Activity,
   ArrowUpRight, ArrowDownRight, Minus,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -25,6 +25,7 @@ import type { ExportColumn } from "@/lib/export";
 import {
   ProgressRing, TargetSummaryCard,
 } from "@/components/features/targets/TargetComponents";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -250,25 +251,17 @@ export default function AgentTargetReportPage() {
   return (
     <div className="page-container space-y-6 print:space-y-4">
       {/* ═══════ HERO ═══════ */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-          <div className="min-w-0 flex-1">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              Agent workspace
-            </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">My Target Report</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Personal performance report — {yearFilter}. Track your employer, employee, and finance targets.
-            </p>
-          </div>
-          <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:min-w-[220px]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Performance</p>
-            <p className="mt-1 text-lg font-semibold text-foreground">{profile.overallProgress}% overall</p>
-            <p className="text-xs text-muted-foreground">Risk: {profile.riskScore} · Tier: {profile.incentiveTier}</p>
-          </div>
-        </div>
-      </section>
+      <DashboardPageHeader
+        icon={Target}
+        eyebrow="Agent workspace"
+        title="My Target Report"
+        description={`Personal performance report — ${yearFilter}. Track your employer, employee, and finance targets.`}
+        summary={{
+          label: "Performance",
+          value: `${profile.overallProgress}% overall`,
+          note: `Risk: ${profile.riskScore} · Tier: ${profile.incentiveTier}`,
+        }}
+      />
 
       {/* ═══════ KPI Cards ═══════ */}
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

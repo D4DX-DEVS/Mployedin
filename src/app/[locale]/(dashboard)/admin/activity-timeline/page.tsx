@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { PageHero } from "@/components/shared/PageHero";
 import { toast } from "sonner";
 import { usePagination } from "@/hooks/usePagination";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -285,17 +285,11 @@ export default function AdminActivityTimelinePage() {
 
   return (
     <div className="page-container space-y-6">
-      {/* Hero */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-            <Activity className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <PageHeader title={t("title")} description={t("description")} />
-          </div>
-        </div>
-      </section>
+      <PageHero
+        icon={Activity}
+        title={t("title")}
+        description={t("description")}
+      />
 
       {/* Filters */}
       <TableToolbar

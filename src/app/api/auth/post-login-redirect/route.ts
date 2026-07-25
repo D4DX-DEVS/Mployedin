@@ -16,7 +16,7 @@ import type { UserRole } from "@/types/user";
  *   - super_agent                → /[locale]/super-agent
  *   - admin                      → /[locale]/admin
  */
-export async function GET() {
+export async function GET(request: Request) {
   const session = await auth();
 
   if (!session?.user) {
@@ -33,12 +33,19 @@ export async function GET() {
   const role: UserRole = user.role ?? "job_seeker";
   const locale = user.locale ?? "en";
   const isOnboarded = user.isOnboarded ?? false;
+  const requestedCallback = new URL(request.url).searchParams.get("callbackUrl");
+  const safeCallback =
+    requestedCallback &&
+    !requestedCallback.startsWith("//") &&
+    requestedCallback.startsWith(`/${locale}/`)
+      ? requestedCallback
+      : null;
 
   // Job seekers who haven't completed onboarding go to the onboarding flow
   const destination =
     role === "job_seeker" && !isOnboarded
       ? `/${locale}/onboarding`
-      : getDashboardPath(role, locale);
+      : safeCallback ?? getDashboardPath(role, locale);
 
   return NextResponse.redirect(
     new URL(destination, process.env.NEXTAUTH_URL ?? "http://localhost:3000"),

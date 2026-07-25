@@ -3,9 +3,9 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { Button } from "@/components/ui/button";
 
 interface PublicHeaderProps {
@@ -14,16 +14,18 @@ interface PublicHeaderProps {
 
 export default function PublicHeader({ locale }: PublicHeaderProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const pathname = usePathname();
   const tNav = useTranslations("nav");
   const tLanding = useTranslations("landing");
   const tAuth = useTranslations("auth");
 
   const navLinks = [
-    { href: `/${locale}`, label: tNav("home") },
+    { href: `/${locale}/jobs`, label: tNav("jobs") },
+    { href: `/${locale}/companies`, label: tLanding("companies") },
+    { href: `/${locale}/employer-register`, label: tLanding("forEmployers") },
     { href: `/${locale}/blog`, label: tLanding("blog") },
-    { href: `/${locale}/faq`, label: tLanding("faqTitle") },
-    { href: `/${locale}/contact`, label: tLanding("contactTitle") },
   ];
+  const mobileMenuId = "public-mobile-navigation";
 
   return (
     <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -39,6 +41,7 @@ export default function PublicHeader({ locale }: PublicHeaderProps) {
             <Link
               key={link.href}
               href={link.href}
+              aria-current={pathname === link.href || pathname.startsWith(`${link.href}/`) ? "page" : undefined}
               className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
               {link.label}
@@ -48,7 +51,6 @@ export default function PublicHeader({ locale }: PublicHeaderProps) {
 
         {/* Auth & Language */}
         <div className="hidden md:flex items-center gap-3">
-          <ThemeToggle />
           <Link href={locale === "en" ? "/ar" : "/en"}>
             <Button variant="ghost" size="sm">
               {locale === "en" ? "العربية" : "English"}
@@ -68,11 +70,13 @@ export default function PublicHeader({ locale }: PublicHeaderProps) {
 
         {/* Mobile Menu Button */}
         <div className="flex items-center gap-2 md:hidden">
-          <ThemeToggle />
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setMobileOpen(!mobileOpen)}
+            aria-label={mobileOpen ? tNav("a11yCloseMenu") : tNav("a11yOpenMenu")}
+            aria-expanded={mobileOpen}
+            aria-controls={mobileMenuId}
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
@@ -81,12 +85,13 @@ export default function PublicHeader({ locale }: PublicHeaderProps) {
 
       {/* Mobile Menu */}
       {mobileOpen && (
-        <div className="border-t md:hidden">
+        <div id={mobileMenuId} className="border-t md:hidden">
           <nav className="container mx-auto flex flex-col gap-2 px-4 py-4">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
+                aria-current={pathname === link.href || pathname.startsWith(`${link.href}/`) ? "page" : undefined}
                 className="rounded-lg px-3 py-2 text-sm font-medium hover:bg-accent"
                 onClick={() => setMobileOpen(false)}
               >

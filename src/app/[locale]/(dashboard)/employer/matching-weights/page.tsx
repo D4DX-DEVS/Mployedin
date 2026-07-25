@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { FeatureGate } from "@/components/shared/FeatureGate";
 import { useMatchingWeights, useSaveMatchingWeights, type MatchingWeights } from "@/hooks/useMatchingWeights";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import {
   useEmployerMatchingWeightTemplates,
   useCreateEmployerMatchingWeightTemplate,
@@ -248,58 +249,17 @@ export default function EmployerMatchingWeightsPage() {
         </div>
       )}
 
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-7">
-        <div className="grid gap-6 xl:grid-cols-[1.1fr,0.9fr]">
-          <div>
-            <div className="flex items-center gap-2 text-sm font-medium text-status-applied dark:text-sky-300">
-              <Sparkles className="h-4 w-4" />
-              {t("rankingControls")}
-            </div>
-            <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight text-foreground">
-              {t("rankingControlsDesc")}
-            </h2>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              {t("totalAllocation")}
-            </p>
-
-            <div className="mt-6 grid gap-3 sm:grid-cols-3">
-              <div className="workspace-glass-panel rounded-2xl p-4">
-                <Scale className="h-5 w-5 text-status-applied dark:text-sky-300" />
-                <p className="mt-3 text-sm font-semibold text-foreground">{t("totalAt")} {total}%</p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("totalMustBe100")}</p>
-              </div>
-              <div className="workspace-glass-panel rounded-2xl p-4">
-                <Target className="h-5 w-5 text-status-applied dark:text-sky-300" />
-                <p className="mt-3 text-sm font-semibold text-foreground">{t("topPriority")} {t(WEIGHT_LABEL_KEYS[topPriority])}</p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("currentStrongest")} {weights[topPriority]}%.</p>
-              </div>
-              <div className="workspace-glass-panel rounded-2xl p-4">
-                <BarChart3 className="h-5 w-5 text-status-applied dark:text-sky-300" />
-                <p className="mt-3 text-sm font-semibold text-foreground">{saveStateLabel}</p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("readyToUpdateDesc")}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="workspace-glass-panel rounded-[24px] p-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("scoringPreview")}</p>
-            <p className="mt-2 text-sm text-muted-foreground">{t("scoringPreviewDesc")}</p>
-            <div className="mt-5 space-y-3">
-              {weightKeys.slice().sort((a, b) => weights[b] - weights[a]).slice(0, 4).map((key) => (
-                <div key={key} className="rounded-2xl border border-border bg-background/60 px-4 py-3">
-                  <div className="flex items-center justify-between gap-3 text-sm font-medium text-foreground">
-                    <span>{t(WEIGHT_LABEL_KEYS[key])}</span>
-                    <span>{weights[key]}%</span>
-                  </div>
-                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted/50">
-                    <div className="h-full rounded-full bg-primary transition-all duration-300" style={{ width: `${weights[key]}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
+      <DashboardPageHeader
+        icon={Sliders}
+        eyebrow={t("rankingControls")}
+        title={t("rankingControlsDesc")}
+        description={t("totalAllocation")}
+        metrics={[
+          { label: t("totalAt"), value: `${total}%`, note: t("totalMustBe100"), icon: Scale },
+          { label: t("topPriority"), value: t(WEIGHT_LABEL_KEYS[topPriority]), note: `${t("currentStrongest")} ${weights[topPriority]}%.`, icon: Target },
+          { label: saveStateLabel, value: `${weights[topPriority]}%`, note: t("readyToUpdateDesc"), icon: BarChart3 },
+        ]}
+      />
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.35fr,0.65fr]">
         {/* Sliders */}

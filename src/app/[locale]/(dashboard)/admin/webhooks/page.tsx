@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { PageHero } from "@/components/shared/PageHero";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { useConfirm } from "@/hooks/useConfirm";
 import { toast } from "sonner";
@@ -306,26 +306,12 @@ export default function AdminWebhooksPage() {
   return (
     <div className="page-container space-y-6">
 
-      {/* ─── Hero ─────────────────────────────────────────────────────── */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-3xl">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-status-applied dark:text-sky-300">
-              <WebhookIcon className="h-3.5 w-3.5" />
-              Integration Hub
-            </div>
-            <PageHeader
-              title="Webhooks"
-              description="Manage outbound webhook integrations for your accounting system — track delivery status, retry failures, and monitor endpoint health."
-            />
-          </div>
-
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Total</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">{webhooks.length} webhooks</p>
-              <p className="text-xs text-muted-foreground">Configured endpoints</p>
-            </div>
+      <PageHero
+        icon={WebhookIcon}
+        eyebrow="Integration Hub"
+        title="Webhooks"
+        description="Manage outbound webhook integrations for your accounting system — track delivery status, retry failures, and monitor endpoint health."
+        actions={
             <Dialog open={dialogOpen} onOpenChange={(v) => { if (!v) resetForm(); setDialogOpen(v); }}>
               <DialogTrigger asChild>
                 <Button
@@ -426,8 +412,10 @@ export default function AdminWebhooksPage() {
                 )}
               </DialogContent>
             </Dialog>
-          </div>
-        </div>
+        }
+      />
+
+      <section className="workspace-panel-surface overflow-hidden rounded-[20px] p-4">
 
         {/* Stats Row */}
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

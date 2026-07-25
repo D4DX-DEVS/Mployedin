@@ -11,7 +11,7 @@ import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select";
 import { PaginationControls } from "@/components/shared/PaginationControls";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { PageHero } from "@/components/shared/PageHero";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ListSkeleton } from "@/components/shared/ListSkeleton";
 import { usePagination } from "@/hooks/usePagination";
@@ -89,12 +89,7 @@ export default function CompaniesListPage() {
 
   return (
     <div className="space-y-6">
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <PageHeader
-          title={t("title")}
-          description={t("description")}
-        />
-      </section>
+      <PageHero icon={Building2} title={t("title")} description={t("description")} />
 
       <section className="workspace-panel-surface rounded-[28px] p-5 space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">

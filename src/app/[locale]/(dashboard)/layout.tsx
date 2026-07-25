@@ -9,7 +9,6 @@ import { SessionWrapper } from "@/components/shared/SessionWrapper";
 import { CsrfProvider } from "@/components/shared/CsrfProvider";
 import type { UserRole } from "@/models/User";
 import { DashboardProviders } from "@/components/shared/DashboardProviders";
-import { RecruitmentAssistantLoader } from "@/components/features/employer/RecruitmentAssistantLoader";
 import {
   getCachedDashboardShellData,
   getDashboardMaintenanceMode,
@@ -85,8 +84,6 @@ export default async function DashboardLayout({
             >
               {children}
             </DashboardShell>
-            {/* Recruitment AI assistant — employer workspace (real or tenant view) */}
-            {effectiveRole === "employer" && <RecruitmentAssistantLoader />}
           </DashboardProviders>
         </CsrfProvider>
       </SessionWrapper>

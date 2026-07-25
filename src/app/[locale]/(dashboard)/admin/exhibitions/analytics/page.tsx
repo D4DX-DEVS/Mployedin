@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { toast } from "sonner";
 import {
   Activity,
@@ -220,18 +220,16 @@ export default function AdminExhibitionAnalyticsPage() {
   if (loading) {
     return (
       <div className="page-container space-y-6">
-        <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-7 sm:p-8">
-          <div className="space-y-4">
-            <Skeleton className="h-6 w-40" />
-            <Skeleton className="h-8 w-2/3" />
-            <Skeleton className="h-4 w-1/2" />
-            <div className="grid gap-3 sm:grid-cols-3">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-20 rounded-2xl" />
-              ))}
-            </div>
-          </div>
-        </section>
+        <DashboardPageHeader
+          eyebrow={t("adminAnalyticsBadge")}
+          title={t("pageTitle")}
+          description={t("pageDescription")}
+          metrics={[
+            { label: t("requestsLabel"), value: <Skeleton className="h-7 w-12" />, icon: Target },
+            { label: t("approvalRateLabel"), value: <Skeleton className="h-7 w-12" />, icon: Percent },
+            { label: t("roiLabel"), value: <Skeleton className="h-7 w-12" />, icon: TrendingUp },
+          ]}
+        />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-28 rounded-2xl" />
@@ -256,68 +254,38 @@ export default function AdminExhibitionAnalyticsPage() {
 
   return (
     <div className="page-container space-y-6">
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-7 sm:p-8">
-        <div className="grid gap-6 lg:grid-cols-[1.4fr_0.9fr]">
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge className="border-primary/20 bg-primary/10 text-primary hover:bg-primary/10">{t("adminAnalyticsBadge")}</Badge>
-              <Badge className="border-sky-500/20 bg-sky-500/10 text-sky-700 dark:text-sky-300 hover:bg-sky-500/10">{t("yearBadge", { year: data.year })}</Badge>
-            </div>
-            <div>
-              <PageHeader title={t("pageTitle")} description={t("pageDescription")} />
-            </div>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <HeroStat
-                label={t("requestsLabel")}
-                value={kpis.totalRequests}
-                sub={strongestMonth ? t("requestsBusiestMonth", { month: strongestMonth.month }) : t("requestsNoData")}
-              />
-              <HeroStat
-                label={t("approvalRateLabel")}
-                value={`${kpis.approvalRate}%`}
-                sub={t("approvalRateSub", { approved: kpis.approved, rejected: kpis.rejected })}
-              />
-              <HeroStat
-                label={t("roiLabel")}
-                value={`${performance.roi}%`}
-                sub={performance.eventsReported > 0 ? t("roiEventsReported", { eventsReported: performance.eventsReported }) : t("roiAwaitingReports")}
-              />
-            </div>
+      <DashboardPageHeader
+        eyebrow={`${t("adminAnalyticsBadge")} · ${t("yearBadge", { year: data.year })}`}
+        title={t("pageTitle")}
+        description={t("pageDescription")}
+        summary={{
+          label: t("approvedBudgetLabel"),
+          value: formatCurrency(kpis.totalApprovedBudget, currencyCode),
+          note: t("actualSpendLabel", { amount: formatCurrency(kpis.totalActualSpend, currencyCode) }),
+        }}
+        actions={(
+          <div className="min-w-[10rem]">
+            <SearchableSelect
+              options={YEAR_OPTIONS}
+              value={year}
+              onValueChange={setYear}
+              placeholder={t("selectYearPlaceholder")}
+            />
           </div>
-
-          <div className="workspace-glass-panel rounded-2xl p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">{t("scopeLabel")}</p>
-                <p className="mt-1 text-lg font-semibold text-foreground">{t("platformSummary")}</p>
-              </div>
-              <div className="min-w-[10rem]">
-                <SearchableSelect
-                  options={YEAR_OPTIONS}
-                  value={year}
-                  onValueChange={setYear}
-                  placeholder={t("selectYearPlaceholder")}
-                />
-              </div>
-            </div>
-            <div className="mt-5 space-y-4">
-              <div className="rounded-2xl border border-border/60 bg-muted/40 p-4">
-                <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">{t("approvedBudgetLabel")}</p>
-                <p className="mt-2 text-2xl font-semibold text-foreground">{formatCurrency(kpis.totalApprovedBudget, currencyCode)}</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {t("actualSpendLabel", { amount: formatCurrency(kpis.totalActualSpend, currencyCode) })}
-                </p>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <MiniMetric label={t("leadsGeneratedLabel")} value={performance.totalLeads} />
-                <MiniMetric label={t("employersEngagedLabel")} value={performance.totalEmployers} />
-                <MiniMetric label={t("candidatesSourchedLabel")} value={performance.totalCandidates} />
-                <MiniMetric label={t("hiresGeneratedLabel")} value={performance.totalHires} />
-              </div>
-            </div>
-          </div>
+        )}
+        metrics={[
+          { label: t("requestsLabel"), value: kpis.totalRequests, note: strongestMonth ? t("requestsBusiestMonth", { month: strongestMonth.month }) : t("requestsNoData"), icon: Target, iconClassName: "text-sky-600", iconSurfaceClassName: "bg-sky-50 dark:bg-sky-950/30" },
+          { label: t("approvalRateLabel"), value: `${kpis.approvalRate}%`, note: t("approvalRateSub", { approved: kpis.approved, rejected: kpis.rejected }), icon: Percent, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50 dark:bg-emerald-950/30" },
+          { label: t("roiLabel"), value: `${performance.roi}%`, note: performance.eventsReported > 0 ? t("roiEventsReported", { eventsReported: performance.eventsReported }) : t("roiAwaitingReports"), icon: TrendingUp, iconClassName: "text-violet-600", iconSurfaceClassName: "bg-violet-50 dark:bg-violet-950/30" },
+        ]}
+      >
+        <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
+          <MiniMetric label={t("leadsGeneratedLabel")} value={performance.totalLeads} />
+          <MiniMetric label={t("employersEngagedLabel")} value={performance.totalEmployers} />
+          <MiniMetric label={t("candidatesSourchedLabel")} value={performance.totalCandidates} />
+          <MiniMetric label={t("hiresGeneratedLabel")} value={performance.totalHires} />
         </div>
-      </section>
+      </DashboardPageHeader>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
@@ -529,16 +497,6 @@ export default function AdminExhibitionAnalyticsPage() {
           </div>
         </div>
       </section>
-    </div>
-  );
-}
-
-function HeroStat({ label, value, sub }: { label: string; value: string | number; sub: string }) {
-  return (
-    <div className="workspace-glass-panel rounded-2xl p-4">
-      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-foreground">{value}</p>
-      <p className="mt-1 text-xs text-muted-foreground">{sub}</p>
     </div>
   );
 }

@@ -27,6 +27,7 @@ import {
   Search, RotateCcw, Gift, Clock, CheckCircle2, XCircle,
   Inbox, Eye, X, FileDown, Pencil, Send, History, ArrowLeftRight,
 } from "lucide-react";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -296,34 +297,20 @@ export default function AgentOffersPage() {
     title: t("header.title"),
   });
 
-  const metricsItems = [
-    { label: t("metrics.total"), value: stats.total, icon: <Gift className="h-5 w-5" />, tone: "workspace-tone-sky" },
-    { label: t("status.pending"), value: stats.pending, icon: <Clock className="h-5 w-5" />, tone: "workspace-tone-amber" },
-    { label: t("status.accepted"), value: stats.accepted, icon: <CheckCircle2 className="h-5 w-5" />, tone: "workspace-tone-emerald" },
-    { label: t("status.declined"), value: stats.declined, icon: <XCircle className="h-5 w-5" />, tone: "workspace-tone-rose" },
-  ];
-
   return (
     <div className="page-container space-y-6">
-      {/* Hero */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t("header.title")}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t("header.description")}</p>
-
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {metricsItems.map((m) => (
-            <div key={m.label} className="workspace-glass-panel rounded-2xl p-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{m.label}</p>
-                  <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{m.value}</p>
-                </div>
-                <div className={`${m.tone} rounded-xl p-2`}>{m.icon}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+      <DashboardPageHeader
+        icon={Gift}
+        eyebrow={t("header.title")}
+        title={t("header.title")}
+        description={t("header.description")}
+        metrics={[
+          { label: t("metrics.total"), value: stats.total, icon: Gift },
+          { label: t("status.pending"), value: stats.pending, icon: Clock },
+          { label: t("status.accepted"), value: stats.accepted, icon: CheckCircle2 },
+          { label: t("status.declined"), value: stats.declined, icon: XCircle },
+        ]}
+      />
 
       {/* Filters */}
       <section className="workspace-panel-surface rounded-[28px] p-5">

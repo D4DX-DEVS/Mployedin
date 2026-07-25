@@ -31,6 +31,12 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const requestedYear = parseInt(searchParams.get("year") ?? String(currentYear));
   const year = Number.isFinite(requestedYear) ? requestedYear : currentYear;
   const view = searchParams.get("view") ?? "own"; // "own" | "team"
+  const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "10", 10) || 10));
+  const search = searchParams.get("search")?.trim().toLowerCase() ?? "";
+  const risk = searchParams.get("risk") ?? "all";
+  const completion = searchParams.get("completion") ?? "all";
+  const territoryFilter = searchParams.get("territory") ?? "all";
 
   if (view === "own") {
     // Get the supervisor's own target profile
@@ -103,37 +109,83 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       lastActivityAt: p.updatedAt ?? agent?.updatedAt,
     };
   });
+  const completionStage = (progress: number) => progress >= 100 ? "completed" : progress > 0 ? "in_progress" : "not_started";
+  const filteredRows = rows.filter((row) => {
+    const territory = row.territory ?? row.region ?? "Unassigned";
+    if (territoryFilter !== "all" && territory !== territoryFilter) return false;
+    if (risk !== "all" && row.riskScore !== risk) return false;
+    if (completion !== "all" && completionStage(row.overallProgress) !== completion) return false;
+    if (!search) return true;
+    return row.assigneeName.toLowerCase().includes(search)
+      || row.assigneeEmail.toLowerCase().includes(search)
+      || territory.toLowerCase().includes(search);
+  });
 
   // Team totals
   const totals = {
-    agents: rows.length,
-    totalProfiles: rows.length,
+    agents: filteredRows.length,
+    totalProfiles: filteredRows.length,
     employer: {
-      target: rows.reduce((s, r) => s + r.employerTarget, 0),
-      achieved: rows.reduce((s, r) => s + r.employerAchieved, 0),
+      target: filteredRows.reduce((s, r) => s + r.employerTarget, 0),
+      achieved: filteredRows.reduce((s, r) => s + r.employerAchieved, 0),
     },
     employee: {
-      target: rows.reduce((s, r) => s + r.employeeTarget, 0),
-      achieved: rows.reduce((s, r) => s + r.employeeAchieved, 0),
+      target: filteredRows.reduce((s, r) => s + r.employeeTarget, 0),
+      achieved: filteredRows.reduce((s, r) => s + r.employeeAchieved, 0),
     },
     finance: {
-      target: rows.reduce((s, r) => s + r.financeTarget, 0),
-      achieved: rows.reduce((s, r) => s + r.financeAchieved, 0),
+      target: filteredRows.reduce((s, r) => s + r.financeTarget, 0),
+      achieved: filteredRows.reduce((s, r) => s + r.financeAchieved, 0),
     },
-    avgPerformance: rows.length > 0
-      ? Math.round(rows.reduce((s, r) => s + r.overallProgress, 0) / rows.length)
+    avgPerformance: filteredRows.length > 0
+      ? Math.round(filteredRows.reduce((s, r) => s + r.overallProgress, 0) / filteredRows.length)
       : 0,
     riskBreakdown: {
-      high: rows.filter((r) => r.riskScore === "high").length,
-      medium: rows.filter((r) => r.riskScore === "medium").length,
-      low: rows.filter((r) => r.riskScore === "low").length,
+      high: filteredRows.filter((r) => r.riskScore === "high").length,
+      medium: filteredRows.filter((r) => r.riskScore === "medium").length,
+      low: filteredRows.filter((r) => r.riskScore === "low").length,
     },
   };
+  const stageCounts = filteredRows.reduce(
+    (counts, row) => {
+      counts[completionStage(row.overallProgress)] += 1;
+      return counts;
+    },
+    { not_started: 0, in_progress: 0, completed: 0 } as Record<string, number>,
+  );
+  const currentMonth = new Date().getMonth() + 1;
+  const deadlineAlerts = filteredRows.filter((row) => {
+    const month = row.monthlyAchievements.find((entry) => entry.month === currentMonth);
+    return !month || month.overallProgress < 75;
+  }).slice(0, 5);
+  const topPerformers = [...filteredRows].sort((a, b) => b.overallProgress - a.overallProgress).slice(0, 3);
+  const underPerformers = [...filteredRows].sort((a, b) => a.overallProgress - b.overallProgress).slice(0, 3);
+  const territories = [...new Set(rows.map((row) => row.territory ?? row.region ?? "Unassigned"))].sort();
+  const currencies = [...new Set(filteredRows.map((row) => row.regionalCurrency ?? row.currency ?? "AED"))];
 
   return NextResponse.json({
-    profiles: rows,
+    profiles: filteredRows.slice((page - 1) * limit, page * limit),
     ownProfile: ownProfile ? await enrichProfile(ownProfile as unknown as Record<string, unknown>) : null,
     totals,
+    page,
+    total: filteredRows.length,
+    totalPages: Math.max(1, Math.ceil(filteredRows.length / limit)),
+    overview: {
+      stageCounts,
+      territories,
+      currencyLabel: currencies.length === 1 ? currencies[0] : `${currencies.length} currencies`,
+      attention: {
+        behindEmployer: filteredRows.filter((row) => row.employerProgress < 40).length,
+        behindEmployee: filteredRows.filter((row) => row.employeeProgress < 40).length,
+        behindFinance: filteredRows.filter((row) => row.financeProgress < 40).length,
+        highRisk: filteredRows.filter((row) => row.riskScore === "high").length,
+      },
+      topPerformers,
+      underPerformers,
+      pendingActions: filteredRows.filter((row) => completionStage(row.overallProgress) !== "completed").length,
+      pendingApprovals: filteredRows.filter((row) => row.status !== "active" && completionStage(row.overallProgress) !== "completed").length,
+      deadlineAlerts,
+    },
   });
 }
 

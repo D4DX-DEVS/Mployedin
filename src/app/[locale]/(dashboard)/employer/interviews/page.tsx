@@ -36,6 +36,7 @@ import type { ExportColumn } from "@/lib/export";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { formatNumber } from "@/lib/formatNumber";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 
 interface AIQuestionsTarget {
   interviewId: string;
@@ -385,29 +386,17 @@ export default function EmployerInterviewsPage() {
         }
       />
 
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="mt-0 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {[
-            { label: t("scheduled"), value: scheduledTotal, note: t("scheduledDesc"), icon: CalendarDays, tone: "text-status-applied", chip: "bg-status-applied-bg" },
-            { label: t("completed"), value: completedTotal, note: t("completedDesc"), icon: CircleCheckBig, tone: "text-status-selected", chip: "bg-status-selected-bg" },
-            { label: t("needsAttention"), value: attentionTotal, note: t("needsAttentionDesc"), icon: RotateCcw, tone: "text-status-shortlisted", chip: "bg-status-shortlisted-bg" },
-            { label: t("confirmed"), value: confirmedTotal, note: t("confirmedDesc"), icon: Clock3, tone: "text-status-interview", chip: "bg-status-interview-bg" },
-          ].map(({ label, value, note, icon: Icon, tone, chip }) => (
-            <div key={label} className="workspace-glass-panel rounded-2xl p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-                  <p className="mt-3 text-4xl font-semibold tracking-tight text-foreground">{formatNumber(value, locale)}</p>
-                </div>
-                <span className={`flex h-12 w-12 items-center justify-center rounded-2xl ${chip}`}>
-                  <Icon className={`h-5 w-5 ${tone}`} />
-                </span>
-              </div>
-              <p className="mt-3 text-sm leading-5 text-muted-foreground">{note}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+      <DashboardPageHeader
+        icon={CalendarDays}
+        eyebrow={t("scheduled")}
+        title={t("scheduled")}
+        metrics={[
+          { label: t("scheduled"), value: formatNumber(scheduledTotal, locale), note: t("scheduledDesc"), icon: CalendarDays },
+          { label: t("completed"), value: formatNumber(completedTotal, locale), note: t("completedDesc"), icon: CircleCheckBig },
+          { label: t("needsAttention"), value: formatNumber(attentionTotal, locale), note: t("needsAttentionDesc"), icon: RotateCcw },
+          { label: t("confirmed"), value: formatNumber(confirmedTotal, locale), note: t("confirmedDesc"), icon: Clock3 },
+        ]}
+      />
 
       {/* ── Filter Section ────────────────────────────────────────────── */}
       <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">

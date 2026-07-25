@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { PageHero } from "@/components/shared/PageHero";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -25,7 +25,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Search, Inbox, ShieldCheck, ShieldOff, FileText, ExternalLink, Ban, Download, FileSpreadsheet, LogIn, Loader2, Sparkles } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Inbox, ShieldCheck, ShieldOff, FileText, ExternalLink, Ban, Download, FileSpreadsheet, LogIn, Loader2 } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 
 interface Employer {
@@ -197,18 +197,11 @@ export default function AdminEmployersPage() {
     <div className="page-container space-y-4">
       {ConfirmDialogNode}
 
-      {/* ── Hero Section ── */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-          <div className="min-w-0 flex-1">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              {t("adminWorkspace")}
-            </div>
-            <PageHeader title={t("pageTitle")} description={t("pageDescription")} />
-          </div>
-        </div>
-      </section>
+      <PageHero
+        title={t("pageTitle")}
+        description={t("pageDescription")}
+        eyebrow={t("adminWorkspace")}
+      />
 
       <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
         <div className="flex flex-wrap items-center gap-2 border-b border-border/80 px-5 py-4">

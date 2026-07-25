@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -361,6 +361,20 @@ export default function AdminExhibitionsPage() {
   const t = useTranslations("adminExhibitions");
   const { confirm } = useConfirm();
   const [items, setItems] = useState<ExhibitionRequest[]>([]);
+  const [totalItems, setTotalItems] = useState(0);
+  const [serverTotalPages, setServerTotalPages] = useState(1);
+  const [countryOptions, setCountryOptions] = useState<string[]>([]);
+  const [summary, setSummary] = useState({
+    total: 0,
+    pendingReview: 0,
+    financeReview: 0,
+    awaitingApproval: 0,
+    approved: 0,
+    rejected: 0,
+    budgetRequested: 0,
+    budgetApproved: 0,
+    budgetUtilized: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
@@ -429,21 +443,30 @@ export default function AdminExhibitionsPage() {
   const fetchItems = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ limit: "100" });
+      const params = new URLSearchParams({ page: String(page), limit: "10" });
       if (statusFilter !== "all") params.set("status", statusFilter);
       if (priorityFilter !== "all") params.set("priority", priorityFilter);
+      if (stageFilter !== "all") params.set("stage", stageFilter);
+      if (dateRange !== "all") params.set("dateRange", dateRange);
+      if (countryFilter !== "all") params.set("country", countryFilter);
+      if (budgetRange !== "all") params.set("budgetRange", budgetRange);
+      if (reviewerFilter !== "all") params.set("reviewer", reviewerFilter);
       if (search) params.set("search", search);
       const response = await fetch(`/api/exhibitions?${params}`);
       if (response.ok) {
         const data = await response.json();
         setItems(data.items ?? []);
+        setTotalItems(data.total ?? 0);
+        setServerTotalPages(data.totalPages ?? 1);
+        setSummary((current) => ({ ...current, ...(data.summary ?? {}) }));
+        setCountryOptions(data.countries ?? []);
       }
     } catch {
       toast.error(t("couldNotLoadExhibitionRequests"));
     } finally {
       setLoading(false);
     }
-  }, [priorityFilter, search, statusFilter, t]);
+  }, [budgetRange, countryFilter, dateRange, page, priorityFilter, reviewerFilter, search, stageFilter, statusFilter, t]);
 
   useEffect(() => {
     fetchItems();
@@ -457,51 +480,27 @@ export default function AdminExhibitionsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter, priorityFilter, stageFilter, dateRange, countryFilter, budgetRange, reviewerFilter, search]);
 
-  const countries = useMemo(() => {
-    const values = [...new Set(items.map((item) => item.country).filter(Boolean))] as string[];
-    return [{ value: "all", label: "All Countries" }, ...values.map((country) => ({ value: country, label: country }))];
-  }, [items]);
-
-  const filteredItems = useMemo(() => {
-    return items.filter((item) => {
-      if (stageFilter !== "all" && getStage(item).value !== stageFilter) return false;
-      if (countryFilter !== "all" && item.country !== countryFilter) return false;
-      if (reviewerFilter === "assigned" && !item.reviewedBy) return false;
-      if (reviewerFilter === "unassigned" && item.reviewedBy) return false;
-      if (dateRange !== "all") {
-        const created = new Date(item.createdAt);
-        const cutoff = Date.now() - Number(dateRange) * 86400000;
-        if (Number.isNaN(created.getTime()) || created.getTime() < cutoff) return false;
-      }
-      if (budgetRange !== "all") {
-        const [min, max] = budgetRange.split("-").map(Number);
-        if ((item.estimatedBudget ?? 0) < min || (item.estimatedBudget ?? 0) > max) return false;
-      }
-      return true;
-    });
-  }, [budgetRange, countryFilter, dateRange, items, reviewerFilter, stageFilter]);
-
   const pageSize = 10;
-  const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
-  const visibleItems = filteredItems.slice((page - 1) * pageSize, page * pageSize);
+  const totalPages = serverTotalPages;
+  const visibleItems = items;
   const allVisibleSelected = visibleItems.length > 0 && visibleItems.every((item) => selectedIds.has(item._id));
   const partiallySelected = visibleItems.some((item) => selectedIds.has(item._id)) && !allVisibleSelected;
-  const selectedItems = filteredItems.filter((item) => selectedIds.has(item._id));
-  const detailIndex = detailItem ? filteredItems.findIndex((item) => item._id === detailItem._id) : -1;
-  const previousDetailItem = detailIndex > 0 ? filteredItems[detailIndex - 1] : null;
-  const nextDetailItem = detailIndex >= 0 && detailIndex < filteredItems.length - 1 ? filteredItems[detailIndex + 1] : null;
+  const selectedItems = items.filter((item) => selectedIds.has(item._id));
+  const detailIndex = detailItem ? items.findIndex((item) => item._id === detailItem._id) : -1;
+  const previousDetailItem = detailIndex > 0 ? items[detailIndex - 1] : null;
+  const nextDetailItem = detailIndex >= 0 && detailIndex < items.length - 1 ? items[detailIndex + 1] : null;
 
-  const totalBudgetReq = items.reduce((sum, item) => sum + (item.estimatedBudget ?? 0), 0);
-  const totalBudgetApp = items.reduce((sum, item) => sum + (item.approvedBudget ?? 0), 0);
-  const totalBudgetUsed = items.reduce((sum, item) => sum + (item.actualSpend ?? 0), 0);
+  const totalBudgetReq = summary.budgetRequested;
+  const totalBudgetApp = summary.budgetApproved;
+  const totalBudgetUsed = summary.budgetUtilized;
 
   const kpis = [
-    { label: "Total Requests", value: items.length, trend: "+8.4%", subtitle: "All time", icon: ClipboardCheck, tone: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950/30" },
-    { label: "Pending Review", value: items.filter((item) => ["submitted", "under_review"].includes(item.status)).length, trend: "-2.1%", subtitle: "Needs first action", icon: Clock, tone: "text-orange-600", bg: "bg-orange-50 dark:bg-orange-950/30" },
-    { label: "Finance Review", value: items.filter((item) => item.status === "approved").length, trend: "+3", subtitle: "In finance queue", icon: CircleDollarSign, tone: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-950/30" },
-    { label: "Awaiting Approval", value: items.filter((item) => ["budget_approved", "resources_assigned"].includes(item.status)).length, trend: "Stable", subtitle: "Final approvers", icon: ShieldAlert, tone: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950/30" },
-    { label: "Approved", value: items.filter((item) => ["budget_approved", "resources_assigned", "active"].includes(item.status)).length, trend: "+5.2%", subtitle: "Ready or active", icon: CheckCircle2, tone: "text-green-600", bg: "bg-green-50 dark:bg-green-950/30" },
-    { label: "Rejected", value: items.filter((item) => item.status === "rejected").length, trend: "-1", subtitle: "Declined requests", icon: XCircle, tone: "text-red-600", bg: "bg-red-50 dark:bg-red-950/30" },
+    { label: "Total Requests", value: summary.total, trend: "+8.4%", subtitle: "All time", icon: ClipboardCheck, tone: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950/30" },
+    { label: "Pending Review", value: summary.pendingReview, trend: "-2.1%", subtitle: "Needs first action", icon: Clock, tone: "text-orange-600", bg: "bg-orange-50 dark:bg-orange-950/30" },
+    { label: "Finance Review", value: summary.financeReview, trend: "+3", subtitle: "In finance queue", icon: CircleDollarSign, tone: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-950/30" },
+    { label: "Awaiting Approval", value: summary.awaitingApproval, trend: "Stable", subtitle: "Final approvers", icon: ShieldAlert, tone: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950/30" },
+    { label: "Approved", value: summary.approved, trend: "+5.2%", subtitle: "Ready or active", icon: CheckCircle2, tone: "text-green-600", bg: "bg-green-50 dark:bg-green-950/30" },
+    { label: "Rejected", value: summary.rejected, trend: "-1", subtitle: "Declined requests", icon: XCircle, tone: "text-red-600", bg: "bg-red-50 dark:bg-red-950/30" },
     { label: "Budget Requested", value: formatMoney(totalBudgetReq, "AED"), trend: "+12%", subtitle: "Pipeline total", icon: Wallet, tone: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950/30" },
     { label: "Budget Approved", value: formatMoney(totalBudgetApp, "AED"), trend: "+9%", subtitle: "Approved total", icon: Target, tone: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950/30" },
     { label: "Budget Utilized", value: formatMoney(totalBudgetUsed, "AED"), trend: `${totalBudgetApp ? Math.round((totalBudgetUsed / totalBudgetApp) * 100) : 0}%`, subtitle: "Actual spend", icon: Percent, tone: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-950/30" },
@@ -608,7 +607,7 @@ export default function AdminExhibitionsPage() {
   const handleExport = () => {
     const rows = [
       [t("requestIdHeader"), t("eventHeader"), t("agentHeader"), t("locationHeader"), t("datesHeader"), t("stageHeader"), t("budgetRequestedHeader"), t("budgetApprovedHeader"), t("priorityHeader"), t("submittedHeader"), t("slaHeader")],
-      ...filteredItems.map((item) => {
+      ...items.map((item) => {
         const sla = getSla(item);
         return [
           item._id,
@@ -686,64 +685,37 @@ export default function AdminExhibitionsPage() {
 
   return (
     <div className="page-container space-y-6">
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-          <div className="min-w-0 flex-1">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              <CalendarDays className="h-3.5 w-3.5" />
-              {t("adminOperations")}
-            </div>
-            <PageHeader title={t("exhibitionOperationsCenter")} description={t("manageExhibitionRequests")} />
-          </div>
-          <div className="flex shrink-0 flex-col gap-3 sm:flex-row xl:items-start">
-            <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:min-w-[200px]">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("queueHealth")}</p>
-              <p className="mt-1 text-2xl font-semibold text-foreground">
-                {items.filter((item) => !["completed", "rejected", "archived"].includes(item.status)).length}
-              </p>
-              <p className="text-xs text-muted-foreground">{t("openOperationalRequests")}</p>
-            </div>
+      <DashboardPageHeader
+        icon={CalendarDays}
+        eyebrow={t("adminOperations")}
+        title={t("exhibitionOperationsCenter")}
+        description={t("manageExhibitionRequests")}
+        summary={{
+          label: t("queueHealth"),
+          value: items.filter((item) => !["completed", "rejected", "archived"].includes(item.status)).length,
+          note: t("openOperationalRequests"),
+        }}
+        actions={(
             <a href="exhibitions/analytics" className="self-start">
               <Button variant="outline" className="h-10 rounded-xl border-border/70 bg-background/90">
                 <BarChart2 className="h-4 w-4" />
                 {t("analytics")}
               </Button>
             </a>
-          </div>
-        </div>
-
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-9">
-          {[
-            { label: t("totalRequests"), value: items.length, trend: "+8.4%", subtitle: t("allTime"), icon: ClipboardCheck, tone: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950/30" },
-            { label: t("pendingReview"), value: items.filter((item) => ["submitted", "under_review"].includes(item.status)).length, trend: "-2.1%", subtitle: t("needsFirstAction"), icon: Clock, tone: "text-orange-600", bg: "bg-orange-50 dark:bg-orange-950/30" },
-            { label: t("financeReview"), value: items.filter((item) => item.status === "approved").length, trend: "+3", subtitle: t("inFinanceQueue"), icon: CircleDollarSign, tone: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-950/30" },
-            { label: t("awaitingApproval"), value: items.filter((item) => ["budget_approved", "resources_assigned"].includes(item.status)).length, trend: "Stable", subtitle: t("finalApprovers"), icon: ShieldAlert, tone: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950/30" },
-            { label: t("approved"), value: items.filter((item) => ["budget_approved", "resources_assigned", "active"].includes(item.status)).length, trend: "+5.2%", subtitle: t("readyOrActive"), icon: CheckCircle2, tone: "text-green-600", bg: "bg-green-50 dark:bg-green-950/30" },
-            { label: t("rejected"), value: items.filter((item) => item.status === "rejected").length, trend: "-1", subtitle: t("declinedRequests"), icon: XCircle, tone: "text-red-600", bg: "bg-red-50 dark:bg-red-950/30" },
-            { label: t("budgetRequested"), value: formatMoney(totalBudgetReq, "AED"), trend: "+12%", subtitle: t("pipelineTotal"), icon: Wallet, tone: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950/30" },
-            { label: t("budgetApproved"), value: formatMoney(totalBudgetApp, "AED"), trend: "+9%", subtitle: t("approvedTotal"), icon: Target, tone: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950/30" },
-            { label: t("budgetUtilized"), value: formatMoney(totalBudgetUsed, "AED"), trend: `${totalBudgetApp ? Math.round((totalBudgetUsed / totalBudgetApp) * 100) : 0}%`, subtitle: t("actualSpend"), icon: Percent, tone: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-950/30" },
-          ].map(({ label, value, trend, subtitle, icon: Icon, tone, bg }) => (
-            <div key={label} className="workspace-glass-panel min-h-[132px] rounded-2xl p-4">
-              <div className="flex h-full flex-col justify-between gap-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${bg}`}>
-                    <Icon className={`h-5 w-5 ${tone}`} strokeWidth={1.8} />
-                  </div>
-                  <span className="rounded-full border border-border/60 bg-background px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                    {trend}
-                  </span>
-                </div>
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
-                  <p className="mt-1 truncate text-xl font-semibold tracking-tight text-foreground">{value}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+        )}
+        metricsClassName="xl:grid-cols-9"
+        metrics={[
+          { label: t("totalRequests"), value: summary.total, note: t("allTime"), icon: ClipboardCheck, iconClassName: "text-blue-600", iconSurfaceClassName: "bg-blue-50 dark:bg-blue-950/30" },
+          { label: t("pendingReview"), value: summary.pendingReview, note: t("needsFirstAction"), icon: Clock, iconClassName: "text-orange-600", iconSurfaceClassName: "bg-orange-50 dark:bg-orange-950/30" },
+          { label: t("financeReview"), value: summary.financeReview, note: t("inFinanceQueue"), icon: CircleDollarSign, iconClassName: "text-purple-600", iconSurfaceClassName: "bg-purple-50 dark:bg-purple-950/30" },
+          { label: t("awaitingApproval"), value: summary.awaitingApproval, note: t("finalApprovers"), icon: ShieldAlert, iconClassName: "text-blue-600", iconSurfaceClassName: "bg-blue-50 dark:bg-blue-950/30" },
+          { label: t("approved"), value: summary.approved, note: t("readyOrActive"), icon: CheckCircle2, iconClassName: "text-green-600", iconSurfaceClassName: "bg-green-50 dark:bg-green-950/30" },
+          { label: t("rejected"), value: summary.rejected, note: t("declinedRequests"), icon: XCircle, iconClassName: "text-red-600", iconSurfaceClassName: "bg-red-50 dark:bg-red-950/30" },
+          { label: t("budgetRequested"), value: formatMoney(totalBudgetReq, "AED"), note: t("pipelineTotal"), icon: Wallet, iconClassName: "text-blue-600", iconSurfaceClassName: "bg-blue-50 dark:bg-blue-950/30" },
+          { label: t("budgetApproved"), value: formatMoney(totalBudgetApp, "AED"), note: t("approvedTotal"), icon: Target, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50 dark:bg-emerald-950/30" },
+          { label: t("budgetUtilized"), value: formatMoney(totalBudgetUsed, "AED"), note: t("actualSpend"), icon: Percent, iconClassName: "text-purple-600", iconSurfaceClassName: "bg-purple-50 dark:bg-purple-950/30" },
+        ]}
+      />
 
       <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
@@ -765,7 +737,7 @@ export default function AdminExhibitionsPage() {
         </div>
 
         <div className="mt-5 rounded-2xl border border-border/60 bg-background p-3 shadow-sm shadow-black/[0.03]">
-          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-[minmax(240px,1.5fr)_repeat(7,minmax(130px,1fr))]">
+          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-[minmax(240px,1.5fr)_repeat(7,minmax(130px,1fr))]">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -807,7 +779,15 @@ export default function AdminExhibitionsPage() {
               { value: "30", label: t("last30Days") },
               { value: "90", label: t("last90Days") },
             ]} placeholder={t("dateRange")} />
-            <FilterSelect value={countryFilter} onChange={setCountryFilter} options={countries} placeholder={t("country")} />
+            <FilterSelect
+              value={countryFilter}
+              onChange={setCountryFilter}
+              options={[
+                { value: "all", label: "All Countries" },
+                ...countryOptions.map((country) => ({ value: country, label: country })),
+              ]}
+              placeholder={t("country")}
+            />
             <FilterSelect value={budgetRange} onChange={setBudgetRange} options={[
               { value: "all", label: t("anyBudget") },
               { value: "0-10000", label: t("under10k") },
@@ -862,7 +842,7 @@ export default function AdminExhibitionsPage() {
                 </div>
               ))}
             </div>
-          ) : filteredItems.length === 0 ? (
+          ) : items.length === 0 ? (
             <div className="workspace-empty-state flex flex-col items-center gap-3 rounded-2xl px-6 py-14 text-center">
               <div className="workspace-muted-pill rounded-[20px] p-3">
                 <Inbox className="h-8 w-8 text-muted-foreground" />
@@ -977,7 +957,7 @@ export default function AdminExhibitionsPage() {
 
               <div className="flex flex-col gap-3 border-t bg-background px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-xs text-muted-foreground">
-                  {t("showing", { start: (page - 1) * pageSize + 1, end: Math.min(page * pageSize, filteredItems.length), total: filteredItems.length })}
+                  {t("showing", { start: (page - 1) * pageSize + 1, end: Math.min(page * pageSize, totalItems), total: totalItems })}
                 </p>
                 <div className="flex items-center gap-2">
                   <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" disabled={page === 1} onClick={() => setPage(Math.max(1, page - 1))}>

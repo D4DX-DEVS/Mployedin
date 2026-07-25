@@ -11,7 +11,6 @@ import {
   Briefcase,
   CheckCircle2,
   FileText,
-  Sparkles,
   TrendingUp,
   UserPlus,
   Users,
@@ -29,6 +28,7 @@ import {
   PlatformInsightsSkeleton,
   QuickActionHealthBadge,
 } from "./_components/platform-health";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 
 interface UsersByRoleRow {
   _id: string | null;
@@ -142,9 +142,6 @@ const adminCardClassName =
 
 const adminInteractiveCardClassName =
   "workspace-subtle-surface rounded-2xl transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card hover:shadow-[0_24px_50px_-38px_rgba(2,132,199,0.38)]";
-
-const adminStatPanelClassName =
-  "workspace-glass-panel rounded-2xl p-4 text-left";
 
 function buildMonthBuckets(now: Date, totalMonths: number, locale: string) {
   return Array.from({ length: totalMonths }, (_, index) => {
@@ -695,93 +692,38 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
 
   return (
     <div className="page-container space-y-6 pb-6">
-      <section
-        className="workspace-hero-surface overflow-hidden rounded-[28px] p-7 sm:p-8"
-        data-surface="light-hero"
-      >
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-3xl">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              {t("hero.eyebrow")}
-            </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-              {t("hero.title")}
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
-              {t("hero.description")}
+      <DashboardPageHeader
+        icon={Activity}
+        eyebrow={t("hero.eyebrow")}
+        title={t("hero.title")}
+        description={t("hero.description")}
+        summary={{
+          label: t("systemWatch.eyebrow"),
+          value: t("systemWatch.activeJobs", { count: stats.activeJobs }),
+          note: t("systemWatch.applications", { count: stats.totalApplications }),
+        }}
+        metrics={kpis.map((kpi) => ({
+          label: kpi.label,
+          value: kpi.value,
+          note: kpi.trend.label,
+          icon: kpi.icon,
+          iconClassName: "text-primary",
+          iconSurfaceClassName: "bg-primary/10",
+        }))}
+      />
+
+      <div className="grid items-start gap-4 xl:grid-cols-[1.08fr_0.92fr]">
+        <section className="workspace-panel-surface rounded-2xl p-4 sm:p-5" data-surface="light-panel">
+          <div>
+            <h2 className="text-base font-semibold tracking-tight text-foreground">
+              {t("sections.quickActions.title")}
+            </h2>
+            <p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">
+              {t("sections.quickActions.description")}
             </p>
           </div>
 
-          <div className={`${adminStatPanelClassName} sm:min-w-[320px]`}>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("systemWatch.eyebrow")}</p>
-            <p className="mt-1 text-2xl font-semibold tracking-tight text-foreground">{t("systemWatch.activeJobs", { count: stats.activeJobs })}</p>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              {t("systemWatch.applications", { count: stats.totalApplications })}
-            </p>
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <div className="workspace-glass-panel rounded-2xl px-3 py-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("systemWatch.demand")}</p>
-                <p className="mt-1 text-lg font-semibold text-foreground">{applicationsPerActiveJob.toFixed(1)}</p>
-                <p className="text-xs text-muted-foreground">{t("systemWatch.appsPerJob")}</p>
-              </div>
-              <div className="workspace-glass-panel rounded-2xl px-3 py-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("systemWatch.conversion")}</p>
-                <p className="mt-1 text-lg font-semibold text-foreground">{placementRate.toFixed(0)}%</p>
-                <p className="text-xs text-muted-foreground">{t("systemWatch.applicationsToPlacements")}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {kpis.map((kpi) => {
-            const Icon = kpi.icon;
-
-            return (
-              <Link
-                key={kpi.label}
-                href={kpi.href}
-                className="block"
-              >
-              <article
-                className={`${adminCardClassName} p-6 cursor-pointer hover:ring-2 hover:ring-primary/20 transition-all`}
-                data-surface="light-card"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{kpi.label}</p>
-                    <p className="mt-4 text-3xl font-semibold tracking-tight text-foreground">{kpi.value}</p>
-                  </div>
-                  <div className={`rounded-2xl p-2.5 ring-1 ring-inset ${kpi.toneClassName}`}>
-                    <Icon className="h-5 w-5" />
-                  </div>
-                </div>
-                <div className={`mt-4 inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-semibold ${kpi.trendClassName}`}>
-                  <TrendingUp className="h-3.5 w-3.5" />
-                  {kpi.trend.label}
-                </div>
-                <p className="mt-4 text-sm font-medium leading-6 text-foreground">{kpi.detail}</p>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">{kpi.insight}</p>
-              </article>
-              </Link>
-            );
-          })}
-        </div>
-      </section>
-
-      <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
-        <section className={adminPanelClassName} data-surface="light-panel">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-semibold tracking-tight text-foreground">{t("sections.quickActions.title")}</h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                {t("sections.quickActions.description")}
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
             {quickActions.map((action, idx) => {
               const Icon = action.icon;
 
@@ -789,44 +731,47 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
                 <Link
                   key={`${action.href}-${idx}`}
                   href={action.href}
-                  className={`${adminInteractiveCardClassName} group flex min-h-[176px] flex-col justify-between p-6`}
+                  className={`${adminInteractiveCardClassName} group flex min-w-0 items-start gap-2.5 p-3`}
                   data-surface="light-card"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className={`rounded-2xl p-2.5 ${action.iconClassName}`}>
-                      <Icon className="h-5 w-5" />
+                  <div className={`shrink-0 rounded-lg p-2 ${action.iconClassName}`}>
+                    <Icon className="h-4 w-4" />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <p className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
+                        {action.label}
+                      </p>
+                      {action.badgeNode ?? (
+                        <span className={`max-w-[8rem] shrink-0 truncate rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] ${action.badgeClassName}`}>
+                          {action.badge}
+                        </span>
+                      )}
                     </div>
-                    {action.badgeNode ?? (
-                      <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${action.badgeClassName}`}>
-                        {action.badge}
-                      </span>
-                    )}
+                    <p className="mt-1 line-clamp-2 text-xs leading-4 text-muted-foreground">
+                      {action.desc}
+                    </p>
                   </div>
-                  <div className="mt-5">
-                    <p className="text-base font-semibold text-foreground">{action.label}</p>
-                    <p className="mt-2 text-sm leading-6 text-muted-foreground">{action.desc}</p>
-                  </div>
-                  <div className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-primary">
-                    {t("common.openWorkspace")}
-                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                  </div>
+
+                  <ArrowRight className="mt-1 h-3.5 w-3.5 shrink-0 text-primary transition-transform group-hover:translate-x-0.5 rtl:rotate-180" />
                 </Link>
               );
             })}
           </div>
         </section>
 
-        <section className={adminPanelClassName} data-surface="light-panel">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-semibold tracking-tight text-foreground">{t("sections.recentActivity.title")}</h2>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                {t("sections.recentActivity.description")}
-              </p>
-            </div>
+        <section className="workspace-panel-surface rounded-2xl p-4 sm:p-5" data-surface="light-panel">
+          <div>
+            <h2 className="text-base font-semibold tracking-tight text-foreground">
+              {t("sections.recentActivity.title")}
+            </h2>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              {t("sections.recentActivity.description")}
+            </p>
           </div>
 
-          <div className="mt-6 space-y-3">
+          <div className="workspace-subtle-surface mt-3 overflow-hidden rounded-xl">
             {recentActivity.map((activity) => {
               const Icon = activity.icon;
 
@@ -834,18 +779,24 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
                 <Link
                   key={activity.id}
                   href={activity.href}
-                  className={`${adminInteractiveCardClassName} group flex items-start gap-3 px-5 py-5`}
+                  className="group flex items-start gap-2.5 border-b border-border/50 px-3 py-2.5 transition-colors last:border-b-0 hover:bg-card/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
                   data-surface="light-card"
                 >
-                  <div className={`rounded-2xl p-2.5 ring-1 ring-inset ${activity.toneClassName}`}>
-                    <Icon className="h-4 w-4" />
+                  <div className={`shrink-0 rounded-lg p-2 ring-1 ring-inset ${activity.toneClassName}`}>
+                    <Icon className="h-3.5 w-3.5" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-3">
-                      <p className="text-sm font-semibold text-foreground">{activity.title}</p>
-                      <span className="shrink-0 text-xs font-medium text-muted-foreground">{activity.timestampLabel}</span>
+                    <div className="flex min-w-0 items-center justify-between gap-2">
+                      <p className="min-w-0 flex-1 truncate text-xs font-semibold text-foreground">
+                        {activity.title}
+                      </p>
+                      <span className="shrink-0 text-[10px] font-medium text-muted-foreground">
+                        {activity.timestampLabel}
+                      </span>
                     </div>
-                    <p className="mt-1 text-sm leading-6 text-muted-foreground">{activity.detail}</p>
+                    <p className="mt-0.5 truncate text-[11px] leading-4 text-muted-foreground">
+                      {activity.detail}
+                    </p>
                   </div>
                 </Link>
               );
@@ -1040,4 +991,3 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
     </div>
   );
 }
-

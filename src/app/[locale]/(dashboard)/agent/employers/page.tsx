@@ -12,12 +12,13 @@ import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ArrowRight, BriefcaseBusiness, Building2, Calendar, Check, ChevronDown, ChevronUp, Copy, Edit2, ExternalLink, Globe2, Link2, Loader2, MapPin, Power, PowerOff, Search, Sparkles, Tag, Trash2, UserPlus, Users, LogIn } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, Building2, Calendar, Check, ChevronDown, ChevronUp, Copy, Edit2, ExternalLink, Globe2, Link2, Loader2, MapPin, Power, PowerOff, Search, Tag, Trash2, UserPlus, Users, LogIn } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { toast } from "sonner";
 import type { ExportColumn } from "@/lib/export";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 
 interface Employer {
   _id: string;
@@ -238,28 +239,14 @@ export default function AgentEmployersPage() {
   return (
     <div className="page-container space-y-6">
       {ConfirmDialogNode}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-3xl">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              {t("heroWorkspace")}
-            </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-              {t("heroTitle")}
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              {t("heroDescription")}
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("portfolioLabel")}</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">{pagination.total} {t("employerAccounts")}</p>
-              <p className="text-xs text-muted-foreground">{t("portfolioDescription")}</p>
-            </div>
-            <div className="flex flex-col gap-2">
+      <DashboardPageHeader
+        icon={Building2}
+        eyebrow={t("heroWorkspace")}
+        title={t("heroTitle")}
+        description={t("heroDescription")}
+        summary={{ label: t("portfolioLabel"), value: `${pagination.total} ${t("employerAccounts")}`, note: t("portfolioDescription") }}
+        actions={
+          <div className="flex flex-col gap-2">
               <button
                 onClick={() => setOnboardOpen(true)}
                 className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
@@ -275,61 +262,15 @@ export default function AgentEmployersPage() {
                 {referralLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
                 {referralLoading ? tc("loading") : t("getReferralLinkButton")}
               </button>
-            </div>
           </div>
-        </div>
-
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="workspace-glass-panel rounded-2xl p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tc("active")}</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{activeEmployers}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{t("statsActiveDescription")}</p>
-              </div>
-              <div className="workspace-tone-emerald rounded-2xl p-2.5">
-                <Building2 className="h-5 w-5" />
-              </div>
-            </div>
-          </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tc("inactive")}</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{inactiveEmployers}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{t("statsInactiveDescription")}</p>
-              </div>
-              <div className="workspace-tone-amber rounded-2xl p-2.5">
-                <BriefcaseBusiness className="h-5 w-5" />
-              </div>
-            </div>
-          </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statsIndustriesLabel")}</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{industriesCount}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{t("statsIndustriesDescription")}</p>
-              </div>
-              <div className="workspace-tone-indigo rounded-2xl p-2.5">
-                <Globe2 className="h-5 w-5" />
-              </div>
-            </div>
-          </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statsSearchReadyLabel")}</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{search ? 1 : 0}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{t("statsSearchReadyDescription")}</p>
-              </div>
-              <div className="workspace-tone-sky rounded-2xl p-2.5">
-                <Search className="h-5 w-5" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+        }
+        metrics={[
+          { label: tc("active"), value: activeEmployers, note: t("statsActiveDescription"), icon: Building2 },
+          { label: tc("inactive"), value: inactiveEmployers, note: t("statsInactiveDescription"), icon: BriefcaseBusiness },
+          { label: t("statsIndustriesLabel"), value: industriesCount, note: t("statsIndustriesDescription"), icon: Globe2 },
+          { label: t("statsSearchReadyLabel"), value: search ? 1 : 0, note: t("statsSearchReadyDescription"), icon: Search },
+        ]}
+      />
 
       {/* Referral link display — immediately visible after clicking "Get Referral Link" */}
       {referralError && (

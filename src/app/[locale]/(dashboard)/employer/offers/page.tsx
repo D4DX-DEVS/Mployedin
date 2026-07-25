@@ -4,8 +4,8 @@ import { useEffect, useState, useRef } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
-import { DollarSign, CalendarDays, Clock3, CircleCheckBig, ArrowRight, Eye, X, Sparkles, FileText, Briefcase, FileDown } from "lucide-react";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { DollarSign, CalendarDays, Clock3, CircleCheckBig, Eye, X, FileText, FileDown } from "lucide-react";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -152,84 +152,17 @@ export default function EmployerOffersPage() {
 
   return (
     <div className="page-container space-y-6">
-      <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-        <Sparkles className="h-3.5 w-3.5" />
-        {t("title")}
-      </div>
-      <PageHeader
-        title={t("description")}
-        description={t("subtitle")}
-        actions={
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("currentView")}</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">{total} {t("activeOffers")}</p>
-              <p className="text-xs text-muted-foreground">{t("viewDescription")}</p>
-            </div>
-            <Button
-              asChild
-              className="h-11 gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
-            >
-              <Link href={`/${locale}/employer/applications`}>
-                {t("openPipeline")}
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-        }
+      <DashboardPageHeader
+        icon={DollarSign}
+        eyebrow={t("pending")}
+        title={t("pending")}
+        metrics={[
+          { label: t("pending"), value: pendingCount, note: t("pendingNote"), icon: Clock3 },
+          { label: t("accepted"), value: acceptedCount, note: t("acceptedNote"), icon: CircleCheckBig },
+          { label: t("expired"), value: expiringSoonCount, note: t("expiringNote"), icon: CalendarDays },
+          { label: t("responded"), value: respondedCount, note: t("respondedNote"), icon: FileText },
+        ]}
       />
-
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="mt-0 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {[
-            {
-              label: t("pending"),
-              value: pendingCount,
-              note: t("pendingNote"),
-              icon: Clock3,
-              tone: "text-status-shortlisted",
-              chip: "bg-status-shortlisted-bg",
-            },
-            {
-              label: t("accepted"),
-              value: acceptedCount,
-              note: t("acceptedNote"),
-              icon: CircleCheckBig,
-              tone: "text-status-selected",
-              chip: "bg-status-selected-bg",
-            },
-            {
-              label: t("expired"),
-              value: expiringSoonCount,
-              note: t("expiringNote"),
-              icon: CalendarDays,
-              tone: "text-status-applied",
-              chip: "bg-status-applied-bg",
-            },
-            {
-              label: t("responded"),
-              value: respondedCount,
-              note: t("respondedNote"),
-              icon: FileText,
-              tone: "text-status-interview",
-              chip: "bg-status-interview-bg",
-            },
-          ].map(({ label, value, note, icon: Icon, tone, chip }) => (
-            <div key={label} className="workspace-glass-panel rounded-2xl p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-                  <p className="mt-3 text-4xl font-semibold tracking-tight text-foreground">{value}</p>
-                </div>
-                <span className={`flex h-12 w-12 items-center justify-center rounded-2xl ${chip}`}>
-                  <Icon className={`h-5 w-5 ${tone}`} />
-                </span>
-              </div>
-              <p className="mt-3 text-sm leading-5 text-muted-foreground">{note}</p>
-            </div>
-          ))}
-        </div>
-      </section>
 
       <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">

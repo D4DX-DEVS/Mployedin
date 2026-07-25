@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { useTranslations } from "next-intl";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -181,19 +181,13 @@ export default function AdminBulkImportPage() {
 
   return (
     <div className="page-container">
-      {/* Hero */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-            <Upload className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <PageHeader title={t("title")} description={t("subtitle")} />
-          </div>
-        </div>
-
-        {/* Step Indicator */}
-        <div className="mt-6 flex items-center gap-3">
+      <DashboardPageHeader
+        icon={Upload}
+        eyebrow={t("title")}
+        title={t("title")}
+        description={t("subtitle")}
+      >
+        <div className="mt-3 flex flex-wrap items-center gap-3">
           {[1, 2, 3].map((s) => (
             <div key={s} className="flex items-center gap-2">
               <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold ${
@@ -208,7 +202,7 @@ export default function AdminBulkImportPage() {
             </div>
           ))}
         </div>
-      </section>
+      </DashboardPageHeader>
 
       {/* Step 1: Upload */}
       {step === 1 && (

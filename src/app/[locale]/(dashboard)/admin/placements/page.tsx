@@ -17,7 +17,7 @@ import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { TableToolbar } from "@/components/shared/TableToolbar";
@@ -254,59 +254,60 @@ export default function AdminPlacementsPage() {
     <div className="page-container space-y-6">
       {ConfirmDialogNode}
 
-      {/* ─── Hero ─────────────────────────────────────────────────────── */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-3xl">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-status-applied dark:text-sky-300">
-              <Sparkles className="h-3.5 w-3.5" />
-              {t("recruitmentControl")}
-            </div>
-            <PageHeader
-              title={t("placementTracking")}
-              description={t("placementTrackingDescription")}
-            />
-          </div>
-
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("portfolio")}</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">{t("placementsCount", { count: total })}</p>
-              <p className="text-xs text-muted-foreground">{formatCurrencyBreakdown(salaryByCurrency, t)}</p>
-            </div>
-            <Button
-              onClick={fetchAiInsights}
-              disabled={aiLoading}
-              className="h-11 gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+      {/* ─── Compact page header ──────────────────────────────────────── */}
+      <DashboardPageHeader
+        eyebrow={t("recruitmentControl")}
+        title={t("placementTracking")}
+        description={t("placementTrackingDescription")}
+        summary={{
+          label: t("portfolio"),
+          value: t("placementsCount", { count: total }),
+          note: formatCurrencyBreakdown(salaryByCurrency, t),
+        }}
+        actions={(
+          <Button
+            onClick={fetchAiInsights}
+            disabled={aiLoading}
+            className="h-10 gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+          >
+            {aiLoading ? <RotateCcw className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            {aiLoading ? t("analyzing") : t("generateInsights")}
+          </Button>
+        )}
+        metrics={[
+          { label: t("totalPlacements"), value: total, note: t("allTime"), icon: Users, iconClassName: "text-status-applied", iconSurfaceClassName: "bg-status-applied-bg dark:bg-sky-950/30" },
+          { label: t("pendingVisa"), value: pendingVisa, note: t("awaitingApproval"), icon: Clock, iconClassName: "text-status-shortlisted", iconSurfaceClassName: "bg-status-shortlisted-bg dark:bg-amber-950/30" },
+          { label: t("unpaidCommission"), value: unpaidCommissions, note: t("needsCollection"), icon: DollarSign, iconClassName: "text-red-500", iconSurfaceClassName: "bg-status-rejected-bg dark:bg-red-950/30" },
+          { label: t("totalSalaryValue"), value: formatSalaryValue(totalValue), note: Object.keys(salaryByCurrency).length > 0 ? Object.entries(salaryByCurrency).slice(0, 2).map(([c, v]) => `${formatSalaryValue(v)} ${c}`).join(t("currencyBreakdownSeparator")) : t("noData"), icon: TrendingUp, iconClassName: "text-status-selected", iconSurfaceClassName: "bg-status-selected-bg dark:bg-emerald-950/30" },
+        ]}
+        footer={(
+          <>
+            <button
+              type="button"
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-background/50"
             >
-              {aiLoading ? <RotateCcw className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-              {aiLoading ? t("analyzing") : t("generateInsights")}
-            </Button>
-          </div>
-        </div>
-
-        {/* Stats Row */}
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {([
-            { label: t("totalPlacements"), value: total, note: t("allTime"), icon: Users, tone: "text-status-applied", chip: "bg-status-applied-bg dark:bg-sky-950/30" },
-            { label: t("pendingVisa"), value: pendingVisa, note: t("awaitingApproval"), icon: Clock, tone: "text-status-shortlisted", chip: "bg-status-shortlisted-bg dark:bg-amber-950/30" },
-            { label: t("unpaidCommission"), value: unpaidCommissions, note: t("needsCollection"), icon: DollarSign, tone: "text-red-500", chip: "bg-status-rejected-bg dark:bg-red-950/30" },
-            { label: t("totalSalaryValue"), value: formatSalaryValue(totalValue), note: Object.keys(salaryByCurrency).length > 0 ? Object.entries(salaryByCurrency).slice(0, 2).map(([c, v]) => `${formatSalaryValue(v)} ${c}`).join(t("currencyBreakdownSeparator")) : t("noData"), icon: TrendingUp, tone: "text-status-selected", chip: "bg-status-selected-bg dark:bg-emerald-950/30" },
-          ] as const).map(({ label, value, note, icon: Icon, tone, chip }) => (
-            <div key={label} className="workspace-glass-panel rounded-2xl p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-                  <p className="mt-3 text-4xl font-semibold tracking-tight text-foreground">{value}</p>
-                </div>
-                <span className={`flex h-12 w-12 items-center justify-center rounded-2xl ${chip}`}>
-                  <Icon className={`h-5 w-5 ${tone}`} />
-                </span>
-              </div>
-              <p className="mt-3 line-clamp-1 text-sm leading-5 text-muted-foreground">{note}</p>
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              {showFilters ? t("hideFilters") : t("showFilters")}
+              {activeFilterCount > 0 && <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">{t("activeFilters", { count: activeFilterCount })}</Badge>}
+              {showFilters ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+            </button>
+            <div className="flex items-center gap-2">
+              {activeFilterCount > 0 && (
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1.5 text-xs text-muted-foreground">
+                  <X className="h-3.5 w-3.5" />
+                  {t("clearActiveFilters", { count: activeFilterCount })}
+                </Button>
+              )}
+              <TableToolbar
+                onExportCsv={handleExportCsv}
+                onExportExcel={handleExportExcel}
+                onExportPdf={handleExportPdf}
+              />
             </div>
-          ))}
-        </div>
+          </>
+        )}
+      >
 
         {/* AI Insights inline panel */}
         {aiInsights && (
@@ -318,33 +319,6 @@ export default function AdminPlacementsPage() {
             <div className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{aiInsights}</div>
           </div>
         )}
-
-        {/* ─── Filter toggle bar ──────────────────────────────────────── */}
-        <div className="mt-6 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-white/10 dark:hover:bg-white/5"
-          >
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            {showFilters ? t("hideFilters") : t("showFilters")}
-            {activeFilterCount > 0 && <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">{t("activeFilters", { count: activeFilterCount })}</Badge>}
-            {showFilters ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
-          </button>
-          <div className="flex items-center gap-2">
-            {activeFilterCount > 0 && (
-              <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1.5 text-xs text-muted-foreground">
-                <X className="h-3.5 w-3.5" />
-                {t("clearActiveFilters", { count: activeFilterCount })}
-              </Button>
-            )}
-            <TableToolbar
-              onExportCsv={handleExportCsv}
-              onExportExcel={handleExportExcel}
-              onExportPdf={handleExportPdf}
-            />
-          </div>
-        </div>
 
         {/* ─── Expandable Filters ─────────────────────────────────────── */}
         {showFilters && (
@@ -452,7 +426,7 @@ export default function AdminPlacementsPage() {
             )}
           </div>
         )}
-      </section>
+      </DashboardPageHeader>
 
       {/* ─── Table ────────────────────────────────────────────────────── */}
       <section className="workspace-panel-surface overflow-hidden rounded-[28px]">

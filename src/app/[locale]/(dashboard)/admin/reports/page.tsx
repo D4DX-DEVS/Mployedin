@@ -2,13 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { PageHero } from "@/components/shared/PageHero";
 import Link from "next/link";
 import {
   AlertTriangle,
   ArrowDownRight,
   ArrowRight,
-  Sparkles,
   ArrowUpRight,
   Briefcase,
   CheckCircle2,
@@ -307,14 +306,11 @@ export default function AdminReportsPage() {
 
   return (
     <div className="page-container space-y-4">
-      {/* ── Hero Section ── */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-          <Sparkles className="h-3.5 w-3.5" />
-          {t("adminWorkspace")}
-        </div>
-        <PageHeader className="mt-4" title={t("reportsAndAnalytics")} description={t("platformDemandDescription")} />
-      </section>
+      <PageHero
+        eyebrow={t("adminWorkspace")}
+        title={t("reportsAndAnalytics")}
+        description={t("platformDemandDescription")}
+      />
 
       <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
         <div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-4">

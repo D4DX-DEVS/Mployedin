@@ -56,7 +56,8 @@ import {
 } from "recharts";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { PageHero } from "@/components/shared/PageHero";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { useTranslations, useLocale } from "next-intl";
 import Link from "next/link";
 
@@ -289,18 +290,7 @@ export default function EmployerAnalyticsPage() {
   if (isLoading) {
     return (
       <div className="page-container space-y-6">
-        <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-          <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-status-applied dark:text-sky-300">
-            <Sparkles className="h-3.5 w-3.5" />
-            {t("title")}
-          </div>
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-            {t("title")}
-          </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-            {t("description")}
-          </p>
-        </section>
+        <PageHero title={t("title")} description={t("description")} />
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
@@ -319,18 +309,7 @@ export default function EmployerAnalyticsPage() {
   if (error) {
     return (
       <div className="page-container space-y-6">
-        <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-          <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-status-applied dark:text-sky-300">
-            <Sparkles className="h-3.5 w-3.5" />
-            {t("title")}
-          </div>
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-            {t("title")}
-          </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-            {t("description")}
-          </p>
-        </section>
+        <PageHero title={t("title")} description={t("description")} />
 
         <AnalyticsPanel className="border-red-500/20 bg-red-500/5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -357,45 +336,18 @@ export default function EmployerAnalyticsPage() {
 
   return (
     <div className="page-container space-y-6">
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-3xl">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-status-applied dark:text-sky-300">
-              <activeTabMeta.icon className="h-3.5 w-3.5" />
-              {t(activeTab === "response" ? "responseTime" : activeTab)}
-            </div>
-            <PageHeader
-              title={t("title")}
-              description={t("description")}
-            />
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="workspace-glass-panel rounded-2xl px-4 py-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                {t("viewFocus")}
-              </p>
-                <p className="mt-1 text-lg font-semibold text-foreground">{t(activeTabMeta.key === "response" ? "responseTime" : activeTabMeta.key)}</p>
-                <p className="text-xs text-muted-foreground">{t(activeTabMeta.key === "response" ? "responseTimeDesc" : `${activeTabMeta.key}Desc`)}</p>
-            </div>
-            <div className="workspace-glass-panel rounded-2xl px-4 py-3">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    {t("lastRefresh")}
-                  </p>
-                  <p className="mt-1 text-lg font-semibold text-foreground">
-                    {lastRefresh.toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {activeTab === "pipeline"
-                      ? t("autoRefreshNote")
-                      : t("manualRefreshNote")}
-                  </p>
-                </div>
+      <DashboardPageHeader
+        icon={activeTabMeta.icon}
+        eyebrow={t(activeTab === "response" ? "responseTime" : activeTab)}
+        title={t("title")}
+        description={t("description")}
+        summary={{
+          label: t("viewFocus"),
+          value: t(activeTabMeta.key === "response" ? "responseTime" : activeTabMeta.key),
+          note: t(activeTabMeta.key === "response" ? "responseTimeDesc" : `${activeTabMeta.key}Desc`),
+        }}
+        actions={
+          <>
                 <button
                   onClick={handleRefresh}
                   disabled={refreshing}
@@ -415,26 +367,16 @@ export default function EmployerAnalyticsPage() {
                 >
                   <Download className="h-4 w-4" />
                 </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {headlineMetrics.length > 0 && (
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {headlineMetrics.map((metric) => (
-              <HeroMetricCard
-                key={metric.label}
-                label={metric.label}
-                value={metric.value}
-                description={metric.description}
-                icon={metric.icon}
-                color={metric.color}
-              />
-            ))}
-          </div>
-        )}
-      </section>
+          </>
+        }
+        metrics={headlineMetrics.map((metric) => ({
+          label: metric.label,
+          value: metric.value,
+          note: metric.description,
+          icon: metric.icon,
+        }))}
+        footer={<span className="text-xs text-muted-foreground">{t("lastRefresh")}: {lastRefresh.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
+      />
 
       <AnalyticsPanel className="p-3 sm:p-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">

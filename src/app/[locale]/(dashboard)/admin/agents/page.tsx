@@ -2,14 +2,14 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { PageHero } from "@/components/shared/PageHero";
 import { toast } from "sonner";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CascadingLocationPicker } from "@/components/shared/CascadingLocationPicker";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePagination } from "@/hooks/usePagination";
-import { Plus, Pencil, Trash2, MapPin, Globe, Ban, Sparkles } from "lucide-react";
+import { Plus, Pencil, Trash2, MapPin, Globe, Ban } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -323,18 +323,11 @@ export default function AdminAgentsPage() {
     <div className="page-container space-y-4">
       {ConfirmDialogNode}
 
-      {/* ── Hero Section ── */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-          <div className="min-w-0 flex-1">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              {tr("adminWorkspace")}
-            </div>
-            <PageHeader title={tr("agents")} description={tr("heroDescription")} />
-          </div>
-        </div>
-      </section>
+      <PageHero
+        title={tr("agents")}
+        description={tr("heroDescription")}
+        eyebrow={tr("adminWorkspace")}
+      />
 
       <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
         <div className="flex flex-wrap items-center gap-2 border-b border-border/80 px-5 py-4">

@@ -9,6 +9,7 @@ import { Employer } from "@/models/Employer";
 import { routeGenerate } from "@/lib/ai/router";
 import { redactPII } from "@/lib/ai/sanitize";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
+import logger from "@/lib/logger";
 
 /**
  * GET /api/ai/daily-insights
@@ -155,9 +156,16 @@ Return ONLY a JSON array (no markdown):
       };
     });
 
-  const text = await routeGenerate(prompt, "chat");
+  let text = "";
+  try {
+    text = await routeGenerate(prompt, "chat");
+  } catch (err) {
+    logger.warn({ err }, "AI daily insights generation failed, using fallback");
+  }
+
   let insights;
   try {
+    if (!text) throw new Error("No AI text generated");
     const cleaned = redactPII(text).replace(/```json\n?|```\n?/g, "").trim();
     insights = JSON.parse(cleaned);
     if (!Array.isArray(insights)) throw new Error("Invalid insights payload");
@@ -174,7 +182,7 @@ Return ONLY a JSON array (no markdown):
   } catch {
     insights = isArabic
       ? arabicFallbackInsights
-      : [{ type: "tip", title: "Get Started", message: text.slice(0, 200), action: "Check your dashboard" }];
+      : [{ type: "tip", title: "Get Started", message: text ? text.slice(0, 200) : "Complete your profile to unlock personalized daily insights.", action: "Check your dashboard" }];
   }
 
   return NextResponse.json({ insights, generatedAt: new Date().toISOString() });

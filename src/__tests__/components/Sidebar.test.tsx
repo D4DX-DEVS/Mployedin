@@ -234,7 +234,8 @@ describe.skip("Sidebar", () => {
       { wrapper: createWrapper() }
     );
 
-    expect(screen.getByText("Admin workspace")).toBeInTheDocument();
+    expect(screen.queryByText("Admin workspace")).not.toBeInTheDocument();
+    expect(screen.getByAltText("Mployedin")).toHaveClass("w-[160px]");
     expect(screen.queryByRole("heading", { name: "Recruitment" })).not.toBeInTheDocument();
 
     await waitFor(() => {
@@ -248,7 +249,6 @@ describe.skip("Sidebar", () => {
     expect(workspaceSurface).toHaveAttribute("data-sidebar-tone", "theme-aware");
     expect(workspaceSurface).toHaveClass("border-r", "border-border/80");
     expect(workspaceSurface?.className).not.toContain("bg-slate-900");
-    expect(screen.getByText("Admin workspace")).toHaveClass("text-primary/75");
   });
 
   it("removes the default sticky focus outline from CMS submenu navigation", async () => {

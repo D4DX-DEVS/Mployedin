@@ -3,7 +3,7 @@
 import { useState, useEffect, FormEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -86,9 +86,11 @@ export default function EditStaticPage() {
 
   return (
     <div className="page-container space-y-6">
-      {/* Header */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="flex items-center gap-4">
+      <DashboardPageHeader
+        eyebrow={t("cmsWorkspace")}
+        title={t("editStaticPageTitle")}
+        description={`${t("editingLabel")} ${slug || "..."}`}
+        actions={(
           <Button
             variant="ghost"
             size="icon"
@@ -97,14 +99,8 @@ export default function EditStaticPage() {
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <div>
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              {t("cmsWorkspace")}
-            </div>
-            <PageHeader className="mt-4" title={t("editStaticPageTitle")} description={`${t("editingLabel")} ${slug || "..."}`} />
-          </div>
-        </div>
-      </section>
+        )}
+      />
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-6">

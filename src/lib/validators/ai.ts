@@ -107,3 +107,22 @@ export const aiInterviewQuestionsSchema = z.object({
   questionType: z.enum(["technical", "behavioral", "culture_fit", "situational"]).optional(),
   count: z.number().int().min(1).max(15).default(8),
 });
+
+/** POST /api/ai/copilot/chat */
+export const copilotChatSchema = z.object({
+  messages: z
+    .array(
+      z.object({
+        role: z.enum(["user", "assistant"]),
+        content: z.string().max(4000),
+      })
+    )
+    .min(1)
+    .max(30, "Maximum 30 messages per request"),
+  currentPage: z.string().max(200).optional(),
+});
+
+/** POST /api/ai/copilot/execute */
+export const copilotExecuteSchema = z.object({
+  proposalId: z.string().regex(/^[a-f\d]{24}$/i, "Invalid proposalId"),
+});
