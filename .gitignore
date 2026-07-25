@@ -72,6 +72,10 @@ docs/
 # analysis/graph tools (local only, each dev rebuilds)
 graphify-out/
 .code-review-graph/
+.graphifyignore
+.mcp.json
+.cursor/mcp.json
+.opencode.json
 
 # ===== Temp/junk files from chat sessions =====
 
