@@ -19,6 +19,7 @@ import {
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { PageHero } from "@/components/shared/PageHero";
+import { CountCardGrid } from "@/components/shared/CountCardGrid";
 import { DraftExtractionsCard, DraftJobsCard } from "@/components/features/employer/dashboard";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useTableExport } from "@/hooks/useTableExport";
@@ -761,11 +762,14 @@ export default function EmployerJobsPage() {
                       <p className="mt-1.5 line-clamp-1 max-w-3xl text-xs leading-4 text-muted-foreground">{jobSummary}</p>
                     ) : null}
 
-                    <div className="mt-2 flex flex-wrap gap-3 text-xs">
-                      <span className="inline-flex items-center gap-1 text-muted-foreground"><Eye className="h-3.5 w-3.5" /> {job.views?.toLocaleString() ?? 0} {t("viewsStat")}</span>
-                      <span className="inline-flex items-center gap-1 text-muted-foreground"><Users className="h-3.5 w-3.5" /> {getFilledSlots(job)} {t("applicantsStat")}</span>
-                      <span className="inline-flex items-center gap-1 text-muted-foreground">{job.maxApplicants ?? t("capacityOpen")} {t("capacityStat")}</span>
-                    </div>
+                    <CountCardGrid
+                      className="mt-2"
+                      items={[
+                        { label: t("viewsStat"), value: job.views?.toLocaleString() ?? 0 },
+                        { label: t("applicantsStat"), value: getFilledSlots(job) },
+                        { label: t("capacityStat"), value: job.maxApplicants ?? t("capacityOpen") },
+                      ]}
+                    />
                   </div>
 
                   <div aria-label={`Actions for ${job.title}`} role="group" className="workspace-subtle-surface flex flex-col gap-1.5 rounded-[16px] border border-border p-2 xl:self-start">

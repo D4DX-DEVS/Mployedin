@@ -186,7 +186,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+    <div className="min-w-0 rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
       <div className="mb-5 flex items-start gap-3">
         <div className="mt-0.5 rounded-lg bg-primary/10 p-2 text-primary">
           {icon}
@@ -222,20 +222,20 @@ function MatchScoreCard({
   const delta = prevScore !== null ? score - prevScore : null;
 
   return (
-    <div className="rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 via-card to-card p-5 shadow-sm">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-3">
+    <div className="min-w-0 rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 via-card to-card p-4 shadow-sm sm:p-5">
+      <div className="flex min-w-0 flex-col items-start gap-4 min-[420px]:flex-row min-[420px]:justify-between">
+        <div className="min-w-0 flex items-center gap-3">
           <div className="rounded-xl bg-primary/10 p-2.5 text-primary shrink-0">
             <Sparkles className="h-5 w-5" />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-sm font-semibold">{t("matchTitle")}</p>
             <p className="text-xs text-muted-foreground">
               {t("matchDescription")}
             </p>
           </div>
         </div>
-        <div className="flex items-baseline gap-1.5 shrink-0">
+        <div className="flex max-w-full shrink-0 flex-wrap items-baseline gap-1.5">
           <span className={`text-3xl font-bold tabular-nums ${scoreColor}`}>
             {score.toLocaleString(numberLocale)}%
           </span>
@@ -464,7 +464,7 @@ export default function JobPreferencesPage() {
         description={t("description")}
       />
 
-      <div className="grid gap-6 max-w-3xl mx-auto w-full">
+      <div className="mx-auto grid w-full min-w-0 max-w-3xl grid-cols-[minmax(0,1fr)] gap-4 sm:gap-6">
         {/* ── Match Score Card ──────────────────────────────────────────── */}
         <MatchScoreCard prefs={prefs} prevScore={prevScore} />
 
@@ -540,7 +540,7 @@ export default function JobPreferencesPage() {
           </div>
 
           {/* Manual input */}
-          <div className="grid grid-cols-3 gap-3 pt-1">
+          <div className="grid min-w-0 grid-cols-2 gap-3 pt-1 sm:grid-cols-3">
             <div>
               <label className="mb-1 block text-xs font-medium text-muted-foreground">
                 {t("minimum")}
@@ -583,7 +583,7 @@ export default function JobPreferencesPage() {
                 placeholder="0"
               />
             </div>
-            <div>
+            <div className="col-span-2 sm:col-span-1">
               <label className="mb-1 block text-xs font-medium text-muted-foreground">
                 {t("currency")}
               </label>
@@ -636,8 +636,8 @@ export default function JobPreferencesPage() {
           description={t("availabilityDescription")}
         >
           {/* Actively looking toggle */}
-          <div className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-3 border border-border/60">
-            <div className="space-y-0.5">
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 rounded-lg border border-border/60 bg-muted/50 px-4 py-3">
+            <div className="min-w-0 space-y-0.5">
               <p className="text-sm font-medium leading-none">{t("activelyLooking")}</p>
               <p className="text-xs text-muted-foreground">
                 {t("activelyLookingDescription")}
@@ -701,7 +701,7 @@ export default function JobPreferencesPage() {
         </Section>
 
         {/* ── Save controls ───────────────────────────────────────────── */}
-        <div className="flex items-center justify-end gap-3 h-9">
+        <div className="flex min-h-9 min-w-0 flex-wrap items-center justify-end gap-3">
           {saving && (
             <span className="text-sm text-muted-foreground flex items-center gap-1.5">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -779,4 +779,3 @@ export default function JobPreferencesPage() {
     </div>
   );
 }
-

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
@@ -20,6 +20,7 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ListSkeleton } from "@/components/shared/ListSkeleton";
+import { CountCardGrid } from "@/components/shared/CountCardGrid";
 import type { ExportColumn } from "@/lib/export";
 import {
   Search, Inbox, Sparkles, Briefcase, ShieldCheck, FileText, Users, Plus,
@@ -335,80 +336,57 @@ export default function AdminJobsPage() {
   return (
     <div className="page-container space-y-6">
 
-      {/* ─── Hero ─────────────────────────────────────────────────────── */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-3xl">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              {t("recruitmentControl")}
+      {/* ─── Compact page header ──────────────────────────────────────── */}
+      <DashboardPageHeader
+        eyebrow={t("recruitmentControl")}
+        title={t("jobListings")}
+        description={t("jobListingsDescription")}
+        summary={{
+          label: t("platformTotal"),
+          value: t("jobsCount", { total: total.toLocaleString() }),
+          note: t("acrossPages", { totalPages }),
+        }}
+        actions={(
+          <Link href="./new">
+            <Button size="lg" className="h-10 gap-2 rounded-xl px-4">
+              <Plus className="h-4 w-4" />
+              {t("postJob")}
+            </Button>
+          </Link>
+        )}
+        metrics={[
+          { label: t("totalJobs"), value: total, note: t("totalJobsNote"), icon: Briefcase, iconClassName: "text-status-applied", iconSurfaceClassName: "bg-status-applied-bg dark:bg-sky-950/30" },
+          { label: t("active"), value: activeJobs, note: t("activeNote"), icon: ShieldCheck, iconClassName: "text-status-selected", iconSurfaceClassName: "bg-status-selected-bg dark:bg-emerald-950/30" },
+          { label: t("pendingReview"), value: pendingJobs, note: t("pendingReviewNote"), icon: FileText, iconClassName: "text-status-shortlisted", iconSurfaceClassName: "bg-status-shortlisted-bg dark:bg-amber-950/30" },
+          { label: t("applicants"), value: totalApplicants, note: t("applicantsNote"), icon: Users, iconClassName: "text-status-interview", iconSurfaceClassName: "bg-status-interview-bg dark:bg-violet-950/30" },
+        ]}
+        footer={(
+          <>
+            <button
+              type="button"
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-background/50"
+            >
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              {showFilters ? t("hideFilters") : t("showFilters")}
+              {hasActiveFilters && <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">{t("activeFilterBadge")}</Badge>}
+              {showFilters ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+            </button>
+            <div className="flex items-center gap-2">
+              {(hasActiveFilters || aiSummary || aiQuery) && (
+                <Button variant="ghost" size="sm" onClick={resetFilters} className="gap-1.5 text-xs text-muted-foreground">
+                  {t("clearFilters")}
+                </Button>
+              )}
+              <TableToolbar
+                onExportCsv={handleExportCsv}
+                onExportExcel={handleExportExcel}
+                onExportPdf={handleExportPdf}
+              />
             </div>
-            <PageHeader className="mt-4" title={t("jobListings")} description={t("jobListingsDescription")} />
-          </div>
-
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("platformTotal")}</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">{t("jobsCount", { total: total.toLocaleString() })}</p>
-              <p className="text-xs text-muted-foreground">{t("acrossPages", { totalPages })}</p>
-            </div>
-            <Link href="./new">
-              <Button size="lg" className="h-11 gap-2 rounded-xl px-4">
-                <Plus className="h-4 w-4" />
-                {t("postJob")}
-              </Button>
-            </Link>
-          </div>
-        </div>
-
-        {/* Stats Row */}
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {([
-            { label: t("totalJobs"), value: total, note: t("totalJobsNote"), icon: Briefcase, tone: "text-status-applied", chip: "bg-status-applied-bg dark:bg-sky-950/30" },
-            { label: t("active"), value: activeJobs, note: t("activeNote"), icon: ShieldCheck, tone: "text-status-selected", chip: "bg-status-selected-bg dark:bg-emerald-950/30" },
-            { label: t("pendingReview"), value: pendingJobs, note: t("pendingReviewNote"), icon: FileText, tone: "text-status-shortlisted", chip: "bg-status-shortlisted-bg dark:bg-amber-950/30" },
-            { label: t("applicants"), value: totalApplicants, note: t("applicantsNote"), icon: Users, tone: "text-status-interview", chip: "bg-status-interview-bg dark:bg-violet-950/30" },
-          ] as const).map(({ label, value, note, icon: Icon, tone, chip }) => (
-            <div key={label} className="workspace-glass-panel rounded-2xl p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-                  <p className="mt-3 text-4xl font-semibold tracking-tight text-foreground">{value}</p>
-                </div>
-                <span className={`flex h-12 w-12 items-center justify-center rounded-2xl ${chip}`}>
-                  <Icon className={`h-5 w-5 ${tone}`} />
-                </span>
-              </div>
-              <p className="mt-3 text-sm leading-5 text-muted-foreground">{note}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* ─── Filter toggle bar ──────────────────────────────────────── */}
-        <div className="mt-6 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-white/10 dark:hover:bg-white/5"
-          >
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            {showFilters ? t("hideFilters") : t("showFilters")}
-            {hasActiveFilters && <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">{t("activeFilterBadge")}</Badge>}
-            {showFilters ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
-          </button>
-          <div className="flex items-center gap-2">
-            {(hasActiveFilters || aiSummary || aiQuery) && (
-              <Button variant="ghost" size="sm" onClick={resetFilters} className="gap-1.5 text-xs text-muted-foreground">
-                {t("clearFilters")}
-              </Button>
-            )}
-            <TableToolbar
-              onExportCsv={handleExportCsv}
-              onExportExcel={handleExportExcel}
-              onExportPdf={handleExportPdf}
-            />
-          </div>
-        </div>
+          </>
+        )}
+      >
 
         {/* ─── Expandable Filters ─────────────────────────────────────── */}
         {showFilters && (
@@ -532,7 +510,7 @@ export default function AdminJobsPage() {
             )}
           </div>
         )}
-      </section>
+      </DashboardPageHeader>
 
       {/* ─── Error ────────────────────────────────────────────────────── */}
       {errorMessage && (
@@ -562,79 +540,65 @@ export default function AdminJobsPage() {
             return (
               <article
                 key={job._id}
-                className="workspace-panel-surface rounded-[28px] p-3.5 transition-all hover:-translate-y-0.5 hover:border-border sm:p-4"
+                className="workspace-panel-surface rounded-[22px] p-3 transition-all hover:-translate-y-0.5 hover:border-border"
               >
-                <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_268px] xl:items-start">
+                <div className="grid gap-2.5 xl:grid-cols-[minmax(0,1fr)_268px] xl:items-start">
                   {/* Left: Job metadata */}
                   <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">{job.title}</h3>
-                      <Badge className={`${STATUS_COLORS[job.status] ?? ""} border px-2.5 py-0.5 text-xs font-medium capitalize`}>{job.status}</Badge>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <h3 className="text-base font-semibold tracking-tight text-foreground sm:text-lg">{job.title}</h3>
+                      <Badge className={`${STATUS_COLORS[job.status] ?? ""} border px-2 py-0 text-[11px] font-medium capitalize`}>{job.status}</Badge>
                     </div>
-                    <div className="mt-2.5 flex flex-wrap gap-1.5">
+                    <div className="mt-1.5 flex flex-wrap gap-1">
                       {job.employerId?.companyName && (
-                        <span className="flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-slate-300">
+                        <span className="flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-slate-300">
                           <Building2 className="h-3 w-3" />
                           {job.employerId.companyName}
                         </span>
                       )}
-                      <span className="rounded-full border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-slate-300">{formatLocation(job.location)}</span>
+                      <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-slate-300">{formatLocation(job.location)}</span>
                       {job.category && (
-                        <span className="rounded-full border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-slate-300">{job.category}</span>
+                        <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-slate-300">{job.category}</span>
                       )}
                       {salaryLabel && (
-                        <span className="rounded-full border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-slate-300">{salaryLabel}</span>
+                        <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-slate-300">{salaryLabel}</span>
                       )}
                       {(job.vacancies ?? 0) > 0 && (
-                        <span className="rounded-full border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-slate-300">
+                        <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-slate-300">
                           {t("openings", { count: job.vacancies ?? 0 })}
                         </span>
                       )}
-                      <span className="rounded-full border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-slate-300">{t("posted", { date: posted })}</span>
+                      <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-slate-300">{t("posted", { date: posted })}</span>
                     </div>
 
                     {(job.requirements?.skills?.length ?? 0) > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1.5">
+                      <div className="mt-1.5 flex flex-wrap gap-1">
                         {job.requirements!.skills!.slice(0, 4).map((s) => (
-                          <Badge key={s} variant="outline" className="rounded-full border-border bg-secondary/65 px-2.5 py-1 text-xs font-normal text-muted-foreground dark:border-border dark:bg-background/80 dark:text-slate-300">{s}</Badge>
+                          <Badge key={s} variant="outline" className="rounded-full border-border bg-secondary/65 px-2 py-0.5 text-[11px] font-normal text-muted-foreground dark:border-border dark:bg-background/80 dark:text-slate-300">{s}</Badge>
                         ))}
                       </div>
                     )}
 
                     {jobSummary && (
-                      <p className="mt-2.5 line-clamp-2 max-w-3xl text-sm leading-5 text-muted-foreground">{jobSummary}</p>
+                      <p className="mt-1.5 line-clamp-1 max-w-4xl text-xs leading-5 text-muted-foreground">{jobSummary}</p>
                     )}
 
-                    <div className="mt-2.5 grid gap-2 sm:grid-cols-3">
-                      <div className="workspace-subtle-surface rounded-xl border border-border px-3 py-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("source")}</p>
-                        <p className="mt-0.5 text-sm font-semibold text-foreground sm:text-base">{getSourceLabel(job, t)}</p>
-                      </div>
-                      <div className="workspace-subtle-surface rounded-xl border border-border px-3 py-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("applicantsCountLabel")}</p>
-                        <p className="mt-0.5 text-sm font-semibold text-foreground sm:text-base">{job.applicantsCount ?? 0}</p>
-                      </div>
-                      <div className="workspace-subtle-surface rounded-xl border border-border px-3 py-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("capacityLabel")}</p>
-                        <p className="mt-0.5 text-sm font-semibold text-foreground sm:text-base">{job.vacancies ?? "Open"}</p>
-                      </div>
-                    </div>
+                    <CountCardGrid
+                      className="mt-2"
+                      items={[
+                        { label: t("source"), value: getSourceLabel(job, t) },
+                        { label: t("applicantsCountLabel"), value: job.applicantsCount ?? 0 },
+                        { label: t("capacityLabel"), value: job.vacancies ?? "Open" },
+                      ]}
+                    />
                   </div>
 
                   {/* Right: Action panel */}
-                  <div aria-label={`Actions for ${job.title}`} role="group" className="workspace-subtle-surface flex flex-col gap-2 rounded-[20px] border border-border p-2.5 xl:self-start">
-                    <div className="workspace-muted-pill flex items-center justify-between gap-3 rounded-2xl border border-border px-3 py-2">
-                      <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("nextActions")}</p>
-                        <p className="mt-0.5 text-xs text-muted-foreground">{t("nextActionsDescription")}</p>
-                      </div>
-                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
+                  <div aria-label={`Actions for ${job.title}`} role="group" className="workspace-subtle-surface rounded-[16px] border border-border p-2 xl:self-start">
+                    <div className="grid grid-cols-2 gap-1.5">
                       <Button
                         size="sm"
-                        className="col-span-2 h-10 gap-2 rounded-xl px-3"
+                        className="col-span-2 h-9 gap-2 rounded-lg px-3"
                         onClick={() => setSelectedJob(job)}
                       >
                         <Eye className="h-4 w-4" />
@@ -644,7 +608,7 @@ export default function AdminJobsPage() {
                       {(job.poster?.approvalStatus === "pending" || job.status === "draft") && (
                         <Button
                           size="sm"
-                          className="h-9 gap-1.5 rounded-xl bg-emerald-600 px-3 text-xs font-semibold text-white hover:bg-emerald-700"
+                          className="h-8 gap-1.5 rounded-lg bg-emerald-600 px-2.5 text-xs font-semibold text-white hover:bg-emerald-700"
                           onClick={() => handleApproveJob(job._id)}
                         >
                           <CheckCircle className="h-3.5 w-3.5" /> {t("approve")}
@@ -654,7 +618,7 @@ export default function AdminJobsPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-9 gap-1.5 rounded-xl border-status-shortlisted/20 px-3 text-xs font-semibold text-status-shortlisted hover:bg-status-shortlisted-bg"
+                          className="h-8 gap-1.5 rounded-lg border-status-shortlisted/20 px-2.5 text-xs font-semibold text-status-shortlisted hover:bg-status-shortlisted-bg"
                           onClick={() => handleRejectJob(job._id)}
                         >
                           <XCircle className="h-3.5 w-3.5" /> {t("reject")}
@@ -663,7 +627,7 @@ export default function AdminJobsPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="h-9 gap-1.5 rounded-xl px-3 text-xs font-semibold"
+                        className="h-8 gap-1.5 rounded-lg px-2.5 text-xs font-semibold"
                         onClick={() => router.push(`/${locale}/admin/jobs/${job._id}/edit`)}
                       >
                         <Edit2 className="h-3.5 w-3.5" /> {t("edit")}
@@ -671,7 +635,7 @@ export default function AdminJobsPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="h-9 gap-1.5 rounded-xl px-3 text-xs font-semibold"
+                        className="h-8 gap-1.5 rounded-lg px-2.5 text-xs font-semibold"
                         onClick={() => router.push(`/${locale}/admin/applications?jobId=${job._id}`)}
                       >
                         <ClipboardList className="h-3.5 w-3.5" /> {t("applications")}
@@ -679,7 +643,7 @@ export default function AdminJobsPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="col-span-2 h-9 gap-1.5 rounded-xl border-destructive/20 px-3 text-xs font-semibold text-destructive hover:bg-destructive/5"
+                        className="col-span-2 h-8 gap-1.5 rounded-lg border-destructive/20 px-2.5 text-xs font-semibold text-destructive hover:bg-destructive/5"
                         onClick={() => handleDeleteJob(job._id)}
                       >
                         <Trash2 className="h-3.5 w-3.5" /> {t("delete")}

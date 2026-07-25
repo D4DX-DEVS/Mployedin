@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { toast } from "sonner";
 import {
   Activity, Server, Database, Clock, Cpu, HardDrive, Wifi,
@@ -98,18 +98,13 @@ export default function AdminSystemHealthPage() {
 
   return (
     <div className="page-container space-y-6">
-      {/* Hero */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-              <Activity className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <PageHeader title={t("pageTitle")} description={t("pageDescription")} />
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
+      <DashboardPageHeader
+        icon={Activity}
+        eyebrow={t("pageTitle")}
+        title={t("pageTitle")}
+        description={t("pageDescription")}
+        actions={
+          <>
             <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase ${getStatusColor(overallStatus)}`}>
               {getStatusIcon(overallStatus)}
               {overallStatus === "healthy" ? t("statusOperational") : overallStatus === "warning" ? t("statusDegraded") : t("statusChecking")}
@@ -117,10 +112,14 @@ export default function AdminSystemHealthPage() {
             <Button variant="outline" size="sm" onClick={fetchHealth} disabled={loading}>
               <RefreshCcw className={`mr-1 h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> {t("buttonRefresh")}
             </Button>
-          </div>
-        </div>
-        <p className="mt-2 text-xs text-muted-foreground">{t("lastUpdatedLabel")} {lastRefresh ? lastRefresh.toLocaleTimeString() : "—"} · {t("autoRefreshLabel")}</p>
-      </section>
+          </>
+        }
+        footer={
+          <p className="text-xs text-muted-foreground">
+            {t("lastUpdatedLabel")} {lastRefresh ? lastRefresh.toLocaleTimeString() : "—"} · {t("autoRefreshLabel")}
+          </p>
+        }
+      />
 
       {loading && !health ? (
         <section className="workspace-panel-surface rounded-[28px] p-5">

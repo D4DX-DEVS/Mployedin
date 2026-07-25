@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslations } from "next-intl";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +18,7 @@ import {
 } from "recharts";
 import {
   CircleDollarSign, Clock, CheckCircle2, Wallet,
-  CalendarDays, RotateCcw, Users, TrendingUp, Sparkles,
+  CalendarDays, RotateCcw, Users, TrendingUp,
   ArrowUpRight, ArrowDownRight, Minus,
 } from "lucide-react";
 import { TableToolbar } from "@/components/shared/TableToolbar";
@@ -203,17 +203,12 @@ export default function AdminCommissionsReportPage() {
 
   return (
     <div className="page-container space-y-6">
-      {/* ── Hero Section ── */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-          <div className="min-w-0 flex-1">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              {t("adminWorkspace")}
-            </div>
-            <PageHeader title={t("commissionReportTitle")} description={t("reportDescription", { year: yearFilter })} />
-          </div>
-          <div className="flex items-center gap-2">
+      <DashboardPageHeader
+        eyebrow={t("adminWorkspace")}
+        title={t("commissionReportTitle")}
+        description={t("reportDescription", { year: yearFilter })}
+        actions={(
+          <>
             <Select value={String(yearFilter)} onValueChange={(v) => setYearFilter(Number(v))}>
               <SelectTrigger className="h-10 w-28 rounded-xl border-border/70 bg-background/90">
                 <CalendarDays className="mr-1.5 h-4 w-4 text-muted-foreground" />
@@ -228,34 +223,16 @@ export default function AdminCommissionsReportPage() {
             <Button variant="outline" size="icon" onClick={fetchReport} disabled={loading} className="h-10 w-10 rounded-xl border-border/70 bg-background/90">
               <RotateCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             </Button>
-          </div>
-        </div>
-
-        {/* KPI Cards inside hero */}
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-          {[
-            { labelKey: "totalCommissions", value: s ? fmt(s.totalCommissions, s.currency) : "—", icon: CircleDollarSign, tone: "text-indigo-600", chip: "bg-indigo-50 dark:bg-indigo-950/30" },
-            { labelKey: "pending", value: s ? fmt(s.totalPending, s.currency) : "—", icon: Clock, tone: "text-amber-600", chip: "bg-amber-50 dark:bg-amber-950/30" },
-            { labelKey: "approved", value: s ? fmt(s.totalApproved, s.currency) : "—", icon: CheckCircle2, tone: "text-blue-600", chip: "bg-blue-50 dark:bg-blue-950/30" },
-            { labelKey: "paidOut", value: s ? fmt(s.totalPaid, s.currency) : "—", icon: Wallet, tone: "text-emerald-600", chip: "bg-emerald-50 dark:bg-emerald-950/30" },
-            { labelKey: "avgRate", value: s ? `${s.avgRate}%` : "—", icon: TrendingUp, tone: "text-violet-600", chip: "bg-violet-50 dark:bg-violet-950/30" },
-          ].map(({ labelKey, value, icon: Icon, tone, chip }) => (
-            <div key={labelKey} className="workspace-glass-panel rounded-2xl p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t(labelKey as any)}</p>
-                  <p className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
-                    {loading ? <span className="h-6 w-20 animate-pulse rounded bg-muted inline-block" /> : value}
-                  </p>
-                </div>
-                <span className={`flex h-10 w-10 items-center justify-center rounded-2xl ${chip}`}>
-                  <Icon className={`h-5 w-5 ${tone}`} />
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+          </>
+        )}
+        metrics={[
+          { label: t("totalCommissions"), value: loading ? <span className="inline-block h-6 w-20 animate-pulse rounded bg-muted" /> : s ? fmt(s.totalCommissions, s.currency) : "—", icon: CircleDollarSign, iconClassName: "text-indigo-600", iconSurfaceClassName: "bg-indigo-50 dark:bg-indigo-950/30" },
+          { label: t("pending"), value: loading ? <span className="inline-block h-6 w-20 animate-pulse rounded bg-muted" /> : s ? fmt(s.totalPending, s.currency) : "—", icon: Clock, iconClassName: "text-amber-600", iconSurfaceClassName: "bg-amber-50 dark:bg-amber-950/30" },
+          { label: t("approved"), value: loading ? <span className="inline-block h-6 w-20 animate-pulse rounded bg-muted" /> : s ? fmt(s.totalApproved, s.currency) : "—", icon: CheckCircle2, iconClassName: "text-blue-600", iconSurfaceClassName: "bg-blue-50 dark:bg-blue-950/30" },
+          { label: t("paidOut"), value: loading ? <span className="inline-block h-6 w-20 animate-pulse rounded bg-muted" /> : s ? fmt(s.totalPaid, s.currency) : "—", icon: Wallet, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50 dark:bg-emerald-950/30" },
+          { label: t("avgRate"), value: loading ? <span className="inline-block h-6 w-20 animate-pulse rounded bg-muted" /> : s ? `${s.avgRate}%` : "—", icon: TrendingUp, iconClassName: "text-violet-600", iconSurfaceClassName: "bg-violet-50 dark:bg-violet-950/30" },
+        ]}
+      />
 
       {/* ── Monthly Trend Chart + Type Breakdown ── */}
       <div className="grid gap-4 lg:grid-cols-3">

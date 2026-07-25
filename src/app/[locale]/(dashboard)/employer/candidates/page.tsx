@@ -62,6 +62,7 @@ import {
   XCircle,
   Zap,
 } from "lucide-react";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 
 const MATCH_SESSION_STORAGE_KEY = "employer-candidate-matching-session-v1";
 const MAX_AI_MATCH_BATCH_SIZE = 20;
@@ -508,7 +509,7 @@ function CandidateInsightsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent hideClose className="max-h-[88vh] max-w-5xl overflow-hidden rounded-[32px] border-border bg-background p-0 shadow-[0_40px_120px_-48px_rgba(15,23,42,0.5)]">
         <div className="max-h-[88vh] overflow-y-auto">
-          <div className="relative border-b border-border workspace-hero-surface px-6 py-6 sm:px-8">
+          <div className="relative border-b border-border bg-muted/20 px-6 py-6 sm:px-8">
             <button
               type="button"
               onClick={() => onOpenChange(false)}
@@ -1411,36 +1412,13 @@ export default function EmployerCandidatesPage() {
         onOpenChange={setBulkPoolOpen}
       />
 
-      <section className="workspace-hero-surface overflow-hidden rounded-[24px] px-4 py-4 sm:px-5">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <h1 className="text-[1.7rem] font-semibold tracking-tight text-foreground">{t("heroTitle")}</h1>
-              <span className="rounded-full border border-border bg-background/80 px-2.5 py-1 text-[11px] font-medium text-muted-foreground backdrop-blur">
-                {selectedJobData ? t("benchmark", { title: selectedJobData.title }) : t("talentPoolView")}
-              </span>
-              {isRefreshingCandidates ? (
-                <span className="rounded-full border border-sky-500/20 bg-sky-500/10 px-2.5 py-1 text-[11px] font-medium text-status-applied backdrop-blur dark:text-sky-300">
-                  {t("refreshing")}
-                </span>
-              ) : null}
-            </div>
-            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-              {[
-                { label: t("statCandidates"), value: total },
-                { label: t("statScored"), value: scoredCount },
-                { label: t("statHighMatch"), value: visibleHighMatchCount },
-                { label: t("statAvailable"), value: readyNowCount },
-              ].map((stat) => (
-                  <span key={stat.label} aria-label={`${stat.value} ${stat.label}`} className="inline-flex items-center gap-1.5">
-                  <span className="font-semibold text-foreground">{stat.value}</span>
-                  <span>{stat.label}</span>
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
+      <DashboardPageHeader
+        icon={Users}
+        eyebrow={selectedJobData ? t("benchmark", { title: selectedJobData.title }) : t("talentPoolView")}
+        title={t("heroTitle")}
+        description={isRefreshingCandidates ? t("refreshing") : undefined}
+        actions={
+          <>
             <Button
               type="button"
               variant="outline"
@@ -1479,9 +1457,15 @@ export default function EmployerCandidatesPage() {
               {screenMutation.isPending ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="mr-2 h-3.5 w-3.5" />}
               {screenMutation.isPending ? t("screeningInProgress") : t("screenWithAi")}
             </Button>
-          </div>
-        </div>
-      </section>
+          </>
+        }
+        metrics={[
+          { label: t("statCandidates"), value: total, icon: Users },
+          { label: t("statScored"), value: scoredCount, icon: BarChart3 },
+          { label: t("statHighMatch"), value: visibleHighMatchCount, icon: Trophy },
+          { label: t("statAvailable"), value: readyNowCount, icon: CheckCircle2 },
+        ]}
+      />
 
       {screeningResults && (
         <AIScreeningResultsPanel
@@ -1901,4 +1885,3 @@ export default function EmployerCandidatesPage() {
     </div>
   );
 }
-

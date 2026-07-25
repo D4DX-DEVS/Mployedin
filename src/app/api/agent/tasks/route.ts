@@ -43,15 +43,31 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
   if (status && status !== "all") filter.status = status;
   if (search) filter.title = { $regex: escapeRegex(search), $options: "i" };
 
-  const [items, total] = await Promise.all([
+  const [items, total, statusRows, overdue] = await Promise.all([
     AgentTask.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
     AgentTask.countDocuments(filter),
+    AgentTask.aggregate<{ _id: string; count: number }>([
+      { $match: { userId: new mongoose.Types.ObjectId(ctx.userId) } },
+      { $group: { _id: "$status", count: { $sum: 1 } } },
+    ]),
+    AgentTask.countDocuments({
+      userId: ctx.userId,
+      dueDate: { $lt: new Date() },
+      status: { $ne: "completed" },
+    }),
   ]);
+  const statusCounts = Object.fromEntries(statusRows.map((row) => [row._id, row.count]));
 
   return NextResponse.json({
     total,
     page,
     totalPages: Math.max(Math.ceil(total / limit), 1),
+    stats: {
+      pending: statusCounts.pending ?? 0,
+      inProgress: statusCounts.in_progress ?? 0,
+      completed: statusCounts.completed ?? 0,
+      overdue,
+    },
     items: items.map((t: Record<string, unknown>) => ({
       _id: String(t._id),
       title: t.title,

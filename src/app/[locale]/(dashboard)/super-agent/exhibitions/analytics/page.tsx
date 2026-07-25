@@ -14,6 +14,7 @@ import {
   Trophy,
   Users,
 } from "lucide-react";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import {
   Bar,
   BarChart,
@@ -128,7 +129,6 @@ const DEFAULT_PERFORMANCE: PerformanceData = {
 
 export default function SuperAgentExhibitionAnalyticsPage() {
   const t = useTranslations("superAgentExhibitionsAnalytics");
-  const tc = useTranslations("common");
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [year, setYear] = useState(String(new Date().getFullYear()));
@@ -175,15 +175,7 @@ export default function SuperAgentExhibitionAnalyticsPage() {
   if (loading) {
     return (
       <div className="space-y-6 p-4 md:p-6">
-        <div className="workspace-hero-surface overflow-hidden rounded-[28px] p-7 sm:p-8 space-y-4">
-          <Skeleton className="h-8 w-80" />
-          <Skeleton className="h-4 w-96" />
-          <div className="grid gap-3 sm:grid-cols-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-20 w-full rounded-2xl" />
-            ))}
-          </div>
-        </div>
+        <DashboardPageHeader icon={BarChart3} eyebrow={t("superAgentAnalytics")} title={t("heroTitle")} description={t("heroDescription")} />
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="rounded-2xl border border-border/60 bg-card p-5 space-y-2">
@@ -210,47 +202,13 @@ export default function SuperAgentExhibitionAnalyticsPage() {
 
   return (
     <div className="space-y-6 p-4 md:p-6">
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-7 sm:p-8">
-        <div className="grid gap-6 lg:grid-cols-[1.4fr_0.9fr]">
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge className="border-primary/20 bg-primary/10 text-primary hover:bg-primary/10">{t("superAgentAnalytics")}</Badge>
-              <Badge className="border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10">{t("yearBadge", { year: data.year })}</Badge>
-            </div>
-            <div>
-              <h1 className="flex items-center gap-2 text-3xl font-semibold tracking-tight text-foreground">
-                <BarChart3 className="h-7 w-7 text-primary" />
-                {t("heroTitle")}
-              </h1>
-              <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-                {t("heroDescription")}
-              </p>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <HeroStat
-                label={t("requestsLabel")}
-                value={kpis.totalRequests}
-                sub={strongestMonth ? t("busiestMonthSub", { month: strongestMonth.month }) : t("noMonthlyData")}
-              />
-              <HeroStat
-                label={t("approvalRateLabel")}
-                value={`${kpis.approvalRate}%`}
-                sub={t("approvalRateSub", { approved: kpis.approved, rejected: kpis.rejected })}
-              />
-              <HeroStat
-                label={t("roiLabel")}
-                value={`${performance.roi}%`}
-                sub={performance.eventsReported > 0 ? t("eventsReportedSub", { count: performance.eventsReported }) : t("awaitingPerformanceReports")}
-              />
-            </div>
-          </div>
-
-          <div className="workspace-glass-panel rounded-2xl p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">{t("scopeLabel")}</p>
-                <p className="mt-1 text-lg font-semibold text-foreground">{t("teamSummary")}</p>
-              </div>
+      <DashboardPageHeader
+        icon={BarChart3}
+        eyebrow={t("superAgentAnalytics")}
+        title={t("heroTitle")}
+        description={t("heroDescription")}
+        summary={{ label: t("approvedBudgetLabel"), value: formatCurrency(kpis.totalApprovedBudget, currencyCode), note: `${t("actualSpendLabel")} ${formatCurrency(kpis.totalActualSpend, currencyCode)}` }}
+        actions={
               <div className="min-w-[10rem]">
                 <SearchableSelect
                   options={YEAR_OPTIONS}
@@ -259,25 +217,13 @@ export default function SuperAgentExhibitionAnalyticsPage() {
                   placeholder={t("selectYearPlaceholder")}
                 />
               </div>
-            </div>
-            <div className="mt-5 space-y-4">
-              <div className="rounded-2xl border border-border/60 bg-muted/40 p-4">
-                <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">{t("approvedBudgetLabel")}</p>
-                <p className="mt-2 text-2xl font-semibold text-foreground">{formatCurrency(kpis.totalApprovedBudget, currencyCode)}</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {t("actualSpendLabel")} {formatCurrency(kpis.totalActualSpend, currencyCode)}
-                </p>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <MiniMetric label={t("leadsGeneratedLabel")} value={performance.totalLeads} />
-                <MiniMetric label={t("employersEngagedLabel")} value={performance.totalEmployers} />
-                <MiniMetric label={t("candidatesSourchedLabel")} value={performance.totalCandidates} />
-                <MiniMetric label={t("hiresGeneratedLabel")} value={performance.totalHires} />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+        }
+        metrics={[
+          { label: t("requestsLabel"), value: kpis.totalRequests, note: strongestMonth ? t("busiestMonthSub", { month: strongestMonth.month }) : t("noMonthlyData"), icon: CalendarDays },
+          { label: t("approvalRateLabel"), value: `${kpis.approvalRate}%`, note: t("approvalRateSub", { approved: kpis.approved, rejected: kpis.rejected }), icon: Percent },
+          { label: t("roiLabel"), value: `${performance.roi}%`, note: performance.eventsReported > 0 ? t("eventsReportedSub", { count: performance.eventsReported }) : t("awaitingPerformanceReports"), icon: TrendingUp },
+        ]}
+      />
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
@@ -493,16 +439,6 @@ export default function SuperAgentExhibitionAnalyticsPage() {
   );
 }
 
-function HeroStat({ label, value, sub }: { label: string; value: string | number; sub: string }) {
-  return (
-    <div className="workspace-glass-panel rounded-2xl p-4">
-      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-foreground">{value}</p>
-      <p className="mt-1 text-xs text-muted-foreground">{sub}</p>
-    </div>
-  );
-}
-
 function MetricCard({
   label,
   value,
@@ -524,15 +460,6 @@ function MetricCard({
         </div>
         <div className="rounded-2xl bg-primary/10 p-3 text-primary">{icon}</div>
       </div>
-    </div>
-  );
-}
-
-function MiniMetric({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-2xl border border-border/60 bg-muted/30 p-3">
-      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-      <p className="mt-2 text-lg font-semibold text-foreground">{value}</p>
     </div>
   );
 }

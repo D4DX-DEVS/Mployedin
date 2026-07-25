@@ -3,11 +3,11 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { PageHero } from "@/components/shared/PageHero";
 import {
   Bell, Mail, Clock, Users, Send, BarChart3, Shield, Loader2,
   CheckCircle2, AlertTriangle, Save, PowerOff, UserX, Pause, Zap,
-  Activity, TrendingUp, ChevronLeft, ChevronRight, RefreshCw, Sparkles,
+  Activity, TrendingUp, ChevronLeft, ChevronRight, RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -137,17 +137,13 @@ export default function AdminNotificationsPage() {
 
   return (
     <div className="page-container space-y-4">
-      {/* ── Hero Section ── */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-          <div className="min-w-0 flex-1">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              {t("adminWorkspaceLabel")}
-            </div>
-            <PageHeader className="mt-4" title={t("notificationControlCenter")} description={t("notificationControlCenterDescription")} />
-          </div>
-          <div className="flex items-center gap-2">
+      <PageHero
+        icon={Bell}
+        eyebrow={t("adminWorkspaceLabel")}
+        title={t("notificationControlCenter")}
+        description={t("notificationControlCenterDescription")}
+        actions={
+          <>
             {config?.globalDefaults.maintenanceMode && (
               <Badge variant="destructive" className="gap-1"><PowerOff className="w-3 h-3" /> {t("maintenanceModeBadge")}</Badge>
             )}
@@ -159,9 +155,9 @@ export default function AdminNotificationsPage() {
             <Button variant="outline" size="sm" onClick={fetchAll} disabled={loading} className="gap-1.5 rounded-xl">
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} /> {t("refreshButtonLabel")}
             </Button>
-          </div>
-        </div>
-      </section>
+          </>
+        }
+      />
 
       {/* ── Tab Navigation ── */}
       <section className="workspace-panel-surface overflow-hidden rounded-[20px]">

@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, type ComponentType } from "react";
 import { useTranslations } from "next-intl";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { toast } from "sonner";
-import { Eye, Briefcase, MapPin, Building2, Clock, Search, DollarSign, Calendar, Globe, Users, UserCheck, FileText, Sparkles, Inbox, Check, X } from "lucide-react";
+import { Eye, Briefcase, MapPin, Building2, Clock, DollarSign, Calendar, Globe, Users, UserCheck, FileText, Inbox, Check, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -224,35 +223,41 @@ export default function AdminApprovalsPage() {
 
   return (
     <div className="page-container space-y-6">
-      {/* Hero */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="max-w-3xl">
-          <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-            <Sparkles className="h-3.5 w-3.5" />
-            {t("allJobs")}
-          </div>
-          <PageHeader className="mt-4" title={t("platformJobsOverview")} description={t("platformJobsDescription")} />
-        </div>
-
-        <div className="mt-6 grid gap-3 sm:grid-cols-4">
-          <div className="workspace-glass-panel rounded-2xl p-4 text-center">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("total")}</p>
-            <p className="mt-2 text-2xl font-semibold text-foreground">{total.toLocaleString()}</p>
-          </div>
-          <div className="workspace-glass-panel rounded-2xl p-4 text-center">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("active")}</p>
-            <p className="mt-2 text-2xl font-semibold text-emerald-600 dark:text-emerald-300">{active}</p>
-          </div>
-          <div className="workspace-glass-panel rounded-2xl p-4 text-center">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("pending")}</p>
-            <p className="mt-2 text-2xl font-semibold text-amber-500 dark:text-amber-300">{pending}</p>
-          </div>
-          <div className="workspace-glass-panel rounded-2xl p-4 text-center">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("thisPage")}</p>
-            <p className="mt-2 text-2xl font-semibold text-foreground">{jobs.length}</p>
-          </div>
-        </div>
-      </section>
+      <DashboardPageHeader
+        eyebrow={t("allJobs")}
+        title={t("platformJobsOverview")}
+        description={t("platformJobsDescription")}
+        metrics={[
+          {
+            label: t("total"),
+            value: total.toLocaleString(),
+            icon: Briefcase,
+            iconClassName: "text-status-applied",
+            iconSurfaceClassName: "bg-status-applied-bg dark:bg-sky-950/30",
+          },
+          {
+            label: t("active"),
+            value: active,
+            icon: UserCheck,
+            iconClassName: "text-status-selected",
+            iconSurfaceClassName: "bg-status-selected-bg dark:bg-emerald-950/30",
+          },
+          {
+            label: t("pending"),
+            value: pending,
+            icon: Clock,
+            iconClassName: "text-status-shortlisted",
+            iconSurfaceClassName: "bg-status-shortlisted-bg dark:bg-amber-950/30",
+          },
+          {
+            label: t("thisPage"),
+            value: jobs.length,
+            icon: FileText,
+            iconClassName: "text-status-interview",
+            iconSurfaceClassName: "bg-status-interview-bg dark:bg-violet-950/30",
+          },
+        ]}
+      />
 
       {/* Filters */}
       <TableToolbar
@@ -495,7 +500,7 @@ export default function AdminApprovalsPage() {
   );
 }
 
-function Fact({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string }) {
+function Fact({ icon: Icon, label, value }: { icon: ComponentType<{ className?: string }>; label: string; value: string }) {
   return (
     <div className="rounded-xl border border-border/60 bg-secondary/40 px-3 py-2">
       <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">

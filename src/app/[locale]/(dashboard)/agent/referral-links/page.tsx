@@ -29,7 +29,6 @@ import {
   Loader2,
   Plus,
   Search,
-  Sparkles,
   Tag,
   Trash2,
   Users,
@@ -38,6 +37,7 @@ import {
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 
 function formatDate(d: string | undefined): string {
   if (!d) return "—";
@@ -149,28 +149,17 @@ export default function AgentReferralLinksPage() {
     <div className="page-container space-y-6">
       {ConfirmDialogNode}
 
-      {/* Hero */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-3xl">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              {t("agentWorkspaceBadge")}
-            </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-              {t("pageTitle")}
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              {t("heroDescription")}
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("overviewLabel")}</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">{t("linksCount", { count: total })}</p>
-              <p className="text-xs text-muted-foreground">{t("registrationsCount", { count: totalRegistrations })}</p>
-            </div>
+      <DashboardPageHeader
+        icon={Link2}
+        eyebrow={t("agentWorkspaceBadge")}
+        title={t("pageTitle")}
+        description={t("heroDescription")}
+        summary={{
+          label: t("overviewLabel"),
+          value: t("linksCount", { count: total }),
+          note: t("registrationsCount", { count: totalRegistrations }),
+        }}
+        actions={
             <button
               onClick={() => setCreateOpen(true)}
               className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
@@ -178,53 +167,14 @@ export default function AgentReferralLinksPage() {
               <Plus className="h-4 w-4" />
               {t("newReferralLinkButton")}
             </button>
-          </div>
-        </div>
-
-        {/* Stats grid */}
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="min-w-0 workspace-glass-panel rounded-2xl p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statTotalLinks")}</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{total}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{t("statTotalLinksDesc")}</p>
-              </div>
-              <div className="workspace-tone-sky rounded-2xl p-2.5"><Link2 className="h-5 w-5" /></div>
-            </div>
-          </div>
-          <div className="min-w-0 workspace-glass-panel rounded-2xl p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tc("active")}</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{activeLinks}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{t("statActiveDesc")}</p>
-              </div>
-              <div className="workspace-tone-emerald rounded-2xl p-2.5"><Check className="h-5 w-5" /></div>
-            </div>
-          </div>
-          <div className="min-w-0 workspace-glass-panel rounded-2xl p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statRegistrations")}</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{totalRegistrations}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{t("statRegistrationsDesc")}</p>
-              </div>
-              <div className="workspace-tone-indigo rounded-2xl p-2.5"><Users className="h-5 w-5" /></div>
-            </div>
-          </div>
-          <div className="min-w-0 workspace-glass-panel rounded-2xl p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statConversion")}</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{total > 0 ? Math.round((totalRegistrations / total) * 10) / 10 : 0}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{t("statConversionDesc")}</p>
-              </div>
-              <div className="workspace-tone-amber rounded-2xl p-2.5"><Hash className="h-5 w-5" /></div>
-            </div>
-          </div>
-        </div>
-      </section>
+        }
+        metrics={[
+          { label: t("statTotalLinks"), value: total, note: t("statTotalLinksDesc"), icon: Link2 },
+          { label: tc("active"), value: activeLinks, note: t("statActiveDesc"), icon: Check },
+          { label: t("statRegistrations"), value: totalRegistrations, note: t("statRegistrationsDesc"), icon: Users },
+          { label: t("statConversion"), value: total > 0 ? Math.round((totalRegistrations / total) * 10) / 10 : 0, note: t("statConversionDesc"), icon: Hash },
+        ]}
+      />
 
       {/* Create Modal */}
       {createOpen && (

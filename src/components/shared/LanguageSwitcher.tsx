@@ -52,7 +52,7 @@ export function LanguageSwitcher() {
   return (
     <div
       dir="ltr"
-      className="relative flex h-9 w-[72px] sm:w-[152px] items-center rounded-full border border-primary/15 bg-card p-[3px]"
+      className="relative flex h-9 w-16 shrink-0 items-center rounded-full border border-primary/15 bg-card p-[3px] sm:w-[152px]"
     >
       {/* Sliding toggle indicator */}
       <div

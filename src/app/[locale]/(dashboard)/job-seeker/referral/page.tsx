@@ -4,13 +4,13 @@ import { useState, useEffect, useCallback } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import {
-  Gift, Copy, Users, Share2, CheckCircle2, Link2,
+  Gift, Copy, Users, CheckCircle2, Link2,
   TrendingUp, Inbox,
 } from "lucide-react";
 import { SocialShareButtons } from "@/components/shared/SocialShareButtons";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -72,56 +72,25 @@ export default function JobSeekerReferralPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-          <div className="flex items-start gap-4">
-            <Skeleton className="h-12 w-12 rounded-2xl" />
-            <div className="space-y-2">
-              <Skeleton className="h-7 w-48" />
-              <Skeleton className="h-4 w-64" />
-            </div>
-          </div>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="workspace-glass-panel rounded-2xl p-4 space-y-2">
-                <Skeleton className="h-3 w-20" />
-                <Skeleton className="h-7 w-16" />
-              </div>
-            ))}
-          </div>
-        </section>
+        <DashboardPageHeader icon={Gift} eyebrow={t("title")} title={t("title")} description={t("description")} />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="flex items-start gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10">
-            <Gift className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t("title")}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {t("description")}
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {[
-            { label: t("total"), value: (data?.totalReferrals ?? 0).toLocaleString(numberLocale), icon: <Users className="h-5 w-5" /> },
-            { label: t("successful"), value: (data?.successfulReferrals ?? 0).toLocaleString(numberLocale), icon: <CheckCircle2 className="h-5 w-5" /> },
-            { label: t("pending"), value: (data?.pendingReferrals ?? 0).toLocaleString(numberLocale), icon: <TrendingUp className="h-5 w-5" /> },
-            { label: t("rewards"), value: (data?.rewardsEarned ?? 0).toLocaleString(numberLocale), icon: <Gift className="h-5 w-5" /> },
-          ].map((m) => (
-            <div key={m.label} className="workspace-glass-panel rounded-2xl p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{m.label}</p>
-              <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{m.value}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+      <DashboardPageHeader
+        icon={Gift}
+        eyebrow={t("title")}
+        title={t("title")}
+        description={t("description")}
+        metrics={[
+          { label: t("total"), value: (data?.totalReferrals ?? 0).toLocaleString(numberLocale), icon: Users },
+          { label: t("successful"), value: (data?.successfulReferrals ?? 0).toLocaleString(numberLocale), icon: CheckCircle2 },
+          { label: t("pending"), value: (data?.pendingReferrals ?? 0).toLocaleString(numberLocale), icon: TrendingUp },
+          { label: t("rewards"), value: (data?.rewardsEarned ?? 0).toLocaleString(numberLocale), icon: Gift },
+        ]}
+      />
 
       <section className="workspace-panel-surface rounded-[28px] p-5 space-y-4">
         <h2 className="text-lg font-semibold text-foreground">{t("linkTitle")}</h2>

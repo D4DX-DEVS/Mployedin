@@ -8,9 +8,9 @@ import { Sidebar, MobileMenuButton } from "@/components/shared/Sidebar";
 import { CommandMenuTrigger } from "@/components/shared/CommandMenu";
 import dynamic from "next/dynamic";
 
-const ConversationalAI = dynamic(
+const Copilot = dynamic(
   () =>
-    import("@/components/shared/ConversationalAI").then((m) => m.ConversationalAI),
+    import("@/components/shared/Copilot").then((m) => m.Copilot),
   { ssr: false }
 );
 const CommandMenu = dynamic(
@@ -97,8 +97,8 @@ export function DashboardShell({
           />
         )}
         {/* Topbar */}
-        <header className={`dashboard-topbar border-b border-border/40 bg-background z-30 sticky top-0 transition-all ${usesModernWorkspaceShell ? "dashboard-topbar-workspace h-20" : isJobSeeker ? "h-20" : "h-16"}`}>
-          <div className="flex h-full items-center gap-2 sm:gap-3 md:gap-4 px-4 sm:px-6 lg:px-8">
+        <header className={`dashboard-topbar border-b border-border/40 bg-background z-30 sticky top-0 transition-all ${usesModernWorkspaceShell ? "dashboard-topbar-workspace h-14 sm:h-16" : isJobSeeker ? "h-14 sm:h-16" : "h-14"}`}>
+          <div className="flex h-full items-center gap-1.5 px-3 sm:gap-2 sm:px-4 md:gap-3 lg:px-6">
             {!isJobSeeker && <MobileMenuButton onClick={() => setMobileOpen(true)} />}
 
             {isJobSeeker && (
@@ -108,7 +108,7 @@ export function DashboardShell({
                   alt="Mployedin"
                   width={100}
                   height={34}
-                  className="h-auto w-[94px] object-contain sm:w-[141px]"
+                  className="h-auto w-[80px] object-contain min-[360px]:w-[88px] sm:w-[141px]"
                   style={{ height: "auto" }}
                   priority
                 />
@@ -123,10 +123,13 @@ export function DashboardShell({
               </div>
             </div>
 
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex shrink-0 items-center gap-1 sm:gap-3">
+              <div className="md:hidden">
+                <CommandMenuTrigger locale={locale} compact />
+              </div>
               {mounted && (
                 <>
-                  <ThemeToggle />
+                  <ThemeToggle className={isJobSeeker ? "hidden min-[360px]:inline-flex" : undefined} />
                   <LanguageSwitcher />
                   <NotificationBell locale={locale} />
                   <UserProfileDropdown
@@ -163,20 +166,8 @@ export function DashboardShell({
       {/* Cmd+K menu */}
       <CommandMenu navGroups={navGroups} locale={locale} />
 
-      {/* Floating AI assistant — employer uses RecruitmentAssistant instead */}
-      {userRole !== "employer" && (
-        <ConversationalAI
-          context={
-            userRole === "admin"
-              ? "admin_assist"
-              : userRole === "super_agent"
-                ? "super_agent_assist"
-                : userRole === "agent"
-                  ? "agent_assist"
-                  : "general_assist"
-          }
-        />
-      )}
+      {/* Floating AI Copilot — role-scoped read + action tools for every dashboard role */}
+      <Copilot />
     </div>
   );
 }

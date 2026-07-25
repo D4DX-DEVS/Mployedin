@@ -48,7 +48,7 @@ export function NotificationBell({ locale }: NotificationBellProps) {
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 p-0">
+      <PopoverContent align="end" className="w-[min(20rem,calc(100vw-1rem))] p-0">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <h4 className="text-sm font-semibold">{t("title")}</h4>
           {unreadCount > 0 && (

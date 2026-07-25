@@ -148,7 +148,7 @@ export function PriorityActions({
   if (shown.length === 0) return null;
 
   return (
-    <section className="workspace-panel-surface h-full overflow-hidden rounded-[28px]">
+    <section className="workspace-panel-surface overflow-hidden rounded-2xl">
       <div className="border-b border-border/60 px-5 py-3.5 sm:px-6 flex items-center gap-3">
         <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300">
           <Flame className="h-3.5 w-3.5" />
@@ -159,7 +159,7 @@ export function PriorityActions({
         </span>
       </div>
 
-      <div className="space-y-2.5 px-4 py-4 sm:px-5 sm:py-5">
+      <div className="grid gap-2.5 px-4 py-4 sm:px-5 sm:py-5 md:grid-cols-3">
         {shown.map((action, idx) => {
           const Icon = action.icon;
           const config = priorityConfig[action.priority];
@@ -174,7 +174,7 @@ export function PriorityActions({
               key={`${action.href}-${action.textKey}`}
               href={action.href}
               className={cn(
-                "group flex items-start gap-3 rounded-[22px] border p-3.5 transition-all hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500",
+                "group flex min-w-0 items-start gap-3 rounded-xl border p-3.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500",
                 isUrgent && idx === 0
                   ? "border-red-200 dark:border-red-500/30 bg-[linear-gradient(135deg,_rgba(254,242,242,0.96),_rgba(255,255,255,0.98))] dark:bg-[linear-gradient(135deg,_rgba(127,29,29,0.18),_rgba(30,30,30,0.95))]"
                   : "border-border bg-background/80 hover:border-sky-500/25"

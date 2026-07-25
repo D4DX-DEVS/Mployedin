@@ -6,8 +6,8 @@ import { useLocale, useTranslations } from "next-intl";
 import {
   Globe, DollarSign, Save, CheckCircle2, Bell, Shield, Clock,
   Users, Calendar, FileText, Briefcase, Mail, ChevronRight, Percent,
-  MapPin, AlertTriangle, Camera, Loader2, Trash2, UserCircle, Sparkles,
-  Receipt,
+  MapPin, AlertTriangle, Camera, Loader2, Trash2, UserCircle,
+  Receipt, Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +24,7 @@ import {
   SUPPORTED_CURRENCIES,
   currencyForCountry,
 } from "@/lib/currency";
+import { PageHero } from "@/components/shared/PageHero";
 
 // â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -1430,21 +1431,12 @@ export default function AgentSettingsPage() {
 
   return (
     <div className="page-container space-y-6">
-      {/* Hero */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="max-w-3xl">
-          <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-            <Sparkles className="h-3.5 w-3.5" />
-            {common("workspace")}
-          </div>
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-            {t("hero.title")}
-          </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-            {t("hero.description")}
-          </p>
-        </div>
-      </section>
+      <PageHero
+        icon={Settings}
+        eyebrow={common("workspace")}
+        title={t("hero.title")}
+        description={t("hero.description")}
+      />
 
       {/* Sidebar + Content Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6">

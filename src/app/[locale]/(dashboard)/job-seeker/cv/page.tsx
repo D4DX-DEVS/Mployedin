@@ -547,8 +547,8 @@ export default function CVBuilderPage() {
         {/* ────── LEFT: EDITOR PANEL ────── */}
         <div className={`transition-all duration-300 ${previewExpanded ? "hidden" : "w-full lg:w-[55%]"}`}>
           <Tabs defaultValue="editor" className="w-full">
-            <div className="mb-4 flex items-center justify-between gap-2">
-              <TabsList>
+            <div className="mb-4 flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <TabsList className="w-full min-w-0 sm:w-auto">
                 <TabsTrigger value="editor" className="gap-1.5">
                   <Pencil className="w-3.5 h-3.5" />
                   {t("tabs.editor")}
@@ -563,7 +563,7 @@ export default function CVBuilderPage() {
                 </TabsTrigger>
               </TabsList>
               <button type="button" onClick={() => openTips("general")}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-100 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-400">
+                className="inline-flex max-w-full items-center gap-1.5 self-start rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-100 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-400 sm:self-auto">
                 <Lightbulb className="h-3.5 w-3.5" />{t("actions.tips")}
               </button>
             </div>
@@ -616,7 +616,7 @@ export default function CVBuilderPage() {
                 <SectionCard title={t("sections.personalDetails")} icon={<UserIcon className="w-4 h-4" />}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Profile photo */}
-                    <div className="md:col-span-2 flex items-center gap-4">
+                    <div className="flex flex-col items-start gap-3 min-[360px]:flex-row min-[360px]:items-center min-[360px]:gap-4 md:col-span-2">
                       <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full border border-border bg-muted">
                         {form.photo ? (
                           // eslint-disable-next-line @next/next/no-img-element
@@ -627,9 +627,9 @@ export default function CVBuilderPage() {
                           </div>
                         )}
                       </div>
-                      <div className="space-y-1.5">
+                      <div className="w-full min-w-0 flex-1 space-y-1.5">
                         <Label className="text-xs text-muted-foreground">{t("fields.photo")}</Label>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                           <Button
                             type="button" variant="outline" size="sm" disabled={photoUploading}
                             onClick={() => photoInputRef.current?.click()} className="h-8 gap-1.5 text-xs"
@@ -1069,17 +1069,17 @@ function SectionCard({
   const [collapsed, setCollapsed] = useState(false);
   return (
     <div className={`card-base p-4 sm:p-5 space-y-4 ${hidden ? "opacity-50" : ""}`}>
-      <div className="flex items-center justify-between">
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
         <button
           type="button"
           onClick={() => setCollapsed((c) => !c)}
-          className="flex items-center gap-2 text-sm font-semibold text-left"
+          className="flex min-w-0 max-w-full items-center gap-2 break-words text-left text-sm font-semibold"
           aria-expanded={!collapsed}
         >
           <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${collapsed ? "-rotate-90" : ""}`} />
           {icon} {title} {badge}
         </button>
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           {sectionKey && onToggle && (
             <button
               type="button"

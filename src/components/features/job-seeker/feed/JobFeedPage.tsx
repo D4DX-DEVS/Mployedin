@@ -159,18 +159,18 @@ function CardSkeleton() {
         <div className="pt-0.5">
           <div className="h-4 w-4 rounded bg-muted" />
         </div>
-        <div className="flex-1 space-y-3">
-          <div className="flex justify-between">
-            <div className="space-y-2">
-              <div className="h-4 w-52 rounded bg-muted" />
+        <div className="min-w-0 flex-1 space-y-3">
+          <div className="flex min-w-0 flex-col gap-2 min-[420px]:flex-row min-[420px]:justify-between">
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="h-4 w-40 max-w-full rounded bg-muted sm:w-52" />
               <div className="h-3 w-32 rounded bg-muted" />
             </div>
-            <div className="flex gap-3">
-              <div className="h-6 w-20 rounded-full bg-muted" />
+            <div className="flex max-w-full shrink-0 flex-wrap gap-1.5 sm:gap-3">
+              <div className="hidden h-6 w-20 rounded-full bg-muted min-[360px]:block" />
               <div className="h-11 w-11 rounded-xl bg-muted" />
             </div>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-2 sm:gap-3">
             <div className="h-3.5 w-20 rounded bg-muted" />
             <div className="h-3.5 w-28 rounded bg-muted" />
             <div className="h-3.5 w-24 rounded bg-muted" />

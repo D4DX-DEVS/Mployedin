@@ -23,6 +23,11 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
   const status = searchParams.get("status") ?? "";
   const category = searchParams.get("category") ?? "";
   const priority = searchParams.get("priority") ?? "";
+  const stage = searchParams.get("stage") ?? "";
+  const dateRange = searchParams.get("dateRange") ?? "";
+  const country = searchParams.get("country") ?? "";
+  const budgetRange = searchParams.get("budgetRange") ?? "";
+  const reviewer = searchParams.get("reviewer") ?? "";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const query: Record<string, any> = { isDeleted: { $ne: true } };
@@ -42,6 +47,7 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
       query.agentId = { $in: agentProfiles.map((a) => a.userId) };
     }
   }
+  const scopeQuery = { ...query };
 
   if (status && EXHIBITION_STATUSES.includes(status as never)) {
     query.status = status;
@@ -55,6 +61,40 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
     query.priority = priority;
   }
 
+  const stageStatuses: Record<string, string[]> = {
+    team_leader: ["draft", "submitted", "under_review", "revision_requested"],
+    finance: ["approved"],
+    super_agent: ["budget_approved"],
+    admin: ["resources_assigned", "active"],
+    completed: ["completed", "rejected"],
+  };
+  if (stage && stageStatuses[stage]) {
+    if (query.status) {
+      query.$and = [...(query.$and ?? []), { status: query.status }, { status: { $in: stageStatuses[stage] } }];
+      delete query.status;
+    } else {
+      query.status = { $in: stageStatuses[stage] };
+    }
+  }
+  if (country) query.country = country;
+  if (reviewer === "assigned") query.reviewedBy = { $exists: true, $ne: null };
+  if (reviewer === "unassigned") query.$and = [
+    ...(query.$and ?? []),
+    { $or: [{ reviewedBy: { $exists: false } }, { reviewedBy: null }] },
+  ];
+  if (dateRange) {
+    const days = parseInt(dateRange, 10);
+    if (Number.isFinite(days) && days > 0) {
+      query.createdAt = { $gte: new Date(Date.now() - days * 86400000) };
+    }
+  }
+  if (budgetRange) {
+    const [min, max] = budgetRange.split("-").map(Number);
+    if (Number.isFinite(min) && Number.isFinite(max)) {
+      query.estimatedBudget = { $gte: min, $lte: max };
+    }
+  }
+
   if (search) {
     const safe = escapeRegex(search);
     query.$or = [
@@ -66,7 +106,7 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
     ];
   }
 
-  const [items, total] = await Promise.all([
+  const [items, total, summaryRows, countries] = await Promise.all([
     ExhibitionRequest.find(query)
       .populate("agentId", "name email")
       .populate("reviewedBy", "name")
@@ -75,9 +115,56 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
       .limit(limit)
       .lean(),
     ExhibitionRequest.countDocuments(query),
+    ExhibitionRequest.aggregate<{
+      _id: null;
+      total: number;
+      pendingReview: number;
+      financeReview: number;
+      awaitingApproval: number;
+      approved: number;
+      rejected: number;
+      budgetRequested: number;
+      budgetApproved: number;
+      budgetUtilized: number;
+    }>([
+      { $match: scopeQuery },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: 1 },
+          pendingReview: { $sum: { $cond: [{ $in: ["$status", ["submitted", "under_review"]] }, 1, 0] } },
+          financeReview: { $sum: { $cond: [{ $eq: ["$status", "approved"] }, 1, 0] } },
+          awaitingApproval: { $sum: { $cond: [{ $in: ["$status", ["budget_approved", "resources_assigned"]] }, 1, 0] } },
+          approved: { $sum: { $cond: [{ $in: ["$status", ["budget_approved", "resources_assigned", "active"]] }, 1, 0] } },
+          rejected: { $sum: { $cond: [{ $eq: ["$status", "rejected"] }, 1, 0] } },
+          budgetRequested: { $sum: { $ifNull: ["$estimatedBudget", 0] } },
+          budgetApproved: { $sum: { $ifNull: ["$approvedBudget", 0] } },
+          budgetUtilized: { $sum: { $ifNull: ["$actualSpend", 0] } },
+        },
+      },
+    ]),
+    ExhibitionRequest.distinct("country", { ...scopeQuery, country: { $nin: [null, ""] } }),
   ]);
+  const summary = summaryRows[0] ?? {
+    total: 0,
+    pendingReview: 0,
+    financeReview: 0,
+    awaitingApproval: 0,
+    approved: 0,
+    rejected: 0,
+    budgetRequested: 0,
+    budgetApproved: 0,
+    budgetUtilized: 0,
+  };
 
-  return NextResponse.json({ items, total, page, totalPages: Math.ceil(total / limit) });
+  return NextResponse.json({
+    items,
+    total,
+    page,
+    totalPages: Math.max(1, Math.ceil(total / limit)),
+    summary,
+    countries: countries.filter(Boolean).sort(),
+  });
 }
 
 async function postHandler(req: NextRequest, ctx: AuthContext) {

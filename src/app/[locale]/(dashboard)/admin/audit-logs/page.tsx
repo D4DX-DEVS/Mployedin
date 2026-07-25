@@ -2,9 +2,9 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { PageHero } from "@/components/shared/PageHero";
 import { toast } from "sonner";
-import { Search, Shield, Clock, Sparkles } from "lucide-react";
+import { Search, Shield, Clock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Badge } from "@/components/ui/badge";
@@ -114,14 +114,11 @@ export default function AuditLogsPage() {
 
   return (
     <div className="page-container space-y-4">
-      {/* ── Hero Section ── */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-          <Sparkles className="h-3.5 w-3.5" />
-          {t("adminWorkspace")}
-        </div>
-        <PageHeader className="mt-4" title={t("auditLogs")} description={`${total.toLocaleString()} ${t("logEntriesDescription")}`} />
-      </section>
+      <PageHero
+        title={t("auditLogs")}
+        description={`${total.toLocaleString()} ${t("logEntriesDescription")}`}
+        eyebrow={t("adminWorkspace")}
+      />
 
       <TableToolbar
         onExportCsv={handleExportCsv}

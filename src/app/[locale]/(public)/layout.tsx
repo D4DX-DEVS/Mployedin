@@ -78,7 +78,7 @@ export default async function PublicLayout({
             installed — without it POSTs from shared/public pages 403. */}
         <CsrfProvider>
         <DashboardProviders>
-          <div className="flex min-h-screen flex-col">
+          <div className="flex min-h-screen flex-col [&_a]:cursor-pointer [&_button]:cursor-pointer">
             <PublicHeader locale={locale} />
             <main className="flex-1">{children}</main>
             <PublicFooter locale={locale} />

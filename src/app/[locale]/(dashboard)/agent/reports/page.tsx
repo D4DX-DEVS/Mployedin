@@ -7,6 +7,7 @@ import { MarkdownRenderer } from "@/components/shared/MarkdownRenderer";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 
 /* ─── AI Report Templates ─── */
 
@@ -112,20 +113,17 @@ export default function AgentReportsPage() {
 
   return (
     <div className="page-container space-y-6">
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-3xl">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary"><Sparkles className="h-3.5 w-3.5" />{t("agentWorkspace")}</div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("reportsAnalytics")}</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">{t("pageDescription")}</p>
-          </div>
-          <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:min-w-[260px]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("analytics")}</p>
-            <p className="mt-1 text-lg font-semibold text-foreground">{analytics?.kpis.totalLeads ?? "—"} {t("leadsTotal")}</p>
-            <p className="text-xs text-muted-foreground">{t("liveDataDesc")}</p>
-          </div>
-        </div>
-      </section>
+      <DashboardPageHeader
+        icon={BarChart3}
+        eyebrow={t("agentWorkspace")}
+        title={t("reportsAnalytics")}
+        description={t("pageDescription")}
+        summary={{
+          label: t("analytics"),
+          value: `${analytics?.kpis.totalLeads ?? "—"} ${t("leadsTotal")}`,
+          note: t("liveDataDesc"),
+        }}
+      />
 
       {/* ─── KPI Cards with Trends ─── */}
       {analyticsLoading ? (

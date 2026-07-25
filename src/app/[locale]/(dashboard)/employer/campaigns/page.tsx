@@ -78,7 +78,6 @@ export default function EmployerCampaignsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const t = useTranslations("emailSequences");
-  const { data: sequences = [], isLoading, isError } = useEmailSequences();
   const [createOpen, setCreateOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -92,22 +91,10 @@ export default function EmployerCampaignsPage() {
     router.replace(`?${params.toString()}`, { scroll: false });
   }
   const [limit, setLimit] = useState(10);
-
-  const filteredSequences = sequences.filter((seq) => {
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      if (!seq.name.toLowerCase().includes(q) && !(seq.description?.toLowerCase().includes(q))) {
-        return false;
-      }
-    }
-    if (statusFilter && seq.status !== statusFilter) {
-      return false;
-    }
-    return true;
-  });
-
-  const totalPages = Math.max(1, Math.ceil(filteredSequences.length / limit));
-  const pagedSequences = filteredSequences.slice((page - 1) * limit, page * limit);
+  const { data, isLoading, isError } = useEmailSequences({ page, limit, search, status: statusFilter });
+  const sequences = data?.sequences ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = data?.totalPages ?? 1;
 
   return (
     <div className="page-container space-y-6">
@@ -116,7 +103,7 @@ export default function EmployerCampaignsPage() {
         title={t("title")}
         description={t("subtitle")}
         actions={
-          sequences.length > 0 ? (
+          total > 0 ? (
             <Button onClick={() => setCreateOpen(true)} className="shrink-0">
               <Plus className="mr-2 h-4 w-4" />
               {t("create")}
@@ -125,7 +112,7 @@ export default function EmployerCampaignsPage() {
         }
       />
 
-      {sequences.length > 0 && (
+      {(total > 0 || search || statusFilter) && (
         <div className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <Input
@@ -170,7 +157,7 @@ export default function EmployerCampaignsPage() {
         <div className="rounded-2xl border border-border bg-card p-10 text-center text-sm text-muted-foreground">
           {t("loadError")}
         </div>
-      ) : filteredSequences.length === 0 ? (
+      ) : sequences.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
           <Mail className="mx-auto h-10 w-10 text-muted-foreground/60" />
           <p className="mt-4 text-sm text-muted-foreground">{search || statusFilter ? t("noResults") || "No campaigns match your filters." : t("noSequences")}</p>
@@ -184,7 +171,7 @@ export default function EmployerCampaignsPage() {
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {pagedSequences.map((seq) => (
+            {sequences.map((seq) => (
               <SequenceCard key={seq._id} sequence={seq} onOpen={() => setActiveId(seq._id)} />
             ))}
           </div>

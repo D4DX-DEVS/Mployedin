@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +19,7 @@ import {
 import {
   Building2, Users,
   CalendarDays, RotateCcw, FileText, X,
-  CircleDollarSign, Activity, Sparkles,
+  CircleDollarSign, Activity,
   ArrowUpRight, ArrowDownRight, Minus,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -268,23 +268,17 @@ export default function AdminTargetReportPage() {
 
   return (
     <div className="page-container space-y-6 print:space-y-4">
-      {/* ═══════ HERO ═══════ */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-          <div className="min-w-0 flex-1">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              Admin workspace
-            </div>
-            <PageHeader title="Target Report" description={`Consolidated performance report — ${yearFilter}. Track employer, employee, and finance targets across your organization.`} />
-          </div>
-          <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:min-w-[220px]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Coverage</p>
-            <p className="mt-1 text-lg font-semibold text-foreground">{data.summary.profileCount} profiles</p>
-            <p className="text-xs text-muted-foreground">{data.supervisorProfiles.length} supervisors, {data.agentProfiles.length} agents tracked with {data.summary.avgProgress}% avg performance.</p>
-          </div>
-        </div>
-      </section>
+      <DashboardPageHeader
+        icon={Activity}
+        eyebrow="Admin workspace"
+        title="Target Report"
+        description={`Consolidated performance report — ${yearFilter}. Track employer, employee, and finance targets across your organization.`}
+        summary={{
+          label: "Coverage",
+          value: `${data.summary.profileCount} profiles`,
+          note: `${data.supervisorProfiles.length} supervisors, ${data.agentProfiles.length} agents · ${data.summary.avgProgress}% average`,
+        }}
+      />
 
       {/* ═══════ KPI Summary ═══════ */}
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

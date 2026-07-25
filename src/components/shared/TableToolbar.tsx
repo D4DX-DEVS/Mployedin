@@ -124,7 +124,7 @@ export function TableToolbar({
         className={cn("workspace-panel-surface overflow-hidden rounded-[20px]", className)}
         data-table-toolbar="compact-admin"
       >
-        <div className="flex flex-col gap-4 px-5 py-4 xl:flex-row xl:items-start xl:justify-between">
+        <div className="flex flex-col gap-3 px-3 py-3 sm:px-5 sm:py-4 xl:flex-row xl:items-start xl:justify-between">
           <div className="min-w-0 xl:max-w-2xl">
             {title && <h1 className="text-lg font-semibold text-foreground">{title}</h1>}
             {description && <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>}
@@ -132,7 +132,7 @@ export function TableToolbar({
           </div>
 
           <div className="flex w-full flex-col gap-2 xl:w-auto xl:min-w-[320px] xl:items-end">
-            <div className="flex w-full flex-wrap items-center gap-2 xl:justify-end">
+            <div className="flex w-full min-w-0 flex-wrap items-center gap-2 xl:justify-end">
               {searchControl}
               {filterContent && (
                 <Button
@@ -163,7 +163,7 @@ export function TableToolbar({
         </div>
 
         {filterContent && filtersOpen && (
-          <div className="border-t border-border/70 bg-secondary/30 px-5 py-3">
+          <div className="border-t border-border/70 bg-secondary/30 px-3 py-3 sm:px-5">
             {filterContent}
           </div>
         )}

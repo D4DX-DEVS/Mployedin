@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo, Fragment } from "react";
 import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { PageHero } from "@/components/shared/PageHero";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -382,18 +383,11 @@ export default function AdminJobSeekersPage() {
     <div className="page-container space-y-4">
       {ConfirmDialogNode}
 
-      {/* ── Hero Section ── */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-          <div className="min-w-0 flex-1">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              {tr("heroAdminWorkspace")}
-            </div>
-            <PageHeader title={tr("heroTitle")} description={tr("heroDescription")} />
-          </div>
-        </div>
-      </section>
+      <PageHero
+        eyebrow={tr("heroAdminWorkspace")}
+        title={tr("heroTitle")}
+        description={tr("heroDescription")}
+      />
 
       {/* ── AI Search Bar ─────────────────────────────────── */}
       <section className="workspace-panel-surface rounded-[20px] p-4">

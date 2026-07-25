@@ -7,6 +7,7 @@ import dynamic from "next/dynamic";
 import { type CalendarEvent } from "@/components/shared/MployedinCalendar";
 import { CalendarSkeleton } from "@/components/ui/loading/CalendarSkeleton";
 import { Users } from "lucide-react";
+import { PageHero } from "@/components/shared/PageHero";
 
 // ssr:false — calendar renders "today" from the client clock; SSR would use the
 // server clock (UTC) and hydration-mismatch for users in other timezones.
@@ -62,14 +63,10 @@ export default function AgentCalendarPage() {
   return (
     <div className="page-container space-y-6">
       {/* Hero */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-          Calendar
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Visual overview of all your interviews and follow-ups
-        </p>
-      </section>
+      <PageHero
+        title="Calendar"
+        description="Visual overview of all your interviews and follow-ups"
+      />
 
       <MployedinCalendar
         events={events}

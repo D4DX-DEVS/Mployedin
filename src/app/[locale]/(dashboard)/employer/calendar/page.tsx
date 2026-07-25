@@ -13,8 +13,8 @@ import {
   type JobOption,
 } from "@/components/shared/MployedinCalendar";
 import { CalendarSkeleton } from "@/components/ui/loading/CalendarSkeleton";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { Briefcase } from "lucide-react";
+import { Briefcase, CalendarDays } from "lucide-react";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 
 // ssr:false — calendar renders "today" from the client clock; SSR would use the
 // server clock (UTC) and hydration-mismatch for users in other timezones.
@@ -172,31 +172,16 @@ export default function EmployerCalendarPage() {
   return (
     <div className="page-container space-y-6">
       {/* Hero */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <PageHeader
-          title={t("title")}
-          description={t("description")}
-        />
-
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          <div className="workspace-glass-panel rounded-2xl p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              {t("today")}
-            </p>
-            <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
-              {todayCount} {t("interviews")}
-            </p>
-          </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              {t("thisMonth")}
-            </p>
-            <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
-              {upcomingCount} {t("upcoming")}
-            </p>
-          </div>
-        </div>
-      </section>
+      <DashboardPageHeader
+        icon={CalendarDays}
+        eyebrow={t("title")}
+        title={t("title")}
+        description={t("description")}
+        metrics={[
+          { label: t("today"), value: `${todayCount} ${t("interviews")}`, icon: CalendarDays },
+          { label: t("thisMonth"), value: `${upcomingCount} ${t("upcoming")}`, icon: Briefcase },
+        ]}
+      />
 
       <MployedinCalendar
         events={events}

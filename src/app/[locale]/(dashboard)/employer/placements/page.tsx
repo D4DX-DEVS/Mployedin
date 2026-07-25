@@ -8,12 +8,11 @@ import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Users, Briefcase, TrendingUp, Inbox, Sparkles, ArrowRight, CircleCheckBig, ClipboardList } from "lucide-react";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { Users, Briefcase, TrendingUp, Inbox, CircleCheckBig, ClipboardList } from "lucide-react";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { TableToolbar } from "@/components/shared/TableToolbar";
-import { usePermissions } from "@/hooks/usePermissions";
 import { useTableExport } from "@/hooks/useTableExport";
 import { usePlacements, type Placement } from "@/hooks/usePlacements";
 import type { ExportColumn } from "@/lib/export";
@@ -23,7 +22,6 @@ export default function EmployerPlacementsPage() {
   const { locale } = useParams<{ locale: string }>();
   const searchParams = useSearchParams();
   const t = useTranslations("employerPlacements");
-  const { can } = usePermissions();
 
   const [page, setPageState] = useState(() => Number(searchParams.get("page")) || 1);
 
@@ -97,84 +95,17 @@ export default function EmployerPlacementsPage() {
 
   return (
     <div className="page-container space-y-6">
-      <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-        <Sparkles className="h-3.5 w-3.5" />
-        {t("workspace")}
-      </div>
-      <PageHeader
-        title={t("title")}
-        description={t("description")}
-        actions={
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("currentResults")}</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">{t("trackedPlacements", { count: stats.total })}</p>
-              <p className="text-xs text-muted-foreground">{t("trackedPlacementsDesc")}</p>
-            </div>
-            <Button
-              asChild
-              className="h-11 gap-2 rounded-xl px-4 text-sm font-semibold"
-            >
-              <Link href={`/${locale}/employer/analytics`}>
-                {t("openAnalytics")}
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-        }
+      <DashboardPageHeader
+        icon={ClipboardList}
+        eyebrow={t("totalHired")}
+        title={t("totalHired")}
+        metrics={[
+          { label: t("totalHired"), value: stats.total, note: t("totalHiredNote"), icon: Users },
+          { label: t("currentlyActive"), value: stats.active, note: t("currentlyActiveNote"), icon: Briefcase },
+          { label: t("completed"), value: stats.completed, note: t("completedNote"), icon: CircleCheckBig },
+          { label: t("thisMonth"), value: stats.thisMonth, note: t("thisMonthNote"), icon: TrendingUp },
+        ]}
       />
-
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="mt-0 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {[
-            {
-              labelKey: "totalHired" as const,
-              value: stats.total,
-              noteKey: "totalHiredNote" as const,
-              icon: Users,
-              tone: "text-status-applied",
-              chip: "bg-status-applied-bg",
-            },
-            {
-              labelKey: "currentlyActive" as const,
-              value: stats.active,
-              noteKey: "currentlyActiveNote" as const,
-              icon: Briefcase,
-              tone: "text-status-selected",
-              chip: "bg-status-selected-bg",
-            },
-            {
-              labelKey: "completed" as const,
-              value: stats.completed,
-              noteKey: "completedNote" as const,
-              icon: CircleCheckBig,
-              tone: "text-status-interview",
-              chip: "bg-status-interview-bg",
-            },
-            {
-              labelKey: "thisMonth" as const,
-              value: stats.thisMonth,
-              noteKey: "thisMonthNote" as const,
-              icon: TrendingUp,
-              tone: "text-status-shortlisted",
-              chip: "bg-status-shortlisted-bg",
-            },
-          ].map(({ labelKey, value, noteKey, icon: Icon, tone, chip }) => (
-            <div key={labelKey} className="workspace-glass-panel rounded-2xl p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t(labelKey)}</p>
-                  <p className="mt-3 text-4xl font-semibold tracking-tight text-foreground">{value}</p>
-                </div>
-                <span className={`flex h-12 w-12 items-center justify-center rounded-2xl ${chip}`}>
-                  <Icon className={`h-5 w-5 ${tone}`} />
-                </span>
-              </div>
-              <p className="mt-3 text-sm leading-5 text-muted-foreground">{t(noteKey)}</p>
-            </div>
-          ))}
-        </div>
-      </section>
 
       <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">

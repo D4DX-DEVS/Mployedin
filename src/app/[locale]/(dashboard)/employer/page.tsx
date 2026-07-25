@@ -7,9 +7,7 @@ import {
   SmartHeader,
   DashboardStatCards,
   InteractivePipeline,
-  QuickInsights,
   PriorityActions,
-  JobStatusQuickFilters,
   AIRecommendedCandidatesCard,
   DraftExtractionsCard,
   DraftJobsCard,
@@ -46,85 +44,62 @@ export default async function EmployerDashboard({ params }: { params: Promise<{ 
   } = await getEmployerDashboardStats(userId);
 
   return (
-    <div className="page-container space-y-5 sm:space-y-6">
-      {/* ── Hero: AI Hiring Summary + mascot + Create-with-AI CTA ── */}
+    <div className="page-container space-y-3 sm:space-y-4">
       <SmartHeader
         userName={userName}
         newApplications={newApplications}
         scheduledInterviews={scheduledInterviews}
-        interviewsToday={interviewsToday}
         activeJobCount={activeJobCount}
         highMatchCount={highMatchCount}
         lastActivityMinutes={lastActivityMinutes}
         locale={locale}
       />
 
+      <PriorityActions
+        activeJobs={activeJobCount}
+        newApplications={newApplications}
+        scheduledInterviews={scheduledInterviews}
+        totalApplications={totalApplications}
+        placements={placements}
+        locale={locale}
+      />
+
       {/* ── Headline KPI cards ── */}
       <DashboardStatCards
         activeJobCount={activeJobCount}
+        draftJobCount={draftJobCount}
+        pausedJobCount={pausedJobCount}
         newApplications={newApplications}
         highMatchCount={highMatchCount}
         interviewsToday={interviewsToday}
         locale={locale}
       />
 
-      {/* ── Job status quick filters (Active / Draft / Paused) ── */}
-      <JobStatusQuickFilters
-        activeJobs={activeJobCount}
-        draftJobs={draftJobCount}
-        pausedJobs={pausedJobCount}
+      <InteractivePipeline
+        totalApplications={totalApplications}
+        newApplications={newApplications}
+        inReview={inReview}
+        interviews={scheduledInterviews}
+        offers={offerCount}
+        offersSent={offersSent}
+        placements={placements}
+        avgMatchScore={avgMatchScore}
         locale={locale}
       />
 
-      {/* ── Work band: AI Recommended Candidates | Priority Actions + resume-work drafts ──
-          Left column self-hides when there are no scored candidates; right column
-          self-hides individually (PriorityActions + each draft card return null when
-          empty). ponytail: on a brand-new account both columns can be empty — the
-          SetupGuide below covers that cold-start state. */}
-      <div className="grid items-start gap-4 sm:gap-5 lg:grid-cols-3">
-        <div className="min-w-0 lg:col-span-2">
-          <AIRecommendedCandidatesCard
-            highMatchCount={highMatchCount}
-            band90PlusCount={band90PlusCount}
-            band80to89Count={band80to89Count}
-            needsReviewCount={needsReviewCount}
-            activeJobCount={activeJobCount}
-            locale={locale}
-          />
-        </div>
-        <PriorityActions
-          activeJobs={activeJobCount}
-          newApplications={newApplications}
-          scheduledInterviews={scheduledInterviews}
-          totalApplications={totalApplications}
-          placements={placements}
-          locale={locale}
-        />
-      </div>
+      <AIRecommendedCandidatesCard
+        highMatchCount={highMatchCount}
+        band90PlusCount={band90PlusCount}
+        band80to89Count={band80to89Count}
+        needsReviewCount={needsReviewCount}
+        activeJobCount={activeJobCount}
+        locale={locale}
+      />
 
-      {/* ── Continue working: resume drafts, side by side, equal height (each self-hides when empty) ── */}
-      {/* ponytail: auto-fit so a lone visible card fills the row instead of leaving empty tracks (siblings self-hide when empty) */}
-      <div className="grid gap-4 sm:gap-5 [grid-template-columns:repeat(auto-fit,minmax(320px,1fr))]">
+      <div className="grid gap-3 sm:gap-4 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
         <DraftJobsCard locale={locale} />
         <AIChatDraftsCard locale={locale} />
         <DraftExtractionsCard locale={locale} />
-      </div>
-
-      {/* ── Analytics band: 5-stage Hiring Pipeline | Quick Insights ── */}
-      <div className="grid gap-4 sm:gap-5 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <InteractivePipeline
-            totalApplications={totalApplications}
-            newApplications={newApplications}
-            inReview={inReview}
-            interviews={scheduledInterviews}
-            offers={offerCount}
-            offersSent={offersSent}
-            placements={placements}
-            locale={locale}
-          />
-        </div>
-        <QuickInsights avgMatchScore={avgMatchScore} highMatchCount={highMatchCount} />
       </div>
 
       {/* Setup Guide (conditional — new employers) */}

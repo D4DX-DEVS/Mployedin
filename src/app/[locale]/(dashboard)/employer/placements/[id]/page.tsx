@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useConfirm } from "@/hooks/useConfirm";
 
+type PlacementLocation = string | { country?: string; city?: string; isRemote?: boolean };
+
 interface PlacementDetail {
   _id: string;
   status?: "active" | "completed" | "terminated";
@@ -23,7 +25,10 @@ interface PlacementDetail {
   visaStatus?: string;
   commissionPaid?: boolean;
   notes?: string;
-  jobId?: { title?: string; location?: string } | null;
+  jobId?: {
+    title?: string;
+    location?: PlacementLocation;
+  } | null;
   jobSeekerId?: { userId?: { name?: string; email?: string } } | null;
 }
 
@@ -32,6 +37,13 @@ const STATUS_BADGE: Record<string, string> = {
   completed: "bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300",
   terminated: "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300",
 };
+
+function formatLocation(location?: PlacementLocation) {
+  if (!location) return undefined;
+  if (typeof location === "string") return location;
+  if (location.isRemote) return "Remote";
+  return [location.city, location.country].filter(Boolean).join(", ") || undefined;
+}
 
 export default function PlacementDetailPage() {
   const t = useTranslations("employerPlacements");
@@ -99,11 +111,11 @@ export default function PlacementDetailPage() {
   if (error || !placement) {
     return (
       <div className="page-container">
-        <div className="card-base p-8 py-16 text-center">
+        <div className="card-base min-w-0 p-5 py-10 text-center sm:p-8 sm:py-16">
           <h2 className="text-lg font-semibold mb-4">{t("detailLoadError")}</h2>
-          <div className="flex justify-center gap-3">
-            <Button variant="outline" onClick={() => void load()}>{t("retry")}</Button>
-            <Button variant="outline" onClick={() => router.push(`/${locale}/employer/placements`)}>
+          <div className="flex min-w-0 flex-col justify-center gap-3 sm:flex-row">
+            <Button className="max-w-full" variant="outline" onClick={() => void load()}>{t("retry")}</Button>
+            <Button className="max-w-full whitespace-normal" variant="outline" onClick={() => router.push(`/${locale}/employer/placements`)}>
               <ArrowLeft className="w-4 h-4 me-2" /> {t("backToPlacements")}
             </Button>
           </div>
@@ -123,7 +135,7 @@ export default function PlacementDetailPage() {
         <Button variant="ghost" size="sm" className="w-fit gap-1.5" onClick={() => router.push(`/${locale}/employer/placements`)}>
           <ArrowLeft className="h-4 w-4" /> {t("backToPlacements")}
         </Button>
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <Badge variant="outline" className={STATUS_BADGE[status]}>{t(`status_${status}`)}</Badge>
           {status === "active" && (
             <>
@@ -146,7 +158,7 @@ export default function PlacementDetailPage() {
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <InfoItem icon={Briefcase} label={t("jobCol")} value={placement.jobId?.title} />
-          <InfoItem icon={Building2} label={t("locationLabel")} value={placement.jobId?.location} />
+          <InfoItem icon={Building2} label={t("locationLabel")} value={formatLocation(placement.jobId?.location)} />
           <InfoItem
             icon={DollarSign}
             label={t("salaryCol")}

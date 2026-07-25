@@ -15,6 +15,7 @@ import {
   Trash2, Edit, Calendar, RotateCcw, Search, Inbox, Star,
 } from "lucide-react";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -70,8 +71,9 @@ const getPriorityOptions = (t: any) => [
 export default function AgentTasksPage() {
   const t = useTranslations("agentTasks");
   const tc = useTranslations("common");
-  const pagination = usePagination();
-  const [allTasks, setAllTasks] = useState<Task[]>([]);
+  const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [stats, setStats] = useState({ pending: 0, inProgress: 0, completed: 0, overdue: 0 });
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
@@ -86,31 +88,26 @@ export default function AgentTasksPage() {
   const fetchTasks = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
+      const params = new URLSearchParams({ page: String(page), limit: String(limit) });
       if (statusFilter !== "all") params.set("status", statusFilter);
       if (search) params.set("search", search);
 
       const res = await fetch(`/api/agent/tasks?${params}`);
       if (res.ok) {
         const data = await res.json();
-        const tasks = data.items ?? [];
-        setAllTasks(tasks);
-        pagination.updateTotal(tasks.length);
+        setTasks(data.items ?? []);
+        updateTotal(data.total ?? 0);
+        setStats(data.stats ?? { pending: 0, inProgress: 0, completed: 0, overdue: 0 });
       }
     } catch {
       toast.error(t("loadTasksFailed"));
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, search, pagination, t]);
+  }, [statusFilter, search, page, limit, updateTotal, t]);
 
   useEffect(() => { fetchTasks(); }, [fetchTasks]);
-  useEffect(() => { pagination.resetPage(); }, [statusFilter, search]);
-
-  const paginatedTasks = allTasks.slice(
-    (pagination.page - 1) * pagination.limit,
-    pagination.page * pagination.limit
-  );
+  useEffect(() => { resetPage(); }, [statusFilter, search, resetPage]);
 
   const createTask = async () => {
     if (!newTask.title.trim()) {
@@ -178,44 +175,26 @@ export default function AgentTasksPage() {
     }
   };
 
-  const pending = allTasks.filter((t) => t.status === "pending").length;
-  const inProgress = allTasks.filter((t) => t.status === "in_progress").length;
-  const completed = allTasks.filter((t) => t.status === "completed").length;
-  const overdue = allTasks.filter((t) => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== "completed").length;
-
   return (
     <div className="page-container space-y-6">
       {/* Hero */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t("pageTitle")}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">{t("pageDescription")}</p>
-          </div>
+      <DashboardPageHeader
+        icon={CheckSquare}
+        eyebrow={t("pageTitle")}
+        title={t("pageTitle")}
+        description={t("pageDescription")}
+        actions={
           <Button onClick={() => setShowForm(!showForm)}>
             <Plus className="mr-1 h-4 w-4" /> {t("newTaskButton")}
           </Button>
-        </div>
-
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {[
-            { key: "statPending", value: pending, icon: <Clock className="h-5 w-5" />, tone: "workspace-tone-amber" },
-            { key: "statInProgress", value: inProgress, icon: <Star className="h-5 w-5" />, tone: "workspace-tone-sky" },
-            { key: "statCompleted", value: completed, icon: <CheckCircle2 className="h-5 w-5" />, tone: "workspace-tone-emerald" },
-            { key: "statOverdue", value: overdue, icon: <AlertCircle className="h-5 w-5" />, tone: "workspace-tone-rose" },
-          ].map((m) => (
-            <div key={m.key} className="workspace-glass-panel rounded-2xl p-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t(m.key)}</p>
-                  <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{m.value}</p>
-                </div>
-                <div className={`${m.tone} rounded-xl p-2`}>{m.icon}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+        }
+        metrics={[
+          { label: t("statPending"), value: stats.pending, icon: Clock },
+          { label: t("statInProgress"), value: stats.inProgress, icon: Star },
+          { label: t("statCompleted"), value: stats.completed, icon: CheckCircle2 },
+          { label: t("statOverdue"), value: stats.overdue, icon: AlertCircle },
+        ]}
+      />
 
       {/* New Task Form */}
       {showForm && (
@@ -265,7 +244,7 @@ export default function AgentTasksPage() {
               </div>
             ))}
           </div>
-        ) : allTasks.length === 0 ? (
+        ) : tasks.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Inbox className="h-12 w-12 text-muted-foreground/40" />
             <p className="mt-4 text-sm font-medium text-muted-foreground">{t("emptyStateTitle")}</p>
@@ -273,7 +252,7 @@ export default function AgentTasksPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {paginatedTasks.map((task) => (
+            {tasks.map((task) => (
               <div
                 key={task._id}
                 className={`workspace-glass-panel rounded-2xl p-4 transition-all ${
@@ -336,14 +315,14 @@ export default function AgentTasksPage() {
         )}
       </section>
 
-      {allTasks.length > 0 && (
+      {total > 0 && (
         <PaginationControls
-          page={pagination.page}
-          totalPages={pagination.totalPages}
-          total={pagination.total}
-          limit={pagination.limit}
-          onPageChange={pagination.setPage}
-          onLimitChange={pagination.setLimit}
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          limit={limit}
+          onPageChange={setPage}
+          onLimitChange={setLimit}
         />
       )}
     </div>

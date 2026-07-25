@@ -3,8 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { Search, UserCheck, UserX, Shield, ChevronDown, Inbox, Plus, Settings2, Check, Sparkles } from "lucide-react";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { Search, UserCheck, UserX, Shield, ChevronDown, Inbox, Plus, Settings2, Check, Users } from "lucide-react";
+import { PageHero } from "@/components/shared/PageHero";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -250,21 +250,12 @@ export default function AdminUsersPage() {
 
   return (
     <div className="page-container space-y-4">
-      {/* ── Hero Section ── */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-          <div className="min-w-0 flex-1">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              {t("adminWorkspace")}
-            </div>
-            <PageHeader
-              title={t("userManagement")}
-              description={t("userManagementDesc", { total: total.toLocaleString() })}
-            />
-          </div>
-        </div>
-      </section>
+      <PageHero
+        icon={Users}
+        eyebrow={t("adminWorkspace")}
+        title={t("userManagement")}
+        description={t("userManagementDesc", { total: total.toLocaleString() })}
+      />
 
       <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
         <div className="flex flex-wrap items-center gap-2 border-b border-border/80 px-5 py-4">

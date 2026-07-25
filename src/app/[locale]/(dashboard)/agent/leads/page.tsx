@@ -31,6 +31,7 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import type { ExportColumn } from "@/lib/export";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 
 /* ─── Types ─────────────────────────────────────────────────────────────── */
 
@@ -690,49 +691,22 @@ export default function AgentLeadsPage() {
       {ConfirmDialogNode}
 
       {/* ──── Hero Header ──── */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-2xl">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              <Target className="h-3.5 w-3.5" />{t("heroBadge")}
-            </div>
-            <h1 className="mt-3 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-              {t("pageTitle")}
-            </h1>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              {t("heroDescription")}
-            </p>
-          </div>
-
-          {/* KPI chips */}
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="workspace-glass-panel rounded-2xl px-4 py-3">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{t("kpiOpen")}</p>
-              <p className="mt-1 text-xl font-bold text-foreground">
-                {leads.filter((l) => !["converted", "lost"].includes(l.status)).length}
-              </p>
-              {totalPipelineValue > 0 && (
-                <p className="text-[10px] font-medium text-status-selected">
-                  AED {totalPipelineValue.toLocaleString()}
-                </p>
-              )}
-            </div>
-            <div className="workspace-glass-panel rounded-2xl px-4 py-3">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{t("kpiWon")}</p>
-              <p className="mt-1 text-xl font-bold text-status-selected">{stageCounts.converted}</p>
-            </div>
-            <div className="workspace-glass-panel rounded-2xl px-4 py-3">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{t("kpiTotal")}</p>
-              <p className="mt-1 text-xl font-bold text-foreground">{pagination.total}</p>
-            </div>
-            {can("leads", "create") && (
-              <Button onClick={openAdd} className="h-11 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90">
-                <Plus className="mr-1.5 h-4 w-4" />{t("newLead")}
-              </Button>
-            )}
-          </div>
-        </div>
-      </section>
+      <DashboardPageHeader
+        icon={Target}
+        eyebrow={t("heroBadge")}
+        title={t("pageTitle")}
+        description={t("heroDescription")}
+        actions={can("leads", "create") ? (
+          <Button onClick={openAdd} className="h-11 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90">
+            <Plus className="mr-1.5 h-4 w-4" />{t("newLead")}
+          </Button>
+        ) : null}
+        metrics={[
+          { label: t("kpiOpen"), value: leads.filter((l) => !["converted", "lost"].includes(l.status)).length, note: totalPipelineValue > 0 ? `AED ${totalPipelineValue.toLocaleString()}` : undefined, icon: Flame },
+          { label: t("kpiWon"), value: stageCounts.converted, icon: TrendingUp },
+          { label: t("kpiTotal"), value: pagination.total, icon: Target },
+        ]}
+      />
 
       {/* ──── Toolbar ──── */}
       <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">

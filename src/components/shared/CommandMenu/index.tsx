@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Search } from "lucide-react";
 import {
@@ -23,7 +23,9 @@ interface CommandMenuProps {
 
 export function CommandMenu({ navGroups, locale }: CommandMenuProps) {
   const [open, setOpen] = useState(false);
+  const [recentHrefs, setRecentHrefs] = useState<string[]>([]);
   const router = useRouter();
+  const pathname = usePathname();
 
   const toggle = useCallback(() => setOpen((o) => !o), []);
 
@@ -54,12 +56,70 @@ export function CommandMenu({ navGroups, locale }: CommandMenuProps) {
   const groupedItems = navGroups.flatMap((g) =>
     g.items.filter((item) => item.children && item.children.length > 0)
   );
+  const allItems = useMemo(
+    () =>
+      navGroups.flatMap((group) =>
+        group.items.flatMap((item) => item.children?.length ? item.children : [item])
+      ),
+    [navGroups]
+  );
+  const recentItems = recentHrefs
+    .map((href) => allItems.find((item) => item.href === href))
+    .filter((item): item is NonNullable<typeof item> => Boolean(item));
+
+  useEffect(() => {
+    const storageKey = `mployedin_recent_pages_${locale}`;
+    const stored = window.localStorage.getItem(storageKey);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) setRecentHrefs(parsed.filter((value): value is string => typeof value === "string").slice(0, 5));
+      } catch {
+        window.localStorage.removeItem(storageKey);
+      }
+    }
+  }, [locale]);
+
+  useEffect(() => {
+    const current = [...allItems]
+      .sort((a, b) => b.href.length - a.href.length)
+      .find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
+    if (!current) return;
+
+    const storageKey = `mployedin_recent_pages_${locale}`;
+    setRecentHrefs((previous) => {
+      const next = [current.href, ...previous.filter((href) => href !== current.href)].slice(0, 5);
+      window.localStorage.setItem(storageKey, JSON.stringify(next));
+      return next;
+    });
+  }, [allItems, locale, pathname]);
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
       <CommandInput placeholder={t("placeholder")} />
       <CommandList>
         <CommandEmpty>{t("noResults")}</CommandEmpty>
+
+        {recentItems.length > 0 && (
+          <>
+            <CommandGroup heading={t("recent")}>
+              {recentItems.map((item) => {
+                const Icon = getIcon(item.icon);
+                return (
+                  <CommandItem
+                    key={`recent-${item.href}`}
+                    value={`recent ${item.title} ${item.titleAr}`}
+                    onSelect={() => handleSelect(item.href)}
+                  >
+                    <Icon className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span>{isAr ? item.titleAr : item.title}</span>
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+            <CommandSeparator />
+          </>
+        )}
 
         {/* Standalone items (Dashboard, Notifications, Settings, etc.) */}
         {standaloneItems.length > 0 && (
@@ -121,10 +181,11 @@ export function CommandMenu({ navGroups, locale }: CommandMenuProps) {
 }
 
 /** Trigger button shown in header */
-export function CommandMenuTrigger({ locale }: { locale?: string }) {
+export function CommandMenuTrigger({ compact = false }: { locale?: string; compact?: boolean }) {
   const t = useTranslations("commandMenu");
   return (
     <button
+      type="button"
       onClick={() => {
         const event = new KeyboardEvent("keydown", {
           key: "k",
@@ -133,15 +194,24 @@ export function CommandMenuTrigger({ locale }: { locale?: string }) {
         });
         document.dispatchEvent(event);
       }}
-      className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 hover:bg-muted border border-transparent hover:border-border px-3 py-1.5 rounded-md transition-all w-full max-w-sm"
+      aria-label={t("searchShort")}
+      className={
+        compact
+          ? "flex h-9 w-9 items-center justify-center rounded-lg border border-border/70 bg-muted/40 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          : "flex w-full max-w-sm items-center gap-2 rounded-md border border-transparent bg-muted/50 px-3 py-1.5 text-sm text-muted-foreground transition-all hover:border-border hover:bg-muted"
+      }
     >
       <Search className="h-4 w-4 shrink-0" />
-      <span className="flex-1 text-left truncate">
-        {t("searchShort")}
-      </span>
-      <kbd className="hidden sm:inline-flex pointer-events-none h-5 select-none items-center gap-1 rounded border bg-background px-1.5 font-mono text-[10px] font-medium shrink-0">
-        <span className="text-xs">⌘</span>K
-      </kbd>
+      {!compact && (
+        <>
+          <span className="flex-1 truncate text-left">
+            {t("searchShort")}
+          </span>
+          <kbd className="pointer-events-none hidden h-5 shrink-0 select-none items-center gap-1 rounded border bg-background px-1.5 font-mono text-[10px] font-medium sm:inline-flex">
+            <span className="text-xs">⌘</span>K
+          </kbd>
+        </>
+      )}
     </button>
   );
 }

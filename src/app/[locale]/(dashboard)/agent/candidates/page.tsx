@@ -30,7 +30,6 @@ import {
   Inbox,
   Loader2,
   Search,
-  Sparkles,
   Star,
   Users,
   X,
@@ -39,6 +38,7 @@ import { useSearchParams, usePathname } from "next/navigation";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 
 interface ApplicationItem {
   _id: string;
@@ -312,69 +312,19 @@ export default function AgentCandidatesPage() {
 
   return (
     <div className="page-container space-y-6">
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-3xl">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              {t("agentWorkspace")}
-            </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("candidatesPipeline")}</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              {t("pipelineDescription")}
-            </p>
-          </div>
-
-          <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:min-w-[260px]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("pipeline")}</p>
-            <p className="mt-1 text-lg font-semibold text-foreground">{pagination.total} {t("application", { count: pagination.total })}</p>
-            <p className="text-xs text-muted-foreground">{t("pipelineSubtext")}</p>
-          </div>
-        </div>
-
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="workspace-glass-panel rounded-2xl p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("shortlistedLabel")}</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{shortlistedCount}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{t("shortlistedDesc")}</p>
-              </div>
-              <div className="workspace-tone-emerald rounded-2xl p-2.5"><Users className="h-5 w-5" /></div>
-            </div>
-          </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("interviewsLabel")}</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{interviewCount}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{t("interviewsDesc")}</p>
-              </div>
-              <div className="workspace-tone-sky rounded-2xl p-2.5"><CalendarCheck2 className="h-5 w-5" /></div>
-            </div>
-          </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("highMatchLabel")}</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{highMatchCount}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{t("highMatchDesc")}</p>
-              </div>
-              <div className="workspace-tone-amber rounded-2xl p-2.5"><Star className="h-5 w-5" /></div>
-            </div>
-          </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("jobFilterLabel")}</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{jobIdFilter ? 1 : 0}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{t("jobFilterDesc")}</p>
-              </div>
-              <div className="workspace-tone-indigo rounded-2xl p-2.5"><BriefcaseBusiness className="h-5 w-5" /></div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <DashboardPageHeader
+        icon={Users}
+        eyebrow={t("agentWorkspace")}
+        title={t("candidatesPipeline")}
+        description={t("pipelineDescription")}
+        summary={{ label: t("pipeline"), value: `${pagination.total} ${t("application", { count: pagination.total })}`, note: t("pipelineSubtext") }}
+        metrics={[
+          { label: t("shortlistedLabel"), value: shortlistedCount, note: t("shortlistedDesc"), icon: Users },
+          { label: t("interviewsLabel"), value: interviewCount, note: t("interviewsDesc"), icon: CalendarCheck2 },
+          { label: t("highMatchLabel"), value: highMatchCount, note: t("highMatchDesc"), icon: Star },
+          { label: t("jobFilterLabel"), value: jobIdFilter ? 1 : 0, note: t("jobFilterDesc"), icon: BriefcaseBusiness },
+        ]}
+      />
 
       <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
         <div>

@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
-import { ChevronLeft, Circle, Hash, Loader2, Send, Sparkles, Users } from "lucide-react";
+import { ChevronLeft, Circle, Hash, Loader2, Send, Users } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 
 interface Message {
   _id: string;
@@ -92,26 +93,17 @@ export default function AgentChatPage() {
 
   return (
     <div className="page-container flex flex-col space-y-6">
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-3xl">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              {t("agentWorkspaceBadge")}
-            </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("teamChannelsHeading")}</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              {t("teamChannelsDescription")}
-            </p>
-          </div>
-
-          <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:min-w-[260px]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("presenceLabel")}</p>
-            <p className="mt-1 text-lg font-semibold text-foreground">{t("onlineCount", { count: online })}</p>
-            <p className="text-xs text-muted-foreground">{t("presenceDescription")}</p>
-          </div>
-        </div>
-      </section>
+      <DashboardPageHeader
+        icon={Users}
+        eyebrow={t("agentWorkspaceBadge")}
+        title={t("teamChannelsHeading")}
+        description={t("teamChannelsDescription")}
+        summary={{
+          label: t("presenceLabel"),
+          value: t("onlineCount", { count: online }),
+          note: t("presenceDescription"),
+        }}
+      />
 
       <div className="workspace-panel-surface flex min-h-96 flex-1 gap-0 overflow-hidden rounded-[28px]">
         <aside className={`${showChannels ? "flex" : "hidden"} workspace-subtle-surface sm:flex w-full sm:w-60 shrink-0 flex-col border-r border-border`}>
