@@ -99,7 +99,7 @@ export default function AdminSystemHealthPage() {
   return (
     <div className="page-container space-y-6">
       {/* Hero */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
@@ -123,7 +123,7 @@ export default function AdminSystemHealthPage() {
       </section>
 
       {loading && !health ? (
-        <section className="workspace-panel-surface rounded-[28px] p-5">
+        <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5">
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="workspace-glass-panel space-y-4 rounded-2xl p-5">
@@ -142,7 +142,7 @@ export default function AdminSystemHealthPage() {
       ) : health ? (
         <>
           {/* Core Services */}
-          <section className="workspace-panel-surface rounded-[28px] p-5">
+          <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5">
             <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t("coreServicesHeading")}</h2>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {/* Database */}
@@ -219,10 +219,10 @@ export default function AdminSystemHealthPage() {
           </section>
 
           {/* Platform Metrics */}
-          <section className="workspace-panel-surface rounded-[28px] p-5">
+          <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5">
             <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t("platformMetricsHeading")}</h2>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <div className="workspace-glass-panel rounded-2xl p-4">
+              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Users className="h-4 w-4" />
                   <span className="text-xs font-semibold uppercase tracking-wider">{t("activeUsersLabel")}</span>
@@ -231,7 +231,7 @@ export default function AdminSystemHealthPage() {
                 <p className="text-xs text-muted-foreground">{health.users.online} {t("onlineNowLabel")}</p>
               </div>
 
-              <div className="workspace-glass-panel rounded-2xl p-4">
+              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Zap className="h-4 w-4" />
                   <span className="text-xs font-semibold uppercase tracking-wider">{t("activeJobsLabel")}</span>
@@ -240,7 +240,7 @@ export default function AdminSystemHealthPage() {
                 <p className="text-xs text-muted-foreground">{health.jobs.applicationsToday} {t("applicationsTodayLabel")}</p>
               </div>
 
-              <div className="workspace-glass-panel rounded-2xl p-4">
+              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <TrendingUp className="h-4 w-4" />
                   <span className="text-xs font-semibold uppercase tracking-wider">{t("uptimeLabel")}</span>
@@ -251,7 +251,7 @@ export default function AdminSystemHealthPage() {
                 </p>
               </div>
 
-              <div className="workspace-glass-panel rounded-2xl p-4">
+              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <BarChart3 className="h-4 w-4" />
                   <span className="text-xs font-semibold uppercase tracking-wider">{t("cronJobsLabel")}</span>
@@ -266,7 +266,7 @@ export default function AdminSystemHealthPage() {
           </section>
 
           {/* Memory */}
-          <section className="workspace-panel-surface rounded-[28px] p-5">
+          <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5">
             <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t("memoryHeading")}</h2>
             <div className="workspace-glass-panel rounded-2xl p-5">
               <div className="flex items-center justify-between">

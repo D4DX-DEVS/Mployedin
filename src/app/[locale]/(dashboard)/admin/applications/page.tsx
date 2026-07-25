@@ -348,7 +348,7 @@ export default function AdminApplicationsPage() {
     <div className="page-container space-y-6">
 
       {/* ─── Hero ─────────────────────────────────────────────────────── */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-status-applied dark:text-sky-300">
@@ -390,7 +390,7 @@ export default function AdminApplicationsPage() {
             { label: t("aiScored"), value: stats?.scoredCount ?? 0, note: `${t("avgColon")} ${stats?.avgAiScore ?? 0}%`, icon: Brain, tone: "text-status-interview", chip: "bg-status-interview-bg dark:bg-violet-950/30" },
             { label: t("inShortlist"), value: stats?.byStatus?.["shortlisted"] ?? 0, note: t("pipelineLabel"), icon: Users, tone: "text-status-shortlisted", chip: "bg-status-shortlisted-bg dark:bg-amber-950/30" },
           ] as const).map(({ label, value, note, icon: Icon, tone, chip }) => (
-            <div key={label} className="workspace-glass-panel rounded-2xl p-4">
+            <div key={label} className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
@@ -693,7 +693,7 @@ export default function AdminApplicationsPage() {
           )}
         </div>
       ) : (
-        <section className="workspace-panel-surface overflow-hidden rounded-[28px]">
+        <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-[28px]">
           {/* Column headers */}
           <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] items-center gap-4 border-b border-border/70 bg-background/50 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground lg:grid">
             <span>{t("candidate")}</span>

@@ -115,24 +115,24 @@ export default function AgentPlacementsPage() {
 
   return (
     <div className="page-container space-y-6">
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary"><Sparkles className="h-3.5 w-3.5" />{t("workspaceLabel")}</div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("pageTitle")}</h1>
+            <h1 className="mt-4 text-xl sm:text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("pageTitle")}</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">{t("pageDescription")}</p>
           </div>
           <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:min-w-[260px]"><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("placementBook")}</p><p className="mt-1 text-lg font-semibold text-foreground">{pagination.total} {t("records")}</p><p className="text-xs text-muted-foreground">{t("placementBookDescription")}</p></div>
         </div>
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="workspace-glass-panel rounded-2xl p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statCompleted")}</p><p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{completedPlacements}</p><p className="mt-1 text-xs text-muted-foreground">{t("statCompletedDesc")}</p></div><div className="workspace-tone-emerald rounded-2xl p-2.5"><UserCheck className="h-5 w-5" /></div></div></div>
-          <div className="workspace-glass-panel rounded-2xl p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statOfferStage")}</p><p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{signedOffers}</p><p className="mt-1 text-xs text-muted-foreground">{t("statOfferStageDesc")}</p></div><div className="workspace-tone-sky rounded-2xl p-2.5"><BriefcaseBusiness className="h-5 w-5" /></div></div></div>
-          <div className="workspace-glass-panel rounded-2xl p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statStartDates")}</p><p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{startedCount}</p><p className="mt-1 text-xs text-muted-foreground">{t("statStartDatesDesc")}</p></div><div className="workspace-tone-indigo rounded-2xl p-2.5"><ArrowRight className="h-5 w-5" /></div></div></div>
-          <div className="workspace-glass-panel rounded-2xl p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statSalaryValue")}</p><p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{totalCompensation.toLocaleString()}</p><p className="mt-1 text-xs text-muted-foreground">{t("statSalaryValueDesc")}</p></div><div className="workspace-tone-amber rounded-2xl p-2.5"><CircleDollarSign className="h-5 w-5" /></div></div></div>
+          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statCompleted")}</p><p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{completedPlacements}</p><p className="mt-1 text-xs text-muted-foreground">{t("statCompletedDesc")}</p></div><div className="workspace-tone-emerald rounded-2xl p-2.5"><UserCheck className="h-5 w-5" /></div></div></div>
+          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statOfferStage")}</p><p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{signedOffers}</p><p className="mt-1 text-xs text-muted-foreground">{t("statOfferStageDesc")}</p></div><div className="workspace-tone-sky rounded-2xl p-2.5"><BriefcaseBusiness className="h-5 w-5" /></div></div></div>
+          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statStartDates")}</p><p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{startedCount}</p><p className="mt-1 text-xs text-muted-foreground">{t("statStartDatesDesc")}</p></div><div className="workspace-tone-indigo rounded-2xl p-2.5"><ArrowRight className="h-5 w-5" /></div></div></div>
+          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statSalaryValue")}</p><p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{totalCompensation.toLocaleString()}</p><p className="mt-1 text-xs text-muted-foreground">{t("statSalaryValueDesc")}</p></div><div className="workspace-tone-amber rounded-2xl p-2.5"><CircleDollarSign className="h-5 w-5" /></div></div></div>
         </div>
       </section>
 
-      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
+      <section className="workspace-panel-surface rounded-2xl p-3.5 sm:rounded-[28px] sm:p-5">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("filterLabel")}</p>
@@ -205,7 +205,7 @@ export default function AgentPlacementsPage() {
         )}
       </section>
 
-      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
+      <section className="workspace-panel-surface rounded-2xl p-3.5 sm:rounded-[28px] sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("resultsLabel")}</p><h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("resultsSubtitle")}</h2></div><div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium"><ArrowRight className="h-3.5 w-3.5 text-primary" />{t("resultsPagination", { total: pagination.total, pages: pagination.totalPages, plural: pagination.totalPages === 1 ? "" : "s" })}</div></div>
         <TableToolbar
           onExportCsv={handleExportCsv}

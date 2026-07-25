@@ -58,7 +58,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const updated = await TargetProfile.findByIdAndUpdate(
     id,
     { $set: { assigneeId: body.newAssigneeId } },
-    { new: true }
+    { returnDocument: "after" }
   ).lean();
 
   if (!updated) return NextResponse.json({ error: "Profile not found" }, { status: 404 });

@@ -423,14 +423,15 @@ export default function EmployerJobsPage() {
         eyebrow={t("heroBadge")}
         actions={can("jobs", "create") && (isLoading || jobs.length > 0 || hasActiveFilters) ? (
           <>
-            <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
+            {/* Hidden on phones — the same totals sit in the stat grid right below. */}
+            <div className="workspace-glass-panel hidden rounded-2xl px-4 py-3 text-left sm:block">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("portfolioLabel")}</p>
               <p className="mt-1 text-lg font-semibold text-foreground">{total} {t("totalJobsSuffix")}</p>
               <p className="text-xs text-muted-foreground">{t("portfolioDescription")}</p>
             </div>
             <Button
               onClick={() => router.push(`/${locale}/employer/jobs/ai-create`)}
-              className="h-11 gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+              className="h-10 w-full gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:h-11 sm:w-auto"
             >
               <Plus className="h-4 w-4" />
               {t("postAJob")}
@@ -441,11 +442,11 @@ export default function EmployerJobsPage() {
 
       <div className="space-y-3">
         <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
-          <div className="workspace-glass-panel rounded-2xl p-4">
+          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statActiveLabel")}</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{activeJobs}</p>
+                <p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{activeJobs}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{t("statActiveDescription")}</p>
               </div>
               <div className="workspace-tone-emerald rounded-2xl p-2.5">
@@ -453,11 +454,11 @@ export default function EmployerJobsPage() {
               </div>
             </div>
           </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
+          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statDraftsLabel")}</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{draftJobs}</p>
+                <p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{draftJobs}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{t("statDraftsDescription")}</p>
               </div>
               <div className="workspace-tone-amber rounded-2xl p-2.5">
@@ -465,11 +466,11 @@ export default function EmployerJobsPage() {
               </div>
             </div>
           </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
+          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statPausedLabel")}</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{pausedJobs}</p>
+                <p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{pausedJobs}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{t("statPausedDescription")}</p>
               </div>
               <div className="workspace-tone-sky rounded-2xl p-2.5">
@@ -477,11 +478,11 @@ export default function EmployerJobsPage() {
               </div>
             </div>
           </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
+          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statOpeningsLabel")}</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{totalOpenings}</p>
+                <p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{totalOpenings}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{t("statOpeningsDescription")}</p>
               </div>
               <div className="workspace-tone-sky rounded-2xl p-2.5">
@@ -510,21 +511,23 @@ export default function EmployerJobsPage() {
           </button>
 
           {filtersOpen && (
-            <div className="border-t border-border/60 p-4 sm:p-5">
-              <p className="text-sm text-muted-foreground">{t("filterDescription")}</p>
+            <div className="border-t border-border/60 p-3 sm:p-5">
+              <p className="hidden text-sm text-muted-foreground sm:block">{t("filterDescription")}</p>
 
-              <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_220px_220px]">
-                <div className="relative min-w-0">
+              {/* Two controls per row on phones — eight stacked full-width inputs
+                  turned the open filter panel into three screens of scrolling. */}
+              <div className="mt-3 grid grid-cols-2 gap-2 sm:mt-4 sm:gap-3 xl:grid-cols-[minmax(0,1fr)_220px_220px]">
+                <div className="relative col-span-2 min-w-0 xl:col-span-1">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     placeholder={t("searchJobsPlaceholder")}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="h-11 rounded-xl border-border bg-background/70 pl-9 text-sm shadow-none"
+                    className="h-10 rounded-xl border-border bg-background/70 pl-9 text-sm shadow-none sm:h-11"
                   />
                 </div>
                 <SearchableSelect
-                  className="h-11 w-full rounded-xl border-border bg-background/70"
+                  className="h-10 w-full rounded-xl border-border bg-background/70 sm:h-11"
                   options={[
                     { value: "all", label: t("allStatuses") },
                     { value: "active", label: t("statusActive") },
@@ -538,7 +541,7 @@ export default function EmployerJobsPage() {
                   placeholder={t("allStatuses")}
                 />
                 <SearchableSelect
-                  className="h-11 w-full rounded-xl border-border bg-background/70"
+                  className="h-10 w-full rounded-xl border-border bg-background/70 sm:h-11"
                   options={[
                     { value: "default", label: t("sortDefault") },
                     { value: "applications_desc", label: t("sortMostApplications") },
@@ -552,9 +555,9 @@ export default function EmployerJobsPage() {
                 />
               </div>
 
-              <div className="mt-3 grid gap-3 xl:grid-cols-[220px_220px_220px_minmax(0,1fr)_minmax(0,1fr)_150px]">
+              <div className="mt-2 grid grid-cols-2 gap-2 sm:mt-3 sm:gap-3 xl:grid-cols-[220px_220px_220px_minmax(0,1fr)_minmax(0,1fr)_150px]">
                 <SearchableSelect
-                  className="h-11 w-full rounded-xl border-border bg-background/70"
+                  className="h-10 w-full rounded-xl border-border bg-background/70 sm:h-11"
                   options={[
                     { value: "all", label: t("allWorkModes") },
                     { value: "onsite", label: t("workModeOnsite") },
@@ -566,7 +569,7 @@ export default function EmployerJobsPage() {
                   placeholder={t("allWorkModes")}
                 />
                 <SearchableSelect
-                  className="h-11 w-full rounded-xl border-border bg-background/70"
+                  className="h-10 w-full rounded-xl border-border bg-background/70 sm:h-11"
                   options={[
                     { value: "all", label: t("allSalaryVisibility") },
                     { value: "shown", label: t("salaryShown") },
@@ -604,7 +607,7 @@ export default function EmployerJobsPage() {
                         void handleApplyAiSearch();
                       }
                     }}
-                    className="h-11 rounded-xl border-border bg-background/70 pl-9 text-sm shadow-none"
+                    className="h-10 rounded-xl border-border bg-background/70 pl-9 text-sm shadow-none sm:h-11"
                   />
                 </div>
               </div>

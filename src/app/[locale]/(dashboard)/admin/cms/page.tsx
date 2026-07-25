@@ -109,7 +109,7 @@ export default function CmsOverviewPage() {
   return (
     <div className="page-container space-y-6">
       {/* Hero Section */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
@@ -138,7 +138,7 @@ export default function CmsOverviewPage() {
             { label: t("blogPostsLabel"), value: stats.blogs ?? 0, note: t("blogPostsNote"), icon: Newspaper, tone: "text-violet-600", chip: "bg-violet-50 dark:bg-violet-950/30" },
             { label: t("contactMessagesLabel"), value: stats.contacts ?? 0, note: t("contactMessagesNote"), icon: Mail, tone: "text-amber-600", chip: "bg-amber-50 dark:bg-amber-950/30" },
           ] as const).map(({ label, value, note, icon: Icon, tone, chip }) => (
-            <div key={label} className="workspace-glass-panel rounded-2xl p-4">
+            <div key={label} className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
@@ -218,7 +218,7 @@ export default function CmsOverviewPage() {
         )}
       </section>
 
-      <section className="workspace-panel-surface overflow-hidden rounded-[28px] p-5 sm:p-6">
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-[28px] p-5 sm:p-6">
         <div className="mb-5">
           <h2 className="text-xl font-semibold tracking-tight text-foreground">{t("contentModulesHeading")}</h2>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">

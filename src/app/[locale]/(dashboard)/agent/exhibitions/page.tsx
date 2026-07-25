@@ -461,7 +461,7 @@ export default function AgentExhibitionsPage() {
     <div className="page-container space-y-6">
       {ConfirmDialogNode}
 
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
@@ -489,11 +489,11 @@ export default function AgentExhibitionsPage() {
               { label: "Completed", value: items.filter((item) => item.status === "completed").length, note: "Finished", icon: Eye, tone: "text-green-600", chip: "bg-green-50 dark:bg-green-950/30" },
               { label: "Revision", value: items.filter((item) => item.status === "revision_requested").length, note: "Needs updates", icon: AlertTriangle, tone: "text-orange-600", chip: "bg-orange-50 dark:bg-orange-950/30" },
             ] as const).map(({ label, value, note, icon: Icon, tone, chip }) => (
-              <div key={label} className="workspace-glass-panel rounded-2xl p-4">
+              <div key={label} className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-                    <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{value}</p>
+                    <p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{value}</p>
                     <p className="mt-1 text-xs leading-5 text-muted-foreground">{note}</p>
                   </div>
                   <span className={`flex h-10 w-10 items-center justify-center rounded-2xl ${chip}`}>
@@ -518,7 +518,7 @@ export default function AgentExhibitionsPage() {
         />
       </section>
 
-      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
+      <section className="workspace-panel-surface rounded-2xl p-3.5 sm:rounded-[28px] sm:p-5">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Your requests</p>
           <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Request history</h2>
@@ -539,7 +539,7 @@ export default function AgentExhibitionsPage() {
           </Button>
         </div>
       ) : (
-        <div className="workspace-panel-surface overflow-hidden rounded-[24px]">
+        <div className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-[24px]">
           <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>

@@ -269,7 +269,7 @@ export default function AdminTargetReportPage() {
   return (
     <div className="page-container space-y-6 print:space-y-4">
       {/* ═══════ HERO ═══════ */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
           <div className="min-w-0 flex-1">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
@@ -288,7 +288,7 @@ export default function AdminTargetReportPage() {
 
       {/* ═══════ KPI Summary ═══════ */}
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="workspace-glass-panel rounded-2xl p-4">
+        <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Employer Target</p>
@@ -298,7 +298,7 @@ export default function AdminTargetReportPage() {
             <div className="workspace-tone-sky rounded-2xl p-2.5"><Building2 className="h-5 w-5" /></div>
           </div>
         </div>
-        <div className="workspace-glass-panel rounded-2xl p-4">
+        <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Employee Target</p>
@@ -308,7 +308,7 @@ export default function AdminTargetReportPage() {
             <div className="workspace-tone-emerald rounded-2xl p-2.5"><Users className="h-5 w-5" /></div>
           </div>
         </div>
-        <div className="workspace-glass-panel rounded-2xl p-4">
+        <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Business Volume</p>
@@ -318,7 +318,7 @@ export default function AdminTargetReportPage() {
             <div className="workspace-tone-amber rounded-2xl p-2.5"><CircleDollarSign className="h-5 w-5" /></div>
           </div>
         </div>
-        <div className="workspace-glass-panel rounded-2xl p-4">
+        <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Avg Performance</p>

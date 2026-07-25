@@ -86,7 +86,10 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   // Candidate pool — fetch the current pool page slice
   const poolSkip = (poolPage - 1) * POOL_SIZE;
   const candidateJobs = await Job.find(jobQuery)
-    .sort({ createdAt: -1 })
+    // _id tiebreaker: jobs seeded in the same second otherwise get an arbitrary
+    // order per query, so skip/limit windows shift and the same job can land in
+    // two pool pages (duplicate React keys downstream).
+    .sort({ createdAt: -1, _id: -1 })
     .skip(poolSkip)
     .limit(POOL_SIZE)
     .select("title description requirements salary location employerId tags createdAt expiresAt views uniqueViews")
@@ -163,16 +166,34 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     (j) => now - new Date(j.createdAt).getTime() <= WEEK_MS,
   ).length;
 
-  // Cursor-based pagination within the pool
+  // Cursor-based pagination within the pool.
+  // A cursor that is no longer in the pool (job expired, filled, or filtered out
+  // between requests) must end the feed — falling back to index 0 would re-serve
+  // page 1 as the "next" page and duplicate every React key in the client feed.
   let startIndex = 0;
   if (cursor) {
     const idx = scored.findIndex((j) => String(j._id) === cursor);
-    if (idx !== -1) startIndex = idx + 1;
+    if (idx === -1) {
+      return NextResponse.json({
+        jobs: [],
+        nextCursor: null,
+        total: poolTotal,
+        poolPage,
+        totalPoolPages,
+        totalJobs: totalMatchingJobs,
+        matchedCount,
+        strongMatches,
+        newThisWeek,
+      });
+    }
+    startIndex = idx + 1;
   }
 
   const page = scored.slice(startIndex, startIndex + limit);
   const nextCursor =
-    startIndex + limit < poolTotal ? String(page[page.length - 1]._id) : null;
+    page.length > 0 && startIndex + page.length < poolTotal
+      ? String(page[page.length - 1]._id)
+      : null;
 
   return NextResponse.json({
     jobs: page,

@@ -182,7 +182,7 @@ export default function AdminBulkImportPage() {
   return (
     <div className="page-container">
       {/* Hero */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
             <Upload className="h-5 w-5 text-primary" />
@@ -212,7 +212,7 @@ export default function AdminBulkImportPage() {
 
       {/* Step 1: Upload */}
       {step === 1 && (
-        <section className="workspace-panel-surface rounded-[28px] p-6">
+        <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-6">
           <div className="space-y-6">
             {/* Type selection */}
             <div>
@@ -235,7 +235,7 @@ export default function AdminBulkImportPage() {
             </div>
 
             {/* Template download */}
-            <div className="workspace-glass-panel rounded-2xl p-4">
+            <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-foreground">{t("labelDownloadTemplate")}</p>
@@ -272,7 +272,7 @@ export default function AdminBulkImportPage() {
 
       {/* Step 2: Review */}
       {step === 2 && (
-        <section className="workspace-panel-surface rounded-[28px] p-6 space-y-4">
+        <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold text-foreground">{t("headingReviewData")}</h2>
@@ -337,7 +337,7 @@ export default function AdminBulkImportPage() {
 
       {/* Step 3: Complete */}
       {step === 3 && result && (
-        <section className="workspace-panel-surface rounded-[28px] p-6">
+        <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-6">
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <CheckCircle2 className="h-16 w-16 text-emerald-500" />
             <h2 className="mt-4 text-xl font-semibold text-foreground">{t("headingImportComplete")}</h2>
@@ -346,11 +346,11 @@ export default function AdminBulkImportPage() {
             </p>
 
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              <div className="workspace-glass-panel rounded-2xl p-4 text-center">
+              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4 text-center">
                 <p className="text-2xl font-semibold text-emerald-600">{result.success}</p>
                 <p className="text-xs text-muted-foreground">{t("labelImported")}</p>
               </div>
-              <div className="workspace-glass-panel rounded-2xl p-4 text-center">
+              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4 text-center">
                 <p className="text-2xl font-semibold text-red-600">{result.failed}</p>
                 <p className="text-xs text-muted-foreground">{t("labelFailed")}</p>
               </div>

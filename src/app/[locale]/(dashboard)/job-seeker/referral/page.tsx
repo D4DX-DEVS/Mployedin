@@ -72,7 +72,7 @@ export default function JobSeekerReferralPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+        <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
           <div className="flex items-start gap-4">
             <Skeleton className="h-12 w-12 rounded-2xl" />
             <div className="space-y-2">
@@ -82,7 +82,7 @@ export default function JobSeekerReferralPage() {
           </div>
           <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="workspace-glass-panel rounded-2xl p-4 space-y-2">
+              <div key={i} className="workspace-glass-panel rounded-2xl p-3 sm:p-4 space-y-2">
                 <Skeleton className="h-3 w-20" />
                 <Skeleton className="h-7 w-16" />
               </div>
@@ -95,7 +95,7 @@ export default function JobSeekerReferralPage() {
 
   return (
     <div className="space-y-6">
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
         <div className="flex items-start gap-4">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10">
             <Gift className="h-6 w-6 text-primary" />
@@ -115,7 +115,7 @@ export default function JobSeekerReferralPage() {
             { label: t("pending"), value: (data?.pendingReferrals ?? 0).toLocaleString(numberLocale), icon: <TrendingUp className="h-5 w-5" /> },
             { label: t("rewards"), value: (data?.rewardsEarned ?? 0).toLocaleString(numberLocale), icon: <Gift className="h-5 w-5" /> },
           ].map((m) => (
-            <div key={m.label} className="workspace-glass-panel rounded-2xl p-4">
+            <div key={m.label} className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{m.label}</p>
               <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{m.value}</p>
             </div>
@@ -123,7 +123,7 @@ export default function JobSeekerReferralPage() {
         </div>
       </section>
 
-      <section className="workspace-panel-surface rounded-[28px] p-5 space-y-4">
+      <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 space-y-4">
         <h2 className="text-lg font-semibold text-foreground">{t("linkTitle")}</h2>
 
         <div className="flex items-center gap-2">
@@ -158,7 +158,7 @@ export default function JobSeekerReferralPage() {
         )}
       </section>
 
-      <section className="workspace-panel-surface rounded-[28px] p-5">
+      <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5">
         <h2 className="text-lg font-semibold text-foreground">{t("history")}</h2>
 
         {(!data?.referrals || data.referrals.length === 0) ? (

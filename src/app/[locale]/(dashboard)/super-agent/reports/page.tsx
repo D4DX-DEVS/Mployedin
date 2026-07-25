@@ -181,7 +181,7 @@ export default function SuperAgentReportsPage() {
         ) : (
           <div className="space-y-3">
             {agentBreakdown.map((agent) => (
-              <div key={agent.name} className="workspace-glass-panel rounded-2xl p-4">
+              <div key={agent.name} className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">

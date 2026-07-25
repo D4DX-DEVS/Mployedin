@@ -186,7 +186,7 @@ export default function AgentTasksPage() {
   return (
     <div className="page-container space-y-6">
       {/* Hero */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t("pageTitle")}</h1>
@@ -204,7 +204,7 @@ export default function AgentTasksPage() {
             { key: "statCompleted", value: completed, icon: <CheckCircle2 className="h-5 w-5" />, tone: "workspace-tone-emerald" },
             { key: "statOverdue", value: overdue, icon: <AlertCircle className="h-5 w-5" />, tone: "workspace-tone-rose" },
           ].map((m) => (
-            <div key={m.key} className="workspace-glass-panel rounded-2xl p-4">
+            <div key={m.key} className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t(m.key)}</p>
@@ -219,7 +219,7 @@ export default function AgentTasksPage() {
 
       {/* New Task Form */}
       {showForm && (
-        <section className="workspace-panel-surface rounded-[28px] p-5 space-y-4">
+        <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 space-y-4">
           <h2 className="text-lg font-semibold text-foreground">{t("createTaskHeading")}</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             <Input placeholder={t("taskTitlePlaceholder")} value={newTask.title} onChange={(e) => setNewTask((p) => ({ ...p, title: e.target.value }))} className="sm:col-span-2" />
@@ -236,7 +236,7 @@ export default function AgentTasksPage() {
       )}
 
       {/* Filters */}
-      <section className="workspace-panel-surface rounded-[28px] p-5">
+      <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -250,11 +250,11 @@ export default function AgentTasksPage() {
       </section>
 
       {/* Task List */}
-      <section className="workspace-panel-surface rounded-[28px] p-5">
+      <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5">
         {loading ? (
           <div className="space-y-3">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="workspace-glass-panel rounded-2xl p-4">
+              <div key={i} className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
                 <div className="flex items-start gap-3">
                   <Skeleton className="mt-0.5 h-5 w-5 rounded" />
                   <div className="flex-1 space-y-2">
@@ -276,7 +276,7 @@ export default function AgentTasksPage() {
             {paginatedTasks.map((task) => (
               <div
                 key={task._id}
-                className={`workspace-glass-panel rounded-2xl p-4 transition-all ${
+                className={`workspace-glass-panel rounded-2xl p-3 sm:p-4 transition-all ${
                   task.status === "completed" ? "opacity-60" : ""
                 }`}
               >

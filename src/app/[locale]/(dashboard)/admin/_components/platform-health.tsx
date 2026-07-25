@@ -157,7 +157,7 @@ export async function PlatformInsightsSection({
   ];
 
   return (
-    <section className="workspace-panel-surface rounded-[28px] p-6 sm:p-7" data-surface="light-panel">
+    <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7" data-surface="light-panel">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold tracking-tight text-foreground">{t("sections.platformInsights.title")}</h2>
@@ -200,7 +200,7 @@ export async function PlatformInsightsSection({
 
 export function PlatformInsightsSkeleton() {
   return (
-    <section className="workspace-panel-surface rounded-[28px] p-6 sm:p-7" data-surface="light-panel" aria-hidden="true">
+    <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7" data-surface="light-panel" aria-hidden="true">
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-2">
           <div className="h-7 w-52 rounded-lg skeleton-shimmer" />

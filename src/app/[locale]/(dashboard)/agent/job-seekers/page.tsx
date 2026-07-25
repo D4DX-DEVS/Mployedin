@@ -191,14 +191,14 @@ export default function AgentJobSeekersPage() {
   return (
     <div className="page-container space-y-6">
       {/* Hero */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
               <Sparkles className="h-3.5 w-3.5" />
               {t("heroAgentWorkspace")}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("heroTitle")}</h1>
+            <h1 className="mt-4 text-xl sm:text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("heroTitle")}</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
               {t("heroDescription")}
             </p>
@@ -212,23 +212,23 @@ export default function AgentJobSeekersPage() {
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="workspace-glass-panel rounded-2xl p-4">
-            <div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("cardCompleteLabel")}</p><p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{completeProfiles}</p><p className="mt-1 text-xs text-muted-foreground">{t("cardCompleteDescription")}</p></div><div className="workspace-tone-emerald rounded-2xl p-2.5"><UserRoundSearch className="h-5 w-5" /></div></div>
+          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
+            <div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("cardCompleteLabel")}</p><p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{completeProfiles}</p><p className="mt-1 text-xs text-muted-foreground">{t("cardCompleteDescription")}</p></div><div className="workspace-tone-emerald rounded-2xl p-2.5"><UserRoundSearch className="h-5 w-5" /></div></div>
           </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
-            <div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("cardAvgProfileLabel")}</p><p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{averageCompleteness}%</p><p className="mt-1 text-xs text-muted-foreground">{t("cardAvgProfileDescription")}</p></div><div className="workspace-tone-sky rounded-2xl p-2.5"><ArrowRight className="h-5 w-5" /></div></div>
+          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
+            <div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("cardAvgProfileLabel")}</p><p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{averageCompleteness}%</p><p className="mt-1 text-xs text-muted-foreground">{t("cardAvgProfileDescription")}</p></div><div className="workspace-tone-sky rounded-2xl p-2.5"><ArrowRight className="h-5 w-5" /></div></div>
           </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
-            <div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("cardWithTitlesLabel")}</p><p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{withTitles}</p><p className="mt-1 text-xs text-muted-foreground">{t("cardWithTitlesDescription")}</p></div><div className="workspace-tone-indigo rounded-2xl p-2.5"><BriefcaseBusiness className="h-5 w-5" /></div></div>
+          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
+            <div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("cardWithTitlesLabel")}</p><p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{withTitles}</p><p className="mt-1 text-xs text-muted-foreground">{t("cardWithTitlesDescription")}</p></div><div className="workspace-tone-indigo rounded-2xl p-2.5"><BriefcaseBusiness className="h-5 w-5" /></div></div>
           </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
-            <div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("cardActiveFiltersLabel")}</p><p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{activeFilterCount}</p><p className="mt-1 text-xs text-muted-foreground">{t("cardActiveFiltersDescription")}</p></div><div className="workspace-tone-amber rounded-2xl p-2.5"><Filter className="h-5 w-5" /></div></div>
+          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
+            <div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("cardActiveFiltersLabel")}</p><p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{activeFilterCount}</p><p className="mt-1 text-xs text-muted-foreground">{t("cardActiveFiltersDescription")}</p></div><div className="workspace-tone-amber rounded-2xl p-2.5"><Filter className="h-5 w-5" /></div></div>
           </div>
         </div>
       </section>
 
       {/* Search and Filters */}
-      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
+      <section className="workspace-panel-surface rounded-2xl p-3.5 sm:rounded-[28px] sm:p-5">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("browseProfilesLabel")}</p>
           <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("searchTitle")}</h2>
@@ -387,7 +387,7 @@ export default function AgentJobSeekersPage() {
       </section>
 
       {/* Results table */}
-      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
+      <section className="workspace-panel-surface rounded-2xl p-3.5 sm:rounded-[28px] sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("resultsLabel")}</p>

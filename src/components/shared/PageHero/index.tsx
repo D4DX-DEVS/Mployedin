@@ -52,7 +52,9 @@ export function PageHero({
           )}
         </div>
         {actions && (
-          <div className="-mx-4 flex shrink-0 items-center gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0 [&>*]:shrink-0">
+          // Wraps on phones instead of scrolling sideways — a hidden horizontal
+          // scroller inside the hero was easy to miss and clipped the CTA.
+          <div className="flex shrink-0 flex-wrap items-center gap-2 sm:gap-3">
             {actions}
           </div>
         )}

@@ -288,7 +288,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
             parentProfileId: ownProfile._id,
             notes: alloc.notes,
           },
-        }, { new: true });
+        }, { returnDocument: "after" });
         const targetProfile = updated ?? existing;
         created.push(targetProfile);
         void notifyTargetAssigned(

@@ -111,7 +111,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<strin
         notes: body.notes,
       },
     },
-    { new: true, upsert: true }
+    { returnDocument: "after", upsert: true }
   ).lean();
 
   await logActivity({

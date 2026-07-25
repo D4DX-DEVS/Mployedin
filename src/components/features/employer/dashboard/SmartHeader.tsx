@@ -70,42 +70,45 @@ export function SmartHeader({
   ];
 
   return (
-    <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-      <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+    <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
+      <div className="flex flex-col gap-3 sm:gap-6 md:flex-row md:items-center md:justify-between">
         {/* Copy + AI hiring summary */}
         <div className="min-w-0 max-w-2xl">
-          <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700 dark:text-sky-300">
+          <div className="workspace-glass-panel hidden items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700 dark:text-sky-300 sm:inline-flex">
             <Sparkles className="h-3.5 w-3.5" />
             {t(eyebrowKey)}
           </div>
-          <h1 className="mt-3 flex items-center gap-2 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
+          <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight text-foreground sm:mt-3 sm:text-3xl md:text-[2rem]">
             {t("welcomeBack", { userName })} <span aria-hidden>👋</span>
           </h1>
-          <p className="mt-2 text-sm font-medium text-muted-foreground">
+          <p className="mt-1 text-sm font-medium text-muted-foreground sm:mt-2">
             {t(subtitleKey, { count: highMatchCount })}
           </p>
 
-          <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2">
+          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1.5 sm:mt-3 sm:gap-x-6 sm:gap-y-2">
             {summary.map(({ key, count, Icon, tone }) => (
-              <span key={key} className="inline-flex items-center gap-2 text-sm font-medium text-foreground/80">
-                <Icon className={`h-4 w-4 ${tone}`} />
+              <span key={key} className="inline-flex items-center gap-1.5 text-xs font-medium text-foreground/80 sm:gap-2 sm:text-sm">
+                <Icon className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${tone}`} />
                 {t(key, { count })}
               </span>
             ))}
           </div>
 
-          <div className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+          <div className="mt-2 hidden items-center gap-1.5 text-xs text-muted-foreground sm:mt-3 sm:flex">
             <Clock className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
             {activityLabel}
           </div>
         </div>
 
-        {/* Mascot + CTA, stacked */}
+        {/* Mascot + CTA, stacked. The mascot is decorative and eats 128px of a
+            phone's first screen, so it only renders from sm up. */}
         <div className="flex shrink-0 flex-col items-center gap-3">
-          <RobotMascot />
+          <div className="hidden sm:block">
+            <RobotMascot />
+          </div>
           <Link
             href={newJobHref}
-            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-sky-600 px-5 text-sm font-semibold text-white shadow-[0_10px_28px_-12px_rgba(2,132,199,0.7)] transition hover:bg-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-sky-600 px-5 text-sm font-semibold text-white shadow-[0_10px_28px_-12px_rgba(2,132,199,0.7)] transition hover:bg-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 sm:h-11"
           >
             <Sparkles className="h-4 w-4" />
             {t("createJob")}

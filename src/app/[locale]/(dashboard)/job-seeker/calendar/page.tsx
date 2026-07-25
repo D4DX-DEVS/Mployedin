@@ -60,7 +60,7 @@ export default function JobSeekerCalendarPage() {
 
   return (
     <div className="space-y-6">
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
         <PageHeader
           title={t("title")}
           description={t("description")}

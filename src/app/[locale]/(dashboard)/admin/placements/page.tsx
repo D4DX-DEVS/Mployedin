@@ -255,7 +255,7 @@ export default function AdminPlacementsPage() {
       {ConfirmDialogNode}
 
       {/* ─── Hero ─────────────────────────────────────────────────────── */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-status-applied dark:text-sky-300">
@@ -293,7 +293,7 @@ export default function AdminPlacementsPage() {
             { label: t("unpaidCommission"), value: unpaidCommissions, note: t("needsCollection"), icon: DollarSign, tone: "text-red-500", chip: "bg-status-rejected-bg dark:bg-red-950/30" },
             { label: t("totalSalaryValue"), value: formatSalaryValue(totalValue), note: Object.keys(salaryByCurrency).length > 0 ? Object.entries(salaryByCurrency).slice(0, 2).map(([c, v]) => `${formatSalaryValue(v)} ${c}`).join(t("currencyBreakdownSeparator")) : t("noData"), icon: TrendingUp, tone: "text-status-selected", chip: "bg-status-selected-bg dark:bg-emerald-950/30" },
           ] as const).map(({ label, value, note, icon: Icon, tone, chip }) => (
-            <div key={label} className="workspace-glass-panel rounded-2xl p-4">
+            <div key={label} className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
@@ -455,7 +455,7 @@ export default function AdminPlacementsPage() {
       </section>
 
       {/* ─── Table ────────────────────────────────────────────────────── */}
-      <section className="workspace-panel-surface overflow-hidden rounded-[28px]">
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-[28px]">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>

@@ -148,8 +148,8 @@ export function PriorityActions({
   if (shown.length === 0) return null;
 
   return (
-    <section className="workspace-panel-surface h-full overflow-hidden rounded-[28px]">
-      <div className="border-b border-border/60 px-5 py-3.5 sm:px-6 flex items-center gap-3">
+    <section className="workspace-panel-surface h-full overflow-hidden rounded-2xl sm:rounded-[28px]">
+      <div className="border-b border-border/60 px-3.5 py-3 sm:px-6 sm:py-3.5 flex items-center gap-3">
         <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300">
           <Flame className="h-3.5 w-3.5" />
           {t("priorityActionsLabel")}
@@ -159,7 +159,7 @@ export function PriorityActions({
         </span>
       </div>
 
-      <div className="space-y-2.5 px-4 py-4 sm:px-5 sm:py-5">
+      <div className="space-y-2.5 px-3 py-3 sm:px-5 sm:py-5">
         {shown.map((action, idx) => {
           const Icon = action.icon;
           const config = priorityConfig[action.priority];

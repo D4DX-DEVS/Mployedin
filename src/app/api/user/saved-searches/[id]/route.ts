@@ -30,7 +30,7 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
   const search = await SavedSearch.findOneAndUpdate(
     { _id: id, userId: ctx.userId },
     { $set: body },
-    { new: true },
+    { returnDocument: "after" },
   );
 
   if (!search) {

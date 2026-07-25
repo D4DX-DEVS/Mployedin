@@ -469,7 +469,7 @@ export default function SuperAgentTargetProfilesPage() {
 
   return (
     <div className="page-container space-y-4">
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
@@ -477,7 +477,7 @@ export default function SuperAgentTargetProfilesPage() {
               {t("eyebrow")}
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("title")}</h1>
+              <h1 className="text-xl sm:text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("title")}</h1>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>

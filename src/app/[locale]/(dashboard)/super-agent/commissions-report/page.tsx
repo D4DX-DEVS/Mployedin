@@ -181,7 +181,7 @@ export default function SuperAgentCommissionsReportPage() {
       />
 
       {/* ── Monthly Trend ── */}
-      <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
+      <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6">
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("monthlyTrendHeading", { year: yearFilter })}</h2>
         <ResponsiveContainer width="100%" height={240}>
           <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
@@ -205,7 +205,7 @@ export default function SuperAgentCommissionsReportPage() {
             { label: t("breakdownOverridePaid"), value: s ? fmt(s.overridePaid, s.currency) : "—", icon: Wallet, color: "text-emerald-600", chip: "bg-emerald-50 dark:bg-emerald-950/30" },
             { label: t("breakdownTeamTotalEarned"), value: s ? fmt(s.teamTotal, s.currency) : "—", icon: Users, color: "text-sky-600", chip: "bg-sky-50 dark:bg-sky-950/30" },
           ].map(({ label, value, icon: Icon, color, chip }) => (
-            <div key={label} className="workspace-glass-panel rounded-2xl p-4">
+            <div key={label} className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
               <div className="flex items-center gap-2">
                 <span className={`flex h-8 w-8 items-center justify-center rounded-xl ${chip}`}>
                   <Icon className={`h-4 w-4 ${color}`} />
@@ -219,7 +219,7 @@ export default function SuperAgentCommissionsReportPage() {
       )}
 
       {/* ── Agent Breakdown Table ── */}
-      <section className="workspace-panel-surface overflow-hidden rounded-[28px]">
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-[28px]">
         <div className="border-b border-border/60 px-5 py-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-muted-foreground" />

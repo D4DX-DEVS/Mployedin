@@ -289,12 +289,12 @@ export default function EmployerAnalyticsPage() {
   if (isLoading) {
     return (
       <div className="page-container space-y-6">
-        <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+        <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
           <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-status-applied dark:text-sky-300">
             <Sparkles className="h-3.5 w-3.5" />
             {t("title")}
           </div>
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
+          <h1 className="mt-4 text-xl sm:text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
             {t("title")}
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
@@ -319,12 +319,12 @@ export default function EmployerAnalyticsPage() {
   if (error) {
     return (
       <div className="page-container space-y-6">
-        <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+        <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
           <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-status-applied dark:text-sky-300">
             <Sparkles className="h-3.5 w-3.5" />
             {t("title")}
           </div>
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
+          <h1 className="mt-4 text-xl sm:text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
             {t("title")}
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
@@ -357,7 +357,7 @@ export default function EmployerAnalyticsPage() {
 
   return (
     <div className="page-container space-y-6">
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-status-applied dark:text-sky-300">
@@ -371,7 +371,8 @@ export default function EmployerAnalyticsPage() {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="workspace-glass-panel rounded-2xl px-4 py-3">
+            {/* "View focus" restates the active tab — hidden on phones. */}
+            <div className="workspace-glass-panel hidden rounded-2xl px-4 py-3 sm:block">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 {t("viewFocus")}
               </p>
@@ -540,7 +541,7 @@ export default function EmployerAnalyticsPage() {
 
 function TabLoadingSkeleton() {
   return (
-    <div className="workspace-panel-surface rounded-[28px] p-6 space-y-4 animate-pulse">
+    <div className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-6 space-y-4 animate-pulse">
       <div className="h-5 w-48 bg-muted rounded" />
       <div className="grid gap-3 sm:grid-cols-3">
         {[1, 2, 3].map((i) => (
@@ -1788,7 +1789,7 @@ function AnalyticsPanel({
   return (
     <section
       className={cn(
-        "workspace-panel-surface rounded-[28px] p-5 sm:p-6",
+        "workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6",
         className
       )}
     >
@@ -1848,7 +1849,7 @@ function HeroMetricCard({
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-          <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{value}</p>
+          <p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{value}</p>
           <p className="mt-1 text-xs text-muted-foreground">{description}</p>
         </div>
         <div className={cn("rounded-2xl p-2.5", colors.surface, colors.icon)}>

@@ -203,7 +203,7 @@ export function KpiCard({
   trend, trendValue,
 }: KpiCardProps) {
   return (
-    <div className="workspace-glass-panel rounded-2xl p-4">
+    <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">

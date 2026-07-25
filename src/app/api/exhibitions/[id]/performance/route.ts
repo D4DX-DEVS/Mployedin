@@ -57,7 +57,7 @@ async function putHandler(req: NextRequest, ctx: AuthContext, params?: Record<st
       notes: notes?.trim(),
       reportedBy: ctx.userId,
     },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
+    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
   );
 
   // Also update actualSpend on the exhibition itself

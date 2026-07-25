@@ -152,7 +152,7 @@ export async function POST(req: NextRequest) {
             ...(Object.keys(meta).length > 0 ? { meta } : {}),
           },
         },
-        { new: true }
+        { returnDocument: "after" }
       ).lean();
       if (!updated) {
         return NextResponse.json({ error: "Thread not found" }, { status: 404 });

@@ -29,7 +29,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   const webhook = await Webhook.findByIdAndUpdate(
     id,
     { $set: { secret: newSecret } },
-    { new: true },
+    { returnDocument: "after" },
   ).lean();
 
   if (!webhook) {

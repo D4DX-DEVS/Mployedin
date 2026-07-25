@@ -286,7 +286,7 @@ export default function AdminActivityTimelinePage() {
   return (
     <div className="page-container space-y-6">
       {/* Hero */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
             <Activity className="h-5 w-5 text-primary" />
@@ -329,7 +329,7 @@ export default function AdminActivityTimelinePage() {
       />
 
       {/* Timeline */}
-      <section className="workspace-panel-surface rounded-[28px] p-5">
+      <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5">
         {loading ? (
           <div className="relative ml-4 space-y-6 border-l-2 border-muted pl-6">
             {Array.from({ length: 6 }).map((_, i) => (

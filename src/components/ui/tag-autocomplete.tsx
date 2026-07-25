@@ -127,11 +127,11 @@ export function TagAutocomplete({
 
   return (
     <div ref={containerRef} className={cn("relative", className)}>
-      <div className="flex flex-wrap gap-2 p-3 rounded-lg border border-border bg-background min-h-[44px] focus-within:border-primary transition-colors">
+      <div className="flex flex-wrap gap-1.5 p-2 sm:gap-2 sm:p-3 rounded-lg border border-border bg-background min-h-[44px] focus-within:border-primary transition-colors">
         {value.map((tag) => (
           <span
             key={tag}
-            className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-muted border border-border text-sm text-foreground"
+            className="inline-flex items-center gap-1 px-2.5 py-1 sm:px-3 rounded-full bg-muted border border-border text-xs sm:text-sm text-foreground"
           >
             {tag}
             <button
@@ -158,7 +158,7 @@ export function TagAutocomplete({
             onKeyDown={handleKeyDown}
             placeholder={value.length === 0 ? placeholder : "Add more…"}
             autoComplete="off"
-            className="outline-none text-sm flex-1 min-w-[150px] bg-transparent text-foreground placeholder:text-muted-foreground"
+            className="outline-none text-sm flex-1 min-w-[90px] sm:min-w-[150px] bg-transparent text-foreground placeholder:text-muted-foreground"
           />
         )}
       </div>

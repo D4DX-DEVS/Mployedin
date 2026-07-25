@@ -161,7 +161,12 @@ export default async function JobSeekerPage({
         companyLogo: emp?.logo ?? undefined,
         status: String(app.status ?? "applied"),
       };
-    }).filter((a) => a._id),
+    })
+      .filter((a) => a._id)
+      // A seeker can apply to the same job twice (re-apply after rejection), and this
+      // list is keyed by job id — keep the first per job or React sees duplicate keys.
+      // ponytail: O(n²) on a list capped at a handful of applications.
+      .filter((a, i, arr) => arr.findIndex((x) => x._id === a._id) === i),
   };
 
   return (

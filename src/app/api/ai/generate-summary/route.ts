@@ -70,7 +70,7 @@ Return ONLY the summary text. No quotes, no labels, no extra formatting.`;
   const updated = await JobSeeker.findOneAndUpdate(
     { userId: ctx.userId },
     { $set: { summary } },
-    { new: true }
+    { returnDocument: "after" }
   );
 
   if (updated) {

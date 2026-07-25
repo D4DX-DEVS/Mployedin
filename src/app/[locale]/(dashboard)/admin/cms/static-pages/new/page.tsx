@@ -56,7 +56,7 @@ export default function NewStaticPage() {
   return (
     <div className="page-container space-y-6">
       {/* Header */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
         <div className="flex items-center gap-4">
           <Button
             variant="ghost"
@@ -85,7 +85,7 @@ export default function NewStaticPage() {
         )}
 
         {/* Basic fields */}
-        <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
+        <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6">
           <h2 className="text-lg font-semibold tracking-tight">{t("basicInfoHeading")}</h2>
           <div className="mt-4 grid gap-5 sm:grid-cols-2">
             <div className="space-y-2">
@@ -141,7 +141,7 @@ export default function NewStaticPage() {
         </section>
 
         {/* Body English */}
-        <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
+        <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold tracking-tight">
               {t("bodyEnglishHeading")} <span className="text-destructive">{t("bodyEnglishRequired")}</span>
@@ -194,7 +194,7 @@ export default function NewStaticPage() {
         </section>
 
         {/* Body Arabic */}
-        <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
+        <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold tracking-tight">{t("bodyArabicHeading")}</h2>
             <div className="flex items-center gap-1 rounded-lg border border-border bg-secondary/50 p-0.5">
@@ -245,7 +245,7 @@ export default function NewStaticPage() {
         </section>
 
         {/* Actions */}
-        <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
+        <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6">
           <div className="flex items-center justify-end gap-3">
             <Button
               type="button"

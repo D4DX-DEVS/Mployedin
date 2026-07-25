@@ -107,8 +107,8 @@ export function InteractivePipeline({
   ];
 
   return (
-    <section className="workspace-panel-surface overflow-hidden rounded-[28px]">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 px-5 py-4 sm:px-6">
+    <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-[28px]">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 px-3.5 py-3 sm:px-6 sm:py-4">
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-2 rounded-full border border-sky-100 bg-sky-50/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700 dark:border-sky-500/30 dark:bg-sky-500/15 dark:text-sky-300">
             <Sparkles className="h-3.5 w-3.5" />
@@ -125,7 +125,7 @@ export function InteractivePipeline({
         </Link>
       </div>
 
-      <div className="flex items-stretch gap-2 overflow-x-auto px-4 py-5 sm:px-5">
+      <div className="flex items-stretch gap-2 overflow-x-auto px-3 py-3.5 sm:px-5 sm:py-5">
         {stages.map((stage, idx) => {
           const Icon = stage.icon;
           return (

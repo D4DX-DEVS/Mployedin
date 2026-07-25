@@ -273,14 +273,14 @@ export default function AgentJobsPage() {
     <div className="page-container space-y-6">
       {/* ──────── HERO ──────── */}
       {/* ──────── HERO + UNIFIED FILTERS ──────── */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
               <Sparkles className="h-3.5 w-3.5" />
               {common("workspace")}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
+            <h1 className="mt-4 text-xl sm:text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
               {t("title")}
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
@@ -308,11 +308,11 @@ export default function AgentJobsPage() {
           {summaryCards.map((card) => {
             const Icon = card.icon;
             return (
-              <div key={card.label} className="workspace-glass-panel rounded-2xl p-4">
+              <div key={card.label} className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{card.label}</p>
-                    <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{card.value}</p>
+                    <p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{card.value}</p>
                     <p className="mt-1 text-xs text-muted-foreground">{card.description}</p>
                   </div>
                   <div className={`rounded-2xl p-2.5 ${card.tone}`}><Icon className="h-5 w-5" /></div>
@@ -323,7 +323,7 @@ export default function AgentJobsPage() {
         </div>
 
         {/* ── Combined Filter Bar ── */}
-        <div className="mt-6 workspace-glass-panel rounded-2xl p-4">
+        <div className="mt-6 workspace-glass-panel rounded-2xl p-3 sm:p-4">
           {/* Toggle button */}
           <button
             onClick={() => setFiltersOpen((prev) => !prev)}
@@ -471,7 +471,7 @@ export default function AgentJobsPage() {
       </section>
 
       {/* ──────── JOB TABLE ──────── */}
-      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
+      <section className="workspace-panel-surface rounded-2xl p-3.5 sm:rounded-[28px] sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("results.eyebrow")}</p>

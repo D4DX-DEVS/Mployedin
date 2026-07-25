@@ -70,7 +70,7 @@ export async function enforceDailyAiQuota(
       $inc: { count: 1 },
       $setOnInsert: { expiresAt: new Date(resetAt.getTime() + 60 * 60 * 1000) },
     },
-    { upsert: true, new: true },
+    { upsert: true, returnDocument: "after" },
   ).lean();
 
   const count = doc?.count ?? 1;

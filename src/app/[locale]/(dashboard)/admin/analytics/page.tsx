@@ -229,7 +229,7 @@ export default function AdminAnalyticsPage() {
   return (
     <div className="page-container space-y-4">
       {/* ── Hero Section ── */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
         <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
           <Sparkles className="h-3.5 w-3.5" />
           {t("adminWorkspace")}
@@ -238,7 +238,7 @@ export default function AdminAnalyticsPage() {
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-        <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label={t("a11yAnalyticsTemplates")}>
+        <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6" aria-label={t("a11yAnalyticsTemplates")}>
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("promptLibrary")}</p>
             <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("promptLibraryTitle")}</h2>
@@ -272,7 +272,7 @@ export default function AdminAnalyticsPage() {
           </div>
         </section>
 
-        <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label={t("a11yCustomAnalyticsQuery")}>
+        <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6" aria-label={t("a11yCustomAnalyticsQuery")}>
           <div className="flex items-center gap-2 text-primary">
             <Sparkles className="h-4 w-4" />
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">{t("composeInsight")}</p>
@@ -327,7 +327,7 @@ export default function AdminAnalyticsPage() {
         </section>
       </div>
 
-      <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label={t("a11yAnalyticsReport")}>
+      <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6" aria-label={t("a11yAnalyticsReport")}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("reportOutput")}</p>

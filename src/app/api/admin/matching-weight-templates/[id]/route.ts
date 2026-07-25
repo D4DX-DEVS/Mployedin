@@ -45,7 +45,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const template = await MatchingWeightTemplate.findOneAndUpdate(
     { _id: id, scope: "system" },
     { $set: body },
-    { new: true },
+    { returnDocument: "after" },
   );
   if (!template) return NextResponse.json({ error: "Not found" }, { status: 404 });
 

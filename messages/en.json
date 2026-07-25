@@ -37,7 +37,8 @@
     "superAgentWorkspace": "Super agent workspace",
     "a11yNavigationMenu": "Navigation menu",
     "a11yOpenMenu": "Open menu",
-    "a11yHome": "Mployedin home"
+    "a11yHome": "Mployedin home",
+    "more": "More"
   },
   "auth": {
     "login": "Login",

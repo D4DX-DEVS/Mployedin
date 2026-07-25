@@ -117,20 +117,20 @@ export default function EmployerJobTemplatesPage() {
       {ConfirmDialogNode}
 
       {/* Hero */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
         <PageHeader
           title={t("title")}
           description={t("description")}
         />
 
-        <div className="mt-5 workspace-glass-panel rounded-2xl p-4 sm:w-64">
+        <div className="mt-5 workspace-glass-panel rounded-2xl p-3 sm:p-4 sm:w-64">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("totalTemplates")}</p>
           <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{total}</p>
         </div>
       </section>
 
       {/* Search */}
-      <section className="workspace-panel-surface rounded-[28px] p-5">
+      <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder={t("search")} value={search} onChange={(e) => handleSearchChange(e.target.value)} className="pl-9" />
@@ -138,7 +138,7 @@ export default function EmployerJobTemplatesPage() {
       </section>
 
       {/* Template Grid */}
-      <section className="workspace-panel-surface rounded-[28px] p-5">
+      <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5">
         {isError ? (
           <div className="flex flex-col items-center justify-center gap-4 py-12 text-center">
             <p className="text-sm font-semibold text-destructive">{t("loadError")}</p>

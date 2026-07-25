@@ -26,7 +26,7 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
   const seeker = await JobSeeker.findOneAndUpdate(
     { userId: ctx.userId },
     { applicationMode: body.enabled ? "auto" : "manual" },
-    { new: true, select: "applicationMode autoApplyCount" }
+    { returnDocument: "after", select: "applicationMode autoApplyCount" }
   ).lean();
 
   if (!seeker) {

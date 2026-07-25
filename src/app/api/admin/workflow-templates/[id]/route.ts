@@ -40,7 +40,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const template = await WorkflowTemplate.findOneAndUpdate(
     { _id: id, scope: "system" },
     { $set: { ...body, settings: { aiAutoScreen: body.settings?.aiAutoScreen ?? true, notifyOnStageChange: body.settings?.notifyOnStageChange ?? true, autoRejectBelow: body.settings?.autoRejectBelow ?? 40 } } },
-    { new: true },
+    { returnDocument: "after" },
   );
 
   if (!template) return NextResponse.json({ error: "Not found" }, { status: 404 });

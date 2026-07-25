@@ -71,7 +71,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
   const profile = await Agent.findOneAndUpdate(
     { userId: ctx.userId },
     { $set: updates },
-    { new: true }
+    { returnDocument: "after" }
   )
     .select("country currencyCode commissionRate timezone workingHoursStart workingHoursEnd workingDays")
     .lean();

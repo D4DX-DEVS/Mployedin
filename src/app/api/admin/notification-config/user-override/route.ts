@@ -46,7 +46,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       },
       $set: { updatedBy: ctx.userId },
     },
-    { new: true, upsert: true },
+    { returnDocument: "after", upsert: true },
   );
 
   await logActivity({
@@ -76,7 +76,7 @@ export const DELETE = withAuth(async (req: NextRequest, ctx) => {
       $pull: { userOverrides: { userId } },
       $set: { updatedBy: ctx.userId },
     },
-    { new: true },
+    { returnDocument: "after" },
   );
 
   await logActivity({

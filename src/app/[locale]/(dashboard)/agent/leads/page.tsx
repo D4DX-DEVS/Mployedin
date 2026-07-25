@@ -690,7 +690,7 @@ export default function AgentLeadsPage() {
       {ConfirmDialogNode}
 
       {/* ──── Hero Header ──── */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
@@ -735,7 +735,7 @@ export default function AgentLeadsPage() {
       </section>
 
       {/* ──── Toolbar ──── */}
-      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
+      <section className="workspace-panel-surface rounded-2xl p-3.5 sm:rounded-[28px] sm:p-5">
         <div className="flex flex-wrap items-center gap-3">
           {/* View toggle */}
           <div className="inline-flex items-center rounded-xl border border-border bg-muted/50 p-1">
@@ -884,7 +884,7 @@ export default function AgentLeadsPage() {
       ) : (
         /* ──── TABLE VIEW ──── */
         <>
-          <section className="workspace-panel-surface overflow-hidden rounded-[28px]">
+          <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-[28px]">
             {leads.length === 0 ? (
               <div className="flex flex-col items-center gap-3 py-16 text-center">
                 <div className="rounded-2xl bg-muted/50 p-4">
@@ -1264,14 +1264,14 @@ export default function AgentLeadsPage() {
                 <p className="mt-1 text-sm text-muted-foreground">{scoreResult.reasoning}</p>
               </DialogHeader>
               <div className="space-y-4 px-6 py-5">
-                <div className="workspace-glass-panel rounded-2xl p-4">
+                <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("recommendedNextAction")}</p>
                   <p className="mt-2 text-sm font-medium text-foreground">{scoreResult.nextAction}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {t("followUpIn", { days: scoreResult.suggestedFollowUpDays })}
                   </p>
                 </div>
-                <div className="workspace-glass-panel rounded-2xl p-4">
+                <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
                   <div className="flex items-center gap-2">
                     <MessageSquare className="h-4 w-4 text-sky-500" />
                     <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("draftFollowUpMessage")}</p>
@@ -1290,7 +1290,7 @@ export default function AgentLeadsPage() {
                   </Button>
                 </div>
                 {scoreResult.riskFactors.length > 0 && (
-                  <div className="workspace-glass-panel rounded-2xl p-4">
+                  <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
                     <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("riskFactors")}</p>
                     <ul className="mt-2 space-y-1.5">
                       {scoreResult.riskFactors.map((risk) => (

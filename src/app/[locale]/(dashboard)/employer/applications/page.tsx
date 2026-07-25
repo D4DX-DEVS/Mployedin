@@ -1553,7 +1553,7 @@ function TableView({
   }
 
   return (
-    <section className="workspace-panel-surface overflow-hidden rounded-[24px]">
+    <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-[24px]">
       <div className="hidden items-center gap-3 border-b border-border/70 bg-background/50 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground lg:grid" style={{ gridTemplateColumns: gridCols }}>
         <span />
         <span>{t("candidate")}</span>
@@ -2119,7 +2119,7 @@ function ApplicationDetailsPanel({
 
             {/* Row 1: AI Match Score | Application Overview (2 equal cards) */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="workspace-glass-panel rounded-2xl p-4">
+              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("aiMatchScore")}</p>
                 {app.aiMatchScore != null ? (
                   <div className="mt-3">
@@ -2158,7 +2158,7 @@ function ApplicationDetailsPanel({
                 )}
               </div>
 
-              <div className="workspace-glass-panel rounded-2xl p-4">
+              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("applicationOverview")}</p>
                 <div className="mt-3 space-y-2 text-sm">
                   <div className="flex items-center justify-between">
@@ -2178,7 +2178,7 @@ function ApplicationDetailsPanel({
 
             {/* Row 3: Skills | Experience (2 cards) */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="workspace-glass-panel rounded-2xl p-4">
+              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("keySkills")}</p>
                 {app.jobSeekerId?.skills?.length ? (
                   <div className="mt-3 flex flex-wrap gap-1.5">
@@ -2193,7 +2193,7 @@ function ApplicationDetailsPanel({
                 )}
               </div>
 
-              <div className="workspace-glass-panel rounded-2xl p-4">
+              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("experience")}</p>
                 {app.jobSeekerId?.experience?.length ? (
                   <div className="mt-3 space-y-2">
@@ -2243,7 +2243,7 @@ function ApplicationDetailsPanel({
             ) : null}
 
             {/* Row 5: Quick Actions (full width) */}
-            <div className="workspace-glass-panel rounded-2xl p-4">
+            <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("quickActions")}</p>
               <div className="mt-3 grid grid-cols-3 gap-2">
                 <Button variant="outline" size="sm" className="h-9 rounded-xl border-border text-[11px]" onClick={() => setActiveTab("notes")}>

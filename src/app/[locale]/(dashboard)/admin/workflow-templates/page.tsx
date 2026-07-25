@@ -154,7 +154,7 @@ export default function AdminWorkflowTemplatesPage() {
   if (isLoading) {
     return (
       <div className="page-container space-y-4">
-        <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+        <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
           <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
             <Sparkles className="h-3.5 w-3.5" />
             {tr("adminWorkspaceLabel")}
@@ -171,7 +171,7 @@ export default function AdminWorkflowTemplatesPage() {
   return (
     <div className="page-container space-y-6">
       {/* ── Hero Section ── */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
           <div className="min-w-0 flex-1">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">

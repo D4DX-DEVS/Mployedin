@@ -172,14 +172,14 @@ export default function EmployerCalendarPage() {
   return (
     <div className="page-container space-y-6">
       {/* Hero */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
         <PageHeader
           title={t("title")}
           description={t("description")}
         />
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          <div className="workspace-glass-panel rounded-2xl p-4">
+          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               {t("today")}
             </p>
@@ -187,7 +187,7 @@ export default function EmployerCalendarPage() {
               {todayCount} {t("interviews")}
             </p>
           </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
+          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               {t("thisMonth")}
             </p>

@@ -186,17 +186,17 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-      <div className="mb-5 flex items-start gap-3">
-        <div className="mt-0.5 rounded-lg bg-primary/10 p-2 text-primary">
+    <div className="min-w-0 rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
+      <div className="mb-3 flex items-start gap-2.5 sm:mb-5 sm:gap-3">
+        <div className="mt-0.5 shrink-0 rounded-lg bg-primary/10 p-1.5 text-primary sm:p-2">
           {icon}
         </div>
-        <div>
+        <div className="min-w-0">
           <p className="text-sm font-semibold leading-tight">{title}</p>
           <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
         </div>
       </div>
-      <div className="space-y-4">{children}</div>
+      <div className="space-y-3 sm:space-y-4">{children}</div>
     </div>
   );
 }
@@ -222,21 +222,23 @@ function MatchScoreCard({
   const delta = prevScore !== null ? score - prevScore : null;
 
   return (
-    <div className="rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 via-card to-card p-5 shadow-sm">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-primary/10 p-2.5 text-primary shrink-0">
-            <Sparkles className="h-5 w-5" />
+    <div className="min-w-0 rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 via-card to-card p-4 shadow-sm sm:p-5">
+      {/* Score sits inline with the title on phones instead of wrapping to its
+          own oversized row. */}
+      <div className="flex flex-nowrap items-center justify-between gap-3 sm:flex-wrap sm:items-start sm:gap-4">
+        <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+          <div className="shrink-0 rounded-xl bg-primary/10 p-2 text-primary sm:p-2.5">
+            <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-sm font-semibold">{t("matchTitle")}</p>
-            <p className="text-xs text-muted-foreground">
+            <p className="hidden text-xs text-muted-foreground sm:block">
               {t("matchDescription")}
             </p>
           </div>
         </div>
         <div className="flex items-baseline gap-1.5 shrink-0">
-          <span className={`text-3xl font-bold tabular-nums ${scoreColor}`}>
+          <span className={`text-2xl font-bold tabular-nums sm:text-3xl ${scoreColor}`}>
             {score.toLocaleString(numberLocale)}%
           </span>
           {delta !== null && delta !== 0 && (
@@ -464,7 +466,10 @@ export default function JobPreferencesPage() {
         description={t("description")}
       />
 
-      <div className="grid gap-6 max-w-3xl mx-auto w-full">
+      {/* minmax(0,1fr): a default `auto` track sizes to the widest child's
+          min-content, and the nowrap/truncate job rows blew it out to 485px —
+          every card then overflowed a 384px screen. */}
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 max-w-3xl mx-auto w-full sm:gap-6">
         {/* ── Match Score Card ──────────────────────────────────────────── */}
         <MatchScoreCard prefs={prefs} prevScore={prevScore} />
 
@@ -741,7 +746,7 @@ export default function JobPreferencesPage() {
         </div>
 
         {/* ── Recommended Jobs Preview ──────────────────────────────────── */}
-        <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+        <div className="min-w-0 rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="rounded-lg bg-primary/10 p-1.5 text-primary">

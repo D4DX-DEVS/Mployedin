@@ -564,7 +564,7 @@ function CandidateInsightsDialog({
 
           <div className="space-y-5 px-6 py-6 sm:px-8">
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <div className="workspace-glass-panel rounded-2xl p-4">
+              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("availability")}</p>
                 <p className="mt-2 text-sm font-semibold text-foreground">
                   {candidate.availabilityStatus === "immediately"
@@ -578,15 +578,15 @@ function CandidateInsightsDialog({
                           : t("unknown")}
                 </p>
               </div>
-              <div className="workspace-glass-panel rounded-2xl p-4">
+              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("profileQuality")}</p>
                 <p className="mt-2 text-sm font-semibold text-foreground">{candidate.profileCompleteness != null ? t("percentComplete", { percent: candidate.profileCompleteness }) : t("awaitingSignals")}</p>
               </div>
-              <div className="workspace-glass-panel rounded-2xl p-4">
+              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{selectedJobData ? t("matchedSkills") : t("keySkills")}</p>
                 <p className="mt-2 text-sm font-semibold text-foreground">{selectedJobData ? matchedSkills.length : (candidate.skills?.length ?? 0)}</p>
               </div>
-              <div className="workspace-glass-panel rounded-2xl p-4">
+              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("missingSignals")}</p>
                 <p className="mt-2 text-sm font-semibold text-foreground">{selectedJobData ? missingSkills.length : "—"}</p>
               </div>

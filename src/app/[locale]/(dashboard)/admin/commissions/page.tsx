@@ -292,7 +292,7 @@ export default function AdminCommissionsPage() {
       {ConfirmDialogNode}
 
       {/* ── Hero Section ── */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
           <div className="min-w-0 flex-1">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
@@ -420,7 +420,7 @@ export default function AdminCommissionsPage() {
       />
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="workspace-glass-panel rounded-2xl p-4">
+          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("visibleRecordsLabel")}</p>
@@ -432,7 +432,7 @@ export default function AdminCommissionsPage() {
               </div>
             </div>
           </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
+          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("pendingReviewLabel")}</p>
@@ -444,7 +444,7 @@ export default function AdminCommissionsPage() {
               </div>
             </div>
           </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
+          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("approvedLabel")}</p>
@@ -456,7 +456,7 @@ export default function AdminCommissionsPage() {
               </div>
             </div>
           </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
+          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("paidOutLabel")}</p>
@@ -476,7 +476,7 @@ export default function AdminCommissionsPage() {
         </div>
       ) : null}
 
-      <section className="workspace-panel-surface overflow-hidden rounded-[24px]">
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-[24px]">
         <div className="flex flex-col gap-2 border-b border-border/80 px-4 py-4 sm:px-5">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("commissionLedgerLabel")}</p>
           <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">

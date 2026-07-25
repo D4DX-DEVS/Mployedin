@@ -493,7 +493,7 @@ export default function AdminTargetManagementPage() {
       {tab === "dashboard" && (
         <>
           {reassignTarget && (
-            <section className="workspace-glass-panel rounded-2xl p-4">
+            <section className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold">Reassign target profile</p>

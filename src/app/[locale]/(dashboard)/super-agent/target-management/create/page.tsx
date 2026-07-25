@@ -287,7 +287,7 @@ export default function SuperAgentCreateTargetPage() {
       </button>
 
       {/* Header */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
             <div className="workspace-tone-sky rounded-xl p-2.5">

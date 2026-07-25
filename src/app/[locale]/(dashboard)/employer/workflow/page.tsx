@@ -205,7 +205,8 @@ export default function EmployerWorkflowPage() {
         title={t("title")}
         description={t("description")}
         actions={
-          <div className="flex items-center gap-2">
+          // Wraps on phones — three side-by-side buttons overflowed a 390px screen.
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -340,40 +341,42 @@ export default function EmployerWorkflowPage() {
         </div>
       )}
 
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-7">
         <div className="grid gap-6 xl:grid-cols-[1.15fr,0.85fr]">
           <div>
             <div className="flex items-center gap-2 text-sm font-medium text-status-applied dark:text-sky-300">
               <Sparkles className="h-4 w-4" />
               {t("pipelineAutomation")}
             </div>
-            <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight text-foreground">
+            <h2 className="mt-3 max-w-2xl text-xl sm:text-3xl font-semibold tracking-tight text-foreground">
               {t("pipelineAutomationDesc")}
             </h2>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+            <p className="mt-2 hidden max-w-2xl text-sm leading-6 text-muted-foreground sm:mt-3 sm:block">
               {t("reorderStages")}
             </p>
 
-            <div className="mt-6 grid gap-3 sm:grid-cols-3">
-              <div className="workspace-glass-panel rounded-2xl p-4">
-                <Settings2 className="h-5 w-5 text-status-applied dark:text-sky-300" />
-                <p className="mt-3 text-sm font-semibold text-foreground">{activeStages.length} {t("activeStages")}</p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("activeStagesDesc")}</p>
+            {/* Headline-only tiles on phones; sub-lines and the pipeline preview
+                return from sm up. */}
+            <div className="mt-3 grid gap-2 sm:mt-6 sm:grid-cols-3 sm:gap-3">
+              <div className="workspace-glass-panel rounded-xl p-2.5 sm:rounded-2xl sm:p-4">
+                <Settings2 className="h-4 w-4 sm:h-5 sm:w-5 text-status-applied dark:text-sky-300" />
+                <p className="mt-1.5 text-sm font-semibold text-foreground sm:mt-3">{activeStages.length} {t("activeStages")}</p>
+                <p className="mt-1 hidden text-xs leading-5 text-muted-foreground sm:block">{t("activeStagesDesc")}</p>
               </div>
-              <div className="workspace-glass-panel rounded-2xl p-4">
-                <Sparkles className="h-5 w-5 text-status-applied dark:text-sky-300" />
-                <p className="mt-3 text-sm font-semibold text-foreground">{automatedStages} {t("automatedSteps")}</p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("automatedStepsDesc")}</p>
+              <div className="workspace-glass-panel rounded-xl p-2.5 sm:rounded-2xl sm:p-4">
+                <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-status-applied dark:text-sky-300" />
+                <p className="mt-1.5 text-sm font-semibold text-foreground sm:mt-3">{automatedStages} {t("automatedSteps")}</p>
+                <p className="mt-1 hidden text-xs leading-5 text-muted-foreground sm:block">{t("automatedStepsDesc")}</p>
               </div>
-              <div className="workspace-glass-panel rounded-2xl p-4">
-                <Bell className="h-5 w-5 text-status-applied dark:text-sky-300" />
-                <p className="mt-3 text-sm font-semibold text-foreground">{saveStateLabel}</p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("liveConfigDesc")}</p>
+              <div className="workspace-glass-panel rounded-xl p-2.5 sm:rounded-2xl sm:p-4">
+                <Bell className="h-4 w-4 sm:h-5 sm:w-5 text-status-applied dark:text-sky-300" />
+                <p className="mt-1.5 text-sm font-semibold text-foreground sm:mt-3">{saveStateLabel}</p>
+                <p className="mt-1 hidden text-xs leading-5 text-muted-foreground sm:block">{t("liveConfigDesc")}</p>
               </div>
             </div>
           </div>
 
-          <div className="workspace-glass-panel rounded-[24px] p-5">
+          <div className="workspace-glass-panel hidden rounded-[24px] p-5 sm:block">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("pipelinePreview")}</p>
@@ -572,7 +575,7 @@ export default function EmployerWorkflowPage() {
 
         {/* ─── Automation Settings ─── */}
         <div className="space-y-4">
-          <section className="workspace-panel-surface space-y-5 rounded-[28px] p-6">
+          <section className="workspace-panel-surface space-y-5 rounded-2xl p-4 sm:rounded-[28px] sm:p-6">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("automation")}</p>
               <h3 className="mt-2 text-lg font-semibold text-foreground">{t("recruitmentRules")}</h3>

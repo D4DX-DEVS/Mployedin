@@ -80,13 +80,13 @@ export default function ResourceDownloadsPage() {
   return (
     <div className="page-container space-y-6 pb-6">
       {/* Hero Section */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-7 sm:p-8">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-7 md:p-8">
         <div className="max-w-2xl">
           <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
             <Sparkles className="h-3.5 w-3.5" />
             {t("heroLabel")}
           </div>
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
+          <h1 className="mt-4 text-xl sm:text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
             {t("downloadsTitle")}
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
@@ -116,7 +116,7 @@ export default function ResourceDownloadsPage() {
       ) : items.length === 0 ? (
         <section className="workspace-panel-surface rounded-[28px] p-10 sm:p-14 text-center">
           <div className="flex flex-col items-center">
-            <div className="workspace-glass-panel rounded-2xl p-4 mb-5">
+            <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4 mb-5">
               <Inbox className="h-8 w-8 text-muted-foreground/50" />
             </div>
             <h3 className="text-lg font-semibold text-foreground">{t("noResources")}</h3>

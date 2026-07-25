@@ -28,6 +28,7 @@ import PublicFooter from "@/components/shared/PublicFooter";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { UserProfileDropdown } from "@/components/shared/UserProfileDropdown";
 import { JobSeekerTopNav, JobSeekerBottomNav } from "@/components/shared/JobSeekerTopNav";
+import { WorkspaceBottomNav } from "@/components/shared/WorkspaceBottomNav";
 import { TenantViewBanner } from "@/components/features/tenant/TenantViewBanner";
 import type { NavGroup } from "@/lib/nav/menuConfig";
 import type { UserRole } from "@/types/user";
@@ -67,6 +68,7 @@ export function DashboardShell({
   const [mobileOpen, setMobileOpen] = useState(false);
   const isJobSeeker = userRole === "job_seeker";
   const isAdminWorkspace = userRole === "admin";
+  const isEmployer = userRole === "employer";
   const usesModernWorkspaceShell = userRole === "admin" || userRole === "employer" || userRole === "agent" || userRole === "super_agent";
   // Defer Radix-based components to avoid SSR/client ID mismatch hydration errors
   const [mounted, setMounted] = useState(false);
@@ -154,9 +156,27 @@ export function DashboardShell({
             <JobSeekerBottomNav locale={locale} />
           </>
         ) : (
-          <main className={`dashboard-main isolate min-h-0 flex-1 overflow-y-auto overscroll-contain bg-background ${usesModernWorkspaceShell ? "dashboard-main-workspace" : ""}`}>
-            {children}
-          </main>
+          <>
+            <main className={`dashboard-main isolate min-h-0 flex-1 overflow-y-auto overscroll-contain bg-background ${usesModernWorkspaceShell ? "dashboard-main-workspace" : ""} ${isEmployer ? "pb-16 lg:pb-0" : ""}`}>
+              {children}
+            </main>
+            {/* Employer phones get a tab bar for the four daily destinations;
+                everything else stays one tap away behind the "More" tab. */}
+            {isEmployer && (
+              <WorkspaceBottomNav
+                locale={locale}
+                onOpenMenu={() => setMobileOpen(true)}
+                menuLabel={tNav("more")}
+                ariaLabel={tNav("a11yNavigationMenu")}
+                labels={{
+                  dashboard: tNav("dashboard"),
+                  jobs: tNav("jobs"),
+                  applications: tNav("applications"),
+                  interviews: tNav("interviews"),
+                }}
+              />
+            )}
+          </>
         )}
       </div>
 

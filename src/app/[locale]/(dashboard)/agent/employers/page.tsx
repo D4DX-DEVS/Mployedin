@@ -238,14 +238,14 @@ export default function AgentEmployersPage() {
   return (
     <div className="page-container space-y-6">
       {ConfirmDialogNode}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
               <Sparkles className="h-3.5 w-3.5" />
               {t("heroWorkspace")}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
+            <h1 className="mt-4 text-xl sm:text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
               {t("heroTitle")}
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
@@ -280,11 +280,11 @@ export default function AgentEmployersPage() {
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="workspace-glass-panel rounded-2xl p-4">
+          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tc("active")}</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{activeEmployers}</p>
+                <p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{activeEmployers}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{t("statsActiveDescription")}</p>
               </div>
               <div className="workspace-tone-emerald rounded-2xl p-2.5">
@@ -292,11 +292,11 @@ export default function AgentEmployersPage() {
               </div>
             </div>
           </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
+          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tc("inactive")}</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{inactiveEmployers}</p>
+                <p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{inactiveEmployers}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{t("statsInactiveDescription")}</p>
               </div>
               <div className="workspace-tone-amber rounded-2xl p-2.5">
@@ -304,11 +304,11 @@ export default function AgentEmployersPage() {
               </div>
             </div>
           </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
+          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statsIndustriesLabel")}</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{industriesCount}</p>
+                <p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{industriesCount}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{t("statsIndustriesDescription")}</p>
               </div>
               <div className="workspace-tone-indigo rounded-2xl p-2.5">
@@ -316,11 +316,11 @@ export default function AgentEmployersPage() {
               </div>
             </div>
           </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
+          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statsSearchReadyLabel")}</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{search ? 1 : 0}</p>
+                <p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{search ? 1 : 0}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{t("statsSearchReadyDescription")}</p>
               </div>
               <div className="workspace-tone-sky rounded-2xl p-2.5">
@@ -339,7 +339,7 @@ export default function AgentEmployersPage() {
       )}
 
       {referralData && (
-        <section className="workspace-panel-surface rounded-[28px] p-5 space-y-4">
+        <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 space-y-4">
           {/* Link URL + Copy */}
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-sky-100 text-status-applied dark:bg-sky-900/30 dark:text-sky-400">
@@ -451,7 +451,7 @@ export default function AgentEmployersPage() {
         </section>
       )}
 
-      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
+      <section className="workspace-panel-surface rounded-2xl p-3.5 sm:rounded-[28px] sm:p-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("browseEmployersLabel")}</p>

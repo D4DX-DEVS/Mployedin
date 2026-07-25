@@ -209,7 +209,7 @@ export default function AdminResourcesPage() {
   return (
     <div className="page-container space-y-6 pb-6">
       {/* Hero Section */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-7 sm:p-8">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-7 md:p-8">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
           <div className="max-w-2xl">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
@@ -229,7 +229,7 @@ export default function AdminResourcesPage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Total Resources</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{items.length}</p>
+                <p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{items.length}</p>
               </div>
               <div className="rounded-2xl p-2.5 ring-1 ring-inset ring-sky-200 bg-sky-50/80 text-sky-600 dark:ring-sky-500/30 dark:bg-sky-500/10 dark:text-sky-300">
                 <Package className="h-5 w-5" />
@@ -241,7 +241,7 @@ export default function AdminResourcesPage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Total Downloads</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{totalDownloads}</p>
+                <p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{totalDownloads}</p>
               </div>
               <div className="rounded-2xl p-2.5 ring-1 ring-inset ring-blue-200 bg-blue-50/80 text-blue-600 dark:ring-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300">
                 <Download className="h-5 w-5" />
@@ -253,7 +253,7 @@ export default function AdminResourcesPage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Categories</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{Object.keys(categoryCounts).length}</p>
+                <p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{Object.keys(categoryCounts).length}</p>
               </div>
               <div className="rounded-2xl p-2.5 ring-1 ring-inset ring-violet-200 bg-violet-50/80 text-violet-600 dark:ring-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300">
                 <BarChart2 className="h-5 w-5" />
@@ -265,7 +265,7 @@ export default function AdminResourcesPage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Active</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{items.filter((i) => i.isActive).length}</p>
+                <p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{items.filter((i) => i.isActive).length}</p>
               </div>
               <div className="rounded-2xl p-2.5 ring-1 ring-inset ring-emerald-200 bg-emerald-50/80 text-emerald-600 dark:ring-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300">
                 <Activity className="h-5 w-5" />
@@ -298,7 +298,7 @@ export default function AdminResourcesPage() {
       ) : items.length === 0 ? (
         <section className="workspace-panel-surface rounded-[28px] p-10 sm:p-14 text-center">
           <div className="flex flex-col items-center">
-            <div className="workspace-glass-panel rounded-2xl p-4 mb-5">
+            <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4 mb-5">
               <Inbox className="h-8 w-8 text-muted-foreground/50" />
             </div>
             <h3 className="text-lg font-semibold text-foreground">No resources found</h3>
@@ -453,7 +453,7 @@ export default function AdminResourcesPage() {
           </DialogHeader>
           {downloadLogs.length === 0 ? (
             <div className="flex flex-col items-center py-8">
-              <div className="workspace-glass-panel rounded-2xl p-4 mb-3"><Download className="h-5 w-5 text-muted-foreground/50" /></div>
+              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4 mb-3"><Download className="h-5 w-5 text-muted-foreground/50" /></div>
               <p className="text-sm text-muted-foreground">No downloads recorded yet</p>
             </div>
           ) : (

@@ -253,11 +253,11 @@ export default function AgentInterviewsPage() {
   return (
     <div className="page-container space-y-6">
       {/* ── Hero Section ───────────────────────────────────────────── */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary"><Sparkles className="h-3.5 w-3.5" />{t("badgeAgentWorkspace")}</div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("pageTitle")}</h1>
+            <h1 className="mt-4 text-xl sm:text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("pageTitle")}</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">{t("pageSubtitle")}</p>
           </div>
           <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:min-w-[260px]">
@@ -269,41 +269,41 @@ export default function AgentInterviewsPage() {
 
         {/* KPI Cards */}
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <button type="button" onClick={() => setStatus(status === "scheduled" ? "" : "scheduled")} className={`workspace-glass-panel rounded-2xl p-4 text-left transition-all ${status === "scheduled" ? "ring-2 ring-primary/40" : "hover:ring-1 hover:ring-border"}`}>
+          <button type="button" onClick={() => setStatus(status === "scheduled" ? "" : "scheduled")} className={`workspace-glass-panel rounded-2xl p-3 sm:p-4 text-left transition-all ${status === "scheduled" ? "ring-2 ring-primary/40" : "hover:ring-1 hover:ring-border"}`}>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("kpiScheduled")}</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{scheduledCount}</p>
+                <p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{scheduledCount}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{t("descScheduled")}</p>
               </div>
               <div className="workspace-tone-sky rounded-2xl p-2.5"><CalendarCheck2 className="h-5 w-5" /></div>
             </div>
           </button>
-          <button type="button" onClick={() => setStatus(status === "completed" ? "" : "completed")} className={`workspace-glass-panel rounded-2xl p-4 text-left transition-all ${status === "completed" ? "ring-2 ring-primary/40" : "hover:ring-1 hover:ring-border"}`}>
+          <button type="button" onClick={() => setStatus(status === "completed" ? "" : "completed")} className={`workspace-glass-panel rounded-2xl p-3 sm:p-4 text-left transition-all ${status === "completed" ? "ring-2 ring-primary/40" : "hover:ring-1 hover:ring-border"}`}>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("kpiCompleted")}</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{completedCount}</p>
+                <p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{completedCount}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{t("descCompleted")}</p>
               </div>
               <div className="workspace-tone-emerald rounded-2xl p-2.5"><CheckCircle className="h-5 w-5" /></div>
             </div>
           </button>
-          <button type="button" onClick={() => setStatus(status === "cancelled" ? "" : "cancelled")} className={`workspace-glass-panel rounded-2xl p-4 text-left transition-all ${status === "cancelled" ? "ring-2 ring-primary/40" : "hover:ring-1 hover:ring-border"}`}>
+          <button type="button" onClick={() => setStatus(status === "cancelled" ? "" : "cancelled")} className={`workspace-glass-panel rounded-2xl p-3 sm:p-4 text-left transition-all ${status === "cancelled" ? "ring-2 ring-primary/40" : "hover:ring-1 hover:ring-border"}`}>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("kpiCancelled")}</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{cancelledCount}</p>
+                <p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{cancelledCount}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{t("descCancelled")}</p>
               </div>
               <div className="workspace-tone-amber rounded-2xl p-2.5"><XCircle className="h-5 w-5" /></div>
             </div>
           </button>
-          <button type="button" onClick={() => setStatus(status === "rescheduled" ? "" : "rescheduled")} className={`workspace-glass-panel rounded-2xl p-4 text-left transition-all ${status === "rescheduled" ? "ring-2 ring-primary/40" : "hover:ring-1 hover:ring-border"}`}>
+          <button type="button" onClick={() => setStatus(status === "rescheduled" ? "" : "rescheduled")} className={`workspace-glass-panel rounded-2xl p-3 sm:p-4 text-left transition-all ${status === "rescheduled" ? "ring-2 ring-primary/40" : "hover:ring-1 hover:ring-border"}`}>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("kpiRescheduled")}</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{rescheduledCount}</p>
+                <p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{rescheduledCount}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{t("descRescheduled")}</p>
               </div>
               <div className="workspace-tone-rose rounded-2xl p-2.5"><RotateCcw className="h-5 w-5" /></div>
@@ -313,7 +313,7 @@ export default function AgentInterviewsPage() {
       </section>
 
       {/* ── Filter Section ─────────────────────────────────────────── */}
-      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
+      <section className="workspace-panel-surface rounded-2xl p-3.5 sm:rounded-[28px] sm:p-5">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sectionFilterLabel")}</p>
@@ -470,7 +470,7 @@ export default function AgentInterviewsPage() {
       </section>
 
       {/* ── Results Table ──────────────────────────────────────────── */}
-      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
+      <section className="workspace-panel-surface rounded-2xl p-3.5 sm:rounded-[28px] sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sectionResultsLabel")}</p>

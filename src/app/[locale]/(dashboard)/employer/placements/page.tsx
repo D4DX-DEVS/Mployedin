@@ -124,7 +124,7 @@ export default function EmployerPlacementsPage() {
         }
       />
 
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
         <div className="mt-0 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {[
             {
@@ -160,7 +160,7 @@ export default function EmployerPlacementsPage() {
               chip: "bg-status-shortlisted-bg",
             },
           ].map(({ labelKey, value, noteKey, icon: Icon, tone, chip }) => (
-            <div key={labelKey} className="workspace-glass-panel rounded-2xl p-4">
+            <div key={labelKey} className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t(labelKey)}</p>
@@ -176,7 +176,7 @@ export default function EmployerPlacementsPage() {
         </div>
       </section>
 
-      <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
+      <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("filterOutcomes")}</p>
@@ -247,7 +247,7 @@ export default function EmployerPlacementsPage() {
           </div>
         </section>
       ) : (
-      <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
+      <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6">
         <div className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("placementList")}</p>

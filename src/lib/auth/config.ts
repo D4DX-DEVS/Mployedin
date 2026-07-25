@@ -344,7 +344,7 @@ export const authConfig: NextAuthConfig = {
             }
 
             if (Object.keys(update).length > 0) {
-              dbUser = await User.findByIdAndUpdate(dbUser._id, update, { new: true }) ?? dbUser;
+              dbUser = await User.findByIdAndUpdate(dbUser._id, update, { returnDocument: "after" }) ?? dbUser;
             }
           }
 

@@ -198,7 +198,7 @@ export default function CmsPage({
               <Sparkles className="h-3.5 w-3.5" />
               {t("cmsWorkspace")}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
+            <h1 className="mt-4 text-xl sm:text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
               {title}
             </h1>
             {description && (
@@ -233,7 +233,7 @@ export default function CmsPage({
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          <div className="workspace-glass-panel rounded-2xl p-4">
+          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
@@ -249,7 +249,7 @@ export default function CmsPage({
             </div>
             <p className="mt-3 text-sm leading-5 text-muted-foreground">{t("allRecords")}</p>
           </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
+          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
@@ -263,7 +263,7 @@ export default function CmsPage({
             </div>
             <p className="mt-3 text-sm leading-5 text-muted-foreground">{t("visibleOnSite")}</p>
           </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
+          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
@@ -295,7 +295,7 @@ export default function CmsPage({
         />
       </section>
 
-      <section className="workspace-panel-surface overflow-hidden rounded-[28px]">
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-[28px]">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>

@@ -135,7 +135,7 @@ interface QuickAction {
 type DashboardTranslator = Awaited<ReturnType<typeof getTranslations>>;
 
 const adminPanelClassName =
-  "workspace-panel-surface rounded-[28px] p-6 sm:p-7";
+  "workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7";
 
 const adminCardClassName =
   "workspace-glass-panel rounded-2xl";
@@ -144,7 +144,7 @@ const adminInteractiveCardClassName =
   "workspace-subtle-surface rounded-2xl transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card hover:shadow-[0_24px_50px_-38px_rgba(2,132,199,0.38)]";
 
 const adminStatPanelClassName =
-  "workspace-glass-panel rounded-2xl p-4 text-left";
+  "workspace-glass-panel rounded-2xl p-3 sm:p-4 text-left";
 
 function buildMonthBuckets(now: Date, totalMonths: number, locale: string) {
   return Array.from({ length: totalMonths }, (_, index) => {
@@ -696,7 +696,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
   return (
     <div className="page-container space-y-6 pb-6">
       <section
-        className="workspace-hero-surface overflow-hidden rounded-[28px] p-7 sm:p-8"
+        className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-7 md:p-8"
         data-surface="light-hero"
       >
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
@@ -705,7 +705,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
               <Sparkles className="h-3.5 w-3.5" />
               {t("hero.eyebrow")}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
+            <h1 className="mt-4 text-xl sm:text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
               {t("hero.title")}
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
@@ -751,7 +751,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{kpi.label}</p>
-                    <p className="mt-4 text-3xl font-semibold tracking-tight text-foreground">{kpi.value}</p>
+                    <p className="mt-4 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{kpi.value}</p>
                   </div>
                   <div className={`rounded-2xl p-2.5 ring-1 ring-inset ${kpi.toneClassName}`}>
                     <Icon className="h-5 w-5" />

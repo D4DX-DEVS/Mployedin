@@ -581,6 +581,7 @@ body {
     box-shadow: 0 12px 24px -4px rgb(0 0 0 / 0.08);
   }
 
+
   .dashboard-tone-primary {
     background-color: hsl(var(--status-applied-bg));
     border-color: hsl(var(--status-applied) / 0.18);

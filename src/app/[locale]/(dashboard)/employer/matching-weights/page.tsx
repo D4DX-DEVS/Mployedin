@@ -248,40 +248,42 @@ export default function EmployerMatchingWeightsPage() {
         </div>
       )}
 
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-7">
         <div className="grid gap-6 xl:grid-cols-[1.1fr,0.9fr]">
           <div>
             <div className="flex items-center gap-2 text-sm font-medium text-status-applied dark:text-sky-300">
               <Sparkles className="h-4 w-4" />
               {t("rankingControls")}
             </div>
-            <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight text-foreground">
+            <h2 className="mt-3 max-w-2xl text-xl sm:text-3xl font-semibold tracking-tight text-foreground">
               {t("rankingControlsDesc")}
             </h2>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+            <p className="mt-2 hidden max-w-2xl text-sm leading-6 text-muted-foreground sm:mt-3 sm:block">
               {t("totalAllocation")}
             </p>
 
-            <div className="mt-6 grid gap-3 sm:grid-cols-3">
-              <div className="workspace-glass-panel rounded-2xl p-4">
-                <Scale className="h-5 w-5 text-status-applied dark:text-sky-300" />
-                <p className="mt-3 text-sm font-semibold text-foreground">{t("totalAt")} {total}%</p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("totalMustBe100")}</p>
+            {/* Hero tiles keep only their headline on phones; the explanatory
+                sub-lines and the scoring preview return from sm up. */}
+            <div className="mt-3 grid gap-2 sm:mt-6 sm:grid-cols-3 sm:gap-3">
+              <div className="workspace-glass-panel rounded-xl p-2.5 sm:rounded-2xl sm:p-4">
+                <Scale className="h-4 w-4 text-status-applied dark:text-sky-300 sm:h-5 sm:w-5" />
+                <p className="mt-1.5 text-sm font-semibold text-foreground sm:mt-3">{t("totalAt")} {total}%</p>
+                <p className="mt-1 hidden text-xs leading-5 text-muted-foreground sm:block">{t("totalMustBe100")}</p>
               </div>
-              <div className="workspace-glass-panel rounded-2xl p-4">
-                <Target className="h-5 w-5 text-status-applied dark:text-sky-300" />
-                <p className="mt-3 text-sm font-semibold text-foreground">{t("topPriority")} {t(WEIGHT_LABEL_KEYS[topPriority])}</p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("currentStrongest")} {weights[topPriority]}%.</p>
+              <div className="workspace-glass-panel rounded-xl p-2.5 sm:rounded-2xl sm:p-4">
+                <Target className="h-4 w-4 text-status-applied dark:text-sky-300 sm:h-5 sm:w-5" />
+                <p className="mt-1.5 text-sm font-semibold text-foreground sm:mt-3">{t("topPriority")} {t(WEIGHT_LABEL_KEYS[topPriority])}</p>
+                <p className="mt-1 hidden text-xs leading-5 text-muted-foreground sm:block">{t("currentStrongest")} {weights[topPriority]}%.</p>
               </div>
-              <div className="workspace-glass-panel rounded-2xl p-4">
-                <BarChart3 className="h-5 w-5 text-status-applied dark:text-sky-300" />
-                <p className="mt-3 text-sm font-semibold text-foreground">{saveStateLabel}</p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("readyToUpdateDesc")}</p>
+              <div className="workspace-glass-panel rounded-xl p-2.5 sm:rounded-2xl sm:p-4">
+                <BarChart3 className="h-4 w-4 text-status-applied dark:text-sky-300 sm:h-5 sm:w-5" />
+                <p className="mt-1.5 text-sm font-semibold text-foreground sm:mt-3">{saveStateLabel}</p>
+                <p className="mt-1 hidden text-xs leading-5 text-muted-foreground sm:block">{t("readyToUpdateDesc")}</p>
               </div>
             </div>
           </div>
 
-          <div className="workspace-glass-panel rounded-[24px] p-5">
+          <div className="workspace-glass-panel hidden rounded-[24px] p-5 sm:block">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("scoringPreview")}</p>
             <p className="mt-2 text-sm text-muted-foreground">{t("scoringPreviewDesc")}</p>
             <div className="mt-5 space-y-3">
@@ -303,7 +305,7 @@ export default function EmployerMatchingWeightsPage() {
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.35fr,0.65fr]">
         {/* Sliders */}
-        <section className="workspace-panel-surface space-y-5 rounded-[28px] p-6">
+        <section className="workspace-panel-surface space-y-5 rounded-2xl p-4 sm:rounded-[28px] sm:p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("weightBuilder")}</p>

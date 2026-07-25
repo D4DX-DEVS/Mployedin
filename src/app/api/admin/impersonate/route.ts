@@ -61,7 +61,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       targetRole: target.role,
       expiresAt,
     },
-    { upsert: true, new: true }
+    { upsert: true, returnDocument: "after" }
   );
 
   await logActivity({

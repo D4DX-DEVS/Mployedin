@@ -220,7 +220,7 @@ export default function AdminExhibitionAnalyticsPage() {
   if (loading) {
     return (
       <div className="page-container space-y-6">
-        <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-7 sm:p-8">
+        <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-7 md:p-8">
           <div className="space-y-4">
             <Skeleton className="h-6 w-40" />
             <Skeleton className="h-8 w-2/3" />
@@ -256,7 +256,7 @@ export default function AdminExhibitionAnalyticsPage() {
 
   return (
     <div className="page-container space-y-6">
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-7 sm:p-8">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-7 md:p-8">
         <div className="grid gap-6 lg:grid-cols-[1.4fr_0.9fr]">
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-2">
@@ -285,7 +285,7 @@ export default function AdminExhibitionAnalyticsPage() {
             </div>
           </div>
 
-          <div className="workspace-glass-panel rounded-2xl p-4">
+          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">{t("scopeLabel")}</p>
@@ -375,7 +375,7 @@ export default function AdminExhibitionAnalyticsPage() {
           </div>
         </div>
 
-        <div className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
+        <div className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold tracking-tight">{t("requestPipelineTitle")}</h2>
@@ -460,7 +460,7 @@ export default function AdminExhibitionAnalyticsPage() {
           )}
         </div>
 
-        <div className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
+        <div className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold tracking-tight">{t("topAgentsTitle")}</h2>
@@ -535,7 +535,7 @@ export default function AdminExhibitionAnalyticsPage() {
 
 function HeroStat({ label, value, sub }: { label: string; value: string | number; sub: string }) {
   return (
-    <div className="workspace-glass-panel rounded-2xl p-4">
+    <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
       <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{label}</p>
       <p className="mt-2 text-2xl font-semibold text-foreground">{value}</p>
       <p className="mt-1 text-xs text-muted-foreground">{sub}</p>

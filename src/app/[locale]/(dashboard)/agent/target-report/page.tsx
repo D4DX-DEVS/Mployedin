@@ -250,14 +250,14 @@ export default function AgentTargetReportPage() {
   return (
     <div className="page-container space-y-6 print:space-y-4">
       {/* ═══════ HERO ═══════ */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
           <div className="min-w-0 flex-1">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
               <Sparkles className="h-3.5 w-3.5" />
               Agent workspace
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">My Target Report</h1>
+            <h1 className="mt-4 text-xl sm:text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">My Target Report</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
               Personal performance report — {yearFilter}. Track your employer, employee, and finance targets.
             </p>
@@ -272,7 +272,7 @@ export default function AgentTargetReportPage() {
 
       {/* ═══════ KPI Cards ═══════ */}
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="workspace-glass-panel rounded-2xl p-4">
+        <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Employer</p>
@@ -282,7 +282,7 @@ export default function AgentTargetReportPage() {
             <div className="workspace-tone-sky rounded-2xl p-2.5"><Building2 className="h-5 w-5" /></div>
           </div>
         </div>
-        <div className="workspace-glass-panel rounded-2xl p-4">
+        <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Employee</p>
@@ -292,7 +292,7 @@ export default function AgentTargetReportPage() {
             <div className="workspace-tone-emerald rounded-2xl p-2.5"><Users className="h-5 w-5" /></div>
           </div>
         </div>
-        <div className="workspace-glass-panel rounded-2xl p-4">
+        <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Business Volume</p>
@@ -302,7 +302,7 @@ export default function AgentTargetReportPage() {
             <div className="workspace-tone-amber rounded-2xl p-2.5"><CircleDollarSign className="h-5 w-5" /></div>
           </div>
         </div>
-        <div className="workspace-glass-panel rounded-2xl p-4">
+        <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Overall</p>
@@ -388,7 +388,7 @@ export default function AgentTargetReportPage() {
       {/* ═══════ KPI with YoY ═══════ */}
       {data.yearOverYear && (
         <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="workspace-glass-panel rounded-2xl p-4">
+          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Employers</p>
@@ -398,7 +398,7 @@ export default function AgentTargetReportPage() {
               <div className="workspace-tone-sky rounded-2xl p-2.5"><Building2 className="h-5 w-5" /></div>
             </div>
           </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
+          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Employees</p>
@@ -408,7 +408,7 @@ export default function AgentTargetReportPage() {
               <div className="workspace-tone-emerald rounded-2xl p-2.5"><Users className="h-5 w-5" /></div>
             </div>
           </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
+          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Business Volume</p>
@@ -418,7 +418,7 @@ export default function AgentTargetReportPage() {
               <div className="workspace-tone-amber rounded-2xl p-2.5"><CircleDollarSign className="h-5 w-5" /></div>
             </div>
           </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
+          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Overall Progress</p>

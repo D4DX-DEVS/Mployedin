@@ -306,13 +306,13 @@ export default function AgentOffersPage() {
   return (
     <div className="page-container space-y-6">
       {/* Hero */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t("header.title")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{t("header.description")}</p>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {metricsItems.map((m) => (
-            <div key={m.label} className="workspace-glass-panel rounded-2xl p-4">
+            <div key={m.label} className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{m.label}</p>
@@ -326,7 +326,7 @@ export default function AgentOffersPage() {
       </section>
 
       {/* Filters */}
-      <section className="workspace-panel-surface rounded-[28px] p-5">
+      <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -345,7 +345,7 @@ export default function AgentOffersPage() {
       </section>
 
       {/* Table */}
-      <section className="workspace-panel-surface rounded-[28px] p-5">
+      <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5">
         {!loading && offers.length > 0 && (
           <TableToolbar
             onExportCsv={handleExportCsv}

@@ -150,14 +150,14 @@ export default function AgentReferralLinksPage() {
       {ConfirmDialogNode}
 
       {/* Hero */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
               <Sparkles className="h-3.5 w-3.5" />
               {t("agentWorkspaceBadge")}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
+            <h1 className="mt-4 text-xl sm:text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
               {t("pageTitle")}
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
@@ -183,41 +183,41 @@ export default function AgentReferralLinksPage() {
 
         {/* Stats grid */}
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="min-w-0 workspace-glass-panel rounded-2xl p-4">
+          <div className="min-w-0 workspace-glass-panel rounded-2xl p-3 sm:p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statTotalLinks")}</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{total}</p>
+                <p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{total}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{t("statTotalLinksDesc")}</p>
               </div>
               <div className="workspace-tone-sky rounded-2xl p-2.5"><Link2 className="h-5 w-5" /></div>
             </div>
           </div>
-          <div className="min-w-0 workspace-glass-panel rounded-2xl p-4">
+          <div className="min-w-0 workspace-glass-panel rounded-2xl p-3 sm:p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tc("active")}</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{activeLinks}</p>
+                <p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{activeLinks}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{t("statActiveDesc")}</p>
               </div>
               <div className="workspace-tone-emerald rounded-2xl p-2.5"><Check className="h-5 w-5" /></div>
             </div>
           </div>
-          <div className="min-w-0 workspace-glass-panel rounded-2xl p-4">
+          <div className="min-w-0 workspace-glass-panel rounded-2xl p-3 sm:p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statRegistrations")}</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{totalRegistrations}</p>
+                <p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{totalRegistrations}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{t("statRegistrationsDesc")}</p>
               </div>
               <div className="workspace-tone-indigo rounded-2xl p-2.5"><Users className="h-5 w-5" /></div>
             </div>
           </div>
-          <div className="min-w-0 workspace-glass-panel rounded-2xl p-4">
+          <div className="min-w-0 workspace-glass-panel rounded-2xl p-3 sm:p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statConversion")}</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{total > 0 ? Math.round((totalRegistrations / total) * 10) / 10 : 0}</p>
+                <p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{total > 0 ? Math.round((totalRegistrations / total) * 10) / 10 : 0}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{t("statConversionDesc")}</p>
               </div>
               <div className="workspace-tone-amber rounded-2xl p-2.5"><Hash className="h-5 w-5" /></div>
@@ -228,7 +228,7 @@ export default function AgentReferralLinksPage() {
 
       {/* Create Modal */}
       {createOpen && (
-        <section className="workspace-panel-surface rounded-[28px] p-5">
+        <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-foreground">{t("createModalTitle")}</h2>
             <button onClick={() => setCreateOpen(false)} className="rounded-lg p-1 hover:bg-secondary/80"><X className="h-4 w-4" /></button>
@@ -261,7 +261,7 @@ export default function AgentReferralLinksPage() {
       )}
 
       {/* Search */}
-      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
+      <section className="workspace-panel-surface rounded-2xl p-3.5 sm:rounded-[28px] sm:p-5">
         <div className="max-w-xl">
           <TableToolbar
             search={search}
@@ -278,7 +278,7 @@ export default function AgentReferralLinksPage() {
       {isLoading ? (
         <section className="space-y-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="workspace-panel-surface rounded-[28px] p-5">
+            <div key={i} className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5">
               <div className="flex items-center gap-3">
                 <Skeleton className="h-11 w-11 rounded-2xl" />
                 <div className="space-y-2">
@@ -301,7 +301,7 @@ export default function AgentReferralLinksPage() {
             const status = linkStatus(link);
             const isExpanded = expandedId === link._id;
             return (
-              <div key={link._id} className="workspace-panel-surface rounded-[28px] p-5 transition-all duration-200">
+              <div key={link._id} className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 transition-all duration-200">
                 {/* Link header */}
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-3">

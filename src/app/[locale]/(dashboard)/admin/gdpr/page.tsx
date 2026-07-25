@@ -195,7 +195,7 @@ export default function AdminGdprPage() {
   return (
     <div className="page-container">
       {/* Hero */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
             <Shield className="h-5 w-5 text-primary" />
@@ -208,7 +208,7 @@ export default function AdminGdprPage() {
         {/* Metrics */}
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {metricsItems.map((m) => (
-            <div key={m.label} className="workspace-glass-panel rounded-2xl p-4">
+            <div key={m.label} className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{m.label}</p>
@@ -274,7 +274,7 @@ export default function AdminGdprPage() {
       )}
 
       {/* Content */}
-      <section className="workspace-panel-surface rounded-[28px] p-5">
+      <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5">
         {activeTab === "requests" && (
           <>
             {loading ? (

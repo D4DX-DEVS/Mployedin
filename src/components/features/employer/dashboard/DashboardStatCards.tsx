@@ -61,24 +61,26 @@ export function DashboardStatCards({
   ];
 
   return (
-    <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    // Two-up compact tiles on phones — one full-width card per stat meant four
+    // screens of scrolling before any real content.
+    <section className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-4">
       {cards.map(({ labelKey, descKey, value, href, Icon, chip }) => (
         <Link
           key={labelKey}
           href={href}
-          className="workspace-panel-surface group rounded-[22px] p-5 transition-all hover:-translate-y-0.5 hover:border-sky-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+          className="workspace-panel-surface group rounded-2xl p-3 transition-all hover:-translate-y-0.5 hover:border-sky-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 sm:rounded-[22px] sm:p-5"
         >
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          <div className="flex items-center justify-between gap-2 sm:gap-3">
+            <span className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:text-[11px] sm:tracking-[0.14em]">
               {t(labelKey)}
             </span>
-            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${chip}`}>
-              <Icon className="h-5 w-5" />
+            <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg sm:h-9 sm:w-9 sm:rounded-xl ${chip}`}>
+              <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
             </span>
           </div>
-          <div className="mt-4 text-3xl font-semibold tracking-tight text-foreground">{value}</div>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">{t(descKey)}</p>
-          <span className="mt-3 inline-block text-xs font-semibold text-sky-700 dark:text-sky-300">
+          <div className="mt-2 text-2xl font-semibold tracking-tight text-foreground sm:mt-4 sm:text-3xl">{value}</div>
+          <p className="mt-1 hidden text-xs leading-5 text-muted-foreground sm:block">{t(descKey)}</p>
+          <span className="mt-1.5 inline-block text-xs font-semibold text-sky-700 dark:text-sky-300 sm:mt-3">
             {t("viewAll")}
           </span>
         </Link>

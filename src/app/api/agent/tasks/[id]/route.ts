@@ -37,7 +37,7 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
   const task = await AgentTask.findOneAndUpdate(
     { _id: id, userId: ctx.userId },
     { $set: update },
-    { new: true },
+    { returnDocument: "after" },
   );
 
   if (!task) {

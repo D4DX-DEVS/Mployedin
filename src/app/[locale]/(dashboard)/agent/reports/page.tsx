@@ -112,11 +112,11 @@ export default function AgentReportsPage() {
 
   return (
     <div className="page-container space-y-6">
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary"><Sparkles className="h-3.5 w-3.5" />{t("agentWorkspace")}</div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("reportsAnalytics")}</h1>
+            <h1 className="mt-4 text-xl sm:text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("reportsAnalytics")}</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">{t("pageDescription")}</p>
           </div>
           <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:min-w-[260px]">
@@ -145,7 +145,7 @@ export default function AgentReportsPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{kpi.label}</p>
-                    <p className="mt-2 text-3xl font-semibold tracking-tight text-foreground">{kpi.value}</p>
+                    <p className="mt-2 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{kpi.value}</p>
                     <div className="mt-1"><TrendBadge trend={kpi.trend} /></div>
                   </div>
                   <div className={`${kpi.tone} rounded-2xl p-2.5`}>{kpi.icon}</div>
@@ -162,7 +162,7 @@ export default function AgentReportsPage() {
               { label: t("overdueFollowups"), value: analytics.kpis.overdueFollowUps, icon: <Flame className="h-4 w-4" />, alert: analytics.kpis.overdueFollowUps > 0 },
               { label: t("scheduledInterviews"), value: analytics.kpis.scheduledInterviews, icon: <CalendarCheck2 className="h-4 w-4" /> },
             ].map((s) => (
-              <div key={s.label} className={`min-w-0 workspace-glass-panel rounded-2xl p-4 ${s.alert ? "border-status-shortlisted/20 dark:border-status-shortlisted/10" : ""}`}>
+              <div key={s.label} className={`min-w-0 workspace-glass-panel rounded-2xl p-3 sm:p-4 ${s.alert ? "border-status-shortlisted/20 dark:border-status-shortlisted/10" : ""}`}>
                 <div className="flex items-center gap-2 text-muted-foreground">{s.icon}<p className="text-[11px] font-semibold uppercase tracking-[0.16em]">{s.label}</p></div>
                 <p className={`mt-2 text-2xl font-semibold ${s.alert ? "text-status-shortlisted" : "text-foreground"}`}>{s.value}</p>
               </div>
@@ -170,7 +170,7 @@ export default function AgentReportsPage() {
           </section>
 
           {/* ─── Lead Funnel ─── */}
-          <section className="workspace-panel-surface rounded-[28px] p-5">
+          <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("leadFunnel")}</p>
             <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("pipelineStageDistribution")}</h2>
             <div className="mt-5 space-y-3">
@@ -199,7 +199,7 @@ export default function AgentReportsPage() {
           </section>
 
           {/* ─── Commission Summary ─── */}
-          <section className="workspace-panel-surface rounded-[28px] p-5">
+          <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5">
             <div className="flex items-center gap-2 mb-4">
               <CircleDollarSign className="h-4 w-4 text-primary" />
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("commissionSummary")}</p>
@@ -210,7 +210,7 @@ export default function AgentReportsPage() {
                 { label: t("commissionApproved"), data: analytics.commissions.approved, color: "text-status-applied" },
                 { label: t("commissionPaid"), data: analytics.commissions.paid, color: "text-status-selected" },
               ].map((c) => (
-                <div key={c.label} className="min-w-0 workspace-glass-panel rounded-2xl p-4 text-center">
+                <div key={c.label} className="min-w-0 workspace-glass-panel rounded-2xl p-3 sm:p-4 text-center">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{c.label}</p>
                   <p className={`mt-2 text-2xl font-semibold ${c.color}`}>{c.data?.count ?? 0}</p>
                   <p className="mt-1 text-xs text-muted-foreground">{(c.data?.total ?? 0).toLocaleString()} AED</p>
@@ -221,7 +221,7 @@ export default function AgentReportsPage() {
 
           {/* ─── Monthly Trends Table ─── */}
           {analytics.monthlyTrends.length > 0 && (
-            <section className="workspace-panel-surface rounded-[28px] p-5">
+            <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("monthlyTrends")}</p>
               <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("sixMonthPerformance")}</h2>
               <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
@@ -262,7 +262,7 @@ export default function AgentReportsPage() {
       )}
 
       {/* ─── AI Report Section ─── */}
-      <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
+      <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6">
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("aiPoweredReports")}</p>
         <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("generateCustomReports")}</h2>
         <p className="mt-1 text-sm text-muted-foreground">{t("reportsFromLiveData")}</p>

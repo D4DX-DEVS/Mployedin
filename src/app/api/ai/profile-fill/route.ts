@@ -140,7 +140,7 @@ ${sectionPrompt}`;
   const updated = await JobSeeker.findOneAndUpdate(
     { userId: ctx.userId },
     { $set: updateFields },
-    { new: true },
+    { returnDocument: "after" },
   );
 
   // Recalculate completeness

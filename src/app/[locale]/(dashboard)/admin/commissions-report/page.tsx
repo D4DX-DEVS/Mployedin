@@ -204,7 +204,7 @@ export default function AdminCommissionsReportPage() {
   return (
     <div className="page-container space-y-6">
       {/* ── Hero Section ── */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
           <div className="min-w-0 flex-1">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
@@ -240,7 +240,7 @@ export default function AdminCommissionsReportPage() {
             { labelKey: "paidOut", value: s ? fmt(s.totalPaid, s.currency) : "—", icon: Wallet, tone: "text-emerald-600", chip: "bg-emerald-50 dark:bg-emerald-950/30" },
             { labelKey: "avgRate", value: s ? `${s.avgRate}%` : "—", icon: TrendingUp, tone: "text-violet-600", chip: "bg-violet-50 dark:bg-violet-950/30" },
           ].map(({ labelKey, value, icon: Icon, tone, chip }) => (
-            <div key={labelKey} className="workspace-glass-panel rounded-2xl p-4">
+            <div key={labelKey} className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t(labelKey as any)}</p>
@@ -259,7 +259,7 @@ export default function AdminCommissionsReportPage() {
 
       {/* ── Monthly Trend Chart + Type Breakdown ── */}
       <div className="grid gap-4 lg:grid-cols-3">
-        <section className="lg:col-span-2 workspace-panel-surface rounded-[28px] p-5 sm:p-6">
+        <section className="lg:col-span-2 workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6">
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("monthlyTrendTitle", { year: yearFilter })}</h2>
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
@@ -275,7 +275,7 @@ export default function AdminCommissionsReportPage() {
           </ResponsiveContainer>
         </section>
 
-        <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
+        <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6">
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("byTypeTitle")}</h2>
           {pieData.length > 0 ? (
             <ResponsiveContainer width="100%" height={200}>
@@ -313,7 +313,7 @@ export default function AdminCommissionsReportPage() {
       {data && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {data.quarterlyBreakdown.map((q) => (
-            <div key={q.label} className="workspace-glass-panel rounded-2xl p-4">
+            <div key={q.label} className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
               <p className="text-xs font-semibold text-muted-foreground">{q.label}</p>
               <p className="mt-1 text-lg font-bold">{fmt(q.total, data.summary.currency)}</p>
               <div className="mt-1 flex gap-2 text-xs text-muted-foreground">
@@ -329,7 +329,7 @@ export default function AdminCommissionsReportPage() {
       )}
 
       {/* ── Agent Breakdown Table ── */}
-      <section className="workspace-panel-surface overflow-hidden rounded-[28px]">
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-[28px]">
         <div className="border-b px-4 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-muted-foreground" />

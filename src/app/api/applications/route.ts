@@ -603,7 +603,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
           ...applicationData,
           $push: { statusHistory: { status: "applied", changedAt: new Date(), note: "Re-applied after withdrawal" } },
         },
-        { new: true }
+        { returnDocument: "after" }
       );
     } else {
       application = await Application.create({

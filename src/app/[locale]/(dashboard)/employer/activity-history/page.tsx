@@ -167,7 +167,7 @@ export default function ActivityHistoryPage() {
   return (
     <div className="page-container space-y-6">
       {/* Hero + Filters Combined */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
         <div className="flex flex-col gap-6">
           {/* Top: Title + Stats */}
           <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">

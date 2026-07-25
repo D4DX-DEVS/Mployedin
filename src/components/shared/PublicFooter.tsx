@@ -107,15 +107,20 @@ export default function PublicFooter({ locale, variant = "full" }: PublicFooterP
       data-testid="site-footer"
       className="border-t border-white/10 bg-[hsl(var(--brand-blue-dark))] text-white"
     >
-      <div className={`container mx-auto px-4 sm:px-6 ${isEmbedded ? "py-6" : "py-8 lg:py-10"}`}>
-        <div className={`grid gap-10 ${isEmbedded ? "lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]" : "lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]"}`}>
-          <div className="space-y-5">
+      <div className={`container mx-auto px-4 sm:px-6 ${isEmbedded ? "py-5 sm:py-6" : "py-8 lg:py-10"}`}>
+        {/* One row on desktop: brand block + link columns beside it. Everything
+            that used to stack under the brand (address, email, socials) moved to
+            the bottom bar — that vertical stack was the whole height problem. */}
+        <div className={`grid gap-6 sm:gap-8 ${isEmbedded ? "sm:grid-cols-[minmax(0,1.5fr)_repeat(2,minmax(0,1fr))]" : "sm:grid-cols-2 lg:grid-cols-[minmax(0,1.6fr)_repeat(3,minmax(0,1fr))]"}`}>
+          <div className="space-y-4">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/55">
+              <p className={`text-[11px] font-semibold uppercase tracking-[0.28em] text-white/55 ${isEmbedded ? "hidden sm:block" : ""}`}>
                 {t("digitalPlatform")}
               </p>
               <Image src="/logo.png" alt="Mployedin" width={100} height={34} className="mt-3 h-auto w-[118px] object-contain brightness-0 invert" style={{ height: "auto" }} />
-              <p className="mt-4 max-w-xl text-sm leading-6 text-white/72 sm:text-[15px]">
+              {/* The blurb is the bulk of the embedded footer's height on a
+                  phone — dropped below sm, kept from sm up. */}
+              <p className={`mt-3 max-w-sm text-sm leading-6 text-white/72 ${isEmbedded ? "hidden sm:block" : ""}`}>
                 {t("description")}
               </p>
             </div>
@@ -150,91 +155,71 @@ export default function PublicFooter({ locale, variant = "full" }: PublicFooterP
                 </Link>
               )}
             </div>
-
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.9fr)]">
-              <div className="flex min-w-0 gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
-                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-white/80" />
-                <p className="text-sm leading-6 text-white/74">
-                  {COMPANY_ADDRESS}
-                </p>
-              </div>
-              <div className="flex min-w-0 gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
-                <Mail className="mt-0.5 h-4 w-4 shrink-0 text-white/80" />
-                <a
-                  href={mounted ? `mailto:${SUPPORT_EMAIL}` : undefined}
-                  className="min-w-0 text-sm leading-6 text-white/74 transition-colors [overflow-wrap:anywhere] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-                  suppressHydrationWarning
-                >
-                  {mounted ? SUPPORT_EMAIL : t("contactSupport")}
-                </a>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <span id={`footer-social-${locale}-${variant}`} className="text-sm font-medium text-white/78">
-                {t("followUs")}
-              </span>
-              <nav aria-labelledby={`footer-social-${locale}-${variant}`} className="flex items-center gap-3">
-                <a
-                  href={WHATSAPP_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="WhatsApp"
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-[rgba(37,211,102,0.38)] bg-white/[0.04] text-[#25D366] transition-all duration-200 hover:-translate-y-0.5 hover:border-[rgba(37,211,102,0.6)] hover:bg-[rgba(37,211,102,0.12)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-                >
-                  <WhatsAppIcon className="h-5 w-5" />
-                </a>
-                <a
-                  href={INSTAGRAM_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="Instagram"
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-[rgba(247,119,55,0.34)] bg-white/[0.04] text-white transition-all duration-200 hover:-translate-y-0.5 hover:border-[rgba(247,119,55,0.6)] hover:bg-[linear-gradient(135deg,rgba(64,93,230,0.12),rgba(225,48,108,0.16),rgba(252,176,69,0.18))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-                >
-                  <InstagramIcon className="h-5 w-5" />
-                </a>
-              </nav>
-            </div>
           </div>
 
-          <div className={`grid gap-8 ${isEmbedded ? "sm:grid-cols-2" : "sm:grid-cols-2 xl:grid-cols-3"}`}>
-            {linkSections.map((section) => (
-              <div key={section.title}>
-                <h3 className="text-sm font-semibold uppercase tracking-[0.22em] text-white/58">{section.title}</h3>
-                <ul className="mt-4 space-y-2.5">
-                  {section.links.map((link) => (
-                    <li key={`${section.title}-${link.href}`}>
-                      <Link href={link.href} className="text-sm leading-6 text-white/72 transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
-                        {link.label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
+          {/* Inside the app shell on a phone these columns duplicate the bottom
+              tab bar and the legal row below, so they only render from sm up. */}
+          {linkSections.map((section) => (
+            <div key={section.title} className={isEmbedded ? "hidden sm:block" : ""}>
+              <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-white/58 sm:tracking-[0.22em]">{section.title}</h3>
+              <ul className="mt-3 space-y-2">
+                {section.links.map((link) => (
+                  <li key={`${section.title}-${link.href}`}>
+                    <Link href={link.href} className="text-sm leading-6 text-white/72 transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
 
-        <div className="mt-6 flex flex-col gap-3 border-t border-white/10 pt-4 text-sm text-white/60 sm:flex-row sm:items-center sm:justify-between">
-          <p>
-            &copy; {year} MPLOYEDIN. {t("allRights")}
-          </p>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <Link href={`/${locale}/privacy`} className="transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
-              {t("privacy")}
-            </Link>
-            <Link href={`/${locale}/terms`} className="transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
-              {t("terms")}
-            </Link>
-            <Link href={`/${locale}/cookies`} className="transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
-              {t("cookies")}
-            </Link>
-            <Link href={`/${locale}/gdpr`} className="transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
-              {t("gdpr")}
-            </Link>
-            <Link href={`/${locale}/contact`} className="transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
-              {t("support")}
-            </Link>
+        <div className="mt-6 flex flex-col gap-4 border-t border-white/10 pt-4 text-sm text-white/60 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-x-6 gap-y-2 sm:flex-row sm:items-center">
+            <span className={`min-w-0 items-center gap-2 ${isEmbedded ? "hidden sm:inline-flex" : "inline-flex"}`}>
+              <MapPin className="h-4 w-4 shrink-0 text-white/70" />
+              {COMPANY_ADDRESS}
+            </span>
+            <span className="inline-flex min-w-0 items-center gap-2">
+              <Mail className="h-4 w-4 shrink-0 text-white/70" />
+              <a
+                href={mounted ? `mailto:${SUPPORT_EMAIL}` : undefined}
+                className="min-w-0 transition-colors [overflow-wrap:anywhere] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                suppressHydrationWarning
+              >
+                {mounted ? SUPPORT_EMAIL : t("contactSupport")}
+              </a>
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span id={`footer-social-${locale}-${variant}`} className="sr-only">
+              {t("followUs")}
+            </span>
+            <nav aria-labelledby={`footer-social-${locale}-${variant}`} className="flex items-center gap-2">
+              <a
+                href={WHATSAPP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="WhatsApp"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[rgba(37,211,102,0.38)] bg-white/[0.04] text-[#25D366] transition-all duration-200 hover:-translate-y-0.5 hover:border-[rgba(37,211,102,0.6)] hover:bg-[rgba(37,211,102,0.12)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              >
+                <WhatsAppIcon className="h-[18px] w-[18px]" />
+              </a>
+              <a
+                href={INSTAGRAM_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Instagram"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[rgba(247,119,55,0.34)] bg-white/[0.04] text-white transition-all duration-200 hover:-translate-y-0.5 hover:border-[rgba(247,119,55,0.6)] hover:bg-[linear-gradient(135deg,rgba(64,93,230,0.12),rgba(225,48,108,0.16),rgba(252,176,69,0.18))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              >
+                <InstagramIcon className="h-[18px] w-[18px]" />
+              </a>
+            </nav>
+            <p className="ms-auto lg:ms-0">
+              &copy; {year} MPLOYEDIN. {t("allRights")}
+            </p>
           </div>
         </div>
       </div>

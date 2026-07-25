@@ -37,7 +37,8 @@
     "superAgentWorkspace": "مساحة عمل الوكيل الرئيسي",
     "a11yNavigationMenu": "قائمة التنقل",
     "a11yOpenMenu": "فتح القائمة",
-    "a11yHome": "الصفحة الرئيسية لمنصة Mployedin"
+    "a11yHome": "الصفحة الرئيسية لمنصة Mployedin",
+    "more": "المزيد"
   },
   "auth": {
     "login": "تسجيل الدخول",

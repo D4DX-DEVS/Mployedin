@@ -225,7 +225,7 @@ export default function AdminApprovalsPage() {
   return (
     <div className="page-container space-y-6">
       {/* Hero */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
         <div className="max-w-3xl">
           <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
             <Sparkles className="h-3.5 w-3.5" />
@@ -235,19 +235,19 @@ export default function AdminApprovalsPage() {
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-4">
-          <div className="workspace-glass-panel rounded-2xl p-4 text-center">
+          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4 text-center">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("total")}</p>
             <p className="mt-2 text-2xl font-semibold text-foreground">{total.toLocaleString()}</p>
           </div>
-          <div className="workspace-glass-panel rounded-2xl p-4 text-center">
+          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4 text-center">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("active")}</p>
             <p className="mt-2 text-2xl font-semibold text-emerald-600 dark:text-emerald-300">{active}</p>
           </div>
-          <div className="workspace-glass-panel rounded-2xl p-4 text-center">
+          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4 text-center">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("pending")}</p>
             <p className="mt-2 text-2xl font-semibold text-amber-500 dark:text-amber-300">{pending}</p>
           </div>
-          <div className="workspace-glass-panel rounded-2xl p-4 text-center">
+          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4 text-center">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("thisPage")}</p>
             <p className="mt-2 text-2xl font-semibold text-foreground">{jobs.length}</p>
           </div>
@@ -310,7 +310,7 @@ export default function AdminApprovalsPage() {
           <p className="text-sm text-muted-foreground">{t("adjustFiltersMessage")}</p>
         </div>
       ) : (
-        <section className="workspace-panel-surface overflow-hidden rounded-[24px]">
+        <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-[24px]">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>

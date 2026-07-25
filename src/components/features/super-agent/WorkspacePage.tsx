@@ -67,7 +67,7 @@ export function SuperAgentPageIntro({
             <Sparkles className="h-3.5 w-3.5" />
             {eyebrow}
           </div>
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{title}</h1>
+          <h1 className="mt-4 text-xl sm:text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{title}</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">{description}</p>
         </div>
 
@@ -91,11 +91,11 @@ export function SuperAgentMetricsGrid({ items }: { items: SuperAgentMetricItem[]
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {items.map((item) => (
-        <div key={item.label} className="workspace-glass-panel rounded-2xl p-4">
+        <div key={item.label} className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{item.label}</p>
-              <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{item.value}</p>
+              <p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{item.value}</p>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.helper}</p>
             </div>
             <div className={cn("rounded-2xl p-2.5", getToneClassName(item.toneClassName))}>
@@ -110,7 +110,7 @@ export function SuperAgentMetricsGrid({ items }: { items: SuperAgentMetricItem[]
 
 export function SuperAgentSection({ eyebrow, title, description, actions, children, className }: SuperAgentSectionProps) {
   return (
-    <section className={cn("workspace-panel-surface rounded-[28px] p-4 sm:p-5", className)}>
+    <section className={cn("workspace-panel-surface rounded-2xl p-3.5 sm:rounded-[28px] sm:p-5", className)}>
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           {eyebrow ? <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{eyebrow}</p> : null}
@@ -126,7 +126,7 @@ export function SuperAgentSection({ eyebrow, title, description, actions, childr
 
 export function SuperAgentDataTableShell({ children }: { children: ReactNode }) {
   return (
-    <div className="workspace-panel-surface overflow-hidden rounded-[24px]">
+    <div className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-[24px]">
       {children}
     </div>
   );

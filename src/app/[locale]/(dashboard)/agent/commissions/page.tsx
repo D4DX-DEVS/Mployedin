@@ -159,11 +159,11 @@ export default function AgentCommissionsPage() {
   return (
     <div className="page-container space-y-6">
       {/* ── Hero ── */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary"><Sparkles className="h-3.5 w-3.5" />{t("agentWorkspace")}</div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("pageTitle")}</h1>
+            <h1 className="mt-4 text-xl sm:text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("pageTitle")}</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">{t("pageDescription")}</p>
           </div>
           <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:min-w-[260px]"><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("ledgerLabel")}</p><p className="mt-1 text-lg font-semibold text-foreground">{pagination.total} {t("commissionRecords")}</p><p className="text-xs text-muted-foreground">{t("ledgerDescription")}</p></div>
@@ -176,7 +176,7 @@ export default function AgentCommissionsPage() {
               { key: "paid", value: summary.paid, color: "text-status-selected", tone: "workspace-tone-emerald", icon: DollarSign },
               { key: "disputed", value: summary.disputed ?? 0, color: "text-status-rejected", tone: "workspace-tone-rose", icon: X },
             ].map(({ key, value, color, tone, icon: Icon }) => (
-              <div key={key} className="workspace-glass-panel rounded-2xl p-4">
+              <div key={key} className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
                 <div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t(`summaryCard${key.charAt(0).toUpperCase() + key.slice(1)}Label`)}</p><p className={`mt-3 text-2xl font-semibold tracking-tight ${color}`}>{formatCurrency(value, currencyCode)}</p><p className="mt-1 text-xs text-muted-foreground">{t(`summaryCard${key.charAt(0).toUpperCase() + key.slice(1)}Value`)}</p></div><div className={`rounded-2xl p-2.5 ${tone}`}><Icon className="h-5 w-5" /></div></div>
               </div>
             ))}
@@ -185,7 +185,7 @@ export default function AgentCommissionsPage() {
       </section>
 
       {/* ── Search & Filters ── */}
-      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5 space-y-5">
+      <section className="workspace-panel-surface rounded-2xl p-3.5 sm:rounded-[28px] sm:p-5 space-y-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("filterLedgerLabel")}</p>
@@ -301,7 +301,7 @@ export default function AgentCommissionsPage() {
       </section>
 
       {/* ── Results table ── */}
-      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
+      <section className="workspace-panel-surface rounded-2xl p-3.5 sm:rounded-[28px] sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("resultsLabel")}</p><h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("resultsHeading")}</h2></div><div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium"><ArrowRight className="h-3.5 w-3.5 text-primary" />{t("paginationSummary", { total: pagination.total, pages: pagination.totalPages })}</div></div>
         <TableToolbar
           onExportCsv={handleExportCsv}

@@ -98,7 +98,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const updated = await ExtractionDraft.findByIdAndUpdate(
     owned.draft._id,
     { $set: setOps },
-    { new: true }
+    { returnDocument: "after" }
   ).lean();
 
   // Auto-complete: if nothing is left pending, close the draft out so the

@@ -346,7 +346,7 @@ Analyse the skill gap. Return ONLY a JSON object (no markdown):
       },
     }
     ,
-    { new: true, lean: true }
+    { returnDocument: "after", lean: true }
   );
 
   const progressData = updatedSeeker?.skillsCoachProgress;

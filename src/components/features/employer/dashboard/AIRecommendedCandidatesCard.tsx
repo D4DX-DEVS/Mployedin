@@ -130,10 +130,10 @@ export function AIRecommendedCandidatesCard({
   return (
     <section
       aria-label={t("sectionLabel")}
-      className="workspace-panel-surface overflow-hidden rounded-[28px]"
+      className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-[28px]"
     >
       {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/60 px-5 py-4 sm:px-6">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/60 px-3.5 py-3 sm:px-6 sm:py-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50/80 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-700 dark:border-sky-500/30 dark:bg-sky-500/15 dark:text-sky-300">
@@ -151,7 +151,7 @@ export function AIRecommendedCandidatesCard({
       </div>
 
       {/* Band breakdown */}
-      <div className="space-y-2.5 px-4 py-4 sm:px-5 sm:py-5">
+      <div className="space-y-2.5 px-3 py-3 sm:px-5 sm:py-5">
         {bands.map((band) => {
           const Icon = band.icon;
           const bandHref = `${applicationsBase}?scoreMin=${band.scoreMin}&scoreMax=${band.scoreMax}`;

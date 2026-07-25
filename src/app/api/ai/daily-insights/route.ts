@@ -9,6 +9,7 @@ import { Employer } from "@/models/Employer";
 import { routeGenerate } from "@/lib/ai/router";
 import { redactPII } from "@/lib/ai/sanitize";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
+import logger from "@/lib/logger";
 
 /**
  * GET /api/ai/daily-insights
@@ -136,6 +137,27 @@ Return ONLY a JSON array (no markdown):
     },
   ];
 
+  const englishFallbackInsights = [
+    {
+      type: "tip",
+      title: "Update your profile",
+      message: "Review your summary, skills and preferences so we can match you with more relevant Gulf roles.",
+      action: "Update profile",
+    },
+    {
+      type: "opportunity",
+      title: "Review matched jobs",
+      message: "Open today's recommendations and focus on the roles with the highest match score.",
+      action: "View matched jobs",
+    },
+    {
+      type: "metric",
+      title: "Track your activity",
+      message: "Check your applications, interviews and profile views from the dashboard to plan your next step.",
+      action: "Open dashboard",
+    },
+  ];
+
   const localizeArabicInsightText = (value: unknown): string => {
     return String(value ?? "")
       .replace(/\d+/g, (match) => Number(match).toLocaleString("ar-SA"))
@@ -155,7 +177,20 @@ Return ONLY a JSON array (no markdown):
       };
     });
 
-  const text = await routeGenerate(prompt, "chat");
+  // The AI provider is a third party — a bad key, quota exhaustion or an outage
+  // must degrade to generic insights, never take the dashboard down with a 500.
+  let text: string;
+  try {
+    text = await routeGenerate(prompt, "chat");
+  } catch (err) {
+    logger.warn({ err }, "[daily-insights] AI provider unavailable, serving fallback insights");
+    return NextResponse.json({
+      insights: isArabic ? arabicFallbackInsights : englishFallbackInsights,
+      generatedAt: new Date().toISOString(),
+      degraded: true,
+    });
+  }
+
   let insights;
   try {
     const cleaned = redactPII(text).replace(/```json\n?|```\n?/g, "").trim();

@@ -240,9 +240,17 @@ export function JobSeekerHomePage({
         setStats(statsData);
         setJobs(jobsData?.jobs ?? []);
         const rawApps: Array<{ jobId?: { _id?: string; title?: string; employer?: { companyName?: string; logo?: string } }; status?: string }> = appsData?.applications ?? [];
+        // Two applications can point at the same job, which produced duplicate
+        // React keys in the "already applied" list. Keep the first per job.
+        const seenJobIds = new Set<string>();
         setAppliedJobs(
           rawApps
-            .filter((a) => a.jobId?._id)
+            .filter((a) => {
+              const id = a.jobId?._id ? String(a.jobId._id) : null;
+              if (!id || seenJobIds.has(id)) return false;
+              seenJobIds.add(id);
+              return true;
+            })
             .map((a) => ({
               _id: String(a.jobId!._id),
               title: String(a.jobId!.title ?? ""),
@@ -562,26 +570,29 @@ export function JobSeekerHomePage({
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
-                <Button asChild className="h-11 rounded-full px-5">
+              {/* Single row on phones: the primary CTA flexes, the two secondary
+                  actions shrink to icon-sized pills so nothing wraps to line 3. */}
+              <div className="flex items-center gap-2 sm:flex-wrap">
+                <Button asChild className="h-10 min-w-0 flex-1 rounded-full px-4 sm:h-11 sm:flex-none sm:px-5">
                   <Link href={`/${locale}/job-seeker/jobs`}>
-                    <Search className="me-2 h-4 w-4" />
-                    {t("hero.browseMatchingJobs")}
+                    <Search className="me-2 h-4 w-4 shrink-0" />
+                    <span className="truncate">{t("hero.browseMatchingJobs")}</span>
                   </Link>
                 </Button>
-                <Button asChild variant="outline" className="h-11 rounded-full px-5">
-                  <Link href={`/${locale}/job-seeker/preferences`}>
-                    <SlidersHorizontal className="me-2 h-4 w-4" />
-                    {t("hero.refine")}
+                <Button asChild variant="outline" className="h-10 shrink-0 rounded-full px-3 sm:h-11 sm:px-5">
+                  <Link href={`/${locale}/job-seeker/preferences`} aria-label={t("hero.refine")}>
+                    <SlidersHorizontal className="h-4 w-4 sm:me-2" />
+                    <span className="hidden sm:inline">{t("hero.refine")}</span>
                   </Link>
                 </Button>
                 <button
                   type="button"
                   onClick={openGuide}
-                  className="inline-flex h-11 items-center gap-2 rounded-full px-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                  aria-label={t("hero.aiSuggestions")}
+                  className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full border border-border/70 px-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:h-11 sm:border-0"
                 >
                   <Sparkles className="h-4 w-4" />
-                  {t("hero.aiSuggestions")}
+                  <span className="hidden sm:inline">{t("hero.aiSuggestions")}</span>
                 </button>
               </div>
             </div>
@@ -612,8 +623,8 @@ export function JobSeekerHomePage({
 
         <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.72fr)_340px] xl:items-start">
           <div className="min-w-0 space-y-5">
-            <section className="card-base overflow-hidden rounded-xl sm:rounded-[28px] p-4 sm:p-6">
-              <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <section className="card-base overflow-hidden rounded-xl p-4 max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:p-0 max-sm:shadow-none sm:rounded-[28px] sm:p-6">
+              <div className="mb-3 flex flex-col gap-3 sm:mb-4 lg:flex-row lg:items-end lg:justify-between">
                 <div className="min-w-0">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("recommendedJobs.eyebrow")}</div>
                   <h2 className="mt-1 text-lg font-semibold tracking-tight sm:text-2xl">{t("recommendedJobs.title")}</h2>
@@ -658,11 +669,11 @@ export function JobSeekerHomePage({
                       <Link
                         key={job._id}
                         href={`/${locale}/job-seeker/jobs/${job._id}`}
-                        className="group block overflow-hidden rounded-[22px] border border-border/60 bg-background px-3 py-4 transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_16px_32px_rgba(15,23,42,0.06)] sm:px-5"
+                        className="group block overflow-hidden rounded-[18px] border border-border/60 bg-background px-3 py-3 transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_16px_32px_rgba(15,23,42,0.06)] sm:rounded-[22px] sm:px-5 sm:py-4"
                       >
-                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                          <div className="flex min-w-0 gap-4">
-                            <Avatar className="h-12 w-12 rounded-2xl border border-border/60 bg-muted/20">
+                        <div className="flex flex-col gap-2.5 sm:gap-4 lg:flex-row lg:items-start lg:justify-between">
+                          <div className="flex min-w-0 gap-3 sm:gap-4">
+                            <Avatar className="h-10 w-10 shrink-0 rounded-2xl border border-border/60 bg-muted/20 sm:h-12 sm:w-12">
                               <AvatarImage src={job.employerId?.logo ?? ""} alt={companyName} />
                               <AvatarFallback className="rounded-2xl bg-primary/[0.08] font-semibold text-primary">
                                 {companyInitials}
@@ -684,14 +695,14 @@ export function JobSeekerHomePage({
                                 <span>{t("recommendedJobs.posted", { time: timeAgo(job.createdAt, locale, t) })}</span>
                               </div>
 
-                              <div className="mt-3">
-                                <h3 className="text-lg font-semibold leading-6 text-foreground transition-colors group-hover:text-primary">
+                              <div className="mt-2 sm:mt-3">
+                                <h3 className="text-base font-semibold leading-5 text-foreground transition-colors group-hover:text-primary sm:text-lg sm:leading-6">
                                   {job.title}
                                 </h3>
-                                <p className="mt-1 text-sm font-medium text-muted-foreground">{companyName}</p>
+                                <p className="mt-0.5 text-sm font-medium text-muted-foreground sm:mt-1">{companyName}</p>
                               </div>
 
-                              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+                              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground sm:mt-3 sm:gap-x-4 sm:gap-y-2 sm:text-sm">
                                 <span className="inline-flex items-center gap-1.5">
                                   <MapPin className="h-3.5 w-3.5" />
                                   {locationLabel}
@@ -710,10 +721,12 @@ export function JobSeekerHomePage({
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-between gap-2 sm:gap-4 border-t border-border/50 pt-4 lg:min-w-[156px] lg:flex-col lg:items-stretch lg:border-s lg:border-t-0 lg:ps-5 lg:pt-0">
-                            <div className="rounded-xl sm:rounded-[18px] border border-border/60 bg-muted/20 px-3 py-2.5 sm:px-4 sm:py-3 text-start" aria-label={t("recommendedJobs.matchScoreAria", { score: formatNumber(job.matchScore) })}>
-                              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{t("recommendedJobs.matchScore")}</div>
-                              <div className="mt-1 text-2xl font-semibold tracking-tight text-foreground">{formatNumber(job.matchScore)}%</div>
+                          {/* Phones get a single inline row (label · score · CTA); the
+                              stacked bordered score box is kept from sm up. */}
+                          <div className="flex items-center justify-between gap-2 border-t border-border/50 pt-2.5 sm:gap-4 sm:pt-4 lg:min-w-[156px] lg:flex-col lg:items-stretch lg:border-s lg:border-t-0 lg:ps-5 lg:pt-0">
+                            <div className="flex items-baseline gap-2 rounded-xl border-border/60 bg-muted/20 px-2.5 py-1.5 text-start sm:block sm:rounded-[18px] sm:border sm:px-4 sm:py-3" aria-label={t("recommendedJobs.matchScoreAria", { score: formatNumber(job.matchScore) })}>
+                              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground sm:text-[11px]">{t("recommendedJobs.matchScore")}</div>
+                              <div className="text-base font-semibold tracking-tight text-foreground sm:mt-1 sm:text-2xl">{formatNumber(job.matchScore)}%</div>
                             </div>
                             <span className="inline-flex items-center gap-1 text-sm font-semibold text-primary transition-all group-hover:gap-2 lg:justify-end">
                               {t("recommendedJobs.viewDetails")}
@@ -740,7 +753,7 @@ export function JobSeekerHomePage({
 
               {/* Already applied — shown below recommendations so the user understands why they may see fewer suggestions */}
               {appliedJobs.length > 0 && (
-                <div className="mt-5 rounded-lg sm:rounded-[22px] border border-border/50 bg-muted/20 px-3 py-4 sm:px-4">
+                <div className="mt-4 rounded-lg border border-border/50 bg-muted/20 px-3 py-3 sm:mt-5 sm:rounded-[22px] sm:px-4 sm:py-4">
                   <div className="mb-3 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                       <CheckCircle2 className="h-3.5 w-3.5 text-[hsl(var(--status-selected))]" />
@@ -805,16 +818,17 @@ export function JobSeekerHomePage({
               )}
             </section>
 
-            <section className="card-base overflow-hidden rounded-xl sm:rounded-[28px] p-4 sm:p-6">
-              <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <section className="card-base overflow-hidden rounded-xl p-4 max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:p-0 max-sm:shadow-none sm:rounded-[28px] sm:p-6">
+              <div className="mb-3 flex flex-col gap-3 sm:mb-5 sm:gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("priorityActions.eyebrow")}</div>
                   <h2 className="mt-1 text-lg font-semibold tracking-tight sm:text-2xl">{t("priorityActions.title")}</h2>
-                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  {/* Three lines of copy above the fold on a phone — kept from sm up. */}
+                  <p className="mt-1 hidden text-sm leading-6 text-muted-foreground sm:block">
                     {t("priorityActions.description")}
                   </p>
                 </div>
-                <Button type="button" variant="outline" className="h-11 rounded-full px-5" onClick={openGuide}>
+                <Button type="button" variant="outline" className="h-10 rounded-full px-5 sm:h-11" onClick={openGuide}>
                   <Sparkles className="me-2 h-4 w-4" />
                   {t("priorityActions.openAiSuggestions")}
                 </Button>
@@ -850,7 +864,7 @@ export function JobSeekerHomePage({
                   ))}
                 </div>
               ) : (
-                <div className="dashboard-surface-success rounded-[24px] border px-5 py-5 text-foreground">
+                <div className="dashboard-surface-success rounded-[18px] border px-4 py-4 text-foreground sm:rounded-[24px] sm:px-5 sm:py-5">
                   <div className="flex items-start gap-3">
                     <CheckCircle2 className="mt-0.5 h-5 w-5 text-[hsl(var(--status-selected))]" />
                     <div>
@@ -933,7 +947,9 @@ export function JobSeekerHomePage({
                 </div>
                 <CalendarDays className="h-4 w-4 text-primary" />
               </div>
-              <div className="grid grid-cols-2 gap-2.5">
+              {/* Phones get one compact row per stat (icon · label · value) instead of
+                  four tall 2-up tiles; the tile grid returns from sm up. */}
+              <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 sm:gap-2.5">
                 {quickLinks.map((item) => {
                   const Icon = item.icon;
 
@@ -941,13 +957,13 @@ export function JobSeekerHomePage({
                     <Link
                       key={item.label}
                       href={item.href}
-                      className="group flex flex-col gap-2 rounded-[20px] border border-border/60 bg-background/80 p-3.5 transition-colors hover:border-primary/40 hover:bg-muted/30"
+                      className="group flex flex-row items-center gap-2.5 rounded-xl border border-border/60 bg-background/80 px-3 py-2 transition-colors hover:border-primary/40 hover:bg-muted/30 sm:flex-col sm:items-start sm:gap-2 sm:rounded-[20px] sm:p-3.5"
                     >
-                      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary sm:h-9 sm:w-9">
                         <Icon className="h-4 w-4" />
                       </span>
-                      <span className="text-2xl font-semibold leading-none tracking-tight text-foreground">{item.value}</span>
-                      <span className="text-xs font-medium text-muted-foreground">{item.label}</span>
+                      <span className="order-3 text-base font-semibold leading-none tracking-tight text-foreground sm:order-none sm:text-2xl">{item.value}</span>
+                      <span className="min-w-0 flex-1 truncate text-xs font-medium text-muted-foreground sm:flex-none">{item.label}</span>
                     </Link>
                   );
                 })}

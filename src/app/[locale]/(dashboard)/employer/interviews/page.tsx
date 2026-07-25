@@ -385,7 +385,7 @@ export default function EmployerInterviewsPage() {
         }
       />
 
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
         <div className="mt-0 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {[
             { label: t("scheduled"), value: scheduledTotal, note: t("scheduledDesc"), icon: CalendarDays, tone: "text-status-applied", chip: "bg-status-applied-bg" },
@@ -393,7 +393,7 @@ export default function EmployerInterviewsPage() {
             { label: t("needsAttention"), value: attentionTotal, note: t("needsAttentionDesc"), icon: RotateCcw, tone: "text-status-shortlisted", chip: "bg-status-shortlisted-bg" },
             { label: t("confirmed"), value: confirmedTotal, note: t("confirmedDesc"), icon: Clock3, tone: "text-status-interview", chip: "bg-status-interview-bg" },
           ].map(({ label, value, note, icon: Icon, tone, chip }) => (
-            <div key={label} className="workspace-glass-panel rounded-2xl p-4">
+            <div key={label} className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
@@ -410,7 +410,7 @@ export default function EmployerInterviewsPage() {
       </section>
 
       {/* ── Filter Section ────────────────────────────────────────────── */}
-      <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
+      <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6">
         {/* Search + Toggle */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative flex-1 max-w-md">
@@ -582,7 +582,7 @@ export default function EmployerInterviewsPage() {
         </section>
       ) : (
       /* ── Interview Table ──────────────────────────────────────────── */
-      <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
+      <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6">
         <div className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("interviewList")}</p>
@@ -843,20 +843,20 @@ export default function EmployerInterviewsPage() {
               </DialogHeader>
               <div className="flex-1 space-y-4 overflow-y-auto px-6 py-5">
                 {/* Candidate Summary */}
-                <div className="workspace-glass-panel rounded-2xl p-4">
+                <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("candidateSummary")}</p>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">{prepBrief.candidateSummary}</p>
                 </div>
 
                 {/* Strategy */}
-                <div className="workspace-glass-panel rounded-2xl p-4">
+                <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("interviewStrategy")}</p>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">{prepBrief.interviewStrategy}</p>
                 </div>
 
                 {/* Time Allocation */}
                 {prepBrief.timeAllocation && (
-                  <div className="workspace-glass-panel rounded-2xl p-4">
+                  <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
                     <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("timeAllocation")} ({prepBrief.duration} {t("min")})</p>
                     <div className="mt-3 flex gap-1.5">
                       {Object.entries(prepBrief.timeAllocation).map(([key, mins]) => (
@@ -902,7 +902,7 @@ export default function EmployerInterviewsPage() {
                 </div>
 
                 {/* Suggested Questions */}
-                <div className="workspace-glass-panel rounded-2xl p-4">
+                <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("suggestedQuestions")}</p>
                   <div className="mt-3 space-y-3">
                     {prepBrief.suggestedQuestions.map((q, i) => (

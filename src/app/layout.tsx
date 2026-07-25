@@ -80,18 +80,17 @@ export default async function RootLayout({
   return (
     <html lang={locale} dir={dir} suppressHydrationWarning>
       <head>
-        {/* React only exempts *async* scripts from the "script tag inside
-            component" client-render warning (it treats them as hoistable
-            resources). Browsers ignore `async` on inline scripts — they still
-            execute immediately during HTML parsing, so the no-FOUC theme init
-            behavior is unchanged. suppressHydrationWarning is required because
-            browsers blank out the nonce content attribute after load, which
-            otherwise produces a server/client hydration mismatch. */}
+        {/* Plain inline script: parser-executed from the SSR'd <head> before
+            hydration => no theme FOUC. suppressHydrationWarning must sit on
+            the real <script> element: browsers blank the nonce content
+            attribute after parsing (CSP nonce-hiding), which otherwise
+            mismatches the client prop. next/script beforeInteractive can't be
+            used here — it wraps the code in a __next_s push and drops
+            suppressHydrationWarning into that payload, not onto the element. */}
         <script
           id="theme-init"
-          async
-          suppressHydrationWarning
           nonce={nonce}
+          suppressHydrationWarning
           dangerouslySetInnerHTML={{ __html: getThemeInitializationScript() }}
         />
       </head>
