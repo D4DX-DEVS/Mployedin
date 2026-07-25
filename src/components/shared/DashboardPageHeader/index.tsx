@@ -79,7 +79,7 @@ export function DashboardPageHeader({
                 <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                   {summary.label}
                 </p>
-                <div className="mt-0.5 text-lg font-semibold leading-6 text-foreground">{summary.value}</div>
+                <p className="mt-0.5 text-lg font-semibold leading-6 text-foreground">{summary.value}</p>
                 {summary.note && (
                   <div className="truncate text-xs text-muted-foreground">{summary.note}</div>
                 )}

@@ -11,13 +11,14 @@ The audited application is locally release-ready for the tested scope. All
 actionable defects found during this audit were implemented and retested:
 
 - TypeScript passes.
-- The complete Jest gate passes: 105 suites and 658 tests, with 4 suites and
+- The complete Jest gate passes: 105 suites and 659 tests, with 4 suites and
   32 tests intentionally skipped.
 - The clean Next.js 16.2.11 production build passes, including all 312 generated
   page entries and database index setup.
-- The final 390×844 crawl has 221 passes, 0 failures, and no horizontal
-  overflow. Sixteen dynamic patterns were skipped because no real record link
-  existed in the current database.
+- Deterministic seed data now covers all 16 formerly skipped dynamic patterns.
+  Their final production-browser matrix passes 32/32 checks (desktop and
+  mobile), with no horizontal overflow.
+- `npm audit` reports 0 vulnerabilities after the reviewed dependency upgrade.
 - All five supplied accounts authenticate and land in the correct role
   workspace.
 - Final targeted production checks have no failed requests, console errors, or
@@ -48,11 +49,12 @@ record IDs.
 | Check | Final result |
 |---|---|
 | `npx tsc --noEmit` | Pass |
-| Jest | 105 passed suites; 658 passed tests |
+| Jest | 105 passed suites; 659 passed tests |
 | Jest skips | 4 suites; 32 tests |
 | `npm run build` | Pass |
 | Generated/static page entries | 312/312 |
-| Final mobile crawl | 221 pass; 1 transient warning; 0 fail; 16 no-data skips |
+| Seeded dynamic routes | 32/32 pass; 16 routes at desktop and mobile |
+| Dependency audit | 0 vulnerabilities |
 | Final targeted production retest | Pass; 0 console/page/network errors |
 | `git diff --check` | Pass |
 
@@ -66,6 +68,8 @@ Raw evidence:
 
 - `audit-crawl-report-desktop.json`
 - `audit-crawl-report-mobile.json`
+- `audit-dynamic-fixtures.json`
+- `audit-dynamic-routes-report.json`
 
 ## Implemented fixes
 
@@ -135,6 +139,21 @@ Raw evidence:
   distinguish cancelled Auth.js navigation requests, and avoid resolving
   static create routes as dynamic IDs.
 
+### Dynamic-route fixtures and dependency upgrade
+
+- Added an idempotent database seeder for the 16 formerly untestable dynamic
+  route patterns. It reuses the dedicated audit users without overwriting their
+  business/profile details.
+- Added a reusable authenticated Playwright audit that checks every seeded URL
+  at 1366×900 and 390×844 and records status, redirects, headings, console
+  errors, failed requests, and horizontal overflow.
+- Fixed shared poster URLs being incorrectly redirected to login by adding the
+  poster share prefix to the public-route allowlist and regression coverage.
+- Upgraded `firebase-admin` from 13 to 14, pinned the MCP SDK to the exact
+  wrapper-compatible version, and overrode vulnerable transitive Hono and UUID
+  versions. Runtime imports, the complete test suite, TypeScript, the production
+  build, and both full and production-only vulnerability audits all pass.
+
 ## Role and page results
 
 - Admin: dashboard, jobs, reports, exhibition analytics, CMS, subscriptions,
@@ -156,12 +175,6 @@ Raw evidence:
 
 ## Non-blocking follow-up
 
-- Sixteen dynamic page patterns had no real linked record in the current data,
-  so the crawler correctly reported them as `SKIP`. Add deterministic fixtures
-  if every dynamic detail/edit route must run in CI.
-- `npm audit` reports 10 moderate findings and no high/critical findings. The
-  proposed automated remediations require breaking dependency changes; review
-  them in a dedicated upgrade branch rather than using `npm audit fix --force`.
 - Next.js warns about the custom `Cache-Control` header for `/_next/static/*`.
   Remove the override if the hosting platform already manages immutable static
   assets.
@@ -170,4 +183,3 @@ Raw evidence:
   credential to produce results.
 - Add Arabic full-route crawling and automated accessibility tooling (for
   example axe) as continuous quality gates.
-

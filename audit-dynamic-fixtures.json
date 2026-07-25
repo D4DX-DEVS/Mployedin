@@ -1,0 +1,34 @@
+{
+  "seedKey": "dynamic-routes-v1",
+  "generatedAt": "2026-07-25T20:29:30.873Z",
+  "routes": {
+    "anonymous": [
+      "/en/blog/audit-dynamic-routes",
+      "/en/companies/69d3974275de4cc2682b23a3",
+      "/en/poster/audit-dynamic-poster"
+    ],
+    "admin": [
+      "/en/admin/cms/static-pages/6a65182030c3bed5a57b1451/edit",
+      "/en/admin/jobs/6a65181f30c3bed5a57b144e/edit",
+      "/en/admin/target-management/6a65182030c3bed5a57b1453",
+      "/en/admin/targets/6a65182030c3bed5a57b1453"
+    ],
+    "super_agent": [
+      "/en/super-agent/agents/69eb12dc01a8b96f30764fd5",
+      "/en/super-agent/targets/6a65182030c3bed5a57b1453"
+    ],
+    "agent": [
+      "/en/agent/leads/6a65182030c3bed5a57b1455",
+      "/en/agent/targets/6a65182030c3bed5a57b1454"
+    ],
+    "employer": [
+      "/en/employer/applications/6a65181f30c3bed5a57b144f/panel",
+      "/en/employer/candidates/69d4dba075de4cc2682c3172",
+      "/en/employer/jobs/6a65181f30c3bed5a57b144e/edit",
+      "/en/employer/jobs/6a65181f30c3bed5a57b144e/poster"
+    ],
+    "job_seeker": [
+      "/en/job-seeker/applications/6a65181f30c3bed5a57b144f"
+    ]
+  }
+}
