@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
     const authCode = await McpAuthorizationCode.findOneAndUpdate(
       { codeHash, consumedAt: null },
       { $set: { consumedAt: new Date() } },
-      { new: false } // return the pre-update doc so we can still validate it below
+      { returnDocument: "before" } // return the pre-update doc so we can still validate it below
     ).lean();
 
     if (!authCode) return tokenError("invalid_grant", "Authorization code is invalid, expired, or already used");
@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
     const oldToken = await McpToken.findOneAndUpdate(
       { refreshTokenHash, isRevoked: false },
       { $set: { isRevoked: true } },
-      { new: false }
+      { returnDocument: "before" }
     ).lean();
 
     if (!oldToken) return tokenError("invalid_grant", "Refresh token is invalid or already used");
