@@ -164,8 +164,14 @@ export default function SuperAgentAgentsPage() {
       setCreateError(t("validateNameEmailPasswordRequired"));
       return;
     }
-    if (createForm.password.length < 8) {
-      setCreateError(t("validatePasswordMinLength"));
+    if (
+      createForm.password.length < 12 ||
+      !/[a-z]/.test(createForm.password) ||
+      !/[A-Z]/.test(createForm.password) ||
+      !/[0-9]/.test(createForm.password) ||
+      !/[^A-Za-z0-9]/.test(createForm.password)
+    ) {
+      setCreateError("Password must be 12+ characters and include upper-case, lower-case, numeric, and special characters");
       return;
     }
     setCreateLoading(true);

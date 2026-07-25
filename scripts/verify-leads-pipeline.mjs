@@ -4,6 +4,10 @@
  */
 
 const BASE = "http://localhost:3000";
+const SUPER_AGENT_PASSWORD = process.env.SEED_SUPER_AGENT_PASSWORD;
+if (!SUPER_AGENT_PASSWORD) {
+  throw new Error("SEED_SUPER_AGENT_PASSWORD is required");
+}
 
 function extractCookies(res, existing = "") {
   const setCookies = res.headers.getSetCookie?.() || [];
@@ -17,7 +21,7 @@ async function login() {
   const csrfRes = await fetch(`${BASE}/api/auth/csrf`);
   let cookies = extractCookies(csrfRes);
   const { csrfToken } = await csrfRes.json();
-  const body = new URLSearchParams({ csrfToken, email: "superagent@mployedin.com", password: "SuperAgent@1234", redirect: "false", json: "true" });
+  const body = new URLSearchParams({ csrfToken, email: "superagent@mployedin.com", password: SUPER_AGENT_PASSWORD, redirect: "false", json: "true" });
   const loginRes = await fetch(`${BASE}/api/auth/callback/credentials`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", Cookie: cookies }, body: body.toString(), redirect: "manual" });
   cookies = extractCookies(loginRes, cookies);
   const loc = loginRes.headers.get("location");

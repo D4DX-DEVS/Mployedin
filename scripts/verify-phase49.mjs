@@ -7,9 +7,7 @@
 
 import mongoose from "mongoose";
 
-const MONGODB_URI =
-  process.env.MONGODB_URI ||
-  "mongodb+srv://devd4dx:ssbrXQOYyQ3jA99K@developer.bakh5qk.mongodb.net/mployedin?retryWrites=true&w=majority&appName=Developer";
+const MONGODB_URI = process.env.MONGODB_URI;
 if (!MONGODB_URI) { console.error("MONGODB_URI not set"); process.exit(1); }
 
 await mongoose.connect(MONGODB_URI);

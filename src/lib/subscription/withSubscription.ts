@@ -109,29 +109,52 @@ export function withSubscription(
         );
       }
 
-      // Check monthly limit (0 = unlimited)
+      const usagePath = `usage.aiUsage.${check.feature}`;
+      const reserveFilter: Record<string, unknown> = { _id: sub._id };
       if (featureCfg.monthlyLimit > 0) {
-        const currentUsage = sub.usage?.aiUsage?.[check.feature] ?? 0;
-        if (currentUsage >= featureCfg.monthlyLimit) {
-          return NextResponse.json(
-            {
-              error: "LIMIT_EXCEEDED",
-              message: `Monthly limit reached for "${check.feature}"`,
-              feature: check.feature,
-              limit: featureCfg.monthlyLimit,
-              used: currentUsage,
-            },
-            { status: 429 },
-          );
-        }
+        reserveFilter.$expr = {
+          $lt: [{ $ifNull: [`$${usagePath}`, 0] }, featureCfg.monthlyLimit],
+        };
       }
 
-      // Atomic increment usage
-      await Subscription.findByIdAndUpdate(sub._id, {
-        $inc: { [`usage.aiUsage.${check.feature}`]: 1 },
-      });
+      // Reserve one unit in the same atomic operation that checks the boundary.
+      // This prevents parallel requests from all passing a stale read.
+      const reserved = await Subscription.findOneAndUpdate(
+        reserveFilter,
+        { $inc: { [usagePath]: 1 } },
+        { new: true },
+      );
 
-      return handler(req, ctx, params);
+      if (!reserved) {
+        const used = sub.usage?.aiUsage?.[check.feature] ?? featureCfg.monthlyLimit;
+        return NextResponse.json(
+          {
+            error: "LIMIT_EXCEEDED",
+            message: `Monthly limit reached for "${check.feature}"`,
+            feature: check.feature,
+            limit: featureCfg.monthlyLimit,
+            used,
+          },
+          { status: 429 },
+        );
+      }
+
+      try {
+        const response = await handler(req, ctx, params);
+        if (response.status < 200 || response.status >= 300) {
+          await Subscription.updateOne(
+            { _id: sub._id, [usagePath]: { $gt: 0 } },
+            { $inc: { [usagePath]: -1 } },
+          );
+        }
+        return response;
+      } catch (error) {
+        await Subscription.updateOne(
+          { _id: sub._id, [usagePath]: { $gt: 0 } },
+          { $inc: { [usagePath]: -1 } },
+        );
+        throw error;
+      }
     }
 
     // ── Numeric Limit Check ──────────────────────────────────────────────
@@ -160,8 +183,37 @@ export function withSubscription(
         return handler(req, ctx, params);
       }
 
-      // -1 = unlimited
-      if (entry.max !== -1 && entry.current >= entry.max) {
+      // Team membership is stateful and counted by its owning workflow.
+      if (check.feature === "teamMembers") {
+        if (entry.max !== -1 && entry.current >= entry.max) {
+          return NextResponse.json(
+            {
+              error: "LIMIT_EXCEEDED",
+              message: `Limit reached for "${check.feature}"`,
+              feature: check.feature,
+              limit: entry.max,
+              used: entry.current,
+            },
+            { status: 429 },
+          );
+        }
+        return handler(req, ctx, params);
+      }
+
+      const usagePath = `usage.${check.feature}`;
+      const reserveFilter: Record<string, unknown> = { _id: sub._id };
+      if (entry.max !== -1) {
+        reserveFilter.$expr = {
+          $lt: [{ $ifNull: [`$${usagePath}`, 0] }, entry.max],
+        };
+      }
+      const reserved = await Subscription.findOneAndUpdate(
+        reserveFilter,
+        { $inc: { [usagePath]: 1 } },
+        { new: true },
+      );
+
+      if (!reserved) {
         return NextResponse.json(
           {
             error: "LIMIT_EXCEEDED",
@@ -174,19 +226,22 @@ export function withSubscription(
         );
       }
 
-      const res = await handler(req, ctx, params);
-
-      // Count successful create/apply actions toward the monthly usage so the
-      // numeric limits actually enforce on subsequent requests. The usage
-      // counters reset monthly (see helpers.nextUsageReset). `teamMembers` is
-      // stateful and tracked elsewhere, so it is never incremented here.
-      if (res.status >= 200 && res.status < 300 && check.feature !== "teamMembers") {
-        await Subscription.findByIdAndUpdate(sub._id, {
-          $inc: { [`usage.${check.feature}`]: 1 },
-        });
+      try {
+        const response = await handler(req, ctx, params);
+        if (response.status < 200 || response.status >= 300) {
+          await Subscription.updateOne(
+            { _id: sub._id, [usagePath]: { $gt: 0 } },
+            { $inc: { [usagePath]: -1 } },
+          );
+        }
+        return response;
+      } catch (error) {
+        await Subscription.updateOne(
+          { _id: sub._id, [usagePath]: { $gt: 0 } },
+          { $inc: { [usagePath]: -1 } },
+        );
+        throw error;
       }
-
-      return res;
     }
 
     // ── Boolean Toggle Check ─────────────────────────────────────────────

@@ -11,7 +11,7 @@
  * Prerequisites:
  *   - App running on localhost:3000
  *   - Kerala seed data present (run: node --env-file=.env scripts/seed-kerala-team.mjs)
- *   - Admin account: admin@mployedin.com / Admin@1234
+ *   - SEED_ADMIN_PASSWORD set in the environment
  *
  * Usage:
  *   node --env-file=.env scripts/test-invoice-commission-e2e.mjs
@@ -21,9 +21,10 @@ import mongoose from "mongoose";
 
 const BASE = "http://localhost:3000";
 const MONGODB_URI = process.env.MONGODB_URI;
+const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD;
 
-if (!MONGODB_URI) {
-  console.error("❌ MONGODB_URI is not set. Run: node --env-file=.env scripts/test-invoice-commission-e2e.mjs");
+if (!MONGODB_URI || !ADMIN_PASSWORD) {
+  console.error("❌ MONGODB_URI and SEED_ADMIN_PASSWORD must be set.");
   process.exit(1);
 }
 
@@ -228,7 +229,7 @@ async function main() {
   console.log("▶ TEST 1: Admin creates recruitment invoice (issued)");
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
-  const adminAuth = await login("admin@mployedin.com", "Admin@1234");
+  const adminAuth = await login("admin@mployedin.com", ADMIN_PASSWORD);
   check("Admin login successful", adminAuth.session?.user?.role === "admin", `got: ${adminAuth.session?.user?.role}`);
 
   const invoicePayload = {

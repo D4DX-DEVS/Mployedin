@@ -15,12 +15,14 @@ import { autoAssignDefaultPlan } from "@/lib/subscription/autoAssign";
 import { uploadBuffer } from "@/lib/storage/spaces";
 import { hashOtp } from "@/lib/auth/emailVerification";
 import logger from "@/lib/logger";
+import { getClientIp } from "@/lib/security/clientIp";
+import { strongPasswordSchema } from "@/lib/security/passwordPolicy";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   // Rate limit registration attempts
-  const ip = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown";
+  const ip = getClientIp(req.headers);
   const { allowed } = await checkRateLimit(`auth-register:${ip}`, { ...RATE_LIMIT_CONFIGS.auth, failClosed: true });
   if (!allowed) {
     return NextResponse.json(
@@ -30,6 +32,9 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    if (!(req.headers.get("content-type") ?? "").toLowerCase().startsWith("multipart/form-data")) {
+      return NextResponse.json({ message: "Content-Type must be multipart/form-data." }, { status: 415 });
+    }
     await connectDB();
     const isLocalE2eHost = ["localhost", "127.0.0.1"].includes(req.nextUrl.hostname);
     const allowE2eVerificationToken =
@@ -92,6 +97,13 @@ export async function POST(req: NextRequest) {
 
     if (!companyName || !contactEmail || !password || !contactName) {
       return NextResponse.json({ message: "Required fields missing." }, { status: 400 });
+    }
+    const passwordResult = strongPasswordSchema.safeParse(password);
+    if (!passwordResult.success) {
+      return NextResponse.json(
+        { message: passwordResult.error.issues[0]?.message ?? "Invalid password." },
+        { status: 400 },
+      );
     }
 
     // Check duplicate

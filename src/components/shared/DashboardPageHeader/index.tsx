@@ -79,9 +79,9 @@ export function DashboardPageHeader({
                 <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                   {summary.label}
                 </p>
-                <p className="mt-0.5 text-lg font-semibold leading-6 text-foreground">{summary.value}</p>
+                <div className="mt-0.5 text-lg font-semibold leading-6 text-foreground">{summary.value}</div>
                 {summary.note && (
-                  <p className="truncate text-xs text-muted-foreground">{summary.note}</p>
+                  <div className="truncate text-xs text-muted-foreground">{summary.note}</div>
                 )}
               </div>
             )}
@@ -124,13 +124,13 @@ export function DashboardPageHeader({
                     {metric.label}
                   </p>
                   <div className="mt-1 flex min-w-0 items-baseline gap-2">
-                    <p className="truncate text-2xl font-semibold tracking-tight text-foreground">
+                    <div className="truncate text-2xl font-semibold tracking-tight text-foreground">
                       {metric.value}
-                    </p>
+                    </div>
                     {metric.note && (
-                      <p className="hidden truncate text-xs text-muted-foreground sm:block">
+                      <div className="hidden truncate text-xs text-muted-foreground sm:block">
                         {metric.note}
-                      </p>
+                      </div>
                     )}
                   </div>
                 </div>

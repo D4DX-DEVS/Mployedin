@@ -12,11 +12,12 @@ import { validateBody } from "@/lib/validators";
 import { jobSeekerRegisterSchema } from "@/lib/validators/misc";
 import { hashOtp } from "@/lib/auth/emailVerification";
 import logger from "@/lib/logger";
+import { getClientIp } from "@/lib/security/clientIp";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
-  const ip = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown";
+  const ip = getClientIp(req.headers);
   const { allowed } = await checkRateLimit(`auth-register:${ip}`, { ...RATE_LIMIT_CONFIGS.auth, failClosed: true });
   if (!allowed) {
     return NextResponse.json({ message: "Too many requests. Please try again later." }, { status: 429 });

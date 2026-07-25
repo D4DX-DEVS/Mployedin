@@ -138,10 +138,10 @@ export default function SuperAgentTargetReportPage() {
       if (res.ok) {
         setData(await res.json());
       } else {
-        toast.error(t("failedLoadReport"));
+        toast.error(t("failedToLoadReport"));
       }
     } catch {
-      toast.error(t("failedLoadReport"));
+      toast.error(t("failedToLoadReport"));
     } finally {
       setLoading(false);
     }

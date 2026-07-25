@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import mongoose from "mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import connectDB from "@/lib/db/mongoose";
 import SubscriptionPlan from "@/models/SubscriptionPlan";
@@ -43,23 +44,45 @@ async function patchHandler(
   await connectDB();
   const body = await validateBody(req, subscriptionPlanUpdateSchema);
 
-  const plan = await SubscriptionPlan.findById(params?.id);
+  let plan = await SubscriptionPlan.findById(params?.id);
   if (!plan) {
     return NextResponse.json({ error: "Plan not found" }, { status: 404 });
   }
 
-  // If marking as default, unset other defaults for this targetRole
   const targetRole = body.targetRole ?? plan.targetRole;
-  if (body.isDefault) {
-    await SubscriptionPlan.updateMany(
-      { targetRole, isDefault: true, _id: { $ne: plan._id } },
-      { $set: { isDefault: false } },
-    );
-  }
-
   const before = plan.toObject();
-  Object.assign(plan, body);
-  await plan.save();
+  const session = await mongoose.startSession();
+  try {
+    await session.withTransaction(async () => {
+      if (body.isDefault) {
+        await SubscriptionPlan.updateMany(
+          { targetRole, isDefault: true, _id: { $ne: plan!._id } },
+          { $set: { isDefault: false } },
+          { session },
+        );
+      }
+      const updated = await SubscriptionPlan.findByIdAndUpdate(
+        plan!._id,
+        { $set: body },
+        { new: true, runValidators: true, session },
+      );
+      if (!updated) throw new Error("PLAN_NOT_FOUND_DURING_UPDATE");
+      plan = updated;
+    });
+  } catch (error: unknown) {
+    if (error && typeof error === "object" && "code" in error && (error as { code: number }).code === 11000) {
+      return NextResponse.json(
+        { error: "Another default plan was selected concurrently. Please retry." },
+        { status: 409 },
+      );
+    }
+    if (error instanceof Error && error.message === "PLAN_NOT_FOUND_DURING_UPDATE") {
+      return NextResponse.json({ error: "Plan not found" }, { status: 404 });
+    }
+    throw error;
+  } finally {
+    await session.endSession();
+  }
 
   await logActivity({
     ...actorFromCtx(ctx),

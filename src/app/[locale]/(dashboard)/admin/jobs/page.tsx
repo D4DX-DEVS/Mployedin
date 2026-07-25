@@ -347,7 +347,7 @@ export default function AdminJobsPage() {
           note: t("acrossPages", { totalPages }),
         }}
         actions={(
-          <Link href="./new">
+          <Link href={`/${locale}/admin/jobs/new`}>
             <Button size="lg" className="h-10 gap-2 rounded-xl px-4">
               <Plus className="h-4 w-4" />
               {t("postJob")}

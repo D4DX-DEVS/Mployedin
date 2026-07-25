@@ -5,6 +5,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import McpClient from "@/models/McpClient";
 import { checkRateLimit } from "@/lib/security/rateLimit";
 import { validateBody } from "@/lib/validators";
+import { getClientIp } from "@/lib/security/clientIp";
 
 const registerSchema = z.object({
   redirect_uris: z.array(z.string().url()).min(1).max(10),
@@ -21,8 +22,8 @@ const registerSchema = z.object({
  * connect). Public-client-only: PKCE (S256) at /authorize + /token replaces a
  * client_secret, since ChatGPT's infra can't keep one confidential.
  */
-export async function POST(req: NextRequest) {
-  const ip = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown";
+async function register(req: NextRequest) {
+  const ip = getClientIp(req.headers);
   const rl = await checkRateLimit(ip, { limit: 10, windowSec: 3600, prefix: "mcp-register" });
   if (!rl.allowed) {
     return NextResponse.json(
@@ -73,4 +74,16 @@ export async function POST(req: NextRequest) {
     },
     { status: 201 }
   );
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    return await register(req);
+  } catch (error) {
+    if (error instanceof NextResponse) return error;
+    return NextResponse.json(
+      { error: "server_error", error_description: "Registration failed" },
+      { status: 500 },
+    );
+  }
 }

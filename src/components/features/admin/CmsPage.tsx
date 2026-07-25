@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
@@ -88,10 +88,15 @@ export default function CmsPage({
   const [showAdd, setShowAdd] = useState(false);
   const [editItem, setEditItem] = useState<Record<string, unknown> | null>(null);
 
-  const filterFields: CmsFilterField[] = filterFieldsProp ?? [
-    { type: "search", placeholder: `Search ${title.toLowerCase()}…` },
-    { type: "status", options: DEFAULT_STATUS_OPTIONS },
-  ];
+  const filterFields = useMemo<CmsFilterField[]>(
+    () => filterFieldsProp ?? [
+      { type: "search", placeholder: `Search ${title.toLowerCase()}…` },
+      { type: "status", options: DEFAULT_STATUS_OPTIONS },
+    ],
+    [filterFieldsProp, title],
+  );
+  const requestGeneration = useRef(0);
+  const activeRequest = useRef<AbortController | null>(null);
 
   const hasActiveFilters = cmsFiltersAreActive(filterValues, filterFields);
 
@@ -101,6 +106,10 @@ export default function CmsPage({
   }, [resetPage]);
 
   const fetchItems = useCallback(async () => {
+    const generation = ++requestGeneration.current;
+    activeRequest.current?.abort();
+    const controller = new AbortController();
+    activeRequest.current = controller;
     setLoading(true);
     try {
       const params = buildCmsQueryParams(
@@ -108,20 +117,33 @@ export default function CmsPage({
         filterFields,
         new URLSearchParams({ page: String(page), limit: String(limit) })
       );
-      const r = await fetch(`${apiUrl}?${params}`);
+      const r = await fetch(`${apiUrl}?${params}`, { signal: controller.signal });
+      if (!r.ok) throw new Error(`Failed to load ${title}: HTTP ${r.status}`);
       const d = await r.json();
+      if (generation !== requestGeneration.current) return;
       setItems(d.items ?? []);
       updateTotal(d.pagination?.total ?? 0);
     } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
       console.error("Failed to fetch CMS items:", err);
     } finally {
-      setLoading(false);
+      if (generation === requestGeneration.current) setLoading(false);
     }
-  }, [apiUrl, page, limit, filterValues, filterFields, updateTotal]);
+  }, [apiUrl, page, limit, filterValues, filterFields, title, updateTotal]);
 
   useEffect(() => {
-    fetchItems();
+    void fetchItems();
+    return () => activeRequest.current?.abort();
   }, [fetchItems]);
+
+  const normalizePayload = (values: Record<string, string>) => {
+    const payload: Record<string, unknown> = { ...values };
+    if (payload.isActive === "") delete payload.isActive;
+    else if (payload.isActive !== undefined) payload.isActive = payload.isActive === "true";
+    if (payload.sortOrder !== undefined) payload.sortOrder = parseInt(String(payload.sortOrder)) || 0;
+    if (payload.rating !== undefined) payload.rating = parseInt(String(payload.rating)) || 5;
+    return payload;
+  };
 
   const handleFilterChange = (next: CmsFilterValues) => {
     setFilterValues(next);
@@ -129,10 +151,7 @@ export default function CmsPage({
   };
 
   const handleCreate = async (values: Record<string, string>) => {
-    const payload: Record<string, unknown> = { ...values };
-    if (payload.isActive !== undefined) payload.isActive = payload.isActive === "true";
-    if (payload.sortOrder !== undefined) payload.sortOrder = parseInt(String(payload.sortOrder)) || 0;
-    if (payload.rating !== undefined) payload.rating = parseInt(String(payload.rating)) || 5;
+    const payload = normalizePayload(values);
     const r = await fetch(apiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -142,15 +161,12 @@ export default function CmsPage({
       const err = await r.json();
       throw new Error(err.error || "Failed to create");
     }
-    fetchItems();
+    await fetchItems();
   };
 
   const handleUpdate = async (values: Record<string, string>) => {
     if (!editItem) return;
-    const payload: Record<string, unknown> = { ...values };
-    if (payload.isActive !== undefined) payload.isActive = payload.isActive === "true";
-    if (payload.sortOrder !== undefined) payload.sortOrder = parseInt(String(payload.sortOrder)) || 0;
-    if (payload.rating !== undefined) payload.rating = parseInt(String(payload.rating)) || 5;
+    const payload = normalizePayload(values);
     const r = await fetch(`${apiUrl}/${editItem._id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -161,7 +177,7 @@ export default function CmsPage({
       throw new Error(err.error || "Failed to update");
     }
     setEditItem(null);
-    fetchItems();
+    await fetchItems();
   };
 
   const handleDelete = async (id: string) => {
@@ -173,7 +189,8 @@ export default function CmsPage({
       toast.error(err.error || "Failed to delete");
       return;
     }
-    fetchItems();
+    setItems((current) => current.filter((item) => String(item._id) !== id));
+    await fetchItems();
   };
 
   const toStringRecord = (item: Record<string, unknown>): Record<string, string> => {
@@ -320,6 +337,7 @@ export default function CmsPage({
                                 : setEditItem(item)
                             }
                             title={t("edit")}
+                            aria-label={t("edit")}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -330,6 +348,7 @@ export default function CmsPage({
                             size="icon"
                             onClick={() => handleDelete(String(item._id))}
                             title={t("delete")}
+                            aria-label={t("delete")}
                             className="text-destructive hover:text-destructive"
                           >
                             <Trash2 className="h-4 w-4" />

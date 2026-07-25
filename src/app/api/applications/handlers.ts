@@ -596,14 +596,22 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   try {
     if (existing && existing.status === "withdrawn") {
       // Re-apply: update the withdrawn application instead of creating a duplicate
-      application = await Application.findByIdAndUpdate(
-        existing._id,
+      application = await Application.findOneAndUpdate(
+        { _id: existing._id, status: "withdrawn" },
         {
-          ...applicationData,
+          $set: applicationData,
+          $unset: {
+            withdrawalReason: 1,
+            withdrawalNote: 1,
+            rejectionReason: 1,
+          },
           $push: { statusHistory: { status: "applied", changedAt: new Date(), note: "Re-applied after withdrawal" } },
         },
-        { new: true }
+        { new: true, runValidators: true }
       );
+      if (!application) {
+        return NextResponse.json({ error: "Already applied to this job" }, { status: 409 });
+      }
     } else {
       application = await Application.create({
         ...applicationData,

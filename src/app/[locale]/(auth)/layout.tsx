@@ -11,6 +11,7 @@ import {
   Users,
 } from "lucide-react";
 import { SessionWrapper } from "@/components/shared/SessionWrapper";
+import { ThemeToggle } from "@/components/shared/ThemeToggle";
 
 export default async function AuthLayout({
   children,
@@ -124,6 +125,9 @@ export default async function AuthLayout({
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col bg-background/92 px-3 py-3 sm:px-6 sm:py-4 lg:w-[540px] lg:flex-none xl:w-[580px]">
+          <div className="flex justify-end">
+            <ThemeToggle />
+          </div>
           <div className="mx-auto flex w-full max-w-md flex-1 items-center">
             <div className="w-full rounded-2xl border border-border/60 bg-background/86 p-4 shadow-[0_30px_80px_-42px_rgba(15,23,42,0.35)] backdrop-blur dark:shadow-[0_30px_80px_-42px_rgba(0,0,0,0.55)] sm:rounded-[26px] sm:p-5 md:p-6">
               <SessionWrapper disableIdleTimeout>

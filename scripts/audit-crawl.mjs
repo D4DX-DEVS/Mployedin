@@ -27,13 +27,21 @@ const REQUESTED_GROUPS = process.env.AUDIT_GROUPS
   ? new Set(process.env.AUDIT_GROUPS.split(",").map((group) => group.trim()).filter(Boolean))
   : null;
 const ROLES = {
-  admin:       { email: "admin@mployedin.com",      pw: "Admin@1234",      prefix: "/en/admin" },
-  super_agent: { email: "superagent@mployedin.com", pw: "SuperAgent@1234", prefix: "/en/super-agent" },
-  agent:       { email: "agent@mployedin.com",       pw: "Agent@1234",      prefix: "/en/agent" },
-  employer:    { email: "employer@mployedin.com",    pw: "Employer@1234",   prefix: "/en/employer" },
-  job_seeker:  { email: "jobseeker@mployedin.com",   pw: "JobSeeker@1234",  prefix: "/en/job-seeker" },
+  admin:       { email: "admin@mployedin.com",      pw: process.env.SEED_ADMIN_PASSWORD,       prefix: "/en/admin" },
+  super_agent: { email: "superagent@mployedin.com", pw: process.env.SEED_SUPER_AGENT_PASSWORD, prefix: "/en/super-agent" },
+  agent:       { email: "agent@mployedin.com",       pw: process.env.SEED_AGENT_PASSWORD,       prefix: "/en/agent" },
+  employer:    { email: "employer@mployedin.com",    pw: process.env.SEED_EMPLOYER_PASSWORD,    prefix: "/en/employer" },
+  job_seeker:  { email: "jobseeker@mployedin.com",   pw: process.env.SEED_JOB_SEEKER_PASSWORD,  prefix: "/en/job-seeker" },
 };
-const SHARED = ["/en/profile", "/en/settings", "/en/notifications", "/en/account"];
+for (const [role, config] of Object.entries(ROLES)) {
+  if (!config.pw) throw new Error(`Seed password is required for ${role}`);
+}
+const SHARED = ["/en/notifications"];
+const AUTHENTICATED_STANDALONE = new Set([
+  "/en/mcp-authorize",
+  "/en/onboarding",
+  "/en/verify-oauth-2fa",
+]);
 
 // ── enumerate all page routes from src/app ──────────────────────────────────
 function walk(dir) {
@@ -85,7 +93,14 @@ async function logout(page) {
 
 async function visit(page, prefix, path) {
   const consoleErrors = [];
-  const onC = (m) => { if (m.type() === "error") consoleErrors.push(m.text().slice(0, 140)); };
+  const onC = (m) => {
+    if (m.type() !== "error") return;
+    const message = m.text();
+    // Auth.js requests from the page being left are intentionally aborted by
+    // Playwright navigation and do not represent an error on the destination.
+    if (message.includes("Failed to fetch. Read more at https://errors.authjs.dev")) return;
+    consoleErrors.push(message.slice(0, 140));
+  };
   const onE = (e) => consoleErrors.push("PAGEERROR: " + String(e).slice(0, 140));
   page.on("console", onC); page.on("pageerror", onE);
   let status = 0, verdict = "PASS", notes = [], finalPath = path, links = [], layout = null;
@@ -196,7 +211,9 @@ async function crawlRole(browser, role) {
     for (const h of res.links) {
       const p = h.startsWith("http") ? (h.startsWith(BASE) ? new URL(h).pathname : null) : (h.startsWith("/") ? h : null);
       if (!p) continue;
-      for (const d of dynamics) if (!d.done && d.re.test(p)) concreteFound.add(p + "||" + d.pat);
+      for (const d of dynamics) {
+        if (!d.done && d.re.test(p) && !statics.includes(p)) concreteFound.add(p + "||" + d.pat);
+      }
     }
   }
   // visit one concrete instance per dynamic pattern
@@ -227,6 +244,7 @@ async function crawlAnonymous(browser) {
   const routes = allRoutes.filter((route) =>
     !dashboardPrefixes.some((prefix) => route === prefix || route.startsWith(`${prefix}/`))
     && !SHARED.includes(route)
+    && !AUTHENTICATED_STANDALONE.has(route)
   );
   const statics = routes.filter((route) => !isDynamic(route));
   const dynamics = routes.filter(isDynamic).map((route) => ({ pat: route, re: dynToRe(route) }));
@@ -246,7 +264,9 @@ async function crawlAnonymous(browser) {
         : (href.startsWith("/") ? href : null);
       if (!path) continue;
       for (const dynamic of dynamics) {
-        if (dynamic.re.test(path)) concreteFound.add(`${path}||${dynamic.pat}`);
+        if (dynamic.re.test(path) && !statics.includes(path)) {
+          concreteFound.add(`${path}||${dynamic.pat}`);
+        }
       }
     }
   }

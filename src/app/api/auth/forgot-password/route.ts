@@ -7,6 +7,7 @@ import { logActivity } from "@/lib/audit/log";
 import { sendEmail, EmailTemplates } from "@/lib/communications/email";
 import { z } from "zod";
 import logger from "@/lib/logger";
+import { getClientIp } from "@/lib/security/clientIp";
 
 const schema = z.object({
   email: z.string().email().max(254).trim().toLowerCase(),
@@ -17,7 +18,7 @@ const schema = z.object({
  * Generate a password reset token and send reset email.
  */
 export async function POST(req: NextRequest) {
-  const ip = req.headers.get("x-forwarded-for") ?? "unknown";
+  const ip = getClientIp(req.headers);
   const { allowed } = await checkRateLimit(`forgot-pwd:${ip}`, { limit: 5, windowSec: 300, prefix: "fpwd", failClosed: true });
   if (!allowed) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });

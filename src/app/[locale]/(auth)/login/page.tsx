@@ -151,6 +151,10 @@ export default function LoginPage() {
           setError(t("accountLocked"));
           return;
         }
+        if (code === "login_rate_limited") {
+          setError(t("loginRateLimited"));
+          return;
+        }
         setError(t("invalidCredentials"));
         return;
       }

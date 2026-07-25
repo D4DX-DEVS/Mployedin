@@ -4,7 +4,11 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 
-const MONGODB_URI = "mongodb+srv://devd4dx:ssbrXQOYyQ3jA99K@developer.bakh5qk.mongodb.net/mployedin?retryWrites=true&w=majority&appName=Developer";
+const MONGODB_URI = process.env.MONGODB_URI;
+const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD;
+if (!MONGODB_URI || !ADMIN_PASSWORD) {
+  throw new Error("MONGODB_URI and SEED_ADMIN_PASSWORD are required");
+}
 
 // Same schema as models/User.ts
 const UserSchema = new mongoose.Schema(
@@ -29,7 +33,7 @@ const User = mongoose.models.User || mongoose.model("User", UserSchema);
 await mongoose.connect(MONGODB_URI);
 
 const email = "admin@mployedin.com";
-const password = "Admin@1234";
+const password = ADMIN_PASSWORD;
 
 console.log("--- Testing authorize() logic ---");
 

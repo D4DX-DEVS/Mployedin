@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { Ratelimit as UpstashRatelimit } from "@upstash/ratelimit";
 import logger from "@/lib/logger";
+import { getClientIp } from "@/lib/security/clientIp";
 
 interface RateLimitEntry {
   count: number;
@@ -172,7 +173,7 @@ export function withRateLimit(
   config: RateLimitConfig = DEFAULTS.api
 ) {
   return async (req: NextRequest, ...args: unknown[]): Promise<NextResponse> => {
-    const ip = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown";
+    const ip = getClientIp(req.headers);
     const { allowed, remaining, resetAt } = await checkRateLimit(ip, config);
 
     if (!allowed) {
@@ -209,7 +210,7 @@ export async function checkRateLimitDual(
   userId: string | undefined,
   config: RateLimitConfig = DEFAULTS.api
 ): Promise<RateLimitResult> {
-  const ip = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown";
+  const ip = getClientIp(req.headers);
 
   // IP-based check
   const ipResult = await checkRateLimit(ip, config);

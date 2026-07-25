@@ -240,7 +240,10 @@ export default function EmployerRegisterPage() {
     if (!step3.contactEmail.trim()) { setError(t("validation.workEmailRequired")); return false; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(step3.contactEmail)) { setError(t("validation.validEmailRequired")); return false; }
     if (!step3.password) { setError(t("validation.passwordRequired")); return false; }
-    if (step3.password.length < 8) { setError(t("validation.passwordTooShort")); return false; }
+    if (step3.password.length < 12 || !/[a-z]/.test(step3.password) || !/[A-Z]/.test(step3.password) || !/[0-9]/.test(step3.password) || !/[^A-Za-z0-9]/.test(step3.password)) {
+      setError("Password must be 12+ characters and include upper-case, lower-case, numeric, and special characters");
+      return false;
+    }
     if (step3.password !== step3.confirmPassword) { setError(t("validation.passwordMismatch")); return false; }
     if (!agreedToTerms) { setError(t("validation.termsRequired")); return false; }
     setError("");

@@ -1,7 +1,11 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 
-const MONGODB_URI = "mongodb+srv://devd4dx:ssbrXQOYyQ3jA99K@developer.bakh5qk.mongodb.net/mployedin?retryWrites=true&w=majority&appName=Developer";
+const MONGODB_URI = process.env.MONGODB_URI;
+const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD;
+if (!MONGODB_URI || !ADMIN_PASSWORD) {
+  throw new Error("MONGODB_URI and SEED_ADMIN_PASSWORD are required");
+}
 
 const UserSchema = new mongoose.Schema({
   name: String,
@@ -23,7 +27,7 @@ console.log("Has passwordHash:", !!(user?.passwordHash));
 console.log("Hash starts with:", user?.passwordHash?.substring(0, 7));
 
 if (user?.passwordHash) {
-  const valid = await bcrypt.compare("Admin@1234", user.passwordHash);
+  const valid = await bcrypt.compare(ADMIN_PASSWORD, user.passwordHash);
   console.log("Password valid  :", valid);
 }
 

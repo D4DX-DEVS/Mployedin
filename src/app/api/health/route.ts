@@ -10,15 +10,11 @@ export async function GET() {
 
     return NextResponse.json({
       status: "ok",
-      timestamp: new Date().toISOString(),
-      db: "ok",
     });
   } catch {
     return NextResponse.json(
       {
         status: "error",
-        timestamp: new Date().toISOString(),
-        db: "down",
       },
       { status: 503 }
     );

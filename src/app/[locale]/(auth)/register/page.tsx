@@ -69,12 +69,12 @@ export default function RegisterPage() {
       setError(t("passwordsDoNotMatch"));
       return;
     }
-    if (password.length < 8) {
-      setError(t("passwordTooShort"));
+    if (password.length < 12) {
+      setError("Password must be at least 12 characters");
       return;
     }
-    if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
-      setError(t("passwordTooWeak"));
+    if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
+      setError("Password must include upper-case, lower-case, numeric, and special characters");
       return;
     }
 

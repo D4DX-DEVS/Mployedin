@@ -25,13 +25,30 @@ if (!MONGODB_URI) {
 }
 
 // ─── Test / seed users ────────────────────────────────────────────────────────
+// Passwords must be supplied by the operator. Never add defaults here: this
+// script updates existing accounts as well as creating them.
 const SEED_USERS = [
-  { name: "Super Admin",   email: "admin@mployedin.com",      password: "Admin@1234",      role: "admin"      },
-  { name: "Super Agent",   email: "superagent@mployedin.com", password: "SuperAgent@1234", role: "super_agent" },
-  { name: "Agent",         email: "agent@mployedin.com",      password: "Agent@1234",      role: "agent"      },
-  { name: "Employer",      email: "employer@mployedin.com",   password: "Employer@1234",   role: "employer"   },
-  { name: "Job Seeker",    email: "jobseeker@mployedin.com",  password: "JobSeeker@1234",  role: "job_seeker" },
+  { name: "Super Admin", email: "admin@mployedin.com", passwordEnv: "SEED_ADMIN_PASSWORD", role: "admin" },
+  { name: "Super Agent", email: "superagent@mployedin.com", passwordEnv: "SEED_SUPER_AGENT_PASSWORD", role: "super_agent" },
+  { name: "Agent", email: "agent@mployedin.com", passwordEnv: "SEED_AGENT_PASSWORD", role: "agent" },
+  { name: "Employer", email: "employer@mployedin.com", passwordEnv: "SEED_EMPLOYER_PASSWORD", role: "employer" },
+  { name: "Job Seeker", email: "jobseeker@mployedin.com", passwordEnv: "SEED_JOB_SEEKER_PASSWORD", role: "job_seeker" },
 ];
+
+const passwordErrors = SEED_USERS.flatMap((user) => {
+  const password = process.env[user.passwordEnv];
+  if (!password) return [`${user.passwordEnv} is required`];
+  if (password.length < 16) return [`${user.passwordEnv} must contain at least 16 characters`];
+  if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
+    return [`${user.passwordEnv} must contain upper-case, lower-case, numeric, and special characters`];
+  }
+  return [];
+});
+
+if (!process.argv.includes("--delete") && passwordErrors.length > 0) {
+  console.error(`❌ Invalid seed configuration:\n${passwordErrors.map((message) => `    - ${message}`).join("\n")}`);
+  process.exit(1);
+}
 
 // ─── Minimal User schema (mirrors src/models/User.ts) ─────────────────────────
 const UserSchema = new mongoose.Schema(
@@ -43,6 +60,9 @@ const UserSchema = new mongoose.Schema(
     locale:          { type: String, default: "en" },
     isActive:        { type: Boolean, default: true },
     isEmailVerified: { type: Boolean, default: true },
+    passwordChangedAt: { type: Date },
+    failedLoginAttempts: { type: Number, default: 0 },
+    lockUntil: { type: Date },
   },
   { timestamps: true }
 );
@@ -63,13 +83,24 @@ async function main() {
     console.log(`🗑️  Deleted ${result.deletedCount} test user(s).`);
   } else {
     for (const u of SEED_USERS) {
-      const passwordHash = await bcrypt.hash(u.password, 12);
+      const passwordHash = await bcrypt.hash(process.env[u.passwordEnv], 12);
       await User.findOneAndUpdate(
         { email: u.email },
-        { name: u.name, email: u.email, passwordHash, role: u.role, locale: "en", isActive: true, isEmailVerified: true },
+        {
+          name: u.name,
+          email: u.email,
+          passwordHash,
+          passwordChangedAt: new Date(),
+          failedLoginAttempts: 0,
+          lockUntil: null,
+          role: u.role,
+          locale: "en",
+          isActive: true,
+          isEmailVerified: true,
+        },
         { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
       );
-      console.log(`✅  ${u.role.padEnd(12)}  ${u.email}  /  ${u.password}`);
+      console.log(`✅  ${u.role.padEnd(12)}  ${u.email}`);
     }
     console.log("\n👉 Login at /en/login");
   }

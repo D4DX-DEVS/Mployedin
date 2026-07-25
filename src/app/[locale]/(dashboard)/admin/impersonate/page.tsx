@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -34,6 +34,7 @@ interface ImpersonateResult {
 
 export default function AdminUserImpersonatePage() {
   const t = useTranslations("adminImpersonate");
+  const locale = useLocale();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
@@ -186,7 +187,7 @@ export default function AdminUserImpersonatePage() {
                     <TableCell>
                       <div className="flex items-center justify-end gap-1.5">
                         <Button variant="ghost" size="xs" asChild title={t("viewProfileTitle")}>
-                          <a href={`../users/${user._id}`}>
+                          <a href={`/${locale}/admin/users?search=${encodeURIComponent(user.email)}`}>
                             <Eye className="h-3.5 w-3.5 text-primary" />
                           </a>
                         </Button>

@@ -1,6 +1,9 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const key = process.env.GEMINI_API_KEY || 'AIzaSyDIENdj_HPP-dmwOWjVQxJ-zOXnSlHnQ0o';
+const key = process.env.GEMINI_API_KEY;
+if (!key) {
+  throw new Error("GEMINI_API_KEY must be provided through the environment");
+}
 const genAI = new GoogleGenerativeAI(key);
 
 // Test 1: basic text
