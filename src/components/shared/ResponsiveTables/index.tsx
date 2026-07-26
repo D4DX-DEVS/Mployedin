@@ -1,11 +1,12 @@
 "use client";
 
-/* eslint-disable no-undef */
-
 import { useEffect } from "react";
 
 const TABLE_SELECTOR = "table:not([data-mobile-table='scroll'])";
-const ENHANCE_DELAY_MS = 160;
+// React can stream a child boundary after its parent layout has hydrated. Keep
+// DOM-only table enhancement behind a settled-DOM window so it never changes
+// server markup while React is still hydrating that boundary.
+const ENHANCE_DELAY_MS = 750;
 
 function getHeaderLabels(table: HTMLTableElement) {
   const headerRows = Array.from(table.tHead?.rows ?? []);
@@ -83,22 +84,25 @@ export function ResponsiveTables() {
     let enhanceTimer: ReturnType<typeof setTimeout> | null = null;
 
     const collectTables = (root: ParentNode = document) => {
+      const sizeBefore = pendingTables.size;
       if (root instanceof HTMLTableElement && root.matches(TABLE_SELECTOR)) {
         pendingTables.add(root);
       }
       root.querySelectorAll<HTMLTableElement>(TABLE_SELECTOR).forEach((table) => {
         pendingTables.add(table);
       });
+      return pendingTables.size > sizeBefore;
     };
 
     const scheduleEnhancement = (root: ParentNode = document) => {
-      collectTables(root);
+      const foundTable = collectTables(root);
+      if (!foundTable && pendingTables.size === 0) return;
       if (enhanceTimer) clearTimeout(enhanceTimer);
 
       // Dashboard pages can stream inside a hydrated provider. Mutating a newly
       // streamed table immediately makes React see extra classes/attributes
-      // during hydration. A short settled-DOM batch keeps the enhancement
-      // progressive without producing hydration mismatches.
+      // during hydration. A settled-DOM batch keeps the enhancement progressive
+      // without producing hydration mismatches.
       enhanceTimer = setTimeout(() => {
         pendingTables.forEach((table) => {
           if (table.isConnected) enhanceTable(table);
