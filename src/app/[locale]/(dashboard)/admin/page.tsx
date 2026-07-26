@@ -138,10 +138,10 @@ const adminPanelClassName =
   "workspace-panel-surface rounded-2xl p-4 sm:p-5";
 
 const adminCardClassName =
-  "workspace-glass-panel rounded-2xl";
+  "workspace-glass-panel rounded-xl";
 
 const adminInteractiveCardClassName =
-  "workspace-subtle-surface rounded-2xl transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card hover:shadow-[0_24px_50px_-38px_rgba(2,132,199,0.38)]";
+  "workspace-subtle-surface rounded-xl transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/[0.025] hover:shadow-[0_20px_42px_-34px_rgba(2,132,199,0.3)]";
 
 function buildMonthBuckets(now: Date, totalMonths: number, locale: string) {
   return Array.from({ length: totalMonths }, (_, index) => {
@@ -731,7 +731,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
                 <Link
                   key={`${action.href}-${idx}`}
                   href={action.href}
-                  className={`${adminInteractiveCardClassName} group flex min-w-0 items-start gap-2.5 p-3`}
+                  className={`${adminInteractiveCardClassName} group flex min-w-0 items-start gap-2.5 p-3 last:sm:col-span-2`}
                   data-surface="light-card"
                 >
                   <div className={`shrink-0 rounded-lg p-2 ${action.iconClassName}`}>
@@ -739,12 +739,12 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <p className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
-                        {action.label}
-                      </p>
+                    <p className="truncate text-sm font-semibold text-foreground">
+                      {action.label}
+                    </p>
+                    <div className="mt-1 flex min-h-5 max-w-full items-center">
                       {action.badgeNode ?? (
-                        <span className={`max-w-[8rem] shrink-0 truncate rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] ${action.badgeClassName}`}>
+                        <span className={`max-w-full truncate whitespace-nowrap rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] ${action.badgeClassName}`}>
                           {action.badge}
                         </span>
                       )}
@@ -771,7 +771,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
             </p>
           </div>
 
-          <div className="workspace-subtle-surface mt-3 overflow-hidden rounded-xl">
+          <div className="mt-3">
             {recentActivity.map((activity) => {
               const Icon = activity.icon;
 
@@ -779,7 +779,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
                 <Link
                   key={activity.id}
                   href={activity.href}
-                  className="group flex items-start gap-2.5 border-b border-border/50 px-3 py-2.5 transition-colors last:border-b-0 hover:bg-card/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+                  className="group flex items-start gap-2.5 border-t border-border/55 px-1 py-2.5 transition-colors first:border-t-0 hover:bg-primary/[0.025] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:px-2"
                   data-surface="light-card"
                 >
                   <div className={`shrink-0 rounded-lg p-2 ring-1 ring-inset ${activity.toneClassName}`}>

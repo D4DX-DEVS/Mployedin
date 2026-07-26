@@ -217,9 +217,7 @@ export default function AgentPlacementsPage() {
             <TableRow className="workspace-subtle-surface hover:bg-secondary/70">
               <TableHead>{t("tableHeaderCandidate")}</TableHead>
               <TableHead>{t("tableHeaderJob")}</TableHead>
-              <TableHead>{t("tableHeaderEmployer")}</TableHead>
               <TableHead>{t("tableHeaderSalary")}</TableHead>
-              <TableHead>{tc("status")}</TableHead>
               <TableHead>{t("tableHeaderStartDate")}</TableHead>
             </TableRow>
           </TableHeader>
@@ -227,7 +225,7 @@ export default function AgentPlacementsPage() {
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i} className="hover:bg-transparent">
-                  {Array.from({ length: 6 }).map((_, j) => (
+                  {Array.from({ length: 4 }).map((_, j) => (
                     <TableCell key={j}>
                       <div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
                     </TableCell>
@@ -236,7 +234,7 @@ export default function AgentPlacementsPage() {
               ))
             ) : placements.length === 0 ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={6} className="h-32 text-center">
+                <TableCell colSpan={4} className="h-32 text-center">
                   <div className="flex flex-col items-center gap-2 text-muted-foreground">
                     <Inbox className="h-8 w-8 text-muted-foreground" />
                     <span className="text-sm">{t("noPlacementsYet")}</span>
@@ -245,13 +243,17 @@ export default function AgentPlacementsPage() {
               </TableRow>
             ) : placements.map((p) => (
               <TableRow key={p._id} className="hover:bg-secondary/50">
-                <TableCell className="font-medium text-foreground">{p.jobSeekerId?.fullName ?? "—"}</TableCell>
-                <TableCell className="text-foreground/80">{p.jobId?.title ?? "—"}</TableCell>
-                <TableCell className="text-muted-foreground">{p.employerId?.companyName ?? "—"}</TableCell>
+                <TableCell>
+                  <span className="block font-medium text-foreground">{p.jobSeekerId?.fullName ?? "—"}</span>
+                  <StatusBadge status={p.status} />
+                </TableCell>
+                <TableCell className="text-foreground/80">
+                  <span className="block">{p.jobId?.title ?? "—"}</span>
+                  <span className="mt-1 block text-xs text-muted-foreground">{p.employerId?.companyName ?? "—"}</span>
+                </TableCell>
                 <TableCell className="text-muted-foreground">
                   {p.salary ? `${p.currency ?? "USD"} ${p.salary.toLocaleString()}` : "—"}
                 </TableCell>
-                <TableCell><StatusBadge status={p.status} /></TableCell>
                 <TableCell className="text-muted-foreground">{p.startDate ? new Date(p.startDate).toLocaleDateString() : "—"}</TableCell>
               </TableRow>
             ))}

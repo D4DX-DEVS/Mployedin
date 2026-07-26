@@ -250,6 +250,7 @@ export default function EmployerMatchingWeightsPage() {
       )}
 
       <DashboardPageHeader
+        headingLevel={2}
         icon={Sliders}
         eyebrow={t("rankingControls")}
         title={t("rankingControlsDesc")}

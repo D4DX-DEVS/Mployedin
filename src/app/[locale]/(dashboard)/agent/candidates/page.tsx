@@ -394,7 +394,6 @@ export default function AgentCandidatesPage() {
                 <TableRow className="workspace-subtle-surface hover:bg-secondary/70">
                   <TableHead>{t("tableHeaderCandidate")}</TableHead>
                   <TableHead>{t("tableHeaderJob")}</TableHead>
-                  <TableHead>{tc("status")}</TableHead>
                   <TableHead>{t("tableHeaderAIMatch")}</TableHead>
                   <TableHead>{t("tableHeaderApplied")}</TableHead>
                   <TableHead className="text-right">{tc("actions")}</TableHead>
@@ -403,7 +402,7 @@ export default function AgentCandidatesPage() {
               <TableBody>
                 {Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i} className="hover:bg-transparent">
-                    {Array.from({ length: 6 }).map((_, j) => (
+                    {Array.from({ length: 5 }).map((_, j) => (
                       <TableCell key={j}>
                         <Skeleton className="h-4 w-full" />
                       </TableCell>
@@ -426,7 +425,6 @@ export default function AgentCandidatesPage() {
                 <TableRow className="workspace-subtle-surface hover:bg-secondary/70">
                   <TableHead>{t("tableHeaderCandidate")}</TableHead>
                   <TableHead>{t("tableHeaderJob")}</TableHead>
-                  <TableHead>{tc("status")}</TableHead>
                   <TableHead>{t("tableHeaderAIMatch")}</TableHead>
                   <TableHead>{t("tableHeaderApplied")}</TableHead>
                   <TableHead className="text-right">{tc("actions")}</TableHead>
@@ -441,10 +439,10 @@ export default function AgentCandidatesPage() {
                         {app.jobSeekerId?.totalExperienceYears != null && (
                           <p className="text-xs text-muted-foreground">{app.jobSeekerId.totalExperienceYears}y exp</p>
                         )}
+                        <StatusBadge status={app.status} />
                       </div>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">{app.jobId?.title ?? "—"}</TableCell>
-                    <TableCell><StatusBadge status={app.status} /></TableCell>
                     <TableCell>
                       <div className={`flex items-center gap-1 text-sm font-medium ${matchScoreColor(app.aiMatchScore)}`}>
                         <Star className="h-3.5 w-3.5" />

@@ -447,22 +447,18 @@ export default function AgentInterviewsPage() {
           <Table>
             <TableHeader>
               <TableRow className="workspace-subtle-surface hover:bg-secondary/70">
-                <TableHead>{t("columnCandidate")}</TableHead>
-                <TableHead>{t("columnJob")}</TableHead>
-                <TableHead>{t("columnEmployer")}</TableHead>
-                <TableHead>{t("columnType")}</TableHead>
-                <TableHead>{t("columnScheduled")}</TableHead>
-                <TableHead>{t("columnRound")}</TableHead>
-                <TableHead>{tc("status")}</TableHead>
-                <TableHead>{t("columnOutcome")}</TableHead>
-                {can("interviews", "update") && <TableHead>{tc("actions")}</TableHead>}
+              <TableHead>{t("columnCandidate")}</TableHead>
+              <TableHead>{t("columnJob")}</TableHead>
+              <TableHead>{t("columnType")}</TableHead>
+              <TableHead>{t("columnScheduled")}</TableHead>
+              {can("interviews", "update") && <TableHead>{tc("actions")}</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i} className="hover:bg-transparent">
-                    {Array.from({ length: 9 }).map((_, j) => (
+                  {Array.from({ length: 5 }).map((_, j) => (
                       <TableCell key={j}>
                         <div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
                       </TableCell>
@@ -471,7 +467,7 @@ export default function AgentInterviewsPage() {
                 ))
               ) : interviews.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={9} className="h-32 text-center">
+                <TableCell colSpan={5} className="h-32 text-center">
                     <div className="flex flex-col items-center gap-2 text-muted-foreground">
                       <Inbox className="h-8 w-8 text-muted-foreground" />
                       <span className="text-sm">{hasActiveFilters ? t("emptyStateWithFilters") : t("emptyStateNoResults")}</span>
@@ -489,10 +485,16 @@ export default function AgentInterviewsPage() {
                     <div>
                       <p className="font-medium text-foreground">{iv.jobSeekerId?.fullName ?? "—"}</p>
                       {iv.jobSeekerId?.email && <p className="text-xs text-muted-foreground">{iv.jobSeekerId.email}</p>}
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        <StatusBadge status={iv.status} />
+                        {iv.outcome && <StatusBadge status={iv.outcome === "no_show" ? "no-show" : iv.outcome} />}
+                      </div>
                     </div>
                   </TableCell>
-                  <TableCell className="text-foreground/80 max-w-[180px] truncate" title={iv.jobId?.title}>{iv.jobId?.title ?? "—"}</TableCell>
-                  <TableCell className="text-muted-foreground">{iv.employerId?.companyName ?? "—"}</TableCell>
+                  <TableCell className="text-foreground/80 max-w-[180px]" title={iv.jobId?.title}>
+                    <span className="block truncate">{iv.jobId?.title ?? "—"}</span>
+                    <span className="mt-1 block text-xs text-muted-foreground">{iv.employerId?.companyName ?? "—"}</span>
+                  </TableCell>
                   <TableCell>
                     <span className="inline-flex items-center gap-1.5 capitalize text-muted-foreground">
                       {typeIcon(iv.type)}
@@ -503,16 +505,8 @@ export default function AgentInterviewsPage() {
                     <div>
                       <p className="text-sm">{new Date(iv.scheduledAt).toLocaleDateString()}</p>
                       <p className="text-xs text-muted-foreground/70">{new Date(iv.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}{iv.duration ? ` · ${iv.duration}min` : ""}</p>
+                      <p className="text-xs text-muted-foreground/70">{t("columnRound")}: {iv.interviewRound ?? 1}</p>
                     </div>
-                  </TableCell>
-                  <TableCell className="text-center text-muted-foreground">{iv.interviewRound ?? 1}</TableCell>
-                  <TableCell><StatusBadge status={iv.status} /></TableCell>
-                  <TableCell>
-                    {iv.outcome ? (
-                      <StatusBadge status={iv.outcome === "no_show" ? "no-show" : iv.outcome} />
-                    ) : (
-                      <span className="text-xs text-muted-foreground/50">—</span>
-                    )}
                   </TableCell>
                   {can("interviews", "update") && (
                     <TableCell>

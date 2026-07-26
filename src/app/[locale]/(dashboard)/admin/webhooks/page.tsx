@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useTranslations } from "next-intl";
 import {
@@ -24,6 +24,8 @@ import { PageHero } from "@/components/shared/PageHero";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { useConfirm } from "@/hooks/useConfirm";
 import { toast } from "sonner";
+import { PaginationControls } from "@/components/shared/PaginationControls";
+import { usePagination } from "@/hooks/usePagination";
 
 const EVENTS = [
   "invoice.created",
@@ -60,7 +62,12 @@ interface WebhookItem {
 
 export default function AdminWebhooksPage() {
   const t = useTranslations("webhooks");
+  const {
+    page, limit, total, totalPages,
+    setPage, setLimit, updateTotal, resetPage, paginationParams,
+  } = usePagination();
   const [webhooks, setWebhooks] = useState<WebhookItem[]>([]);
+  const [stats, setStats] = useState({ active: 0, inactive: 0, failed: 0, healthy: 0 });
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -97,33 +104,30 @@ export default function AdminWebhooksPage() {
   const fetchWebhooks = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/webhooks");
+      const params = paginationParams();
+      if (search.trim()) params.set("search", search.trim());
+      if (statusFilter !== "all") params.set("status", statusFilter);
+      if (eventFilter !== "all") params.set("event", eventFilter);
+      const res = await fetch(`/api/admin/webhooks?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         setWebhooks(data.webhooks || []);
+        setStats(data.stats ?? { active: 0, inactive: 0, failed: 0, healthy: 0 });
+        updateTotal(data.total ?? 0);
       }
     } catch {
       toast.error(t("loadFailed"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [search, statusFilter, eventFilter, page, limit, paginationParams, updateTotal]);
 
   useEffect(() => { fetchWebhooks(); }, [fetchWebhooks]);
+  useEffect(() => {
+    resetPage();
+  }, [search, statusFilter, eventFilter, resetPage]);
 
-  // Filtered webhooks
-  const filteredWebhooks = useMemo(() => {
-    return webhooks.filter((wh) => {
-      if (search) {
-        const q = search.toLowerCase();
-        if (!wh.name.toLowerCase().includes(q) && !wh.url.toLowerCase().includes(q)) return false;
-      }
-      if (statusFilter === "active" && !wh.isActive) return false;
-      if (statusFilter === "inactive" && wh.isActive) return false;
-      if (eventFilter !== "all" && !wh.events.includes(eventFilter)) return false;
-      return true;
-    });
-  }, [webhooks, search, statusFilter, eventFilter]);
+  const filteredWebhooks = webhooks;
 
   // Active filter count
   const activeFilterCount = [
@@ -139,10 +143,10 @@ export default function AdminWebhooksPage() {
   };
 
   // Stats
-  const activeCount = webhooks.filter((w) => w.isActive).length;
-  const inactiveCount = webhooks.filter((w) => !w.isActive).length;
-  const failedCount = webhooks.filter((w) => w.lastStatus === "failed").length;
-  const healthyCount = webhooks.filter((w) => w.isActive && w.lastStatus !== "failed").length;
+  const activeCount = stats.active;
+  const inactiveCount = stats.inactive;
+  const failedCount = stats.failed;
+  const healthyCount = stats.healthy;
 
   const resetForm = () => {
     setForm({ name: "", url: "", events: [], isActive: true, retryCount: 3 });
@@ -642,6 +646,14 @@ export default function AdminWebhooksPage() {
           </Table>
         </div>
       </section>
+      <PaginationControls
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        limit={limit}
+        onPageChange={setPage}
+        onLimitChange={setLimit}
+      />
 
       {ConfirmDialogNode}
 

@@ -4,6 +4,19 @@ import { useCallback, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 const DEFAULT_PAGE_SIZE = 10;
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
+
+function readPositiveInteger(value: string | null, fallback: number) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function readPageSize(value: string | null, fallback: number) {
+  const parsed = readPositiveInteger(value, fallback);
+  return PAGE_SIZE_OPTIONS.includes(parsed as (typeof PAGE_SIZE_OPTIONS)[number])
+    ? parsed
+    : fallback;
+}
 
 export interface PaginationState {
   page: number;
@@ -32,8 +45,9 @@ export function usePagination(initialLimit: number = DEFAULT_PAGE_SIZE): UsePagi
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [page, setPageRaw] = useState(() => Number(searchParams.get("page")) || 1);
-  const [limit, setLimitRaw] = useState(() => Number(searchParams.get("limit")) || initialLimit);
+  const safeInitialLimit = readPageSize(String(initialLimit), DEFAULT_PAGE_SIZE);
+  const [page, setPageRaw] = useState(() => readPositiveInteger(searchParams.get("page"), 1));
+  const [limit, setLimitRaw] = useState(() => readPageSize(searchParams.get("limit"), safeInitialLimit));
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -51,17 +65,27 @@ export function usePagination(initialLimit: number = DEFAULT_PAGE_SIZE): UsePagi
   }, [limit, syncUrl]);
 
   const setLimit = useCallback((newLimit: number) => {
-    setLimitRaw(newLimit);
+    const safeLimit = readPageSize(String(newLimit), DEFAULT_PAGE_SIZE);
+    setLimitRaw(safeLimit);
     setPageRaw(1); // reset to first page on limit change
-    syncUrl(1, newLimit);
+    syncUrl(1, safeLimit);
   }, [syncUrl]);
 
   const updateTotal = useCallback(
     (newTotal: number) => {
-      setTotal(newTotal);
-      setTotalPages(Math.max(1, Math.ceil(newTotal / limit)));
+      const safeTotal = Math.max(0, newTotal);
+      const nextTotalPages = Math.max(1, Math.ceil(safeTotal / limit));
+      setTotal(safeTotal);
+      setTotalPages(nextTotalPages);
+
+      // A deletion or tighter filter can make the current page disappear.
+      // Move back to the last real server page instead of showing an empty list.
+      if (page > nextTotalPages) {
+        setPageRaw(nextTotalPages);
+        syncUrl(nextTotalPages, limit);
+      }
     },
-    [limit],
+    [limit, page, syncUrl],
   );
 
   const resetPage = useCallback(() => {

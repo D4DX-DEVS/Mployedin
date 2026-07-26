@@ -5,6 +5,7 @@
 import { useEffect } from "react";
 
 const TABLE_SELECTOR = "table:not([data-mobile-table='scroll'])";
+const ENHANCE_DELAY_MS = 160;
 
 function getHeaderLabels(table: HTMLTableElement) {
   const headerRows = Array.from(table.tHead?.rows ?? []);
@@ -52,6 +53,12 @@ function enhanceTable(table: HTMLTableElement) {
       row.toggleAttribute("data-mobile-spanning-row", isSpanningRow);
 
       for (const cell of cells) {
+        const isLastCell = cell === cells[cells.length - 1];
+        const hasRowActions =
+          isLastCell &&
+          !isSpanningRow &&
+          cell.querySelector("button, a[href], [role='button']") !== null;
+
         if (
           !cell.hasAttribute("data-label") ||
           cell.hasAttribute("data-responsive-label")
@@ -63,6 +70,7 @@ function enhanceTable(table: HTMLTableElement) {
           cell.setAttribute("data-responsive-label", "");
         }
 
+        cell.toggleAttribute("data-mobile-actions", hasRowActions);
         columnIndex += Math.max(cell.colSpan, 1);
       }
     }
@@ -71,31 +79,51 @@ function enhanceTable(table: HTMLTableElement) {
 
 export function ResponsiveTables() {
   useEffect(() => {
-    const enhanceAllTables = (root: ParentNode = document) => {
-      root.querySelectorAll<HTMLTableElement>(TABLE_SELECTOR).forEach(enhanceTable);
+    const pendingTables = new Set<HTMLTableElement>();
+    let enhanceTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const collectTables = (root: ParentNode = document) => {
+      if (root instanceof HTMLTableElement && root.matches(TABLE_SELECTOR)) {
+        pendingTables.add(root);
+      }
+      root.querySelectorAll<HTMLTableElement>(TABLE_SELECTOR).forEach((table) => {
+        pendingTables.add(table);
+      });
     };
 
-    enhanceAllTables();
+    const scheduleEnhancement = (root: ParentNode = document) => {
+      collectTables(root);
+      if (enhanceTimer) clearTimeout(enhanceTimer);
+
+      // Dashboard pages can stream inside a hydrated provider. Mutating a newly
+      // streamed table immediately makes React see extra classes/attributes
+      // during hydration. A short settled-DOM batch keeps the enhancement
+      // progressive without producing hydration mismatches.
+      enhanceTimer = setTimeout(() => {
+        pendingTables.forEach((table) => {
+          if (table.isConnected) enhanceTable(table);
+        });
+        pendingTables.clear();
+        enhanceTimer = null;
+      }, ENHANCE_DELAY_MS);
+    };
+
+    scheduleEnhancement();
 
     const observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
         if (mutation.type === "characterData") {
           const table = mutation.target.parentElement?.closest(TABLE_SELECTOR);
-          if (table instanceof HTMLTableElement) enhanceTable(table);
+          if (table instanceof HTMLTableElement) scheduleEnhancement(table);
           continue;
         }
 
         for (const node of Array.from(mutation.addedNodes)) {
           if (!(node instanceof Element)) continue;
 
-          if (node.matches(TABLE_SELECTOR)) {
-            enhanceTable(node as HTMLTableElement);
-          } else {
-            enhanceAllTables(node);
-          }
-
-          const table = node.closest(TABLE_SELECTOR);
-          if (table instanceof HTMLTableElement) enhanceTable(table);
+          scheduleEnhancement(node);
+          const parentTable = node.closest(TABLE_SELECTOR);
+          if (parentTable instanceof HTMLTableElement) scheduleEnhancement(parentTable);
         }
       }
     });
@@ -106,7 +134,11 @@ export function ResponsiveTables() {
       characterData: true,
     });
 
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      if (enhanceTimer) clearTimeout(enhanceTimer);
+      pendingTables.clear();
+    };
   }, []);
 
   return null;

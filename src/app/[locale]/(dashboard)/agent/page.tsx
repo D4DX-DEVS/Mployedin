@@ -370,32 +370,37 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
               <thead>
                 <tr className="border-b border-border text-left">
                   <th className="pb-3 pr-4 font-semibold text-muted-foreground">{t("table.job")}</th>
-                  <th className="pb-3 pr-4 font-semibold text-muted-foreground">{t("table.status")}</th>
                   <th className="pb-3 pr-4 text-right font-semibold text-muted-foreground">{t("table.applications")}</th>
                   <th className="pb-3 pr-4 text-right font-semibold text-muted-foreground">{t("table.interviews")}</th>
                   <th className="pb-3 pr-4 text-right font-semibold text-muted-foreground">{t("table.offers")}</th>
-                  <th className="pb-3 pr-4 text-right font-semibold text-muted-foreground">{t("table.interviewRate")}</th>
-                  <th className="pb-3 text-right font-semibold text-muted-foreground">{t("table.offerRate")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/80">
                 {jobMetrics.map((row) => (
                   <tr key={row.jobId} className="transition-colors hover:bg-secondary/70">
                     <td className="py-3 pr-4">
-                      <Link href={`/${locale}/agent/jobs/${row.jobId}`} className="font-semibold text-foreground transition-colors hover:text-primary">
-                        {row.title}
-                      </Link>
-                    </td>
-                    <td className="py-3 pr-4">
-                      <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold capitalize ${getJobStatusClasses(row.status)}`}>
-                        {getJobStatusLabel(row.status)}
-                      </span>
+                      <div className="flex min-w-0 flex-col items-start gap-1.5">
+                        <Link href={`/${locale}/agent/jobs/${row.jobId}`} className="font-semibold text-foreground transition-colors hover:text-primary">
+                          {row.title}
+                        </Link>
+                        <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize ${getJobStatusClasses(row.status)}`}>
+                          {getJobStatusLabel(row.status)}
+                        </span>
+                      </div>
                     </td>
                     <td className="py-3 pr-4 text-right font-medium tabular-nums text-foreground/80">{row.applications}</td>
-                    <td className="py-3 pr-4 text-right font-medium tabular-nums text-foreground/80">{row.interviews}</td>
-                    <td className="py-3 pr-4 text-right font-medium tabular-nums text-foreground/80">{row.offers}</td>
-                    <td className="py-3 pr-4 text-right font-semibold tabular-nums text-primary">{row.interviewRate}%</td>
-                    <td className="py-3 text-right font-semibold tabular-nums text-emerald-600">{row.offerRate}%</td>
+                    <td className="py-3 pr-4 text-right">
+                      <span className="block font-medium tabular-nums text-foreground/80">{row.interviews}</span>
+                      <span className="mt-1 block text-[11px] font-semibold tabular-nums text-primary">
+                        {t("table.interviewRate")}: {row.interviewRate}%
+                      </span>
+                    </td>
+                    <td className="py-3 text-right">
+                      <span className="block font-medium tabular-nums text-foreground/80">{row.offers}</span>
+                      <span className="mt-1 block text-[11px] font-semibold tabular-nums text-emerald-600">
+                        {t("table.offerRate")}: {row.offerRate}%
+                      </span>
+                    </td>
                   </tr>
                 ))}
               </tbody>

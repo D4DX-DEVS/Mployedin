@@ -369,11 +369,9 @@ export default function AdminSuperAgentsPage() {
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
               <TableHead>{t("tableHeaderName")}</TableHead>
-              <TableHead>{t("tableHeaderEmail")}</TableHead>
               <TableHead>{t("tableHeaderAgents")}</TableHead>
               <TableHead>{t("tableHeaderRegion")}</TableHead>
               <TableHead>{t("tableHeaderCommissionOverride")}</TableHead>
-              <TableHead>{t("tableHeaderStatus")}</TableHead>
               <TableHead>{t("tableHeaderJoined")}</TableHead>
               {(can("super_agents", "update") || can("super_agents", "delete")) && (
                 <TableHead>{t("tableHeaderActions")}</TableHead>
@@ -384,7 +382,7 @@ export default function AdminSuperAgentsPage() {
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i} className="hover:bg-transparent">
-                  {Array.from({ length: 8 }).map((_, j) => (
+                  {Array.from({ length: 6 }).map((_, j) => (
                     <TableCell key={j}>
                       <div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
                     </TableCell>
@@ -393,7 +391,7 @@ export default function AdminSuperAgentsPage() {
               ))
             ) : superAgents.length === 0 ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={8} className="h-32 text-center">
+                <TableCell colSpan={6} className="h-32 text-center">
                   <div className="flex flex-col items-center gap-2 text-muted-foreground">
                     <Inbox className="h-8 w-8 opacity-40" />
                     <span className="text-sm">{t("noAgentsFound")}</span>
@@ -402,8 +400,13 @@ export default function AdminSuperAgentsPage() {
               </TableRow>
             ) : superAgents.map((sa) => (
               <TableRow key={sa._id}>
-                <TableCell className="font-medium">{sa.name}</TableCell>
-                <TableCell className="text-muted-foreground text-sm">{sa.email}</TableCell>
+                <TableCell>
+                  <div className="flex flex-col items-start gap-1.5">
+                    <span className="font-medium">{sa.name}</span>
+                    <span className="text-xs text-muted-foreground">{sa.email}</span>
+                    <StatusBadge status={sa.isActive !== false ? "active" : "inactive"} />
+                  </div>
+                </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1.5">
                     <Users className="h-3.5 w-3.5 text-primary" />
@@ -428,7 +431,6 @@ export default function AdminSuperAgentsPage() {
                     ? `${sa.superAgentProfile.overrideCommissionRate}%`
                     : t("exportDashCharacter")}
                 </TableCell>
-                <TableCell><StatusBadge status={sa.isActive !== false ? "active" : "inactive"} /></TableCell>
                 <TableCell className="text-muted-foreground text-sm">{new Date(sa.createdAt).toLocaleDateString()}</TableCell>
                 {(can("super_agents", "update") || can("super_agents", "delete")) && (
                   <TableCell>

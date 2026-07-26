@@ -636,16 +636,10 @@ export default function AdminJobSeekersPage() {
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
               <TableHead>{tr("tableHeaderName")}</TableHead>
-              <TableHead>{tr("tableHeaderEmail")}</TableHead>
               <TableHead>{tr("tableHeaderProfession")}</TableHead>
-              <TableHead>{tr("tableHeaderEducation")}</TableHead>
               <TableHead>{tr("tableHeaderNationality")}</TableHead>
               <TableHead>{tr("tableHeaderSkills")}</TableHead>
-              <TableHead>{tr("tableHeaderExp")}</TableHead>
               <TableHead>{tr("tableHeaderProfilePercent")}</TableHead>
-              <TableHead>{tr("tableHeaderAvailability")}</TableHead>
-              <TableHead>{tr("tableHeaderCv")}</TableHead>
-              <TableHead>{tr("tableHeaderStatus")}</TableHead>
               <TableHead>{tr("tableHeaderJoined")}</TableHead>
               {(can("job_seekers", "update") || can("job_seekers", "delete")) && (
                 <TableHead>{tr("tableHeaderActions")}</TableHead>
@@ -656,7 +650,7 @@ export default function AdminJobSeekersPage() {
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i} className="hover:bg-transparent">
-                  {Array.from({ length: 13 }).map((_, j) => (
+                  {Array.from({ length: 7 }).map((_, j) => (
                     <TableCell key={j}>
                       <div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
                     </TableCell>
@@ -665,7 +659,7 @@ export default function AdminJobSeekersPage() {
               ))
             ) : jobSeekers.length === 0 ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={13} className="h-32 text-center">
+                <TableCell colSpan={7} className="h-32 text-center">
                   <div className="flex flex-col items-center gap-2 text-muted-foreground">
                     <Inbox className="h-8 w-8 opacity-40" />
                     <span className="text-sm">{tr("emptyStateTitle")}</span>
@@ -675,24 +669,24 @@ export default function AdminJobSeekersPage() {
               </TableRow>
             ) : jobSeekers.map((js) => (
               <Fragment key={js._id}><TableRow className="cursor-pointer hover:bg-muted/30" onClick={() => setExpandedId(expandedId === js._id ? null : js._id)}>
-                <TableCell className="font-medium">
-                  <div className="flex items-center gap-1.5">
-                    {expandedId === js._id ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
-                    {js.fullName || js.userId?.name || "—"}
+                <TableCell>
+                  <div className="flex items-start gap-1.5">
+                    {expandedId === js._id ? <ChevronUp className="mt-1 h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="mt-1 h-3.5 w-3.5 text-muted-foreground" />}
+                    <div className="flex min-w-0 flex-col items-start gap-1">
+                      <span className="font-medium">{js.fullName || js.userId?.name || "—"}</span>
+                      <span className="max-w-[15rem] truncate text-xs text-muted-foreground">{js.email ?? js.userId?.email ?? "—"}</span>
+                      <StatusBadge status={js.status ?? "active"} />
+                    </div>
                   </div>
                 </TableCell>
-                <TableCell className="text-muted-foreground text-xs">{js.email ?? js.userId?.email ?? "—"}</TableCell>
                 <TableCell className="text-muted-foreground text-xs max-w-[140px]">
-                  <span className="line-clamp-2">{js.experience?.[0]?.jobTitle || js.headline?.slice(0, 60) || "—"}</span>
+                  <span className="line-clamp-2 font-medium text-foreground/80">{js.experience?.[0]?.jobTitle || js.headline?.slice(0, 60) || "—"}</span>
+                  <span className="mt-1 block line-clamp-2">
+                    {js.education?.[0]?.degree ? `${js.education[0].degree}${js.education[0].field ? ` - ${js.education[0].field}` : ""}` : "—"}
+                  </span>
                 </TableCell>
-                <TableCell className="text-muted-foreground text-xs max-w-[130px]">
-                  <span className="line-clamp-2">{js.education?.[0]?.degree ? `${js.education[0].degree}${js.education[0].field ? ` - ${js.education[0].field}` : ""}` : "—"}</span>
-                </TableCell>
-                <TableCell className="text-muted-foreground text-xs">{js.nationality ?? "—"}</TableCell>
-                <TableCell className="text-muted-foreground text-xs">{js.skills?.length ? `${js.skills.slice(0, 2).join(", ")}${js.skills.length > 2 ? ` +${js.skills.length - 2}` : ""}` : "—"}</TableCell>
-                <TableCell className="text-muted-foreground text-xs">{js.totalExperienceYears != null ? `${js.totalExperienceYears}y` : "—"}</TableCell>
-                <TableCell className="text-muted-foreground text-xs">{js.profileCompleteness != null ? `${js.profileCompleteness}%` : "—"}</TableCell>
                 <TableCell className="text-xs">
+                  <span className="mb-1.5 block text-muted-foreground">{js.nationality ?? "—"}</span>
                   {js.availabilityStatus ? (
                     <span className={`inline-block rounded-full px-1.5 py-0.5 text-[0.6rem] font-medium ${
                       js.availabilityStatus === "immediately" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" :
@@ -704,7 +698,12 @@ export default function AdminJobSeekersPage() {
                     </span>
                   ) : "—"}
                 </TableCell>
-                <TableCell className="text-xs text-center">
+                <TableCell className="text-muted-foreground text-xs">
+                  <span className="block">{js.skills?.length ? `${js.skills.slice(0, 2).join(", ")}${js.skills.length > 2 ? ` +${js.skills.length - 2}` : ""}` : "—"}</span>
+                  <span className="mt-1 block">{js.totalExperienceYears != null ? `${js.totalExperienceYears}y` : "—"}</span>
+                </TableCell>
+                <TableCell className="text-xs">
+                  <span className="mb-1.5 block font-semibold tabular-nums">{js.profileCompleteness != null ? `${js.profileCompleteness}%` : "—"}</span>
                   {js.cv?.originalUrl ? (
                     <a
                       href={js.cv.originalUrl}
@@ -713,12 +712,12 @@ export default function AdminJobSeekersPage() {
                       onClick={(e) => e.stopPropagation()}
                       className="inline-flex items-center justify-center h-7 w-7 rounded-md hover:bg-primary/10 text-primary transition-colors"
                       title={tr("viewCvTitle")}
+                      aria-label={tr("viewCvTitle")}
                     >
                       <Eye className="h-4 w-4" />
                     </a>
                   ) : <span className="text-muted-foreground">—</span>}
                 </TableCell>
-                <TableCell><StatusBadge status={js.status ?? "active"} /></TableCell>
                 <TableCell className="text-muted-foreground text-xs">{new Date(js.createdAt).toLocaleDateString()}</TableCell>
                 {(can("job_seekers", "update") || can("job_seekers", "delete")) && (
                   <TableCell onClick={(e) => e.stopPropagation()}>
@@ -746,7 +745,7 @@ export default function AdminJobSeekersPage() {
               {/* Expanded Row */}
               {expandedId === js._id && (
                 <TableRow className="bg-muted/10 hover:bg-muted/10">
-                  <TableCell colSpan={13} className="p-4">
+                  <TableCell colSpan={7} className="p-4">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                       {/* Summary */}
                       {js.summary && (

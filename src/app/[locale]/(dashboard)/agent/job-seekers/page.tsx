@@ -380,13 +380,9 @@ export default function AgentJobSeekersPage() {
           <TableHeader>
             <TableRow className="workspace-subtle-surface hover:bg-secondary/70">
               <TableHead>{tc("name")}</TableHead>
-              <TableHead>{tc("email")}</TableHead>
               <TableHead>{t("tableHeaderTitle")}</TableHead>
-              <TableHead>{tc("country")}</TableHead>
               <TableHead>{t("tableHeaderTopSkills")}</TableHead>
-              <TableHead>{t("tableHeaderAvailability")}</TableHead>
               <TableHead>{t("tableHeaderProfile")}</TableHead>
-              <TableHead>{t("tableHeaderJoined")}</TableHead>
               {can("job_seekers", "update") && <TableHead>{tc("actions")}</TableHead>}
             </TableRow>
           </TableHeader>
@@ -394,7 +390,7 @@ export default function AgentJobSeekersPage() {
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i} className="hover:bg-transparent">
-                  {Array.from({ length: 9 }).map((_, j) => (
+                  {Array.from({ length: 5 }).map((_, j) => (
                     <TableCell key={j}>
                       <div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
                     </TableCell>
@@ -403,7 +399,7 @@ export default function AgentJobSeekersPage() {
               ))
             ) : seekers.length === 0 ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={9} className="h-32 text-center">
+                <TableCell colSpan={5} className="h-32 text-center">
                   <div className="flex flex-col items-center gap-2 text-muted-foreground">
                     <Inbox className="h-8 w-8 text-muted-foreground" />
                     <span className="text-sm">{t("noJobSeekersFound")}</span>
@@ -415,10 +411,19 @@ export default function AgentJobSeekersPage() {
               </TableRow>
             ) : seekers.map((s) => (
               <TableRow key={s._id} className="hover:bg-secondary/50">
-                <TableCell className="font-medium text-foreground">{s.userId?.name ?? "\u2014"}</TableCell>
-                <TableCell className="text-xs text-muted-foreground">{s.userId?.email ?? "\u2014"}</TableCell>
-                <TableCell className="text-muted-foreground">{getCurrentTitle(s) ?? "\u2014"}</TableCell>
+                <TableCell>
+                  <span className="block font-medium text-foreground">{s.userId?.name ?? "\u2014"}</span>
+                  <span className="block text-xs text-muted-foreground">{s.userId?.email ?? "\u2014"}</span>
+                  <span className={`mt-1 inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium leading-none ${
+                    s.availabilityStatus === "immediately" ? "bg-status-selected-bg text-status-selected dark:bg-green-950 dark:text-green-400"
+                    : s.availabilityStatus === "not_available" ? "bg-status-rejected-bg text-status-rejected dark:bg-red-950 dark:text-red-400"
+                    : "bg-status-shortlisted-bg text-status-shortlisted dark:bg-amber-950 dark:text-amber-400"
+                  }`}>
+                    {availabilityLabel(s.availabilityStatus)}
+                  </span>
+                </TableCell>
                 <TableCell className="text-muted-foreground">
+                  <span className="block font-medium text-foreground/80">{getCurrentTitle(s) ?? "\u2014"}</span>
                   <span className="inline-flex items-center gap-1.5">
                     <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
                     {s.currentLocation ?? "\u2014"}
@@ -435,15 +440,6 @@ export default function AgentJobSeekersPage() {
                   </div>
                 </TableCell>
                 <TableCell>
-                  <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium leading-none ${
-                    s.availabilityStatus === "immediately" ? "bg-status-selected-bg text-status-selected dark:bg-green-950 dark:text-green-400"
-                    : s.availabilityStatus === "not_available" ? "bg-status-rejected-bg text-status-rejected dark:bg-red-950 dark:text-red-400"
-                    : "bg-status-shortlisted-bg text-status-shortlisted dark:bg-amber-950 dark:text-amber-400"
-                  }`}>
-                    {availabilityLabel(s.availabilityStatus)}
-                  </span>
-                </TableCell>
-                <TableCell>
                   <div className="flex items-center gap-2">
                     <div className="h-1.5 w-24 bg-muted rounded-full overflow-hidden">
                       <div
@@ -453,9 +449,7 @@ export default function AgentJobSeekersPage() {
                     </div>
                     <span className="text-xs text-muted-foreground">{s.profileCompleteness ?? 0}%</span>
                   </div>
-                </TableCell>
-                <TableCell className="text-xs text-muted-foreground">
-                  {new Date(s.createdAt).toLocaleDateString()}
+                  <span className="mt-1 block text-xs text-muted-foreground">{new Date(s.createdAt).toLocaleDateString()}</span>
                 </TableCell>
                 {can("job_seekers", "update") && (
                   <TableCell>

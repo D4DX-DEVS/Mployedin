@@ -388,6 +388,8 @@ export function DataTable<TData, TValue>({
               className="h-9 w-9 sm:h-8 sm:w-8"
               onClick={() => onPageChange?.(0)}
               disabled={pageIndex === 0}
+              title={t("firstPage")}
+              aria-label={t("firstPage")}
             >
               <ChevronsLeft className="h-4 w-4" />
             </Button>
@@ -397,6 +399,8 @@ export function DataTable<TData, TValue>({
               className="h-9 w-9 sm:h-8 sm:w-8"
               onClick={() => onPageChange?.(pageIndex - 1)}
               disabled={pageIndex === 0}
+              title={t("previousPage")}
+              aria-label={t("previousPage")}
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -409,6 +413,8 @@ export function DataTable<TData, TValue>({
               className="h-9 w-9 sm:h-8 sm:w-8"
               onClick={() => onPageChange?.(pageIndex + 1)}
               disabled={pageIndex >= pageCount - 1}
+              title={t("nextPage")}
+              aria-label={t("nextPage")}
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
@@ -418,6 +424,8 @@ export function DataTable<TData, TValue>({
               className="h-9 w-9 sm:h-8 sm:w-8"
               onClick={() => onPageChange?.(pageCount - 1)}
               disabled={pageIndex >= pageCount - 1}
+              title={t("lastPage")}
+              aria-label={t("lastPage")}
             >
               <ChevronsRight className="h-4 w-4" />
             </Button>

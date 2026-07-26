@@ -25,6 +25,8 @@ import {
   SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { PaginationControls } from "@/components/shared/PaginationControls";
+import { usePagination } from "@/hooks/usePagination";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -146,6 +148,10 @@ const CATEGORY_OPTIONS = [
 export default function SuperAgentExhibitionsPage() {
   const t = useTranslations("exhibitions");
   const tc = useTranslations("common");
+  const {
+    page, limit, total, totalPages,
+    setPage, setLimit, updateTotal, resetPage, paginationParams,
+  } = usePagination();
 
   const [items, setItems] = useState<ExhibitionRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -166,17 +172,24 @@ export default function SuperAgentExhibitionsPage() {
   const fetchItems = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
+      const params = paginationParams();
       if (statusFilter !== "all") params.set("status", statusFilter);
       if (priorityFilter !== "all") params.set("priority", priorityFilter);
       if (categoryFilter !== "all") params.set("category", categoryFilter);
       if (search) params.set("search", search);
       const res = await fetch(`/api/exhibitions?${params}`);
-      if (res.ok) { const data = await res.json(); setItems(data.items ?? []); }
+      if (res.ok) {
+        const data = await res.json();
+        setItems(data.items ?? []);
+        updateTotal(data.total ?? 0);
+      }
     } catch { toast.error(t("fetchError")); } finally { setLoading(false); }
-  }, [statusFilter, priorityFilter, categoryFilter, search, t]);
+  }, [statusFilter, priorityFilter, categoryFilter, search, t, page, limit, paginationParams, updateTotal]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
+  useEffect(() => {
+    resetPage();
+  }, [statusFilter, priorityFilter, categoryFilter, search, resetPage]);
 
   const handleReview = async () => {
     if (!reviewItem || !reviewAction) return;
@@ -322,7 +335,16 @@ export default function SuperAgentExhibitionsPage() {
                         <td className="hidden px-4 py-3.5 xl:table-cell"><span className="text-xs text-muted-foreground">{item.requiredResources?.length ?? 0} items</span></td>
                         <td className="px-4 py-3.5 text-right">
                           <div className="flex flex-wrap items-center justify-end gap-1">
-                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-primary" onClick={() => setDetailItem(item)}><Eye className="h-4 w-4" /></Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 rounded-lg text-muted-foreground hover:text-primary"
+                              onClick={() => setDetailItem(item)}
+                              title={t("viewDetails")}
+                              aria-label={t("viewDetails")}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
                             {item.status === "submitted" && (<Button size="sm" variant="outline" onClick={() => openReview(item, "under_review")} className="h-8 rounded-lg border-amber-200 text-xs text-amber-700 hover:bg-amber-50 dark:border-amber-500/30 dark:text-amber-300 dark:hover:bg-amber-500/10"><Clock className="mr-1 h-3.5 w-3.5" /> Review</Button>)}
                             {item.status === "under_review" && (<>
                               <Button size="sm" onClick={() => openReview(item, "approved")} className="h-8 rounded-lg bg-emerald-600 text-xs text-white hover:bg-emerald-700"><ThumbsUp className="mr-1 h-3.5 w-3.5" /> Approve</Button>
@@ -340,6 +362,14 @@ export default function SuperAgentExhibitionsPage() {
           </SuperAgentDataTableShell>
         )}
       </SuperAgentSection>
+      <PaginationControls
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        limit={limit}
+        onPageChange={setPage}
+        onLimitChange={setLimit}
+      />
 
       {/* Detail Modal */}
       <Dialog open={!!detailItem} onOpenChange={() => setDetailItem(null)}>

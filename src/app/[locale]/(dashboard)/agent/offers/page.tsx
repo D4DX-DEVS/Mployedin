@@ -349,17 +349,14 @@ export default function AgentOffersPage() {
                   <TableHead>{t("table.candidate")}</TableHead>
                   <TableHead>{t("table.job")}</TableHead>
                   <TableHead>{t("table.salary")}</TableHead>
-                  <TableHead>{t("table.status")}</TableHead>
                   <TableHead>{t("table.startDate")}</TableHead>
-                  <TableHead>{t("table.expires")}</TableHead>
-                  <TableHead>{t("table.sent")}</TableHead>
                   <TableHead className="text-right">{t("table.actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i} className="hover:bg-transparent">
-                    {Array.from({ length: 8 }).map((_, j) => (
+                    {Array.from({ length: 5 }).map((_, j) => (
                       <TableCell key={j}>
                         <Skeleton className="h-4 w-full" />
                       </TableCell>
@@ -382,10 +379,7 @@ export default function AgentOffersPage() {
                   <TableHead>{t("table.candidate")}</TableHead>
                   <TableHead>{t("table.job")}</TableHead>
                   <TableHead>{t("table.salary")}</TableHead>
-                  <TableHead>{t("table.status")}</TableHead>
                   <TableHead>{t("table.startDate")}</TableHead>
-                  <TableHead>{t("table.expires")}</TableHead>
-                  <TableHead>{t("table.sent")}</TableHead>
                   <TableHead className="text-right">{t("table.actions")}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -395,25 +389,23 @@ export default function AgentOffersPage() {
                     <TableCell>
                       <p className="font-medium text-foreground">{o.candidateName}</p>
                       {o.candidateEmail && <p className="text-xs text-muted-foreground">{o.candidateEmail}</p>}
+                      <Badge variant={getStatusBadgeVariant(o.status)}>
+                        {isExpired(o) ? t("status.expired") : statusLabel(o.status)}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <p className="text-sm">{o.jobTitle}</p>
                       {o.companyName && <p className="text-xs text-muted-foreground">{o.companyName}</p>}
                     </TableCell>
                     <TableCell className="text-sm">{formatSalary(o)}</TableCell>
-                    <TableCell>
-                      <Badge variant={getStatusBadgeVariant(o.status)}>
-                        {isExpired(o) ? t("status.expired") : statusLabel(o.status)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{formatDate(o.startDate)}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {formatDate(o.expiresAt)}
+                      <span className="block">{formatDate(o.startDate)}</span>
+                      <span className="mt-1 block text-xs">{t("table.expires")}: {formatDate(o.expiresAt)}</span>
+                      <span className="mt-1 block text-xs">{t("table.sent")}: {formatDate(o.createdAt)}</span>
                       {isExpiringSoon(o) && (
                         <span className="mt-1 block text-xs font-semibold text-amber-600">{t("expiringSoon")}</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{formatDate(o.createdAt)}</TableCell>
                     <TableCell>
                       <div className="flex items-center justify-end gap-1.5">
                         <Button size="sm" variant="ghost" className="h-8 rounded-lg px-2.5 text-xs"

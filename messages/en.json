@@ -14120,7 +14120,11 @@
     "exportData": "Export data",
     "rowsPerPage": "Rows per page",
     "showing": "Showing {from}–{to} of {total}",
-    "noRecords": "No records"
+    "noRecords": "No records",
+    "firstPage": "First page",
+    "previousPage": "Previous page",
+    "nextPage": "Next page",
+    "lastPage": "Last page"
   },
   "shareJob": {
     "share": "Share",

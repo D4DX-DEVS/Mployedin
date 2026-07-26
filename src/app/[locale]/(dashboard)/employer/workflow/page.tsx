@@ -342,6 +342,7 @@ export default function EmployerWorkflowPage() {
       )}
 
       <DashboardPageHeader
+        headingLevel={2}
         icon={Settings2}
         eyebrow={t("pipelineAutomation")}
         title={t("pipelineAutomationDesc")}

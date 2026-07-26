@@ -14120,7 +14120,11 @@
     "exportData": "تصدير البيانات",
     "rowsPerPage": "عدد الصفوف في الصفحة",
     "showing": "عرض {from}–{to} من {total}",
-    "noRecords": "لا توجد سجلات"
+    "noRecords": "لا توجد سجلات",
+    "firstPage": "الصفحة الأولى",
+    "previousPage": "الصفحة السابقة",
+    "nextPage": "الصفحة التالية",
+    "lastPage": "الصفحة الأخيرة"
   },
   "shareJob": {
     "share": "مشاركة",

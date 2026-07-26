@@ -29,6 +29,7 @@ interface DashboardPageHeaderProps {
   footer?: ReactNode;
   children?: ReactNode;
   className?: string;
+  headingLevel?: 1 | 2;
 }
 
 /**
@@ -47,7 +48,9 @@ export function DashboardPageHeader({
   footer,
   children,
   className,
+  headingLevel = 1,
 }: DashboardPageHeaderProps) {
+  const Heading = headingLevel === 2 ? "h2" : "h1";
   return (
     <section
       data-dashboard-page-header="component"
@@ -62,9 +65,9 @@ export function DashboardPageHeader({
             <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             <span className="truncate">{eyebrow}</span>
           </div>
-          <h1 className="text-xl font-semibold tracking-tight text-foreground sm:mt-1.5 sm:text-[1.625rem]">
+          <Heading className="text-xl font-semibold tracking-tight text-foreground sm:mt-1.5 sm:text-[1.625rem]">
             {title}
-          </h1>
+          </Heading>
           {description && (
             <p className="mt-1 hidden max-w-2xl text-sm leading-5 text-muted-foreground sm:line-clamp-2">
               {description}

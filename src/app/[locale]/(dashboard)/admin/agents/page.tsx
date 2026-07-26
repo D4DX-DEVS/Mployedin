@@ -364,11 +364,9 @@ export default function AdminAgentsPage() {
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
               <TableHead>{tr("name")}</TableHead>
-              <TableHead>{tr("email")}</TableHead>
               <TableHead>{tr("superAgent")}</TableHead>
               <TableHead>{tr("region")}</TableHead>
               <TableHead>{tr("commission")}</TableHead>
-              <TableHead>{tr("status")}</TableHead>
               <TableHead>{tr("joined")}</TableHead>
               {(can("agents", "update") || can("agents", "delete")) && (
                 <TableHead>{tr("actions")}</TableHead>
@@ -379,7 +377,7 @@ export default function AdminAgentsPage() {
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i} className="hover:bg-transparent">
-                  {Array.from({ length: 8 }).map((_, j) => (
+                  {Array.from({ length: 6 }).map((_, j) => (
                     <TableCell key={j}>
                       <div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
                     </TableCell>
@@ -388,7 +386,7 @@ export default function AdminAgentsPage() {
               ))
             ) : agents.length === 0 ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={8} className="h-32 text-center">
+                <TableCell colSpan={6} className="h-32 text-center">
                   <div className="flex flex-col items-center gap-2 text-muted-foreground">
                     <Inbox className="h-8 w-8 opacity-40" />
                     <span className="text-sm">{tr("noAgentsFound")}</span>
@@ -397,8 +395,13 @@ export default function AdminAgentsPage() {
               </TableRow>
             ) : agents.map((agent) => (
               <TableRow key={agent._id}>
-                <TableCell className="font-medium">{agent.name}</TableCell>
-                <TableCell className="text-muted-foreground text-sm">{agent.email}</TableCell>
+                <TableCell>
+                  <div className="flex flex-col items-start gap-1.5">
+                    <span className="font-medium">{agent.name}</span>
+                    <span className="text-xs text-muted-foreground">{agent.email}</span>
+                    <StatusBadge status={agent.isActive !== false ? "active" : "inactive"} />
+                  </div>
+                </TableCell>
                 <TableCell className="text-sm">
                   {agent.agentProfile?.superAgentName ? (
                     <Badge variant="outline" className="text-xs">
@@ -422,7 +425,6 @@ export default function AdminAgentsPage() {
                 <TableCell className="text-sm">
                   {agent.agentProfile?.commissionRate != null ? `${agent.agentProfile.commissionRate}%` : "—"}
                 </TableCell>
-                <TableCell><StatusBadge status={agent.isActive !== false ? "active" : "inactive"} /></TableCell>
                 <TableCell className="text-muted-foreground text-sm">{new Date(agent.createdAt).toLocaleDateString()}</TableCell>
                 {(can("agents", "update") || can("agents", "delete")) && (
                   <TableCell>
