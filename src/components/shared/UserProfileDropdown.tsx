@@ -15,15 +15,8 @@ import {
   Mail,
   Loader2,
   AlertTriangle,
-  Video,
-  Gift,
-  Calendar,
-  Search,
-  FileText,
-  BookOpen,
-  Building2,
+  Bell,
   Crown,
-  MoreHorizontal,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -42,6 +35,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/shared/ThemeToggle";
+import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
 
 const ROLE_KEYS: Record<string, string> = {
   admin: "admin",
@@ -78,6 +73,7 @@ export function UserProfileDropdown({
   const userImage = session?.user?.image;
   const router = useRouter();
   const t = useTranslations("profileDropdown");
+  const tNotifications = useTranslations("notificationsPage");
   const isAr = locale === "ar";
 
   const roleKey = ROLE_KEYS[userRole] ?? userRole;
@@ -149,7 +145,7 @@ export function UserProfileDropdown({
         <DropdownMenuTrigger asChild>
           <button
             aria-label="Open user menu"
-            className="flex h-9 w-9 items-center justify-center rounded-full brand-gradient text-white text-sm font-semibold shrink-0 shadow-soft ring-2 ring-background cursor-pointer hover:ring-primary/20 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ring overflow-hidden"
+            className="flex h-11 w-11 items-center justify-center rounded-full brand-gradient text-white text-sm font-semibold shrink-0 shadow-soft ring-2 ring-background cursor-pointer hover:ring-primary/20 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ring overflow-hidden"
           >
             {companyLogo ? (
               <Image src={companyLogo} alt="Company logo" width={36} height={36} className="w-full h-full object-contain" unoptimized />
@@ -212,70 +208,18 @@ export function UserProfileDropdown({
 
           <DropdownMenuSeparator />
 
-          {userRole === "job_seeker" && (
-            <>
-              <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                {t("quickLinks")}
-              </div>
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 rounded-md hover:bg-muted/50 transition-colors"
-                onSelect={() => router.push(`/${locale}/job-seeker/interviews`)}
-              >
-                <Video className="h-4 w-4" />
-                <span className="text-sm">{t("interviews")}</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 rounded-md hover:bg-muted/50 transition-colors"
-                onSelect={() => router.push(`/${locale}/job-seeker/offers`)}
-              >
-                <Gift className="h-4 w-4" />
-                <span className="text-sm">{t("offers")}</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 rounded-md hover:bg-muted/50 transition-colors"
-                onSelect={() => router.push(`/${locale}/job-seeker/calendar`)}
-              >
-                <Calendar className="h-4 w-4" />
-                <span className="text-sm">{t("calendar")}</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 rounded-md hover:bg-muted/50 transition-colors"
-                onSelect={() => router.push(`/${locale}/job-seeker/saved-searches`)}
-              >
-                <Search className="h-4 w-4" />
-                <span className="text-sm">{t("savedSearches")}</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 rounded-md hover:bg-muted/50 transition-colors"
-                onSelect={() => router.push(`/${locale}/job-seeker/documents`)}
-              >
-                <FileText className="h-4 w-4" />
-                <span className="text-sm">{t("documents")}</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 rounded-md hover:bg-muted/50 transition-colors"
-                onSelect={() => router.push(`/${locale}/job-seeker/cv`)}
-              >
-                <BookOpen className="h-4 w-4" />
-                <span className="text-sm">{t("cvBuilder")}</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 rounded-md hover:bg-muted/50 transition-colors"
-                onSelect={() => router.push(`/${locale}/job-seeker/companies`)}
-              >
-                <Building2 className="h-4 w-4" />
-                <span className="text-sm">{t("companies")}</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="cursor-pointer gap-2 rounded-md hover:bg-muted/50 transition-colors"
-                onSelect={() => router.push(`/${locale}/job-seeker/subscription`)}
-              >
-                <Crown className="h-4 w-4" />
-                <span className="text-sm">{t("subscription")}</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-            </>
-          )}
+          <div className="grid grid-cols-[2.75rem_minmax(0,1fr)] items-center gap-2 px-2 py-1.5 md:hidden">
+            <ThemeToggle />
+            <LanguageSwitcher />
+          </div>
+          <DropdownMenuItem
+            className="cursor-pointer gap-2 rounded-md hover:bg-muted/50 transition-colors md:hidden"
+            onSelect={() => router.push(`/${locale}/notifications`)}
+          >
+            <Bell className="h-4 w-4" />
+            <span className="font-medium text-sm">{tNotifications("title")}</span>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator className="md:hidden" />
 
           {(userRole === "job_seeker" || userRole === "employer" || userRole === "super_agent" || userRole === "agent") && (
             <DropdownMenuItem
@@ -292,6 +236,16 @@ export function UserProfileDropdown({
             >
               <Settings className="h-4 w-4" />
               <span className="font-medium text-sm">{t("settings")}</span>
+            </DropdownMenuItem>
+          )}
+
+          {userRole === "job_seeker" && (
+            <DropdownMenuItem
+              className="cursor-pointer gap-2 rounded-md hover:bg-muted/50 transition-colors"
+              onSelect={() => router.push(`/${locale}/job-seeker/subscription`)}
+            >
+              <Crown className="h-4 w-4" />
+              <span className="font-medium text-sm">{t("subscription")}</span>
             </DropdownMenuItem>
           )}
 

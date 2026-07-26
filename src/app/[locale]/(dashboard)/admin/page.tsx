@@ -135,7 +135,7 @@ interface QuickAction {
 type DashboardTranslator = Awaited<ReturnType<typeof getTranslations>>;
 
 const adminPanelClassName =
-  "workspace-panel-surface rounded-[28px] p-6 sm:p-7";
+  "workspace-panel-surface rounded-2xl p-4 sm:p-5";
 
 const adminCardClassName =
   "workspace-glass-panel rounded-2xl";
@@ -691,7 +691,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
   const funnelMax = Math.max(1, ...funnelStages.map((stage) => stage.count));
 
   return (
-    <div className="page-container space-y-6 pb-6">
+    <div className="page-container flex flex-col gap-4 pb-6">
       <DashboardPageHeader
         icon={Activity}
         eyebrow={t("hero.eyebrow")}
@@ -712,7 +712,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
         }))}
       />
 
-      <div className="grid items-start gap-4 xl:grid-cols-[1.08fr_0.92fr]">
+      <div className="order-2 grid items-start gap-4 xl:grid-cols-[1.08fr_0.92fr]">
         <section className="workspace-panel-surface rounded-2xl p-4 sm:p-5" data-surface="light-panel">
           <div>
             <h2 className="text-base font-semibold tracking-tight text-foreground">
@@ -805,7 +805,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
         </section>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.02fr_0.98fr]">
+      <div className="order-1 grid items-start gap-4 xl:grid-cols-[1.02fr_0.98fr]">
         <Suspense fallback={<PlatformInsightsSkeleton />}>
           <PlatformInsightsSection
             inactiveEmployers={stats.inactiveEmployers}
@@ -829,34 +829,37 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
             </div>
           </div>
 
-          <div className="mt-6 space-y-4">
+          <div className="mt-4 grid grid-cols-2 gap-2.5">
             {funnelStages.map((stage, index) => {
               const nextStage = funnelStages[index + 1];
-              const stageWidth = stage.count === 0 ? 18 : Math.max(34, Math.round((stage.count / funnelMax) * 100));
+              const stageWidth = stage.count === 0 ? 0 : Math.max(6, Math.round((stage.count / funnelMax) * 100));
               const conversion = nextStage && stage.count > 0
                 ? Math.round((nextStage.count / stage.count) * 100)
                 : null;
 
               return (
-                <div key={stage.label}>
-                  <div className="flex items-center justify-between text-sm font-medium text-foreground">
-                    <span>{stage.label}</span>
-                    <span>{stage.count.toLocaleString()}</span>
+                <div
+                  key={stage.label}
+                  aria-label={t("sections.hiringFunnel.stageAria", { label: stage.label, count: stage.count })}
+                  className="workspace-glass-panel rounded-xl p-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="text-xs font-semibold text-muted-foreground">{stage.label}</span>
+                    <span className="text-xl font-semibold tracking-tight text-foreground">{stage.count.toLocaleString()}</span>
                   </div>
-                  <div className="mt-2 flex justify-center">
+                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary">
                     <div
-                      aria-label={t("sections.hiringFunnel.stageAria", { label: stage.label, count: stage.count })}
-                      className={stage.count === 0
-                        ? "flex h-12 items-center justify-center rounded-[18px] border border-dashed border-slate-300 px-4 text-sm font-semibold text-slate-500 dark:border-slate-700 dark:text-slate-400"
-                        : `flex h-12 items-center justify-center rounded-[18px] bg-gradient-to-r ${stage.toneClassName} px-4 text-sm font-semibold text-white shadow-[0_20px_50px_-40px_rgba(15,23,42,0.5)]`}
+                      className={`h-full rounded-full bg-gradient-to-r ${stage.toneClassName}`}
                       style={{ width: `${stageWidth}%` }}
-                    >
-                      {stage.count === 0 ? t("sections.hiringFunnel.noData", { label: stage.label }) : stage.label}
-                    </div>
+                    />
                   </div>
                   {conversion !== null ? (
-                    <p className="mt-2 text-center text-xs text-muted-foreground">{t("sections.hiringFunnel.nextStage", { value: conversion })}</p>
-                  ) : null}
+                    <p className="mt-2 text-[11px] text-muted-foreground">{t("sections.hiringFunnel.nextStage", { value: conversion })}</p>
+                  ) : (
+                    <p className="mt-2 text-[11px] text-muted-foreground">
+                      {stage.count === 0 ? t("sections.hiringFunnel.noData", { label: stage.label }) : t("sections.hiringFunnel.closed", { count: stage.count })}
+                    </p>
+                  )}
                 </div>
               );
             })}
@@ -864,7 +867,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
         </section>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+      <div className="order-3 grid items-start gap-4 xl:grid-cols-[1.1fr_0.9fr]">
         <section className={adminPanelClassName} data-surface="light-panel">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
@@ -883,12 +886,12 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
             </div>
           </div>
 
-          <div className="mt-6 rounded-[24px] border border-border/70 bg-card/95 p-4 shadow-sm backdrop-blur-sm">
+          <div className="mt-4 rounded-2xl border border-border/70 bg-card/95 p-3 shadow-sm backdrop-blur-sm">
             <svg
               viewBox={`0 0 ${chartWidth} ${chartHeight}`}
               role="img"
               aria-label={t("sections.trends.chartAria")}
-              className="h-[260px] w-full text-muted-foreground"
+              className="h-[190px] w-full text-muted-foreground"
               preserveAspectRatio="none"
             >
               {[0.25, 0.5, 0.75, 1].map((tick) => {
@@ -929,18 +932,18 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
             </svg>
           </div>
 
-          <div className="mt-5 grid gap-4 sm:grid-cols-3">
-            <div className={`${adminCardClassName} px-4 py-4`} data-surface="light-card">
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <div className={`${adminCardClassName} px-3 py-3`} data-surface="light-card">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sections.trends.jobsOpened")}</p>
               <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{stats.jobsCreatedThisMonth}</p>
               <p className="mt-1 text-sm leading-6 text-muted-foreground">{t("sections.trends.jobsOpenedDesc")}</p>
             </div>
-            <div className={`${adminCardClassName} px-4 py-4`} data-surface="light-card">
+            <div className={`${adminCardClassName} px-3 py-3`} data-surface="light-card">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sections.trends.applicationFlow")}</p>
               <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{stats.applicationsThisMonth}</p>
               <p className="mt-1 text-sm leading-6 text-muted-foreground">{t("sections.trends.applicationFlowDesc")}</p>
             </div>
-            <div className={`${adminCardClassName} px-4 py-4`} data-surface="light-card">
+            <div className={`${adminCardClassName} px-3 py-3`} data-surface="light-card">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sections.trends.demandRatio")}</p>
               <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{applicationsPerActiveJob.toFixed(1)}</p>
               <p className="mt-1 text-sm leading-6 text-muted-foreground">{t("sections.trends.demandRatioDesc")}</p>
@@ -964,20 +967,20 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
             ) : null}
           </div>
 
-          <div className="mt-6 space-y-4">
+          <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
             {roleDistribution.map((role, index) => (
-              <div key={`${role._id ?? "unknown"}-${index}`} className={`${adminCardClassName} px-4 py-4`} data-surface="light-card">
+              <div key={`${role._id ?? "unknown"}-${index}`} className={`${adminCardClassName} px-3 py-3`} data-surface="light-card">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-[15px] font-semibold text-foreground">{role.label}</p>
-                    <p className="mt-1 text-sm leading-6 text-muted-foreground">{role.insight}</p>
+                    <p className="mt-1 line-clamp-1 text-xs leading-5 text-muted-foreground">{role.insight}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-semibold text-foreground">{role.percentage}%</p>
                     <p className="text-xs text-muted-foreground">{t("sections.usersByRole.userCount", { count: role.count })}</p>
                   </div>
                 </div>
-                <div className="mt-4 h-2.5 overflow-hidden rounded-full border border-border/60 bg-background/95 shadow-inner">
+                <div className="mt-3 h-2 overflow-hidden rounded-full border border-border/60 bg-background/95 shadow-inner">
                   <div
                     className="h-full rounded-full bg-[linear-gradient(135deg,_rgba(14,165,233,0.92),_rgba(37,99,235,0.92))] transition-all duration-1000 ease-out"
                     style={{ width: `${Math.max(6, role.percentage)}%` }}

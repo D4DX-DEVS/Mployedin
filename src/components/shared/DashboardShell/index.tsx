@@ -98,7 +98,7 @@ export function DashboardShell({
           />
         )}
         {/* Topbar */}
-        <header className={`dashboard-topbar border-b border-border/40 bg-background z-30 sticky top-0 transition-all ${usesModernWorkspaceShell ? "dashboard-topbar-workspace h-14 sm:h-16" : isJobSeeker ? "h-14 sm:h-16" : "h-14"}`}>
+        <header className={`dashboard-topbar border-b border-border/40 bg-background z-30 sticky top-0 transition-all ${usesModernWorkspaceShell ? "dashboard-topbar-workspace h-14 sm:h-16 lg:h-20" : isJobSeeker ? "h-14 sm:h-16" : "h-14"}`}>
           <div className="flex h-full items-center gap-1.5 px-3 sm:gap-2 sm:px-4 md:gap-3 lg:px-6">
             {!isJobSeeker && <MobileMenuButton onClick={() => setMobileOpen(true)} />}
 
@@ -130,9 +130,11 @@ export function DashboardShell({
               </div>
               {mounted && (
                 <>
-                  <ThemeToggle className={isJobSeeker ? "hidden min-[360px]:inline-flex" : undefined} />
-                  <LanguageSwitcher />
-                  <NotificationBell locale={locale} />
+                  <div className="hidden items-center gap-3 md:flex">
+                    <ThemeToggle />
+                    <LanguageSwitcher />
+                    <NotificationBell locale={locale} />
+                  </div>
                   <UserProfileDropdown
                     userName={userName ?? "User"}
                     userEmail={userEmail ?? ""}

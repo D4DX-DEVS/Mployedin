@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 import PublicFooter from "@/components/shared/PublicFooter";
 
@@ -91,9 +91,9 @@ describe("PublicFooter", () => {
     render(<PublicFooter locale="en" />);
 
     expect(screen.getByText("Digital hiring platform")).toBeInTheDocument();
-    expect(screen.getByText("Platform")).toBeInTheDocument();
-    expect(screen.getByText("Resources")).toBeInTheDocument();
-    expect(screen.getByText("Company")).toBeInTheDocument();
+    expect(screen.getAllByText("Platform")).toHaveLength(2);
+    expect(screen.getAllByText("Resources")).toHaveLength(2);
+    expect(screen.getAllByText("Company")).toHaveLength(2);
     expect(screen.getByRole("link", { name: "Hiring solutions" })).toHaveAttribute("href", "/en/employer-register");
     expect(screen.getByText(/Greenleaf Walk/i)).toBeInTheDocument();
     expect(screen.getByText("support@mployedin.com")).toBeInTheDocument();
@@ -102,6 +102,23 @@ describe("PublicFooter", () => {
     expect(screen.getByText("AI-powered matching")).toBeInTheDocument();
     expect(screen.queryByText("Jobs By Functional Area")).not.toBeInTheDocument();
     expect(screen.queryByText("Jobs By Industry")).not.toBeInTheDocument();
+  });
+
+  it("uses one-at-a-time accordion controls for mobile footer navigation", () => {
+    render(<PublicFooter locale="en" />);
+
+    const platform = screen.getByRole("button", { name: "Platform" });
+    const resources = screen.getByRole("button", { name: "Resources" });
+
+    expect(platform).toHaveAttribute("aria-expanded", "false");
+    expect(resources).toHaveAttribute("aria-expanded", "false");
+
+    fireEvent.click(platform);
+    expect(platform).toHaveAttribute("aria-expanded", "true");
+
+    fireEvent.click(resources);
+    expect(platform).toHaveAttribute("aria-expanded", "false");
+    expect(resources).toHaveAttribute("aria-expanded", "true");
   });
 
   it("uses the smaller embedded variant without the extra highlight content", () => {
@@ -117,7 +134,7 @@ describe("PublicFooter", () => {
     render(<PublicFooter locale="ar" />);
 
     expect(screen.getByText("منصة توظيف رقمية")).toBeInTheDocument();
-    expect(screen.getByText("الموارد")).toBeInTheDocument();
+    expect(screen.getAllByText("الموارد")).toHaveLength(2);
     expect(screen.getByText("تابعنا")).toBeInTheDocument();
   });
 });

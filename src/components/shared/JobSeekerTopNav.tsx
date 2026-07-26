@@ -16,8 +16,6 @@ import {
   MoreHorizontal,
   CalendarDays,
   Gift,
-  Settings,
-  Crown,
   X,
   Bell,
 } from "lucide-react";
@@ -178,18 +176,37 @@ export function JobSeekerBottomNav({ locale }: JobSeekerTopNavProps) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   const bottomItems = NAV_ITEMS.filter((item) => item.labelKey !== "support");
-  const moreItems = [
-    { label: t("support"), href: "/job-seeker/messages", icon: Headset },
-    { label: t("interviews"), href: "/job-seeker/interviews", icon: CalendarDays },
-    { label: t("offers"), href: "/job-seeker/offers", icon: FileText },
-    { label: t("calendar"), href: "/job-seeker/calendar", icon: CalendarDays },
-    { label: t("savedSearches"), href: "/job-seeker/saved-searches", icon: Bell },
-    { label: t("cvBuilder"), href: "/job-seeker/cv", icon: FileText },
-    { label: t("documents"), href: "/job-seeker/documents", icon: FileText },
-    { label: t("referralProgram"), href: "/job-seeker/referral", icon: Gift },
-    { label: t("subscription"), href: "/job-seeker/subscription", icon: Crown },
-    { label: t("settings"), href: "/job-seeker/settings", icon: Settings },
+  const moreGroups = [
+    {
+      label: locale === "ar" ? "الخطوات التالية" : "Next steps",
+      items: [
+        { label: t("interviews"), href: "/job-seeker/interviews", icon: CalendarDays },
+        { label: t("offers"), href: "/job-seeker/offers", icon: FileText },
+        { label: t("calendar"), href: "/job-seeker/calendar", icon: CalendarDays },
+      ],
+    },
+    {
+      label: locale === "ar" ? "أدوات المسيرة المهنية" : "Career tools",
+      items: [
+        { label: t("savedSearches"), href: "/job-seeker/saved-searches", icon: Bell },
+        { label: t("cvBuilder"), href: "/job-seeker/cv", icon: FileText },
+        { label: t("documents"), href: "/job-seeker/documents", icon: FileText },
+      ],
+    },
+    {
+      label: locale === "ar" ? "النمو" : "Growth",
+      items: [
+        { label: t("referralProgram"), href: "/job-seeker/referral", icon: Gift },
+      ],
+    },
+    {
+      label: locale === "ar" ? "المساعدة" : "Help",
+      items: [
+        { label: t("support"), href: "/job-seeker/messages", icon: Headset },
+      ],
+    },
   ];
+  const moreItems = moreGroups.flatMap((group) => group.items);
 
   function isActive(href: string) {
     const full = `/${locale}${href}`;
@@ -241,22 +258,31 @@ export function JobSeekerBottomNav({ locale }: JobSeekerTopNavProps) {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              {moreItems.map(({ label, href, icon: Icon }) => (
-                <Link
-                  key={href}
-                  href={`/${locale}${href}`}
-                  onClick={() => setMoreOpen(false)}
-                  className={cn(
-                    "flex min-h-14 items-center gap-3 rounded-2xl border px-3 py-3 text-sm font-medium",
-                    isActive(href)
-                      ? "border-primary/30 bg-primary/10 text-primary"
-                      : "border-border bg-card text-foreground"
-                  )}
-                >
-                  <Icon className="h-5 w-5 shrink-0" />
-                  <span>{label}</span>
-                </Link>
+            <div className="space-y-4">
+              {moreGroups.map((group) => (
+                <div key={group.label}>
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                    {group.label}
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {group.items.map(({ label, href, icon: Icon }) => (
+                      <Link
+                        key={href}
+                        href={`/${locale}${href}`}
+                        onClick={() => setMoreOpen(false)}
+                        className={cn(
+                          "flex min-h-14 items-center gap-3 rounded-2xl border px-3 py-3 text-sm font-medium",
+                          isActive(href)
+                            ? "border-primary/30 bg-primary/10 text-primary"
+                            : "border-border bg-card text-foreground"
+                        )}
+                      >
+                        <Icon className="h-5 w-5 shrink-0" />
+                        <span>{label}</span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
           </section>

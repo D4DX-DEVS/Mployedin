@@ -3,6 +3,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useRef } from "react";
 import { Toaster } from "sonner";
+import { ResponsiveTables } from "@/components/shared/ResponsiveTables";
 
 // Persist QueryClient across HMR so cached data survives hot reloads
 let _persistedClient: QueryClient | null = null;
@@ -29,6 +30,7 @@ export function DashboardProviders({ children }: { children: React.ReactNode }) 
   return (
     <QueryClientProvider client={queryClient}>
       {children}
+      <ResponsiveTables />
       <Toaster position="bottom-right" richColors closeButton />
     </QueryClientProvider>
   );

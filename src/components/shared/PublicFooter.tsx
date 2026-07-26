@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
-import { ArrowRight, Mail, MapPin } from "lucide-react";
+import { ArrowRight, ChevronDown, Mail, MapPin } from "lucide-react";
 
 type FooterVariant = "full" | "embedded";
 
@@ -60,6 +60,7 @@ export default function PublicFooter({ locale, variant = "full" }: PublicFooterP
   // Obfuscation" from rewriting it (which injects a CSP-blocked decode
   // script and triggers a React hydration mismatch, error #418).
   const [mounted, setMounted] = useState(false);
+  const [openMobileSection, setOpenMobileSection] = useState<string | null>(null);
   useEffect(() => setMounted(true), []);
 
   const platformSection: FooterSection = {
@@ -107,9 +108,9 @@ export default function PublicFooter({ locale, variant = "full" }: PublicFooterP
       data-testid="site-footer"
       className="border-t border-white/10 bg-[hsl(var(--brand-blue-dark))] text-white"
     >
-      <div className={`container mx-auto px-4 sm:px-6 ${isEmbedded ? "py-6" : "py-8 lg:py-10"}`}>
-        <div className={`grid gap-10 ${isEmbedded ? "lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]" : "lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]"}`}>
-          <div className="space-y-5">
+      <div className={`container mx-auto px-4 sm:px-6 ${isEmbedded ? "py-5 sm:py-6" : "py-6 sm:py-8 lg:py-10"}`}>
+        <div className={`grid gap-6 sm:gap-10 ${isEmbedded ? "lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]" : "lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]"}`}>
+          <div className="space-y-4 sm:space-y-5">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/55">
                 {t("digitalPlatform")}
@@ -121,7 +122,7 @@ export default function PublicFooter({ locale, variant = "full" }: PublicFooterP
             </div>
 
             {!isEmbedded && (
-              <ul className="flex flex-wrap gap-2" role="list">
+              <ul className="hidden flex-wrap gap-2 sm:flex" role="list">
                 {platformHighlights.map((highlight) => (
                   <li
                     key={highlight}
@@ -136,7 +137,7 @@ export default function PublicFooter({ locale, variant = "full" }: PublicFooterP
             <div className="flex flex-wrap items-center gap-3">
               <Link
                 href={`/${locale}/jobs`}
-                className="inline-flex h-10 items-center gap-2 rounded-full bg-white px-4 text-sm font-semibold text-[hsl(var(--brand-blue-dark))] transition-transform hover:-translate-y-0.5"
+                className="inline-flex h-11 items-center gap-2 rounded-full bg-white px-4 text-sm font-semibold text-[hsl(var(--brand-blue-dark))] transition-transform hover:-translate-y-0.5"
               >
                 {t("browseJobs")}
                 <ArrowRight className="h-4 w-4" />
@@ -144,7 +145,7 @@ export default function PublicFooter({ locale, variant = "full" }: PublicFooterP
               {!isEmbedded && (
                 <Link
                   href={`/${locale}/employer-register`}
-                  className="inline-flex h-10 items-center rounded-full border border-white/18 px-4 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+                  className="inline-flex h-11 items-center rounded-full border border-white/18 px-4 text-sm font-semibold text-white transition-colors hover:bg-white/10"
                 >
                   {t("forEmployers")}
                 </Link>
@@ -180,7 +181,7 @@ export default function PublicFooter({ locale, variant = "full" }: PublicFooterP
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="WhatsApp"
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-[rgba(37,211,102,0.38)] bg-white/[0.04] text-[#25D366] transition-all duration-200 hover:-translate-y-0.5 hover:border-[rgba(37,211,102,0.6)] hover:bg-[rgba(37,211,102,0.12)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[rgba(37,211,102,0.38)] bg-white/[0.04] text-[#25D366] transition-all duration-200 hover:-translate-y-0.5 hover:border-[rgba(37,211,102,0.6)] hover:bg-[rgba(37,211,102,0.12)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                 >
                   <WhatsAppIcon className="h-5 w-5" />
                 </a>
@@ -189,7 +190,7 @@ export default function PublicFooter({ locale, variant = "full" }: PublicFooterP
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Instagram"
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-[rgba(247,119,55,0.34)] bg-white/[0.04] text-white transition-all duration-200 hover:-translate-y-0.5 hover:border-[rgba(247,119,55,0.6)] hover:bg-[linear-gradient(135deg,rgba(64,93,230,0.12),rgba(225,48,108,0.16),rgba(252,176,69,0.18))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[rgba(247,119,55,0.34)] bg-white/[0.04] text-white transition-all duration-200 hover:-translate-y-0.5 hover:border-[rgba(247,119,55,0.6)] hover:bg-[linear-gradient(135deg,rgba(64,93,230,0.12),rgba(225,48,108,0.16),rgba(252,176,69,0.18))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                 >
                   <InstagramIcon className="h-5 w-5" />
                 </a>
@@ -197,14 +198,30 @@ export default function PublicFooter({ locale, variant = "full" }: PublicFooterP
             </div>
           </div>
 
-          <div className={`grid gap-8 ${isEmbedded ? "sm:grid-cols-2" : "sm:grid-cols-2 xl:grid-cols-3"}`}>
+          <div className={`divide-y divide-white/10 border-y border-white/10 sm:grid sm:divide-y-0 sm:border-y-0 ${isEmbedded ? "sm:grid-cols-2 sm:gap-8" : "sm:grid-cols-2 sm:gap-8 xl:grid-cols-3"}`}>
             {linkSections.map((section) => (
               <div key={section.title}>
-                <h3 className="text-sm font-semibold uppercase tracking-[0.22em] text-white/58">{section.title}</h3>
-                <ul className="mt-4 space-y-2.5">
+                <button
+                  type="button"
+                  className="flex min-h-12 w-full items-center justify-between gap-3 py-3 text-start text-sm font-semibold uppercase tracking-[0.18em] text-white/78 sm:hidden"
+                  aria-expanded={openMobileSection === section.title}
+                  aria-controls={`footer-section-${locale}-${variant}-${section.title.replace(/\s+/g, "-").toLowerCase()}`}
+                  onClick={() => setOpenMobileSection((current) => current === section.title ? null : section.title)}
+                >
+                  {section.title}
+                  <ChevronDown
+                    className={`h-4 w-4 shrink-0 transition-transform ${openMobileSection === section.title ? "rotate-180" : ""}`}
+                    aria-hidden="true"
+                  />
+                </button>
+                <h3 className="hidden text-sm font-semibold uppercase tracking-[0.22em] text-white/58 sm:block">{section.title}</h3>
+                <ul
+                  id={`footer-section-${locale}-${variant}-${section.title.replace(/\s+/g, "-").toLowerCase()}`}
+                  className={`${openMobileSection === section.title ? "block" : "hidden"} space-y-1 pb-3 sm:mt-4 sm:block sm:space-y-2.5 sm:pb-0`}
+                >
                   {section.links.map((link) => (
                     <li key={`${section.title}-${link.href}`}>
-                      <Link href={link.href} className="text-sm leading-6 text-white/72 transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+                      <Link href={link.href} className="flex min-h-11 items-center text-sm leading-6 text-white/72 transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:min-h-0">
                         {link.label}
                       </Link>
                     </li>
@@ -219,7 +236,7 @@ export default function PublicFooter({ locale, variant = "full" }: PublicFooterP
           <p>
             &copy; {year} MPLOYEDIN. {t("allRights")}
           </p>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <div className="hidden flex-wrap items-center gap-x-4 gap-y-2 sm:flex">
             <Link href={`/${locale}/privacy`} className="transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
               {t("privacy")}
             </Link>

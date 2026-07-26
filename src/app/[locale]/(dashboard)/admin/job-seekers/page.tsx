@@ -454,6 +454,7 @@ export default function AdminJobSeekersPage() {
             <PageHeader
               title={tr("mainTitle")}
               description={total > 0 ? tr("candidatesFound", { count: total }) : tr("mainSubtitle")}
+              headingLevel={2}
             />
             <div className="flex flex-wrap items-center gap-2">
               {/* Generate Embeddings (admin only) */}

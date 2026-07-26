@@ -66,7 +66,7 @@ export function DashboardPageHeader({
             {title}
           </h1>
           {description && (
-            <p className="mt-1 max-w-2xl text-sm leading-5 text-muted-foreground sm:line-clamp-2">
+            <p className="mt-1 hidden max-w-2xl text-sm leading-5 text-muted-foreground sm:line-clamp-2">
               {description}
             </p>
           )}
@@ -79,9 +79,9 @@ export function DashboardPageHeader({
                 <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                   {summary.label}
                 </p>
-                <p className="mt-0.5 text-lg font-semibold leading-6 text-foreground">{summary.value}</p>
+                <p className="mt-0.5 text-base font-semibold leading-5 text-foreground sm:text-lg sm:leading-6">{summary.value}</p>
                 {summary.note && (
-                  <div className="truncate text-xs text-muted-foreground">{summary.note}</div>
+                  <div className="hidden truncate text-xs text-muted-foreground sm:block">{summary.note}</div>
                 )}
               </div>
             )}

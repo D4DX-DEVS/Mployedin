@@ -116,7 +116,7 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
       };
     })
     .sort((a, b) => b.placements - a.placements || b.leads - a.leads)
-    .slice(0, 5);
+    .slice(0, 3);
 
   // Conversion funnel — Leads → Employers → Jobs → CVs → Placements.
   const funnel = [
@@ -164,6 +164,12 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
 
   const actions = [
     {
+      label: t("actions.jobApprovals.label"),
+      description: t("actions.jobApprovals.description"),
+      href: `/${locale}/super-agent/approvals`,
+      icon: CheckCircle2,
+    },
+    {
       label: t("actions.agentPerformance.label"),
       description: t("actions.agentPerformance.description"),
       href: `/${locale}/super-agent/agents`,
@@ -174,12 +180,6 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
       description: t("actions.leadPipeline.description"),
       href: `/${locale}/super-agent/leads`,
       icon: Target,
-    },
-    {
-      label: t("actions.jobApprovals.label"),
-      description: t("actions.jobApprovals.description"),
-      href: `/${locale}/super-agent/approvals`,
-      icon: CheckCircle2,
     },
     {
       label: t("actions.commissionReport.label"),
@@ -194,7 +194,7 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
     : 0;
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container flex flex-col gap-6">
       <DashboardPageHeader
         icon={ShieldCheck}
         eyebrow={t("hero.eyebrow")}
@@ -225,7 +225,7 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
         </Link>
       )}
 
-      <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
+      <section className="order-2 workspace-panel-surface rounded-2xl p-4 sm:p-5 lg:order-1">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sections.funnel.eyebrow")}</p>
@@ -238,7 +238,7 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
           </div>
         </div>
 
-        <div className="mt-5 space-y-3">
+        <div className="mt-4 space-y-2.5">
           {funnel.map((stage) => (
             <div key={stage.key} className="flex items-center gap-4">
               <div className="w-32 shrink-0 text-sm font-medium text-muted-foreground">{stage.label}</div>
@@ -255,13 +255,13 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-        <div className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
+      <section className="order-1 grid items-start gap-4 lg:order-2 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+        <div className="workspace-panel-surface rounded-2xl p-4 sm:p-5">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sections.quickActions.eyebrow")}</p>
           <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("sections.quickActions.title")}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{t("sections.quickActions.description")}</p>
 
-          <div className="mt-5 grid gap-3 md:grid-cols-2">
+          <div className="mt-4 grid grid-cols-2 gap-2.5">
             {actions.map((action) => {
               const Icon = action.icon;
 
@@ -269,23 +269,23 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
                 <Link
                   key={action.href}
                   href={action.href}
-                  className="workspace-subtle-surface group rounded-2xl p-4 transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card hover:shadow-[0_24px_50px_-38px_rgba(2,132,199,0.38)]"
+                  className="workspace-subtle-surface group relative flex min-h-[96px] flex-col items-start gap-2 rounded-xl p-3 transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card hover:shadow-[0_24px_50px_-38px_rgba(2,132,199,0.38)] sm:min-h-[76px] sm:flex-row sm:items-center sm:gap-3"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="workspace-tone-sky rounded-2xl p-2.5">
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <ArrowRight className="h-4 w-4 text-muted-foreground/55 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+                  <div className="workspace-tone-sky shrink-0 rounded-xl p-2.5">
+                    <Icon className="h-5 w-5" />
                   </div>
-                  <h3 className="mt-4 text-base font-semibold text-foreground">{action.label}</h3>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{action.description}</p>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="pe-5 text-xs font-semibold leading-5 text-foreground sm:truncate sm:pe-0 sm:text-sm">{action.label}</h3>
+                    <p className="mt-1 hidden text-xs leading-5 text-muted-foreground sm:line-clamp-1">{action.description}</p>
+                  </div>
+                  <ArrowRight className="absolute end-3 top-3 h-4 w-4 shrink-0 text-muted-foreground/55 transition-transform group-hover:translate-x-0.5 group-hover:text-primary sm:static" />
                 </Link>
               );
             })}
           </div>
         </div>
 
-        <div className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
+        <div className="workspace-panel-surface rounded-2xl p-4 sm:p-5">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sections.leaderboard.eyebrow")}</p>
@@ -301,9 +301,9 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
           </div>
 
           {leaderboard.length > 0 ? (
-            <div className="mt-5 space-y-2.5">
+            <div className="mt-4 space-y-2">
               {leaderboard.map((row, index) => (
-                <div key={row.agentId} className="workspace-subtle-surface flex items-center gap-3 rounded-2xl p-3.5">
+                <div key={row.agentId} className="workspace-subtle-surface flex items-center gap-3 rounded-xl p-3">
                   <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
                     index === 0
                       ? "bg-amber-100 text-amber-700 dark:bg-amber-950/70 dark:text-amber-200"

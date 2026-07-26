@@ -5234,19 +5234,19 @@
     },
     "actions": {
       "agentPerformance": {
-        "label": "Agent Performance",
+        "label": "Review Agent Performance",
         "description": "Review the team roster, throughput, and individual accountability."
       },
       "leadPipeline": {
-        "label": "Lead Pipeline",
+        "label": "Follow Up Leads",
         "description": "Track follow-ups, active prospecting, and employer conversion flow."
       },
       "jobApprovals": {
-        "label": "Job Approvals",
+        "label": "Approve Jobs",
         "description": "Clear pending approvals quickly without leaving the oversight workspace."
       },
       "commissionReport": {
-        "label": "Commission Report",
+        "label": "Check Commissions",
         "description": "Stay on top of placement-driven earnings and regional payout status."
       }
     },
@@ -5320,19 +5320,19 @@
         "note": "Launch a role for one of your assigned employers."
       },
       "myJobs": {
-        "label": "My Jobs",
+        "label": "Manage My Jobs",
         "note": "Review active, draft, and closed postings in one view."
       },
       "candidates": {
-        "label": "Candidates",
+        "label": "Review Candidates",
         "note": "Move shortlists, interviews, and offers forward."
       },
       "jobSeekers": {
-        "label": "View Job Seekers",
+        "label": "Find Job Seekers",
         "note": "Search profiles, match talent, and follow up faster."
       },
       "performanceReport": {
-        "label": "Performance Report",
+        "label": "Check My Performance",
         "note": "Track conversion quality, response rates, and wins."
       }
     },

@@ -1291,9 +1291,22 @@ body {
     line-height: 1.2;
   }
 
+  .dashboard-shell-workspace .page-header-root {
+    gap: 0.625rem;
+    padding: 0.75rem;
+  }
+
+  .dashboard-shell-workspace .page-header-description {
+    display: none;
+  }
+
   .dashboard-shell-admin .page-header-root {
-    padding: 1rem;
+    padding: 0.75rem;
     border-radius: 1rem;
+  }
+
+  .dashboard-shell-workspace .dashboard-page-header {
+    padding: 0.75rem;
   }
 
   .dashboard-main :where(.workspace-hero-surface, .workspace-panel-surface, .workspace-glass-panel, .card-base) {
@@ -1332,6 +1345,10 @@ body {
     min-height: 44px;
     align-items: center;
     justify-content: center;
+  }
+
+  .dashboard-main a[href]:where([class*="inline-flex"], [class*="font-semibold"]) {
+    min-height: 44px;
   }
 
   .dashboard-main [class*="space-y-6"] {

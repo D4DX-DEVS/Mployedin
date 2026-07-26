@@ -157,7 +157,7 @@ export async function PlatformInsightsSection({
   ];
 
   return (
-    <section className="workspace-panel-surface rounded-[28px] p-6 sm:p-7" data-surface="light-panel">
+    <section className="workspace-panel-surface rounded-2xl p-4 sm:p-5" data-surface="light-panel">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold tracking-tight text-foreground">{t("sections.platformInsights.title")}</h2>
@@ -171,26 +171,30 @@ export async function PlatformInsightsSection({
         </div>
       </div>
 
-      <div className="mt-6 grid gap-4 md:grid-cols-3">
+      <div className="mt-4 grid gap-2.5">
         {insights.map((insight) => (
           <article
             key={insight.id}
-            className={`p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_28px_60px_-44px_rgba(15,23,42,0.16)] ${toneClasses[insight.tone]}`}
+            className={`p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_28px_60px_-44px_rgba(15,23,42,0.16)] ${toneClasses[insight.tone]}`}
             data-surface="light-card"
             data-tone={insight.tone}
           >
-            <div className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${badgeClasses[insight.tone]}`}>
-              {insight.tone === "critical" ? t("tones.critical") : insight.tone === "warning" ? t("tones.attention") : t("tones.stable")}
+            <div className="flex items-start gap-3">
+              <div className={`mt-0.5 inline-flex shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${badgeClasses[insight.tone]}`}>
+                {insight.tone === "critical" ? t("tones.critical") : insight.tone === "warning" ? t("tones.attention") : t("tones.stable")}
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className={`text-sm font-semibold tracking-tight ${titleClasses[insight.tone]}`}>{insight.title}</h3>
+                <p className={`mt-1 line-clamp-2 text-xs leading-5 ${detailClasses[insight.tone]}`}>{insight.detail}</p>
+              </div>
+              <Link
+                href={insight.href}
+                aria-label={`${insight.action}: ${insight.title}`}
+                className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-colors ${actionClasses[insight.tone]}`}
+              >
+                <ArrowRight className="h-4 w-4" />
+              </Link>
             </div>
-            <h3 className={`mt-4 text-lg font-semibold tracking-tight ${titleClasses[insight.tone]}`}>{insight.title}</h3>
-            <p className={`mt-2 text-sm leading-6 ${detailClasses[insight.tone]}`}>{insight.detail}</p>
-            <Link
-              href={insight.href}
-              className={`mt-5 inline-flex items-center gap-2 text-sm font-semibold transition-colors ${actionClasses[insight.tone]}`}
-            >
-              {insight.action}
-              <ArrowRight className="h-4 w-4" />
-            </Link>
           </article>
         ))}
       </div>
@@ -200,7 +204,7 @@ export async function PlatformInsightsSection({
 
 export function PlatformInsightsSkeleton() {
   return (
-    <section className="workspace-panel-surface rounded-[28px] p-6 sm:p-7" data-surface="light-panel" aria-hidden="true">
+    <section className="workspace-panel-surface rounded-2xl p-4 sm:p-5" data-surface="light-panel" aria-hidden="true">
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-2">
           <div className="h-7 w-52 rounded-lg skeleton-shimmer" />
