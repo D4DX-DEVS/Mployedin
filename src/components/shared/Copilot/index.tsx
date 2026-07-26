@@ -47,9 +47,10 @@ function AssistantMarkdown({ content }: { content: string }) {
 
 interface CopilotProps {
   className?: string;
+  triggerClassName?: string;
 }
 
-export function Copilot({ className }: CopilotProps) {
+export function Copilot({ className, triggerClassName }: CopilotProps) {
   const pathname = usePathname();
   const locale = useLocale();
   const isRtl = locale === "ar";
@@ -405,7 +406,8 @@ export function Copilot({ className }: CopilotProps) {
           onClick={() => setOpen(true)}
           className={cn(
             "fixed bottom-4 right-4 z-[70] flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105",
-            isRtl && "left-4 right-auto"
+            isRtl && "left-4 right-auto",
+            triggerClassName
           )}
           aria-label={t("openCopilot")}
         >

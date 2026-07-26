@@ -1308,6 +1308,32 @@ body {
     min-width: 0;
   }
 
+  /* Mobile workspace controls follow the platform touch-target baseline.
+     Explicit visual heights may remain compact, but the hit area never drops
+     below 44px. Native checkboxes/radios stay inside their larger label rows. */
+  .dashboard-shell :where(button, [role="button"]),
+  .dashboard-main :where(
+    input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]),
+    select,
+    textarea
+  ) {
+    min-height: 44px;
+  }
+
+  .dashboard-shell :where(
+    button[aria-label],
+    [role="button"][aria-label]
+  ) {
+    min-width: 44px;
+  }
+
+  .dashboard-main table.responsive-card-table :where(a[href], button) {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+  }
+
   .dashboard-main [class*="space-y-6"] {
     --tw-space-y-reverse: 0;
   }

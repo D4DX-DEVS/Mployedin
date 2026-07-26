@@ -24,10 +24,10 @@ const NotificationBell = dynamic(
   { ssr: false }
 );
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
-import PublicFooter from "@/components/shared/PublicFooter";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { UserProfileDropdown } from "@/components/shared/UserProfileDropdown";
 import { JobSeekerTopNav, JobSeekerBottomNav } from "@/components/shared/JobSeekerTopNav";
+import { EmployerBottomNav } from "@/components/shared/EmployerBottomNav";
 import { TenantViewBanner } from "@/components/features/tenant/TenantViewBanner";
 import type { NavGroup } from "@/lib/nav/menuConfig";
 import type { UserRole } from "@/types/user";
@@ -66,6 +66,7 @@ export function DashboardShell({
   const tNav = useTranslations("nav");
   const [mobileOpen, setMobileOpen] = useState(false);
   const isJobSeeker = userRole === "job_seeker";
+  const isEmployer = userRole === "employer";
   const isAdminWorkspace = userRole === "admin";
   const usesModernWorkspaceShell = userRole === "admin" || userRole === "employer" || userRole === "agent" || userRole === "super_agent";
   // Defer Radix-based components to avoid SSR/client ID mismatch hydration errors
@@ -148,26 +149,32 @@ export function DashboardShell({
         {/* Page content */}
         {isJobSeeker ? (
           <>
-            <main className="dashboard-main isolate flex-1 bg-background">
+            <main className="dashboard-main isolate flex-1 bg-background pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
               {children}
             </main>
-            <div className="flex-shrink-0 pt-8 pb-16 lg:pb-0">
-              <PublicFooter locale={locale} variant="embedded" />
-            </div>
             <JobSeekerBottomNav locale={locale} />
           </>
         ) : (
-          <main className={`dashboard-main isolate min-h-0 flex-1 overflow-y-auto overscroll-contain bg-background ${usesModernWorkspaceShell ? "dashboard-main-workspace" : ""}`}>
+          <main className={`dashboard-main isolate min-h-0 flex-1 overflow-y-auto overscroll-contain bg-background ${usesModernWorkspaceShell ? "dashboard-main-workspace" : ""} ${isEmployer ? "pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0" : ""}`}>
             {children}
           </main>
         )}
+        {isEmployer && <EmployerBottomNav locale={locale} onMore={() => setMobileOpen(true)} />}
       </div>
 
       {/* Cmd+K menu */}
       <CommandMenu navGroups={navGroups} locale={locale} />
 
       {/* Floating AI Copilot — role-scoped read + action tools for every dashboard role */}
-      <Copilot />
+      {!mobileOpen && (
+        <Copilot
+          triggerClassName={
+            isJobSeeker || isEmployer
+              ? "bottom-[calc(5rem+env(safe-area-inset-bottom))] lg:bottom-4"
+              : undefined
+          }
+        />
+      )}
     </div>
   );
 }

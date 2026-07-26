@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
 import { connectDB } from "@/lib/db/mongoose";
 import McpClient from "@/models/McpClient";
-import { getAppBaseUrl } from "@/lib/mcp/baseUrl";
+import { getAppBaseUrl, getMcpResourceUrl } from "@/lib/mcp/baseUrl";
+import { isValidPkceChallenge } from "@/lib/mcp/oauth";
 
 const DEFAULT_LOCALE = "en";
 
@@ -29,6 +30,7 @@ export async function GET(req: NextRequest) {
   const responseType = sp.get("response_type") ?? "";
   const codeChallenge = sp.get("code_challenge") ?? "";
   const codeChallengeMethod = sp.get("code_challenge_method") ?? "";
+  const resource = sp.get("resource") ?? "";
   const scope = sp.get("scope") ?? "";
   const state = sp.get("state");
 
@@ -47,8 +49,11 @@ export async function GET(req: NextRequest) {
   if (responseType !== "code") {
     return authorizeError(redirectUri, "unsupported_response_type", "Only response_type=code is supported", state);
   }
-  if (!codeChallenge || codeChallengeMethod !== "S256") {
+  if (!isValidPkceChallenge(codeChallenge) || codeChallengeMethod !== "S256") {
     return authorizeError(redirectUri, "invalid_request", "PKCE (code_challenge with S256) is required", state);
+  }
+  if (resource !== getMcpResourceUrl()) {
+    return authorizeError(redirectUri, "invalid_target", "resource does not identify this MCP server", state);
   }
 
   const session = await auth();
@@ -74,6 +79,7 @@ export async function GET(req: NextRequest) {
   consentUrl.searchParams.set("client_id", clientId);
   consentUrl.searchParams.set("redirect_uri", redirectUri);
   consentUrl.searchParams.set("code_challenge", codeChallenge);
+  consentUrl.searchParams.set("resource", resource);
   consentUrl.searchParams.set("scope", scope);
   if (state) consentUrl.searchParams.set("state", state);
   return NextResponse.redirect(consentUrl);

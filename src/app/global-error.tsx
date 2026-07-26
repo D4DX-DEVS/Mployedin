@@ -8,13 +8,19 @@ const STRINGS = {
     title: "Something went wrong",
     message: "An unexpected error occurred. Please try again.",
     errorIdLabel: "Error ID:",
-    button: "Try Again"
+    button: "Try Again",
+    home: "Home",
+    support: "Support",
+    status: "Platform status",
   },
   ar: {
     title: "حدث خطأ ما",
     message: "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.",
     errorIdLabel: "معرف الخطأ:",
-    button: "حاول مرة أخرى"
+    button: "حاول مرة أخرى",
+    home: "الرئيسية",
+    support: "الدعم",
+    status: "حالة المنصة",
   }
 };
 
@@ -87,21 +93,34 @@ export default function GlobalError({
               {strings.errorIdLabel} {error.digest}
             </p>
           )}
-          <button
-            onClick={reset}
-            style={{
-              padding: "8px 16px",
-              fontSize: 14,
-              fontWeight: 500,
-              borderRadius: 6,
-              border: "none",
-              cursor: "pointer",
-              background: "#fafafa",
-              color: "#0a0a0a",
-            }}
-          >
-            {strings.button}
-          </button>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <button
+              onClick={reset}
+              style={{
+                gridColumn: "1 / -1",
+                minHeight: 44,
+                padding: "8px 16px",
+                fontSize: 14,
+                fontWeight: 600,
+                borderRadius: 8,
+                border: "none",
+                cursor: "pointer",
+                background: "#fafafa",
+                color: "#0a0a0a",
+              }}
+            >
+              {strings.button}
+            </button>
+            <a href={`/${locale}`} style={{ minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center", color: "#fafafa" }}>
+              {strings.home}
+            </a>
+            <a href={`/${locale}/contact`} style={{ minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center", color: "#fafafa" }}>
+              {strings.support}
+            </a>
+            <a href="/api/health" style={{ gridColumn: "1 / -1", minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center", color: "#a5b4fc" }}>
+              {strings.status}
+            </a>
+          </div>
         </div>
       </body>
     </html>

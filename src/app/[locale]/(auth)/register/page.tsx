@@ -10,7 +10,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
+import { BriefcaseBusiness, Loader2, UserRoundSearch } from "lucide-react";
 
 export default function RegisterPage() {
   const { locale } = useParams<{ locale: string }>();
@@ -27,6 +27,7 @@ export default function RegisterPage() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [linkedInLoading, setLinkedInLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
+  const [roleSelected, setRoleSelected] = useState(false);
 
   async function handleGoogleSignIn() {
     setError("");
@@ -70,11 +71,11 @@ export default function RegisterPage() {
       return;
     }
     if (password.length < 12) {
-      setError("Password must be at least 12 characters");
+      setError(t("passwordTooShort"));
       return;
     }
     if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
-      setError("Password must include upper-case, lower-case, numeric, and special characters");
+      setError(t("passwordTooWeak"));
       return;
     }
 
@@ -113,6 +114,53 @@ export default function RegisterPage() {
     router.replace(`/${locale}/onboarding`);
   }
 
+  if (!roleSelected) {
+    return (
+      <div className="flex w-full flex-col gap-6">
+        <div className="space-y-2">
+          <h1 className="text-3xl font-semibold tracking-tight text-foreground">{t("chooseAccountType")}</h1>
+          <p className="text-sm leading-6 text-muted-foreground">{t("chooseAccountTypeDescription")}</p>
+        </div>
+
+        <div className="grid gap-3">
+          <button
+            type="button"
+            onClick={() => setRoleSelected(true)}
+            className="flex min-h-24 w-full items-center gap-4 rounded-2xl border border-primary/30 bg-primary/[0.06] p-4 text-start transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+          >
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
+              <UserRoundSearch className="h-6 w-6" />
+            </span>
+            <span className="min-w-0">
+              <span className="block font-semibold text-foreground">{t("jobSeekerAccount")}</span>
+              <span className="mt-1 block text-sm text-muted-foreground">{t("jobSeekerAccountDescription")}</span>
+            </span>
+          </button>
+
+          <Link
+            href={`/${locale}/employer-register`}
+            className="flex min-h-24 w-full items-center gap-4 rounded-2xl border border-border bg-card p-4 text-start transition-colors hover:border-primary/30 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+          >
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-secondary text-secondary-foreground">
+              <BriefcaseBusiness className="h-6 w-6" />
+            </span>
+            <span className="min-w-0">
+              <span className="block font-semibold text-foreground">{t("employerAccount")}</span>
+              <span className="mt-1 block text-sm text-muted-foreground">{t("employerAccountDescription")}</span>
+            </span>
+          </Link>
+        </div>
+
+        <p className="text-center text-sm text-muted-foreground">
+          {t("alreadyHaveAccount")}{" "}
+          <Link href={`/${locale}/login`} className="inline-flex min-h-11 items-center font-semibold text-primary">
+            {t("signIn")}
+          </Link>
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full flex flex-col gap-8">
       <div className="lg:hidden flex flex-col gap-2">
@@ -125,6 +173,13 @@ export default function RegisterPage() {
       </div>
 
       <div className="space-y-1.5">
+        <button
+          type="button"
+          onClick={() => setRoleSelected(false)}
+          className="mb-2 inline-flex min-h-11 items-center rounded-xl bg-primary/10 px-3 text-sm font-medium text-primary"
+        >
+          {t("jobSeekerAccount")} · {t("changeAccountType")}
+        </button>
         <h1 className="text-3xl font-semibold tracking-tight text-foreground">{t("createYourAccount")}</h1>
         <p className="text-base text-muted-foreground font-light">{t("registerSubtitle")}</p>
       </div>
@@ -186,13 +241,13 @@ export default function RegisterPage() {
           />
         </div>
 
-        <div className="flex items-start gap-2">
+        <div className="flex min-h-11 items-start gap-3 rounded-xl p-1">
           <input
             id="terms"
             type="checkbox"
             checked={agreedToTerms}
             onChange={(e) => setAgreedToTerms(e.target.checked)}
-            className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary/40"
+            className="mt-1 h-5 w-5 shrink-0 rounded border-border text-primary focus:ring-primary/40"
           />
           <label htmlFor="terms" className="text-sm text-muted-foreground leading-5">
             {t("agreeToTerms")}{" "}
@@ -207,7 +262,7 @@ export default function RegisterPage() {
         </div>
 
         {error && (
-          <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+          <div role="alert" className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
             <p className="text-sm text-destructive text-center font-medium">{error}</p>
           </div>
         )}

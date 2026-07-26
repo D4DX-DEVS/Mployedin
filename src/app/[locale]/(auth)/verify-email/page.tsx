@@ -11,6 +11,13 @@ import { CheckCircle, XCircle, Loader2, Mail, RefreshCw, ShieldCheck } from "luc
 
 type Status = "idle" | "verifying" | "success" | "error" | "no-token";
 
+function maskEmail(email: string) {
+  const [localPart, domain] = email.split("@");
+  if (!localPart || !domain) return email;
+  const visibleLocal = localPart.slice(0, Math.min(2, localPart.length));
+  return `${visibleLocal}${"•".repeat(Math.max(3, localPart.length - visibleLocal.length))}@${domain}`;
+}
+
 export default function VerifyEmailPage() {
   const t = useTranslations("verifyEmail");
   const searchParams = useSearchParams();
@@ -19,20 +26,30 @@ export default function VerifyEmailPage() {
   const token = searchParams.get("token");
   const emailParam = searchParams.get("email");
   const emailFailed = searchParams.get("emailFailed") === "1";
+  const registrationRole = searchParams.get("role");
+  const changeEmailHref =
+    registrationRole === "employer"
+      ? `/${locale ?? "en"}/employer-register`
+      : registrationRole === "agent"
+        ? `/${locale ?? "en"}/agent-register`
+        : `/${locale ?? "en"}/register`;
 
   const [status, setStatus] = useState<Status>(token ? "verifying" : "no-token");
   const [message, setMessage] = useState("");
   const [resending, setResending] = useState(false);
   const [resendMsg, setResendMsg] = useState("");
+  const [resendOk, setResendOk] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(emailParam ? 30 : 0);
   const [otp, setOtp] = useState("");
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [otpError, setOtpError] = useState("");
   const [linkError, setLinkError] = useState("");
 
   const handleResend = useCallback(async () => {
-    if (!emailParam || resending) return;
+    if (!emailParam || resending || resendCooldown > 0) return;
     setResending(true);
     setResendMsg("");
+    setResendOk(false);
     try {
       const res = await fetch("/api/auth/resend-verification", {
         method: "POST",
@@ -42,6 +59,8 @@ export default function VerifyEmailPage() {
       const data = await res.json();
       if (res.ok) {
         setResendMsg(t("resendSuccess"));
+        setResendOk(true);
+        setResendCooldown(60);
       } else {
         setResendMsg(data.error ?? t("resendFailure"));
       }
@@ -50,7 +69,15 @@ export default function VerifyEmailPage() {
     } finally {
       setResending(false);
     }
-  }, [emailParam, resending, t]);
+  }, [emailParam, resending, resendCooldown, t]);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = window.setInterval(() => {
+      setResendCooldown((seconds) => Math.max(0, seconds - 1));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [resendCooldown]);
 
   const handleSubmitOtp = useCallback(async () => {
     const code = otp.trim();
@@ -202,7 +229,7 @@ export default function VerifyEmailPage() {
             <p className="text-base text-muted-foreground font-light">
               {t("sentCodeToPrefix")}{" "}
               {emailParam ? (
-                <span className="font-medium text-foreground">{emailParam}</span>
+                <span className="font-medium text-foreground">{maskEmail(emailParam)}</span>
               ) : (
                 t("yourEmailAddress")
               )}
@@ -230,7 +257,9 @@ export default function VerifyEmailPage() {
               <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="text"
+                name="verification-code"
                 inputMode="numeric"
+                autoComplete="one-time-code"
                 pattern="\d{6}"
                 maxLength={6}
                 placeholder={t("otpPlaceholder")}
@@ -247,6 +276,7 @@ export default function VerifyEmailPage() {
                 }}
                 disabled={verifyingOtp}
                 aria-label={t("verificationCodeAria")}
+                aria-describedby="verification-code-help"
                 className="h-12 pl-9 text-center text-lg tracking-[0.5em] font-semibold"
               />
             </div>
@@ -266,32 +296,40 @@ export default function VerifyEmailPage() {
             </Button>
           </div>
 
-          <div className="w-full max-w-xs p-4 rounded-xl bg-muted/50 border text-left space-y-2">
+          <div id="verification-code-help" className="w-full max-w-xs p-4 rounded-xl bg-muted/50 border text-left space-y-2">
             <p className="text-sm font-medium text-foreground">{t("didntReceive")}</p>
             <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
               <li>{t("checkSpamFolder")}</li>
               <li>{t("correctEmailUsed")}</li>
               <li>{t("allowFewMinutes")}</li>
+              <li>{t("codeExpiry")}</li>
             </ul>
           </div>
           {resendMsg && (
-            <p className={`text-sm ${resendMsg.includes("sent") ? "text-green-600" : "text-destructive"}`}>
+            <p role="status" className={`text-sm ${resendOk ? "text-green-600" : "text-destructive"}`}>
               {resendMsg}
             </p>
           )}
           {emailParam && (
-            <Button
-              variant="default"
-              className="w-full max-w-xs h-11"
-              onClick={handleResend}
-              disabled={resending}
-            >
-              {resending ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("sendingEllipsis")}</>
-              ) : (
-                <><RefreshCw className="mr-2 h-4 w-4" />{t("resendVerificationEmail")}</>
-              )}
-            </Button>
+            <div className="w-full max-w-xs space-y-2">
+              <Button
+                variant="default"
+                className="w-full h-11"
+                onClick={handleResend}
+                disabled={resending || resendCooldown > 0}
+              >
+                {resending ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("sendingEllipsis")}</>
+                ) : resendCooldown > 0 ? (
+                  t("resendIn", { seconds: resendCooldown })
+                ) : (
+                  <><RefreshCw className="mr-2 h-4 w-4" />{t("resendVerificationEmail")}</>
+                )}
+              </Button>
+              <Button asChild variant="ghost" className="w-full h-11">
+                <Link href={changeEmailHref}>{t("changeEmail")}</Link>
+              </Button>
+            </div>
           )}
           <Button
             variant="outline"
@@ -299,6 +337,9 @@ export default function VerifyEmailPage() {
             onClick={() => signOut({ callbackUrl: `/${locale ?? "en"}/login` })}
           >
             {t("backToSignIn")}
+          </Button>
+          <Button asChild variant="link" className="min-h-11">
+            <Link href={`/${locale ?? "en"}/contact`}>{t("contactSupport")}</Link>
           </Button>
         </div>
       )}

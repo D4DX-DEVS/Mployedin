@@ -104,8 +104,15 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       const agentJobs = await Job.find(jobFilter).select("_id").lean();
       accessibleJobIds = agentJobs.map((j) => j._id);
       query.jobId = { $in: accessibleJobIds };
+    } else {
+      // Default-deny: a user with role=agent but no active Agent profile must
+      // never fall through to an unscoped platform-wide applications query.
+      return NextResponse.json({
+        applications: [],
+        pagination: { page, limit, total: 0, pages: 0 },
+        ...(fetchJobs ? { employerJobs: [] } : {}),
+      });
     }
-    // If no Agent doc, skip filtering (consistent with jobs API)
   } else if (ctx.role === "super_agent") {
     // S1: scope super_agent to applications for employers within their book of
     // business (team + region agents). Default-deny: an SA with no scope sees

@@ -8,6 +8,8 @@ import McpAuthorizationCode from "@/models/McpAuthorizationCode";
 import { validateBody } from "@/lib/validators";
 import { scopesForRole } from "@/lib/mcp/scopes";
 import type { AuthContext } from "@/lib/auth/withAuth";
+import { getMcpResourceUrl } from "@/lib/mcp/baseUrl";
+import { isValidPkceChallenge } from "@/lib/mcp/oauth";
 
 const AUTH_CODE_TTL_SECONDS = 90;
 
@@ -15,7 +17,8 @@ const consentSchema = z.object({
   decision: z.enum(["approve", "deny"]),
   client_id: z.string().min(1),
   redirect_uri: z.string().url(),
-  code_challenge: z.string().min(1),
+  code_challenge: z.string().refine(isValidPkceChallenge, "Invalid PKCE challenge"),
+  resource: z.string().url(),
   scope: z.string().optional(),
   state: z.string().optional(),
 });
@@ -38,6 +41,12 @@ async function postHandler(req: NextRequest, ctx: AuthContext) {
   if (!client || !client.redirectUris.includes(body.redirect_uri)) {
     return NextResponse.json({ error: "invalid_request", error_description: "Unknown client_id or redirect_uri" }, { status: 400 });
   }
+  if (body.resource !== getMcpResourceUrl()) {
+    return NextResponse.json(
+      { error: "invalid_target", error_description: "resource does not identify this MCP server" },
+      { status: 400 },
+    );
+  }
 
   if (body.decision === "deny") {
     const url = new URL(body.redirect_uri);
@@ -59,6 +68,7 @@ async function postHandler(req: NextRequest, ctx: AuthContext) {
     userId: ctx.userId,
     role: ctx.role,
     redirectUri: body.redirect_uri,
+    resource: body.resource,
     codeChallenge: body.code_challenge,
     scopes: grantedScopes,
     expiresAt: new Date(Date.now() + AUTH_CODE_TTL_SECONDS * 1000),

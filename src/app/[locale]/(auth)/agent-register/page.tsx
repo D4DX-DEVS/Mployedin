@@ -145,7 +145,7 @@ export default function AgentRegisterPage() {
       if (res.ok) {
         setStep(2);
         setTimeout(() => {
-          router.push(`/en/verify-email?email=${encodeURIComponent(step1.email)}`);
+          router.push(`/en/verify-email?email=${encodeURIComponent(step1.email)}&role=agent`);
         }, 2000);
       } else {
         setError(data.error ?? t("registrationFailed"));
