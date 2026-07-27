@@ -132,18 +132,19 @@ export function AIChatDraftsCard({ locale, variant = "card" }: AIChatDraftsCardP
       </div>
 
       {/* ponytail: compact inline rows — meta on one line, hides on narrow to keep height down */}
+      {/* One per row — 2-up orphaned the third draft and truncated every title. */}
       <ul className="space-y-1.5">
         {drafts.slice(0, 3).map((d) => (
           <li
             key={d._id}
-            className="group flex items-center gap-2 rounded-xl border border-border/60 bg-background/70 px-2.5 py-1.5 transition-all hover:border-sky-400/40 hover:shadow-sm"
+            className="group flex items-center gap-1.5 rounded-xl border border-border/60 bg-background/70 px-2 py-1 transition-all hover:border-sky-400/40 hover:shadow-sm sm:gap-2 sm:px-2.5 sm:py-1.5"
           >
-            <Link href={continueHref(d._id)} className="flex min-w-0 flex-1 items-center gap-2.5">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-100 text-sky-600 dark:bg-sky-500/20 dark:text-sky-300">
-                <Bot className="h-3.5 w-3.5" />
+            <Link href={continueHref(d._id)} className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2.5">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-sky-100 text-sky-600 dark:bg-sky-500/20 dark:text-sky-300 sm:h-7 sm:w-7">
+                <Bot className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
               </span>
               <div className="flex min-w-0 flex-1 items-center gap-2">
-                <p className="truncate text-sm font-medium text-foreground">{d.title}</p>
+                <p className="truncate text-xs font-medium text-foreground sm:text-sm">{d.title}</p>
                 <div className="flex shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground">
                   {d.hasExtractedJob && (
                     <span className="hidden items-center gap-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 sm:inline-flex">
@@ -166,7 +167,7 @@ export function AIChatDraftsCard({ locale, variant = "card" }: AIChatDraftsCardP
               disabled={discardingId === d._id}
               onClick={() => handleDiscard(d)}
               aria-label={t("discardAriaLabel")}
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50 sm:h-7 sm:w-7"
             >
               {discardingId === d._id ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />

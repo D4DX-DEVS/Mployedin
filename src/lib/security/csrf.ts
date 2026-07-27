@@ -118,7 +118,26 @@ const CSRF_EXEMPT_PREFIXES = [
   // no cookies/CSRF token. The signed JWT in ?token= is the anti-forgery guard,
   // and the action is idempotent (only disables notifications for that user).
   "/api/unsubscribe",
+  // MCP OAuth: dynamic client registration (RFC 7591) has no session yet, and
+  // the token endpoint is called server-to-server / PKCE-authenticated by the
+  // MCP client (ChatGPT) — neither ever carries our CSRF cookie. NOTE:
+  // /api/mcp/authorize and /api/mcp/consent are deliberately NOT exempted —
+  // those are browser-navigated, same-site authenticated actions and must stay
+  // CSRF-protected like any other dashboard action.
+  "/api/mcp/register",
+  "/api/mcp/token",
 ];
+
+/**
+ * Exact-path CSRF exemptions — unlike CSRF_EXEMPT_PREFIXES, these do NOT match
+ * anything nested underneath. Needed for "/api/mcp": the MCP streamable-HTTP
+ * JSON-RPC endpoint is bearer-token authenticated (never carries our CSRF
+ * cookie), but a prefix match on "/api/mcp" would also swallow
+ * "/api/mcp/consent" and "/api/mcp/authorize", which must stay CSRF-protected.
+ */
+const CSRF_EXEMPT_EXACT_PATHS = new Set([
+  "/api/mcp",
+]);
 
 /**
  * AI routes that are exempt from CSRF due to streaming/audio constraints.
@@ -161,6 +180,7 @@ const CSRF_EXEMPT_AI_ROUTES = new Set([
  * Check if a path is exempt from CSRF protection.
  */
 export function isCsrfExempt(pathname: string): boolean {
+  if (CSRF_EXEMPT_EXACT_PATHS.has(pathname)) return true;
   if (CSRF_EXEMPT_PREFIXES.some((prefix) => pathname.startsWith(prefix))) return true;
   if (CSRF_EXEMPT_AI_ROUTES.has(pathname)) return true;
   return false;

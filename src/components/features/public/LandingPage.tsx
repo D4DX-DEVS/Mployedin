@@ -5,16 +5,25 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
+  ArrowRight,
+  BadgeCheck,
+  BarChart3,
   Briefcase,
-  Building2,
+  CheckCircle2,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronUp,
   MapPin,
+  Pause,
   Play,
+  RotateCcw,
+  Rocket,
   Search,
+  ShieldCheck,
+  Sparkles,
   Star,
+  Target,
   Users,
 } from "lucide-react";
 
@@ -95,18 +104,35 @@ export default function LandingPage() {
 
   const [data, setData] = useState<LandingData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [bannerIndex, setBannerIndex] = useState(0);
+  const [bannerManuallyPaused, setBannerManuallyPaused] = useState(false);
+  const [bannerHovered, setBannerHovered] = useState(false);
   const [openFaq, setOpenFaq] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [locationTerm, setLocationTerm] = useState("");
+  const [audience, setAudience] = useState<"jobSeeker" | "employer">("jobSeeker");
+  const bannerPaused = bannerManuallyPaused || bannerHovered;
 
-  useEffect(() => {
+  const loadLandingData = useCallback(() => {
+    setLoading(true);
+    setLoadError(false);
     fetch("/api/public/landing")
-      .then((response) => response.json())
+      .then((response) => {
+        if (!response.ok) throw new Error("Landing content request failed");
+        return response.json();
+      })
       .then((payload) => setData(payload))
-      .catch(() => setData(null))
+      .catch(() => {
+        setData(null);
+        setLoadError(true);
+      })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    loadLandingData();
+  }, [loadLandingData]);
 
   const banners = data?.banners ?? [];
 
@@ -123,13 +149,13 @@ export default function LandingPage() {
   }, [banners.length]);
 
   useEffect(() => {
-    if (banners.length <= 1) {
+    if (banners.length <= 1 || bannerPaused) {
       return;
     }
 
     const timer = window.setInterval(nextBanner, 6500);
     return () => window.clearInterval(timer);
-  }, [banners.length, nextBanner]);
+  }, [bannerPaused, banners.length, nextBanner]);
 
   const activeBanner = banners[bannerIndex] ?? null;
 
@@ -163,10 +189,30 @@ export default function LandingPage() {
     t("industryRetail"),
   ];
 
+  const promotionalBenefits = audience === "jobSeeker"
+    ? [
+        { icon: Sparkles, title: t("seekerBenefitOneTitle"), description: t("seekerBenefitOneDescription") },
+        { icon: Target, title: t("seekerBenefitTwoTitle"), description: t("seekerBenefitTwoDescription") },
+        { icon: ShieldCheck, title: t("seekerBenefitThreeTitle"), description: t("seekerBenefitThreeDescription") },
+      ]
+    : [
+        { icon: Target, title: t("employerBenefitOneTitle"), description: t("employerBenefitOneDescription") },
+        { icon: BarChart3, title: t("employerBenefitTwoTitle"), description: t("employerBenefitTwoDescription") },
+        { icon: BadgeCheck, title: t("employerBenefitThreeTitle"), description: t("employerBenefitThreeDescription") },
+      ];
+
+  const journeySteps = [
+    { number: "01", title: t("journeyStepOneTitle"), description: t("journeyStepOneDescription") },
+    { number: "02", title: t("journeyStepTwoTitle"), description: t("journeyStepTwoDescription") },
+    { number: "03", title: t("journeyStepThreeTitle"), description: t("journeyStepThreeDescription") },
+  ];
+
   const handleSearch = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const query = [searchTerm.trim(), locationTerm.trim()].filter(Boolean).join(" ");
-    const target = query ? `/${locale}/jobs?search=${encodeURIComponent(query)}` : `/${locale}/jobs`;
+    const params = new URLSearchParams();
+    if (searchTerm.trim()) params.set("search", searchTerm.trim());
+    if (locationTerm.trim()) params.set("location", locationTerm.trim());
+    const target = params.size > 0 ? `/${locale}/jobs?${params.toString()}` : `/${locale}/jobs`;
     router.push(target);
   };
 
@@ -184,31 +230,54 @@ export default function LandingPage() {
     return url;
   };
 
-  if (loading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col overflow-hidden">
-      <section className="relative border-b border-border/60 bg-[radial-gradient(circle_at_top_left,hsl(var(--brand-blue-pale))_0%,transparent_38%),linear-gradient(180deg,hsl(var(--background))_0%,hsl(var(--surface-2))_100%)]">
-        <div className="absolute inset-x-0 top-0 h-24 bg-[linear-gradient(180deg,hsl(var(--brand-blue-dark))/0.08,transparent)]" />
-        <div className="container relative mx-auto px-4 py-10 sm:px-6 lg:py-14">
-          <div className="mx-auto max-w-3xl text-center">
-              <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-[3.5rem] lg:leading-[1.08]">
-                {t("heroTitle")}
+      <section className="relative border-b border-border/60 bg-[radial-gradient(circle_at_12%_8%,hsl(var(--brand-blue-pale))_0%,transparent_34%),radial-gradient(circle_at_88%_72%,hsl(var(--brand-cyan)/0.12)_0%,transparent_30%),linear-gradient(180deg,hsl(var(--background))_0%,hsl(var(--surface-2))_100%)]">
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,hsl(var(--border)/0.14)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border)/0.14)_1px,transparent_1px)] bg-[size:72px_72px] [mask-image:linear-gradient(to_bottom,black,transparent_92%)]" />
+        <div className="container relative mx-auto px-4 py-10 sm:px-6 lg:py-16 xl:py-20">
+          <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(380px,0.85fr)] lg:gap-14">
+            <div className="text-center lg:text-start">
+              <div
+                className="mb-7 inline-flex rounded-full border border-border/70 bg-card/90 p-1 shadow-sm"
+                role="group"
+                aria-label={t("audienceLabel")}
+              >
+                {(["jobSeeker", "employer"] as const).map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setAudience(value)}
+                    aria-pressed={audience === value}
+                    className={`rounded-full px-4 py-2 text-sm font-semibold transition-all ${
+                      audience === value
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {t(value)}
+                  </button>
+                ))}
+              </div>
+
+              <div className="mb-4 flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary lg:justify-start">
+                <Sparkles className="h-4 w-4" />
+                {t("heroEyebrow")}
+              </div>
+
+              <h1 className="text-4xl font-bold tracking-[-0.04em] text-foreground sm:text-5xl lg:text-[3.75rem] lg:leading-[1.04]">
+                {audience === "jobSeeker" ? t("heroTitle") : t("employerHeroTitle")}
               </h1>
 
-              <p className="mx-auto mt-4 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">
-                {t("heroDescription")}
+              <p className="mx-auto mt-5 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg lg:mx-0">
+                {audience === "jobSeeker" ? t("heroDescription") : t("employerHeroDescription")}
               </p>
 
-              <form onSubmit={handleSearch} className="mx-auto mt-8 max-w-2xl rounded-2xl border border-border/70 bg-card p-3 shadow-[0_20px_60px_rgba(15,23,42,0.08)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
-                <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
-                  <label className="flex min-h-12 items-center gap-3 rounded-xl border border-border/70 px-4">
+              {audience === "jobSeeker" ? (
+              <form onSubmit={handleSearch} className="mx-auto mt-8 max-w-2xl rounded-2xl border border-border/70 bg-card p-3 shadow-[0_20px_60px_-30px_rgba(15,23,42,0.35)] dark:shadow-[0_20px_60px_-30px_rgba(0,0,0,0.7)] lg:mx-0">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="flex min-h-12 flex-col items-start justify-center rounded-xl border border-border/70 px-4 text-start">
+                    <span className="text-[11px] font-semibold text-muted-foreground">{t("jobSearchLabel")}</span>
+                    <span className="flex w-full items-center gap-2">
                     <Search className="h-4 w-4 shrink-0 text-primary" />
                     <input
                       value={searchTerm}
@@ -216,9 +285,12 @@ export default function LandingPage() {
                       placeholder={t("searchPlaceholder")}
                       className="h-full w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
                     />
+                    </span>
                   </label>
 
-                  <label className="flex min-h-12 items-center gap-3 rounded-xl border border-border/70 px-4">
+                  <label className="flex min-h-12 flex-col items-start justify-center rounded-xl border border-border/70 px-4 text-start">
+                    <span className="text-[11px] font-semibold text-muted-foreground">{t("locationSearchLabel")}</span>
+                    <span className="flex w-full items-center gap-2">
                     <MapPin className="h-4 w-4 shrink-0 text-primary" />
                     <input
                       value={locationTerm}
@@ -226,18 +298,19 @@ export default function LandingPage() {
                       placeholder={t("locationPlaceholder")}
                       className="h-full w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
                     />
+                    </span>
                   </label>
 
-                  <Button type="submit" className="h-12 rounded-xl px-6 text-sm font-semibold">
+                  <Button type="submit" className="h-12 rounded-xl px-6 text-sm font-semibold sm:col-span-2">
                     {t("findJobs2")}
                   </Button>
                 </div>
 
-                <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-                  <span className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                <div className="mt-3 flex flex-wrap items-center justify-center gap-2 lg:justify-start">
+                  <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
                     {t("popularSearches")}
                   </span>
-                  {quickSearches.map((item) => (
+                  {quickSearches.slice(0, 3).map((item) => (
                     <button
                       key={item}
                       type="button"
@@ -249,32 +322,88 @@ export default function LandingPage() {
                   ))}
                 </div>
               </form>
+              ) : (
+                <div className="mx-auto mt-8 flex max-w-xl flex-col items-center justify-center gap-3 sm:flex-row lg:mx-0 lg:justify-start">
+                  <Link href={`/${locale}/employer-register`} className="w-full sm:w-auto">
+                    <Button size="lg" className="w-full min-w-44 rounded-xl">{t("startHiring")}</Button>
+                  </Link>
+                  <Link href={`/${locale}/login`} className="w-full sm:w-auto">
+                    <Button size="lg" variant="outline" className="w-full min-w-44 rounded-xl">{t("employerSignIn")}</Button>
+                  </Link>
+                </div>
+              )}
 
-              <div className="mt-6 flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 lg:justify-start">
                 <div className="flex items-center gap-2">
-                  <Briefcase className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-semibold text-foreground">5,000+</span>
-                  <span className="text-xs text-muted-foreground">{t("activeJobs")}</span>
+                  <CheckCircle2 className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-semibold text-foreground">{t("liveOpportunities")}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-semibold text-foreground">800+</span>
-                  <span className="text-xs text-muted-foreground">{t("companiesHiring")}</span>
+                  <CheckCircle2 className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-semibold text-foreground">{t("verifiedEmployers")}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-semibold text-foreground">50,000+</span>
-                  <span className="text-xs text-muted-foreground">{t("registeredCandidates")}</span>
+                  <CheckCircle2 className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-semibold text-foreground">{t("directApplications")}</span>
                 </div>
               </div>
+            </div>
 
+            <div className="relative mx-auto hidden w-full max-w-lg lg:block" aria-hidden="true">
+              <div className="absolute -inset-8 rounded-full bg-primary/10 blur-3xl" />
+              <div className="relative rotate-[1deg] rounded-[2rem] border border-white/60 bg-card/90 p-5 shadow-[0_40px_100px_-42px_rgba(30,47,108,0.48)] backdrop-blur dark:border-border/70">
+                <div className="mb-5 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+                      {audience === "jobSeeker" ? t("previewForYou") : t("previewPipeline")}
+                    </p>
+                    <p className="mt-1 text-lg font-semibold text-foreground">
+                      {audience === "jobSeeker" ? t("previewMatches") : t("previewCandidates")}
+                    </p>
+                  </div>
+                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    {audience === "jobSeeker" ? <Briefcase className="h-5 w-5" /> : <Users className="h-5 w-5" />}
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  {[92, 87, 81].map((score, index) => (
+                    <div key={score} className="flex items-center gap-3 rounded-2xl border border-border/70 bg-background/75 p-3.5">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[linear-gradient(135deg,hsl(var(--brand-blue-dark)),hsl(var(--brand-cyan)))] text-sm font-bold text-white">
+                        {audience === "jobSeeker" ? ["UX", "PM", "DA"][index] : ["SA", "MK", "EN"][index]}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="h-3 w-2/3 rounded-full bg-foreground/80" />
+                        <div className="mt-2 h-2 w-1/2 rounded-full bg-muted-foreground/25" />
+                      </div>
+                      <div className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                        {score}%
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-4 flex items-center gap-3 rounded-2xl bg-[linear-gradient(135deg,hsl(var(--brand-blue-dark)),hsl(var(--brand-blue)))] p-4 text-white">
+                  <Sparkles className="h-5 w-5 shrink-0 text-[hsl(var(--brand-cyan))]" />
+                  <p className="text-sm font-medium leading-5">
+                    {audience === "jobSeeker" ? t("previewInsightSeeker") : t("previewInsightEmployer")}
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
       {/* Banner carousel — only shown when actual campaign banners exist */}
       {banners.length > 0 && (
-        <section className="border-b border-border/60 bg-[linear-gradient(135deg,hsl(var(--brand-blue-dark))_0%,hsl(var(--brand-blue))_100%)] py-6">
+        <section
+          className="border-b border-border/60 bg-[linear-gradient(135deg,hsl(var(--brand-blue-dark))_0%,hsl(var(--brand-blue))_100%)] py-6"
+          aria-label={t("featuredCampaigns")}
+          aria-roledescription="carousel"
+          onMouseEnter={() => setBannerHovered(true)}
+          onMouseLeave={() => setBannerHovered(false)}
+        >
           <div className="container mx-auto px-4 sm:px-6">
             <div className="flex items-center gap-6">
               <div className="min-w-0 flex-1">
@@ -287,7 +416,7 @@ export default function LandingPage() {
                     />
                   )}
                   <div className="min-w-0 text-white">
-                    <h3 className="truncate text-base font-semibold">
+                    <h3 className="truncate text-base font-semibold" aria-live="polite">
                       {isAr ? activeBanner?.titleAr || activeBanner?.title : activeBanner?.title}
                     </h3>
                     <p className="mt-0.5 truncate text-sm text-white/70">
@@ -299,11 +428,20 @@ export default function LandingPage() {
               <div className="flex shrink-0 items-center gap-2">
                 {banners.length > 1 && (
                   <>
-                    <button type="button" onClick={prevBanner} className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-white hover:bg-white/10">
+                    <button type="button" onClick={prevBanner} aria-label={t("previousBanner")} className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-white hover:bg-white/10">
                       <ChevronLeft className="h-4 w-4" />
                     </button>
-                    <button type="button" onClick={nextBanner} className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-white hover:bg-white/10">
+                    <button type="button" onClick={nextBanner} aria-label={t("nextBanner")} className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-white hover:bg-white/10">
                       <ChevronRight className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBannerManuallyPaused((paused) => !paused)}
+                      aria-label={bannerManuallyPaused ? t("playBanner") : t("pauseBanner")}
+                      aria-pressed={bannerManuallyPaused}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-white hover:bg-white/10"
+                    >
+                      {bannerManuallyPaused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
                     </button>
                   </>
                 )}
@@ -318,6 +456,72 @@ export default function LandingPage() {
           </div>
         </section>
       )}
+
+      {loading && (
+        <section className="border-b border-border/60 py-8" aria-label={t("contentLoading")}>
+          <div className="container mx-auto grid gap-4 px-4 sm:grid-cols-3 sm:px-6">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <div key={index} className="skeleton-shimmer h-24 rounded-2xl" />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {loadError && (
+        <section className="border-b border-border/60 py-6">
+          <div className="container mx-auto flex flex-col items-center justify-between gap-3 px-4 text-center sm:flex-row sm:px-6 sm:text-start">
+            <p className="text-sm text-muted-foreground">{t("optionalContentError")}</p>
+            <Button type="button" variant="outline" size="sm" onClick={loadLandingData} className="gap-2">
+              <RotateCcw className="h-4 w-4" />
+              {t("retry")}
+            </Button>
+          </div>
+        </section>
+      )}
+
+      <section className="bg-background py-14 lg:py-18">
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-2xl">
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+                <Rocket className="h-4 w-4" />
+                {t("benefitsEyebrow")}
+              </div>
+              <h2 className="mt-4 text-3xl font-semibold tracking-[-0.03em] text-foreground sm:text-4xl">
+                {audience === "jobSeeker" ? t("seekerBenefitsTitle") : t("employerBenefitsTitle")}
+              </h2>
+              <p className="mt-4 max-w-xl text-base leading-7 text-muted-foreground">
+                {audience === "jobSeeker" ? t("seekerBenefitsDescription") : t("employerBenefitsDescription")}
+              </p>
+            </div>
+
+            <Link href={audience === "jobSeeker" ? `/${locale}/register` : `/${locale}/employer-register`}>
+              <Button size="lg" className="w-full gap-2 rounded-xl sm:w-auto">
+                {audience === "jobSeeker" ? t("createProfile") : t("startHiring")}
+                <ArrowRight className="h-4 w-4 rtl:rotate-180" />
+              </Button>
+            </Link>
+          </div>
+
+          <div className="mt-9 grid gap-5 md:grid-cols-3">
+            {promotionalBenefits.map((benefit) => {
+              const Icon = benefit.icon;
+              return (
+                <article
+                  key={benefit.title}
+                  className="group rounded-2xl border border-border/70 bg-card p-6 shadow-sm transition-all hover:-translate-y-1 hover:border-primary/25 hover:shadow-[0_20px_50px_-34px_rgba(30,47,108,0.45)]"
+                >
+                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <h3 className="mt-5 text-lg font-semibold text-foreground">{benefit.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{benefit.description}</p>
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      </section>
 
       <section className="border-y border-border/60 bg-muted/20 py-10 lg:py-12">
         <div className="container mx-auto px-4 sm:px-6">
@@ -363,6 +567,47 @@ export default function LandingPage() {
               >
                 {t("startHiring")}
               </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="py-14 lg:py-18">
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="overflow-hidden rounded-[2rem] bg-[linear-gradient(135deg,hsl(var(--brand-blue-dark))_0%,hsl(var(--brand-blue))_58%,hsl(var(--brand-blue-light))_140%)] px-6 py-9 text-white shadow-[0_28px_80px_-42px_rgba(30,47,108,0.65)] sm:px-9 lg:px-12 lg:py-11">
+            <div className="grid gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-center">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/65">{t("journeyEyebrow")}</p>
+                <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">{t("journeyTitle")}</h2>
+                <p className="mt-4 max-w-xl text-sm leading-6 text-white/75 sm:text-base">{t("journeyDescription")}</p>
+                <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+                  <Link href={`/${locale}/register`}>
+                    <Button size="lg" variant="secondary" className="w-full gap-2 rounded-xl sm:w-auto">
+                      {t("joinFree")}
+                      <ArrowRight className="h-4 w-4 rtl:rotate-180" />
+                    </Button>
+                  </Link>
+                  <Link href={`/${locale}/jobs`}>
+                    <Button size="lg" variant="outline" className="w-full rounded-xl border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white sm:w-auto">
+                      {t("exploreOpportunities")}
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+
+              <div className="grid gap-3">
+                {journeySteps.map((step) => (
+                  <div key={step.number} className="flex gap-4 rounded-2xl border border-white/12 bg-white/[0.07] p-4 backdrop-blur">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-xs font-bold text-[hsl(var(--brand-blue-dark))]">
+                      {step.number}
+                    </span>
+                    <div>
+                      <h3 className="font-semibold text-white">{step.title}</h3>
+                      <p className="mt-1 text-sm leading-5 text-white/70">{step.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -505,6 +750,8 @@ export default function LandingPage() {
                     <button
                       type="button"
                       onClick={() => setOpenFaq(isOpen ? null : faq._id)}
+                      aria-expanded={isOpen}
+                      aria-controls={`landing-faq-${faq._id}`}
                       className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left"
                     >
                       <span className="text-sm font-semibold text-foreground sm:text-base">
@@ -513,7 +760,7 @@ export default function LandingPage() {
                       {isOpen ? <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />}
                     </button>
                     {isOpen && (
-                      <div className="border-t border-border/60 px-5 pb-5 pt-4 text-sm leading-6 text-muted-foreground">
+                      <div id={`landing-faq-${faq._id}`} className="border-t border-border/60 px-5 pb-5 pt-4 text-sm leading-6 text-muted-foreground">
                         {isAr ? faq.answerAr || faq.answer : faq.answer}
                       </div>
                     )}

@@ -10,7 +10,9 @@ import { ChevronDown, ChevronLeft, ChevronRight, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { NavGroup, NavItem } from "@/lib/nav/menuConfig";
 import { getIcon } from "@/lib/nav/iconRegistry";
+import { WORKSPACE_BOTTOM_NAV_TABS } from "@/lib/nav/bottomNavTabs";
 import { useConversations } from "@/hooks/useConversations";
+import type { UserRole } from "@/types/user";
 
 interface SidebarProps {
   navGroups: NavGroup[];
@@ -43,6 +45,7 @@ export function Sidebar({
   );
   const usesSimpleEmployerMenu = effectiveRole === "employer";
   const isSuperAgent = effectiveRole === "super_agent";
+  const isAdminWorkspace = effectiveRole === "admin";
   const usesModernWorkspaceShell = effectiveRole === "admin" || effectiveRole === "employer" || effectiveRole === "agent" || effectiveRole === "super_agent";
   const usesDualTierLayout = effectiveRole === "admin" || effectiveRole === "employer" || effectiveRole === "agent" || effectiveRole === "super_agent";
   const usesInlineWorkspaceSidebar = usesModernWorkspaceShell && !usesDualTierLayout;
@@ -86,9 +89,16 @@ export function Sidebar({
   };
 
   const [activeMainTitle, setActiveMainTitle] = useState<string>(getInitialActiveItem());
-  // Dual-tier layouts keep the secondary panel collapsed until the user opens a
-  // group, so page content always uses the full width (no squeezing / clipping).
-  const [submenuExpanded, setSubmenuExpanded] = useState(!usesDualTierLayout);
+  // The secondary tier overlays the workspace on desktop, so it can safely open
+  // on a deep link without reducing the page's available width.
+  const [submenuExpanded, setSubmenuExpanded] = useState(() =>
+    !usesDualTierLayout ||
+    allMainItems.some((item) =>
+      item.children?.some(
+        (child) => pathname === child.href || pathname.startsWith(child.href + "/")
+      )
+    )
+  );
 
   useEffect(() => {
     const current = getInitialActiveItem();
@@ -159,16 +169,34 @@ export function Sidebar({
 
   useEffect(() => {
     // Inline layouts auto-expand their children when the active group changes.
-    // Dual-tier stays collapsed until the user explicitly opens a group, and
-    // collapses again after a child page is selected (handled in onClick).
+    // Dual-tier keeps the active child group visible on desktop.
     if (!usesDualTierLayout) setSubmenuExpanded(true);
   }, [activeMainTitle, usesDualTierLayout]);
+
+  useEffect(() => {
+    if (!usesDualTierLayout || !submenuExpanded || mobileOpen) return;
+
+    const closeSubmenu = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSubmenuExpanded(false);
+    };
+
+    document.addEventListener("keydown", closeSubmenu);
+    return () => document.removeEventListener("keydown", closeSubmenu);
+  }, [mobileOpen, submenuExpanded, usesDualTierLayout]);
 
   const activeMainItem = allMainItems.find((item) => item.title === activeMainTitle);
   const hasSubmenu = Boolean(activeMainItem?.children?.length);
   const submenuId = activeMainItem
     ? `sidebar-submenu-${activeMainItem.title.toLowerCase().replace(/\s+/g, "-")}`
     : undefined;
+
+  // Workspace phones show a handful of destinations in the bottom tab bar
+  // (WorkspaceBottomNav), so the drawer hides those same items to avoid
+  // duplication. Shares its source of truth with DashboardShell.
+  const bottomNavHrefs = (effectiveRole ? WORKSPACE_BOTTOM_NAV_TABS[effectiveRole as UserRole] : undefined)?.map((tab) => tab.href) ?? [];
+  function isInBottomNav(href: string) {
+    return bottomNavHrefs.some((s) => href.endsWith(s));
+  }
 
   function isActive(href: string) {
     return pathname === href || pathname.startsWith(href + "/");
@@ -217,16 +245,20 @@ export function Sidebar({
       <Link
         key={child.href}
         href={child.href}
+        aria-current={isChildActive ? "page" : undefined}
         prefetch={false}
         onClick={() => {
-          if (usesDualTierLayout) setSubmenuExpanded(false);
+          if (usesDualTierLayout) setSubmenuExpanded(!mobileOpen);
           onMobileClose?.();
         }}
+        title={locale === "ar" ? child.titleAr : child.title}
         className={cn(
           "flex transition-all duration-200 group relative overflow-hidden",
-          usesSimpleEmployerMenu && variant === "panel"
-            ? "items-start gap-2.5"
-            : "items-center gap-3",
+          // A child whose own href matches a bottom-nav tab (e.g. "Leads" under
+          // "Tools") is a real duplicate — safe to hide since it has no children
+          // of its own to orphan.
+          isInBottomNav(child.href) && "max-lg:hidden",
+          variant === "panel" ? "items-start gap-3" : "items-center gap-3",
           focusRingClass,
           variant === "inline"
             ? cn(
@@ -234,11 +266,9 @@ export function Sidebar({
                 inlineLinkClass
               )
             : cn(
-                usesSimpleEmployerMenu ? "rounded-lg px-2.5 py-2.5 text-[12px]" : "rounded-xl px-3 py-2.5",
+                "min-h-12 rounded-xl px-3 py-3 text-[13px]",
                 isChildActive
-                  ? usesSimpleEmployerMenu
-                    ? "bg-card text-primary font-semibold shadow-sm ring-1 ring-border/50"
-                    : usesDualTierLayout
+                  ? usesDualTierLayout
                       ? "bg-primary/10 text-primary font-semibold shadow-[0_8px_20px_-12px_rgba(2,132,199,0.28)] ring-1 ring-primary/15"
                       : "bg-card text-primary font-bold shadow-sm ring-1 ring-border/50"
                   : usesDualTierLayout
@@ -263,7 +293,7 @@ export function Sidebar({
         <ChildIcon
           className={cn(
             "h-[18px] w-[18px] shrink-0 transition-colors",
-            usesSimpleEmployerMenu && variant === "panel" ? "mt-0.5 h-4 w-4" : "",
+            variant === "panel" ? "mt-0.5" : "",
             variant === "inline"
               ? inlineIconClass
               : isChildActive
@@ -271,17 +301,25 @@ export function Sidebar({
                 : "text-muted-foreground group-hover:text-brand-blue"
           )}
         />
-        <span
-          className={cn(
-            "min-w-0 flex-1",
-            usesModernWorkspaceShell ? "text-[10px]" : "",
-            usesSimpleEmployerMenu && variant === "panel"
-              ? cn("whitespace-normal break-words text-[10px] leading-5", isRtl ? "text-right" : "text-left")
-              : "truncate"
-          )}
-        >
-          {locale === "ar" ? child.titleAr : child.title}
-        </span>
+        {variant === "panel" ? (
+          <span
+            className={cn(
+              "min-w-0 flex-1 break-words text-[13px] leading-5 line-clamp-2",
+              isRtl ? "text-right" : "text-left"
+            )}
+          >
+            {locale === "ar" ? child.titleAr : child.title}
+          </span>
+        ) : (
+          <span
+            className={cn(
+              "min-w-0 flex-1 break-words leading-5 line-clamp-2",
+              isRtl ? "text-right" : "text-left"
+            )}
+          >
+            {locale === "ar" ? child.titleAr : child.title}
+          </span>
+        )}
       </Link>
     );
   }
@@ -294,7 +332,7 @@ export function Sidebar({
       className={cn(
         "h-full flex flex-col z-20 shrink-0",
         usesDualTierLayout
-          ? `w-[196px] ${sidebarBorder} border-border/80 bg-[radial-gradient(circle_at_top_left,_hsl(var(--brand-cyan)/0.22),_transparent_60%),linear-gradient(180deg,_hsl(var(--card)/0.98),_hsl(var(--surface-3)/0.94))] shadow-[0_28px_80px_-52px_rgba(2,132,199,0.32)] backdrop-blur-xl`
+          ? `w-[280px] max-w-[88vw] lg:w-[224px] ${sidebarBorder} border-border/80 bg-[radial-gradient(circle_at_top_left,_hsl(var(--brand-cyan)/0.22),_transparent_60%),linear-gradient(180deg,_hsl(var(--card)/0.98),_hsl(var(--surface-3)/0.94))] shadow-[0_28px_80px_-52px_rgba(2,132,199,0.32)] backdrop-blur-xl`
           : usesModernWorkspaceShell
           ? usesSimpleEmployerMenu
             ? `w-[196px] ${sidebarBorder} border-border/80 bg-[radial-gradient(circle_at_top_left,_hsl(var(--brand-cyan)/0.14),_transparent_50%),linear-gradient(180deg,_hsl(var(--card)/0.97),_hsl(var(--surface-3)/0.92))] shadow-[0_24px_64px_-52px_rgba(2,132,199,0.24)] backdrop-blur-xl`
@@ -307,8 +345,10 @@ export function Sidebar({
       <div
         className={cn(
           "shrink-0 flex items-center gap-3",
-          usesDualTierLayout
-            ? "h-20 px-3 border-b border-border/75 bg-[linear-gradient(180deg,_hsl(var(--card)/0.72),_hsl(var(--card)/0.24))]"
+          isAdminWorkspace
+            ? "h-20 px-5 border-b border-border/75 bg-white"
+            : usesDualTierLayout
+              ? "h-20 px-4 border-b border-border/75 bg-[linear-gradient(180deg,_hsl(var(--card)/0.72),_hsl(var(--card)/0.24))]"
             : cn("px-4",
               usesModernWorkspaceShell
                 ? usesLightWorkspaceSidebar
@@ -318,54 +358,67 @@ export function Sidebar({
               )
         )}
       >
-        <div
-          className={cn(
-            "overflow-hidden shrink-0",
-            usesDualTierLayout
-              ? "h-10 w-10 rounded-xl border border-border shadow-[0_16px_32px_-24px_rgba(2,132,199,0.34)] ring-2 ring-background/70 bg-white dark:bg-slate-800"
-              : usesModernWorkspaceShell
-              ? "h-12 w-12 rounded-2xl border border-border shadow-[0_20px_40px_-28px_rgba(2,132,199,0.34)] ring-4 ring-background/70 bg-white dark:bg-slate-800"
-              : "w-9 h-9 rounded-xl shadow-lg ring-1 ring-white/20 bg-white dark:bg-slate-800"
-          )}
-        >
+        {isAdminWorkspace ? (
           <Image
             src="/logo.png"
             alt="Mployedin"
-            width={48}
-            height={48}
-            className="w-full h-full object-contain p-1 dark:brightness-0 dark:invert"
+            width={200}
+            height={69}
+            className="h-auto w-[160px] object-contain"
             priority
           />
-        </div>
-        <div className="min-w-0">
-          <span
-            className={cn(
-              "block truncate font-semibold tracking-tight",
-              usesModernWorkspaceShell
-                ? usesLightWorkspaceSidebar
-                  ? "text-base text-slate-950"
-                  : usesDualTierLayout
-                    ? "text-sm text-foreground"
-                    : "text-base text-foreground"
-                : "text-sm text-white font-bold tracking-wide"
-            )}
-          >
-            Mployedin
-          </span>
-          {usesModernWorkspaceShell && (
-            <span className={cn(
-              "mt-0.5 block truncate text-[11px] font-medium uppercase tracking-[0.16em]",
-              usesLightWorkspaceSidebar ? "text-sky-700/70" : "text-primary/75"
-            )}>
-              {workspaceLabel}
-            </span>
-          )}
-        </div>
+        ) : (
+          <>
+            <div
+              className={cn(
+                "overflow-hidden shrink-0",
+                usesDualTierLayout
+                  ? "h-10 w-10 rounded-xl border border-border shadow-[0_16px_32px_-24px_rgba(2,132,199,0.34)] ring-2 ring-background/70 bg-white dark:bg-slate-800"
+                  : usesModernWorkspaceShell
+                  ? "h-12 w-12 rounded-2xl border border-border shadow-[0_20px_40px_-28px_rgba(2,132,199,0.34)] ring-4 ring-background/70 bg-white dark:bg-slate-800"
+                  : "w-9 h-9 rounded-xl shadow-lg ring-1 ring-white/20 bg-white dark:bg-slate-800"
+              )}
+            >
+              <Image
+                src="/logo.png"
+                alt="Mployedin"
+                width={48}
+                height={48}
+                className="w-full h-full object-contain p-1 dark:brightness-0 dark:invert"
+                priority
+              />
+            </div>
+            <div className="min-w-0">
+              <span
+                className={cn(
+                  "block truncate font-semibold tracking-tight",
+                  usesModernWorkspaceShell
+                    ? usesLightWorkspaceSidebar
+                      ? "text-base text-slate-950"
+                      : usesDualTierLayout
+                        ? "text-sm text-foreground"
+                        : "text-base text-foreground"
+                    : "text-sm text-white font-bold tracking-wide"
+                )}
+              >
+                Mployedin
+              </span>
+              {usesModernWorkspaceShell && (
+                <span className={cn(
+                  "mt-0.5 block truncate text-[11px] font-medium uppercase tracking-[0.16em]",
+                  usesLightWorkspaceSidebar ? "text-sky-700/70" : "text-primary/75"
+                )}>
+                  {workspaceLabel}
+                </span>
+              )}
+            </div>
+          </>
+        )}
       </div>
 
       <nav className={cn(
         "flex-1 overflow-y-auto flex flex-col sidebar-scroll",
-        usesDualTierLayout ? "py-3 px-2.5 gap-0.5" : "py-4 px-3 gap-1"
+        usesDualTierLayout ? "py-4 px-3 gap-1" : "py-4 px-3 gap-1"
       )}>
         {allMainItems.map((item) => {
           const Icon = getIcon(item.icon);
@@ -377,7 +430,11 @@ export function Sidebar({
 
           if (usesDualTierLayout) {
             const dualTierClass = cn(
-              "group relative w-full flex items-center gap-3 rounded-xl px-3 py-2 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/35",
+              "group relative min-h-11 w-full flex items-start gap-3 rounded-xl px-3 py-2.5 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/35",
+              // Only hide leaf items here — hiding a group whose own href matches
+              // a bottom-nav tab would also hide its OTHER children, orphaning them.
+              isInBottomNav(item.href) && !hasChildren && "max-lg:hidden",
+              isRtl ? "text-right" : "text-left",
               isSelected
                 ? "bg-primary/10 text-primary shadow-[0_8px_24px_-12px_rgba(2,132,199,0.4)] ring-1 ring-primary/20"
                 : "text-muted-foreground hover:bg-card/90 hover:text-foreground hover:shadow-[0_8px_20px_-12px_rgba(15,23,42,0.18)]"
@@ -387,12 +444,22 @@ export function Sidebar({
 
             const dualTierContent = (
               <>
-                <Icon className="h-[18px] w-[18px] shrink-0" />
-                <span className="min-w-0 truncate text-[11px] font-medium">{dualTierLabel}</span>
+                <Icon className="mt-0.5 h-[18px] w-[18px] shrink-0" />
+                <span className="min-w-0 flex-1 break-words text-[13px] font-medium leading-5 line-clamp-2">
+                  {dualTierLabel}
+                </span>
                 {item.title === "Messages" && unreadMessageCount > 0 && (
-                  <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                  <span className="ms-auto flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
                     {unreadMessageCount > 99 ? "99+" : unreadMessageCount}
                   </span>
+                )}
+                {hasChildren && (
+                  <ChevronDown
+                    className={cn(
+                      "mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
+                      isSelected && submenuExpanded && "rotate-180 text-primary"
+                    )}
+                  />
                 )}
               </>
             );
@@ -410,6 +477,9 @@ export function Sidebar({
                       setSubmenuExpanded(true);
                     }
                   }}
+                  aria-controls={itemSubmenuId}
+                  aria-expanded={isSelected && submenuExpanded}
+                  title={dualTierLabel}
                   className={dualTierClass}
                 >
                   {dualTierContent}
@@ -421,11 +491,14 @@ export function Sidebar({
               <Link
                 key={item.title}
                 href={item.href}
+                aria-current={isSelected ? "page" : undefined}
                 prefetch={false}
                 onClick={() => {
                   setActiveMainTitle(item.title);
+                  setSubmenuExpanded(false);
                   onMobileClose?.();
                 }}
+                title={dualTierLabel}
                 className={dualTierClass}
               >
                 {dualTierContent}
@@ -540,6 +613,7 @@ export function Sidebar({
             <Link
               key={item.title}
               href={item.href}
+              aria-current={isSelected ? "page" : undefined}
               prefetch={false}
               onClick={() => {
                 setActiveMainTitle(item.title);
@@ -570,7 +644,7 @@ export function Sidebar({
               ref={mobileSidebarRef}
               tabIndex={-1}
               className={cn(
-              "relative flex h-full max-w-[85vw] animate-in duration-300 ease-out shadow-2xl",
+              "relative flex h-full max-w-[88vw] animate-in duration-300 ease-out shadow-2xl",
                 "bg-transparent",
               isRtl ? "right-0 left-auto slide-in-from-right" : "slide-in-from-left"
             )}
@@ -589,20 +663,21 @@ export function Sidebar({
         "h-full overflow-hidden transition-[width] duration-300 ease-in-out z-10 flex flex-col shrink-0",
         usesDualTierLayout
           ? cn(
-              "bg-[linear-gradient(180deg,_hsl(var(--card)/0.98),_hsl(var(--surface-3)/0.94))] shadow-[4px_0_28px_rgba(2,132,199,0.06)]",
+              "lg:absolute lg:top-0 bg-[linear-gradient(180deg,_hsl(var(--card)/0.99),_hsl(var(--surface-3)/0.96))] shadow-[8px_0_36px_rgba(2,132,199,0.14)]",
+              isRtl ? "lg:right-[224px]" : "lg:left-[224px]",
               isRtl ? "border-l border-border/60" : "border-r border-border/60"
             )
           : cn(
               "bg-surface-2 shadow-[4px_0_24px_rgba(0,0,0,0.02)]",
               isRtl ? "border-l border-sidebar-border" : "border-r border-sidebar-border"
             ),
-        hasSubmenu && submenuExpanded ? "w-[240px]" : "w-0 border-r-0 border-l-0"
+        hasSubmenu && submenuExpanded ? "w-[280px] max-w-[88vw] lg:w-[272px]" : "w-0 border-r-0 border-l-0"
       )}
     >
       {activeMainItem && hasSubmenu && submenuExpanded && (
-        <div className="flex flex-col h-full min-w-[240px]">
+        <div className="flex h-full min-w-[280px] max-w-[88vw] flex-col lg:min-w-[272px]">
           <div className={cn(
-            "shrink-0 flex items-center px-5",
+            "shrink-0 flex items-center px-4",
             usesDualTierLayout
               ? "h-20 border-b border-border/50 bg-[linear-gradient(180deg,_hsl(var(--card)/0.72),_hsl(var(--card)/0.24))] backdrop-blur-sm"
               : "h-20 border-b border-sidebar-border/50 bg-background/50 backdrop-blur-sm"
@@ -620,15 +695,20 @@ export function Sidebar({
               {isRtl ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
             </button>
             <h2 className={cn(
-              "text-[15px] font-bold tracking-tight",
+              "min-w-0 truncate text-base font-bold tracking-tight",
               usesDualTierLayout ? "text-foreground" : "text-sidebar-fg"
             )}>
               {locale === "ar" ? activeMainItem.titleAr : activeMainItem.title}
             </h2>
             <button
-              onClick={() => onMobileClose?.()}
+              type="button"
+              onClick={() => {
+                if (mobileOpen) onMobileClose?.();
+                else setSubmenuExpanded(false);
+              }}
+              aria-label={t("a11yCloseMenu")}
               className={cn(
-                "lg:hidden flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted",
+                "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/35",
                 isRtl ? "mr-auto" : "ml-auto"
               )}
             >
@@ -636,7 +716,7 @@ export function Sidebar({
             </button>
           </div>
 
-          <nav className="flex-1 overflow-y-auto px-3 py-5 sidebar-scroll">
+          <nav className="flex-1 overflow-y-auto px-3 py-4 sidebar-scroll">
             <div className="space-y-1">
               <div id={submenuId} className="space-y-4">
                 {(() => {
@@ -670,7 +750,7 @@ export function Sidebar({
                   return groups.map((g) => (
                     <div key={g.key || "_ungrouped"}>
                       {g.label && (
-                        <h3 className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
+                        <h3 className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/75">
                           {g.label}
                         </h3>
                       )}
@@ -706,7 +786,7 @@ export function Sidebar({
             ref={mobileSidebarRef}
             tabIndex={-1}
             className={cn(
-              "relative flex h-full max-w-[85vw] animate-in duration-300 ease-out shadow-2xl",
+              "relative flex h-full max-w-[88vw] animate-in duration-300 ease-out shadow-2xl",
               usesDualTierLayout ? "bg-transparent" : "bg-background",
               isRtl ? "right-0 left-auto slide-in-from-right" : "slide-in-from-left"
             )}

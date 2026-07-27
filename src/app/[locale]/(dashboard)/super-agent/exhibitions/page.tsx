@@ -7,14 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  CalendarDays, Clock, CheckCircle2, Inbox, Sparkles,
+  CalendarDays, Clock, Inbox,
   MapPin, ThumbsUp, ThumbsDown, Eye,
-  DollarSign, Target, RotateCcw,
+  RotateCcw,
 } from "lucide-react";
 import { ExhibitionHeroFilters } from "@/components/features/exhibitions/ExhibitionHeroFilters";
 import { csrfFetch } from "@/lib/security/csrf-client";
@@ -23,9 +22,9 @@ import { ApprovalTimeline } from "@/components/features/exhibitions/ApprovalTime
 import {
   SuperAgentDataTableShell,
   SuperAgentEmptyState,
-  SuperAgentMetricsGrid,
   SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -216,44 +215,15 @@ export default function SuperAgentExhibitionsPage() {
   // Stats
   const pendingCount = items.filter((i) => i.status === "submitted").length;
   const reviewCount = items.filter((i) => i.status === "under_review").length;
-  const approvedCount = items.filter((i) => ["approved","budget_approved","resources_assigned","active"].includes(i.status)).length;
-  const totalBudgetRequested = items.reduce((s, i) => s + (i.estimatedBudget ?? 0), 0);
-  const totalBudgetApproved = items.reduce((s, i) => s + (i.approvedBudget ?? 0), 0);
-
-  const metrics = [
-    { label: "Total Requests", value: items.length, helper: "All exhibition requests from your team.", icon: <CalendarDays className="h-5 w-5" />, toneClassName: "workspace-tone-sky" },
-    { label: "Pending Review", value: pendingCount + reviewCount, helper: "Submitted or currently under review.", icon: <Clock className="h-5 w-5" />, toneClassName: "workspace-tone-amber" },
-    { label: "Approved", value: approvedCount, helper: "Approved requests (including advanced stages).", icon: <CheckCircle2 className="h-5 w-5" />, toneClassName: "workspace-tone-emerald" },
-    { label: "Budget Requested", value: totalBudgetRequested.toLocaleString(), helper: "Combined estimated budget across requests.", icon: <DollarSign className="h-5 w-5" />, toneClassName: "workspace-tone-indigo" },
-    { label: "Budget Approved", value: totalBudgetApproved.toLocaleString(), helper: "Total approved spend to date.", icon: <Target className="h-5 w-5" />, toneClassName: "workspace-tone-violet" },
-  ];
-
   return (
     <div className="page-container space-y-6">
-      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-          <div className="min-w-0 flex-1">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              Super agent workspace
-            </div>
-            <h1 className="mt-4 text-xl sm:text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">Exhibition Management</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Review and approve exhibition requests from your team. Use filters to narrow the queue, then act on submissions inline.
-            </p>
-          </div>
-          <div className="workspace-glass-panel shrink-0 rounded-2xl px-4 py-3 text-left sm:min-w-[220px]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Queue health</p>
-            <p className="mt-1 text-sm leading-6 text-muted-foreground">
-              {pendingCount + reviewCount} request{pendingCount + reviewCount === 1 ? "" : "s"} awaiting your review.
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-6">
-          <SuperAgentMetricsGrid items={metrics} />
-        </div>
-
+      <DashboardPageHeader
+        icon={CalendarDays}
+        eyebrow="Super agent workspace"
+        title="Exhibition Management"
+        description="Review and approve exhibition requests from your team. Use filters to narrow the queue, then act on submissions inline."
+        summary={{ label: "Queue health", value: `${pendingCount + reviewCount} requests`, note: "Awaiting your review" }}
+      >
         <ExhibitionHeroFilters
           search={search}
           onSearchChange={setSearch}
@@ -268,7 +238,7 @@ export default function SuperAgentExhibitionsPage() {
           categoryOptions={CATEGORY_OPTIONS}
           searchPlaceholder="Search events, agents, locations…"
         />
-      </section>
+      </DashboardPageHeader>
 
       <SuperAgentSection
         eyebrow="Requests"

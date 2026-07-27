@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, Building2, CalendarClock, Sparkles } from "lucide-react";
+import { ArrowRight, Building2, CalendarClock } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
+import { PageHero } from "@/components/shared/PageHero";
 
 export default function NewLeadPage() {
   const router = useRouter();
@@ -64,19 +65,18 @@ export default function NewLeadPage() {
 
   return (
     <div className="page-container space-y-6">
-      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/90 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-status-applied backdrop-blur"><Sparkles className="h-3.5 w-3.5" />{t("agentWorkspace")}</div>
-            <h1 className="mt-4 text-xl sm:text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("pageTitle")}</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">{t("pageDescription")}</p>
-          </div>
+      <PageHero
+        icon={Building2}
+        eyebrow={t("agentWorkspace")}
+        title={t("pageTitle")}
+        description={t("pageDescription")}
+        actions={
           <Link href=".." className="inline-flex items-center gap-2 rounded-xl border border-border/75 bg-card/90 px-4 py-3 text-sm font-semibold text-foreground/85 transition-colors hover:border-border hover:text-status-applied">
             <ArrowRight className="h-4 w-4" />
             {t("backToPipeline")}
           </Link>
-        </div>
-      </section>
+        }
+      />
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <section className="rounded-[28px] border border-border bg-card/90 p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur sm:p-6">

@@ -13,11 +13,11 @@ import {
   Building2,
   CalendarCheck2,
   CircleDollarSign,
-  Sparkles,
   Target,
   UserRoundSearch,
   Users,
 } from "lucide-react";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 
 export default async function AgentDashboard({ params }: { params: Promise<{ locale: string }> }) {
   const session = await auth();
@@ -273,54 +273,28 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
 
   return (
     <div className="page-container space-y-6">
-      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-3xl">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              {t("hero.eyebrow")}
-            </div>
-            <h1 className="mt-4 text-xl sm:text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-              {t("hero.title")}
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              {t("hero.description")}
-            </p>
-          </div>
-
-          <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:min-w-[260px]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("portfolio.eyebrow")}</p>
-            <p className="mt-1 text-lg font-semibold text-foreground">{t("portfolio.activeAccounts", { count: employerCount })}</p>
-            <p className="text-xs text-muted-foreground">
-              {t("portfolio.summary", { jobs: activeJobs, applications: totalApps, placements: kpis[3]?.value ?? 0 })}
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {heroStats.map((stat) => {
-            const Icon = stat.icon;
-
-            return (
-              <div key={stat.label} className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{stat.label}</p>
-                    <p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{stat.value}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{stat.description}</p>
-                  </div>
-                  <div className={`rounded-2xl p-2.5 ${stat.tone}`}>
-                    <Icon className="h-5 w-5" />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
+      <DashboardPageHeader
+        icon={Target}
+        eyebrow={t("hero.eyebrow")}
+        title={t("hero.title")}
+        description={t("hero.description")}
+        summary={{
+          label: t("portfolio.eyebrow"),
+          value: t("portfolio.activeAccounts", { count: employerCount }),
+          note: t("portfolio.summary", { jobs: activeJobs, applications: totalApps, placements: kpis[3]?.value ?? 0 }),
+        }}
+        metrics={heroStats.map((stat) => ({
+          label: stat.label,
+          value: stat.value,
+          note: stat.description,
+          icon: stat.icon,
+          iconClassName: "text-primary",
+          iconSurfaceClassName: "bg-primary/10",
+        }))}
+      />
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,0.94fr)_minmax(0,1.06fr)]">
-        <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6">
+        <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sections.funnel.eyebrow")}</p>
@@ -342,7 +316,7 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
           </div>
         </section>
 
-        <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6">
+        <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sections.quickActions.eyebrow")}</p>
             <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("sections.quickActions.title")}</h2>
@@ -374,7 +348,7 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
         </section>
       </div>
 
-      <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6">
+      <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sections.rolePerformance.eyebrow")}</p>

@@ -1,13 +1,31 @@
 // One-shot production-readiness crawl. Enumerates EVERY page route from the
 // filesystem, logs in as each role, and visits every route under that role's
 // area (resolving [id]/[slug] detail pages from real in-page links). Records
-// PASS/WARN/FAIL per page from HTTP status, runtime errors, and redirects.
-// Run: node scripts/audit-crawl.mjs   (dev server must be on :3000)
+// PASS/WARN/FAIL per page from HTTP status, runtime errors, redirects, and
+// document-level horizontal overflow at the selected viewport.
+// Run:
+//   node scripts/audit-crawl.mjs
+//   AUDIT_VIEWPORT=mobile node scripts/audit-crawl.mjs
+//   BASE_URL=http://localhost:3001 AUDIT_VIEWPORT=mobile node scripts/audit-crawl.mjs
 import { chromium } from "@playwright/test";
 import { readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-const BASE = "http://localhost:3000";
+const BASE = process.env.BASE_URL ?? "http://localhost:3000";
+const VIEWPORT_NAME = process.env.AUDIT_VIEWPORT ?? "desktop";
+const VIEWPORTS = {
+  mobile: { width: 390, height: 844 },
+  narrow: { width: 320, height: 700 },
+  tablet: { width: 768, height: 1024 },
+  desktop: { width: 1366, height: 900 },
+};
+const VIEWPORT = VIEWPORTS[VIEWPORT_NAME];
+if (!VIEWPORT) {
+  throw new Error(`Unknown AUDIT_VIEWPORT "${VIEWPORT_NAME}". Use ${Object.keys(VIEWPORTS).join(", ")}.`);
+}
+const REQUESTED_GROUPS = process.env.AUDIT_GROUPS
+  ? new Set(process.env.AUDIT_GROUPS.split(",").map((group) => group.trim()).filter(Boolean))
+  : null;
 const ROLES = {
   admin:       { email: "admin@mployedin.com",      pw: "Admin@1234",      prefix: "/en/admin" },
   super_agent: { email: "superagent@mployedin.com", pw: "SuperAgent@1234", prefix: "/en/super-agent" },
@@ -70,16 +88,16 @@ async function visit(page, prefix, path) {
   const onC = (m) => { if (m.type() === "error") consoleErrors.push(m.text().slice(0, 140)); };
   const onE = (e) => consoleErrors.push("PAGEERROR: " + String(e).slice(0, 140));
   page.on("console", onC); page.on("pageerror", onE);
-  let status = 0, verdict = "PASS", notes = [], finalPath = path, links = [];
+  let status = 0, verdict = "PASS", notes = [], finalPath = path, links = [], layout = null;
   try {
     const resp = await page.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded", timeout: 25000 });
     status = resp ? resp.status() : 0;
     await page.waitForTimeout(600);
     finalPath = new URL(page.url()).pathname;
     // real runtime error = Next.js error overlay/dialog present
-    const hasErrorOverlay = await page.locator("nextjs-portal, [data-nextjs-dialog], [data-nextjs-error]").count().catch(() => 0);
+    const hasErrorOverlay = await page.locator("[data-nextjs-dialog], [data-nextjs-error]").count().catch(() => 0);
 
-    if (finalPath.endsWith("/login")) { verdict = "FAIL"; notes.push("redirected to login"); }
+    if (finalPath.endsWith("/login") && !path.endsWith("/login")) { verdict = "FAIL"; notes.push("redirected to login"); }
     else if (!finalPath.startsWith(prefix) && !SHARED.includes(finalPath) && finalPath !== path) {
       verdict = "WARN"; notes.push(`redirected -> ${finalPath}`);
     }
@@ -89,15 +107,70 @@ async function visit(page, prefix, path) {
     if (consoleErrors.length) { if (verdict === "PASS") verdict = "WARN"; notes.push(`${consoleErrors.length} console err`); }
 
     if (verdict !== "FAIL") {
+      layout = await page.evaluate(() => {
+        const viewportWidth = window.innerWidth;
+        const documentWidth = Math.max(
+          document.documentElement?.scrollWidth ?? 0,
+          document.body?.scrollWidth ?? 0,
+        );
+        const dashboardMain = document.querySelector(".dashboard-main");
+        const dashboardOverflowPixels = dashboardMain
+          ? Math.max(0, dashboardMain.scrollWidth - dashboardMain.clientWidth)
+          : 0;
+        const documentOverflowPixels = Math.max(0, documentWidth - viewportWidth);
+        const overflowPixels = Math.max(documentOverflowPixels, dashboardOverflowPixels);
+        const offenders = overflowPixels > 1
+          ? Array.from(document.querySelectorAll("body *"))
+            .filter((element) => {
+              const style = getComputedStyle(element);
+              if (style.display === "none" || style.visibility === "hidden") return false;
+              const rect = element.getBoundingClientRect();
+              return rect.width > 0 && (rect.right > viewportWidth + 1 || rect.left < -1);
+            })
+            .slice(0, 5)
+            .map((element) => {
+              const rect = element.getBoundingClientRect();
+              const name = element.tagName.toLowerCase();
+              const id = element.id ? `#${element.id}` : "";
+              const classes = typeof element.className === "string"
+                ? element.className.trim().split(/\s+/).slice(0, 3).map((c) => `.${c}`).join("")
+                : "";
+              return `${name}${id}${classes} (${Math.round(rect.left)}..${Math.round(rect.right)})`;
+            })
+          : [];
+        return {
+          viewportWidth,
+          documentWidth,
+          documentOverflowPixels,
+          dashboardWidth: dashboardMain?.clientWidth ?? null,
+          dashboardScrollWidth: dashboardMain?.scrollWidth ?? null,
+          dashboardOverflowPixels,
+          overflowPixels,
+          offenders,
+        };
+      });
+      if (layout.overflowPixels > 1) {
+        if (verdict === "PASS") verdict = "WARN";
+        const source = layout.dashboardOverflowPixels >= layout.documentOverflowPixels
+          ? "dashboard"
+          : "document";
+        notes.push(`${source} horizontal overflow +${layout.overflowPixels}px`);
+      }
       links = await page.$$eval("a[href]", (as) => as.map((a) => a.getAttribute("href")).filter(Boolean));
     }
   } catch (e) { verdict = "FAIL"; notes.push("nav error: " + String(e.message).slice(0, 90)); }
   page.off("console", onC); page.off("pageerror", onE);
-  return { path, status, verdict, notes: notes.join("; "), consoleErrors: consoleErrors.slice(0, 2), links };
+  return { path, status, verdict, notes: notes.join("; "), consoleErrors: consoleErrors.slice(0, 2), layout, links };
+}
+
+function printResult(result) {
+  process.stdout.write(
+    `[${result.verdict}] ${result.path}${result.pattern ? " (" + result.pattern + ")" : ""} ${result.status} ${result.notes}\n`,
+  );
 }
 
 async function crawlRole(browser, role) {
-  const ctx = await browser.newContext({ viewport: { width: 1366, height: 900 } });
+  const ctx = await browser.newContext({ viewport: VIEWPORT });
   const page = await ctx.newPage();
   const ok = await login(page, role);
   const prefix = ROLES[role].prefix;
@@ -118,6 +191,7 @@ async function crawlRole(browser, role) {
     if (visited.has(r)) continue; visited.add(r);
     const res = await visit(page, prefix, r);
     results.push(res);
+    printResult(res);
     // harvest links to resolve dynamic detail pages with REAL ids
     for (const h of res.links) {
       const p = h.startsWith("http") ? (h.startsWith(BASE) ? new URL(h).pathname : null) : (h.startsWith("/") ? h : null);
@@ -133,26 +207,89 @@ async function crawlRole(browser, role) {
     const res = await visit(page, prefix, p);
     res.pattern = pat;
     results.push(res);
+    printResult(res);
   }
   // report dynamic patterns we could not resolve (no link found)
   for (const d of dynamics) if (!usedPat.has(d.pat)) {
-    results.push({ path: d.pat, status: 0, verdict: "SKIP", notes: "no real id link found to test", consoleErrors: [] });
+    const result = { path: d.pat, status: 0, verdict: "SKIP", notes: "no real id link found to test", consoleErrors: [] };
+    results.push(result);
+    printResult(result);
   }
   await logout(page);
   await ctx.close();
   return results;
 }
 
+async function crawlAnonymous(browser) {
+  const ctx = await browser.newContext({ viewport: VIEWPORT });
+  const page = await ctx.newPage();
+  const dashboardPrefixes = Object.values(ROLES).map((role) => role.prefix);
+  const routes = allRoutes.filter((route) =>
+    !dashboardPrefixes.some((prefix) => route === prefix || route.startsWith(`${prefix}/`))
+    && !SHARED.includes(route)
+  );
+  const statics = routes.filter((route) => !isDynamic(route));
+  const dynamics = routes.filter(isDynamic).map((route) => ({ pat: route, re: dynToRe(route) }));
+  const results = [];
+  const visited = new Set();
+  const concreteFound = new Set();
+
+  for (const route of statics) {
+    if (visited.has(route)) continue;
+    visited.add(route);
+    const result = await visit(page, "/", route);
+    results.push(result);
+    printResult(result);
+    for (const href of result.links) {
+      const path = href.startsWith("http")
+        ? (href.startsWith(BASE) ? new URL(href).pathname : null)
+        : (href.startsWith("/") ? href : null);
+      if (!path) continue;
+      for (const dynamic of dynamics) {
+        if (dynamic.re.test(path)) concreteFound.add(`${path}||${dynamic.pat}`);
+      }
+    }
+  }
+
+  const usedPatterns = new Set();
+  for (const entry of concreteFound) {
+    const [path, pattern] = entry.split("||");
+    if (usedPatterns.has(pattern)) continue;
+    usedPatterns.add(pattern);
+    const result = await visit(page, "/", path);
+    result.pattern = pattern;
+    results.push(result);
+    printResult(result);
+  }
+  for (const dynamic of dynamics) {
+    if (!usedPatterns.has(dynamic.pat)) {
+      const result = { path: dynamic.pat, status: 0, verdict: "SKIP", notes: "no real id link found to test", consoleErrors: [], layout: null };
+      results.push(result);
+      printResult(result);
+    }
+  }
+  await ctx.close();
+  return results;
+}
+
 const browser = await chromium.launch();
 const report = {};
+if (!REQUESTED_GROUPS || REQUESTED_GROUPS.has("anonymous")) {
+  process.stdout.write(`\n=== anonymous (${VIEWPORT_NAME} ${VIEWPORT.width}x${VIEWPORT.height}) ===\n`);
+  report.anonymous = await crawlAnonymous(browser);
+}
 for (const role of Object.keys(ROLES)) {
-  process.stdout.write(`\n=== ${role} ===\n`);
-  const res = await crawlRole(browser, role);
-  report[role] = res;
-  for (const r of res) process.stdout.write(`[${r.verdict}] ${r.path}${r.pattern ? " (" + r.pattern + ")" : ""} ${r.status} ${r.notes}\n`);
+  if (REQUESTED_GROUPS && !REQUESTED_GROUPS.has(role)) continue;
+  process.stdout.write(`\n=== ${role} (${VIEWPORT_NAME} ${VIEWPORT.width}x${VIEWPORT.height}) ===\n`);
+  report[role] = await crawlRole(browser, role);
 }
 await browser.close();
-writeFileSync("audit-crawl-report.json", JSON.stringify(report, null, 2));
+const groupSuffix = REQUESTED_GROUPS ? `-${[...REQUESTED_GROUPS].join("-")}` : "";
+const reportPath = `audit-crawl-report-${VIEWPORT_NAME}${groupSuffix}.json`;
+writeFileSync(reportPath, JSON.stringify({
+  meta: { baseUrl: BASE, viewport: VIEWPORT_NAME, dimensions: VIEWPORT },
+  ...report,
+}, null, 2));
 const flat = Object.values(report).flat();
 const c = (v) => flat.filter((r) => r.verdict === v).length;
-process.stdout.write(`\n\nTOTAL=${flat.length} PASS=${c("PASS")} WARN=${c("WARN")} FAIL=${c("FAIL")} SKIP=${c("SKIP")}\n`);
+process.stdout.write(`\n\nREPORT=${reportPath} TOTAL=${flat.length} PASS=${c("PASS")} WARN=${c("WARN")} FAIL=${c("FAIL")} SKIP=${c("SKIP")}\n`);

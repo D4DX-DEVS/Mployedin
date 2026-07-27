@@ -10,7 +10,6 @@ import {
   ArrowUpRight,
   ChevronLeft,
   ChevronRight,
-  Sparkles,
   RefreshCw,
   LogIn,
   LogOut,
@@ -22,7 +21,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { cn } from "@/lib/utils";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -167,41 +166,17 @@ export default function ActivityHistoryPage() {
   return (
     <div className="page-container space-y-6">
       {/* Hero + Filters Combined */}
-      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
-        <div className="flex flex-col gap-6">
-          {/* Top: Title + Stats */}
-          <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
-            <div className="max-w-3xl">
-              <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-status-applied dark:text-sky-300">
-                <Sparkles className="h-3.5 w-3.5" />
-                {t("title")}
-              </div>
-              <PageHeader
-                title={t("title")}
-                description={t("description")}
-              />
-            </div>
-
-            {/* Stats pills */}
-            <div className="flex gap-3 flex-wrap">
-              <div className="workspace-glass-panel rounded-2xl px-4 py-3 min-w-[120px]">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  {t("totalEntries")}
-                </p>
-                <p className="mt-1 text-2xl font-bold text-foreground">{pagination.total}</p>
-              </div>
-              <div className="workspace-glass-panel rounded-2xl px-4 py-3 min-w-[120px]">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  {t("pageInfo", { page: pagination.page, totalPages: pagination.totalPages || 1 })}
-                </p>
-                <p className="mt-1 text-2xl font-bold text-foreground">{entries.length}</p>
-                <p className="text-[11px] text-muted-foreground">{t("onThisPage")}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom: Inline Filters */}
-          <div className="flex flex-wrap items-end gap-3 border-t border-border/50 pt-5 dark:border-slate-700/50">
+      <DashboardPageHeader
+        icon={History}
+        eyebrow={t("title")}
+        title={t("title")}
+        description={t("description")}
+        metrics={[
+          { label: t("totalEntries"), value: pagination.total, icon: History },
+          { label: t("pageInfo", { page: pagination.page, totalPages: pagination.totalPages || 1 }), value: entries.length, note: t("onThisPage"), icon: FileText },
+        ]}
+      >
+          <div className="mt-2 flex flex-wrap items-end gap-3 border-t border-border/50 pt-3">
             <div className="flex flex-col gap-1.5">
               <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 {t("actionType")}
@@ -249,8 +224,7 @@ export default function ActivityHistoryPage() {
               {t("refresh")}
             </Button>
           </div>
-        </div>
-      </section>
+      </DashboardPageHeader>
 
       {/* Activity List */}
       <section className="space-y-3">

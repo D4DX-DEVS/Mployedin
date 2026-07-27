@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Loader2, LockKeyhole, ShieldCheck } from "lucide-react";
 
 const REMEMBER_ME_KEY = "mployedin_remember_email";
 const ROLE_REDIRECTS: Record<string, string> = {
@@ -30,6 +30,27 @@ function getPostSignInPath(locale: string, role: string, isOnboarded: boolean): 
   return `/${locale}/${ROLE_REDIRECTS[role] ?? "job-seeker"}`;
 }
 
+function getSafeCallbackPath(locale: string): string | null {
+  const callbackUrl = new URLSearchParams(window.location.search).get("callbackUrl");
+  if (!callbackUrl) return null;
+
+  try {
+    const parsed = new URL(callbackUrl, window.location.origin);
+    if (parsed.origin !== window.location.origin) return null;
+    if (!parsed.pathname.startsWith(`/${locale}/`)) return null;
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return null;
+  }
+}
+
+function getOAuthRedirectUrl(locale: string): string {
+  const callbackPath = getSafeCallbackPath(locale);
+  return callbackPath
+    ? `/api/auth/post-login-redirect?callbackUrl=${encodeURIComponent(callbackPath)}`
+    : "/api/auth/post-login-redirect";
+}
+
 export default function LoginPage() {
   const { locale } = useParams<{ locale: string }>();
   const router = useRouter();
@@ -45,15 +66,20 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [totpCode, setTotpCode] = useState("");
   const [requires2fa, setRequires2fa] = useState(false);
+  const anyLoading = loading || googleLoading || linkedInLoading || appleLoading;
 
   useEffect(() => {
     const savedEmail = localStorage.getItem(REMEMBER_ME_KEY);
+    const params = new URLSearchParams(window.location.search);
+    const requestedEmail = params.get("email");
+    const initialEmail = requestedEmail || savedEmail;
+    if (initialEmail) {
+      setEmail(initialEmail);
+    }
     if (savedEmail) {
-      setEmail(savedEmail);
       setRememberMe(true);
     }
 
-    const params = new URLSearchParams(window.location.search);
     const reason = params.get("reason");
     if (reason === "idle") {
       setError(t("sessionExpiredInactivity"));
@@ -82,7 +108,7 @@ export default function LoginPage() {
       const session = await getSession();
       const role = (session?.user as Record<string, unknown>)?.role as string ?? "job_seeker";
       const isOnboarded = (session?.user as Record<string, unknown>)?.isOnboarded as boolean ?? true;
-      router.replace(getPostSignInPath(locale, role, isOnboarded));
+      router.replace(getSafeCallbackPath(locale) ?? getPostSignInPath(locale, role, isOnboarded));
     } catch {
       setError(t("googleSignInFailed"));
     } finally {
@@ -132,7 +158,7 @@ export default function LoginPage() {
       const session = await getSession();
       const role = (session?.user as Record<string, unknown>)?.role as string ?? "job_seeker";
       const isOnboarded = (session?.user as Record<string, unknown>)?.isOnboarded as boolean ?? true;
-      router.replace(getPostSignInPath(locale, role, isOnboarded));
+      router.replace(getSafeCallbackPath(locale) ?? getPostSignInPath(locale, role, isOnboarded));
     } catch {
       setError(t("somethingWentWrong"));
     } finally {
@@ -141,27 +167,64 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="w-full flex flex-col gap-8">
-      <div className="lg:hidden flex flex-col gap-4">
+    <div className="flex w-full flex-col gap-4">
+      <div className="flex items-center justify-between lg:hidden">
         <Link
           href={`/${locale}`}
           className="inline-flex w-fit items-center"
         >
           <Image src="/logo.png" alt="Mployedin" width={100} height={34} className="h-auto w-[106px] object-contain" style={{ height: "auto" }} priority />
         </Link>
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/[0.08] px-3 py-1.5 text-xs font-medium text-primary">
+          <ShieldCheck className="h-3.5 w-3.5" />
+          {t("secureSignIn")}
+        </span>
       </div>
 
-      <div className="space-y-3">
-        <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-[2.2rem]">
+      <div className="space-y-1.5">
+        <div className="hidden items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary lg:flex">
+          <LockKeyhole className="h-3.5 w-3.5" />
+          {t("secureSignIn")}
+        </div>
+        <h1 className="text-[1.75rem] font-semibold tracking-[-0.025em] text-foreground sm:text-[2rem]">
           {t("welcomeBack")}
         </h1>
-        <p className="text-sm leading-6 text-muted-foreground font-light sm:max-w-md sm:text-base sm:leading-7">
+        <p className="max-w-sm text-sm leading-5 text-muted-foreground">
           {t("enterCredentials")}
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <div className="space-y-2">
+      <Button
+        variant="outline"
+        type="button"
+        className="h-11 w-full rounded-xl border-border bg-card font-semibold shadow-sm transition-all hover:border-primary/30 hover:bg-primary/[0.04]"
+        onClick={handleGoogleSignIn}
+        disabled={anyLoading}
+      >
+        {googleLoading ? (
+          <Loader2 className="me-2 h-5 w-5 animate-spin" />
+        ) : (
+          <svg className="me-2 h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z" fill="#EA4335" />
+          </svg>
+        )}
+        {t("continueWithGoogle")}
+      </Button>
+
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center" aria-hidden="true">
+          <span className="w-full border-t border-border" />
+        </div>
+        <div className="relative flex justify-center text-xs">
+          <span className="bg-background px-3 font-medium text-muted-foreground">{t("orUseEmail")}</span>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <div className="space-y-1.5">
           <Label htmlFor="email" className="text-sm font-medium">{t("emailAddress")}</Label>
           <Input
             id="email"
@@ -171,11 +234,14 @@ export default function LoginPage() {
             onChange={(e) => setEmail(e.target.value)}
             required
             autoComplete="email"
-            className="h-12 rounded-xl border-border/70 bg-background/70 px-4 transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/15"
+            autoFocus
+            aria-invalid={Boolean(error)}
+            aria-describedby={error ? "login-error" : undefined}
+            className="h-11 rounded-xl border-border/70 bg-background/70 px-4 transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/15"
           />
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <Label htmlFor="password" className="text-sm font-medium">{t("password")}</Label>
             <Link
@@ -194,12 +260,14 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               autoComplete="current-password"
-              className="h-12 rounded-xl border-border/70 bg-background/70 px-4 pr-11 transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/15"
+              aria-invalid={Boolean(error)}
+              aria-describedby={error ? "login-error" : undefined}
+              className="h-11 rounded-xl border-border/70 bg-background/70 px-4 pe-11 transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/15"
             />
             <button
               type="button"
               onClick={() => setShowPassword((v) => !v)}
-              className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-foreground transition-colors"
+              className="absolute inset-y-0 end-3 flex items-center text-muted-foreground transition-colors hover:text-foreground"
               aria-label={showPassword ? t("hidePassword") : t("showPassword")}
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -218,10 +286,12 @@ export default function LoginPage() {
               autoComplete="one-time-code"
               placeholder="123456"
               value={totpCode}
-              onChange={(e) => setTotpCode(e.target.value)}
+              onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
               autoFocus
               required
-              className="h-12 rounded-xl border-border/70 bg-background/70 px-4 text-center text-lg tracking-[0.4em] transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/15"
+              maxLength={6}
+              pattern="[0-9]{6}"
+              className="h-11 rounded-xl border-border/70 bg-background/70 px-4 text-center text-lg tracking-[0.4em] transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/15"
             />
           </div>
         )}
@@ -238,56 +308,28 @@ export default function LoginPage() {
         </div>
 
         {error && (
-          <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-            <p className="text-sm text-destructive text-center font-medium">{error}</p>
+          <div id="login-error" role="alert" aria-live="polite" className="rounded-xl border border-destructive/20 bg-destructive/10 p-3">
+            <p className="text-center text-sm font-medium text-destructive">{error}</p>
           </div>
         )}
 
         <Button
           type="submit"
-          className="h-12 w-full rounded-xl text-base font-medium shadow-lg shadow-primary/20 transition-all hover:-translate-y-0.5"
-          disabled={loading}
+          className="h-11 w-full rounded-xl text-sm font-semibold shadow-lg shadow-primary/20 transition-all hover:-translate-y-0.5"
+          disabled={anyLoading}
         >
-          {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+          {loading ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : <ArrowRight className="me-2 h-4 w-4" />}
           {t("signIn")}
         </Button>
       </form>
 
-      <div className="relative my-2">
-        <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t border-border" />
-        </div>
-        <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-background px-4 text-muted-foreground/60 font-medium tracking-wider">{t("orContinueWith")}</span>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         <Button
           variant="outline"
           type="button"
-          className="h-12 rounded-xl border-border/70 bg-background/60 font-medium transition-colors hover:bg-muted/60"
-          onClick={handleGoogleSignIn}
-          disabled={googleLoading}
-        >
-          {googleLoading ? (
-            <Loader2 className="w-5 h-5 mr-0.5 animate-spin" />
-          ) : (
-            <svg className="w-5 h-5 mr-0.5" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-            </svg>
-          )}
-          Google
-        </Button>
-        <Button
-          variant="outline"
-          type="button"
-          className="h-12 rounded-xl border-border/70 bg-background/60 font-medium transition-colors hover:bg-muted/60"
-          onClick={() => { setAppleLoading(true); setError(""); signIn("apple", { callbackUrl: "/api/auth/post-login-redirect" }); }}
-          disabled={appleLoading}
+          className="h-10 rounded-xl border-border/70 bg-background/60 text-sm font-medium transition-colors hover:bg-muted/60"
+          onClick={() => { setAppleLoading(true); setError(""); signIn("apple", { callbackUrl: getOAuthRedirectUrl(locale) }); }}
+          disabled={anyLoading}
         >
           {appleLoading ? (
             <Loader2 className="w-5 h-5 mr-0.5 animate-spin" />
@@ -301,9 +343,9 @@ export default function LoginPage() {
         <Button
           variant="outline"
           type="button"
-          className="h-12 rounded-xl border-border/70 bg-background/60 font-medium transition-colors hover:bg-muted/60"
-          onClick={() => { setLinkedInLoading(true); setError(""); signIn("linkedin", { callbackUrl: "/api/auth/post-login-redirect" }); }}
-          disabled={linkedInLoading}
+          className="h-10 rounded-xl border-border/70 bg-background/60 text-sm font-medium transition-colors hover:bg-muted/60"
+          onClick={() => { setLinkedInLoading(true); setError(""); signIn("linkedin", { callbackUrl: getOAuthRedirectUrl(locale) }); }}
+          disabled={anyLoading}
         >
           {linkedInLoading ? (
             <Loader2 className="w-5 h-5 mr-0.5 animate-spin" />
@@ -316,7 +358,7 @@ export default function LoginPage() {
         </Button>
       </div>
 
-      <p className="text-center text-sm text-muted-foreground mt-6">
+      <p className="text-center text-sm text-muted-foreground">
         {t("noAccount")}{" "}
         <Link
           href={`/${locale}/register`}

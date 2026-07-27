@@ -56,7 +56,8 @@ import {
 } from "recharts";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { PageHero } from "@/components/shared/PageHero";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { useTranslations, useLocale } from "next-intl";
 import Link from "next/link";
 
@@ -289,20 +290,9 @@ export default function EmployerAnalyticsPage() {
   if (isLoading) {
     return (
       <div className="page-container space-y-6">
-        <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
-          <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-status-applied dark:text-sky-300">
-            <Sparkles className="h-3.5 w-3.5" />
-            {t("title")}
-          </div>
-          <h1 className="mt-4 text-xl sm:text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-            {t("title")}
-          </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-            {t("description")}
-          </p>
-        </section>
+        <PageHero title={t("title")} description={t("description")} />
 
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
             <div
               key={i}
@@ -319,18 +309,7 @@ export default function EmployerAnalyticsPage() {
   if (error) {
     return (
       <div className="page-container space-y-6">
-        <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
-          <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-status-applied dark:text-sky-300">
-            <Sparkles className="h-3.5 w-3.5" />
-            {t("title")}
-          </div>
-          <h1 className="mt-4 text-xl sm:text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-            {t("title")}
-          </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-            {t("description")}
-          </p>
-        </section>
+        <PageHero title={t("title")} description={t("description")} />
 
         <AnalyticsPanel className="border-red-500/20 bg-red-500/5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -357,46 +336,18 @@ export default function EmployerAnalyticsPage() {
 
   return (
     <div className="page-container space-y-6">
-      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-3xl">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-status-applied dark:text-sky-300">
-              <activeTabMeta.icon className="h-3.5 w-3.5" />
-              {t(activeTab === "response" ? "responseTime" : activeTab)}
-            </div>
-            <PageHeader
-              title={t("title")}
-              description={t("description")}
-            />
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            {/* "View focus" restates the active tab — hidden on phones. */}
-            <div className="workspace-glass-panel hidden rounded-2xl px-4 py-3 sm:block">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                {t("viewFocus")}
-              </p>
-                <p className="mt-1 text-lg font-semibold text-foreground">{t(activeTabMeta.key === "response" ? "responseTime" : activeTabMeta.key)}</p>
-                <p className="text-xs text-muted-foreground">{t(activeTabMeta.key === "response" ? "responseTimeDesc" : `${activeTabMeta.key}Desc`)}</p>
-            </div>
-            <div className="workspace-glass-panel rounded-2xl px-4 py-3">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    {t("lastRefresh")}
-                  </p>
-                  <p className="mt-1 text-lg font-semibold text-foreground">
-                    {lastRefresh.toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {activeTab === "pipeline"
-                      ? t("autoRefreshNote")
-                      : t("manualRefreshNote")}
-                  </p>
-                </div>
+      <DashboardPageHeader
+        icon={activeTabMeta.icon}
+        eyebrow={t(activeTab === "response" ? "responseTime" : activeTab)}
+        title={t("title")}
+        description={t("description")}
+        summary={{
+          label: t("viewFocus"),
+          value: t(activeTabMeta.key === "response" ? "responseTime" : activeTabMeta.key),
+          note: t(activeTabMeta.key === "response" ? "responseTimeDesc" : `${activeTabMeta.key}Desc`),
+        }}
+        actions={
+          <>
                 <button
                   onClick={handleRefresh}
                   disabled={refreshing}
@@ -416,30 +367,20 @@ export default function EmployerAnalyticsPage() {
                 >
                   <Download className="h-4 w-4" />
                 </button>
-              </div>
-            </div>
-          </div>
-        </div>
+          </>
+        }
+        metrics={headlineMetrics.map((metric) => ({
+          label: metric.label,
+          value: metric.value,
+          note: metric.description,
+          icon: metric.icon,
+        }))}
+        footer={<span className="text-xs text-muted-foreground">{t("lastRefresh")}: {lastRefresh.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
+      />
 
-        {headlineMetrics.length > 0 && (
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {headlineMetrics.map((metric) => (
-              <HeroMetricCard
-                key={metric.label}
-                label={metric.label}
-                value={metric.value}
-                description={metric.description}
-                icon={metric.icon}
-                color={metric.color}
-              />
-            ))}
-          </div>
-        )}
-      </section>
-
-      <AnalyticsPanel className="p-3 sm:p-4">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-wrap gap-2">
+      <AnalyticsPanel className="p-2 sm:p-4">
+        <div className="flex flex-col gap-1.5 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
+          <div className="flex flex-wrap gap-1 sm:gap-2">
             {ANALYTICS_TABS.map((tab) => {
               const Icon = tab.icon;
 
@@ -448,24 +389,25 @@ export default function EmployerAnalyticsPage() {
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key)}
                   className={cn(
-                    "inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold transition",
+                    "inline-flex items-center gap-1 rounded-lg px-1.5 py-1 text-[10px] font-semibold transition sm:gap-2 sm:rounded-2xl sm:px-4 sm:py-2.5 sm:text-sm",
                     activeTab === tab.key
                       ? "bg-slate-950 text-white shadow-[0_16px_36px_-28px_rgba(15,23,42,0.9)]"
                       : "bg-secondary/75 text-muted-foreground hover:bg-slate-200 hover:text-foreground"
                   )}
                 >
-                  <Icon className="h-4 w-4" />
+                  <Icon className="h-3 w-3 sm:h-4 sm:w-4" />
                   {t(tab.key === "response" ? "responseTime" : tab.key)}
                 </button>
               );
             })}
           </div>
 
-          <div className="rounded-2xl border border-border bg-secondary/65/80 px-4 py-3 text-sm text-muted-foreground">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          {/* One compact line on phones — label above value cost a whole card. */}
+          <div className="flex flex-wrap items-baseline gap-x-2 rounded-lg border border-border bg-secondary/65/80 px-2 py-1 text-[10px] text-muted-foreground sm:block sm:rounded-2xl sm:px-4 sm:py-3 sm:text-sm">
+            <p className="text-[8px] font-semibold uppercase tracking-[0.1em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">
               {t("currentLens")}
             </p>
-            <p className="mt-1 font-medium text-foreground">{t(activeTabMeta.key === "response" ? "responseTimeDesc" : `${activeTabMeta.key}Desc`)}</p>
+            <p className="min-w-0 truncate font-medium text-foreground sm:mt-1">{t(activeTabMeta.key === "response" ? "responseTimeDesc" : `${activeTabMeta.key}Desc`)}</p>
           </div>
         </div>
       </AnalyticsPanel>
@@ -541,7 +483,7 @@ export default function EmployerAnalyticsPage() {
 
 function TabLoadingSkeleton() {
   return (
-    <div className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-6 space-y-4 animate-pulse">
+    <div className="workspace-panel-surface rounded-[28px] p-6 space-y-4 animate-pulse">
       <div className="h-5 w-48 bg-muted rounded" />
       <div className="grid gap-3 sm:grid-cols-3">
         {[1, 2, 3].map((i) => (
@@ -579,6 +521,7 @@ function PipelineTab({
   const t = useTranslations("employerAnalytics");
   const tc = useTranslations("employerCommon");
   const locale = useLocale();
+  const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
   const conversionRates = {
     appliedToShortlisted:
       data.conversion.applied > 0
@@ -655,19 +598,19 @@ function PipelineTab({
       )}
 
       {pipeline.stalledCount > 0 && (
-        <div className="workspace-panel-surface rounded-[28px] border-status-shortlisted/20 p-5">
-          <div className="flex items-start gap-4">
-            <div className="rounded-2xl bg-status-shortlisted-bg p-3 text-status-shortlisted">
-              <AlertTriangle className="h-5 w-5" />
+        <div className="workspace-panel-surface rounded-2xl border-status-shortlisted/20 p-3 sm:rounded-[28px] sm:p-5">
+          <div className="flex items-start gap-2.5 sm:gap-4">
+            <div className="rounded-xl bg-status-shortlisted-bg p-2 text-status-shortlisted sm:rounded-2xl sm:p-3">
+              <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5" />
             </div>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-shortlisted">
+            <div className="min-w-0">
+              <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-status-shortlisted sm:text-[11px] sm:tracking-[0.18em]">
                 {t("actionNeeded")}
               </p>
-              <p className="mt-2 text-lg font-semibold text-amber-950">
+              <p className="mt-1 text-sm font-semibold text-amber-950 sm:mt-2 sm:text-lg">
                 {t("stalledCandidates", { count: pipeline.stalledCount })}
               </p>
-              <p className="mt-1 text-sm leading-6 text-status-shortlisted">
+              <p className="mt-1 text-xs leading-5 text-status-shortlisted sm:text-sm sm:leading-6">
                 {t("stalledHint")}
               </p>
             </div>
@@ -676,7 +619,7 @@ function PipelineTab({
       )}
 
       <section>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="grid grid-cols-5 gap-1.5 sm:gap-3">
           <ConversionCard label={t("applied")} count={data.conversion.applied} subtitle={`100% ${t("ofTotal")}`} color="blue" />
           <ConversionCard label={t("shortlisted")} count={data.conversion.shortlisted} subtitle={`${conversionRates.appliedToShortlisted}% ${t("fromApplied")}`} color="indigo" />
           <ConversionCard label={t("interview")} count={data.conversion.interview} subtitle={`${conversionRates.shortlistedToInterview}% ${t("fromShortlisted")}`} color="purple" />
@@ -696,22 +639,24 @@ function PipelineTab({
         {funnelChartData.every((d) => d.count === 0) ? (
           <p className="py-10 text-center text-muted-foreground">{t("noApplicationData")}</p>
         ) : (
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={funnelChartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="stage" tick={{ fontSize: 12, fill: "#64748b" }} axisLine={{ stroke: "#e2e8f0" }} />
-              <YAxis tick={{ fontSize: 12, fill: "#64748b" }} axisLine={{ stroke: "#e2e8f0" }} allowDecimals={false} />
-              <Tooltip contentStyle={{ borderRadius: "16px", border: "1px solid #e2e8f0", fontSize: "13px", boxShadow: "0 18px 45px -30px rgba(15, 23, 42, 0.4)" }} />
-              <Bar dataKey="count" radius={[8, 8, 0, 0]} maxBarSize={60}>
-                {funnelChartData.map((entry, idx) => (
-                  <Cell key={idx} fill={entry.fill} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="h-[220px] sm:h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={funnelChartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="stage" tick={{ fontSize: 10, fill: "#64748b" }} axisLine={{ stroke: "#e2e8f0" }} />
+                <YAxis tick={{ fontSize: 10, fill: "#64748b" }} axisLine={{ stroke: "#e2e8f0" }} allowDecimals={false} width={28} />
+                <Tooltip contentStyle={{ borderRadius: "16px", border: "1px solid #e2e8f0", fontSize: "13px", boxShadow: "0 18px 45px -30px rgba(15, 23, 42, 0.4)" }} />
+                <Bar dataKey="count" radius={[8, 8, 0, 0]} maxBarSize={60}>
+                  {funnelChartData.map((entry, idx) => (
+                    <Cell key={idx} fill={entry.fill} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         )}
 
-        <div className="mt-5 flex flex-wrap gap-3">
+        <div className="mt-4 flex flex-wrap gap-1.5 sm:mt-5 sm:gap-3">
           <RateBadge label={t("appliedToShortlisted")} value={pipeline.conversionRates.appliedToShortlisted} />
           <RateBadge label={t("shortlistedToInterview")} value={pipeline.conversionRates.shortlistedToInterview} />
           <RateBadge label={t("interviewToOffer")} value={pipeline.conversionRates.interviewToOffer} />
@@ -728,20 +673,22 @@ function PipelineTab({
           eyebrow={t("trend")}
         />
 
-        <ResponsiveContainer width="100%" height={280}>
-          <AreaChart data={trendChartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-            <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={{ stroke: "#e2e8f0" }} interval={Math.floor(trendChartData.length / 8)} />
-            <YAxis tick={{ fontSize: 12, fill: "#64748b" }} axisLine={{ stroke: "#e2e8f0" }} allowDecimals={false} />
-            <Tooltip contentStyle={{ borderRadius: "16px", border: "1px solid #e2e8f0", fontSize: "13px", boxShadow: "0 18px 45px -30px rgba(15, 23, 42, 0.4)" }} labelFormatter={(label) => `${t("dateLabel")}: ${label}`} />
-            <Area type="monotone" dataKey="count" stroke="#0ea5e9" fill="#38bdf8" fillOpacity={0.18} strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />
-          </AreaChart>
-        </ResponsiveContainer>
+        <div className="h-[200px] sm:h-[280px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={trendChartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#64748b" }} axisLine={{ stroke: "#e2e8f0" }} interval={Math.floor(trendChartData.length / 8)} />
+              <YAxis tick={{ fontSize: 10, fill: "#64748b" }} axisLine={{ stroke: "#e2e8f0" }} allowDecimals={false} width={28} />
+              <Tooltip contentStyle={{ borderRadius: "16px", border: "1px solid #e2e8f0", fontSize: "13px", boxShadow: "0 18px 45px -30px rgba(15, 23, 42, 0.4)" }} labelFormatter={(label) => `${t("dateLabel")}: ${label}`} />
+              <Area type="monotone" dataKey="count" stroke="#0ea5e9" fill="#38bdf8" fillOpacity={0.18} strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
       </AnalyticsPanel>
 
       {jobOptions.length > 0 && (
         <AnalyticsPanel className="overflow-hidden p-0">
-          <div className="flex flex-col gap-4 border-b border-border/60 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div className="flex flex-col gap-2.5 border-b border-border/60 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-6 sm:py-5">
             <AnalyticsSectionHeader
               title={t("perJobBreakdown")}
               description={t("perJobBreakdownDesc")}
@@ -750,18 +697,19 @@ function PipelineTab({
               compact
             />
             <div className="relative w-full sm:w-64">
-              <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="pointer-events-none absolute start-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground sm:h-4 sm:w-4" />
               <input
                 type="search"
                 value={perJobSearchInput}
                 onChange={(e) => setPerJobSearchInput(e.target.value)}
                 placeholder={t("searchJobs")}
-                className="w-full rounded-xl border border-border bg-background/80 py-2 pe-3 ps-9 text-sm text-foreground placeholder:text-muted-foreground focus:border-sky-500/40 focus:outline-none focus:ring-2 focus:ring-sky-500/20"
+                className="w-full rounded-lg border border-border bg-background/80 py-1.5 pe-3 ps-8 text-xs text-foreground placeholder:text-muted-foreground focus:border-sky-500/40 focus:outline-none focus:ring-2 focus:ring-sky-500/20 sm:rounded-xl sm:py-2 sm:ps-9 sm:text-sm"
               />
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* Desktop: full comparison table */}
+          <div className="hidden overflow-x-auto sm:block">
             <table className="w-full min-w-[860px] text-sm">
               <thead>
                 <tr className="border-b border-border/60 bg-background/60">
@@ -825,34 +773,87 @@ function PipelineTab({
             </table>
           </div>
 
+          {/* Mobile: tap a job to reveal its stages — a wide table would just force horizontal scroll */}
+          <div className="divide-y divide-border/40 sm:hidden">
+            {pipeline.perJob.length === 0 && (
+              <p className="px-4 py-10 text-center text-sm text-muted-foreground">{t("noJobMatches")}</p>
+            )}
+            {pipeline.perJob.map((job) => {
+              const isOpen = expandedJobId === job.jobId;
+              const rejectedCount = job.stages.find((s) => s.status === "rejected")?.count ?? 0;
+              return (
+                <div key={job.jobId}>
+                  <button
+                    type="button"
+                    onClick={() => setExpandedJobId(isOpen ? null : job.jobId)}
+                    aria-expanded={isOpen}
+                    className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left"
+                  >
+                    <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">{job.title}</span>
+                    <span className="text-xs font-bold text-foreground">{job.total}</span>
+                    <ChevronRight className={cn("h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform", isOpen && "rotate-90")} />
+                  </button>
+                  {isOpen && (
+                    <div className="flex flex-wrap items-center gap-1.5 px-4 pb-3">
+                      {FUNNEL_STAGES.map((stage) => {
+                        const stageCount = job.stages.find((s) => s.status === (STATUS_BY_STAGE[stage] ?? stage))?.count ?? 0;
+                        return (
+                          <span key={stage} className="inline-flex items-center gap-1 rounded-full border border-border bg-background/80 px-2 py-0.5 text-[10px] text-foreground/85">
+                            {t(stage)}
+                            <span
+                              className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-white"
+                              style={{ backgroundColor: stageCount > 0 ? STAGE_COLORS[stage] : "#94a3b8" }}
+                            >
+                              {stageCount}
+                            </span>
+                          </span>
+                        );
+                      })}
+                      <span className="inline-flex items-center gap-1 rounded-full border border-border bg-background/80 px-2 py-0.5 text-[10px] text-foreground/85">
+                        {t("rejected")}
+                        <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[9px] font-semibold text-white">{rejectedCount}</span>
+                      </span>
+                      <Link
+                        href={`/${locale}/employer/applications?jobId=${job.jobId}`}
+                        className="mt-1 block w-full text-[10px] font-semibold text-status-applied hover:underline dark:text-sky-300"
+                      >
+                        {t("viewApplications", { title: job.title })}
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
           {perJobMeta.totalPages > 1 && (
-            <div className="flex flex-col gap-3 border-t border-border/60 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-              <p className="text-xs text-muted-foreground">
+            <div className="flex flex-col gap-2 border-t border-border/60 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-6 sm:py-4">
+              <p className="text-[10px] text-muted-foreground sm:text-xs">
                 {t("perJobShowing", {
                   from: (perJobMeta.page - 1) * perJobMeta.pageSize + 1,
                   to: Math.min(perJobMeta.page * perJobMeta.pageSize, perJobMeta.total),
                   total: perJobMeta.total,
                 })}
               </p>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 <button
                   onClick={() => setPerJobPage(Math.max(1, perJobPage - 1))}
                   disabled={perJobMeta.page <= 1}
-                  className="inline-flex items-center gap-1 rounded-xl border border-border bg-background/80 px-3 py-1.5 text-xs font-semibold text-foreground transition hover:border-sky-500/25 hover:text-status-applied disabled:cursor-not-allowed disabled:opacity-50 dark:hover:text-sky-300"
+                  className="inline-flex items-center gap-1 rounded-lg border border-border bg-background/80 px-2 py-1 text-[10px] font-semibold text-foreground transition hover:border-sky-500/25 hover:text-status-applied disabled:cursor-not-allowed disabled:opacity-50 dark:hover:text-sky-300 sm:rounded-xl sm:px-3 sm:py-1.5 sm:text-xs"
                 >
-                  <ChevronLeft className="h-3.5 w-3.5 rtl:rotate-180" />
-                  {t("previousPage")}
+                  <ChevronLeft className="h-3 w-3 rtl:rotate-180 sm:h-3.5 sm:w-3.5" />
+                  <span className="hidden sm:inline">{t("previousPage")}</span>
                 </button>
-                <span className="text-xs font-medium text-muted-foreground">
+                <span className="text-[10px] font-medium text-muted-foreground sm:text-xs">
                   {t("pageOf", { page: perJobMeta.page, totalPages: perJobMeta.totalPages })}
                 </span>
                 <button
                   onClick={() => setPerJobPage(Math.min(perJobMeta.totalPages, perJobPage + 1))}
                   disabled={perJobMeta.page >= perJobMeta.totalPages}
-                  className="inline-flex items-center gap-1 rounded-xl border border-border bg-background/80 px-3 py-1.5 text-xs font-semibold text-foreground transition hover:border-sky-500/25 hover:text-status-applied disabled:cursor-not-allowed disabled:opacity-50 dark:hover:text-sky-300"
+                  className="inline-flex items-center gap-1 rounded-lg border border-border bg-background/80 px-2 py-1 text-[10px] font-semibold text-foreground transition hover:border-sky-500/25 hover:text-status-applied disabled:cursor-not-allowed disabled:opacity-50 dark:hover:text-sky-300 sm:rounded-xl sm:px-3 sm:py-1.5 sm:text-xs"
                 >
-                  {t("nextPage")}
-                  <ChevronRight className="h-3.5 w-3.5 rtl:rotate-180" />
+                  <span className="hidden sm:inline">{t("nextPage")}</span>
+                  <ChevronRight className="h-3 w-3 rtl:rotate-180 sm:h-3.5 sm:w-3.5" />
                 </button>
               </div>
             </div>
@@ -1430,7 +1431,7 @@ function ResponseTimeTab({ data }: { data: ResponseTimeData }) {
   return (
     <div className="space-y-6">
       <section>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
           <SummaryCard label={t("avgResponseTime")} value={formatHoursLabel(overall.avgHours, t)} description={t("avgDaysAverage", { days: overall.avgDays })} color="blue" />
           <SummaryCard label={t("medianResponseTime")} value={formatHoursLabel(overall.medianHours, t)} description={t("typicalFirstAction")} color="indigo" />
           <SummaryCard label={t("applicationsMeasured")} value={overall.totalMeasured} description={t("rowsInBenchmark")} color="purple" />
@@ -1569,7 +1570,7 @@ function OffersTab({ data }: { data: OfferAnalyticsData }) {
   return (
     <div className="space-y-6">
       <section>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 sm:gap-4 xl:grid-cols-4">
           <SummaryCard label={t("offersExtended")} value={data.totalOffers} description={t("offersExtendedDesc")} color="blue" />
           <SummaryCard label={t("acceptanceRate")} value={`${data.acceptanceRate}%`} description={t("acceptanceRateDesc")} color="green" />
           <SummaryCard label={t("responseRateOffers")} value={`${data.responseRate}%`} description={t("responseRateOffersDesc")} color="indigo" />
@@ -1687,7 +1688,7 @@ function DiversityTab({ data }: { data: DiversityReportData }) {
   return (
     <div className="space-y-6">
       <section>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 sm:gap-4 xl:grid-cols-4">
           <SummaryCard label={t("diversityResponseRate")} value={`${data.responseRate}%`} description={t("diversityResponseRateDesc")} color="blue" />
           <SummaryCard label={t("totalResponses")} value={data.totalResponses} description={t("totalResponsesDesc")} color="indigo" />
           <SummaryCard label={t("veteranRate")} value={`${data.veteranRate}%`} description={t("veteranRateDesc")} color="green" />
@@ -1789,7 +1790,7 @@ function AnalyticsPanel({
   return (
     <section
       className={cn(
-        "workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6",
+        "workspace-panel-surface rounded-2xl p-3 sm:rounded-[28px] sm:p-6",
         className
       )}
     >
@@ -1812,18 +1813,18 @@ function AnalyticsSectionHeader({
   compact?: boolean;
 }) {
   return (
-    <div className={cn("mb-6 flex items-start gap-4", compact && "mb-0")}>
-      <div className="rounded-2xl bg-background/70 p-3 text-foreground/85">
-        <Icon className="h-5 w-5" />
+    <div className={cn("mb-4 flex items-start gap-2.5 sm:mb-6 sm:gap-4", compact && "mb-0")}>
+      <div className="rounded-xl bg-background/70 p-2 text-foreground/85 sm:rounded-2xl sm:p-3">
+        <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
       </div>
-      <div>
+      <div className="min-w-0">
         {eyebrow && (
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">
             {eyebrow}
           </p>
         )}
-        <h2 className="mt-1 text-lg font-semibold tracking-tight text-foreground">{title}</h2>
-        <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>
+        <h2 className="mt-1 text-sm font-semibold tracking-tight text-foreground sm:text-lg">{title}</h2>
+        <p className="mt-1 text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6">{description}</p>
       </div>
     </div>
   );
@@ -1849,7 +1850,7 @@ function HeroMetricCard({
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-          <p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{value}</p>
+          <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{value}</p>
           <p className="mt-1 text-xs text-muted-foreground">{description}</p>
         </div>
         <div className={cn("rounded-2xl p-2.5", colors.surface, colors.icon)}>
@@ -1894,17 +1895,17 @@ function ConversionCard({
 }) {
   const colors = COLOR_MAP[color] || COLOR_MAP.blue;
   return (
-    <div className={cn("workspace-panel-surface rounded-[28px] border p-4 transition-all hover:-translate-y-0.5", colors.border)}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-          <p className={`mt-3 text-3xl font-semibold tracking-tight ${colors.text}`}>{count}</p>
+    <div className={cn("workspace-panel-surface rounded-xl border p-1.5 transition-all hover:-translate-y-0.5 sm:rounded-[28px] sm:p-4", colors.border)}>
+      <div className="flex items-start justify-between gap-1 sm:gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-[7px] font-semibold uppercase tracking-tight text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">{label}</p>
+          <p className={`mt-1 text-sm font-semibold tracking-tight sm:mt-3 sm:text-3xl ${colors.text}`}>{count}</p>
         </div>
-        <div className={cn("rounded-2xl p-2.5", colors.surface, colors.icon)}>
+        <div className={cn("hidden rounded-2xl p-2.5 sm:block", colors.surface, colors.icon)}>
           <TrendingUp className="h-5 w-5" />
         </div>
       </div>
-      <p className="mt-3 text-xs text-muted-foreground">{subtitle}</p>
+      <p className="mt-1 truncate text-[7px] text-muted-foreground sm:mt-3 sm:text-xs">{subtitle}</p>
     </div>
   );
 }
@@ -1920,7 +1921,7 @@ function RateBadge({
 }) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full ${
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-xs ${
         highlight
           ? "border border-status-selected/20 bg-status-selected-bg font-semibold text-status-selected dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300"
           : "border border-border bg-background/80 text-foreground/85"

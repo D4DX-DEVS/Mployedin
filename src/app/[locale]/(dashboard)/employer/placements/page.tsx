@@ -8,12 +8,11 @@ import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Users, Briefcase, TrendingUp, Inbox, Sparkles, ArrowRight, CircleCheckBig, ClipboardList } from "lucide-react";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { Users, Briefcase, TrendingUp, Inbox, CircleCheckBig, ClipboardList, ChevronDown } from "lucide-react";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { TableToolbar } from "@/components/shared/TableToolbar";
-import { usePermissions } from "@/hooks/usePermissions";
 import { useTableExport } from "@/hooks/useTableExport";
 import { usePlacements, type Placement } from "@/hooks/usePlacements";
 import type { ExportColumn } from "@/lib/export";
@@ -23,7 +22,6 @@ export default function EmployerPlacementsPage() {
   const { locale } = useParams<{ locale: string }>();
   const searchParams = useSearchParams();
   const t = useTranslations("employerPlacements");
-  const { can } = usePermissions();
 
   const [page, setPageState] = useState(() => Number(searchParams.get("page")) || 1);
 
@@ -34,6 +32,7 @@ export default function EmployerPlacementsPage() {
     router.replace(`?${params.toString()}`, { scroll: false });
   }
   const [limit, setLimit] = useState(10);
+  const [expandedPlacementId, setExpandedPlacementId] = useState<string | null>(null);
   const [filter, setFilter] = useState("all");
   const [visaFilter, setVisaFilter] = useState("all");
 
@@ -97,86 +96,19 @@ export default function EmployerPlacementsPage() {
 
   return (
     <div className="page-container space-y-6">
-      <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-        <Sparkles className="h-3.5 w-3.5" />
-        {t("workspace")}
-      </div>
-      <PageHeader
-        title={t("title")}
-        description={t("description")}
-        actions={
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("currentResults")}</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">{t("trackedPlacements", { count: stats.total })}</p>
-              <p className="text-xs text-muted-foreground">{t("trackedPlacementsDesc")}</p>
-            </div>
-            <Button
-              asChild
-              className="h-11 gap-2 rounded-xl px-4 text-sm font-semibold"
-            >
-              <Link href={`/${locale}/employer/analytics`}>
-                {t("openAnalytics")}
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-        }
+      <DashboardPageHeader
+        icon={ClipboardList}
+        eyebrow={t("totalHired")}
+        title={t("totalHired")}
+        metrics={[
+          { label: t("totalHired"), value: stats.total, note: t("totalHiredNote"), icon: Users },
+          { label: t("currentlyActive"), value: stats.active, note: t("currentlyActiveNote"), icon: Briefcase },
+          { label: t("completed"), value: stats.completed, note: t("completedNote"), icon: CircleCheckBig },
+          { label: t("thisMonth"), value: stats.thisMonth, note: t("thisMonthNote"), icon: TrendingUp },
+        ]}
       />
 
-      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
-        <div className="mt-0 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {[
-            {
-              labelKey: "totalHired" as const,
-              value: stats.total,
-              noteKey: "totalHiredNote" as const,
-              icon: Users,
-              tone: "text-status-applied",
-              chip: "bg-status-applied-bg",
-            },
-            {
-              labelKey: "currentlyActive" as const,
-              value: stats.active,
-              noteKey: "currentlyActiveNote" as const,
-              icon: Briefcase,
-              tone: "text-status-selected",
-              chip: "bg-status-selected-bg",
-            },
-            {
-              labelKey: "completed" as const,
-              value: stats.completed,
-              noteKey: "completedNote" as const,
-              icon: CircleCheckBig,
-              tone: "text-status-interview",
-              chip: "bg-status-interview-bg",
-            },
-            {
-              labelKey: "thisMonth" as const,
-              value: stats.thisMonth,
-              noteKey: "thisMonthNote" as const,
-              icon: TrendingUp,
-              tone: "text-status-shortlisted",
-              chip: "bg-status-shortlisted-bg",
-            },
-          ].map(({ labelKey, value, noteKey, icon: Icon, tone, chip }) => (
-            <div key={labelKey} className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t(labelKey)}</p>
-                  <p className="mt-3 text-4xl font-semibold tracking-tight text-foreground">{value}</p>
-                </div>
-                <span className={`flex h-12 w-12 items-center justify-center rounded-2xl ${chip}`}>
-                  <Icon className={`h-5 w-5 ${tone}`} />
-                </span>
-              </div>
-              <p className="mt-3 text-sm leading-5 text-muted-foreground">{t(noteKey)}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6">
+      <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("filterOutcomes")}</p>
@@ -206,10 +138,11 @@ export default function EmployerPlacementsPage() {
             })}
           </div>
         </div>
-        {/* Visa status filter (GCC) */}
+        {/* Visa status filter (GCC) — no scroll, text/padding shrink hard
+            enough on phones that all 6 chips stay on one wrapped row. */}
         <div className="mt-4 flex flex-col gap-2 border-t border-border/40 pt-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("filterVisaTitle")}</p>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1 sm:gap-2">
             {(["all", "not_required", "pending", "approved", "rejected", "stamped"] as const).map((visaOption) => {
               const visaLabelMap = { all: "visaAll", not_required: "visaNotRequired", pending: "visaPending", approved: "visaApproved", rejected: "visaRejected", stamped: "visaStamped" } as const;
               return (
@@ -218,10 +151,10 @@ export default function EmployerPlacementsPage() {
                   onClick={() => setVisaFilter(visaOption)}
                   variant="ghost"
                   size="sm"
-                  className={visaFilter === visaOption
-                    ? "rounded-full bg-emerald-600 px-4 text-white hover:bg-emerald-700 hover:text-white"
-                    : "rounded-full border border-border bg-background/80 px-4 text-muted-foreground hover:bg-background"
-                  }
+                  className={`h-auto whitespace-nowrap rounded-full px-1.5 py-0.5 text-[9px] leading-tight sm:h-9 sm:px-4 sm:py-1.5 sm:text-sm ${visaFilter === visaOption
+                    ? "bg-emerald-600 text-white hover:bg-emerald-700 hover:text-white"
+                    : "border border-border bg-background/80 text-muted-foreground hover:bg-background"
+                  }`}
                 >
                   {t(visaLabelMap[visaOption])}
                 </Button>
@@ -247,7 +180,7 @@ export default function EmployerPlacementsPage() {
           </div>
         </section>
       ) : (
-      <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6">
+      <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
         <div className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("placementList")}</p>
@@ -256,17 +189,74 @@ export default function EmployerPlacementsPage() {
               {t("tableDescription")}
             </p>
           </div>
-          <p className="text-sm text-muted-foreground">{t("placementsOnPage", { count: placements.length })}</p>
+          <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end sm:gap-2">
+            <p className="text-sm text-muted-foreground">{t("placementsOnPage", { count: placements.length })}</p>
+            <TableToolbar
+              onExportCsv={handleExportCsv}
+              onExportExcel={handleExportExcel}
+              onExportPdf={handleExportPdf}
+            />
+          </div>
         </div>
 
-        <TableToolbar
-          onExportCsv={handleExportCsv}
-          onExportExcel={handleExportExcel}
-          onExportPdf={handleExportPdf}
-          className="mt-4"
-        />
+        {/* Phones get compact expandable rows — the shared <Table> stacks every
+            cell into a labelled block, which made one placement fill the screen. */}
+        <ul className="mt-3 space-y-1.5 sm:hidden">
+          {placements.map((placement) => {
+            const isOpen = expandedPlacementId === placement._id;
+            return (
+              <li key={placement._id} className="rounded-xl border border-border/60 bg-background/70">
+                <button
+                  type="button"
+                  onClick={() => setExpandedPlacementId(isOpen ? null : placement._id)}
+                  aria-expanded={isOpen}
+                  className="flex w-full items-center gap-2 px-2.5 py-2 text-left"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-semibold text-foreground">
+                      {placement.candidateName ?? t("candidateFallback")}
+                    </p>
+                    <p className="truncate text-[11px] text-muted-foreground">
+                      {placement.jobTitle ?? t("untitledRole")}
+                    </p>
+                  </div>
+                  <StatusBadge status={placement.status} />
+                  <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                </button>
 
-        <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
+                {isOpen && (
+                  <div className="border-t border-border/60 px-2.5 py-2 text-[11px]">
+                    <dl className="grid grid-cols-2 gap-x-2 gap-y-1">
+                      <dt className="text-muted-foreground">{t("startDate")}</dt>
+                      <dd className="text-end text-foreground">{formatDate(placement.startDate)}</dd>
+                      <dt className="text-muted-foreground">{t("salary")}</dt>
+                      <dd className="text-end font-medium text-foreground">{formatSalary(placement)}</dd>
+                    </dl>
+                    <p className="mt-1 truncate text-muted-foreground">{placement.candidateEmail ?? t("noEmail")}</p>
+                    {placement.type ? (
+                      <span className="mt-1.5 inline-flex rounded-full bg-secondary/75 px-2 py-0.5 text-[10px] font-medium capitalize text-muted-foreground">
+                        {placement.type}
+                      </span>
+                    ) : null}
+                    <div className="mt-2 flex gap-2">
+                      <Button asChild variant="outline" size="sm" className="h-8 flex-1 rounded-lg text-[11px] font-semibold">
+                        <Link href={`/${locale}/employer/placements/${placement._id}`}>{t("viewDetails")}</Link>
+                      </Button>
+                      <Button asChild variant="outline" size="sm" className="h-8 flex-1 rounded-lg text-[11px] font-semibold">
+                        <Link href={`/${locale}/employer/placements/${placement._id}/onboarding`}>
+                          <ClipboardList className="me-1 h-3.5 w-3.5" />
+                          {t("onboardingColumn")}
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+
+        <div className="mt-5 hidden overflow-x-auto rounded-3xl border border-border/60 sm:block">
           <Table>
             <TableHeader>
               <TableRow className="bg-background/60 hover:bg-background/60">

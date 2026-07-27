@@ -111,15 +111,19 @@ export default async function JobsPage({ params, searchParams }: PageProps) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const query: Record<string, any> = {
     status: "active",
-    $or: [{ expiresAt: { $exists: false } }, { expiresAt: { $gt: new Date() } }],
+    $and: [
+      { $or: [{ expiresAt: { $exists: false } }, { expiresAt: { $gt: new Date() } }] },
+    ],
   };
 
   if (search) query.$text = { $search: search };
   if (location) {
-    query.$or = [
-      { "location.city": new RegExp(location, "i") },
-      { "location.country": new RegExp(location, "i") },
-    ];
+    query.$and.push({
+      $or: [
+        { "location.city": new RegExp(location, "i") },
+        { "location.country": new RegExp(location, "i") },
+      ],
+    });
   }
   if (skills) query["requirements.skills"] = { $in: skills.split(",").map((s) => s.trim()) };
   if (currency) query["salary.currency"] = currency;

@@ -29,7 +29,6 @@ import {
   Plus,
   Save,
   Send,
-  Sparkles,
   Trash2,
 } from "lucide-react";
 import { ExhibitionHeroFilters } from "@/components/features/exhibitions/ExhibitionHeroFilters";
@@ -44,6 +43,7 @@ import {
 } from "@/lib/exhibitions/agent-request";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { ApprovalTimeline, type TimelineEntry } from "@/components/features/exhibitions/ApprovalTimeline";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 
 interface ExhibitionRequest {
   _id: string;
@@ -461,50 +461,26 @@ export default function AgentExhibitionsPage() {
     <div className="page-container space-y-6">
       {ConfirmDialogNode}
 
-      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-2xl">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              Exhibition requests
-            </div>
-            <h1 className="mt-3 flex items-center gap-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-              <CalendarDays className="h-7 w-7 text-primary" />
-              {t("title")}
-            </h1>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">{t("subtitle")}</p>
-          </div>
+      <DashboardPageHeader
+        icon={CalendarDays}
+        eyebrow="Exhibition requests"
+        title={t("title")}
+        description={t("subtitle")}
+        actions={
           <Button onClick={openNewRequest} size="lg" className="h-11 shrink-0 rounded-xl px-5 shadow-sm">
             <Plus className="mr-2 h-4 w-4" /> {t("newRequest")}
           </Button>
-        </div>
-
-        {!loading && items.length > 0 && (
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-            {([
-              { label: "Total", value: items.length, note: "All requests", icon: CalendarDays, tone: "text-slate-600", chip: "bg-slate-50 dark:bg-slate-950/30" },
-              { label: "Submitted", value: submittedCount, note: "Awaiting review", icon: Send, tone: "text-blue-600", chip: "bg-blue-50 dark:bg-blue-950/30" },
-              { label: "Approved", value: approvedCount, note: "Cleared to proceed", icon: Save, tone: "text-emerald-600", chip: "bg-emerald-50 dark:bg-emerald-950/30" },
-              { label: "Active", value: items.filter((item) => item.status === "active").length, note: "In progress", icon: Clock, tone: "text-purple-600", chip: "bg-purple-50 dark:bg-purple-950/30" },
-              { label: "Completed", value: items.filter((item) => item.status === "completed").length, note: "Finished", icon: Eye, tone: "text-green-600", chip: "bg-green-50 dark:bg-green-950/30" },
-              { label: "Revision", value: items.filter((item) => item.status === "revision_requested").length, note: "Needs updates", icon: AlertTriangle, tone: "text-orange-600", chip: "bg-orange-50 dark:bg-orange-950/30" },
-            ] as const).map(({ label, value, note, icon: Icon, tone, chip }) => (
-              <div key={label} className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-                    <p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{value}</p>
-                    <p className="mt-1 text-xs leading-5 text-muted-foreground">{note}</p>
-                  </div>
-                  <span className={`flex h-10 w-10 items-center justify-center rounded-2xl ${chip}`}>
-                    <Icon className={`h-5 w-5 ${tone}`} />
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
+        }
+        metrics={!loading && items.length > 0 ? [
+          { label: "Total", value: items.length, note: "All requests", icon: CalendarDays },
+          { label: "Submitted", value: submittedCount, note: "Awaiting review", icon: Send },
+          { label: "Approved", value: approvedCount, note: "Cleared to proceed", icon: Save },
+          { label: "Active", value: items.filter((item) => item.status === "active").length, note: "In progress", icon: Clock },
+          { label: "Completed", value: items.filter((item) => item.status === "completed").length, note: "Finished", icon: Eye },
+          { label: "Revision", value: items.filter((item) => item.status === "revision_requested").length, note: "Needs updates", icon: AlertTriangle },
+        ] : undefined}
+        metricsClassName="xl:grid-cols-6"
+      >
         <ExhibitionHeroFilters
           search={search}
           onSearchChange={setSearch}
@@ -516,9 +492,9 @@ export default function AgentExhibitionsPage() {
           categoryOptions={CATEGORY_FILTER_OPTIONS}
           searchPlaceholder={t("searchPlaceholder")}
         />
-      </section>
+      </DashboardPageHeader>
 
-      <section className="workspace-panel-surface rounded-2xl p-3.5 sm:rounded-[28px] sm:p-5">
+      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Your requests</p>
           <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Request history</h2>
@@ -539,7 +515,7 @@ export default function AgentExhibitionsPage() {
           </Button>
         </div>
       ) : (
-        <div className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-[24px]">
+        <div className="workspace-panel-surface overflow-hidden rounded-[24px]">
           <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -894,4 +870,3 @@ export default function AgentExhibitionsPage() {
     </div>
   );
 }
-

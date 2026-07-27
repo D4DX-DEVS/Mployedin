@@ -2,13 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { PageHero } from "@/components/shared/PageHero";
 import Link from "next/link";
 import {
   AlertTriangle,
   ArrowDownRight,
   ArrowRight,
-  Sparkles,
   ArrowUpRight,
   Briefcase,
   CheckCircle2,
@@ -307,14 +306,11 @@ export default function AdminReportsPage() {
 
   return (
     <div className="page-container space-y-4">
-      {/* ── Hero Section ── */}
-      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
-        <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-          <Sparkles className="h-3.5 w-3.5" />
-          {t("adminWorkspace")}
-        </div>
-        <PageHeader className="mt-4" title={t("reportsAndAnalytics")} description={t("platformDemandDescription")} />
-      </section>
+      <PageHero
+        eyebrow={t("adminWorkspace")}
+        title={t("reportsAndAnalytics")}
+        description={t("platformDemandDescription")}
+      />
 
       <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
         <div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-4">
@@ -356,7 +352,7 @@ export default function AdminReportsPage() {
       ) : (
         <>
           <div className="grid gap-6 xl:grid-cols-[minmax(320px,0.9fr)_minmax(0,1.1fr)]">
-            <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6" aria-label={t("a11yPlatformAlerts")}>
+            <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label={t("a11yPlatformAlerts")}>
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("actionQueue")}</p>
@@ -396,7 +392,7 @@ export default function AdminReportsPage() {
               </div>
             </section>
 
-            <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6" aria-label={t("a11yJobsVsApplications")}>
+            <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label={t("a11yJobsVsApplications")}>
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("demandTrend")}</p>
@@ -452,7 +448,7 @@ export default function AdminReportsPage() {
           </div>
 
           <div className="grid gap-6 xl:grid-cols-2">
-            <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6" aria-label={t("a11yApplicationsByStatus")}>
+            <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label={t("a11yApplicationsByStatus")}>
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("pipelineMix")}</p>
@@ -499,7 +495,7 @@ export default function AdminReportsPage() {
               )}
             </section>
 
-            <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6" aria-label={t("a11yConversionFunnel")}>
+            <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label={t("a11yConversionFunnel")}>
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("flowEfficiency")}</p>
@@ -548,7 +544,7 @@ export default function AdminReportsPage() {
           </div>
 
           <div className="grid gap-6 xl:grid-cols-3">
-            <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6" aria-label={t("a11yRecentJobs")}>
+            <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label={t("a11yRecentJobs")}>
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("recentActivity")}</p>
@@ -595,7 +591,7 @@ export default function AdminReportsPage() {
               )}
             </section>
 
-            <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6" aria-label={t("a11yRecentApplications")}>
+            <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label={t("a11yRecentApplications")}>
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("recentActivity")}</p>
@@ -642,7 +638,7 @@ export default function AdminReportsPage() {
               )}
             </section>
 
-            <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6" aria-label={t("a11yTopAgents")}>
+            <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label={t("a11yTopAgents")}>
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("ownership")}</p>
@@ -693,7 +689,7 @@ export default function AdminReportsPage() {
             </section>
           </div>
 
-          <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6" aria-label={t("a11yOperationalHighlights")}>
+          <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label={t("a11yOperationalHighlights")}>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("decisionSupport")}</p>
@@ -708,7 +704,7 @@ export default function AdminReportsPage() {
                   <Clock3 className="h-4 w-4" />
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">{t("agingQueue")}</p>
                 </div>
-                <p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{stats?.summary.staleOpenApplications ?? 0}</p>
+                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{stats?.summary.staleOpenApplications ?? 0}</p>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">{t("agingQueueDescription")}</p>
               </div>
               <div className="workspace-subtle-surface rounded-[24px] p-4">
@@ -716,7 +712,7 @@ export default function AdminReportsPage() {
                   <TrendingUp className="h-4 w-4" />
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">{t("demandEfficiency")}</p>
                 </div>
-                <p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{applicationRate.toFixed(1)}</p>
+                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{applicationRate.toFixed(1)}</p>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">{t("demandEfficiencyDescription")}</p>
               </div>
               <div className="workspace-subtle-surface rounded-[24px] p-4">
@@ -724,7 +720,7 @@ export default function AdminReportsPage() {
                   <Wallet className="h-4 w-4" />
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">{t("commercialYield")}</p>
                 </div>
-                <p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{Math.round(placementRate * 100)}%</p>
+                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{Math.round(placementRate * 100)}%</p>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">{t("commercialYieldDescription")}</p>
               </div>
             </div>

@@ -187,16 +187,16 @@ function Section({
 }) {
   return (
     <div className="min-w-0 rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
-      <div className="mb-3 flex items-start gap-2.5 sm:mb-5 sm:gap-3">
-        <div className="mt-0.5 shrink-0 rounded-lg bg-primary/10 p-1.5 text-primary sm:p-2">
+      <div className="mb-5 flex items-start gap-3">
+        <div className="mt-0.5 rounded-lg bg-primary/10 p-2 text-primary">
           {icon}
         </div>
-        <div className="min-w-0">
+        <div>
           <p className="text-sm font-semibold leading-tight">{title}</p>
           <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
         </div>
       </div>
-      <div className="space-y-3 sm:space-y-4">{children}</div>
+      <div className="space-y-4">{children}</div>
     </div>
   );
 }
@@ -223,22 +223,20 @@ function MatchScoreCard({
 
   return (
     <div className="min-w-0 rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 via-card to-card p-4 shadow-sm sm:p-5">
-      {/* Score sits inline with the title on phones instead of wrapping to its
-          own oversized row. */}
-      <div className="flex flex-nowrap items-center justify-between gap-3 sm:flex-wrap sm:items-start sm:gap-4">
-        <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
-          <div className="shrink-0 rounded-xl bg-primary/10 p-2 text-primary sm:p-2.5">
-            <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />
+      <div className="flex min-w-0 flex-col items-start gap-4 min-[420px]:flex-row min-[420px]:justify-between">
+        <div className="min-w-0 flex items-center gap-3">
+          <div className="rounded-xl bg-primary/10 p-2.5 text-primary shrink-0">
+            <Sparkles className="h-5 w-5" />
           </div>
           <div className="min-w-0">
             <p className="text-sm font-semibold">{t("matchTitle")}</p>
-            <p className="hidden text-xs text-muted-foreground sm:block">
+            <p className="text-xs text-muted-foreground">
               {t("matchDescription")}
             </p>
           </div>
         </div>
-        <div className="flex items-baseline gap-1.5 shrink-0">
-          <span className={`text-2xl font-bold tabular-nums sm:text-3xl ${scoreColor}`}>
+        <div className="flex max-w-full shrink-0 flex-wrap items-baseline gap-1.5">
+          <span className={`text-3xl font-bold tabular-nums ${scoreColor}`}>
             {score.toLocaleString(numberLocale)}%
           </span>
           {delta !== null && delta !== 0 && (
@@ -466,10 +464,7 @@ export default function JobPreferencesPage() {
         description={t("description")}
       />
 
-      {/* minmax(0,1fr): a default `auto` track sizes to the widest child's
-          min-content, and the nowrap/truncate job rows blew it out to 485px —
-          every card then overflowed a 384px screen. */}
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 max-w-3xl mx-auto w-full sm:gap-6">
+      <div className="mx-auto grid w-full min-w-0 max-w-3xl grid-cols-[minmax(0,1fr)] gap-4 sm:gap-6">
         {/* ── Match Score Card ──────────────────────────────────────────── */}
         <MatchScoreCard prefs={prefs} prevScore={prevScore} />
 
@@ -545,7 +540,7 @@ export default function JobPreferencesPage() {
           </div>
 
           {/* Manual input */}
-          <div className="grid grid-cols-3 gap-3 pt-1">
+          <div className="grid min-w-0 grid-cols-2 gap-3 pt-1 sm:grid-cols-3">
             <div>
               <label className="mb-1 block text-xs font-medium text-muted-foreground">
                 {t("minimum")}
@@ -588,7 +583,7 @@ export default function JobPreferencesPage() {
                 placeholder="0"
               />
             </div>
-            <div>
+            <div className="col-span-2 sm:col-span-1">
               <label className="mb-1 block text-xs font-medium text-muted-foreground">
                 {t("currency")}
               </label>
@@ -641,8 +636,8 @@ export default function JobPreferencesPage() {
           description={t("availabilityDescription")}
         >
           {/* Actively looking toggle */}
-          <div className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-3 border border-border/60">
-            <div className="space-y-0.5">
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 rounded-lg border border-border/60 bg-muted/50 px-4 py-3">
+            <div className="min-w-0 space-y-0.5">
               <p className="text-sm font-medium leading-none">{t("activelyLooking")}</p>
               <p className="text-xs text-muted-foreground">
                 {t("activelyLookingDescription")}
@@ -706,7 +701,7 @@ export default function JobPreferencesPage() {
         </Section>
 
         {/* ── Save controls ───────────────────────────────────────────── */}
-        <div className="flex items-center justify-end gap-3 h-9">
+        <div className="flex min-h-9 min-w-0 flex-wrap items-center justify-end gap-3">
           {saving && (
             <span className="text-sm text-muted-foreground flex items-center gap-1.5">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -746,7 +741,7 @@ export default function JobPreferencesPage() {
         </div>
 
         {/* ── Recommended Jobs Preview ──────────────────────────────────── */}
-        <div className="min-w-0 rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
+        <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="rounded-lg bg-primary/10 p-1.5 text-primary">
@@ -784,4 +779,3 @@ export default function JobPreferencesPage() {
     </div>
   );
 }
-

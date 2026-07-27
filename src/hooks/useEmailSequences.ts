@@ -55,14 +55,28 @@ const SEQUENCES_KEY = ["email-sequences"] as const;
 const sequenceKey = (id: string | null) => ["email-sequence", id] as const;
 
 // ── Queries ────────────────────────────────────────────────────────
-export function useEmailSequences() {
+export function useEmailSequences(params: { page?: number; limit?: number; search?: string; status?: string | null } = {}) {
+  const { page = 1, limit = 10, search = "", status = null } = params;
   return useQuery({
-    queryKey: SEQUENCES_KEY,
+    queryKey: [...SEQUENCES_KEY, { page, limit, search, status }],
     queryFn: async () => {
-      const res = await fetch("/api/email-sequences");
+      const query = new URLSearchParams({ page: String(page), limit: String(limit) });
+      if (search.trim()) query.set("search", search.trim());
+      if (status) query.set("status", status);
+      const res = await fetch(`/api/email-sequences?${query}`);
       if (!res.ok) throw new Error("Failed to load email sequences");
-      const data = (await res.json()) as { sequences?: EmailSequence[] };
-      return data.sequences ?? [];
+      const data = (await res.json()) as {
+        sequences?: EmailSequence[];
+        total?: number;
+        page?: number;
+        totalPages?: number;
+      };
+      return {
+        sequences: data.sequences ?? [],
+        total: data.total ?? 0,
+        page: data.page ?? page,
+        totalPages: data.totalPages ?? 1,
+      };
     },
     staleTime: 5 * 60 * 1000,
   });

@@ -179,20 +179,16 @@ Return ONLY a JSON array (no markdown):
 
   // The AI provider is a third party — a bad key, quota exhaustion or an outage
   // must degrade to generic insights, never take the dashboard down with a 500.
-  let text: string;
+  let text = "";
   try {
     text = await routeGenerate(prompt, "chat");
   } catch (err) {
-    logger.warn({ err }, "[daily-insights] AI provider unavailable, serving fallback insights");
-    return NextResponse.json({
-      insights: isArabic ? arabicFallbackInsights : englishFallbackInsights,
-      generatedAt: new Date().toISOString(),
-      degraded: true,
-    });
+    logger.warn({ err }, "AI daily insights generation failed, using fallback");
   }
 
   let insights;
   try {
+    if (!text) throw new Error("No AI text generated");
     const cleaned = redactPII(text).replace(/```json\n?|```\n?/g, "").trim();
     insights = JSON.parse(cleaned);
     if (!Array.isArray(insights)) throw new Error("Invalid insights payload");
@@ -209,7 +205,7 @@ Return ONLY a JSON array (no markdown):
   } catch {
     insights = isArabic
       ? arabicFallbackInsights
-      : [{ type: "tip", title: "Get Started", message: text.slice(0, 200), action: "Check your dashboard" }];
+      : [{ type: "tip", title: "Get Started", message: text ? text.slice(0, 200) : "Complete your profile to unlock personalized daily insights.", action: "Check your dashboard" }];
   }
 
   return NextResponse.json({ insights, generatedAt: new Date().toISOString() });

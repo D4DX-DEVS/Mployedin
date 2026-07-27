@@ -73,7 +73,9 @@ const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
     invoices: ["create", "read", "update"],
   },
   agent: {
-    jobs: ["create", "read", "update", "export"],
+    // "approve" mirrors POST /api/admin/jobs/[id]/approve — agents may approve
+    // jobs they own or whose employer they manage (route enforces ownership).
+    jobs: ["create", "read", "update", "export", "approve"],
     applications: ["read", "update", "export"],
     interviews: ["create", "read", "update"],
     placements: ["read"],

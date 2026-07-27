@@ -89,6 +89,7 @@ export function JobSeekerTopNav({ locale }: JobSeekerTopNavProps) {
             itemRefs.current[i] = el;
           }}
           href={`/${locale}${item.href}`}
+          aria-current={isActive(item.href) ? "page" : undefined}
           prefetch={false}
           className={cn(
             "relative z-10 rounded-full px-4 py-2 text-sm font-medium transition-colors duration-200",
@@ -122,6 +123,7 @@ export function JobSeekerTopNavMobile({ locale }: JobSeekerTopNavProps) {
             <Link
               key={`m-${item.href}`}
               href={`/${locale}${item.href}`}
+              aria-current={isActive(item.href) ? "page" : undefined}
               prefetch={false}
               className={cn(
                 "relative shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors duration-200",
@@ -177,6 +179,7 @@ export function JobSeekerBottomNav({ locale }: JobSeekerTopNavProps) {
             <Link
               key={`bn-${item.href}`}
               href={`/${locale}${item.href}`}
+              aria-current={active ? "page" : undefined}
               prefetch={false}
               className={cn(
                 "relative flex flex-1 flex-col items-center justify-center gap-0.5 py-2 min-w-0 transition-colors duration-150",

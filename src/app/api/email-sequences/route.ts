@@ -4,6 +4,7 @@ import { withAuth } from "@/lib/auth/withAuth";
 import EmailSequence from "@/models/EmailSequence";
 import Employer from "@/models/Employer";
 import { logActivity } from "@/lib/audit/log";
+import { escapeRegex } from "@/lib/security/sanitize";
 import mongoose from "mongoose";
 
 async function getHandler(req: NextRequest, ctx: { userId: string; role: string }) {
@@ -12,12 +13,37 @@ async function getHandler(req: NextRequest, ctx: { userId: string; role: string 
   const employer = await Employer.findOne({ userId: ctx.userId }).lean();
   if (!employer) return NextResponse.json({ error: "Employer not found" }, { status: 404 });
 
-  const sequences = await EmailSequence.find({ employerId: employer._id })
-    .select("-recipients")
-    .sort({ updatedAt: -1 })
-    .lean();
+  const { searchParams } = new URL(req.url);
+  const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "10", 10) || 10));
+  const search = searchParams.get("search")?.trim() ?? "";
+  const status = searchParams.get("status") ?? "";
+  const query: Record<string, unknown> = { employerId: employer._id };
+  if (status && ["draft", "active", "paused", "completed"].includes(status)) query.status = status;
+  if (search) {
+    const safe = escapeRegex(search);
+    query.$or = [
+      { name: { $regex: safe, $options: "i" } },
+      { description: { $regex: safe, $options: "i" } },
+    ];
+  }
 
-  return NextResponse.json({ sequences });
+  const [sequences, total] = await Promise.all([
+    EmailSequence.find(query)
+      .select("-recipients")
+      .sort({ updatedAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean(),
+    EmailSequence.countDocuments(query),
+  ]);
+
+  return NextResponse.json({
+    sequences,
+    total,
+    page,
+    totalPages: Math.max(1, Math.ceil(total / limit)),
+  });
 }
 
 async function postHandler(req: NextRequest, ctx: { userId: string; role: string }) {

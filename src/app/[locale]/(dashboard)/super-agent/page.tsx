@@ -14,18 +14,15 @@ import { formatCurrency } from "@/lib/currency";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import {
   ArrowRight,
-  BriefcaseBusiness,
   Building2,
   CheckCircle2,
   ClipboardList,
   DollarSign,
-  FileText,
-  MapPinned,
   ShieldCheck,
-  Sparkles,
   Target,
   Users2,
 } from "lucide-react";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 
 export default async function SuperAgentDashboard({ params }: { params: Promise<{ locale: string }> }) {
   const session = await auth();
@@ -165,11 +162,6 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
     },
   ];
 
-  const secondaryKpis = [
-    { label: t("secondary.jobsPosted"), value: totalJobs, sub: t("secondary.active", { count: activeJobs }) },
-    { label: t("secondary.cvsReceived"), value: totalApplications, sub: t("secondary.totalApplications") },
-    { label: t("secondary.leadsGenerated"), value: totalLeads, sub: t("secondary.acrossAgents") },
-  ];
   const actions = [
     {
       label: t("actions.agentPerformance.label"),
@@ -203,66 +195,14 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
 
   return (
     <div className="page-container space-y-6">
-      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-3xl">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              {t("hero.eyebrow")}
-            </div>
-            <h1 className="mt-4 text-xl sm:text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-              {t("hero.title")}
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              {t("hero.description")}
-            </p>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2 xl:w-[420px]">
-            <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("control.lanesEyebrow")}</p>
-              <p className="mt-2 text-lg font-semibold text-foreground">{t("control.teamOversight")}</p>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("control.teamOversightDesc")}</p>
-            </div>
-            <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("control.rhythmEyebrow")}</p>
-              <p className="mt-2 text-lg font-semibold text-foreground">{t("control.dailyReview")}</p>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("control.dailyReviewDesc")}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {kpis.map((kpi) => {
-            const Icon = kpi.icon;
-
-            return (
-              <div key={kpi.label} className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{kpi.label}</p>
-                    <p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{kpi.value}</p>
-                    <p className="mt-1 text-xs leading-5 text-muted-foreground">{kpi.helper}</p>
-                  </div>
-                  <div className={`rounded-2xl p-3 ${kpi.iconClassName}`}>
-                    <Icon className="h-[22px] w-[22px]" strokeWidth={2.25} />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          {secondaryKpis.map((sk) => (
-            <div key={sk.label} className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{sk.label}</p>
-              <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{sk.value}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{sk.sub}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+      <DashboardPageHeader
+        icon={ShieldCheck}
+        eyebrow={t("hero.eyebrow")}
+        title={t("hero.title")}
+        description={t("hero.description")}
+        summary={{ label: t("control.lanesEyebrow"), value: t("control.teamOversight"), note: t("control.teamOversightDesc") }}
+        metrics={kpis.map((kpi) => ({ label: kpi.label, value: kpi.value, note: kpi.helper, icon: kpi.icon }))}
+      />
 
       {pendingApprovals > 0 && (
         <Link
@@ -285,7 +225,7 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
         </Link>
       )}
 
-      <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6">
+      <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sections.funnel.eyebrow")}</p>
@@ -316,7 +256,7 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-        <div className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6">
+        <div className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sections.quickActions.eyebrow")}</p>
           <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("sections.quickActions.title")}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{t("sections.quickActions.description")}</p>
@@ -345,7 +285,7 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
           </div>
         </div>
 
-        <div className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6">
+        <div className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sections.leaderboard.eyebrow")}</p>

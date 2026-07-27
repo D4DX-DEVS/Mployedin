@@ -18,7 +18,7 @@ import { useConfirm } from "@/hooks/useConfirm";
 import {
   Inbox, Sparkles, CalendarDays, CircleCheckBig, RotateCcw, ArrowRight, Clock3,
   CalendarClock, CheckCircle2, XCircle, AlertTriangle, Forward, FileText,
-  Send, Ban, Loader2, BookOpen, Search, Filter, ChevronDown, ChevronUp, X,
+  Send, Ban, Loader2, BookOpen, Search, Filter, ChevronDown, ChevronUp, ChevronRight, X,
 } from "lucide-react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -36,6 +36,7 @@ import type { ExportColumn } from "@/lib/export";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { formatNumber } from "@/lib/formatNumber";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 
 interface AIQuestionsTarget {
   interviewId: string;
@@ -89,6 +90,7 @@ export default function EmployerInterviewsPage() {
   const [modal, setModal] = useState<ModalType>({ kind: "none" });
   const [prepBrief, setPrepBrief] = useState<PrepBriefResult | null>(null);
   const [loadingPrepBriefId, setLoadingPrepBriefId] = useState<string | null>(null);
+  const [detailInterview, setDetailInterview] = useState<Interview | null>(null);
 
   // ── Filter state ──────────────────────────────────────────────────
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -337,26 +339,30 @@ export default function EmployerInterviewsPage() {
         title={t("subtitle")}
         description={t("description")}
         actions={
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("currentView")}</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">{formatNumber(deduplicatedInterviews.length, locale)} {t("active")} · {formatNumber(total, locale)} {t("total")}</p>
-              <p className="text-xs text-muted-foreground">{t("activeDesc")} {t("totalDesc")}</p>
+          /* Tile + both buttons share one row on phones too — icon-only
+             button labels on mobile keep them narrow enough that the tile
+             still gets a sane minimum width instead of collapsing. */
+          <div className="grid w-full grid-cols-[minmax(84px,1fr)_auto_auto] items-stretch gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:gap-3">
+            <div className="workspace-glass-panel min-w-0 rounded-2xl px-2.5 py-2 text-left sm:w-auto sm:flex-none sm:px-4 sm:py-3">
+              <p className="truncate text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("currentView")}</p>
+              <p className="mt-1 truncate text-sm font-semibold text-foreground sm:text-lg">{formatNumber(deduplicatedInterviews.length, locale)} {t("active")} · {formatNumber(total, locale)} {t("total")}</p>
+              <p className="hidden text-xs text-muted-foreground sm:block">{t("activeDesc")} {t("totalDesc")}</p>
             </div>
             {can("interviews", "create") ? (
               <Button
                 asChild
-                className="h-11 gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                className="h-11 gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:px-4"
               >
-                <Link href={`/${locale}/employer/interviews/bulk`}>
-                  {t("bulkSchedule")}
+                <Link href={`/${locale}/employer/interviews/bulk`} aria-label={t("bulkSchedule")}>
+                  <span className="hidden sm:inline">{t("bulkSchedule")}</span>
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
             ) : null}
             <Button
               variant="outline"
-              className="h-11 gap-2 rounded-xl px-4 text-sm font-semibold"
+              aria-label={t("exportCalendar")}
+              className="h-11 gap-2 rounded-xl px-3 text-sm font-semibold sm:px-4"
               onClick={async () => {
                 try {
                   const res = await fetch("/api/interviews/export/ical", { credentials: "include" });
@@ -379,48 +385,36 @@ export default function EmployerInterviewsPage() {
               }}
             >
               <CalendarDays className="h-4 w-4" />
-              {t("exportCalendar")}
+              <span className="hidden sm:inline">{t("exportCalendar")}</span>
             </Button>
           </div>
         }
       />
 
-      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
-        <div className="mt-0 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {[
-            { label: t("scheduled"), value: scheduledTotal, note: t("scheduledDesc"), icon: CalendarDays, tone: "text-status-applied", chip: "bg-status-applied-bg" },
-            { label: t("completed"), value: completedTotal, note: t("completedDesc"), icon: CircleCheckBig, tone: "text-status-selected", chip: "bg-status-selected-bg" },
-            { label: t("needsAttention"), value: attentionTotal, note: t("needsAttentionDesc"), icon: RotateCcw, tone: "text-status-shortlisted", chip: "bg-status-shortlisted-bg" },
-            { label: t("confirmed"), value: confirmedTotal, note: t("confirmedDesc"), icon: Clock3, tone: "text-status-interview", chip: "bg-status-interview-bg" },
-          ].map(({ label, value, note, icon: Icon, tone, chip }) => (
-            <div key={label} className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-                  <p className="mt-3 text-4xl font-semibold tracking-tight text-foreground">{formatNumber(value, locale)}</p>
-                </div>
-                <span className={`flex h-12 w-12 items-center justify-center rounded-2xl ${chip}`}>
-                  <Icon className={`h-5 w-5 ${tone}`} />
-                </span>
-              </div>
-              <p className="mt-3 text-sm leading-5 text-muted-foreground">{note}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+      <DashboardPageHeader
+        icon={CalendarDays}
+        eyebrow={t("scheduled")}
+        title={t("scheduled")}
+        metrics={[
+          { label: t("scheduled"), value: formatNumber(scheduledTotal, locale), note: t("scheduledDesc"), icon: CalendarDays },
+          { label: t("completed"), value: formatNumber(completedTotal, locale), note: t("completedDesc"), icon: CircleCheckBig },
+          { label: t("needsAttention"), value: formatNumber(attentionTotal, locale), note: t("needsAttentionDesc"), icon: RotateCcw },
+          { label: t("confirmed"), value: formatNumber(confirmedTotal, locale), note: t("confirmedDesc"), icon: Clock3 },
+        ]}
+      />
 
       {/* ── Filter Section ────────────────────────────────────────────── */}
-      <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6">
-        {/* Search + Toggle */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative flex-1 max-w-md">
+      <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
+        {/* Search + Toggle — one row at every width; search shrinks, controls stay put */}
+        <div className="flex flex-row items-center justify-between gap-2 sm:gap-3">
+          <div className="relative min-w-0 flex-1 sm:max-w-md">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               placeholder={tc("search")}
-              className="h-10 w-full rounded-xl border border-border bg-background pl-9 pr-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              className="h-10 w-full min-w-0 rounded-xl border border-border bg-background pl-9 pr-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
             />
             {search && (
               <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
@@ -428,11 +422,11 @@ export default function EmployerInterviewsPage() {
               </button>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             {activeFilterCount > 0 && (
-              <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground hover:text-destructive"
+              <Button variant="ghost" size="sm" className="h-8 px-2 text-xs text-muted-foreground hover:text-destructive"
                 onClick={() => { setStatus(""); setTypeFilter(""); setOutcomeFilter(""); setDateFrom(""); setDateTo(""); setPage(1); }}>
-                <X className="me-1 h-3 w-3" /> {tc("clearFilters")}
+                <X className="h-3 w-3 sm:me-1" /> <span className="hidden sm:inline">{tc("clearFilters")}</span>
               </Button>
             )}
             <Button
@@ -450,7 +444,7 @@ export default function EmployerInterviewsPage() {
 
         {/* Expanded filters */}
         {filtersOpen && (
-          <div className="mt-4 grid gap-3 border-t border-border pt-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-3 grid grid-cols-2 gap-2 border-t border-border pt-3 sm:mt-4 sm:gap-3 sm:pt-4 lg:grid-cols-4">
             <div>
               <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t("statusLabel")}</label>
               <SearchableSelect
@@ -582,7 +576,7 @@ export default function EmployerInterviewsPage() {
         </section>
       ) : (
       /* ── Interview Table ──────────────────────────────────────────── */
-      <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6">
+      <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
         <div className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("interviewList")}</p>
@@ -591,17 +585,17 @@ export default function EmployerInterviewsPage() {
               {t("tableDesc")}
             </p>
           </div>
-          <p className="text-sm text-muted-foreground">{deduplicatedInterviews.length} {t("interviewsOnPage")}</p>
+          <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end sm:gap-2">
+            <p className="text-sm text-muted-foreground">{deduplicatedInterviews.length} {t("interviewsOnPage")}</p>
+            <TableToolbar
+              onExportCsv={handleExportCsv}
+              onExportExcel={handleExportExcel}
+              onExportPdf={handleExportPdf}
+            />
+          </div>
         </div>
 
-        <TableToolbar
-          onExportCsv={handleExportCsv}
-          onExportExcel={handleExportExcel}
-          onExportPdf={handleExportPdf}
-          className="mt-4"
-        />
-
-        <div className="workspace-subtle-surface mt-5 overflow-x-auto rounded-3xl border border-border">
+        <div className="workspace-subtle-surface mt-5 hidden overflow-x-auto rounded-3xl border border-border sm:block">
           <Table>
             <TableHeader>
               <TableRow className="workspace-subtle-surface hover:bg-secondary/70">
@@ -815,6 +809,59 @@ export default function EmployerInterviewsPage() {
             </TableBody>
           </Table>
         </div>
+
+        {/* Compact mobile cards — the generic table→card CSS turned every field
+            (Candidate/Role/Round/Type/Scheduled/Status/Outcome/AI/Actions) into
+            its own bordered row, making each interview a very tall stacked card.
+            This mirrors the candidate list's compact-row + detail-popup pattern. */}
+        <div className="mt-5 space-y-2.5 sm:hidden">
+          {loading ? (
+            Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-20 animate-pulse rounded-2xl bg-muted" />
+            ))
+          ) : deduplicatedInterviews.length === 0 ? (
+            <div className="workspace-subtle-surface flex flex-col items-center gap-3 rounded-3xl border border-border px-4 py-12 text-center">
+              <div className="workspace-tone-sky flex h-14 w-14 items-center justify-center rounded-3xl">
+                <Inbox className="h-6 w-6" />
+              </div>
+              <div>
+                <p className="text-base font-semibold text-foreground">{t("noInterviews")}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{t("description")}</p>
+              </div>
+            </div>
+          ) : deduplicatedInterviews.map((iv) => {
+            const scheduled = formatDateTime(iv.scheduledAt);
+            const round = iv.interviewRound ?? 1;
+            return (
+              <div
+                key={iv._id}
+                role="button"
+                tabIndex={0}
+                onClick={() => setDetailInterview(iv)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    setDetailInterview(iv);
+                  }
+                }}
+                className="workspace-subtle-surface flex w-full cursor-pointer items-center gap-3 rounded-2xl border border-border p-3 text-left transition-colors hover:bg-secondary/40 focus:outline-none focus:ring-2 focus:ring-sky-500/60"
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary/75 text-sm font-semibold text-foreground">
+                  {(iv.jobSeekerId?.fullName ?? "?").charAt(0).toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1 space-y-0.5">
+                  <p className="truncate text-sm font-semibold text-foreground">{iv.jobSeekerId?.fullName ?? "Candidate"}</p>
+                  <p className="truncate text-xs text-muted-foreground">{iv.jobId?.title ?? "Untitled role"}</p>
+                  <p className="text-xs text-muted-foreground">R{round} · <span className="capitalize">{iv.type ?? "in-person"}</span> · {scheduled.date}</p>
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-1.5">
+                  <StatusBadge status={iv.status} />
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </section>
       )}
 
@@ -826,6 +873,181 @@ export default function EmployerInterviewsPage() {
         onPageChange={setPage}
         onLimitChange={(l) => { setLimit(l); setPage(1); }}
       />
+
+      {/* ── Mobile Interview Detail Popup ───────────────────────────────
+          Tapping a compact card opens the full field set + stage actions
+          here instead of stacking them into the card itself. */}
+      <Dialog open={Boolean(detailInterview)} onOpenChange={(open) => { if (!open) setDetailInterview(null); }}>
+        <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto rounded-[24px] border-border bg-background p-0">
+          {detailInterview && (() => {
+            const iv = detailInterview;
+            const scheduled = formatDateTime(iv.scheduledAt);
+            const skills = getInterviewSkills(iv);
+            const outcomeMeta = getOutcomeLabel(iv.outcome);
+            const round = iv.interviewRound ?? 1;
+            const isScheduled = iv.status === "scheduled" || iv.status === "confirmed";
+            const isCompleted = iv.status === "completed";
+            const isPassed = isCompleted && iv.outcome === "passed";
+            const prior = historyByApp.get(iv.applicationId ?? iv._id);
+
+            return (
+              <>
+                <DialogHeader className="border-b border-border px-5 py-4">
+                  <DialogTitle className="text-lg font-semibold">{iv.jobSeekerId?.fullName ?? "Candidate"}</DialogTitle>
+                  <DialogDescription className="text-sm text-muted-foreground">
+                    {iv.jobSeekerId?.email ?? "No email available"}
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4 px-5 py-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("role")}</p>
+                    <p className="mt-1 text-sm font-medium text-foreground">{iv.jobId?.title ?? "Untitled role"}</p>
+                    {skills.length ? (
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {skills.map((skill) => (
+                          <span key={skill} className="workspace-muted-pill rounded-full px-2.5 py-1 text-[11px] font-medium">
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("round")}</p>
+                      <p className="mt-1 font-medium text-foreground">R{round}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("typeLabel")}</p>
+                      <p className="mt-1 font-medium capitalize text-foreground">{iv.type ?? "in-person"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("scheduledCol")}</p>
+                      <p className="mt-1 font-medium text-foreground">{scheduled.date}</p>
+                      <p className="text-xs text-muted-foreground">{scheduled.time}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("status")}</p>
+                      <div className="mt-1"><StatusBadge status={iv.status} /></div>
+                    </div>
+                  </div>
+
+                  {outcomeMeta && (
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("outcomeLabel")}</p>
+                      <span className={`mt-1 inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${outcomeMeta.color}`}>
+                        {outcomeMeta.label}
+                      </span>
+                    </div>
+                  )}
+
+                  {prior?.length ? (
+                    <details>
+                      <summary className="cursor-pointer select-none text-xs font-semibold text-muted-foreground hover:text-foreground">
+                        {t("priorRounds", { count: prior.length })}
+                      </summary>
+                      <ul className="mt-1.5 space-y-1">
+                        {prior.map((p) => {
+                          const pOutcome = getOutcomeLabel(p.outcome);
+                          return (
+                            <li key={p._id} className="text-xs text-muted-foreground">
+                              R{p.interviewRound ?? 1} · {formatDateTime(p.scheduledAt).date} · {pOutcome?.label ?? p.status}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </details>
+                  ) : null}
+
+                  <div className="flex gap-2 border-t border-border pt-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-9 flex-1 rounded-xl text-xs font-semibold text-status-applied"
+                      onClick={() => { openAIQuestions(iv); setDetailInterview(null); }}
+                    >
+                      <Sparkles className="me-1.5 h-3.5 w-3.5" />
+                      {t("questions")}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-9 flex-1 rounded-xl text-xs font-semibold text-status-interview"
+                      disabled={loadingPrepBriefId === iv._id}
+                      onClick={() => generatePrepBrief(iv._id)}
+                    >
+                      {loadingPrepBriefId === iv._id ? (
+                        <Loader2 className="me-1.5 h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <BookOpen className="me-1.5 h-3.5 w-3.5" />
+                      )}
+                      {t("prepBrief")}
+                    </Button>
+                  </div>
+
+                  {can("interviews", "update") && (isScheduled || isPassed || (isCompleted && !iv.outcome)) && (
+                    <div className="flex flex-wrap gap-2 border-t border-border pt-4">
+                      {isScheduled && (
+                        <>
+                          <Button size="sm" className="h-9 rounded-xl bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+                            onClick={() => { setModal({ kind: "complete", interview: iv }); setDetailInterview(null); }}>
+                            <CheckCircle2 className="me-1.5 h-3.5 w-3.5" />
+                            {t("complete")}
+                          </Button>
+                          <Button variant="outline" size="sm" className="h-9 rounded-xl px-3 text-xs font-semibold"
+                            onClick={() => { setModal({ kind: "reschedule", interview: iv }); setDetailInterview(null); }}>
+                            <CalendarClock className="me-1.5 h-3.5 w-3.5" />
+                            {t("reschedule")}
+                          </Button>
+                          <Button variant="outline" size="sm" className="h-9 rounded-xl border-destructive/30 px-3 text-xs font-semibold text-destructive"
+                            onClick={async () => {
+                              const ok = await confirm({
+                                title: t("cancelAction"),
+                                message: `${t("cancelConfirm")} ${iv.jobSeekerId?.fullName ?? t("thisCandidate")}?`,
+                                confirmLabel: t("cancelAction"),
+                                variant: "destructive",
+                              });
+                              if (ok) {
+                                updateMutation.mutate({ id: iv._id, status: "cancelled" });
+                                setDetailInterview(null);
+                              }
+                            }}>
+                            <Ban className="me-1.5 h-3.5 w-3.5" />
+                            {t("cancelAction")}
+                          </Button>
+                        </>
+                      )}
+                      {isPassed && (
+                        <>
+                          <Button size="sm" className="h-9 rounded-xl bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+                            onClick={() => { setModal({ kind: "next-round", interview: iv }); setDetailInterview(null); }}>
+                            <Forward className="me-1.5 h-3.5 w-3.5" />
+                            {t("nextRound")}
+                          </Button>
+                          <Button variant="outline" size="sm" className="h-9 rounded-xl px-3 text-xs font-semibold"
+                            onClick={() => { setModal({ kind: "offer", interview: iv }); setDetailInterview(null); }}>
+                            <FileText className="me-1.5 h-3.5 w-3.5" />
+                            {t("makeOffer")}
+                          </Button>
+                        </>
+                      )}
+                      {isCompleted && !iv.outcome && (
+                        <Button size="sm" className="h-9 rounded-xl bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+                          onClick={() => { setModal({ kind: "complete", interview: iv }); setDetailInterview(null); }}>
+                          <AlertTriangle className="me-1.5 h-3.5 w-3.5" />
+                          {t("setOutcome")}
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
 
       {/* ── AI Prep Brief Dialog ──────────────────────────────────────── */}
       <Dialog open={Boolean(prepBrief)} onOpenChange={(open) => { if (!open) setPrepBrief(null); }}>
@@ -843,20 +1065,20 @@ export default function EmployerInterviewsPage() {
               </DialogHeader>
               <div className="flex-1 space-y-4 overflow-y-auto px-6 py-5">
                 {/* Candidate Summary */}
-                <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
+                <div className="workspace-glass-panel rounded-2xl p-4">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("candidateSummary")}</p>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">{prepBrief.candidateSummary}</p>
                 </div>
 
                 {/* Strategy */}
-                <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
+                <div className="workspace-glass-panel rounded-2xl p-4">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("interviewStrategy")}</p>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">{prepBrief.interviewStrategy}</p>
                 </div>
 
                 {/* Time Allocation */}
                 {prepBrief.timeAllocation && (
-                  <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
+                  <div className="workspace-glass-panel rounded-2xl p-4">
                     <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("timeAllocation")} ({prepBrief.duration} {t("min")})</p>
                     <div className="mt-3 flex gap-1.5">
                       {Object.entries(prepBrief.timeAllocation).map(([key, mins]) => (
@@ -902,7 +1124,7 @@ export default function EmployerInterviewsPage() {
                 </div>
 
                 {/* Suggested Questions */}
-                <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
+                <div className="workspace-glass-panel rounded-2xl p-4">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("suggestedQuestions")}</p>
                   <div className="mt-3 space-y-3">
                     {prepBrief.suggestedQuestions.map((q, i) => (

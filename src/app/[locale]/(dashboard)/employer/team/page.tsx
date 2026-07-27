@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Plus, UserX, Shield, Eye, Briefcase, Crown, Mail, Users, CheckCircle2, Clock, Pencil, Activity, Calculator, FileBarChart } from "lucide-react";
 import Link from "next/link";
@@ -64,7 +64,11 @@ export default function TeamManagementPage() {
   };
   const { locale } = useParams<{ locale: string }>();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
-  const { data: members = [], isLoading: loading } = useTeam();
+  const { page, limit, total, totalPages, setPage, setLimit, updateTotal } = usePagination(10);
+  const [search, setSearch] = useState("");
+  const { data: teamData, isLoading: loading } = useTeam({ page, limit, search });
+  const members = teamData?.members ?? [];
+  const teamStats = teamData?.stats ?? { active: 0, pending: 0, total: 0 };
   const inviteMutation = useInviteTeamMember();
   const updateMutation = useUpdateTeamMember();
   const removeMutation = useRemoveTeamMember();
@@ -72,7 +76,6 @@ export default function TeamManagementPage() {
   const [inviteData, setInviteData] = useState({ email: "", companyRoles: ["hiring_manager"] as CompanyRole[], jobAccess: [] as string[] });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [search, setSearch] = useState("");
 
   // Job access edit modal
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
@@ -164,25 +167,12 @@ export default function TeamManagementPage() {
     return map[status] ?? status;
   }
 
-  const activeCount = members.filter((m) => m.status === "active").length;
-  const pendingCount = members.filter((m) => m.status === "pending").length;
-  const totalCount = members.length;
+  const activeCount = teamStats.active;
+  const pendingCount = teamStats.pending;
+  const totalCount = teamStats.total;
 
-  // Client-side search, pagination, export
-  const filteredMembers = useMemo(() => {
-    if (!search.trim()) return members;
-    const q = search.toLowerCase();
-    return members.filter((m) =>
-      (m.user?.name ?? "").toLowerCase().includes(q) ||
-      m.email.toLowerCase().includes(q) ||
-      m.companyRole.toLowerCase().includes(q)
-    );
-  }, [members, search]);
-
-  const { page, limit, total, totalPages, setPage, setLimit, updateTotal } = usePagination(10);
-  useEffect(() => { updateTotal(filteredMembers.length); }, [filteredMembers.length, updateTotal]);
+  useEffect(() => { updateTotal(teamData?.total ?? 0); }, [teamData?.total, updateTotal]);
   useEffect(() => { setPage(1); }, [search, setPage]);
-  const pagedMembers = filteredMembers.slice((page - 1) * limit, page * limit);
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
     { header: t("name"), key: "user", formatter: (_v, r) => (r as Record<string, any>).user?.name ?? t("pendingInvite") },
@@ -192,7 +182,7 @@ export default function TeamManagementPage() {
     { header: t("joined"), key: "acceptedAt", formatter: (v, r) => v ? new Date(String(v)).toLocaleDateString(locale) : (r as Record<string, any>).invitedAt ? t("invited", { date: new Date(String((r as Record<string, any>).invitedAt)).toLocaleDateString(locale) }) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
-    data: filteredMembers as unknown as Record<string, unknown>[],
+    data: members as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "team-members",
     title: t("teamMembers"),
@@ -306,7 +296,7 @@ export default function TeamManagementPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
-                {pagedMembers.map((member) => (
+              {members.map((member) => (
                   <tr key={member._id} className="hover:bg-muted/20 transition-colors">
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-3">
@@ -392,7 +382,7 @@ export default function TeamManagementPage() {
 
           {/* ── Mobile Card List ── */}
           <div className="md:hidden divide-y divide-border/40">
-            {pagedMembers.map((member) => (
+            {members.map((member) => (
               <div key={member._id} className="p-4 space-y-3">
                 {/* Member info row */}
                 <div className="flex items-start justify-between gap-3">

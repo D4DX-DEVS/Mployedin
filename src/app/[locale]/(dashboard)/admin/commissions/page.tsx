@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { toast } from "sonner";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
@@ -11,7 +11,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { usePagination } from "@/hooks/usePagination";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
-import { Plus, Pencil, Trash2, Sparkles, Clock3, CheckCircle2, WalletCards, ReceiptText, RotateCcw, CalendarDays, Globe, ArrowRight } from "lucide-react";
+import { Plus, Pencil, Trash2, Clock3, CheckCircle2, WalletCards, ReceiptText, RotateCcw, CalendarDays, Globe } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -291,24 +291,16 @@ export default function AdminCommissionsPage() {
     <div className="page-container space-y-4">
       {ConfirmDialogNode}
 
-      {/* ── Hero Section ── */}
-      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-          <div className="min-w-0 flex-1">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              {t("financeWorkspace")}
-            </div>
-            <PageHeader title={t("commissionsTitle")} description={t("commissionsDescription")} />
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">
-              <ArrowRight className="h-3.5 w-3.5 text-primary" />
-              {total.toLocaleString()} {t("commissionRecordsAcross")} {totalPages.toLocaleString()} {totalPages === 1 ? t("commissionRecordsPages") : t("commissionRecordsPages_plural")}
-            </div>
-          </div>
-        </div>
-      </section>
+      <DashboardPageHeader
+        eyebrow={t("financeWorkspace")}
+        title={t("commissionsTitle")}
+        description={t("commissionsDescription")}
+        summary={{
+          label: t("commissionRecordsAcross"),
+          value: total.toLocaleString(),
+          note: `${totalPages.toLocaleString()} ${totalPages === 1 ? t("commissionRecordsPages") : t("commissionRecordsPages_plural")}`,
+        }}
+      />
 
       <TableToolbar
         search={searchTerm}
@@ -420,7 +412,7 @@ export default function AdminCommissionsPage() {
       />
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
+          <div className="workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("visibleRecordsLabel")}</p>
@@ -432,7 +424,7 @@ export default function AdminCommissionsPage() {
               </div>
             </div>
           </div>
-          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
+          <div className="workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("pendingReviewLabel")}</p>
@@ -444,7 +436,7 @@ export default function AdminCommissionsPage() {
               </div>
             </div>
           </div>
-          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
+          <div className="workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("approvedLabel")}</p>
@@ -456,7 +448,7 @@ export default function AdminCommissionsPage() {
               </div>
             </div>
           </div>
-          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
+          <div className="workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("paidOutLabel")}</p>
@@ -476,7 +468,7 @@ export default function AdminCommissionsPage() {
         </div>
       ) : null}
 
-      <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-[24px]">
+      <section className="workspace-panel-surface overflow-hidden rounded-[24px]">
         <div className="flex flex-col gap-2 border-b border-border/80 px-4 py-4 sm:px-5">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("commissionLedgerLabel")}</p>
           <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">

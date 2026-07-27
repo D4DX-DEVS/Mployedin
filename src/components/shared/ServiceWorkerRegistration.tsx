@@ -16,18 +16,28 @@ export function ServiceWorkerRegistration() {
     // "Unexpected end of JSON input" (ClientFetchError). Proactively remove any
     // leftover worker and its caches so dev is never controlled by a stale SW.
     if (process.env.NODE_ENV !== "production") {
-      navigator.serviceWorker.getRegistrations().then((registrations) => {
-        for (const registration of registrations) {
-          registration.unregister();
-        }
-      });
-      if ("caches" in window) {
-        caches.keys().then((keys) => {
-          for (const key of keys) {
-            caches.delete(key);
-          }
-        });
-      }
+      // ponytail: unregister + reload once. Unregistering alone isn't enough —
+      // the current document is still served by the old worker, so a stale
+      // precache keeps showing a dead shell (blank/404) until a manual hard
+      // reload. sessionStorage guard prevents a reload loop if cleanup fails.
+      const wasControlled = Boolean(navigator.serviceWorker.controller);
+      void Promise.all([
+        navigator.serviceWorker
+          .getRegistrations()
+          .then((registrations) =>
+            Promise.all(registrations.map((r) => r.unregister())),
+          ),
+        "caches" in window
+          ? caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
+          : Promise.resolve(),
+      ])
+        .then(() => {
+          if (!wasControlled) return;
+          if (sessionStorage.getItem("sw-dev-cleanup-reloaded")) return;
+          sessionStorage.setItem("sw-dev-cleanup-reloaded", "1");
+          window.location.reload();
+        })
+        .catch(() => {/* dev-only cleanup — never block the app */});
       return;
     }
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { PageHero } from "@/components/shared/PageHero";
 import {
   ArrowRight,
   Clock,
@@ -15,7 +15,6 @@ import {
   Radio,
   Search,
   Send,
-  Sparkles,
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -305,18 +304,11 @@ export default function AdminCommunicationsPage() {
   return (
     <div className="page-container space-y-4">
       {ConfirmDialogNode}
-      {/* ── Hero Section ── */}
-      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-          <div className="min-w-0 flex-1">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              {tr("adminWorkspace")}
-            </div>
-            <PageHeader className="mt-4" title={tr("communicationsCenterHeading")} description={tr("communicationsCenterDesc")} />
-          </div>
-        </div>
-      </section>
+      <PageHero
+        title={tr("communicationsCenterHeading")}
+        description={tr("communicationsCenterDesc")}
+        eyebrow={tr("adminWorkspace")}
+      />
 
       {/* ── Tab Navigation ── */}
       <section className="workspace-panel-surface overflow-hidden rounded-[20px]">

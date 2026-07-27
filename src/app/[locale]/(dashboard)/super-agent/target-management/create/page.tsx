@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "next/navigation";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -287,20 +288,12 @@ export default function SuperAgentCreateTargetPage() {
       </button>
 
       {/* Header */}
-      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-3">
-            <div className="workspace-tone-sky rounded-xl p-2.5">
-              <Target className="h-5 w-5" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Assign Agent Targets</h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Set annual targets for your team agents
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
+      <DashboardPageHeader
+        icon={Target}
+        eyebrow="Target management"
+        title="Assign Agent Targets"
+        description="Set annual targets for your team agents"
+        actions={
             <div className="flex items-center gap-2">
               <Label className="text-xs font-medium text-muted-foreground">Year</Label>
               <Input
@@ -310,9 +303,8 @@ export default function SuperAgentCreateTargetPage() {
                 className="h-9 w-20 rounded-lg border-border bg-card text-center text-sm"
               />
             </div>
-          </div>
-        </div>
-      </section>
+        }
+      />
 
       {/* Filter Toggle + Panel */}
       <div className="workspace-glass-panel rounded-2xl overflow-hidden">

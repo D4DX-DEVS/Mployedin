@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,7 +16,7 @@ import {
   FolderOpen, Plus, Trash2, Edit, Search, Inbox,
   FileText, Image, Video, Upload, Download, Eye,
   Tag, Shield, History, BarChart2, Save, Users,
-  Package, Activity, Sparkles,
+  Package, Activity,
 } from "lucide-react";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { useTranslations } from "next-intl";
@@ -208,87 +208,36 @@ export default function AdminResourcesPage() {
 
   return (
     <div className="page-container space-y-6 pb-6">
-      {/* Hero Section */}
-      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-7 md:p-8">
-        <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-          <div className="max-w-2xl">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              Resource Center
-            </div>
-            <PageHeader className="mt-4" title="Resource Management" description="Manage exhibition materials, documents, templates & branding assets for your team." />
-          </div>
-          <Button onClick={() => { resetForm(); setShowForm(true); }} size="lg" className="shrink-0">
+      <DashboardPageHeader
+        icon={FolderOpen}
+        eyebrow="Resource Center"
+        title="Resource Management"
+        description="Manage exhibition materials, documents, templates & branding assets for your team."
+        actions={
+          <Button onClick={() => { resetForm(); setShowForm(true); }} size="sm">
             <Plus className="h-4 w-4 mr-2" /> Add Resource
           </Button>
-        </div>
-
-        {/* KPI Row */}
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <article className="workspace-glass-panel rounded-2xl p-5">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Total Resources</p>
-                <p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{items.length}</p>
-              </div>
-              <div className="rounded-2xl p-2.5 ring-1 ring-inset ring-sky-200 bg-sky-50/80 text-sky-600 dark:ring-sky-500/30 dark:bg-sky-500/10 dark:text-sky-300">
-                <Package className="h-5 w-5" />
-              </div>
+        }
+        metrics={[
+          { label: "Total Resources", value: items.length, icon: Package, iconClassName: "text-sky-600", iconSurfaceClassName: "bg-sky-50 dark:bg-sky-950/30" },
+          { label: "Total Downloads", value: totalDownloads, icon: Download, iconClassName: "text-blue-600", iconSurfaceClassName: "bg-blue-50 dark:bg-blue-950/30" },
+          { label: "Categories", value: Object.keys(categoryCounts).length, icon: BarChart2, iconClassName: "text-violet-600", iconSurfaceClassName: "bg-violet-50 dark:bg-violet-950/30" },
+          { label: "Active", value: items.filter((i) => i.isActive).length, icon: Activity, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50 dark:bg-emerald-950/30" },
+        ]}
+        footer={
+          <div className="flex w-full min-w-0 flex-wrap items-center gap-2">
+            <div className="relative min-w-52 flex-1">
+              <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input placeholder="Search resources..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 pl-9 text-sm" />
             </div>
-          </article>
-
-          <article className="workspace-glass-panel rounded-2xl p-5">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Total Downloads</p>
-                <p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{totalDownloads}</p>
-              </div>
-              <div className="rounded-2xl p-2.5 ring-1 ring-inset ring-blue-200 bg-blue-50/80 text-blue-600 dark:ring-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300">
-                <Download className="h-5 w-5" />
-              </div>
-            </div>
-          </article>
-
-          <article className="workspace-glass-panel rounded-2xl p-5">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Categories</p>
-                <p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{Object.keys(categoryCounts).length}</p>
-              </div>
-              <div className="rounded-2xl p-2.5 ring-1 ring-inset ring-violet-200 bg-violet-50/80 text-violet-600 dark:ring-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300">
-                <BarChart2 className="h-5 w-5" />
-              </div>
-            </div>
-          </article>
-
-          <article className="workspace-glass-panel rounded-2xl p-5">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Active</p>
-                <p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{items.filter((i) => i.isActive).length}</p>
-              </div>
-              <div className="rounded-2xl p-2.5 ring-1 ring-inset ring-emerald-200 bg-emerald-50/80 text-emerald-600 dark:ring-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300">
-                <Activity className="h-5 w-5" />
-              </div>
-            </div>
-          </article>
-
-
-        </div>
-
-        {/* Filters */}
-        <div className="mt-5 flex items-center gap-2 rounded-2xl bg-background/40 px-3 py-2 ring-1 ring-inset ring-border/40">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input placeholder="Search resources..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 h-9 text-sm border-0 bg-transparent shadow-none focus-visible:ring-0" />
+            <SearchableSelect options={filterCategoryOptions} value={categoryFilter} onValueChange={setCategoryFilter} placeholder="All Categories" />
+            <SearchableSelect options={SORT_OPTIONS} value={sortBy} onValueChange={setSortBy} placeholder="Sort by" />
+            {categoryFilter !== "all" && (
+              <button onClick={() => setCategoryFilter("all")} className="shrink-0 text-xs text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground">Clear</button>
+            )}
           </div>
-          <SearchableSelect options={filterCategoryOptions} value={categoryFilter} onValueChange={setCategoryFilter} placeholder="All Categories" />
-          <SearchableSelect options={SORT_OPTIONS} value={sortBy} onValueChange={setSortBy} placeholder="Sort by" />
-          {categoryFilter !== 'all' && (
-            <button onClick={() => setCategoryFilter('all')} className="text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2 shrink-0">Clear</button>
-          )}
-        </div>
-      </section>
+        }
+      />
 
       {/* Resource Grid */}
       {loading ? (
@@ -298,7 +247,7 @@ export default function AdminResourcesPage() {
       ) : items.length === 0 ? (
         <section className="workspace-panel-surface rounded-[28px] p-10 sm:p-14 text-center">
           <div className="flex flex-col items-center">
-            <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4 mb-5">
+            <div className="workspace-glass-panel rounded-2xl p-4 mb-5">
               <Inbox className="h-8 w-8 text-muted-foreground/50" />
             </div>
             <h3 className="text-lg font-semibold text-foreground">No resources found</h3>
@@ -453,7 +402,7 @@ export default function AdminResourcesPage() {
           </DialogHeader>
           {downloadLogs.length === 0 ? (
             <div className="flex flex-col items-center py-8">
-              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4 mb-3"><Download className="h-5 w-5 text-muted-foreground/50" /></div>
+              <div className="workspace-glass-panel rounded-2xl p-4 mb-3"><Download className="h-5 w-5 text-muted-foreground/50" /></div>
               <p className="text-sm text-muted-foreground">No downloads recorded yet</p>
             </div>
           ) : (
@@ -544,7 +493,7 @@ export default function AdminResourcesPage() {
                       <>
                         <p className="text-sm font-semibold">{formFiles.length} file{formFiles.length > 1 ? "s" : ""} selected</p>
                         <div className="flex flex-wrap justify-center gap-1.5 mt-1">
-                          {formFiles.slice(0, 3).map((f, i) => (<Badge key={i} variant="secondary" className="text-xs max-w-[140px] truncate">{f.name}</Badge>))}
+                          {formFiles.slice(0, 3).map((f, i) => (<Badge key={i} variant="secondary" className="max-w-full break-all text-xs">{f.name}</Badge>))}
                           {formFiles.length > 3 && <Badge variant="secondary" className="text-xs">+{formFiles.length - 3} more</Badge>}
                         </div>
                       </>

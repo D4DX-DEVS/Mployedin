@@ -2,6 +2,13 @@ import { auth } from "@/lib/auth/edge-config";
 import createIntlMiddleware from "next-intl/middleware";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+// mcp-handler (used by /api/mcp) ambiently augments the global `Request.auth`
+// type to `AuthInfo | undefined` for its own bearer-token auth. That
+// collides with plain `NextRequest` here, since next-auth's own `auth()` HOC
+// expects `NextAuthRequest` (auth: Session | null) specifically — typing the
+// callback param as NextAuthRequest (a strict superset of NextRequest)
+// resolves the correct overload without affecting runtime behavior.
+import type { NextAuthRequest } from "next-auth";
 import { getDashboardPath } from "@/lib/permissions/matrix";
 import type { UserRole } from "@/types/user";
 import { SECURITY_HEADERS, getSecurityHeaders } from "@/lib/security/headers";
@@ -65,8 +72,11 @@ function withPageSecurityHeaders(response: NextResponse, nonce: string): NextRes
   return response;
 }
 
-export default auth(async function middleware(req: NextRequest) {
+export default auth(async function middleware(req: NextAuthRequest) {
   const { pathname } = req.nextUrl;
+  // Plain-NextRequest view for helpers that don't care about `.auth` — see the
+  // NextAuthRequest import comment above for why the two types don't unify.
+  const plainReq = req as unknown as NextRequest;
 
   // Skip static assets that should never be processed by middleware.
   // Belt-and-suspenders: the matcher regex should exclude these, but some
@@ -76,11 +86,26 @@ export default auth(async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // The PWA offline fallback is a static file at /offline.html. It must be
+  // The PWA offline fallback is a static file at /offline.html, plus the
+  // Next.js route the Service Worker precaches at /~offline. Both must be
   // served directly — applying auth (redirect to login) or i18n (locale
   // prefixing) would break the Service Worker's precache of the fallback.
-  if (pathname === "/offline.html") {
+  if (pathname === "/offline.html" || pathname === "/~offline") {
     return NextResponse.next();
+  }
+
+  // OAuth discovery metadata (RFC 8414 / RFC 9728) for the MCP connector must be
+  // served as plain JSON to unauthenticated clients (ChatGPT's discovery step
+  // happens before any user is logged in). /.well-known/* doesn't start with
+  // /api/, so without this it would fall into the page pipeline below and get
+  // redirected to /en/login instead of returning JSON. Rewritten (not redirected)
+  // to a route handler under /api/mcp/well-known — App Router route segments
+  // starting with "." are unconventional/risky, so the dot-prefixed public path
+  // is served via a rewrite rather than a literal folder name.
+  if (pathname === "/.well-known/oauth-authorization-server" || pathname === "/.well-known/oauth-protected-resource") {
+    const url = req.nextUrl.clone();
+    url.pathname = `/api/mcp/well-known${pathname.slice("/.well-known".length)}`;
+    return withSecurityHeaders(NextResponse.rewrite(url));
   }
 
   // Redirect locale-prefixed API routes → /api/… (clients like next-auth/react
@@ -105,7 +130,7 @@ export default auth(async function middleware(req: NextRequest) {
   if (pathname.startsWith("/api/")) {
     const isStateMutating = ["POST", "PATCH", "PUT", "DELETE"].includes(req.method);
     if (isStateMutating && !isCsrfExempt(pathname)) {
-      const csrfError = validateCsrf(req);
+      const csrfError = validateCsrf(plainReq);
       if (csrfError) return withSecurityHeaders(csrfError);
     }
     // Defense-in-depth: role-owned API namespaces (mirrors ROLE_ROUTES for
@@ -143,7 +168,7 @@ export default auth(async function middleware(req: NextRequest) {
   requestHeaders.set("x-locale", activeLocale);
 
   // Apply i18n middleware to get locale redirects / rewrites / cookies
-  const intlResponse = intlMiddleware(req);
+  const intlResponse = intlMiddleware(plainReq);
 
   // Check auth session
   const session = (req as unknown as { auth?: { user?: { id: string; email?: string; role: UserRole; locale: string; isEmailVerified?: boolean; isOnboarded?: boolean } } }).auth;
@@ -307,7 +332,7 @@ export default auth(async function middleware(req: NextRequest) {
   withPageSecurityHeaders(response, nonce);
 
   // Set CSRF cookie on page responses so client JS can read it
-  setCsrfCookie(response, req);
+  setCsrfCookie(response, plainReq);
 
   return response;
 });

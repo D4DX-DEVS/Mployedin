@@ -900,7 +900,7 @@ export default function EmployerInvoicesPage() {
       />
 
       {/* Summary Cards */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
         <div className="rounded-2xl border border-border/70 bg-card p-4">
           <p className="text-xs text-muted-foreground">{t("totalBilled")}</p>
           <p className="mt-1 text-xl font-bold">{fmt(summary.totalAmount)}</p>

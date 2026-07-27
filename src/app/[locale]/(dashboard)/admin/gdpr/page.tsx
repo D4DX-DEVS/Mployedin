@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { toast } from "sonner";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -185,41 +185,44 @@ export default function AdminGdprPage() {
     { key: "retention" as const, label: t("retentionPoliciesTab"), icon: <Database className="h-4 w-4" /> },
   ];
 
-  const metricsItems = [
-    { label: t("totalRequestsLabel"), value: stats.totalRequests, icon: <FileText className="h-5 w-5" />, tone: "workspace-tone-sky" },
-    { label: t("pendingLabel"), value: stats.pendingRequests, icon: <Clock className="h-5 w-5" />, tone: "workspace-tone-amber" },
-    { label: t("completedLabel"), value: stats.completedRequests, icon: <CheckCircle2 className="h-5 w-5" />, tone: "workspace-tone-emerald" },
-    { label: t("avgResponseDaysLabel"), value: stats.avgResponseDays, icon: <AlertTriangle className="h-5 w-5" />, tone: "workspace-tone-violet" },
-  ];
-
   return (
     <div className="page-container">
-      {/* Hero */}
-      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-            <Shield className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <PageHeader title={t("pageTitle")} description={t("pageDescription")} />
-          </div>
-        </div>
-
-        {/* Metrics */}
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {metricsItems.map((m) => (
-            <div key={m.label} className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{m.label}</p>
-                  <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{m.value}</p>
-                </div>
-                <div className={`${m.tone} rounded-xl p-2`}>{m.icon}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+      <DashboardPageHeader
+        icon={Shield}
+        eyebrow={t("pageTitle")}
+        title={t("pageTitle")}
+        description={t("pageDescription")}
+        metrics={[
+          {
+            label: t("totalRequestsLabel"),
+            value: stats.totalRequests,
+            icon: FileText,
+            iconClassName: "text-sky-600",
+            iconSurfaceClassName: "bg-sky-50 dark:bg-sky-950/30",
+          },
+          {
+            label: t("pendingLabel"),
+            value: stats.pendingRequests,
+            icon: Clock,
+            iconClassName: "text-amber-600",
+            iconSurfaceClassName: "bg-amber-50 dark:bg-amber-950/30",
+          },
+          {
+            label: t("completedLabel"),
+            value: stats.completedRequests,
+            icon: CheckCircle2,
+            iconClassName: "text-emerald-600",
+            iconSurfaceClassName: "bg-emerald-50 dark:bg-emerald-950/30",
+          },
+          {
+            label: t("avgResponseDaysLabel"),
+            value: stats.avgResponseDays,
+            icon: AlertTriangle,
+            iconClassName: "text-violet-600",
+            iconSurfaceClassName: "bg-violet-50 dark:bg-violet-950/30",
+          },
+        ]}
+      />
 
       {/* Tabs */}
       <div className="flex gap-2 overflow-x-auto pb-1 -mb-1">
@@ -274,7 +277,7 @@ export default function AdminGdprPage() {
       )}
 
       {/* Content */}
-      <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5">
+      <section className="workspace-panel-surface rounded-[28px] p-5">
         {activeTab === "requests" && (
           <>
             {loading ? (

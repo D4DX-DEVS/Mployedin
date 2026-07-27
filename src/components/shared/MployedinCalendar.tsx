@@ -520,7 +520,7 @@ function MonthView({
           <div
             key={key}
             role="columnheader"
-            className="py-2.5 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
+            className="py-1.5 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:py-2.5 sm:text-[11px]"
           >
             {t(`weekdaysShort.${key}`)}
           </div>
@@ -546,7 +546,7 @@ function MonthView({
               aria-selected={isSelected}
               aria-current={isToday ? "date" : undefined}
               aria-label={formatDateLocale(date, locale, { month: "long", day: "numeric", weekday: "long" })}
-              className={`group relative min-h-[100px] border-b border-e border-border/20 p-1.5 text-start transition-all duration-150 disabled:pointer-events-none ${
+              className={`group relative min-h-[54px] border-b border-e border-border/20 p-1 text-start transition-all duration-150 disabled:pointer-events-none sm:min-h-[100px] sm:p-1.5 ${
                 isPast ? "bg-muted/5 cursor-default" : "hover:bg-muted/20 hover:shadow-inner"
               } ${!isCurrentMonth ? "bg-muted/8" : ""} ${
                 isSelected ? "bg-primary/5 ring-1 ring-inset ring-primary/25 shadow-inner shadow-primary/5" : ""
@@ -557,7 +557,7 @@ function MonthView({
               {/* Day number */}
               <div className="flex items-center justify-between">
                 <span
-                  className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium transition-colors ${
+                  className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-medium transition-colors sm:h-6 sm:w-6 sm:text-xs ${
                     isToday
                       ? "bg-primary text-primary-foreground"
                       : isPast
@@ -571,8 +571,21 @@ function MonthView({
                 </span>
               </div>
 
-              {/* Events */}
-              <div className="mt-1 space-y-0.5 overflow-hidden">
+              {/* Events — a ~50px-wide phone cell can't hold "02:30 Candidate
+                  Name", so phones get dots and the day sheet holds the detail. */}
+              {dayEvents.length > 0 && (
+                <div className="mt-1 flex flex-wrap gap-0.5 sm:hidden" aria-hidden>
+                  {dayEvents.slice(0, 3).map((e) => (
+                    <span
+                      key={e._id}
+                      className={`h-1.5 w-1.5 rounded-full ${isPast ? "opacity-50" : ""} ${
+                        EVENT_COLORS[e.type] ?? "bg-primary/10 border-primary/40 text-primary"
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
+              <div className="mt-1 hidden space-y-0.5 overflow-hidden sm:block">
                 {dayEvents.slice(0, 3).map((e) => (
                   <div
                     key={e._id}

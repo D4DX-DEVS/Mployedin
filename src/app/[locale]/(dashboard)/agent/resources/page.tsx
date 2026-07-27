@@ -11,10 +11,11 @@ import {
 } from "@/components/ui/dialog";
 import {
   FolderOpen, Search, Inbox, FileText, Image, Video,
-  Download, Eye, Tag, History, Sparkles,
+  Download, Eye, Tag, History,
 } from "lucide-react";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { useTranslations } from "next-intl";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 
 interface ResourceFile { fileName: string; url: string; key: string; contentType: string; size: number; }
 interface Resource {
@@ -77,33 +78,25 @@ export default function ResourceDownloadsPage() {
   return (
     <div className="page-container space-y-6 pb-6">
       {/* Hero Section */}
-      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-7 md:p-8">
-        <div className="max-w-2xl">
-          <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-            <Sparkles className="h-3.5 w-3.5" />
-            Resources
+      <DashboardPageHeader
+        icon={FolderOpen}
+        eyebrow="Resources"
+        title={t("downloadsTitle")}
+        description={t("downloadsSubtitle")}
+        footer={
+          <div className="flex w-full min-w-0 flex-wrap items-center gap-2">
+            <div className="relative min-w-52 flex-1">
+              <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input placeholder={t("searchPlaceholder")} value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 pl-9 text-sm" />
+            </div>
+            <SearchableSelect options={CATEGORY_OPTIONS} value={categoryFilter} onValueChange={setCategoryFilter} placeholder="Category" />
+            <SearchableSelect options={SORT_OPTIONS} value={sortBy} onValueChange={setSortBy} placeholder="Sort" />
+            {categoryFilter !== "all" && (
+              <button onClick={() => setCategoryFilter("all")} className="shrink-0 text-xs text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground">Clear</button>
+            )}
           </div>
-          <h1 className="mt-4 text-xl sm:text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-            {t("downloadsTitle")}
-          </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
-            {t("downloadsSubtitle")}
-          </p>
-        </div>
-
-        {/* Filters */}
-        <div className="mt-5 flex items-center gap-2 rounded-2xl bg-background/40 px-3 py-2 ring-1 ring-inset ring-border/40">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input placeholder={t("searchPlaceholder")} value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 h-9 text-sm border-0 bg-transparent shadow-none focus-visible:ring-0" />
-          </div>
-          <SearchableSelect options={CATEGORY_OPTIONS} value={categoryFilter} onValueChange={setCategoryFilter} placeholder="Category" />
-          <SearchableSelect options={SORT_OPTIONS} value={sortBy} onValueChange={setSortBy} placeholder="Sort" />
-          {categoryFilter !== 'all' && (
-            <button onClick={() => setCategoryFilter('all')} className="text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2 shrink-0">Clear</button>
-          )}
-        </div>
-      </section>
+        }
+      />
 
       {/* Resource Grid */}
       {loading ? (
@@ -113,7 +106,7 @@ export default function ResourceDownloadsPage() {
       ) : items.length === 0 ? (
         <section className="workspace-panel-surface rounded-[28px] p-10 sm:p-14 text-center">
           <div className="flex flex-col items-center">
-            <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4 mb-5">
+            <div className="workspace-glass-panel rounded-2xl p-4 mb-5">
               <Inbox className="h-8 w-8 text-muted-foreground/50" />
             </div>
             <h3 className="text-lg font-semibold text-foreground">{t("noResources")}</h3>

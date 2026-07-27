@@ -61,18 +61,18 @@ export function PaginationControls({
   return (
     <div
       className={cn(
-        "flex flex-col sm:flex-row items-center justify-between gap-3 text-[13px]",
+        "flex flex-row items-center justify-between gap-2 text-xs sm:gap-3 sm:text-[13px]",
         className
       )}
     >
-      {/* Left: rows per page */}
+      {/* Left: rows per page — label is desktop-only so phones keep one row */}
       <div className="flex items-center gap-2 text-muted-foreground leading-none">
-        <span className="whitespace-nowrap flex items-center h-8">{t("rowsPerPage")}</span>
+        <span className="hidden h-8 whitespace-nowrap sm:flex sm:items-center">{t("rowsPerPage")}</span>
         <Select
           value={String(limit)}
           onValueChange={(v) => onLimitChange(Number(v))}
         >
-          <SelectTrigger className="h-8 w-[70px]" aria-label={t("rowsPerPage")}>
+          <SelectTrigger className="h-8 w-[62px] sm:w-[70px]" aria-label={t("rowsPerPage")}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -85,9 +85,13 @@ export function PaginationControls({
         </Select>
       </div>
 
-      {/* Center: showing X-Y of Z */}
-      <span className="text-muted-foreground whitespace-nowrap">
-        {t("showing")} {formatNumber(from, locale)}–{formatNumber(to, locale)} {t("of")} {formatNumber(total, locale)}
+      {/* Center: showing X-Y of Z — phones drop the words, keeping "1–10 / 26" */}
+      <span className="whitespace-nowrap tabular-nums text-muted-foreground">
+        <span className="hidden sm:inline">{t("showing")} </span>
+        {formatNumber(from, locale)}–{formatNumber(to, locale)}
+        <span className="hidden sm:inline"> {t("of")} </span>
+        <span className="sm:hidden"> / </span>
+        {formatNumber(total, locale)}
       </span>
 
       {/* Right: navigation buttons */}
@@ -95,7 +99,7 @@ export function PaginationControls({
         <Button
           variant="outline"
           size="icon"
-          className="h-8 w-8"
+          className="hidden h-8 w-8 sm:inline-flex"
           onClick={() => onPageChange(1)}
           disabled={page <= 1}
           title={t("firstPage")}
@@ -134,7 +138,7 @@ export function PaginationControls({
             )
           )}
         </div>
-        <span className="px-2 text-muted-foreground whitespace-nowrap tabular-nums sm:hidden">
+        <span className="px-1 text-muted-foreground whitespace-nowrap tabular-nums sm:hidden">
           {formatNumber(page, locale)} / {formatNumber(totalPages, locale)}
         </span>
         <Button
@@ -150,7 +154,7 @@ export function PaginationControls({
         <Button
           variant="outline"
           size="icon"
-          className="h-8 w-8"
+          className="hidden h-8 w-8 sm:inline-flex"
           onClick={() => onPageChange(totalPages)}
           disabled={page >= totalPages}
           title={t("lastPage")}

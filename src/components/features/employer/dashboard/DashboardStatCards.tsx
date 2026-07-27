@@ -1,9 +1,19 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { BriefcaseBusiness, CalendarDays, FileText, Sparkles } from "lucide-react";
+import {
+  ArrowUpRight,
+  BriefcaseBusiness,
+  CalendarDays,
+  FileEdit,
+  FileText,
+  PauseCircle,
+  Sparkles,
+} from "lucide-react";
 
 interface DashboardStatCardsProps {
   activeJobCount: number;
+  draftJobCount: number;
+  pausedJobCount: number;
   newApplications: number;
   highMatchCount: number;
   /** Interviews scheduled for today — the "Today's Interviews" KPI. */
@@ -11,18 +21,18 @@ interface DashboardStatCardsProps {
   locale: string;
 }
 
-/**
- * The four headline KPI cards shown as their own row beneath the hero, matching
- * the mockup. Labels/descriptions reuse the existing smartHeader message keys.
- */
+/** Dense decision KPI strip with job-status context folded into the first tile. */
 export function DashboardStatCards({
   activeJobCount,
+  draftJobCount,
+  pausedJobCount,
   newApplications,
   highMatchCount,
   interviewsToday,
   locale,
 }: DashboardStatCardsProps) {
   const t = useTranslations("employerDashboard.smartHeader");
+  const tJobs = useTranslations("employerDashboard.jobQuickFilters");
 
   const cards = [
     {
@@ -32,6 +42,16 @@ export function DashboardStatCards({
       href: `/${locale}/employer/jobs`,
       Icon: BriefcaseBusiness,
       chip: "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300",
+      secondary: (
+        <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="inline-flex items-center gap-1">
+            <FileEdit className="h-3 w-3" /> {draftJobCount} {tJobs("draftTab")}
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <PauseCircle className="h-3 w-3" /> {pausedJobCount} {tJobs("pausedTab")}
+          </span>
+        </span>
+      ),
     },
     {
       labelKey: "needsReview",
@@ -41,6 +61,7 @@ export function DashboardStatCards({
       href: `/${locale}/employer/applications?status=applied`,
       Icon: FileText,
       chip: "bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300",
+      secondary: null,
     },
     {
       labelKey: "aiMatches",
@@ -49,6 +70,7 @@ export function DashboardStatCards({
       href: `/${locale}/employer/applications?scoreMin=80`,
       Icon: Sparkles,
       chip: "bg-violet-50 text-violet-600 dark:bg-violet-500/15 dark:text-violet-300",
+      secondary: null,
     },
     {
       labelKey: "interviewsSet",
@@ -57,32 +79,39 @@ export function DashboardStatCards({
       href: `/${locale}/employer/interviews`,
       Icon: CalendarDays,
       chip: "bg-sky-50 text-sky-600 dark:bg-sky-500/15 dark:text-sky-300",
+      secondary: null,
     },
   ];
 
   return (
-    // Two-up compact tiles on phones — one full-width card per stat meant four
-    // screens of scrolling before any real content.
-    <section className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-4">
-      {cards.map(({ labelKey, descKey, value, href, Icon, chip }) => (
+    // 2×2 on phones — four stacked full-width rows ate most of the fold.
+    <section className="workspace-panel-surface grid grid-cols-2 overflow-hidden rounded-2xl lg:grid-cols-4">
+      {cards.map(({ labelKey, descKey, value, href, Icon, chip, secondary }, index) => (
         <Link
           key={labelKey}
           href={href}
-          className="workspace-panel-surface group rounded-2xl p-3 transition-all hover:-translate-y-0.5 hover:border-sky-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 sm:rounded-[22px] sm:p-5"
+          className={`group relative min-w-0 border-border/60 p-2.5 transition-colors hover:bg-primary/[0.035] focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-500 sm:p-4 ${
+            index % 2 === 1 ? "border-s" : ""
+          } ${index >= 2 ? "border-t lg:border-t-0" : ""} ${index > 0 ? "lg:border-s" : ""}`}
         >
-          <div className="flex items-center justify-between gap-2 sm:gap-3">
-            <span className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:text-[11px] sm:tracking-[0.14em]">
+          <div className="flex items-center justify-between gap-2">
+            <span className="truncate text-[10px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
               {t(labelKey)}
             </span>
-            <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg sm:h-9 sm:w-9 sm:rounded-xl ${chip}`}>
-              <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+            <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg sm:h-8 sm:w-8 ${chip}`}>
+              <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </span>
           </div>
-          <div className="mt-2 text-2xl font-semibold tracking-tight text-foreground sm:mt-4 sm:text-3xl">{value}</div>
-          <p className="mt-1 hidden text-xs leading-5 text-muted-foreground sm:block">{t(descKey)}</p>
-          <span className="mt-1.5 inline-block text-xs font-semibold text-sky-700 dark:text-sky-300 sm:mt-3">
-            {t("viewAll")}
-          </span>
+          <div className="mt-1 flex items-end justify-between gap-2 sm:mt-2">
+            <div className="text-xl font-semibold tabular-nums tracking-tight text-foreground sm:text-2xl">{value}</div>
+            <ArrowUpRight className="hidden h-3.5 w-3.5 text-muted-foreground/50 transition-colors group-hover:text-primary sm:block" />
+          </div>
+          {secondary ? (
+            <div className="mt-1 text-[10px] leading-4 text-muted-foreground sm:mt-1.5 sm:text-[11px]">{secondary}</div>
+          ) : (
+            // Half-sentence truncations read as broken in a 2-up mobile tile.
+            <p className="mt-1 hidden truncate text-[10px] leading-4 text-muted-foreground sm:mt-1.5 sm:block sm:text-[11px]">{t(descKey)}</p>
+          )}
         </Link>
       ))}
     </section>

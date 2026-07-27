@@ -6,7 +6,7 @@ import {
   GitBranch, Plus, Trash2, Edit2, Save, X, Loader2, CheckCircle,
   ArrowRight, ChevronDown, ChevronUp, Sparkles, Shield,
 } from "lucide-react";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { PageHero } from "@/components/shared/PageHero";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -154,13 +154,12 @@ export default function AdminWorkflowTemplatesPage() {
   if (isLoading) {
     return (
       <div className="page-container space-y-4">
-        <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
-          <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-            <Sparkles className="h-3.5 w-3.5" />
-            {tr("adminWorkspaceLabel")}
-          </div>
-          <PageHeader className="mt-4" title={tr("pageTitle")} description={tr("pageDescription")} />
-        </section>
+        <PageHero
+          icon={GitBranch}
+          eyebrow={tr("adminWorkspaceLabel")}
+          title={tr("pageTitle")}
+          description={tr("pageDescription")}
+        />
         {[1, 2, 3].map((i) => (
           <div key={i} className="h-24 animate-pulse rounded-2xl border border-border bg-background/70" />
         ))}
@@ -170,21 +169,17 @@ export default function AdminWorkflowTemplatesPage() {
 
   return (
     <div className="page-container space-y-6">
-      {/* ── Hero Section ── */}
-      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-          <div className="min-w-0 flex-1">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              {tr("adminWorkspaceLabel")}
-            </div>
-            <PageHeader className="mt-4" title={tr("pageTitle")} description={tr("pageDescription")} />
-          </div>
+      <PageHero
+        icon={GitBranch}
+        eyebrow={tr("adminWorkspaceLabel")}
+        title={tr("pageTitle")}
+        description={tr("pageDescription")}
+        actions={
           <Button onClick={openCreate} className="gap-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90" size="sm">
             <Plus className="h-4 w-4" /> {tr("newTemplateButton")}
           </Button>
-        </div>
-      </section>
+        }
+      />
 
       {/* ─── Create / Edit Form ─── */}
       {showForm && (

@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -347,63 +347,68 @@ export default function AdminApplicationsPage() {
   return (
     <div className="page-container space-y-6">
 
-      {/* ─── Hero ─────────────────────────────────────────────────────── */}
-      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-3xl">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-status-applied dark:text-sky-300">
-              <Sparkles className="h-3.5 w-3.5" />
-              {t("recruitmentControl")}
-            </div>
-            <PageHeader
-              title={t("applications")}
-              description={t("applicationsDescription")}
-            />
-          </div>
-
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("pipeline")}</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">{stats?.totalAll ?? total} {t("total")}</p>
-              <p className="text-xs text-muted-foreground">{t("avgScore")} {stats?.avgAiScore ?? 0}%</p>
-            </div>
-            <Button
-              variant={showAiPanel ? "default" : "outline"}
-              onClick={() => {
-                setShowAiPanel(!showAiPanel);
-                if (!showAiPanel && !aiInsights) fetchAiInsights();
-              }}
-              size="lg"
-              className="h-11 gap-2 rounded-xl px-4 border-0"
+      {/* ─── Compact page header ──────────────────────────────────────── */}
+      <DashboardPageHeader
+        eyebrow={t("recruitmentControl")}
+        title={t("applications")}
+        description={t("applicationsDescription")}
+        summary={{
+          label: t("pipeline"),
+          value: `${stats?.totalAll ?? total} ${t("total")}`,
+          note: `${t("avgScore")} ${stats?.avgAiScore ?? 0}%`,
+        }}
+        actions={(
+          <Button
+            variant={showAiPanel ? "default" : "outline"}
+            onClick={() => {
+              setShowAiPanel(!showAiPanel);
+              if (!showAiPanel && !aiInsights) fetchAiInsights();
+            }}
+            size="lg"
+            className="h-10 gap-2 rounded-xl border-0 px-4"
+          >
+            <Sparkles className="h-4 w-4" />
+            {t("aiInsights")}
+          </Button>
+        )}
+        metrics={[
+          { label: t("totalApps"), value: stats?.totalAll ?? 0, note: t("allApplications"), icon: FileText, iconClassName: "text-status-applied", iconSurfaceClassName: "bg-status-applied-bg dark:bg-sky-950/30" },
+          { label: t("today"), value: stats?.todayCount ?? 0, note: t("newToday"), icon: TrendingUp, iconClassName: "text-status-selected", iconSurfaceClassName: "bg-status-selected-bg dark:bg-emerald-950/30" },
+          { label: t("aiScored"), value: stats?.scoredCount ?? 0, note: `${t("avgColon")} ${stats?.avgAiScore ?? 0}%`, icon: Brain, iconClassName: "text-status-interview", iconSurfaceClassName: "bg-status-interview-bg dark:bg-violet-950/30" },
+          { label: t("inShortlist"), value: stats?.byStatus?.["shortlisted"] ?? 0, note: t("pipelineLabel"), icon: Users, iconClassName: "text-status-shortlisted", iconSurfaceClassName: "bg-status-shortlisted-bg dark:bg-amber-950/30" },
+        ]}
+        footer={(
+          <>
+            <button
+              type="button"
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-background/50"
             >
-              <Sparkles className="h-4 w-4" />
-              {t("aiInsights")}
-            </Button>
-          </div>
-        </div>
-
-        {/* Stats Row */}
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {([
-            { label: t("totalApps"), value: stats?.totalAll ?? 0, note: t("allApplications"), icon: FileText, tone: "text-status-applied", chip: "bg-status-applied-bg dark:bg-sky-950/30" },
-            { label: t("today"), value: stats?.todayCount ?? 0, note: t("newToday"), icon: TrendingUp, tone: "text-status-selected", chip: "bg-status-selected-bg dark:bg-emerald-950/30" },
-            { label: t("aiScored"), value: stats?.scoredCount ?? 0, note: `${t("avgColon")} ${stats?.avgAiScore ?? 0}%`, icon: Brain, tone: "text-status-interview", chip: "bg-status-interview-bg dark:bg-violet-950/30" },
-            { label: t("inShortlist"), value: stats?.byStatus?.["shortlisted"] ?? 0, note: t("pipelineLabel"), icon: Users, tone: "text-status-shortlisted", chip: "bg-status-shortlisted-bg dark:bg-amber-950/30" },
-          ] as const).map(({ label, value, note, icon: Icon, tone, chip }) => (
-            <div key={label} className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-                  <p className="mt-3 text-4xl font-semibold tracking-tight text-foreground">{value}</p>
-                </div>
-                <span className={`flex h-12 w-12 items-center justify-center rounded-2xl ${chip}`}>
-                  <Icon className={`h-5 w-5 ${tone}`} />
-                </span>
-              </div>
-              <p className="mt-3 text-sm leading-5 text-muted-foreground">{note}</p>
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              {showFilters ? t("hideFilters") : t("showFilters")}
+              {activeFilters > 0 && <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">{activeFilters} {t("active")}</Badge>}
+              {showFilters ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+            </button>
+            <div className="flex items-center gap-2">
+              {jobIdFilter && (
+                <Badge variant="secondary" className="rounded-full px-2.5 py-1 text-[11px] font-medium">
+                  {t("selectedJobOnly")}
+                </Badge>
+              )}
+              {activeFilters > 0 && (
+                <Button variant="ghost" size="sm" onClick={clearAllFilters} className="gap-1.5 text-xs text-muted-foreground">
+                  {t("clearFilters")}
+                </Button>
+              )}
+              <TableToolbar
+                onExportCsv={handleExportCsv}
+                onExportExcel={handleExportExcel}
+                onExportPdf={handleExportPdf}
+              />
             </div>
-          ))}
-        </div>
+          </>
+        )}
+      >
 
         {/* ─── AI Insights inline ─────────────────────────────────────── */}
         {showAiPanel && (
@@ -512,37 +517,6 @@ export default function AdminApplicationsPage() {
             )}
           </div>
         )}
-
-        {/* ─── Filter toggle bar ──────────────────────────────────────── */}
-        <div className="mt-6 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-white/10 dark:hover:bg-white/5"
-          >
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            {showFilters ? t("hideFilters") : t("showFilters")}
-            {activeFilters > 0 && <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">{activeFilters} {t("active")}</Badge>}
-            {showFilters ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
-          </button>
-          <div className="flex items-center gap-2">
-            {jobIdFilter && (
-              <Badge variant="secondary" className="rounded-full px-2.5 py-1 text-[11px] font-medium">
-                {t("selectedJobOnly")}
-              </Badge>
-            )}
-            {activeFilters > 0 && (
-              <Button variant="ghost" size="sm" onClick={clearAllFilters} className="gap-1.5 text-xs text-muted-foreground">
-                {t("clearFilters")}
-              </Button>
-            )}
-            <TableToolbar
-              onExportCsv={handleExportCsv}
-              onExportExcel={handleExportExcel}
-              onExportPdf={handleExportPdf}
-            />
-          </div>
-        </div>
 
         {/* ─── Expandable Filters ─────────────────────────────────────── */}
         {showFilters && (
@@ -661,7 +635,7 @@ export default function AdminApplicationsPage() {
             )}
           </div>
         )}
-      </section>
+      </DashboardPageHeader>
 
       {/* ─── Application List ─────────────────────────────────────────── */}
       {loading ? (
@@ -693,7 +667,7 @@ export default function AdminApplicationsPage() {
           )}
         </div>
       ) : (
-        <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-[28px]">
+        <section className="workspace-panel-surface overflow-hidden rounded-[28px]">
           {/* Column headers */}
           <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] items-center gap-4 border-b border-border/70 bg-background/50 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground lg:grid">
             <span>{t("candidate")}</span>

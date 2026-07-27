@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { PageHero } from "@/components/shared/PageHero";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Inbox, Plus, X, Edit2, Trash2, UserCheck, MapPin, Sparkles } from "lucide-react";
+import { Search, Inbox, Plus, X, Edit2, Trash2, UserCheck, MapPin } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
@@ -142,17 +142,13 @@ export default function AdminTerritoryPage() {
 
   return (
     <div className="page-container space-y-4">
-      {/* ── Hero Section ── */}
-      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-          <div className="min-w-0 flex-1">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              {tr("adminWorkspaceBadge")}
-            </div>
-            <PageHeader className="mt-4" title={tr("pageTitle")} description={tr("pageDescription")} />
-          </div>
-          <div className="flex items-center gap-2">
+      <PageHero
+        icon={MapPin}
+        eyebrow={tr("adminWorkspaceBadge")}
+        title={tr("pageTitle")}
+        description={tr("pageDescription")}
+        actions={
+          <>
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -169,9 +165,9 @@ export default function AdminTerritoryPage() {
             >
               {showForm ? <><X className="h-3.5 w-3.5" /> {tr("cancelButtonLabel")}</> : <><Plus className="h-3.5 w-3.5" /> {tr("newTerritoryButtonLabel")}</>}
             </Button>
-          </div>
-        </div>
-      </section>
+          </>
+        }
+      />
 
       <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
         {/* Inline create form */}

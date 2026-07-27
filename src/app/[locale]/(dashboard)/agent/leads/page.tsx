@@ -31,6 +31,7 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import type { ExportColumn } from "@/lib/export";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 
 /* ─── Types ─────────────────────────────────────────────────────────────── */
 
@@ -282,7 +283,7 @@ function LeadCard({
         )}
         {lead.contactEmail && (
           <span className="inline-flex items-center gap-1">
-            <Mail className="h-3 w-3" /><span className="max-w-[100px] truncate">{lead.contactEmail}</span>
+            <Mail className="h-3 w-3" /><span className="break-all">{lead.contactEmail}</span>
           </span>
         )}
       </div>
@@ -690,52 +691,25 @@ export default function AgentLeadsPage() {
       {ConfirmDialogNode}
 
       {/* ──── Hero Header ──── */}
-      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-2xl">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              <Target className="h-3.5 w-3.5" />{t("heroBadge")}
-            </div>
-            <h1 className="mt-3 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-              {t("pageTitle")}
-            </h1>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              {t("heroDescription")}
-            </p>
-          </div>
-
-          {/* KPI chips */}
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="workspace-glass-panel rounded-2xl px-4 py-3">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{t("kpiOpen")}</p>
-              <p className="mt-1 text-xl font-bold text-foreground">
-                {leads.filter((l) => !["converted", "lost"].includes(l.status)).length}
-              </p>
-              {totalPipelineValue > 0 && (
-                <p className="text-[10px] font-medium text-status-selected">
-                  AED {totalPipelineValue.toLocaleString()}
-                </p>
-              )}
-            </div>
-            <div className="workspace-glass-panel rounded-2xl px-4 py-3">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{t("kpiWon")}</p>
-              <p className="mt-1 text-xl font-bold text-status-selected">{stageCounts.converted}</p>
-            </div>
-            <div className="workspace-glass-panel rounded-2xl px-4 py-3">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{t("kpiTotal")}</p>
-              <p className="mt-1 text-xl font-bold text-foreground">{pagination.total}</p>
-            </div>
-            {can("leads", "create") && (
-              <Button onClick={openAdd} className="h-11 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90">
-                <Plus className="mr-1.5 h-4 w-4" />{t("newLead")}
-              </Button>
-            )}
-          </div>
-        </div>
-      </section>
+      <DashboardPageHeader
+        icon={Target}
+        eyebrow={t("heroBadge")}
+        title={t("pageTitle")}
+        description={t("heroDescription")}
+        actions={can("leads", "create") ? (
+          <Button onClick={openAdd} className="h-11 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90">
+            <Plus className="mr-1.5 h-4 w-4" />{t("newLead")}
+          </Button>
+        ) : null}
+        metrics={[
+          { label: t("kpiOpen"), value: leads.filter((l) => !["converted", "lost"].includes(l.status)).length, note: totalPipelineValue > 0 ? `AED ${totalPipelineValue.toLocaleString()}` : undefined, icon: Flame },
+          { label: t("kpiWon"), value: stageCounts.converted, icon: TrendingUp },
+          { label: t("kpiTotal"), value: pagination.total, icon: Target },
+        ]}
+      />
 
       {/* ──── Toolbar ──── */}
-      <section className="workspace-panel-surface rounded-2xl p-3.5 sm:rounded-[28px] sm:p-5">
+      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
         <div className="flex flex-wrap items-center gap-3">
           {/* View toggle */}
           <div className="inline-flex items-center rounded-xl border border-border bg-muted/50 p-1">
@@ -884,7 +858,7 @@ export default function AgentLeadsPage() {
       ) : (
         /* ──── TABLE VIEW ──── */
         <>
-          <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-[28px]">
+          <section className="workspace-panel-surface overflow-hidden rounded-[28px]">
             {leads.length === 0 ? (
               <div className="flex flex-col items-center gap-3 py-16 text-center">
                 <div className="rounded-2xl bg-muted/50 p-4">
@@ -1264,14 +1238,14 @@ export default function AgentLeadsPage() {
                 <p className="mt-1 text-sm text-muted-foreground">{scoreResult.reasoning}</p>
               </DialogHeader>
               <div className="space-y-4 px-6 py-5">
-                <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
+                <div className="workspace-glass-panel rounded-2xl p-4">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("recommendedNextAction")}</p>
                   <p className="mt-2 text-sm font-medium text-foreground">{scoreResult.nextAction}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {t("followUpIn", { days: scoreResult.suggestedFollowUpDays })}
                   </p>
                 </div>
-                <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
+                <div className="workspace-glass-panel rounded-2xl p-4">
                   <div className="flex items-center gap-2">
                     <MessageSquare className="h-4 w-4 text-sky-500" />
                     <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("draftFollowUpMessage")}</p>
@@ -1290,7 +1264,7 @@ export default function AgentLeadsPage() {
                   </Button>
                 </div>
                 {scoreResult.riskFactors.length > 0 && (
-                  <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
+                  <div className="workspace-glass-panel rounded-2xl p-4">
                     <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("riskFactors")}</p>
                     <ul className="mt-2 space-y-1.5">
                       {scoreResult.riskFactors.map((risk) => (

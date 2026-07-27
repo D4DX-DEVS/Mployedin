@@ -26,7 +26,7 @@ import { useConfirm } from "@/hooks/useConfirm";
 import { useDebounce } from "@/hooks/useDebounce";
 import RelativeDate from "@/components/shared/RelativeDate";
 import { PaginationControls } from "@/components/shared/PaginationControls";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import {
   Layers,
   Loader2,
@@ -169,45 +169,23 @@ export default function EmployerTalentPoolsPage() {
   return (
     <div className="page-container space-y-6">
       {ConfirmDialogNode}
-      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
-          <div className="max-w-3xl">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
-              <Layers className="h-3.5 w-3.5" />
-              {t("title")}
-            </div>
-            <PageHeader
-              title={t("title")}
-              description={t("subtitle")}
-              actions={pools.length > 0 ? (
-                <Button onClick={() => setCreateOpen(true)} className="shrink-0">
-                  <Plus className="mr-2 h-4 w-4" />
-                  {t("createPool")}
-                </Button>
-              ) : undefined}
-            />
-          </div>
-        </div>
-
-        {pools.length > 0 && (
-          <>
-            {/* Three side-by-side tiles on phones — stacked they pushed the pool
-                list a full screen down. */}
-            <div className="mt-3 grid grid-cols-3 gap-2 sm:mt-6 sm:gap-3">
-              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statPools")}</p>
-                <p className="mt-1 text-2xl font-semibold tracking-tight text-foreground">{stats.totalPools}</p>
-              </div>
-              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statCandidates")}</p>
-                <p className="mt-1 text-2xl font-semibold tracking-tight text-foreground">{stats.totalCandidates}</p>
-              </div>
-              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statAddedThisMonth")}</p>
-                <p className="mt-1 text-2xl font-semibold tracking-tight text-foreground">{stats.addedThisMonth}</p>
-              </div>
-            </div>
-
+      <DashboardPageHeader
+        icon={Layers}
+        eyebrow={t("title")}
+        title={t("title")}
+        description={t("subtitle")}
+        actions={pools.length > 0 ? (
+          <Button onClick={() => setCreateOpen(true)} className="shrink-0">
+            <Plus className="mr-2 h-4 w-4" />
+            {t("createPool")}
+          </Button>
+        ) : undefined}
+        metrics={pools.length > 0 ? [
+          { label: t("statPools"), value: stats.totalPools, icon: Layers },
+          { label: t("statCandidates"), value: stats.totalCandidates, icon: Users },
+          { label: t("statAddedThisMonth"), value: stats.addedThisMonth, icon: Plus },
+        ] : undefined}
+        footer={pools.length > 0 ? (
             <button
               type="button"
               onClick={() => setFiltersOpen((v) => !v)}
@@ -221,19 +199,19 @@ export default function EmployerTalentPoolsPage() {
               </span>
               <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${filtersOpen ? "rotate-180" : ""}`} />
             </button>
-          </>
-        )}
-      </section>
+        ) : undefined}
+      />
 
       {filtersOpen && pools.length > 0 && (
-        <section className="workspace-panel-surface rounded-2xl p-3.5 sm:rounded-[28px] sm:p-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="relative flex-1">
+        <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
+          {/* Search + sort share one row on phones too. */}
+          <div className="flex flex-row items-center gap-2 sm:gap-3">
+            <div className="relative min-w-0 flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input placeholder={t("searchPools")} value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
             </div>
             <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortKey)}>
-              <SelectTrigger className="w-full sm:w-[200px]" aria-label={t("sortBy")}>
+              <SelectTrigger className="w-[7.5rem] shrink-0 sm:w-[200px]" aria-label={t("sortBy")}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

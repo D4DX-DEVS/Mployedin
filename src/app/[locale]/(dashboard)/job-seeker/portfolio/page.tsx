@@ -12,6 +12,7 @@ import {
   Github, Globe, Image, Edit,
 } from "lucide-react";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { PageHero } from "@/components/shared/PageHero";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -101,22 +102,19 @@ export default function PortfolioPage() {
 
   return (
     <div className="space-y-6">
-      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t("title")}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {t("description")}
-            </p>
-          </div>
+      <PageHero
+        icon={FolderOpen}
+        title={t("title")}
+        description={t("description")}
+        actions={
           <Button onClick={() => setShowForm(!showForm)}>
             <Plus className="me-1 h-4 w-4" /> {t("addProject")}
           </Button>
-        </div>
-      </section>
+        }
+      />
 
       {showForm && (
-        <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 space-y-4">
+        <section className="workspace-panel-surface rounded-[28px] p-5 space-y-4">
           <h2 className="text-lg font-semibold text-foreground">{t("addProject")}</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             <Input placeholder={t("projectTitlePlaceholder")} value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} />
@@ -139,7 +137,7 @@ export default function PortfolioPage() {
         </section>
       )}
 
-      <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5">
+      <section className="workspace-panel-surface rounded-[28px] p-5">
         {loading ? (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (

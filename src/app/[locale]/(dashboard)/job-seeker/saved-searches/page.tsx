@@ -10,10 +10,11 @@ import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select";
 import {
-  Bell, Plus, Trash2, Search, Inbox, RotateCcw, Mail,
+  Bell, Plus, Trash2, Search, Inbox,
   BellRing, Briefcase, MapPin, Clock, TrendingUp,
 } from "lucide-react";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -139,35 +140,24 @@ export default function SavedSearchesPage() {
 
   return (
     <div className="space-y-6">
-      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t("title")}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {t("description")}
-            </p>
-          </div>
+      <DashboardPageHeader
+        icon={Bell}
+        eyebrow={t("title")}
+        title={t("title")}
+        description={t("description")}
+        actions={
           <Button onClick={() => setShowForm(!showForm)}>
             <Plus className="me-1 h-4 w-4" /> {t("newAlert")}
           </Button>
-        </div>
-
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("title")}</p>
-            <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{searches.length.toLocaleString(numberLocale)}</p>
-          </div>
-          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("activeAlerts")}</p>
-            <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
-              {searches.filter((s) => s.emailAlert).length.toLocaleString(numberLocale)}
-            </p>
-          </div>
-        </div>
-      </section>
+        }
+        metrics={[
+          { label: t("title"), value: searches.length.toLocaleString(numberLocale), icon: Search },
+          { label: t("activeAlerts"), value: searches.filter((s) => s.emailAlert).length.toLocaleString(numberLocale), icon: BellRing },
+        ]}
+      />
 
       {showForm && (
-        <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 space-y-4">
+        <section className="workspace-panel-surface rounded-[28px] p-5 space-y-4">
           <h2 className="text-lg font-semibold text-foreground">{t("createTitle")}</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             <Input placeholder={t("namePlaceholder")} value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} />
@@ -198,7 +188,7 @@ export default function SavedSearchesPage() {
         </section>
       )}
 
-      <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5">
+      <section className="workspace-panel-surface rounded-[28px] p-5">
         {searches.length > 0 && (
           <div className="mb-4 flex gap-2">
             <input
@@ -213,7 +203,7 @@ export default function SavedSearchesPage() {
         {loading ? (
           <div className="space-y-3">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="workspace-glass-panel rounded-2xl p-3 sm:p-4 space-y-3">
+              <div key={i} className="workspace-glass-panel rounded-2xl p-4 space-y-3">
                 <Skeleton className="h-4 w-40" />
                 <div className="flex gap-2">
                   <Skeleton className="h-3 w-24" />
@@ -233,7 +223,7 @@ export default function SavedSearchesPage() {
         ) : (
           <div className="space-y-3">
             {searches.filter((s) => s.name.toLowerCase().includes(searchTerm.toLowerCase())).map((s) => (
-              <div key={s._id} className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
+              <div key={s._id} className="workspace-glass-panel rounded-2xl p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-sm font-semibold text-foreground">{s.name}</p>

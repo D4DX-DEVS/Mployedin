@@ -42,6 +42,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
+import { ThemeToggle } from "@/components/shared/ThemeToggle";
 
 const ROLE_KEYS: Record<string, string> = {
   admin: "admin",
@@ -211,6 +213,24 @@ export function UserProfileDropdown({
               <span className="ml-auto text-xs">
                 {formatLastLogin(lastLogin)}
               </span>
+            </div>
+          </div>
+
+          <DropdownMenuSeparator />
+
+          {/* Theme + locale live here on every breakpoint — three standalone
+              controls crowded the topbar and left no room on phones.
+              onSelect preventDefault so toggling does not close the menu. */}
+          <div
+            className="flex items-center justify-between gap-2 px-2 py-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span className="truncate text-sm text-muted-foreground">{t("preferences")}</span>
+            {/* Force the switcher to its compact flag-only width — its sm: breakpoint
+                is viewport-based and would overflow this 288px menu. */}
+            <div className="flex shrink-0 items-center gap-2 [&>div:first-child]:!w-16 [&>div:first-child]:[&_span]:hidden">
+              <LanguageSwitcher />
+              <ThemeToggle />
             </div>
           </div>
 

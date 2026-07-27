@@ -11,6 +11,7 @@ import {
   Loader2, Mail, MapPin, MessageSquare, Phone, Plus,
   Sparkles, Target, TrendingUp, User, XCircle,
 } from "lucide-react";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 
 /* ─── Types ─────────────────────────────────────────────────────────── */
 
@@ -177,24 +178,16 @@ export default function LeadDetailPage() {
   return (
     <div className="page-container space-y-5">
       {/* Header */}
-      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-          <div className="max-w-2xl">
+      <DashboardPageHeader
+        icon={Building2}
+        eyebrow={t("backToPipeline")}
+        title={lead.companyName}
+        description={[lead.contactPerson, lead.country, lead.industry].filter(Boolean).join(" · ")}
+        actions={
+          <>
             <Link href="../leads" className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition hover:text-foreground">
               <ArrowLeft className="h-3.5 w-3.5" />{t("backToPipeline")}
             </Link>
-            <h1 className="mt-3 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-              {lead.companyName}
-            </h1>
-            <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-              <span className="inline-flex items-center gap-1"><User className="h-3.5 w-3.5" />{lead.contactPerson}</span>
-              {lead.country && <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{lead.country}</span>}
-              {lead.industry && <span className="inline-flex items-center gap-1"><Building2 className="h-3.5 w-3.5" />{lead.industry}</span>}
-            </div>
-          </div>
-
-          {/* Status badge + KPIs */}
-          <div className="flex flex-wrap items-center gap-3">
             <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-semibold ${config.bgColor} ${config.borderColor} ${config.color}`}>
               {config.icon}{config.label}
             </span>
@@ -203,19 +196,14 @@ export default function LeadDetailPage() {
                 <Gauge className="h-3 w-3" />{lead.score}
               </span>
             )}
-            <div className="workspace-glass-panel rounded-xl px-3 py-2 text-center">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{t("ageLabel")}</p>
-              <p className="text-sm font-bold text-foreground">{daysSinceCreated}d</p>
-            </div>
-            <div className="workspace-glass-panel rounded-xl px-3 py-2 text-center">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{t("lastTouchLabel")}</p>
-              <p className={`text-sm font-bold ${daysSinceLastActivity > 7 ? "text-status-rejected" : "text-foreground"}`}>{daysSinceLastActivity}d ago</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Pipeline progression */}
-        <div className="mt-5 flex flex-wrap items-center gap-1.5">
+          </>
+        }
+        metrics={[
+          { label: t("ageLabel"), value: `${daysSinceCreated}d`, icon: Clock },
+          { label: t("lastTouchLabel"), value: `${daysSinceLastActivity}d ago`, icon: Calendar },
+        ]}
+      >
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
           {STAGES.filter((s) => s !== "lost").map((s, i) => {
             const sConfig = STAGE_CONFIG[s];
             const isActive = s === lead.status;
@@ -258,7 +246,7 @@ export default function LeadDetailPage() {
             </button>
           )}
         </div>
-      </section>
+      </DashboardPageHeader>
 
       {/* Main content: 2-column layout */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">

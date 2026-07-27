@@ -14,6 +14,7 @@ import { notify } from "@/lib/notifications/trigger";
 import { sendEmail } from "@/lib/communications/email";
 import { canManageTeam } from "@/lib/permissions/team";
 import { ensureEmployerOwnerMembership } from "@/lib/employers/company-membership";
+import { escapeRegex } from "@/lib/security/sanitize";
 import logger from "@/lib/logger";
 
 /**
@@ -56,9 +57,39 @@ async function getHandler(req: NextRequest, ctx: { userId: string; role: string 
     return NextResponse.json({ error: "Only owners and admins can view team" }, { status: 403 });
   }
 
-  const members = await CompanyUser.find({ companyId: employer._id })
-    .sort({ status: 1, companyRole: 1, createdAt: -1 })
-    .lean();
+  const { searchParams } = new URL(req.url);
+  const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "10", 10) || 10));
+  const search = searchParams.get("search")?.trim() ?? "";
+  const query: Record<string, unknown> = { companyId: employer._id };
+
+  if (search) {
+    const safe = escapeRegex(search);
+    const matchingUsers = await User.find({
+      $or: [
+        { name: { $regex: safe, $options: "i" } },
+        { email: { $regex: safe, $options: "i" } },
+      ],
+    }).select("_id").lean();
+    query.$or = [
+      { email: { $regex: safe, $options: "i" } },
+      { companyRole: { $regex: safe, $options: "i" } },
+      { userId: { $in: matchingUsers.map((user) => user._id) } },
+    ];
+  }
+
+  const [members, total, statusRows] = await Promise.all([
+    CompanyUser.find(query)
+      .sort({ status: 1, companyRole: 1, createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean(),
+    CompanyUser.countDocuments(query),
+    CompanyUser.aggregate<{ _id: string; count: number }>([
+      { $match: { companyId: employer._id } },
+      { $group: { _id: "$status", count: { $sum: 1 } } },
+    ]),
+  ]);
 
   // Enrich with user names
   const userIds = members.filter((m) => m.userId).map((m) => m.userId);
@@ -72,7 +103,20 @@ async function getHandler(req: NextRequest, ctx: { userId: string; role: string 
     user: m.userId ? userMap.get(String(m.userId)) ?? null : null,
   }));
 
-  return NextResponse.json({ members: enriched });
+  const statusCounts = Object.fromEntries(statusRows.map((row) => [row._id, row.count]));
+  const teamTotal = statusRows.reduce((sum, row) => sum + row.count, 0);
+
+  return NextResponse.json({
+    members: enriched,
+    total,
+    page,
+    totalPages: Math.max(1, Math.ceil(total / limit)),
+    stats: {
+      active: statusCounts.active ?? 0,
+      pending: statusCounts.pending ?? 0,
+      total: teamTotal,
+    },
+  });
 }
 
 /**

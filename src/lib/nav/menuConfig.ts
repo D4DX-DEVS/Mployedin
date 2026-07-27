@@ -1363,14 +1363,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             description: "Direct messages with candidates",
             descriptionAr: "الرسائل المباشرة مع المرشحين",
           },
-          {
-            title: "Notifications",
-            titleAr: "الإشعارات",
-            href: p("/notifications"),
-            icon: "Bell",
-            description: "View all notifications",
-            descriptionAr: "عرض جميع الإشعارات",
-          },
+          // ponytail: "Notifications" nav item removed — the topbar bell is the
+          // single entry point; duplicating it in the sidebar just added noise.
           {
             // ponytail: "Team Members" invite child removed — feature disabled,
             // see EMPLOYER-FIX-PLAN E6. Group renamed "Activity" since it only

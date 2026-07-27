@@ -1,8 +1,10 @@
 import type { Metadata, Viewport } from "next";
+import type React from "react";
 import { Inter, Noto_Sans_Arabic, Noto_Sans_Malayalam } from "next/font/google";
 import { headers } from "next/headers";
 import { ThemeProvider } from "@/components/shared/ThemeProvider";
 import { ServiceWorkerRegistration } from "@/components/shared/ServiceWorkerRegistration";
+import { ResponsiveTables } from "@/components/shared/ResponsiveTables";
 import "@/app/globals.css";
 import { getThemeInitializationScript } from "@/lib/theme";
 
@@ -99,7 +101,10 @@ export default async function RootLayout({
         className={`${inter.variable} ${notoArabic.variable} ${notoMalayalam.variable} font-sans antialiased`}
         {...(nonce ? { "data-nonce": nonce } : {})}
       >
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          {children}
+          <ResponsiveTables />
+        </ThemeProvider>
         <ServiceWorkerRegistration />
       </body>
     </html>

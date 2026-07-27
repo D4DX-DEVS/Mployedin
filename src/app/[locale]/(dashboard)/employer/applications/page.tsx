@@ -234,6 +234,9 @@ export default function EmployerApplicationsPage() {
   });
   const [daysFilter, setDaysFilter] = useState<number | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  // Phones collapse the whole primary filter row behind a toggle — six stacked
+  // full-width controls pushed the applicant list off the first screen.
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [timelinePanel, setTimelinePanel] = useState<{ appId: string; candidateLabel: string } | null>(null);
   const [detailPanel, setDetailPanel] = useState<Applicant | null>(null);
@@ -808,7 +811,7 @@ export default function EmployerApplicationsPage() {
       <PageHeader
         title={selectedJob ? `${selectedJob.title} — ${t("title")}` : t("title")}
         actions={canUpdate ? (
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-nowrap items-center gap-2 overflow-x-auto">
             <Button
               size="sm"
               variant="outline"
@@ -844,7 +847,7 @@ export default function EmployerApplicationsPage() {
         ) : undefined}
       />
 
-      <div className="text-sm text-muted-foreground">
+      <div className="px-3 text-sm text-muted-foreground sm:px-4">
         <span className="font-medium text-foreground">{isLoading ? "—" : filteredApplications.length}</span> {t("applicants")}
         <span className="px-2 text-border">•</span>
         <span className="font-medium text-foreground">{isLoading ? "—" : highMatchCount}</span> {t("highMatch")}
@@ -856,15 +859,30 @@ export default function EmployerApplicationsPage() {
 
       <section className="workspace-panel-surface rounded-[22px] p-3 sm:p-4">
 
-          <TableToolbar
-            onExportCsv={handleExportCsv}
-            onExportExcel={handleExportExcel}
-            onExportPdf={handleExportPdf}
-            className="mb-3"
-          />
+          <div className="mb-2 flex items-center gap-2 sm:mb-3">
+            <button
+              type="button"
+              onClick={() => setMobileFiltersOpen((v) => !v)}
+              aria-expanded={mobileFiltersOpen}
+              className="flex flex-1 items-center justify-between gap-3 rounded-xl border border-border bg-background/70 px-3 py-2 text-left text-sm font-semibold text-foreground sm:hidden"
+            >
+              <span className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-primary" />
+                {t("filters")}
+              </span>
+              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${mobileFiltersOpen ? "rotate-180" : ""}`} />
+            </button>
+
+            <TableToolbar
+              onExportCsv={handleExportCsv}
+              onExportExcel={handleExportExcel}
+              onExportPdf={handleExportPdf}
+              className="shrink-0"
+            />
+          </div>
 
           {/* Primary filter row: Job selector + search + status + sort + toggle */}
-          <div className="grid gap-2 xl:grid-cols-[minmax(170px,1fr)_minmax(0,1.5fr)_minmax(150px,0.7fr)_minmax(150px,0.7fr)_auto_auto]">
+          <div className={`grid-cols-2 gap-2 sm:grid-cols-1 xl:grid-cols-[minmax(170px,1fr)_minmax(0,1.5fr)_minmax(150px,0.7fr)_minmax(150px,0.7fr)_auto_auto] ${mobileFiltersOpen ? "grid" : "hidden sm:grid"}`}>
             <SearchableSelect
               className="h-10 w-full rounded-xl border-border bg-status-applied-bg/50 dark:border-sky-500/30 dark:bg-sky-500/10"
               options={jobOptions}
@@ -876,7 +894,7 @@ export default function EmployerApplicationsPage() {
               }}
               placeholder={t("selectJob")}
             />
-            <div className="relative">
+            <div className="relative col-span-2 sm:col-span-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={searchQuery}
@@ -969,7 +987,7 @@ export default function EmployerApplicationsPage() {
           )}
 
       {showFilters && (
-        <div className="mt-3 grid gap-4 rounded-[20px] border border-border/60 bg-background/60 p-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-3 grid grid-cols-2 gap-2 rounded-[20px] border border-border/60 bg-background/60 p-2.5 sm:gap-4 sm:p-4 lg:grid-cols-4">
           {/* AI Score Range */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("aiScoreRange")}</label>

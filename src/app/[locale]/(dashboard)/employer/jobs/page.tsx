@@ -19,6 +19,7 @@ import {
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { PageHero } from "@/components/shared/PageHero";
+import { CountCardGrid } from "@/components/shared/CountCardGrid";
 import { DraftExtractionsCard, DraftJobsCard } from "@/components/features/employer/dashboard";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useTableExport } from "@/hooks/useTableExport";
@@ -85,6 +86,9 @@ export default function EmployerJobsPage() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [jobDraftsCount, setJobDraftsCount] = useState(0);
   const [aiDraftsCount, setAiDraftsCount] = useState(0);
+  // Phones show one collapsed row per job; tapping the header expands it. Desktop
+  // ignores this entirely (details are always `sm:block`).
+  const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
 
   const [pendingJobAction, setPendingJobAction] = useState<{ jobId: string; action: PendingJobAction } | null>(null);
   const debouncedSearch = useDebounce(search, 300);
@@ -441,74 +445,58 @@ export default function EmployerJobsPage() {
       />
 
       <div className="space-y-3">
-        <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
-          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statActiveLabel")}</p>
-                <p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{activeJobs}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{t("statActiveDescription")}</p>
-              </div>
-              <div className="workspace-tone-emerald rounded-2xl p-2.5">
-                <ShieldCheck className="h-5 w-5" />
-              </div>
-            </div>
-          </div>
-          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statDraftsLabel")}</p>
-                <p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{draftJobs}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{t("statDraftsDescription")}</p>
-              </div>
-              <div className="workspace-tone-amber rounded-2xl p-2.5">
-              <BriefcaseBusiness className="h-5 w-5" />
+        {/* Phones get all four counters on one row: label + number only. Icon and
+            description are desktop-only so each tile survives an ~80px column. */}
+        <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-2 sm:gap-3 xl:grid-cols-4">
+          {[
+            { label: t("statActiveLabel"), value: activeJobs, description: t("statActiveDescription"), Icon: ShieldCheck, tone: "workspace-tone-emerald" },
+            { label: t("statDraftsLabel"), value: draftJobs, description: t("statDraftsDescription"), Icon: BriefcaseBusiness, tone: "workspace-tone-amber" },
+            { label: t("statPausedLabel"), value: pausedJobs, description: t("statPausedDescription"), Icon: PauseCircle, tone: "workspace-tone-sky" },
+            { label: t("statOpeningsLabel"), value: totalOpenings, description: t("statOpeningsDescription"), Icon: Users, tone: "workspace-tone-sky" },
+          ].map(({ label, value, description, Icon, tone }) => (
+            <div key={label} className="workspace-glass-panel rounded-xl p-2 sm:rounded-2xl sm:p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-[9px] font-semibold uppercase tracking-wide text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">{label}</p>
+                  <p className="mt-0.5 text-lg font-semibold tracking-tight text-foreground sm:mt-3 sm:text-3xl">{value}</p>
+                  <p className="mt-1 hidden text-xs text-muted-foreground sm:block">{description}</p>
+                </div>
+                <div className={`${tone} hidden rounded-2xl p-2.5 sm:block`}>
+                  <Icon className="h-5 w-5" />
+                </div>
               </div>
             </div>
-          </div>
-          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statPausedLabel")}</p>
-                <p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{pausedJobs}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{t("statPausedDescription")}</p>
-              </div>
-              <div className="workspace-tone-sky rounded-2xl p-2.5">
-              <PauseCircle className="h-5 w-5" />
-              </div>
-            </div>
-          </div>
-          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statOpeningsLabel")}</p>
-                <p className="mt-3 text-xl sm:text-3xl font-semibold tracking-tight text-foreground">{totalOpenings}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{t("statOpeningsDescription")}</p>
-              </div>
-              <div className="workspace-tone-sky rounded-2xl p-2.5">
-              <Users className="h-5 w-5" />
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
 
-        {/* Filter jobs — toggle + filters live in one card and expand in place */}
+        {/* Filter jobs — toggle + filters live in one card and expand in place.
+            Export sits on the same row instead of a standalone toolbar strip. */}
         <div className="workspace-panel-surface overflow-hidden rounded-2xl">
-          <button
-            type="button"
-            onClick={() => setFiltersOpen((v) => !v)}
-            aria-expanded={filtersOpen}
-            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-primary/5"
-          >
-            <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              <SlidersHorizontal className="h-4 w-4 text-primary" />
-              {t("filterHeading")}
-              {hasActiveFilters && (
-                <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
-              )}
-            </span>
-            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${filtersOpen ? "rotate-180" : ""}`} />
-          </button>
+          <div className="flex items-center gap-1 pe-2">
+            <button
+              type="button"
+              onClick={() => setFiltersOpen((v) => !v)}
+              aria-expanded={filtersOpen}
+              className="flex min-w-0 flex-1 items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-primary/5"
+            >
+              <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                <SlidersHorizontal className="h-4 w-4 text-primary" />
+                {t("filterHeading")}
+                {hasActiveFilters && (
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
+                )}
+              </span>
+              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${filtersOpen ? "rotate-180" : ""}`} />
+            </button>
+            {jobs.length > 0 && (
+              <TableToolbar
+                className="shrink-0"
+                onExportCsv={handleExportCsv}
+                onExportExcel={handleExportExcel}
+                onExportPdf={handleExportPdf}
+              />
+            )}
+          </div>
 
           {filtersOpen && (
             <div className="border-t border-border/60 p-3 sm:p-5">
@@ -645,7 +633,9 @@ export default function EmployerJobsPage() {
       </div>
 
       {/* ── Resume unfinished work (banners — self-hide when none) ── */}
-      <div className={`grid gap-3 ${jobDraftsCount > 0 && aiDraftsCount > 0 ? "sm:grid-cols-2" : "grid-cols-1"}`}>
+      {/* Stays mounted so the children can report their counts, but drops out of
+          layout when both are empty — otherwise it burns two space-y-6 gaps. */}
+      <div className={`gap-3 ${jobDraftsCount === 0 && aiDraftsCount === 0 ? "hidden" : "grid"} ${jobDraftsCount > 0 && aiDraftsCount > 0 ? "sm:grid-cols-2" : "grid-cols-1"}`}>
         <DraftJobsCard locale={locale} variant="banner" onCountChange={setJobDraftsCount} />
         <DraftExtractionsCard locale={locale} variant="banner" onCountChange={setAiDraftsCount} />
       </div>
@@ -697,12 +687,7 @@ export default function EmployerJobsPage() {
           )}
         </div>
       ) : (
-        <div className="space-y-4">
-          <TableToolbar
-            onExportCsv={handleExportCsv}
-            onExportExcel={handleExportExcel}
-            onExportPdf={handleExportPdf}
-          />
+        <div className="space-y-2 sm:space-y-4">
           {jobs.map((job) => {
             const posted = new Date(job.createdAt).toLocaleDateString(locale === "ar" ? "ar" : "en-US", { month: "short", day: "numeric", year: "numeric" });
             const expires = job.expiresAt ? new Date(job.expiresAt).toLocaleDateString(locale === "ar" ? "ar" : "en-US", { month: "short", day: "numeric" }) : null;
@@ -714,27 +699,34 @@ export default function EmployerJobsPage() {
             const isWithdrawing = pendingJobAction?.jobId === job._id && pendingJobAction.action === "withdraw";
             const jobSummary = getJobSummary(job);
             const isUnpublished = job.status === "draft" || job.status === "pending_approval";
+            const isExpanded = expandedJobId === job._id;
+            const collapsible = isExpanded ? "" : "hidden sm:block";
 
             return (
               <article
                 key={job._id}
-                className="workspace-panel-surface rounded-[20px] p-3 transition-all hover:-translate-y-0.5 hover:border-border sm:p-3.5"
+                className="workspace-panel-surface rounded-[20px] p-2 transition-all hover:-translate-y-0.5 hover:border-border sm:p-3.5"
               >
                 <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_268px] xl:items-start">
                   <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-base font-semibold tracking-tight text-foreground">{job.title}</h3>
-                      <Badge className={`${STATUS_COLORS[job.status] ?? ""} border px-2 py-0.5 text-[11px] font-medium`}>
-                        {t(getStatusLabelKey(job.status))}
-                      </Badge>
-                      {job.clonedFrom ? <Badge variant="outline" className="border-status-applied/20 bg-status-applied-bg px-2 py-0.5 text-[11px] font-medium text-status-applied dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300"><Copy className="mr-1 h-3 w-3" />{t("clonedBadge")}</Badge> : null}
-                    </div>
-                    {job.status === "draft" ? (
-                      <p className="mt-1 text-[11px] font-medium text-status-shortlisted dark:text-amber-300">{t("draftHint")}</p>
-                    ) : null}
-                    {job.status === "pending_approval" ? (
-                      <p className="mt-1 text-[11px] font-medium text-status-applied dark:text-blue-300">{t("inReviewHint")}</p>
-                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => setExpandedJobId(isExpanded ? null : job._id)}
+                      aria-expanded={isExpanded}
+                      className="flex w-full items-center gap-2 text-left sm:pointer-events-none"
+                    >
+                      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                        <h3 className="min-w-0 truncate text-base font-semibold tracking-tight text-foreground sm:whitespace-normal">{job.title}</h3>
+                        <Badge className={`${STATUS_COLORS[job.status] ?? ""} border px-2 py-0.5 text-[11px] font-medium`}>
+                          {t(getStatusLabelKey(job.status))}
+                        </Badge>
+                        {job.clonedFrom ? <Badge variant="outline" className="border-status-applied/20 bg-status-applied-bg px-2 py-0.5 text-[11px] font-medium text-status-applied dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300"><Copy className="mr-1 h-3 w-3" />{t("clonedBadge")}</Badge> : null}
+                      </div>
+                      <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform sm:hidden ${isExpanded ? "rotate-180" : ""}`} />
+                    </button>
+                    {/* Always-visible meta: location / category / salary / openings /
+                        dates / skills. A collapsed row showing only a title gave no
+                        reason to tap. Heavier content stays behind the toggle. */}
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
                       <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-muted-foreground">{formatLocation(job)}</span>
                       {job.category ? (
@@ -753,25 +745,36 @@ export default function EmployerJobsPage() {
                     </div>
 
                     {job.requirements?.skills?.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1.5">
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
                         {job.requirements.skills.slice(0, 4).map((s) => (
-                          <Badge key={s} variant="outline" className="rounded-full border-border bg-secondary/65 px-2.5 py-1 text-xs font-normal text-muted-foreground dark:border-border dark:bg-background/80 dark:text-muted-foreground">{s}</Badge>
+                          <Badge key={s} variant="outline" className="rounded-full border-border bg-secondary/65 px-2.5 py-0.5 text-[11px] font-normal text-muted-foreground dark:border-border dark:bg-background/80 dark:text-muted-foreground">{s}</Badge>
                         ))}
                       </div>
                     )}
 
+                    <div className={collapsible}>
+                    {job.status === "draft" ? (
+                      <p className="mt-1 text-[11px] font-medium text-status-shortlisted dark:text-amber-300">{t("draftHint")}</p>
+                    ) : null}
+                    {job.status === "pending_approval" ? (
+                      <p className="mt-1 text-[11px] font-medium text-status-applied dark:text-blue-300">{t("inReviewHint")}</p>
+                    ) : null}
                     {jobSummary ? (
                       <p className="mt-1.5 line-clamp-1 max-w-3xl text-xs leading-4 text-muted-foreground">{jobSummary}</p>
                     ) : null}
 
-                    <div className="mt-2 flex flex-wrap gap-3 text-xs">
-                      <span className="inline-flex items-center gap-1 text-muted-foreground"><Eye className="h-3.5 w-3.5" /> {job.views?.toLocaleString() ?? 0} {t("viewsStat")}</span>
-                      <span className="inline-flex items-center gap-1 text-muted-foreground"><Users className="h-3.5 w-3.5" /> {getFilledSlots(job)} {t("applicantsStat")}</span>
-                      <span className="inline-flex items-center gap-1 text-muted-foreground">{job.maxApplicants ?? t("capacityOpen")} {t("capacityStat")}</span>
+                    <CountCardGrid
+                      className="mt-2"
+                      items={[
+                        { label: t("viewsStat"), value: job.views?.toLocaleString() ?? 0 },
+                        { label: t("applicantsStat"), value: getFilledSlots(job) },
+                        { label: t("capacityStat"), value: job.maxApplicants ?? t("capacityOpen") },
+                      ]}
+                    />
                     </div>
                   </div>
 
-                  <div aria-label={`Actions for ${job.title}`} role="group" className="workspace-subtle-surface flex flex-col gap-1.5 rounded-[16px] border border-border p-2 xl:self-start">
+                  <div aria-label={`Actions for ${job.title}`} role="group" className={`workspace-subtle-surface flex-col gap-1.5 rounded-[16px] border border-border p-2 xl:self-start ${isExpanded ? "flex" : "hidden sm:flex"}`}>
                     <div className="grid grid-cols-2 gap-2">
                       <Button
                         size="sm"

@@ -191,7 +191,7 @@ export const JobFeedCard = memo(function JobFeedCard({
       <div className="flex gap-2 sm:gap-3.5">
         {/* Card body */}
         <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex min-w-0 flex-col gap-3 min-[420px]:flex-row min-[420px]:items-start min-[420px]:justify-between">
             <div className="min-w-0 flex-1">
               <div className="hidden text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground sm:block">
                 {remote ? t("remoteReady") : t("recommendedRole")}
@@ -216,7 +216,7 @@ export const JobFeedCard = memo(function JobFeedCard({
               )}
             </div>
 
-            <div className="flex shrink-0 items-start gap-3">
+            <div className="flex max-w-full shrink-0 flex-wrap items-start gap-2 min-[420px]:gap-3">
               {showMatchScore && (
                 <span
                   className={`inline-flex whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold ${matchColor(job.matchScore)}`}

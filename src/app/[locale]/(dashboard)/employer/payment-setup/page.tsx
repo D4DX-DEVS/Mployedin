@@ -10,7 +10,7 @@ import {
   CreditCard, Shield, CheckCircle2, AlertTriangle, Lock,
   Building2, Banknote, Zap,
 } from "lucide-react";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { csrfFetch } from "@/lib/security/csrf-client";
 
 /* ------------------------------------------------------------------ */
@@ -91,47 +91,20 @@ export default function EmployerPaymentSetupPage() {
   return (
     <div className="page-container space-y-6">
       {/* Hero */}
-      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
-        <div className="flex items-start gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10">
-            <CreditCard className="h-6 w-6 text-primary" />
-          </div>
-          <PageHeader
-            title={t("title")}
-            description={t("subtitle")}
-          />
-        </div>
-
-        {/* Status */}
-        <div className="mt-5 workspace-glass-panel rounded-2xl p-3 sm:p-4">
-          <div className="flex items-center gap-3">
-            {connected ? (
-              <>
-                <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                <div>
-                  <p className="text-sm font-medium text-foreground">{t("statusConnected")}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {t("statusConnectedDesc")}
-                  </p>
-                </div>
-              </>
-            ) : (
-              <>
-                <AlertTriangle className="h-5 w-5 text-amber-500" />
-                <div>
-                  <p className="text-sm font-medium text-foreground">{t("statusDisconnected")}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {t("statusDisconnectedDesc")}
-                  </p>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      </section>
+      <DashboardPageHeader
+        icon={CreditCard}
+        eyebrow={t("title")}
+        title={t("title")}
+        description={t("subtitle")}
+        summary={{
+          label: connected ? t("statusConnected") : t("statusDisconnected"),
+          value: connected ? t("statusConnected") : t("statusDisconnected"),
+          note: connected ? t("statusConnectedDesc") : t("statusDisconnectedDesc"),
+        }}
+      />
 
       {/* Gateway Selection */}
-      <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5">
+      <section className="workspace-panel-surface rounded-[28px] p-5">
         <h2 className="text-lg font-semibold text-foreground">{t("chooseProvider")}</h2>
         <p className="mt-1 text-sm text-muted-foreground">{t("chooseProviderDesc")}</p>
 
@@ -161,7 +134,7 @@ export default function EmployerPaymentSetupPage() {
 
       {/* API Key Configuration */}
       {selectedGateway !== "none" && (
-        <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 space-y-4">
+        <section className="workspace-panel-surface rounded-[28px] p-5 space-y-4">
           <div className="flex items-center gap-2">
             <Lock className="h-4 w-4 text-muted-foreground" />
             <h2 className="text-lg font-semibold text-foreground">{t("apiKeysTitle")}</h2>
@@ -207,7 +180,7 @@ export default function EmployerPaymentSetupPage() {
       )}
 
       {/* Info Note */}
-      <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5">
+      <section className="workspace-panel-surface rounded-[28px] p-5">
         <div className="flex items-start gap-3">
           <Shield className="mt-0.5 h-5 w-5 text-muted-foreground" />
           <div>

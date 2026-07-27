@@ -62,6 +62,7 @@ import {
   XCircle,
   Zap,
 } from "lucide-react";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 
 const MATCH_SESSION_STORAGE_KEY = "employer-candidate-matching-session-v1";
 const MAX_AI_MATCH_BATCH_SIZE = 20;
@@ -365,19 +366,26 @@ function CandidateMatchCard({
           <p className="truncate text-sm text-muted-foreground">{currentRole ?? t("roleNotSpecified")}</p>
           <p className="truncate text-xs text-muted-foreground/90">{primaryMeta || t("locationExpNotSpecified")}</p>
           <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-            {visibleSkills.map((skill) => {
+            {/* 3rd tag hides on phones and folds into the mobile "+more" count —
+                showing all 3 there wrapped the last tag onto its own orphan line. */}
+            {visibleSkills.map((skill, skillIndex) => {
               const isRequired = requiredSkills.some((requiredSkill) => normalizeText(requiredSkill) === normalizeText(skill));
 
               return (
                 <span
                   key={skill}
-                  className={`inline-flex max-w-full items-center rounded-full px-2 py-0.5 font-medium ${isRequired ? "bg-status-applied-bg text-status-applied dark:bg-sky-500/15 dark:text-sky-300" : "bg-secondary/75 text-muted-foreground dark:bg-slate-800/80 dark:text-slate-300"}`}
+                  className={`inline-flex max-w-full items-center rounded-full px-2 py-0.5 font-medium ${skillIndex === 2 ? "hidden sm:inline-flex" : ""} ${isRequired ? "bg-status-applied-bg text-status-applied dark:bg-sky-500/15 dark:text-sky-300" : "bg-secondary/75 text-muted-foreground dark:bg-slate-800/80 dark:text-slate-300"}`}
                 >
                   <span className="truncate">{skill}</span>
                 </span>
               );
             })}
-            {overflowSkillCount > 0 ? <span>+{overflowSkillCount} {t("moreSuffix")}</span> : null}
+            {overflowSkillCount > 0 ? <span className="hidden sm:inline">+{overflowSkillCount} {t("moreSuffix")}</span> : null}
+            {visibleSkills.length >= 3 ? (
+              <span className="sm:hidden">+{overflowSkillCount + 1} {t("moreSuffix")}</span>
+            ) : overflowSkillCount > 0 ? (
+              <span className="sm:hidden">+{overflowSkillCount} {t("moreSuffix")}</span>
+            ) : null}
             {selectedJobData && matchedSkills.length === 0 && missingSkills.length > 0 ? (
               <span className="text-status-shortlisted dark:text-amber-300">{missingSkills.length === 1 ? t("skillGap", { count: missingSkills.length }) : t("skillGaps", { count: missingSkills.length })}</span>
             ) : null}
@@ -508,7 +516,7 @@ function CandidateInsightsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent hideClose className="max-h-[88vh] max-w-5xl overflow-hidden rounded-[32px] border-border bg-background p-0 shadow-[0_40px_120px_-48px_rgba(15,23,42,0.5)]">
         <div className="max-h-[88vh] overflow-y-auto">
-          <div className="relative border-b border-border workspace-hero-surface px-6 py-6 sm:px-8">
+          <div className="relative border-b border-border bg-muted/20 px-6 py-6 sm:px-8">
             <button
               type="button"
               onClick={() => onOpenChange(false)}
@@ -563,7 +571,7 @@ function CandidateInsightsDialog({
           </div>
 
           <div className="space-y-5 px-6 py-6 sm:px-8">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
               <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("availability")}</p>
                 <p className="mt-2 text-sm font-semibold text-foreground">
@@ -1411,36 +1419,13 @@ export default function EmployerCandidatesPage() {
         onOpenChange={setBulkPoolOpen}
       />
 
-      <section className="workspace-hero-surface overflow-hidden rounded-[24px] px-4 py-4 sm:px-5">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <h1 className="text-[1.7rem] font-semibold tracking-tight text-foreground">{t("heroTitle")}</h1>
-              <span className="rounded-full border border-border bg-background/80 px-2.5 py-1 text-[11px] font-medium text-muted-foreground backdrop-blur">
-                {selectedJobData ? t("benchmark", { title: selectedJobData.title }) : t("talentPoolView")}
-              </span>
-              {isRefreshingCandidates ? (
-                <span className="rounded-full border border-sky-500/20 bg-sky-500/10 px-2.5 py-1 text-[11px] font-medium text-status-applied backdrop-blur dark:text-sky-300">
-                  {t("refreshing")}
-                </span>
-              ) : null}
-            </div>
-            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-              {[
-                { label: t("statCandidates"), value: total },
-                { label: t("statScored"), value: scoredCount },
-                { label: t("statHighMatch"), value: visibleHighMatchCount },
-                { label: t("statAvailable"), value: readyNowCount },
-              ].map((stat) => (
-                  <span key={stat.label} aria-label={`${stat.value} ${stat.label}`} className="inline-flex items-center gap-1.5">
-                  <span className="font-semibold text-foreground">{stat.value}</span>
-                  <span>{stat.label}</span>
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
+      <DashboardPageHeader
+        icon={Users}
+        eyebrow={selectedJobData ? t("benchmark", { title: selectedJobData.title }) : t("talentPoolView")}
+        title={t("heroTitle")}
+        description={isRefreshingCandidates ? t("refreshing") : undefined}
+        actions={
+          <>
             <Button
               type="button"
               variant="outline"
@@ -1479,9 +1464,15 @@ export default function EmployerCandidatesPage() {
               {screenMutation.isPending ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="mr-2 h-3.5 w-3.5" />}
               {screenMutation.isPending ? t("screeningInProgress") : t("screenWithAi")}
             </Button>
-          </div>
-        </div>
-      </section>
+          </>
+        }
+        metrics={[
+          { label: t("statCandidates"), value: total, icon: Users },
+          { label: t("statScored"), value: scoredCount, icon: BarChart3 },
+          { label: t("statHighMatch"), value: visibleHighMatchCount, icon: Trophy },
+          { label: t("statAvailable"), value: readyNowCount, icon: CheckCircle2 },
+        ]}
+      />
 
       {screeningResults && (
         <AIScreeningResultsPanel
@@ -1554,7 +1545,7 @@ export default function EmployerCandidatesPage() {
             </Button>
           </div>
 
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -1901,4 +1892,3 @@ export default function EmployerCandidatesPage() {
     </div>
   );
 }
-

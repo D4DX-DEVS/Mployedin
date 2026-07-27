@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
 import { useConfirm } from "@/hooks/useConfirm";
@@ -22,7 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Inbox, Eye, Trash2, Mail, MailOpen, Sparkles, MessageSquare } from "lucide-react";
+import { Inbox, Eye, Trash2, Mail, MailOpen, MessageSquare } from "lucide-react";
 import CmsHeroFilters, {
   type CmsFilterField,
   type CmsFilterValues,
@@ -125,64 +125,21 @@ export default function ContactSubmissionsPage() {
     <div className="page-container space-y-6">
       {ConfirmDialogNode}
 
-      {/* Hero Section */}
-      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-3xl">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
-              <Sparkles className="h-3.5 w-3.5" />
-              {t("cmsWorkspace")}
-            </div>
-            <PageHeader title={t("contactInbox")} description={t("heroDescription")} />
-          </div>
-
-          <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("totalMessages")}</p>
-            <p className="mt-1 text-lg font-semibold text-foreground">{total.toLocaleString()}</p>
-            <p className="text-xs text-muted-foreground">{t("acrossPages", { count: totalPages })}</p>
-          </div>
-        </div>
-
-        {/* Stats Row */}
-        <div className="mt-6 grid gap-3 sm:grid-cols-3">
-          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statTotal")}</p>
-                <p className="mt-3 text-4xl font-semibold tracking-tight text-foreground">{total}</p>
-              </div>
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 dark:bg-amber-950/30">
-                <Mail className="h-5 w-5 text-amber-600" />
-              </span>
-            </div>
-            <p className="mt-3 text-sm leading-5 text-muted-foreground">{t("allSubmissions")}</p>
-          </div>
-          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statUnread")}</p>
-                <p className="mt-3 text-4xl font-semibold tracking-tight text-foreground">{unreadCount}</p>
-              </div>
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-50 dark:bg-sky-950/30">
-                <MessageSquare className="h-5 w-5 text-sky-600" />
-              </span>
-            </div>
-            <p className="mt-3 text-sm leading-5 text-muted-foreground">{t("awaitingReview")}</p>
-          </div>
-          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statRead")}</p>
-                <p className="mt-3 text-4xl font-semibold tracking-tight text-foreground">{items.length - unreadCount}</p>
-              </div>
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 dark:bg-emerald-950/30">
-                <MailOpen className="h-5 w-5 text-emerald-600" />
-              </span>
-            </div>
-            <p className="mt-3 text-sm leading-5 text-muted-foreground">{t("alreadyReviewed")}</p>
-          </div>
-        </div>
-
+      <DashboardPageHeader
+        eyebrow={t("cmsWorkspace")}
+        title={t("contactInbox")}
+        description={t("heroDescription")}
+        summary={{
+          label: t("totalMessages"),
+          value: total.toLocaleString(),
+          note: t("acrossPages", { count: totalPages }),
+        }}
+        metrics={[
+          { label: t("statTotal"), value: total, note: t("allSubmissions"), icon: Mail, iconClassName: "text-amber-600", iconSurfaceClassName: "bg-amber-50 dark:bg-amber-950/30" },
+          { label: t("statUnread"), value: unreadCount, note: t("awaitingReview"), icon: MessageSquare, iconClassName: "text-sky-600", iconSurfaceClassName: "bg-sky-50 dark:bg-sky-950/30" },
+          { label: t("statRead"), value: items.length - unreadCount, note: t("alreadyReviewed"), icon: MailOpen, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50 dark:bg-emerald-950/30" },
+        ]}
+      >
         <CmsHeroFilters
           fields={contactFilterFields}
           values={filterValues}
@@ -193,9 +150,9 @@ export default function ContactSubmissionsPage() {
           onToggleFilters={() => setShowFilters((v) => !v)}
           searchPlaceholder={t("searchPlaceholder")}
         />
-      </section>
+      </DashboardPageHeader>
 
-      <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-[28px]">
+      <section className="workspace-panel-surface overflow-hidden rounded-[28px]">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>

@@ -3,7 +3,7 @@
 import { useState, FormEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -55,9 +55,11 @@ export default function NewStaticPage() {
 
   return (
     <div className="page-container space-y-6">
-      {/* Header */}
-      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
-        <div className="flex items-center gap-4">
+      <DashboardPageHeader
+        eyebrow={t("workspaceLabel")}
+        title={t("pageTitle")}
+        description={t("pageDescription")}
+        actions={(
           <Button
             variant="ghost"
             size="icon"
@@ -66,14 +68,8 @@ export default function NewStaticPage() {
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <div>
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              {t("workspaceLabel")}
-            </div>
-            <PageHeader className="mt-4" title={t("pageTitle")} description={t("pageDescription")} />
-          </div>
-        </div>
-      </section>
+        )}
+      />
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -85,7 +81,7 @@ export default function NewStaticPage() {
         )}
 
         {/* Basic fields */}
-        <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6">
+        <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
           <h2 className="text-lg font-semibold tracking-tight">{t("basicInfoHeading")}</h2>
           <div className="mt-4 grid gap-5 sm:grid-cols-2">
             <div className="space-y-2">
@@ -141,7 +137,7 @@ export default function NewStaticPage() {
         </section>
 
         {/* Body English */}
-        <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6">
+        <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold tracking-tight">
               {t("bodyEnglishHeading")} <span className="text-destructive">{t("bodyEnglishRequired")}</span>
@@ -194,7 +190,7 @@ export default function NewStaticPage() {
         </section>
 
         {/* Body Arabic */}
-        <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6">
+        <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold tracking-tight">{t("bodyArabicHeading")}</h2>
             <div className="flex items-center gap-1 rounded-lg border border-border bg-secondary/50 p-0.5">
@@ -245,7 +241,7 @@ export default function NewStaticPage() {
         </section>
 
         {/* Actions */}
-        <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6">
+        <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
           <div className="flex items-center justify-end gap-3">
             <Button
               type="button"

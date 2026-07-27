@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { useWorkflow, useSaveWorkflow, type WorkflowStage } from "@/hooks/useWorkflow";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import {
   useEmployerWorkflowTemplates,
   useCreateEmployerWorkflowTemplate,
@@ -205,8 +206,9 @@ export default function EmployerWorkflowPage() {
         title={t("title")}
         description={t("description")}
         actions={
-          // Wraps on phones — three side-by-side buttons overflowed a 390px screen.
-          <div className="flex flex-wrap items-center gap-2">
+          /* All three actions on one row; they shrink instead of wrapping so
+             "Save Workflow" no longer lands alone on a second line. */
+          <div className="flex w-full min-w-0 flex-nowrap items-center gap-1.5 sm:w-auto sm:gap-2 [&>button]:min-w-0 [&>button]:flex-1 [&>button]:px-2 [&>button]:text-xs sm:[&>button]:flex-none sm:[&>button]:px-3 sm:[&>button]:text-sm [&_svg]:shrink-0">
             <Button
               variant="outline"
               size="sm"
@@ -292,7 +294,7 @@ export default function EmployerWorkflowPage() {
       {/* ─── Save as Template ─── */}
       {showSaveAsTemplate && (
         <section className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-5">
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 flex-col items-stretch gap-3 sm:flex-row sm:items-center">
             <Input
               value={templateName}
               onChange={(e) => setTemplateName(e.target.value)}
@@ -341,91 +343,24 @@ export default function EmployerWorkflowPage() {
         </div>
       )}
 
-      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-7">
-        <div className="grid gap-6 xl:grid-cols-[1.15fr,0.85fr]">
-          <div>
-            <div className="flex items-center gap-2 text-sm font-medium text-status-applied dark:text-sky-300">
-              <Sparkles className="h-4 w-4" />
-              {t("pipelineAutomation")}
-            </div>
-            <h2 className="mt-3 max-w-2xl text-xl sm:text-3xl font-semibold tracking-tight text-foreground">
-              {t("pipelineAutomationDesc")}
-            </h2>
-            <p className="mt-2 hidden max-w-2xl text-sm leading-6 text-muted-foreground sm:mt-3 sm:block">
-              {t("reorderStages")}
-            </p>
-
-            {/* Headline-only tiles on phones; sub-lines and the pipeline preview
-                return from sm up. */}
-            <div className="mt-3 grid gap-2 sm:mt-6 sm:grid-cols-3 sm:gap-3">
-              <div className="workspace-glass-panel rounded-xl p-2.5 sm:rounded-2xl sm:p-4">
-                <Settings2 className="h-4 w-4 sm:h-5 sm:w-5 text-status-applied dark:text-sky-300" />
-                <p className="mt-1.5 text-sm font-semibold text-foreground sm:mt-3">{activeStages.length} {t("activeStages")}</p>
-                <p className="mt-1 hidden text-xs leading-5 text-muted-foreground sm:block">{t("activeStagesDesc")}</p>
-              </div>
-              <div className="workspace-glass-panel rounded-xl p-2.5 sm:rounded-2xl sm:p-4">
-                <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-status-applied dark:text-sky-300" />
-                <p className="mt-1.5 text-sm font-semibold text-foreground sm:mt-3">{automatedStages} {t("automatedSteps")}</p>
-                <p className="mt-1 hidden text-xs leading-5 text-muted-foreground sm:block">{t("automatedStepsDesc")}</p>
-              </div>
-              <div className="workspace-glass-panel rounded-xl p-2.5 sm:rounded-2xl sm:p-4">
-                <Bell className="h-4 w-4 sm:h-5 sm:w-5 text-status-applied dark:text-sky-300" />
-                <p className="mt-1.5 text-sm font-semibold text-foreground sm:mt-3">{saveStateLabel}</p>
-                <p className="mt-1 hidden text-xs leading-5 text-muted-foreground sm:block">{t("liveConfigDesc")}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="workspace-glass-panel hidden rounded-[24px] p-5 sm:block">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("pipelinePreview")}</p>
-                <p className="mt-2 text-sm text-muted-foreground">{t("pipelinePreviewDesc")}</p>
-              </div>
-              <span className="rounded-full border border-border bg-background/80 px-3 py-1 text-xs font-semibold text-foreground">
-                {activeStages.length} {t("live")}
-              </span>
-            </div>
-            <div className="mt-5 overflow-x-auto pb-1">
-              {activeStages.length > 0 ? (
-                <div className="flex min-w-max items-center gap-1.5">
-                  {activeStages.map((stage, index) => (
-                    <div key={stage.id} className="flex items-center gap-1.5">
-                      <div className="flex items-center gap-2 rounded-full border border-border bg-background/70 px-3 py-2 text-xs font-medium text-foreground">
-                        <span className={`h-2 w-2 rounded-full ${STAGE_COLORS[stage.id] ?? "bg-gray-400"}`} />
-                        {getStageLabel(stage)}
-                      </div>
-                      {index < activeStages.length - 1 && <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-border bg-background/60 px-4 py-6 text-sm text-muted-foreground">
-                  {t("emptyPreview")}
-                </div>
-              )}
-            </div>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl border border-border bg-background/60 px-4 py-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("candidateAlerts")}</p>
-                <p className="mt-2 text-sm font-semibold text-foreground">
-                  {notifyOnStageChange ? t("alertsEnabled") : t("alertsDisabled")}
-                </p>
-              </div>
-              <div className="rounded-2xl border border-border bg-background/60 px-4 py-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("autoRejectFloor")}</p>
-                <p className="mt-2 text-sm font-semibold text-foreground">{t("matchScore", { value: autoRejectBelow })}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <DashboardPageHeader
+        icon={Settings2}
+        eyebrow={t("pipelineAutomation")}
+        title={t("pipelineAutomationDesc")}
+        description={t("reorderStages")}
+        summary={{ label: t("pipelinePreview"), value: `${activeStages.length} ${t("live")}`, note: t("pipelinePreviewDesc") }}
+        metrics={[
+          { label: t("activeStages"), value: activeStages.length, note: t("activeStagesDesc"), icon: Settings2 },
+          { label: t("automatedSteps"), value: automatedStages, note: t("automatedStepsDesc"), icon: Sparkles },
+          { label: saveStateLabel, value: notifyOnStageChange ? t("alertsEnabled") : t("alertsDisabled"), note: t("liveConfigDesc"), icon: Bell },
+        ]}
+      />
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.35fr,0.65fr]">
         {/* ─── Pipeline Stages ─── */}
         <section className="workspace-panel-surface space-y-4 rounded-[28px] p-4 sm:p-6">
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("workflowBuilder")}</p>
               <h3 className="mt-2 flex items-center gap-2 text-lg font-semibold text-foreground">
                 <Settings2 className="h-4 w-4 text-status-applied" /> {t("pipelineStages")}
@@ -439,7 +374,7 @@ export default function EmployerWorkflowPage() {
               size="sm"
               onClick={() => setAddingStage(!addingStage)}
               disabled={stages.length >= 20}
-              className="gap-1.5 rounded-xl border-border bg-background/80 hover:bg-background"
+              className="w-full gap-1.5 rounded-xl border-border bg-background/80 hover:bg-background sm:w-auto"
             >
               <Plus className="h-3.5 w-3.5" /> {t("addStage")}
             </Button>
@@ -499,7 +434,7 @@ export default function EmployerWorkflowPage() {
               {sortedStages.map((stage, i) => (
                   <div
                     key={stage.id}
-                    className={`group rounded-[22px] border p-4 transition-all ${
+                    className={`group rounded-[22px] border p-3 transition-all sm:p-4 ${
                       stage.enabled
                         ? "border-border bg-background/80 shadow-[0_20px_45px_-40px_rgba(15,23,42,0.45)] hover:border-sky-500/25"
                         : "border-border/80 bg-background/55 opacity-70"
@@ -533,22 +468,24 @@ export default function EmployerWorkflowPage() {
                             {stage.enabled ? t("enabled") : t("paused")}
                           </span>
                         </div>
-                        <div className="mt-3 flex flex-wrap items-center gap-4">
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <span>{t("autoProgress")}</span>
+                        {/* One row, nowrap — the two toggles were wrapping onto
+                            separate lines and doubling every stage card's height. */}
+                        <div className="mt-2 flex flex-nowrap items-center gap-3">
+                          <div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+                            <span className="truncate">{t("autoProgress")}</span>
                             <Switch
                               checked={stage.autoProgress}
                               onCheckedChange={() => toggleStage(stage.id, "autoProgress")}
                               disabled={!stage.enabled}
-                              className="h-6 w-11 data-[state=checked]:[&>span]:translate-x-5 rtl:data-[state=checked]:[&>span]:-translate-x-5 [&>span]:h-5 [&>span]:w-5"
+                              className="h-5 w-9 shrink-0 data-[state=checked]:[&>span]:translate-x-4 rtl:data-[state=checked]:[&>span]:-translate-x-4 [&>span]:h-4 [&>span]:w-4"
                             />
                           </div>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <span>{t("stage")}</span>
+                          <div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+                            <span className="truncate">{t("stage")}</span>
                             <Switch
                               checked={stage.enabled}
                               onCheckedChange={() => toggleStage(stage.id, "enabled")}
-                              className="h-6 w-11 data-[state=checked]:[&>span]:translate-x-5 rtl:data-[state=checked]:[&>span]:-translate-x-5 [&>span]:h-5 [&>span]:w-5"
+                              className="h-5 w-9 shrink-0 data-[state=checked]:[&>span]:translate-x-4 rtl:data-[state=checked]:[&>span]:-translate-x-4 [&>span]:h-4 [&>span]:w-4"
                             />
                           </div>
                         </div>
@@ -561,7 +498,7 @@ export default function EmployerWorkflowPage() {
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
-                    <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border/60 pt-3 text-[11px] text-muted-foreground">
+                    <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-border/60 pt-2 text-[11px] text-muted-foreground sm:mt-4 sm:pt-3">
                       <span className="rounded-full bg-background/70 px-2.5 py-1">{t("order", { order: stage.order })}</span>
                       <span className="rounded-full bg-background/70 px-2.5 py-1">
                         {stage.autoProgress ? t("movesAutomatically") : t("manualReviewRequired")}
@@ -575,7 +512,7 @@ export default function EmployerWorkflowPage() {
 
         {/* ─── Automation Settings ─── */}
         <div className="space-y-4">
-          <section className="workspace-panel-surface space-y-5 rounded-2xl p-4 sm:rounded-[28px] sm:p-6">
+          <section className="workspace-panel-surface space-y-5 rounded-[28px] p-6">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("automation")}</p>
               <h3 className="mt-2 text-lg font-semibold text-foreground">{t("recruitmentRules")}</h3>
@@ -589,7 +526,7 @@ export default function EmployerWorkflowPage() {
                   <Sparkles className="h-4 w-4 text-status-interview dark:text-violet-300" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
                     <p className="truncate text-sm font-medium text-foreground">{t("aiAutoScreening")}</p>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <Switch
@@ -616,7 +553,7 @@ export default function EmployerWorkflowPage() {
                   <Bell className="h-4 w-4 text-status-applied dark:text-sky-300" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
                     <p className="truncate text-sm font-medium text-foreground">{t("notifyCandidates")}</p>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <Switch
@@ -645,8 +582,8 @@ export default function EmployerWorkflowPage() {
                 <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-red-500/10">
                   <ShieldAlert className="h-4 w-4 text-status-rejected dark:text-red-300" />
                 </div>
-                <div className="flex-1">
-                  <div className="flex justify-between items-baseline">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <p className="text-sm font-medium text-foreground">{t("autoRejectThreshold")}</p>
                     <span className="text-lg font-bold text-status-applied dark:text-sky-300">{autoRejectBelow}%</span>
                   </div>

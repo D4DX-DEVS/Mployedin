@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { FeatureGate } from "@/components/shared/FeatureGate";
 import { useMatchingWeights, useSaveMatchingWeights, type MatchingWeights } from "@/hooks/useMatchingWeights";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import {
   useEmployerMatchingWeightTemplates,
   useCreateEmployerMatchingWeightTemplate,
@@ -137,7 +138,7 @@ export default function EmployerMatchingWeightsPage() {
         title={t("title")}
         description={t("description")}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex w-full min-w-0 flex-nowrap items-center gap-1.5 sm:w-auto sm:gap-2 [&>button]:min-w-0 [&>button]:flex-1 [&>button]:px-2 [&>button]:text-xs sm:[&>button]:flex-none sm:[&>button]:px-3 sm:[&>button]:text-sm [&_svg]:shrink-0">
             <Button
               variant="outline"
               size="sm"
@@ -248,64 +249,21 @@ export default function EmployerMatchingWeightsPage() {
         </div>
       )}
 
-      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-7">
-        <div className="grid gap-6 xl:grid-cols-[1.1fr,0.9fr]">
-          <div>
-            <div className="flex items-center gap-2 text-sm font-medium text-status-applied dark:text-sky-300">
-              <Sparkles className="h-4 w-4" />
-              {t("rankingControls")}
-            </div>
-            <h2 className="mt-3 max-w-2xl text-xl sm:text-3xl font-semibold tracking-tight text-foreground">
-              {t("rankingControlsDesc")}
-            </h2>
-            <p className="mt-2 hidden max-w-2xl text-sm leading-6 text-muted-foreground sm:mt-3 sm:block">
-              {t("totalAllocation")}
-            </p>
-
-            {/* Hero tiles keep only their headline on phones; the explanatory
-                sub-lines and the scoring preview return from sm up. */}
-            <div className="mt-3 grid gap-2 sm:mt-6 sm:grid-cols-3 sm:gap-3">
-              <div className="workspace-glass-panel rounded-xl p-2.5 sm:rounded-2xl sm:p-4">
-                <Scale className="h-4 w-4 text-status-applied dark:text-sky-300 sm:h-5 sm:w-5" />
-                <p className="mt-1.5 text-sm font-semibold text-foreground sm:mt-3">{t("totalAt")} {total}%</p>
-                <p className="mt-1 hidden text-xs leading-5 text-muted-foreground sm:block">{t("totalMustBe100")}</p>
-              </div>
-              <div className="workspace-glass-panel rounded-xl p-2.5 sm:rounded-2xl sm:p-4">
-                <Target className="h-4 w-4 text-status-applied dark:text-sky-300 sm:h-5 sm:w-5" />
-                <p className="mt-1.5 text-sm font-semibold text-foreground sm:mt-3">{t("topPriority")} {t(WEIGHT_LABEL_KEYS[topPriority])}</p>
-                <p className="mt-1 hidden text-xs leading-5 text-muted-foreground sm:block">{t("currentStrongest")} {weights[topPriority]}%.</p>
-              </div>
-              <div className="workspace-glass-panel rounded-xl p-2.5 sm:rounded-2xl sm:p-4">
-                <BarChart3 className="h-4 w-4 text-status-applied dark:text-sky-300 sm:h-5 sm:w-5" />
-                <p className="mt-1.5 text-sm font-semibold text-foreground sm:mt-3">{saveStateLabel}</p>
-                <p className="mt-1 hidden text-xs leading-5 text-muted-foreground sm:block">{t("readyToUpdateDesc")}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="workspace-glass-panel hidden rounded-[24px] p-5 sm:block">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("scoringPreview")}</p>
-            <p className="mt-2 text-sm text-muted-foreground">{t("scoringPreviewDesc")}</p>
-            <div className="mt-5 space-y-3">
-              {weightKeys.slice().sort((a, b) => weights[b] - weights[a]).slice(0, 4).map((key) => (
-                <div key={key} className="rounded-2xl border border-border bg-background/60 px-4 py-3">
-                  <div className="flex items-center justify-between gap-3 text-sm font-medium text-foreground">
-                    <span>{t(WEIGHT_LABEL_KEYS[key])}</span>
-                    <span>{weights[key]}%</span>
-                  </div>
-                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted/50">
-                    <div className="h-full rounded-full bg-primary transition-all duration-300" style={{ width: `${weights[key]}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
+      <DashboardPageHeader
+        icon={Sliders}
+        eyebrow={t("rankingControls")}
+        title={t("rankingControlsDesc")}
+        description={t("totalAllocation")}
+        metrics={[
+          { label: t("totalAt"), value: `${total}%`, note: t("totalMustBe100"), icon: Scale },
+          { label: t("topPriority"), value: t(WEIGHT_LABEL_KEYS[topPriority]), note: `${t("currentStrongest")} ${weights[topPriority]}%.`, icon: Target },
+          { label: saveStateLabel, value: `${weights[topPriority]}%`, note: t("readyToUpdateDesc"), icon: BarChart3 },
+        ]}
+      />
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.35fr,0.65fr]">
         {/* Sliders */}
-        <section className="workspace-panel-surface space-y-5 rounded-2xl p-4 sm:rounded-[28px] sm:p-6">
+        <section className="workspace-panel-surface space-y-5 rounded-[28px] p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("weightBuilder")}</p>
@@ -320,33 +278,33 @@ export default function EmployerMatchingWeightsPage() {
           </div>
 
           {weightKeys.map((key) => (
-            <div key={key} className="rounded-[22px] border border-border bg-background/60 p-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div className="max-w-2xl">
-                  <label className="text-sm font-semibold text-foreground">{t(WEIGHT_LABEL_KEYS[key])}</label>
-                  <p className="mt-1 text-xs leading-5 text-muted-foreground">{t(WEIGHT_DESC_KEYS[key])}</p>
-                </div>
-                <div className="flex items-center gap-2 self-start">
-                  <Input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={weights[key]}
-                    onChange={(e) => updateWeight(key, parseInt(e.target.value) || 0)}
-                    className="h-10 w-20 border-border bg-background/80 text-center text-sm"
-                  />
-                  <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">%</span>
-                </div>
+            <div key={key} className="rounded-[22px] border border-border bg-background/60 p-3 sm:p-4">
+              <div className="max-w-2xl">
+                <label className="text-sm font-semibold text-foreground">{t(WEIGHT_LABEL_KEYS[key])}</label>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">{t(WEIGHT_DESC_KEYS[key])}</p>
               </div>
-              <input
-                type="range"
-                min={0}
-                max={100}
-                step={5}
-                value={weights[key]}
-                onChange={(e) => updateWeight(key, parseInt(e.target.value))}
-                className="mt-4 h-1.5 w-full cursor-pointer accent-sky-600"
-              />
+              {/* Number box and slider share one row — stacked they burned a
+                  full extra line of height per weight, five times over. */}
+              <div className="mt-2 flex items-center gap-2 sm:mt-3 sm:gap-3">
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={weights[key]}
+                  onChange={(e) => updateWeight(key, parseInt(e.target.value) || 0)}
+                  className="h-9 w-16 shrink-0 border-border bg-background/80 text-center text-sm sm:h-10 sm:w-20"
+                />
+                <span className="shrink-0 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">%</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={weights[key]}
+                  onChange={(e) => updateWeight(key, parseInt(e.target.value))}
+                  className="h-1.5 min-w-0 flex-1 cursor-pointer accent-sky-600"
+                />
+              </div>
             </div>
           ))}
 

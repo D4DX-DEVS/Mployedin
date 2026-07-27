@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import {
   ArrowRight,
   HelpCircle,
@@ -14,7 +14,6 @@ import {
   Newspaper,
   Quote,
   Video,
-  Sparkles,
   LayoutDashboard,
   Search,
   Filter,
@@ -108,54 +107,23 @@ export default function CmsOverviewPage() {
 
   return (
     <div className="page-container space-y-6">
-      {/* Hero Section */}
-      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-3xl">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
-              <Sparkles className="h-3.5 w-3.5" />
-              {t("cmsWorkspaceLabel")}
-            </div>
-            <PageHeader title={t("pageTitle")} description={t("pageDescription")} />
-          </div>
-
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("platformTotal")}</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">
-                {loading ? <span className="inline-block h-6 w-10 animate-pulse rounded bg-muted" /> : totalRecords.toLocaleString()} {t("recordsText")}
-              </p>
-              <p className="text-xs text-muted-foreground">{t("contentModulesLabel", { count: allCards.length })}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Summary stats row */}
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {([
-            { label: t("totalRecordsLabel"), value: totalRecords, note: t("totalRecordsNote"), icon: LayoutDashboard, tone: "text-sky-600", chip: "bg-sky-50 dark:bg-sky-950/30" },
-            { label: t("contentModulesCount"), value: allCards.length, note: t("contentModulesNote"), icon: FileText, tone: "text-emerald-600", chip: "bg-emerald-50 dark:bg-emerald-950/30" },
-            { label: t("blogPostsLabel"), value: stats.blogs ?? 0, note: t("blogPostsNote"), icon: Newspaper, tone: "text-violet-600", chip: "bg-violet-50 dark:bg-violet-950/30" },
-            { label: t("contactMessagesLabel"), value: stats.contacts ?? 0, note: t("contactMessagesNote"), icon: Mail, tone: "text-amber-600", chip: "bg-amber-50 dark:bg-amber-950/30" },
-          ] as const).map(({ label, value, note, icon: Icon, tone, chip }) => (
-            <div key={label} className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-                  <p className="mt-3 text-4xl font-semibold tracking-tight text-foreground">
-                    {loading ? <span className="inline-block h-10 w-12 animate-pulse rounded bg-muted" /> : value}
-                  </p>
-                </div>
-                <span className={`flex h-12 w-12 items-center justify-center rounded-2xl ${chip}`}>
-                  <Icon className={`h-5 w-5 ${tone}`} />
-                </span>
-              </div>
-              <p className="mt-3 text-sm leading-5 text-muted-foreground">{note}</p>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-6 flex items-center justify-between border-t border-border/30 pt-5">
+      <DashboardPageHeader
+        eyebrow={t("cmsWorkspaceLabel")}
+        title={t("pageTitle")}
+        description={t("pageDescription")}
+        summary={{
+          label: t("platformTotal"),
+          value: <>{loading ? <span className="inline-block h-5 w-10 animate-pulse rounded bg-muted" /> : totalRecords.toLocaleString()} {t("recordsText")}</>,
+          note: t("contentModulesLabel", { count: allCards.length }),
+        }}
+        metrics={[
+          { label: t("totalRecordsLabel"), value: loading ? <span className="inline-block h-7 w-10 animate-pulse rounded bg-muted" /> : totalRecords, note: t("totalRecordsNote"), icon: LayoutDashboard, iconClassName: "text-sky-600", iconSurfaceClassName: "bg-sky-50 dark:bg-sky-950/30" },
+          { label: t("contentModulesCount"), value: loading ? <span className="inline-block h-7 w-10 animate-pulse rounded bg-muted" /> : allCards.length, note: t("contentModulesNote"), icon: FileText, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50 dark:bg-emerald-950/30" },
+          { label: t("blogPostsLabel"), value: loading ? <span className="inline-block h-7 w-10 animate-pulse rounded bg-muted" /> : stats.blogs ?? 0, note: t("blogPostsNote"), icon: Newspaper, iconClassName: "text-violet-600", iconSurfaceClassName: "bg-violet-50 dark:bg-violet-950/30" },
+          { label: t("contactMessagesLabel"), value: loading ? <span className="inline-block h-7 w-10 animate-pulse rounded bg-muted" /> : stats.contacts ?? 0, note: t("contactMessagesNote"), icon: Mail, iconClassName: "text-amber-600", iconSurfaceClassName: "bg-amber-50 dark:bg-amber-950/30" },
+        ]}
+        footer={(
+          <>
           <button
             type="button"
             onClick={() => setShowFilters((v) => !v)}
@@ -189,7 +157,9 @@ export default function CmsOverviewPage() {
               {t("clearFiltersButton")}
             </Button>
           )}
-        </div>
+          </>
+        )}
+      >
 
         {showFilters && (
           <div className="mt-4 space-y-3 rounded-[20px] border border-border/30 bg-background/40 p-4 backdrop-blur-sm dark:bg-background/20">
@@ -216,9 +186,9 @@ export default function CmsOverviewPage() {
             </div>
           </div>
         )}
-      </section>
+      </DashboardPageHeader>
 
-      <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-[28px] p-5 sm:p-6">
+      <section className="workspace-panel-surface overflow-hidden rounded-[28px] p-5 sm:p-6">
         <div className="mb-5">
           <h2 className="text-xl font-semibold tracking-tight text-foreground">{t("contentModulesHeading")}</h2>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">

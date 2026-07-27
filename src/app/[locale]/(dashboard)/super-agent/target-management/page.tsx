@@ -18,6 +18,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import {
   SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
+import { PageHero } from "@/components/shared/PageHero";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -89,6 +90,18 @@ interface EnrichedProfile {
     overallProgress: number;
   }[];
   status: string;
+}
+
+interface TeamOverview {
+  stageCounts: Record<CompletionStage, number>;
+  territories: string[];
+  currencyLabel: string;
+  attention: { behindEmployer: number; behindEmployee: number; behindFinance: number; highRisk: number };
+  topPerformers: EnrichedProfile[];
+  underPerformers: EnrichedProfile[];
+  pendingActions: number;
+  pendingApprovals: number;
+  deadlineAlerts: EnrichedProfile[];
 }
 
 interface SuperAgentTargetAnalytics {
@@ -277,6 +290,26 @@ export default function SuperAgentTargetProfilesPage() {
 
   // Team
   const [teamProfiles, setTeamProfiles] = useState<EnrichedProfile[]>([]);
+  const [teamTotal, setTeamTotal] = useState(0);
+  const [teamTotalPages, setTeamTotalPages] = useState(1);
+  const [teamTotals, setTeamTotals] = useState({
+    employer: { target: 0, achieved: 0 },
+    employee: { target: 0, achieved: 0 },
+    finance: { target: 0, achieved: 0 },
+    avgPerformance: 0,
+    riskBreakdown: { high: 0, medium: 0, low: 0 },
+  });
+  const [teamOverview, setTeamOverview] = useState<TeamOverview>({
+    stageCounts: { not_started: 0, in_progress: 0, completed: 0 },
+    territories: [],
+    currencyLabel: "AED",
+    attention: { behindEmployer: 0, behindEmployee: 0, behindFinance: 0, highRisk: 0 },
+    topPerformers: [],
+    underPerformers: [],
+    pendingActions: 0,
+    pendingApprovals: 0,
+    deadlineAlerts: [],
+  });
   const [analytics, setAnalytics] = useState<SuperAgentTargetAnalytics | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [teamSearch, setTeamSearch] = useState("");
@@ -316,16 +349,30 @@ export default function SuperAgentTargetProfilesPage() {
   const fetchTeam = useCallback(async () => {
     setTeamLoading(true);
     try {
-      const res = await fetch(`/api/super-agent/target-profiles?year=${yearFilter}&view=team`);
+      const params = new URLSearchParams({
+        year: String(yearFilter),
+        view: "team",
+        page: String(teamPage),
+        limit: String(teamPageSize),
+      });
+      if (teamSearch.trim()) params.set("search", teamSearch.trim());
+      if (teamRiskFilter !== "all") params.set("risk", teamRiskFilter);
+      if (teamCompletionFilter !== "all") params.set("completion", teamCompletionFilter);
+      if (teamTerritoryFilter !== "all") params.set("territory", teamTerritoryFilter);
+      const res = await fetch(`/api/super-agent/target-profiles?${params}`);
       if (res.ok) {
         const data = await res.json();
         setTeamProfiles(data.profiles ?? []);
+        setTeamTotal(data.total ?? 0);
+        setTeamTotalPages(data.totalPages ?? 1);
+        if (data.totals) setTeamTotals(data.totals);
+        if (data.overview) setTeamOverview(data.overview);
         // Team endpoint also returns ownProfile — update it to avoid separate call
         if (data.ownProfile) setOwnProfile(data.ownProfile);
       }
     } catch { toast.error(t("failedLoadTeamTargets")); }
     finally { setTeamLoading(false); }
-  }, [yearFilter]);
+  }, [teamCompletionFilter, teamPage, teamPageSize, teamRiskFilter, teamSearch, teamTerritoryFilter, yearFilter]);
 
   const fetchAnalytics = useCallback(async () => {
     setAnalyticsLoading(true);
@@ -343,109 +390,41 @@ export default function SuperAgentTargetProfilesPage() {
   useEffect(() => { fetchTeam(); }, [fetchTeam]);
   useEffect(() => { fetchAnalytics(); }, [fetchAnalytics]);
 
-  const filteredTeamProfiles = useMemo(() => {
-    return teamProfiles.filter((agent) => {
-      if (teamTerritoryFilter !== "all" && getTerritory(agent) !== teamTerritoryFilter) return false;
-      if (teamRiskFilter !== "all" && agent.riskScore !== teamRiskFilter) return false;
-      if (teamCompletionFilter !== "all" && getCompletionStage(agent.overallProgress) !== teamCompletionFilter) return false;
-      if (!teamSearch.trim()) return true;
-      const q = teamSearch.trim().toLowerCase();
-      return agent.assigneeName.toLowerCase().includes(q) || agent.assigneeEmail.toLowerCase().includes(q) || getTerritory(agent).toLowerCase().includes(q);
-    });
-  }, [teamCompletionFilter, teamProfiles, teamRiskFilter, teamSearch, teamTerritoryFilter]);
-
   // Reset page when filters change
   useEffect(() => { setTeamPage(1); }, [teamSearch, teamRiskFilter, teamCompletionFilter, teamTerritoryFilter]);
 
-  const totalTeamPages = Math.max(1, Math.ceil(filteredTeamProfiles.length / teamPageSize));
-  const paginatedTeamProfiles = useMemo(() => {
-    const start = (teamPage - 1) * teamPageSize;
-    return filteredTeamProfiles.slice(start, start + teamPageSize);
-  }, [filteredTeamProfiles, teamPage, teamPageSize]);
-
-  const territoryOptions = useMemo(() => {
-    const territories = [...new Set(teamProfiles.map(getTerritory))].filter(Boolean).sort();
-    return [
-      { value: "all", label: "All territories" },
-      ...territories.map((territory) => ({ value: territory, label: territory })),
-    ];
-  }, [teamProfiles]);
-
-  const currencyLabel = useMemo(() => {
-    const currencies = [...new Set(teamProfiles.map((agent) => agent.regionalCurrency ?? agent.currency ?? "AED"))];
-    return currencies.length === 1 ? currencies[0] : `${currencies.length} currencies`;
-  }, [teamProfiles]);
-
-  const filteredStageCounts = useMemo(() => {
-    return filteredTeamProfiles.reduce(
-      (counts, agent) => {
-        counts[getCompletionStage(agent.overallProgress)] += 1;
-        return counts;
-      },
-      { not_started: 0, in_progress: 0, completed: 0 } as Record<CompletionStage, number>
-    );
-  }, [filteredTeamProfiles]);
-
-  const filteredTotals = useMemo(() => {
-    return {
-      agents: filteredTeamProfiles.length,
-      employer: {
-        target: filteredTeamProfiles.reduce((sum, agent) => sum + agent.employerTarget, 0),
-        achieved: filteredTeamProfiles.reduce((sum, agent) => sum + agent.employerAchieved, 0),
-      },
-      employee: {
-        target: filteredTeamProfiles.reduce((sum, agent) => sum + agent.employeeTarget, 0),
-        achieved: filteredTeamProfiles.reduce((sum, agent) => sum + agent.employeeAchieved, 0),
-      },
-      finance: {
-        target: filteredTeamProfiles.reduce((sum, agent) => sum + agent.financeTarget, 0),
-        achieved: filteredTeamProfiles.reduce((sum, agent) => sum + agent.financeAchieved, 0),
-      },
-      avgPerformance: filteredTeamProfiles.length > 0
-        ? Math.round(filteredTeamProfiles.reduce((sum, agent) => sum + agent.overallProgress, 0) / filteredTeamProfiles.length)
-        : 0,
-      riskHigh: filteredTeamProfiles.filter((agent) => agent.riskScore === "high").length,
-    };
-  }, [filteredTeamProfiles]);
-
-  const attentionItems = useMemo(() => {
-    const highRisk = filteredTeamProfiles.filter((agent) => agent.riskScore === "high").length;
-    const behindEmployer = filteredTeamProfiles.filter((agent) => agent.employerProgress < 40).length;
-    const behindEmployee = filteredTeamProfiles.filter((agent) => agent.employeeProgress < 40).length;
-    const behindFinance = filteredTeamProfiles.filter((agent) => agent.financeProgress < 40).length;
-
-    return [
-      { label: `${behindEmployer} agents are behind on employer target`, tone: "bg-red-500" },
-      { label: `${behindEmployee} agents are behind on employee target`, tone: "bg-amber-500" },
-      { label: `${behindFinance} agents are behind on revenue target`, tone: "bg-amber-500" },
-      { label: `${highRisk} agents are marked high risk`, tone: "bg-red-500" },
-    ];
-  }, [filteredTeamProfiles]);
-
-  const topPerformers = useMemo(() => {
-    return [...filteredTeamProfiles].sort((a, b) => b.overallProgress - a.overallProgress).slice(0, 3);
-  }, [filteredTeamProfiles]);
-
-  const underPerformers = useMemo(() => {
-    return [...filteredTeamProfiles].sort((a, b) => a.overallProgress - b.overallProgress).slice(0, 3);
-  }, [filteredTeamProfiles]);
-
-  const pendingActionsCount = useMemo(() => {
-    return filteredTeamProfiles.filter((agent) => getCompletionStage(agent.overallProgress) !== "completed").length;
-  }, [filteredTeamProfiles]);
-
-  const pendingApprovalsCount = useMemo(() => {
-    return filteredTeamProfiles.filter((agent) => agent.status !== "active" && getCompletionStage(agent.overallProgress) !== "completed").length;
-  }, [filteredTeamProfiles]);
-
-  const deadlineAlerts = useMemo(() => {
-    return filteredTeamProfiles.filter((agent) => getDeadlineAlert(agent).includes("behind") || getDeadlineAlert(agent).includes("not started"));
-  }, [filteredTeamProfiles]);
+  const totalTeamPages = teamTotalPages;
+  const paginatedTeamProfiles = teamProfiles;
+  const territoryOptions = [
+    { value: "all", label: "All territories" },
+    ...teamOverview.territories.map((territory) => ({ value: territory, label: territory })),
+  ];
+  const currencyLabel = teamOverview.currencyLabel;
+  const filteredStageCounts = teamOverview.stageCounts;
+  const filteredTotals = {
+    agents: teamTotal,
+    employer: teamTotals.employer,
+    employee: teamTotals.employee,
+    finance: teamTotals.finance,
+    avgPerformance: teamTotals.avgPerformance,
+    riskHigh: teamTotals.riskBreakdown.high,
+  };
+  const attentionItems = [
+    { label: `${teamOverview.attention.behindEmployer} agents are behind on employer target`, tone: "bg-red-500" },
+    { label: `${teamOverview.attention.behindEmployee} agents are behind on employee target`, tone: "bg-amber-500" },
+    { label: `${teamOverview.attention.behindFinance} agents are behind on revenue target`, tone: "bg-amber-500" },
+    { label: `${teamOverview.attention.highRisk} agents are marked high risk`, tone: "bg-red-500" },
+  ];
+  const topPerformers = teamOverview.topPerformers;
+  const underPerformers = teamOverview.underPerformers;
+  const pendingActionsCount = teamOverview.pendingActions;
+  const pendingApprovalsCount = teamOverview.pendingApprovals;
+  const deadlineAlerts = teamOverview.deadlineAlerts;
 
   const handleExport = () => {
     const csvRows = [
       ["Agent","Email","Territory","Currency","Employer Target","Employer Achieved","Employee Target","Employee Achieved","Finance Target","Finance Achieved","Overall %","Stage","Risk","Next Action","Last Update"].join(","),
-      ...filteredTeamProfiles.map((r) =>
+      ...teamProfiles.map((r) =>
         [`"${r.assigneeName}"`, `"${r.assigneeEmail}"`, `"${getTerritory(r)}"`, r.currency ?? "AED", r.employerTarget, r.employerAchieved, r.employeeTarget, r.employeeAchieved, r.financeTarget, r.financeAchieved, r.overallProgress, getCompletionStage(r.overallProgress), r.riskScore, `"${getNextAction(r)}"`, `"${formatShortDate(r.lastActivityAt ?? r.updatedAt)}"`].join(",")
       ),
     ];
@@ -469,35 +448,17 @@ export default function SuperAgentTargetProfilesPage() {
 
   return (
     <div className="page-container space-y-4">
-      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="min-w-0">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              <Target className="h-3.5 w-3.5" />
-              {t("eyebrow")}
-            </div>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <h1 className="text-xl sm:text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("title")}</h1>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" aria-label={t("a11yTargetFlow")}>
-                      <Info className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-xs leading-5">
-                    Admin assigns yearly target. You split it to agents, then track assigned, achieved, and balance.
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">{t("superAgentDescription")}</p>
-          </div>
+      <PageHero
+        icon={Target}
+        eyebrow={t("eyebrow")}
+        title={t("title")}
+        description={t("superAgentDescription")}
+        actions={
           <Badge variant="outline" className="rounded-full px-3 py-1.5">
             <CircleDollarSign className="mr-1.5 h-3.5 w-3.5" /> {currencyLabel}
           </Badge>
-        </div>
-      </section>
+        }
+      />
 
       <div className="rounded-2xl border border-border/60 bg-card/95 p-3 shadow-sm">
         <div className="flex flex-wrap items-center gap-2">
@@ -578,7 +539,7 @@ export default function SuperAgentTargetProfilesPage() {
                 placeholder="Risk"
                 className="h-10 w-32 rounded-xl"
               />
-              <Button variant="outline" size="sm" className="h-10 gap-2 rounded-xl" onClick={handleExport} disabled={filteredTeamProfiles.length === 0}>
+              <Button variant="outline" size="sm" className="h-10 gap-2 rounded-xl" onClick={handleExport} disabled={teamProfiles.length === 0}>
                 <Download className="h-4 w-4" /> Export
               </Button>
             </>
@@ -851,7 +812,7 @@ export default function SuperAgentTargetProfilesPage() {
                       />
                     </TableCell>
                   </TableRow>
-                ) : filteredTeamProfiles.length === 0 ? (
+                ) : teamProfiles.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={10} className="py-16 text-center">
                       <TargetEmptyState
@@ -967,7 +928,7 @@ export default function SuperAgentTargetProfilesPage() {
           {/* Pagination & Insights */}
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/40 bg-card/80 px-4 py-2.5">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span>Showing {((teamPage - 1) * teamPageSize) + 1}–{Math.min(teamPage * teamPageSize, filteredTeamProfiles.length)} of {filteredTeamProfiles.length}</span>
+              <span>Showing {teamTotal === 0 ? 0 : ((teamPage - 1) * teamPageSize) + 1}–{Math.min(teamPage * teamPageSize, teamTotal)} of {teamTotal}</span>
               <Select value={String(teamPageSize)} onValueChange={(val) => { setTeamPageSize(Number(val)); setTeamPage(1); }}>
                 <SelectTrigger className="w-auto rounded-md border border-border bg-background px-2 py-1 text-xs h-auto">
                   <SelectValue />
@@ -1039,9 +1000,9 @@ export default function SuperAgentTargetProfilesPage() {
                     <PieChart>
                       <Pie
                         data={[
-                          { name: "High", value: filteredTeamProfiles.filter((a) => a.riskScore === "high").length },
-                          { name: "Medium", value: filteredTeamProfiles.filter((a) => a.riskScore === "medium").length },
-                          { name: "Low", value: filteredTeamProfiles.filter((a) => a.riskScore === "low").length },
+                          { name: "High", value: teamTotals.riskBreakdown.high },
+                          { name: "Medium", value: teamTotals.riskBreakdown.medium },
+                          { name: "Low", value: teamTotals.riskBreakdown.low },
                         ].filter((d) => d.value > 0)}
                         cx="50%"
                         cy="50%"
@@ -1064,7 +1025,7 @@ export default function SuperAgentTargetProfilesPage() {
                 <div className="space-y-2.5">
                   <div className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2">
                     <span className="text-xs text-muted-foreground">Total agents</span>
-                    <span className="text-sm font-bold">{filteredTeamProfiles.length}</span>
+                    <span className="text-sm font-bold">{teamTotal}</span>
                   </div>
                   <div className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2">
                     <span className="text-xs text-muted-foreground">Avg performance</span>
@@ -1096,7 +1057,7 @@ export default function SuperAgentTargetProfilesPage() {
               <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Agent Performance Comparison</h4>
               <div className="h-40 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={filteredTeamProfiles.map((a) => ({
+                  <BarChart data={teamProfiles.map((a) => ({
                     name: a.assigneeName.split(" ").slice(0, 2).join(" "),
                     employer: a.employerProgress,
                     employee: a.employeeProgress,

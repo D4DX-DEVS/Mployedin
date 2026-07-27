@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import dynamic from "next/dynamic";
 import { type CalendarEvent } from "@/components/shared/MployedinCalendar";
 import { CalendarSkeleton } from "@/components/ui/loading/CalendarSkeleton";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { PageHero } from "@/components/shared/PageHero";
 import { Building2 } from "lucide-react";
 
 // ssr:false — calendar renders "today" from the client clock; SSR would use the
@@ -60,12 +60,7 @@ export default function JobSeekerCalendarPage() {
 
   return (
     <div className="space-y-6">
-      <section className="workspace-hero-surface overflow-hidden rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7">
-        <PageHeader
-          title={t("title")}
-          description={t("description")}
-        />
-      </section>
+      <PageHero title={t("title")} description={t("description")} />
 
       <MployedinCalendar
         events={events}
