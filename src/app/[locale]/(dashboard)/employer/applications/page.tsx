@@ -819,7 +819,7 @@ export default function EmployerApplicationsPage() {
   }
 
   return (
-    <div className="page-container space-y-4 pb-1">
+    <div className="page-container space-y-3 sm:space-y-4 pb-1">
       <PageHeader
         title={selectedJob ? `${selectedJob.title} — ${t("title")}` : t("title")}
         actions={canUpdate ? (

@@ -144,7 +144,7 @@ export default function AdminSettingsPage() {
   }
 
   return (
-    <div className="page-container">
+    <div className="page-container space-y-3 sm:space-y-4">
       <PageHeader title={t("pageTitle")} description={t("pageDescription")} />
 
       <div className="bg-card rounded-xl shadow-sm border divide-y">
@@ -309,7 +309,7 @@ export default function AdminSettingsPage() {
             {t("emailConfigDescription")}
           </p>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1">
               <label className="text-sm text-muted-foreground">{t("smtpEmailLabel")}</label>
               <Input
@@ -343,7 +343,7 @@ export default function AdminSettingsPage() {
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-3">
             <div className="space-y-1">
               <label className="text-sm text-muted-foreground">{t("smtpHostLabel")}</label>
               <Input

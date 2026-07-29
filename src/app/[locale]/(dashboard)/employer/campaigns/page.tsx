@@ -97,7 +97,7 @@ export default function EmployerCampaignsPage() {
   const totalPages = data?.totalPages ?? 1;
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-6">
       <PageHero
         icon={Mail}
         title={t("title")}
@@ -545,7 +545,7 @@ function SequenceDetailDialog({ sequenceId, onClose }: { sequenceId: string | nu
                 )}
               </DialogHeader>
 
-              <div className="flex-1 space-y-6 overflow-y-auto px-6 py-4">
+              <div className="flex-1 space-y-3 sm:space-y-6 overflow-y-auto px-6 py-4">
                 <div className="flex flex-wrap gap-2">
                   {sequence.status !== "completed" ? (
                     <Button

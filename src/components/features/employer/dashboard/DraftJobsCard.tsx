@@ -100,7 +100,7 @@ export function DraftJobsCard({ locale, variant = "card", onCountChange }: Draft
   // ── Banner variant (jobs list page) ─────────────────────────────────────
   if (variant === "banner") {
     return (
-      <div className="workspace-glass-panel flex h-full flex-col gap-3 rounded-2xl border border-amber-200/60 p-4 dark:border-amber-500/30">
+      <div className="workspace-glass-panel flex h-full flex-col gap-3 rounded-2xl border border-amber-200/60 p-3 sm:p-4 dark:border-amber-500/30">
         {ConfirmDialogNode}
         <div className="flex items-center gap-3">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300">
@@ -136,7 +136,7 @@ export function DraftJobsCard({ locale, variant = "card", onCountChange }: Draft
 
   // ── Card variant (employer dashboard) ───────────────────────────────────
   return (
-    <section className="workspace-panel-surface flex flex-col rounded-[24px] p-5">
+    <section className="workspace-panel-surface flex flex-col rounded-[24px] p-3 sm:p-5">
       {ConfirmDialogNode}
       <div className="mb-4 flex items-center gap-3">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300">

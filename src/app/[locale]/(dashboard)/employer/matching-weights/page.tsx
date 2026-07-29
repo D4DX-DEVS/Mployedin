@@ -122,7 +122,7 @@ export default function EmployerMatchingWeightsPage() {
   const saveStateLabel = saveWeights.isPending ? "Saving changes" : saved ? "Weights saved" : "Ready to update";
 
   if (loading) return (
-    <div className="page-container space-y-4">
+    <div className="page-container space-y-3 sm:space-y-4">
       <div className="h-40 animate-pulse rounded-[28px] border border-border bg-background/70" />
       <div className="grid gap-4 lg:grid-cols-[1.35fr,0.65fr]">
         <div className="h-[28rem] animate-pulse rounded-[28px] border border-border bg-background/70" />
@@ -133,7 +133,7 @@ export default function EmployerMatchingWeightsPage() {
 
   return (
     <FeatureGate feature="matchingWeightCustomization">
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-6">
       <PageHeader
         title={t("title")}
         description={t("description")}
@@ -264,7 +264,7 @@ export default function EmployerMatchingWeightsPage() {
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.35fr,0.65fr]">
         {/* Sliders */}
-        <section className="workspace-panel-surface space-y-5 rounded-[28px] p-6">
+        <section className="workspace-panel-surface space-y-3 sm:space-y-5 rounded-[28px] p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("weightBuilder")}</p>
@@ -330,7 +330,7 @@ export default function EmployerMatchingWeightsPage() {
         </section>
 
         {/* Visualization */}
-        <div className="space-y-5">
+        <div className="space-y-3 sm:space-y-5">
           <section className="workspace-panel-surface space-y-4 rounded-[28px] p-6">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("distribution")}</p>

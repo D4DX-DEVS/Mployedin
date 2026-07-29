@@ -32,7 +32,7 @@ export function PosterTypeSelector({ selected, onSelect }: PosterTypeSelectorPro
             disabled={!isAvailable}
             onClick={() => isAvailable && onSelect(type.id as PosterType)}
             className={`
-              relative flex flex-col items-center gap-2 rounded-xl border-2 p-4 text-center transition-all
+              relative flex flex-col items-center gap-2 rounded-xl border-2 p-3 sm:p-4 text-center transition-all
               ${isSelected ? "border-primary bg-primary/5 shadow-sm" : "border-border hover:border-primary/40"}
               ${!isAvailable ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
             `}

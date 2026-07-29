@@ -9,7 +9,7 @@ import { SuperAgentInsightsPanel } from "@/components/features/super-agent/Insig
 export default function SuperAgentInsightsPage() {
   const t = useTranslations("superAgentInsights");
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-4">
       <SuperAgentPageIntro
         title={t("title")}
         description={t("description")}

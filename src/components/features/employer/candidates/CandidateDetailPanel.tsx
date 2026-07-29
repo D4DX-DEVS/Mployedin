@@ -285,7 +285,7 @@ export function CandidateDetailPanel({
       </div>
 
       {/* Scrollable body */}
-      <div className="flex-1 space-y-4 overflow-y-auto p-5">
+      <div className="flex-1 space-y-3 sm:space-y-4 overflow-y-auto p-5">
         {/* Quick facts */}
         <section className="rounded-xl border border-border bg-muted/20 p-4">
           <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("quickFacts")}</h3>
@@ -318,7 +318,7 @@ export function CandidateDetailPanel({
           {score == null ? (
             <p className="rounded-lg bg-muted/40 px-3 py-4 text-center text-xs text-muted-foreground">{t("runMatchHint")}</p>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {candidate.matchSummary ? (
                 <p className="text-sm leading-relaxed text-foreground/90">{candidate.matchSummary}</p>
               ) : null}
@@ -407,7 +407,7 @@ export function CandidateDetailPanel({
           </div>
           <div className="p-4">
             {tab === "profile" ? (
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {detail?.summary || detail?.headline ? (
                   <div>
                     <p className="mb-1 text-xs font-semibold text-muted-foreground">{t("professionalSummary")}</p>
@@ -448,7 +448,7 @@ export function CandidateDetailPanel({
 
             {tab === "experience" ? (
               experiences.length > 0 ? (
-                <ol className="space-y-4">
+                <ol className="space-y-3 sm:space-y-4">
                   {experiences.map((exp, i) => {
                     const start = formatYear(exp.startDate);
                     const end = exp.isCurrent ? t("present") : formatYear(exp.endDate);
@@ -495,7 +495,7 @@ export function CandidateDetailPanel({
 
             {tab === "activity" ? (
               applications.length > 0 || interviews.length > 0 || notes.length > 0 ? (
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   {applications.length > 0 ? (
                     <div>
                       <p className="mb-1.5 text-xs font-semibold text-muted-foreground">{t("applicationsLabel")}</p>

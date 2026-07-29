@@ -314,16 +314,16 @@ export default function AdminReportsPage() {
       />
 
       <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
-        <div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 p-3 sm:gap-3 sm:p-5 sm:grid-cols-2 xl:grid-cols-4">
           {kpis.map((kpi) => (
-            <Link key={kpi.label} href={kpi.href} className="rounded-2xl border border-border/60 bg-card p-4 transition-shadow hover:ring-2 hover:ring-primary/20 hover:shadow-md">
+            <Link key={kpi.label} href={kpi.href} className="rounded-2xl border border-border/60 bg-card p-3 sm:p-4 transition-shadow hover:ring-2 hover:ring-primary/20 hover:shadow-md">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2">
                     <span className={`h-2 w-2 rounded-full ${kpi.indicatorClassName}`} />
                     <p className="text-xs font-semibold text-muted-foreground">{kpi.label}</p>
                   </div>
-                  <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{loading ? <span className="inline-block h-7 w-16 animate-pulse rounded bg-muted" /> : kpi.value}</p>
+                  <p className="mt-2 text-xl sm:text-2xl font-semibold tracking-tight text-foreground">{loading ? <span className="inline-block h-7 w-16 animate-pulse rounded bg-muted" /> : kpi.value}</p>
                 </div>
                 <div className={`rounded-xl p-2 ${kpi.toneClassName}`}>
                   <kpi.icon className="h-4 w-4" />
@@ -352,7 +352,7 @@ export default function AdminReportsPage() {
         </section>
       ) : (
         <>
-          <div className="grid gap-6 xl:grid-cols-[minmax(320px,0.9fr)_minmax(0,1.1fr)]">
+          <div className="grid gap-3 sm:gap-6 xl:grid-cols-[minmax(320px,0.9fr)_minmax(0,1.1fr)]">
             <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label={t("a11yPlatformAlerts")}>
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -448,7 +448,7 @@ export default function AdminReportsPage() {
             </section>
           </div>
 
-          <div className="grid gap-6 xl:grid-cols-2">
+          <div className="grid gap-3 sm:gap-6 xl:grid-cols-2">
             <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label={t("a11yApplicationsByStatus")}>
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -482,7 +482,7 @@ export default function AdminReportsPage() {
                           <span className="text-sm font-semibold text-foreground">{row.label}</span>
                         </div>
                         <div className="mt-3 flex items-end justify-between gap-3">
-                          <p className="text-2xl font-semibold tracking-tight text-foreground">{row.count}</p>
+                          <p className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">{row.count}</p>
                           <p className="text-sm font-medium text-muted-foreground">{row.percent}%</p>
                         </div>
                       </div>
@@ -522,7 +522,7 @@ export default function AdminReportsPage() {
                             {index === 0 ? t("baseFunnelVolume") : t("retainedFromPrevious", { conversion, previous: funnel[index - 1]?.label.toLowerCase() })}
                           </p>
                         </div>
-                        <p className="text-2xl font-semibold tracking-tight text-foreground">{stage.count.toLocaleString()}</p>
+                        <p className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">{stage.count.toLocaleString()}</p>
                       </div>
                       <div
                         className="mt-3 h-2 overflow-hidden rounded-full bg-secondary"
@@ -544,7 +544,7 @@ export default function AdminReportsPage() {
             </section>
           </div>
 
-          <div className="grid gap-6 xl:grid-cols-3">
+          <div className="grid gap-3 sm:gap-6 xl:grid-cols-3">
             <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label={t("a11yRecentJobs")}>
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -705,7 +705,7 @@ export default function AdminReportsPage() {
                   <Clock3 className="h-4 w-4" />
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">{t("agingQueue")}</p>
                 </div>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{stats?.summary.staleOpenApplications ?? 0}</p>
+                <p className="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight text-foreground">{stats?.summary.staleOpenApplications ?? 0}</p>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">{t("agingQueueDescription")}</p>
               </div>
               <div className="workspace-subtle-surface rounded-[24px] p-4">
@@ -713,7 +713,7 @@ export default function AdminReportsPage() {
                   <TrendingUp className="h-4 w-4" />
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">{t("demandEfficiency")}</p>
                 </div>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{applicationRate.toFixed(1)}</p>
+                <p className="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight text-foreground">{applicationRate.toFixed(1)}</p>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">{t("demandEfficiencyDescription")}</p>
               </div>
               <div className="workspace-subtle-surface rounded-[24px] p-4">
@@ -721,7 +721,7 @@ export default function AdminReportsPage() {
                   <Wallet className="h-4 w-4" />
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">{t("commercialYield")}</p>
                 </div>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{Math.round(placementRate * 100)}%</p>
+                <p className="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight text-foreground">{Math.round(placementRate * 100)}%</p>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">{t("commercialYieldDescription")}</p>
               </div>
             </div>

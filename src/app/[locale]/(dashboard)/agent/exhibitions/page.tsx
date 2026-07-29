@@ -468,7 +468,7 @@ export default function AgentExhibitionsPage() {
   const approvedCount = items.filter((item) => ["approved", "budget_approved", "resources_assigned"].includes(item.status)).length;
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-6">
       {ConfirmDialogNode}
 
       <DashboardPageHeader
@@ -504,7 +504,7 @@ export default function AgentExhibitionsPage() {
         />
       </DashboardPageHeader>
 
-      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
+      <section className="workspace-panel-surface rounded-[28px] p-3.5 sm:p-4">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Your requests</p>
           <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Request history</h2>

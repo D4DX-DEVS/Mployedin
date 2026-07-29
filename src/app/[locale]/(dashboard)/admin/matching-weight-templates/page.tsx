@@ -151,7 +151,7 @@ export default function AdminMatchingWeightTemplatesPage() {
   }
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-4">
       <PageHeader
         title={tr("pageTitle")}
         description={tr("pageDescription")}
@@ -164,17 +164,17 @@ export default function AdminMatchingWeightTemplatesPage() {
 
       {/* ─── Create / Edit Form ─── */}
       {showForm && (
-        <section className="rounded-2xl border border-sky-500/30 bg-sky-500/5 p-6 space-y-5">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-foreground">
+        <section className="rounded-2xl border border-sky-500/30 bg-sky-500/5 p-4 sm:p-6 space-y-5">
+          <div className="flex items-start justify-between gap-3">
+            <h3 className="text-base sm:text-lg font-semibold text-foreground">
               {editId ? tr("editFormTitle") : tr("createFormTitle")}
             </h3>
-            <button onClick={closeForm} className="text-muted-foreground hover:text-foreground">
+            <button onClick={closeForm} className="shrink-0 text-muted-foreground hover:text-foreground">
               <X className="h-5 w-5" />
             </button>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1">
               <label className="text-sm font-medium text-muted-foreground">{tr("nameLabel")}</label>
               <Input

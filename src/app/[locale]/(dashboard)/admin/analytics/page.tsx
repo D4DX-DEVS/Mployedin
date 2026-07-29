@@ -227,14 +227,14 @@ export default function AdminAnalyticsPage() {
   };
 
   return (
-    <div className="page-container space-y-4">
+    <div className="page-container space-y-3 sm:space-y-4">
       <PageHero
         title={t("analyticsTitle")}
         description={t("analyticsDescription")}
         eyebrow={t("adminWorkspace")}
       />
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+      <div className="grid gap-3 sm:gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
         <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label={t("a11yAnalyticsTemplates")}>
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("promptLibrary")}</p>

@@ -80,9 +80,9 @@ export function KpiCardsRow({ overview, comparisons, revenueTrend }: KpiCardsRow
   const sparkData = revenueTrend?.map((p) => p.mrr) ?? [];
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-2 gap-2 sm:gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {/* ── Monthly Recurring Revenue ── */}
-      <div className="rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-50/80 to-white dark:from-emerald-900/10 dark:to-card p-5 transition-all hover:shadow-md">
+      <div className="rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-50/80 to-white dark:from-emerald-900/10 dark:to-card p-3 sm:p-5 transition-all hover:shadow-md">
         <div className="flex items-center justify-between mb-1">
           <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
             {t("monthlyRecurringRevenue")}
@@ -91,7 +91,7 @@ export function KpiCardsRow({ overview, comparisons, revenueTrend }: KpiCardsRow
             <DollarSign className="h-4 w-4 text-emerald-500" />
           </div>
         </div>
-        <p className="text-3xl font-bold">{formatCurrency(overview.mrr)} <span className="text-base font-medium text-muted-foreground">AED</span></p>
+        <p className="text-2xl sm:text-3xl font-bold">{formatCurrency(overview.mrr)} <span className="text-base font-medium text-muted-foreground">AED</span></p>
         <div className="flex items-center gap-2 mt-1">
           <span className={`inline-flex items-center gap-0.5 text-xs font-semibold px-1.5 py-0.5 rounded ${comparisons.mrrChange >= 0 ? "bg-emerald-500/10 text-emerald-600" : "bg-red-500/10 text-red-500"}`}>
             {comparisons.mrrChange >= 0 ? "↑" : "↓"} {Math.abs(comparisons.mrrChange)}%
@@ -103,7 +103,7 @@ export function KpiCardsRow({ overview, comparisons, revenueTrend }: KpiCardsRow
       </div>
 
       {/* ── Active Subscriptions ── */}
-      <div className="rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-50/60 to-white dark:from-emerald-900/10 dark:to-card p-5 transition-all hover:shadow-md">
+      <div className="rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-50/60 to-white dark:from-emerald-900/10 dark:to-card p-3 sm:p-5 transition-all hover:shadow-md">
         <div className="flex items-center justify-between mb-1">
           <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
             {t("activeSubscriptions")}
@@ -112,7 +112,7 @@ export function KpiCardsRow({ overview, comparisons, revenueTrend }: KpiCardsRow
             <CheckCircle className="h-4 w-4 text-emerald-500" />
           </div>
         </div>
-        <p className="text-3xl font-bold">{formatNumber(overview.active)}</p>
+        <p className="text-2xl sm:text-3xl font-bold">{formatNumber(overview.active)}</p>
         <div className="flex items-center gap-2 mt-1">
           <span className={`inline-flex items-center gap-0.5 text-xs font-semibold px-1.5 py-0.5 rounded ${comparisons.activeChange >= 0 ? "bg-emerald-500/10 text-emerald-600" : "bg-red-500/10 text-red-500"}`}>
             {comparisons.activeChange >= 0 ? "↑" : "↓"} {Math.abs(comparisons.activeChange)}%
@@ -122,7 +122,7 @@ export function KpiCardsRow({ overview, comparisons, revenueTrend }: KpiCardsRow
       </div>
 
       {/* ── Total Subscriptions ── */}
-      <div className="rounded-2xl border border-sky-500/20 bg-gradient-to-br from-sky-50/60 to-white dark:from-sky-900/10 dark:to-card p-5 transition-all hover:shadow-md">
+      <div className="rounded-2xl border border-sky-500/20 bg-gradient-to-br from-sky-50/60 to-white dark:from-sky-900/10 dark:to-card p-3 sm:p-5 transition-all hover:shadow-md">
         <div className="flex items-center justify-between mb-1">
           <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
             {t("totalSubscriptions")}
@@ -131,7 +131,7 @@ export function KpiCardsRow({ overview, comparisons, revenueTrend }: KpiCardsRow
             <Users className="h-4 w-4 text-sky-500" />
           </div>
         </div>
-        <p className="text-3xl font-bold">{formatNumber(overview.total)}</p>
+        <p className="text-2xl sm:text-3xl font-bold">{formatNumber(overview.total)}</p>
         <div className="flex items-center gap-2 mt-1">
           <span className={`inline-flex items-center gap-0.5 text-xs font-semibold px-1.5 py-0.5 rounded ${comparisons.totalChange >= 0 ? "bg-emerald-500/10 text-emerald-600" : "bg-red-500/10 text-red-500"}`}>
             {comparisons.totalChange >= 0 ? "↑" : "↓"} {Math.abs(comparisons.totalChange)}%
@@ -143,7 +143,7 @@ export function KpiCardsRow({ overview, comparisons, revenueTrend }: KpiCardsRow
       </div>
 
       {/* ── Churn Rate ── */}
-      <div className="rounded-2xl border border-rose-500/20 bg-gradient-to-br from-rose-50/60 to-white dark:from-rose-900/10 dark:to-card p-5 transition-all hover:shadow-md">
+      <div className="rounded-2xl border border-rose-500/20 bg-gradient-to-br from-rose-50/60 to-white dark:from-rose-900/10 dark:to-card p-3 sm:p-5 transition-all hover:shadow-md">
         <div className="flex items-center justify-between mb-1">
           <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
             {t("churnRate")}
@@ -152,7 +152,7 @@ export function KpiCardsRow({ overview, comparisons, revenueTrend }: KpiCardsRow
             <TrendingDown className="h-4 w-4 text-rose-500" />
           </div>
         </div>
-        <p className="text-3xl font-bold text-rose-600 dark:text-rose-400">{overview.churnRate}%</p>
+        <p className="text-2xl sm:text-3xl font-bold text-rose-600 dark:text-rose-400">{overview.churnRate}%</p>
         <div className="flex items-center gap-2 mt-1">
           <span className={`inline-flex items-center gap-0.5 text-xs font-semibold px-1.5 py-0.5 rounded ${comparisons.churnChange <= 0 ? "bg-emerald-500/10 text-emerald-600" : "bg-red-500/10 text-red-500"}`}>
             {comparisons.churnChange <= 0 ? "↓" : "↑"} {Math.abs(comparisons.churnChange)}%

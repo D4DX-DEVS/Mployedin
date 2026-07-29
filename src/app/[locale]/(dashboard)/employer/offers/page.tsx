@@ -151,7 +151,7 @@ export default function EmployerOffersPage() {
   }
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-6">
       <DashboardPageHeader
         icon={DollarSign}
         eyebrow={t("pending")}
@@ -374,7 +374,7 @@ export default function EmployerOffersPage() {
                 <X className="w-4 h-4" />
               </Button>
             </div>
-            <div className="space-y-5 px-6 py-6">
+            <div className="space-y-3 sm:space-y-5 px-6 py-6">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("candidate")}</p>

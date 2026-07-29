@@ -54,7 +54,7 @@ export function PosterShareView({
   }, [slug]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-muted/30 to-background flex flex-col items-center justify-center p-4 md:p-8">
+    <div className="min-h-screen bg-gradient-to-b from-muted/30 to-background flex flex-col items-center justify-center p-3 sm:p-4 md:p-8">
       {/* Composed poster: AI background + the same overlay used by editor/export */}
       <div
         className="relative w-full max-w-lg aspect-square rounded-2xl overflow-hidden shadow-2xl mb-6"
@@ -83,7 +83,7 @@ export function PosterShareView({
         <p className="text-muted-foreground">{companyName}</p>
         <Link
           href={applyUrl}
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors"
+          className="inline-flex items-center gap-2 px-3 sm:px-6 py-3 rounded-full bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors"
         >
           {t("applyNow")} <ExternalLink className="w-4 h-4" />
         </Link>

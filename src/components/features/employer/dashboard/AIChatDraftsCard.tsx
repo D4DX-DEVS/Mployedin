@@ -87,7 +87,7 @@ export function AIChatDraftsCard({ locale, variant = "card" }: AIChatDraftsCardP
   // ── Banner variant ──────────────────────────────────────────────────────
   if (variant === "banner") {
     return (
-      <div className="rounded-2xl border border-sky-200 bg-sky-50/80 p-4 dark:border-sky-500/30 dark:bg-sky-500/10">
+      <div className="rounded-2xl border border-sky-200 bg-sky-50/80 p-3 sm:p-4 dark:border-sky-500/30 dark:bg-sky-500/10">
         {ConfirmDialogNode}
         <div className="flex flex-wrap items-center gap-3">
           <Bot className="h-5 w-5 flex-shrink-0 text-sky-600 dark:text-sky-400" />
@@ -119,7 +119,7 @@ export function AIChatDraftsCard({ locale, variant = "card" }: AIChatDraftsCardP
 
   // ── Card variant (employer dashboard) ───────────────────────────────────
   return (
-    <section className="workspace-panel-surface flex flex-col rounded-[24px] p-4">
+    <section className="workspace-panel-surface flex flex-col rounded-[24px] p-3 sm:p-4">
       {ConfirmDialogNode}
       <div className="mb-3 flex items-center gap-2.5">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-500/15 dark:text-sky-300">

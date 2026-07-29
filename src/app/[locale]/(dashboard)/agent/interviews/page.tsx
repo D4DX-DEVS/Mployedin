@@ -252,7 +252,7 @@ export default function AgentInterviewsPage() {
   const totalAll = Object.values(statusCounts).reduce((a, b) => a + b, 0);
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-6">
       <DashboardPageHeader
         icon={CalendarCheck2}
         eyebrow={t("badgeAgentWorkspace")}
@@ -268,7 +268,7 @@ export default function AgentInterviewsPage() {
       />
 
       {/* ── Filter Section ─────────────────────────────────────────── */}
-      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
+      <section className="workspace-panel-surface rounded-[28px] p-3.5 sm:p-4">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sectionFilterLabel")}</p>
@@ -425,7 +425,7 @@ export default function AgentInterviewsPage() {
       </section>
 
       {/* ── Results Table ──────────────────────────────────────────── */}
-      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
+      <section className="workspace-panel-surface rounded-[28px] p-3.5 sm:p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sectionResultsLabel")}</p>

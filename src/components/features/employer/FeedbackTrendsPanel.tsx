@@ -98,7 +98,7 @@ export function FeedbackTrendsPanel() {
   const totalRecs = Object.values(data.recommendations).reduce((s, v) => s + v, 0) || 1;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="rounded-xl border border-border/50 bg-card p-4 text-center">

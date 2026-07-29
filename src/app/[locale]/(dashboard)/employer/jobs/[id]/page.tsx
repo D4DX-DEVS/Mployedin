@@ -345,7 +345,7 @@ export default function JobDetailPage() {
       </div>
 
       {/* Tabs: Overview / Workflow / Matching Weights */}
-      <Tabs defaultValue={initialTab} className="space-y-5">
+      <Tabs defaultValue={initialTab} className="space-y-3 sm:space-y-5">
         <TabsList className="w-full sm:w-auto">
           <TabsTrigger value="overview" className="gap-1.5">
             <Briefcase className="w-3.5 h-3.5" /> {t("tabOverview")}
@@ -358,7 +358,7 @@ export default function JobDetailPage() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-5">
+        <TabsContent value="overview" className="space-y-3 sm:space-y-5">
       {/* Description */}
       <div className="card-base p-5 sm:p-6">
         <h2 className="text-base font-semibold text-foreground mb-3">{t("jobDescription")}</h2>

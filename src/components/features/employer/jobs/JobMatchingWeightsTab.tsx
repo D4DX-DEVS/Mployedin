@@ -82,7 +82,7 @@ export function JobMatchingWeightsTab({ jobId }: Props) {
 
   if (loading) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4">
         <div className="h-32 animate-pulse rounded-2xl border border-border bg-muted/40" />
         <div className="h-48 animate-pulse rounded-2xl border border-border bg-muted/40" />
       </div>
@@ -90,7 +90,7 @@ export function JobMatchingWeightsTab({ jobId }: Props) {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3 sm:space-y-5">
       {/* Source indicator */}
       {source === "employer" && (
         <div className="flex items-center gap-2 rounded-2xl border border-sky-500/20 bg-sky-500/10 px-4 py-3 text-sm text-sky-700 dark:text-sky-200">
@@ -129,7 +129,7 @@ export function JobMatchingWeightsTab({ jobId }: Props) {
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.35fr,0.65fr]">
         {/* Weight sliders */}
-        <div className="card-base p-5 space-y-4">
+        <div className="card-base p-5 space-y-3 sm:space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
               <Sliders className="h-4 w-4 text-sky-600" /> {t("weightConfiguration")}
@@ -181,7 +181,7 @@ export function JobMatchingWeightsTab({ jobId }: Props) {
         </div>
 
         {/* Distribution overview */}
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           <div className="card-base p-5 space-y-3">
             <h3 className="text-sm font-semibold text-foreground">{t("weightDistribution")}</h3>
             {weightKeys.map((key) => (

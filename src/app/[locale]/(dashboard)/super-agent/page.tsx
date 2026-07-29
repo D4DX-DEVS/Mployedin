@@ -194,7 +194,7 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
     : 0;
 
   return (
-    <div className="page-container flex flex-col gap-6">
+    <div className="page-container space-y-3 sm:space-y-4">
       <DashboardPageHeader
         icon={ShieldCheck}
         eyebrow={t("hero.eyebrow")}
@@ -207,7 +207,7 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
       {pendingApprovals > 0 && (
         <Link
           href={`/${locale}/super-agent/approvals`}
-          className="group flex items-center justify-between gap-4 rounded-[24px] border border-amber-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,251,235,0.98))] p-5 shadow-[0_24px_60px_-44px_rgba(245,158,11,0.18)] transition-all hover:-translate-y-0.5 dark:border-amber-500/25 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(30,41,59,0.94))]"
+          className="group flex items-center justify-between gap-4 rounded-[24px] border border-amber-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,251,235,0.98))] px-4 py-3 sm:p-5 shadow-[0_24px_60px_-44px_rgba(245,158,11,0.18)] transition-all hover:-translate-y-0.5 dark:border-amber-500/25 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(30,41,59,0.94))]"
         >
           <div className="flex items-center gap-4">
             <div className="rounded-2xl bg-amber-500 p-3 text-white">

@@ -570,7 +570,7 @@ function CandidateInsightsDialog({
             </DialogHeader>
           </div>
 
-          <div className="space-y-5 px-6 py-6 sm:px-8">
+          <div className="space-y-3 sm:space-y-5 px-6 py-6 sm:px-8">
             <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
               <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("availability")}</p>
@@ -602,7 +602,7 @@ function CandidateInsightsDialog({
 
             <div className={hasInsights ? "grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]" : "grid gap-4"}>
               {hasInsights ? (
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   {candidate.matchSummary ? (
                     <div className="workspace-glass-panel rounded-[24px] p-5">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("aiSummary")}</p>
@@ -637,7 +637,7 @@ function CandidateInsightsDialog({
                 </div>
               ) : null}
 
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 <div className="rounded-[24px] border border-border bg-card p-5">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("keySkills")}</p>
                   <div className="mt-4 flex flex-wrap gap-2">
@@ -749,7 +749,7 @@ function AIScreeningResultsPanel({ results, jobTitle, totalReviewed, onClose }: 
   const passCount = results.filter((c) => c.recommendation === "pass").length;
 
   return (
-    <section className="workspace-panel-surface rounded-[24px] p-4 sm:p-5 space-y-4">
+    <section className="workspace-panel-surface rounded-[24px] p-4 sm:p-5 space-y-3 sm:space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
@@ -1371,7 +1371,7 @@ export default function EmployerCandidatesPage() {
   }
 
   return (
-    <div className="page-container space-y-4">
+    <div className="page-container space-y-3 sm:space-y-4">
       {viewingCv && (
         <ResumeViewerModal
           url={viewingCv.url}

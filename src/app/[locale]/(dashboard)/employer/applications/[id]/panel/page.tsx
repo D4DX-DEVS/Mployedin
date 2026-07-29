@@ -170,7 +170,7 @@ export default function HiringPanelPage() {
     return (
       <div className="page-container">
         <PageHeader title={t("title")} description={t("loading")} />
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="card-base h-24 animate-pulse" />
           ))}
@@ -188,7 +188,7 @@ export default function HiringPanelPage() {
 
       {/* ── Consensus Summary ─────────────────────────────────────── */}
       {consensus && (
-        <section className="card-base rounded-2xl border p-5 mb-6 space-y-4">
+        <section className="card-base rounded-2xl border p-5 mb-6 space-y-3 sm:space-y-4">
           <div className="flex items-center gap-2">
             <Users className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-semibold">{t("panelConsensus")}</h2>
@@ -309,7 +309,7 @@ export default function HiringPanelPage() {
 
       {/* ── Make Decision ─────────────────────────────────────────── */}
       {!submitted && (
-        <section className="card-base rounded-2xl border p-5 space-y-4">
+        <section className="card-base rounded-2xl border p-5 space-y-3 sm:space-y-4">
           <h2 className="text-base font-semibold">{t("recordDecision")}</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {(["advance", "hire", "hold", "reject"] as const).map((outcome) => {

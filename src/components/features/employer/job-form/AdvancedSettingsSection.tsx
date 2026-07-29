@@ -142,7 +142,7 @@ export function AdvancedSettingsSection() {
             transition={{ duration: 0.25, ease: "easeInOut" }}
             className="overflow-hidden"
           >
-            <div className="space-y-5 border-t border-border px-5 pb-5 pt-4">
+            <div className="space-y-3 sm:space-y-5 border-t border-border px-5 pb-5 pt-4">
 
               <div className="grid gap-4 xl:grid-cols-2">
                 <div className="space-y-1.5 rounded-xl border border-border/70 bg-muted/20 p-4">

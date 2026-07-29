@@ -194,7 +194,7 @@ export default function AdminEmployersPage() {
   };
 
   return (
-    <div className="page-container space-y-4">
+    <div className="page-container space-y-3 sm:space-y-4">
       {ConfirmDialogNode}
 
       <PageHero

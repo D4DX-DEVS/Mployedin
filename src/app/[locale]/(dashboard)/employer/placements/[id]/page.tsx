@@ -128,7 +128,7 @@ export default function PlacementDetailPage() {
   const candidate = placement.jobSeekerId?.userId;
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-6">
       {ConfirmDialogNode}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -150,7 +150,7 @@ export default function PlacementDetailPage() {
         </div>
       </div>
 
-      <div className="card-base p-5 sm:p-6 space-y-5">
+      <div className="card-base p-5 sm:p-6 space-y-3 sm:space-y-5">
         <div>
           <h1 className="text-xl font-bold tracking-tight sm:text-2xl">{candidate?.name ?? t("candidate")}</h1>
           {candidate?.email && <p className="text-sm text-muted-foreground mt-0.5">{candidate.email}</p>}

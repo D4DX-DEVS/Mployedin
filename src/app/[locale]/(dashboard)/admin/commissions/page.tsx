@@ -288,7 +288,7 @@ export default function AdminCommissionsPage() {
   });
 
   return (
-    <div className="page-container space-y-4">
+    <div className="page-container space-y-3 sm:space-y-4">
       {ConfirmDialogNode}
 
       <DashboardPageHeader
@@ -321,7 +321,7 @@ export default function AdminCommissionsPage() {
         onExportPdf={handleExportPdf}
         filterContent={(
           <div className="space-y-3">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-5">
               <div>
                 <label htmlFor="admin-commissions-status-filter" className="sr-only">{t("filterByStatus")}</label>
                 <SearchableSelect
@@ -411,12 +411,12 @@ export default function AdminCommissionsPage() {
         hasActiveFilters={hasActiveFilters}
       />
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="workspace-glass-panel rounded-2xl p-4">
+      <section className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("visibleRecordsLabel")}</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-primary">{visibleCommissions}</p>
+                <p className="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight text-primary">{visibleCommissions}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{t("visibleRecordsHint")}</p>
               </div>
               <div className="workspace-tone-sky rounded-2xl p-2.5">
@@ -428,7 +428,7 @@ export default function AdminCommissionsPage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("pendingReviewLabel")}</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-primary">{displayCurrency} {pendingAmount.toLocaleString()}</p>
+                <p className="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight text-primary">{displayCurrency} {pendingAmount.toLocaleString()}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{t("pendingReviewHint")}</p>
               </div>
               <div className="workspace-tone-sky rounded-2xl p-2.5">
@@ -440,7 +440,7 @@ export default function AdminCommissionsPage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("approvedLabel")}</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-primary">{displayCurrency} {approvedAmount.toLocaleString()}</p>
+                <p className="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight text-primary">{displayCurrency} {approvedAmount.toLocaleString()}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{t("approvedHint")}</p>
               </div>
               <div className="workspace-tone-sky rounded-2xl p-2.5">
@@ -452,7 +452,7 @@ export default function AdminCommissionsPage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("paidOutLabel")}</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-primary">{displayCurrency} {paidAmount.toLocaleString()}</p>
+                <p className="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight text-primary">{displayCurrency} {paidAmount.toLocaleString()}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{t("paidOutHint")}</p>
               </div>
               <div className="workspace-tone-sky rounded-2xl p-2.5">

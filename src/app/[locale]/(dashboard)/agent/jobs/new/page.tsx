@@ -120,7 +120,7 @@ export default function AgentJobPosterPage() {
   );
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-6">
       <PageHero
         icon={Briefcase}
         eyebrow={common("workspace")}

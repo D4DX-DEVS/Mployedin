@@ -237,7 +237,7 @@ export default function AgentEmployersPage() {
   });
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-6">
       {ConfirmDialogNode}
       <DashboardPageHeader
         icon={Building2}
@@ -392,7 +392,7 @@ export default function AgentEmployersPage() {
         </section>
       )}
 
-      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
+      <section className="workspace-panel-surface rounded-[28px] p-3.5 sm:p-4">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("browseEmployersLabel")}</p>

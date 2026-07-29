@@ -139,11 +139,11 @@ export default function JobSeekerCoursesPage() {
 
       {!loading && (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {courses.map((course) => (
           <div
             key={course.id}
-            className="bg-card rounded-xl border shadow-sm p-5 flex flex-col gap-3 hover:shadow-md transition-shadow"
+            className="bg-card rounded-xl border shadow-sm p-3 sm:p-5 flex flex-col gap-2 sm:gap-3 hover:shadow-md transition-shadow"
           >
             <div className="flex items-start justify-between gap-2">
               <span
@@ -161,11 +161,11 @@ export default function JobSeekerCoursesPage() {
             </div>
 
             <div>
-              <h3 className="font-semibold text-foreground leading-snug">{t(`courses.${course.titleKey}`)}</h3>
-              <p className="text-sm text-muted-foreground mt-1">{course.provider}</p>
+              <h3 className="text-sm font-semibold text-foreground leading-snug sm:text-base">{t(`courses.${course.titleKey}`)}</h3>
+              <p className="text-xs text-muted-foreground mt-1 sm:text-sm">{course.provider}</p>
             </div>
 
-            <div className="flex gap-4 text-xs text-muted-foreground/60">
+            <div className="flex flex-col gap-2 sm:flex-row sm:gap-4 text-xs text-muted-foreground/60">
               <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {t(`duration.${course.durationKey}`)}</span>
               <span className="inline-flex items-center gap-1"><BarChart3 className="h-3.5 w-3.5" /> {t(`level.${course.levelKey}`)}</span>
             </div>
@@ -182,9 +182,9 @@ export default function JobSeekerCoursesPage() {
             ))}
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-5">
-            <h3 className="font-semibold text-blue-800">{t("recommendationsTitle")}</h3>
-            <p className="text-sm text-blue-600 mt-1">
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 sm:p-5">
+            <h3 className="text-base font-semibold text-blue-800 sm:text-lg">{t("recommendationsTitle")}</h3>
+            <p className="text-xs text-blue-600 mt-1 sm:text-sm">
               {t("recommendationsDescription")}
             </p>
           </div>

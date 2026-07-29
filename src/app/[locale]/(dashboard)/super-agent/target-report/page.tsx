@@ -236,7 +236,7 @@ export default function SuperAgentTargetReportPage() {
 
   if (loading) {
     return (
-      <div className="page-container space-y-6">
+      <div className="page-container space-y-3 sm:space-y-4">
         <div className="h-20 w-full animate-pulse rounded-[20px] bg-muted/40" />
         <div className="grid gap-4 sm:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -252,7 +252,7 @@ export default function SuperAgentTargetReportPage() {
   const currency = data.ownProfile?.currency ?? "AED";
 
   return (
-    <div className="page-container space-y-6 print:space-y-4">
+    <div className="page-container space-y-3 sm:space-y-4 print:space-y-4">
       {/* ═══════ HERO ═══════ */}
       <SuperAgentPageIntro
         title="Target Report"
@@ -335,7 +335,7 @@ export default function SuperAgentTargetReportPage() {
       />
 
       {/* ═══════ Monthly Trend ═══════ */}
-      <section className="rounded-3xl border bg-card p-5 shadow-sm print:break-inside-avoid">
+      <section className="rounded-3xl border bg-card p-3 sm:p-4 lg:p-5 shadow-sm print:break-inside-avoid">
         <div className="mb-5 flex items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold tracking-tight">Monthly Performance Timeline</h2>
@@ -380,7 +380,7 @@ export default function SuperAgentTargetReportPage() {
       </section>
 
       {/* ═══════ Business Volume ═══════ */}
-      <section className="rounded-3xl border bg-card p-5 shadow-sm print:break-inside-avoid">
+      <section className="rounded-3xl border bg-card p-3 sm:p-4 lg:p-5 shadow-sm print:break-inside-avoid">
         <div className="mb-5 flex items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold tracking-tight">Business Volume — {yearFilter}</h2>
@@ -419,7 +419,7 @@ export default function SuperAgentTargetReportPage() {
 
       {/* ═══════ Year-over-Year ═══════ */}
       {data.yearOverYear && (
-        <section className="rounded-3xl border bg-card p-5 shadow-sm print:break-inside-avoid">
+        <section className="rounded-3xl border bg-card p-3 sm:p-4 lg:p-5 shadow-sm print:break-inside-avoid">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold tracking-tight">Year-over-Year Comparison</h2>
@@ -450,7 +450,7 @@ export default function SuperAgentTargetReportPage() {
 
       {/* ═══════ Team Breakdown Table ═══════ */}
       {filteredTeam.length > 0 && (
-        <section className="rounded-3xl border bg-card p-5 shadow-sm print:break-inside-avoid">
+        <section className="rounded-3xl border bg-card p-3 sm:p-4 lg:p-5 shadow-sm print:break-inside-avoid">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold tracking-tight">Team Performance</h2>

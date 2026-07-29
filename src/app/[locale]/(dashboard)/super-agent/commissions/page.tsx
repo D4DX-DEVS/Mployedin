@@ -157,7 +157,7 @@ export default function SuperAgentCommissionsPage() {
   ];
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-4">
       <SuperAgentPageIntro
         title={t("pageTitle")}
         description={t("pageDescription")}

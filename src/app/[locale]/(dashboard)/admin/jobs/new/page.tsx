@@ -11,7 +11,7 @@ export default async function AdminNewJobPage({ params }: PageProps) {
   const t = await getTranslations("adminJobsNew");
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-6">
       <PageHeader
         title={t("postJobAdmin")}
         description={t("createJobPostingDescription")}

@@ -159,7 +159,7 @@ export function SaveToPoolDialog({
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {pools.length > 0 ? (
               <div className="space-y-1.5">
                 <Label>{t("selectPool")}</Label>

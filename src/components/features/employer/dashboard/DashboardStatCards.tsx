@@ -89,7 +89,7 @@ export function DashboardStatCards({
         <Link
           key={labelKey}
           href={href}
-          className={`group relative min-w-0 p-3.5 transition-colors hover:bg-primary/[0.035] focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-500 sm:p-4 ${
+          className={`group relative min-w-0 p-3.5 transition-colors hover:bg-primary/[0.035] focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-500 sm:p-3 sm:p-4 ${
             index > 0 ? "border-t border-border/60 sm:border-t-0 sm:odd:border-s lg:border-s" : ""
           } ${index >= 2 ? "sm:border-t lg:border-t-0" : ""}`}
         >

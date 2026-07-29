@@ -708,12 +708,12 @@ export default function JobSeekerSkillsPage() {
       ) : (
         <div
           ref={resultsRef}
-          className={`space-y-6 ${animateScore ? "animate-in fade-in-0 slide-in-from-bottom-4 duration-500" : ""}`}
+          className={`space-y-3 sm:space-y-6 ${animateScore ? "animate-in fade-in-0 slide-in-from-bottom-4 duration-500" : ""}`}
         >
           {/* ── HERO SCORE BANNER ── */}
           <div className="card-base overflow-hidden p-0">
-            <div className="bg-gradient-to-br from-primary/5 via-background to-primary/[0.02] p-6 sm:p-8">
-              <div className="flex flex-col items-center gap-6 sm:flex-row sm:gap-10">
+            <div className="bg-gradient-to-br from-primary/5 via-background to-primary/[0.02] p-4 sm:p-6 md:p-8">
+              <div className="flex flex-col items-center gap-4 sm:gap-6 md:gap-10 sm:flex-row">
                 <RadialProgress
                   value={gapResult.overallScore}
                   className="shrink-0"
@@ -762,9 +762,9 @@ export default function JobSeekerSkillsPage() {
           </div>
 
           {/* ── MAIN GRID ── */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          <div className="grid grid-cols-1 gap-3 sm:gap-6 lg:grid-cols-12">
             {/* LEFT COLUMN */}
-            <div className="space-y-6 lg:col-span-7">
+            <div className="space-y-3 sm:space-y-6 lg:col-span-7">
               {/* Gap Visualization Bars */}
               {skillBars.length > 0 && (
                 <div className="card-base p-5 sm:p-6">

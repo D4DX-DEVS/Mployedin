@@ -88,7 +88,7 @@ export default function ApplicationFeedbackPage() {
   if (loading) {
     return (
       <div className="page-container">
-        <div className="max-w-lg mx-auto space-y-4">
+        <div className="max-w-lg mx-auto space-y-3 sm:space-y-4">
           <div className="h-8 w-48 rounded bg-muted animate-pulse" />
           <div className="h-48 rounded-xl bg-muted animate-pulse" />
         </div>
@@ -99,7 +99,7 @@ export default function ApplicationFeedbackPage() {
   if (!app || !canSubmit) {
     return (
       <div className="page-container">
-        <div className="max-w-lg mx-auto text-center py-16 space-y-4">
+        <div className="max-w-lg mx-auto text-center py-8 sm:py-16 space-y-3 sm:space-y-4">
           <AlertTriangle className="w-12 h-12 text-muted-foreground mx-auto" />
           <h2 className="text-lg font-semibold">{t("feedbackNotAvailable")}</h2>
           <p className="text-sm text-muted-foreground">
@@ -119,12 +119,12 @@ export default function ApplicationFeedbackPage() {
   if (submitted) {
     return (
       <div className="page-container">
-        <div className="max-w-lg mx-auto text-center py-16 space-y-4">
-          <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/40 flex items-center justify-center mx-auto">
-            <CheckCircle className="w-8 h-8 text-emerald-600" />
+        <div className="max-w-lg mx-auto text-center py-8 sm:py-16 space-y-3 sm:space-y-4">
+          <div className="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-950/40 flex items-center justify-center mx-auto sm:w-16 sm:h-16">
+            <CheckCircle className="w-7 h-7 text-emerald-600 sm:w-8 sm:h-8" />
           </div>
-          <h2 className="text-xl font-semibold">{t("thankYou")}</h2>
-          <p className="text-sm text-muted-foreground">
+          <h2 className="text-lg font-semibold sm:text-xl">{t("thankYou")}</h2>
+          <p className="text-xs text-muted-foreground sm:text-sm">
             {t("feedbackRecorded", { jobTitle, companyName })}
           </p>
           <Button variant="outline" onClick={() => router.push(`../applications`)}>
@@ -142,9 +142,9 @@ export default function ApplicationFeedbackPage() {
         description={t("applicationForPosition", { jobTitle, companyName })}
       />
 
-      <div className="max-w-lg space-y-6">
+      <div className="max-w-lg space-y-3 sm:space-y-6">
         {/* Star rating */}
-        <div className="card-base text-center space-y-4">
+        <div className="card-base text-center space-y-3 sm:space-y-4">
           <p className="text-sm font-medium text-foreground/80">
             {t("overallExperienceQuestion")}
           </p>

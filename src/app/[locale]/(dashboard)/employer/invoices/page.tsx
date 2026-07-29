@@ -370,7 +370,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
           </TabsList>
 
           {/* ──── Details Tab ──── */}
-          <TabsContent value="details" className="space-y-4">
+          <TabsContent value="details" className="space-y-3 sm:space-y-4">
             {/* Billing Details */}
             {invoice.billingDetails && (
               <div className="rounded-xl border border-border/70 p-4">
@@ -471,7 +471,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
           </TabsContent>
 
           {/* ──── Payment Tab ──── */}
-          <TabsContent value="pay" className="space-y-4">
+          <TabsContent value="pay" className="space-y-3 sm:space-y-4">
             {isPaid ? (
               <div className="flex flex-col items-center gap-3 rounded-xl border border-status-selected/20 bg-status-selected-bg/50 p-6 text-center dark:border-emerald-900/50 dark:bg-emerald-950/20">
                 <CheckCircle2 className="h-10 w-10 text-status-selected dark:text-emerald-400" />
@@ -637,7 +637,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
           </TabsContent>
 
           {/* ──── History Tab ──── */}
-          <TabsContent value="history" className="space-y-4">
+          <TabsContent value="history" className="space-y-3 sm:space-y-4">
             {invoice.payments && invoice.payments.length > 0 ? (
               <div className="space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("paymentRecords")}</p>
@@ -714,7 +714,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
           </TabsContent>
 
           {/* ──── Support Tab ──── */}
-          <TabsContent value="support" className="space-y-4">
+          <TabsContent value="support" className="space-y-3 sm:space-y-4">
             {/* Raise Billing Query */}
             <div className="rounded-xl border border-border/70 p-4">
               <div className="mb-3 flex items-center gap-2">
@@ -859,7 +859,7 @@ export default function EmployerInvoicesPage() {
   });
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-6">
       <PageHero
         title={t("title")}
         description={t("description")}

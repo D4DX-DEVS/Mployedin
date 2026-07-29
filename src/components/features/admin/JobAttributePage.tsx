@@ -143,19 +143,19 @@ export default function JobAttributePage({ category, title, titleAr, description
   };
 
   return (
-    <div className="page-container space-y-4">
+    <div className="page-container space-y-3 sm:space-y-4">
       {ConfirmDialogNode}
 
       <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
-        {/* Compact header row */}
-        <div className="flex flex-col gap-3 border-b border-border/80 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-lg font-semibold text-foreground">{displayTitle}</h1>
+        {/* Compact header row: mobile stacked, desktop row */}
+        <div className="flex flex-col gap-3 border-b border-border/80 px-4 py-3 sm:px-5 sm:py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-lg">{displayTitle}</h1>
             {displayDescription && (
-              <p className="mt-0.5 text-xs text-muted-foreground">{displayDescription}</p>
+              <p className="hidden text-xs text-muted-foreground sm:mt-0.5 sm:block">{displayDescription}</p>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -163,39 +163,42 @@ export default function JobAttributePage({ category, title, titleAr, description
                 placeholder={`${t("search")} ${displayTitle.toLowerCase()}…`}
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-                className="h-9 w-48 rounded-lg border-border bg-secondary/65 pl-8 text-sm shadow-none sm:w-56"
+                className="h-9 w-full rounded-lg border-border bg-secondary/65 pl-8 text-sm shadow-none sm:w-48"
               />
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setShowFilters((v) => !v)}
-              className={`h-9 gap-1.5 rounded-lg border-border px-3 text-sm font-medium ${showFilters ? "bg-primary/10 text-primary border-primary/30" : "bg-card text-foreground hover:bg-secondary"}`}
-            >
-              <SlidersHorizontal className="h-3.5 w-3.5" />
-              {t("filter")}
-              {hasActiveFilters && <span className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">!</span>}
-            </Button>
-            {can("job_attributes", "create") && (
+            <div className="flex gap-2">
               <Button
-                onClick={() => setShowAdd(true)}
+                type="button"
+                variant="outline"
                 size="sm"
-                className="h-9 gap-1.5 rounded-lg bg-sky-600 px-3 text-sm font-semibold text-white hover:bg-sky-700"
+                onClick={() => setShowFilters((v) => !v)}
+                className={`h-9 gap-1.5 rounded-lg border-border px-3 text-sm font-medium shrink-0 ${showFilters ? "bg-primary/10 text-primary border-primary/30" : "bg-card text-foreground hover:bg-secondary"}`}
               >
-                <Plus className="h-3.5 w-3.5" /> {t("addNew")}
+                <SlidersHorizontal className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{t("filter")}</span>
+                {hasActiveFilters && <span className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">!</span>}
               </Button>
-            )}
+              {can("job_attributes", "create") && (
+                <Button
+                  onClick={() => setShowAdd(true)}
+                  size="sm"
+                  className="h-9 gap-1.5 rounded-lg bg-sky-600 px-3 text-sm font-semibold text-white hover:bg-sky-700 shrink-0"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">{t("addNew")}</span>
+                </Button>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Collapsible filter panel */}
+        {/* Collapsible filter panel: stacked on mobile */}
         {showFilters && (
-          <div className="flex flex-wrap items-center gap-3 border-b border-border/60 bg-secondary/30 px-5 py-3">
+          <div className="grid gap-2 border-b border-border/60 bg-secondary/30 px-4 py-3 sm:px-5 sm:gap-3 sm:flex sm:flex-wrap sm:items-center">
             <label htmlFor={`${category}-status`} className="text-xs font-medium text-muted-foreground">{t("status")}</label>
             <SearchableSelect
               id={`${category}-status`}
-              className="h-8 w-[140px] rounded-lg border-border bg-card text-sm"
+              className="h-9 w-full rounded-lg border-border bg-card text-sm sm:w-[140px] sm:h-8"
               options={[
                 { value: "all", label: t("all") },
                 { value: "active", label: t("active") },
@@ -211,7 +214,7 @@ export default function JobAttributePage({ category, title, titleAr, description
                 variant="ghost"
                 size="sm"
                 onClick={() => { setSearch(""); setStatusFilter("all"); resetPage(); }}
-                className="h-8 gap-1 rounded-lg px-2 text-xs text-muted-foreground hover:text-foreground"
+                className="h-9 gap-1 rounded-lg px-2 text-xs text-muted-foreground hover:text-foreground sm:h-8"
               >
                 <RotateCcw className="h-3 w-3" /> {t("clear")}
               </Button>
@@ -219,18 +222,18 @@ export default function JobAttributePage({ category, title, titleAr, description
           </div>
         )}
 
-        {/* Table */}
-        <div className="overflow-x-auto">
-          <Table>
+        {/* Table: semantic table with responsive-card-table */}
+        <div className="overflow-x-auto" data-mobile-table="responsive">
+          <Table className="responsive-card-table">
             <TableHeader>
               <TableRow className="border-border/80 bg-secondary/72 hover:bg-secondary/72">
-                <TableHead>{t("nameEnglish")}</TableHead>
-                <TableHead>{t("nameArabic")}</TableHead>
-                <TableHead>{t("slug")}</TableHead>
-                <TableHead className="w-[80px]">{t("order")}</TableHead>
-                <TableHead>{t("status")}</TableHead>
+                <TableHead data-label={t("nameEnglish")}>{t("nameEnglish")}</TableHead>
+                <TableHead data-label={t("nameArabic")}>{t("nameArabic")}</TableHead>
+                <TableHead data-label={t("slug")}>{t("slug")}</TableHead>
+                <TableHead className="w-[80px]" data-label={t("order")}>{t("order")}</TableHead>
+                <TableHead data-label={t("status")}>{t("status")}</TableHead>
                 {(can("job_attributes", "update") || can("job_attributes", "delete")) && (
-                  <TableHead className="text-right">{t("actions")}</TableHead>
+                  <TableHead className="text-right" data-label={t("actions")}>{t("actions")}</TableHead>
                 )}
               </TableRow>
             </TableHeader>
@@ -247,7 +250,7 @@ export default function JobAttributePage({ category, title, titleAr, description
                 ))
               ) : items.length === 0 ? (
                 <TableRow className="border-border/70 hover:bg-transparent">
-                  <TableCell colSpan={6} className="px-6 py-12 text-center">
+                  <TableCell colSpan={6} className="px-4 py-8 text-center sm:px-6 sm:py-12">
                     <div className="flex flex-col items-center gap-2 text-center">
                       <Inbox className="h-6 w-6 text-muted-foreground/50" />
                       <p className="text-sm font-medium text-foreground">{t("noneFound", { title: displayTitle.toLowerCase() })}</p>
@@ -258,21 +261,21 @@ export default function JobAttributePage({ category, title, titleAr, description
               ) : (
                 items.map((item) => (
                   <TableRow key={item._id} className="border-border/70">
-                    <TableCell className="font-medium text-foreground">{item.name}</TableCell>
-                    <TableCell className="text-muted-foreground" dir="rtl">{item.nameAr || "—"}</TableCell>
-                    <TableCell className="font-mono text-xs text-muted-foreground">{item.slug}</TableCell>
-                    <TableCell className="text-muted-foreground">{item.sortOrder}</TableCell>
-                    <TableCell><StatusBadge status={item.isActive ? "active" : "inactive"} /></TableCell>
+                    <TableCell className="font-medium text-foreground min-w-0 truncate">{item.name}</TableCell>
+                    <TableCell className="text-muted-foreground min-w-0 truncate" dir="rtl">{item.nameAr || "—"}</TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground min-w-0 truncate">{item.slug}</TableCell>
+                    <TableCell className="text-muted-foreground text-center">{item.sortOrder}</TableCell>
+                    <TableCell className="text-center"><StatusBadge status={item.isActive ? "active" : "inactive"} /></TableCell>
                     {(can("job_attributes", "update") || can("job_attributes", "delete")) && (
                       <TableCell>
-                        <div className="flex justify-end gap-1.5">
+                        <div className="flex justify-end gap-1">
                           {can("job_attributes", "update") && (
-                            <Button variant="ghost" size="xs" onClick={() => setEditItem(item)} title={t("edit")} aria-label={t("editItem", { name: item.name })}>
+                            <Button variant="ghost" size="xs" onClick={() => setEditItem(item)} title={t("edit")} aria-label={t("editItem", { name: item.name })} className="h-8 w-8">
                               <Pencil className="h-3.5 w-3.5 text-primary" />
                             </Button>
                           )}
                           {can("job_attributes", "delete") && (
-                            <Button variant="ghost" size="xs" onClick={() => handleDelete(item._id)} title={t("delete")} aria-label={t("deleteItem", { name: item.name })}>
+                            <Button variant="ghost" size="xs" onClick={() => handleDelete(item._id)} title={t("delete")} aria-label={t("deleteItem", { name: item.name })} className="h-8 w-8">
                               <Trash2 className="h-3.5 w-3.5 text-destructive" />
                             </Button>
                           )}
@@ -286,7 +289,7 @@ export default function JobAttributePage({ category, title, titleAr, description
           </Table>
         </div>
 
-        <div className="border-t border-border/80 px-5 py-3">
+        <div className="border-t border-border/80 px-4 py-3 sm:px-5">
           <PaginationControls
             page={page}
             totalPages={totalPages}

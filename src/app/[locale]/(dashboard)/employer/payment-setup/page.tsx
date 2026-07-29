@@ -89,7 +89,7 @@ export default function EmployerPaymentSetupPage() {
   };
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-6">
       {/* Hero */}
       <DashboardPageHeader
         icon={CreditCard}
@@ -134,7 +134,7 @@ export default function EmployerPaymentSetupPage() {
 
       {/* API Key Configuration */}
       {selectedGateway !== "none" && (
-        <section className="workspace-panel-surface rounded-[28px] p-5 space-y-4">
+        <section className="workspace-panel-surface rounded-[28px] p-5 space-y-3 sm:space-y-4">
           <div className="flex items-center gap-2">
             <Lock className="h-4 w-4 text-muted-foreground" />
             <h2 className="text-lg font-semibold text-foreground">{t("apiKeysTitle")}</h2>

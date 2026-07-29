@@ -84,7 +84,7 @@ export function Step4SalarySettings() {
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
       transition={{ duration: 0.25 }}
-      className="space-y-5"
+      className="space-y-3 sm:space-y-5"
     >
       <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-muted/20 p-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="space-y-1">
@@ -107,7 +107,7 @@ export function Step4SalarySettings() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(17rem,0.9fr)]">
-        <div className="space-y-4 rounded-2xl border border-border bg-background p-4 shadow-sm">
+        <div className="space-y-3 sm:space-y-4 rounded-2xl border border-border bg-background p-4 shadow-sm">
           <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
             <DollarSign className="w-4 h-4 text-muted-foreground" />
             {t("salaryPackage")}
@@ -294,7 +294,7 @@ export function Step4SalarySettings() {
           )}
         </div>
 
-        <div className="space-y-4 rounded-2xl border border-border bg-background p-4 shadow-sm">
+        <div className="space-y-3 sm:space-y-4 rounded-2xl border border-border bg-background p-4 shadow-sm">
           <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
             <Users className="w-4 h-4 text-muted-foreground" />
             {t("hiringPlan")}

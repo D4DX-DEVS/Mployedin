@@ -79,7 +79,7 @@ export function SuperAgentMetricsGrid({ items }: { items: SuperAgentMetricItem[]
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {items.map((item) => (
-        <div key={item.label} className="workspace-glass-panel rounded-2xl p-4">
+        <div key={item.label} className="workspace-glass-panel rounded-2xl p-3.5 sm:p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{item.label}</p>
@@ -98,7 +98,7 @@ export function SuperAgentMetricsGrid({ items }: { items: SuperAgentMetricItem[]
 
 export function SuperAgentSection({ eyebrow, title, description, actions, children, className }: SuperAgentSectionProps) {
   return (
-    <section className={cn("workspace-panel-surface rounded-[28px] p-4 sm:p-5", className)}>
+    <section className={cn("workspace-panel-surface rounded-[28px] p-3 sm:p-4 lg:p-5", className)}>
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           {eyebrow ? <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{eyebrow}</p> : null}

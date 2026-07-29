@@ -561,7 +561,7 @@ export function SharedJobEditPage({
 
   if (loading) {
     return (
-      <div className="page-container max-w-6xl space-y-4">
+      <div className="page-container max-w-6xl space-y-3 sm:space-y-4">
         {[1, 2, 3].map((i) => (
           <div key={i} className="rounded-2xl border border-border/60 bg-card h-40 animate-pulse" />
         ))}
@@ -604,7 +604,7 @@ export function SharedJobEditPage({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-5">
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-3 sm:gap-5">
         {/* ── Left: form ──────────────────────────────────────── */}
         <div className="space-y-5">
 

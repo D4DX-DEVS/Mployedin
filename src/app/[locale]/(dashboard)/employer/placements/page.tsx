@@ -94,7 +94,7 @@ export default function EmployerPlacementsPage() {
   }, [filter, visaFilter]);
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-6">
       <DashboardPageHeader
         icon={ClipboardList}
         eyebrow={t("totalHired")}

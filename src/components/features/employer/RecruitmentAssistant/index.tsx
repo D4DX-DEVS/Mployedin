@@ -616,7 +616,7 @@ export function RecruitmentAssistant() {
               tabIndex={0}
               onKeyDown={(e) => e.key === "Enter" && setMinimized(false)}
             >
-              <div className="flex items-center gap-2.5 px-4 h-full cursor-pointer">
+              <div className="flex items-center gap-2.5 px-3 sm:px-4 h-full cursor-pointer">
                 <Bot className="h-5 w-5 text-white shrink-0" />
                 <span className="text-sm font-semibold text-white truncate">{t("title")}</span>
                 <button
@@ -634,7 +634,7 @@ export function RecruitmentAssistant() {
           {!minimized && (
             <div className={panelClass} onClick={(e) => e.stopPropagation()}>
             {/* ── Header ── */}
-            <div className="flex items-center gap-2.5 px-4 py-3 bg-gradient-to-r from-indigo-700 to-primary shrink-0">
+            <div className="flex items-center gap-2.5 px-3 sm:px-4 py-3 bg-gradient-to-r from-indigo-700 to-primary shrink-0">
               <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
                 <Bot className="h-4.5 w-4.5 text-white h-[18px] w-[18px]" />
               </div>
@@ -780,7 +780,7 @@ export function RecruitmentAssistant() {
                         )
                       ) : (
                         /* Message list */
-                        <div className="p-4 space-y-3">
+                        <div className="p-3 sm:p-4 space-y-3">
                           {messages.map((msg, i) => {
                             const msgKey = msg.id || `${i}-${msg.role}-${msg.content.substring(0, 20)}`;
                             return (
@@ -984,7 +984,7 @@ function JobPreviewCard({
 }) {
   const t = useTranslations("recruitmentAI");
   return (
-    <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 dark:border-emerald-900/40 dark:bg-emerald-950/20 p-4 space-y-3 mt-2">
+    <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 dark:border-emerald-900/40 dark:bg-emerald-950/20 p-3 sm:p-4 space-y-3 mt-2">
       <div className="flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-emerald-600 flex-shrink-0" />
         <h4 className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wide">
@@ -1073,7 +1073,7 @@ function BulkJobPreviewCard({
 }) {
   const t = useTranslations("recruitmentAI");
   return (
-    <div className="rounded-2xl border border-blue-200 bg-blue-50/50 dark:border-blue-900/40 dark:bg-blue-950/20 p-4 space-y-3 mt-2">
+    <div className="rounded-2xl border border-blue-200 bg-blue-50/50 dark:border-blue-900/40 dark:bg-blue-950/20 p-3 sm:p-4 space-y-3 mt-2">
       <div className="flex items-center gap-2">
         <LayoutList className="h-4 w-4 text-blue-600 flex-shrink-0" />
         <h4 className="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wide">
@@ -1337,7 +1337,7 @@ function InputBar({
               aria-atomic="true"
               className={cn(
                 "flex min-w-0 items-center gap-3 rounded-xl border border-red-200 bg-red-50 text-sm text-red-700",
-                isCompact ? "w-full px-3 py-2.5" : "flex-1 px-4 py-2"
+                isCompact ? "w-full px-3 py-2.5" : "flex-1 px-3 sm:px-4 py-2"
               )}
             >
               <span className="relative flex h-2.5 w-2.5 shrink-0" aria-hidden="true">
@@ -1386,7 +1386,7 @@ function InputBar({
               <Button
                 type="button"
                 onClick={onSubmitVoice}
-                className={cn("h-10 rounded-xl", isCompact ? "flex-1 px-3" : "px-4")}
+                className={cn("h-10 rounded-xl", isCompact ? "flex-1 px-3" : "px-3 sm:px-4")}
                 aria-label={t("sendVoiceInput")}
               >
                 <Send className="mr-1.5 h-4 w-4" /> {t("send")}
@@ -1398,7 +1398,7 @@ function InputBar({
             role="status"
             aria-live="polite"
             aria-atomic="true"
-            className="flex items-center justify-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700"
+            className="flex items-center justify-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-3 sm:px-4 py-3 text-sm text-amber-700"
           >
             <Loader2 className="h-4 w-4 animate-spin" />
             <span className="font-medium">{t("processingVoice")}</span>

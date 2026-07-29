@@ -168,7 +168,7 @@ export function PosterPreviewPanel({
   const shareUrl = shareSlug ? buildPosterShareUrl(shareSlug) : "";
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       {/* Large preview */}
       <div
         className="relative aspect-square rounded-lg overflow-hidden border"

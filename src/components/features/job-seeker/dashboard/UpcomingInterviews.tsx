@@ -41,7 +41,7 @@ export async function UpcomingInterviews({
 
   if (interviews.length === 0) {
     return (
-      <div className="card-base p-6 text-center">
+      <div className="card-base p-3 sm:p-6 text-center">
         <Calendar className="mx-auto h-8 w-8 text-muted-foreground/40" />
         <p className="mt-2 text-sm text-muted-foreground">
           {t("noUpcomingInterviews")}
@@ -54,8 +54,8 @@ export async function UpcomingInterviews({
   }
 
   return (
-    <div className="card-base p-6">
-      <div className="mb-4 flex items-center justify-between">
+    <div className="card-base p-3 sm:p-6">
+      <div className="mb-3 sm:mb-4 flex items-center justify-between">
         <h3 className="text-sm font-semibold">{t("upcomingInterviews")}</h3>
         <Link
           href={`/${locale}/job-seeker/interviews`}
@@ -65,7 +65,7 @@ export async function UpcomingInterviews({
         </Link>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2 sm:space-y-3">
         {interviews.map((interview) => {
           const TypeIcon = typeIcons[interview.type] ?? Calendar;
           const date = new Date(interview.scheduledAt);

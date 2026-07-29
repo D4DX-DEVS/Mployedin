@@ -433,7 +433,7 @@ export default function AIJobExtractPage() {
   const allPosted = postedCount === extractedJobs.length && extractedJobs.length > 0;
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-6">
       <PageHeader
         title={t("title")}
         description={t("description")}
@@ -515,7 +515,7 @@ export default function AIJobExtractPage() {
           </div>
 
           {/* Info & Extract Button */}
-          <div className="flex flex-col justify-between space-y-4">
+          <div className="flex flex-col justify-between space-y-3 sm:space-y-4">
             <div className="space-y-3">
               <div className="rounded-2xl border border-border/70 bg-background/85 p-4 space-y-3">
                 <h3 className="text-sm font-semibold text-foreground">{t("supports")}</h3>
@@ -564,7 +564,7 @@ export default function AIJobExtractPage() {
 
       {/* Extracted Jobs */}
       {extractedJobs.length > 0 && (
-        <section className="space-y-4">
+        <section className="space-y-3 sm:space-y-4">
           {/* Header with bulk actions */}
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>

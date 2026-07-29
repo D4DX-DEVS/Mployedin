@@ -109,7 +109,7 @@ function SectionCard({ children, className = "" }: { children: React.ReactNode; 
 
 function SectionHeader({ icon: Icon, title, description }: { icon: typeof Globe; title: string; description?: string }) {
   return (
-    <div className="px-6 py-4 border-b border-border/40">
+    <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-border/40">
       <div className="flex items-center gap-2.5">
         <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
           <Icon className="w-4 h-4 text-primary" />
@@ -499,7 +499,7 @@ function RegionTab() {
     <>
       <SectionCard>
         <SectionHeader icon={Globe} title={t("countryAndCurrency")} description={t("countryAndCurrencyDesc")} />
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-3 sm:space-y-4">
           <div className="grid gap-6 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="country" className="flex items-center gap-2 text-sm font-medium text-foreground">
@@ -600,7 +600,7 @@ function CommissionTab() {
     <>
       <SectionCard>
         <SectionHeader icon={Percent} title={t("commissionOverride")} description={t("commissionOverrideDesc")} />
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-3 sm:space-y-4">
           <div className="max-w-md space-y-3">
             <Label className="flex items-center gap-2 text-sm font-medium text-foreground">
               <Percent className="h-4 w-4 text-muted-foreground" />
@@ -877,7 +877,7 @@ function NotificationsTab() {
 
       {/* Pause all */}
       <SectionCard>
-        <div className="flex items-center justify-between gap-4 px-6 py-4">
+        <div className="flex items-center justify-between gap-4 px-4 py-3 sm:px-6 sm:py-4">
           <div>
             <p className="text-sm font-medium">{t("pauseAllNotifications")}</p>
             <p className="text-xs text-muted-foreground mt-0.5">{t("pauseAllNotificationsDesc")}</p>
@@ -978,7 +978,7 @@ function AvailabilityTab() {
 
       <SectionCard>
         <SectionHeader icon={Clock} title={t("workingHours")} description={t("workingHoursDesc")} />
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-3 sm:space-y-4">
           <div className="grid gap-6 sm:grid-cols-2 max-w-md">
             <div className="space-y-2">
               <Label className="text-sm font-medium text-foreground">{t("startTime")}</Label>
@@ -1431,7 +1431,7 @@ export default function SuperAgentSettingsPage() {
   const [activeTab, setActiveTab] = useState<TabKey>("profile");
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-4">
       <SuperAgentPageIntro
         title={t("settingsTitle")}
         description={t("settingsDescription")}

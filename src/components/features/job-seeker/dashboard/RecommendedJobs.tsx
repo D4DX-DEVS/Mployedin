@@ -45,8 +45,8 @@ type SortMode = "match" | "latest" | "salary";
 
 function JobCardSkeleton() {
   return (
-    <div className="animate-pulse rounded-lg border border-border p-4">
-      <div className="flex items-start justify-between gap-4">
+    <div className="animate-pulse rounded-lg border border-border p-3 sm:p-4">
+      <div className="flex items-start justify-between gap-3 sm:gap-4">
         <div className="flex-1 space-y-2">
           <div className="h-4 w-48 rounded bg-muted" />
           <div className="h-3 w-32 rounded bg-muted" />
@@ -168,12 +168,12 @@ export function RecommendedJobs({ locale }: { locale: string }) {
 
   if (isLoading) {
     return (
-      <div className="card-base p-6">
-        <div className="mb-4 flex items-center justify-between">
+      <div className="card-base p-3 sm:p-6">
+        <div className="mb-3 sm:mb-4 flex items-center justify-between">
           <div className="h-4 w-36 rounded bg-muted animate-pulse" />
           <div className="h-8 w-28 rounded bg-muted animate-pulse" />
         </div>
-        <div className="space-y-3">
+        <div className="space-y-2 sm:space-y-3">
           <JobCardSkeleton />
           <JobCardSkeleton />
           <JobCardSkeleton />
@@ -184,7 +184,7 @@ export function RecommendedJobs({ locale }: { locale: string }) {
 
   if (error) {
     return (
-      <div className="card-base p-6 text-center">
+      <div className="card-base p-3 sm:p-6 text-center">
         <p className="text-sm text-muted-foreground">{t("failedToLoad")}</p>
       </div>
     );
@@ -192,7 +192,7 @@ export function RecommendedJobs({ locale }: { locale: string }) {
 
   if (allJobs.length === 0) {
     return (
-      <div className="card-base p-6 text-center">
+      <div className="card-base p-3 sm:p-6 text-center">
         <Sparkles className="mx-auto h-8 w-8 text-muted-foreground/40" />
         <p className="mt-2 text-sm font-medium text-muted-foreground">{t("noMatches")}</p>
         <p className="text-xs text-muted-foreground mb-3">
@@ -208,8 +208,8 @@ export function RecommendedJobs({ locale }: { locale: string }) {
   }
 
   return (
-    <div className="card-base p-6">
-      <div className="mb-4 flex items-center justify-between">
+    <div className="card-base p-3 sm:p-6">
+      <div className="mb-3 sm:mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
           <h3 className="text-sm font-semibold">
@@ -239,7 +239,7 @@ export function RecommendedJobs({ locale }: { locale: string }) {
         </div>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2 sm:space-y-3">
         {allJobs.map((job) => {
           const isApplied = appliedIds.has(job._id);
           const isSaved = savedIds.has(job._id);
@@ -247,7 +247,7 @@ export function RecommendedJobs({ locale }: { locale: string }) {
           return (
             <div
               key={job._id}
-              className="flex items-start justify-between gap-4 rounded-lg border border-border p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md hover:bg-accent/30"
+              className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4 rounded-lg border border-border p-3 sm:p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md hover:bg-accent/30"
             >
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
@@ -290,50 +290,52 @@ export function RecommendedJobs({ locale }: { locale: string }) {
                 </div>
               </div>
 
-              <div className="flex shrink-0 flex-col items-end gap-1.5">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 w-7 p-0"
-                  onClick={() => saveMutation.mutate(job._id)}
-                  disabled={saveMutation.isPending && saveMutation.variables === job._id}
-                  title={isSaved ? "Unsave job" : "Save job"}
-                >
-                  {isSaved ? (
-                    <BookmarkCheck className="h-4 w-4 text-primary" />
-                  ) : (
-                    <Bookmark className="h-4 w-4" />
-                  )}
-                </Button>
-                <div className="flex items-center gap-1.5">
-                  {!isApplied && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 text-xs"
-                      onClick={() => applyAllowed ? setCvApplyJob(job) : toast.error(t("applicationLimitReached"))}
-                      disabled={!applyAllowed}
-                      title="Apply with a chosen or updated CV"
-                    >
-                      <FileText className="mr-1 h-3 w-3" />
-                      With CV
-                    </Button>
-                  )}
+              <div className="flex w-full shrink-0 flex-col sm:w-auto sm:items-end gap-2 sm:gap-1.5">
+                <div className="flex w-full gap-1.5 sm:w-auto sm:flex-col">
                   <Button
+                    variant="ghost"
                     size="sm"
-                    className="h-7 text-xs"
-                    onClick={() => applyAllowed ? applyMutation.mutate(job._id) : toast.error(t("applicationLimitReached"))}
-                    disabled={!applyAllowed || isApplied || (applyMutation.isPending && applyMutation.variables === job._id)}
+                    className="h-7 sm:w-7 sm:p-0 flex-1 sm:flex-none"
+                    onClick={() => saveMutation.mutate(job._id)}
+                    disabled={saveMutation.isPending && saveMutation.variables === job._id}
+                    title={isSaved ? "Unsave job" : "Save job"}
                   >
-                    {isApplied ? (
-                      <>
-                        <CheckCircle className="mr-1 h-3 w-3" />
-                        Applied
-                      </>
+                    {isSaved ? (
+                      <BookmarkCheck className="h-4 w-4 text-primary" />
                     ) : (
-                      "Apply"
+                      <Bookmark className="h-4 w-4" />
                     )}
                   </Button>
+                  <div className="flex flex-1 items-center gap-1 sm:flex-col sm:items-stretch sm:gap-1.5">
+                    {!isApplied && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs flex-1 sm:flex-none"
+                        onClick={() => applyAllowed ? setCvApplyJob(job) : toast.error(t("applicationLimitReached"))}
+                        disabled={!applyAllowed}
+                        title="Apply with a chosen or updated CV"
+                      >
+                        <FileText className="mr-1 h-3 w-3" />
+                        CV
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      className="h-7 text-xs flex-1 sm:flex-none"
+                      onClick={() => applyAllowed ? applyMutation.mutate(job._id) : toast.error(t("applicationLimitReached"))}
+                      disabled={!applyAllowed || isApplied || (applyMutation.isPending && applyMutation.variables === job._id)}
+                    >
+                      {isApplied ? (
+                        <>
+                          <CheckCircle className="mr-1 h-3 w-3" />
+                          Applied
+                        </>
+                      ) : (
+                        "Apply"
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -342,9 +344,9 @@ export function RecommendedJobs({ locale }: { locale: string }) {
       </div>
 
       {/* Infinite scroll sentinel */}
-      <div ref={sentinelRef} className="mt-4 h-1" />
+      <div ref={sentinelRef} className="mt-3 sm:mt-4 h-1" />
       {isFetchingNextPage && (
-        <div className="space-y-3 mt-3">
+        <div className="space-y-2 sm:space-y-3 mt-2 sm:mt-3">
           <JobCardSkeleton />
           <JobCardSkeleton />
         </div>

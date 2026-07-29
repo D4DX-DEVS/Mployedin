@@ -551,7 +551,7 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
             </div>
           </div>
 
-          <div className="space-y-4 px-5 py-5 sm:px-6">
+          <div className="space-y-3 sm:space-y-4 px-5 py-5 sm:px-6">
             {loadingTemplates ? (
               <div className="space-y-3 py-1">
                 {[1, 2, 3].map((item) => (

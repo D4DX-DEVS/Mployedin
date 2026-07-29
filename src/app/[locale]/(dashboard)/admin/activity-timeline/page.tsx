@@ -284,7 +284,7 @@ export default function AdminActivityTimelinePage() {
   const grouped = groupByDate(events, locale);
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-6">
       <PageHero
         icon={Activity}
         title={t("title")}
@@ -325,7 +325,7 @@ export default function AdminActivityTimelinePage() {
       {/* Timeline */}
       <section className="workspace-panel-surface rounded-[28px] p-5">
         {loading ? (
-          <div className="relative ml-4 space-y-6 border-l-2 border-muted pl-6">
+          <div className="relative ml-4 space-y-3 sm:space-y-6 border-l-2 border-muted pl-6">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="relative">
                 <Skeleton className="absolute -left-[31px] h-6 w-6 rounded-full" />
@@ -343,7 +343,7 @@ export default function AdminActivityTimelinePage() {
             <p className="mt-1 text-xs text-muted-foreground/70">{t("empty.description")}</p>
           </div>
         ) : (
-          <div className="space-y-8">
+          <div className="space-y-4 sm:space-y-8">
             {Object.entries(grouped).map(([date, dayEvents]) => (
               <div key={date}>
                 <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{date}</h3>

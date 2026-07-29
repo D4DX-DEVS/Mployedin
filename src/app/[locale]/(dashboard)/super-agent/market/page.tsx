@@ -93,7 +93,7 @@ export default function MarketIntelligencePage() {
   };
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-4">
       <SuperAgentPageIntro
         title={t("pageTitle")}
         description={t("pageDescription")}
@@ -145,7 +145,7 @@ export default function MarketIntelligencePage() {
       ) : null}
 
       {loading ? (
-        <div className="space-y-6">
+        <div className="space-y-3 sm:space-y-4">
           {Array.from({ length: 2 }).map((_, i) => (
             <div key={i} className="rounded-[28px] border border-border/70 bg-card/95 p-5 space-y-3">
               <Skeleton className="h-5 w-40" />
@@ -158,7 +158,7 @@ export default function MarketIntelligencePage() {
       ) : null}
 
       {report ? (
-        <div className="space-y-6">
+        <div className="space-y-3 sm:space-y-4">
           <SuperAgentSection eyebrow={t("summaryEyebrow")} title={t("summaryHeading")} description={t("summaryCaption")}>
             <div className="space-y-3 text-sm leading-6 text-muted-foreground">
               <div className="flex items-center gap-2 text-sm font-semibold text-foreground">

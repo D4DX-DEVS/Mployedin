@@ -314,7 +314,7 @@ export default function AdminExhibitionAnalyticsPage() {
         />
       </section>
 
-      <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1.4fr_0.8fr]">
+      <section className="grid grid-cols-1 gap-3 sm:gap-6 xl:grid-cols-[1.4fr_0.8fr]">
         <div className="workspace-panel-surface min-w-0 rounded-[28px] p-5 sm:p-6">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
@@ -368,7 +368,7 @@ export default function AdminExhibitionAnalyticsPage() {
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+      <section className="grid grid-cols-1 gap-3 sm:gap-6 xl:grid-cols-[0.95fr_1.05fr]">
         <div className="workspace-panel-surface min-w-0 rounded-[28px] p-5 sm:p-6">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>

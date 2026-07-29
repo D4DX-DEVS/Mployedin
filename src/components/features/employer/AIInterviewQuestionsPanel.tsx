@@ -208,7 +208,7 @@ export function AIInterviewQuestionsPanel({
     return (
       <div key={key} className="rounded-xl border bg-card overflow-hidden">
         <button
-          className="w-full flex items-start gap-3 p-4 text-left hover:bg-muted/30 transition-colors"
+          className="w-full flex items-start gap-3 p-3 sm:p-4 text-left hover:bg-muted/30 transition-colors"
           onClick={() => toggleExpand(key)}
         >
           <span className={`shrink-0 w-6 h-6 rounded-full text-[11px] font-bold flex items-center justify-center border ${activeTabMeta.color}`}>
@@ -222,21 +222,21 @@ export function AIInterviewQuestionsPanel({
 
         {expanded[key] && (
           <div className="border-t divide-y text-xs">
-            <div className="px-4 py-3 flex gap-2">
+            <div className="px-3 sm:px-4 py-3 flex gap-2">
               <Target className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
               <div>
                 <p className="font-semibold text-muted-foreground uppercase tracking-wide text-[10px] mb-1">{t("tests")}</p>
                 <p className="text-foreground/80">{q.tests}</p>
               </div>
             </div>
-            <div className="px-4 py-3 flex gap-2">
+            <div className="px-3 sm:px-4 py-3 flex gap-2">
               <Lightbulb className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
               <div>
                 <p className="font-semibold text-emerald-700 uppercase tracking-wide text-[10px] mb-1">{t("strongAnswer")}</p>
                 <p className="text-foreground/80">{q.strongAnswer}</p>
               </div>
             </div>
-            <div className="px-4 py-3 flex gap-2">
+            <div className="px-3 sm:px-4 py-3 flex gap-2">
               <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
               <div>
                 <p className="font-semibold text-red-600 uppercase tracking-wide text-[10px] mb-1">{t("redFlag")}</p>
@@ -258,7 +258,7 @@ export function AIInterviewQuestionsPanel({
       )}>
 
         {/* Header */}
-        <div className="flex items-start justify-between px-5 py-4 border-b shrink-0">
+        <div className="flex items-start justify-between px-3 sm:px-5 py-4 border-b shrink-0">
           <div>
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-primary" />
@@ -284,7 +284,7 @@ export function AIInterviewQuestionsPanel({
         </div>
 
         {/* Tabs + Controls */}
-        <div className="px-5 pt-4 pb-3 border-b shrink-0 space-y-3">
+        <div className="px-3 sm:px-5 pt-4 pb-3 border-b shrink-0 space-y-3">
           <div className="flex gap-1.5 flex-wrap">
             {TABS.map((tab) => {
               const tabHistory = historyByType[tab.key];
@@ -339,7 +339,7 @@ export function AIInterviewQuestionsPanel({
         </div>
 
         {/* Questions List */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+        <div className="flex-1 overflow-y-auto px-3 sm:px-5 py-4 space-y-3">
           {error && (
             <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-xs">
               <AlertTriangle className="w-4 h-4 shrink-0" />
@@ -394,7 +394,7 @@ export function AIInterviewQuestionsPanel({
 
         {/* Footer Actions */}
         {getAllDisplayQuestions().length > 0 && (
-          <div className="px-5 py-3 border-t flex gap-2 shrink-0">
+          <div className="px-3 sm:px-5 py-3 border-t flex gap-2 shrink-0">
             <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={copyAll}>
               {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
               {copied ? t("copied") : t("copyAll")}

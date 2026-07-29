@@ -232,7 +232,7 @@ export default function AdminInvoicesPage() {
   });
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-6">
       {ConfirmDialogNode}
 
       {/* Header Toolbar */}
@@ -278,7 +278,7 @@ export default function AdminInvoicesPage() {
         onExportPdf={handleExportPdf}
         filterContent={
           <div className="space-y-3">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-5">
               <SearchableSelect id="adm-inv-status" className="h-11 w-full rounded-xl border-border bg-card" options={STATUS_OPTIONS} value={statusFilter || "all"} onValueChange={v => { setStatusFilter(v === "all" ? "" : v); resetPage(); }} placeholder="All Statuses" />
               <SearchableSelect id="adm-inv-cat" className="h-11 w-full rounded-xl border-border bg-card" options={CATEGORY_OPTIONS} value={categoryFilter || "all"} onValueChange={v => { setCategoryFilter(v === "all" ? "" : v); resetPage(); }} placeholder="All Categories" />
               <SearchableSelect id="adm-inv-type" className="h-11 w-full rounded-xl border-border bg-card" options={TYPE_OPTIONS} value={typeFilter || "all"} onValueChange={v => { setTypeFilter(v === "all" ? "" : v); resetPage(); }} placeholder="All Types" />

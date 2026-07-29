@@ -494,7 +494,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                     {isExpanded && (
                       <TableRow key={`${p._id}-detail`} className="border-border/70 bg-secondary/20 hover:bg-secondary/20">
                         <TableCell colSpan={10}>
-                          <div className="grid gap-4 py-2 sm:grid-cols-3">
+                          <div className="grid grid-cols-1 gap-2 sm:gap-4 py-2 sm:grid-cols-3">
                             <div className="rounded-lg border border-border/70 bg-card p-3">
                               <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                                 {t("invoicePreview")}
@@ -609,7 +609,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
               </div>
 
               {/* Settings */}
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-2 sm:gap-3 sm:grid-cols-2">
                 <div>
                   <label className="text-xs font-medium text-foreground">{t("taxHandling")}</label>
                   <div className="mt-1 flex items-center gap-2">

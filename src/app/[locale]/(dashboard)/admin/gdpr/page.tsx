@@ -186,7 +186,7 @@ export default function AdminGdprPage() {
   ];
 
   return (
-    <div className="page-container">
+    <div className="page-container space-y-3 sm:space-y-4">
       <DashboardPageHeader
         icon={Shield}
         eyebrow={t("pageTitle")}

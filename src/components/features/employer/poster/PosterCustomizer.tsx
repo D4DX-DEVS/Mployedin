@@ -77,7 +77,7 @@ export function PosterCustomizer({
     : "";
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       {/* Job info (read-only) */}
       <div className="space-y-1">
         <p className="text-sm font-semibold text-foreground">{job?.title || t("jobTitle")}</p>

@@ -303,7 +303,7 @@ export default function EmployerInterviewsPage() {
   }
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-6">
       {ConfirmDialogNode}
       {aiTarget && (
         <AIInterviewQuestionsPanel
@@ -1109,7 +1109,7 @@ function InterviewActionModal({
           </p>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {/* Complete: Outcome selection */}
           {modal.kind === "complete" && (
             <>

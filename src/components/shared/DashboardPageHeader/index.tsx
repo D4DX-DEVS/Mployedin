@@ -76,7 +76,7 @@ export function DashboardPageHeader({
         </div>
 
         {(summary || actions) && (
-          <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center lg:shrink-0">
+          <div className="flex min-w-0 flex-row flex-wrap items-center gap-2 sm:gap-3 lg:shrink-0">
             {summary && (
               <div className="workspace-glass-panel min-w-0 border-s-2 border-primary/30 ps-3">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">

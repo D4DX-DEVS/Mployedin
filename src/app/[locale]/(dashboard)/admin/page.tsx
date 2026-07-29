@@ -691,7 +691,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
   const funnelMax = Math.max(1, ...funnelStages.map((stage) => stage.count));
 
   return (
-    <div className="page-container flex flex-col gap-4 pb-6">
+    <div className="page-container space-y-3 sm:space-y-4 pb-6">
       <DashboardPageHeader
         icon={Activity}
         eyebrow={t("hero.eyebrow")}

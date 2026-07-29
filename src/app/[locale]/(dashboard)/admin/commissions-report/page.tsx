@@ -202,7 +202,7 @@ export default function AdminCommissionsReportPage() {
   const s = data?.summary;
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-6">
       <DashboardPageHeader
         eyebrow={t("adminWorkspace")}
         title={t("commissionReportTitle")}

@@ -71,14 +71,14 @@ export default function JobSeekerReferralPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-3 sm:space-y-6">
         <DashboardPageHeader icon={Gift} eyebrow={t("title")} title={t("title")} description={t("description")} />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 sm:space-y-6">
       <DashboardPageHeader
         icon={Gift}
         eyebrow={t("title")}

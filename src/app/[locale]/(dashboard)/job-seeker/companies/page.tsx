@@ -88,10 +88,10 @@ export default function CompaniesListPage() {
   useEffect(() => { fetchCompanies(); }, [fetchCompanies]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 sm:space-y-6">
       <PageHero icon={Building2} title={t("title")} description={t("description")} />
 
-      <section className="workspace-panel-surface rounded-[28px] p-5 space-y-3">
+      <section className="workspace-panel-surface rounded-[28px] p-3 sm:p-5 space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -122,7 +122,7 @@ export default function CompaniesListPage() {
         )}
       </section>
 
-      <section className="workspace-panel-surface rounded-[28px] p-5">
+      <section className="workspace-panel-surface rounded-[28px] p-3 sm:p-5">
         {loading ? (
           <ListSkeleton count={6} layout="grid" itemClassName="h-40" />
         ) : loadError ? (
@@ -141,15 +141,15 @@ export default function CompaniesListPage() {
             title={t("empty")}
           />
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {companies.map((c) => (
               <Link
                 key={c._id}
                 href={`/${locale}/job-seeker/companies/${c._id}`}
-                className="workspace-glass-panel rounded-2xl p-5 transition-all hover:ring-2 hover:ring-primary/30"
+                className="workspace-glass-panel rounded-2xl p-3 sm:p-5 transition-all hover:ring-2 hover:ring-primary/30"
               >
-                <div className="flex items-start gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted text-lg font-bold text-muted-foreground">
+                <div className="flex items-start gap-2 sm:gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-base font-bold text-muted-foreground sm:h-12 sm:w-12 sm:text-lg">
                     {c.logo ? (
                       <img src={c.logo} alt={c.companyName} className="h-full w-full rounded-xl object-cover" />
                     ) : (
@@ -170,10 +170,10 @@ export default function CompaniesListPage() {
                 </div>
 
                 {c.description && (
-                  <p className="mt-3 text-xs text-muted-foreground line-clamp-2">{c.description}</p>
+                  <p className="mt-2 sm:mt-3 text-xs text-muted-foreground line-clamp-2">{c.description}</p>
                 )}
 
-                <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                <div className="mt-2 sm:mt-3 flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-muted-foreground">
                   {(c.city || c.country) && (
                     <span className="inline-flex items-center gap-1">
                       <MapPin className="h-3 w-3" />

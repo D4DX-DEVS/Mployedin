@@ -256,7 +256,7 @@ function CreateAssessmentModal({ onClose, onCreated }: { onClose: () => void; on
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-background border border-border rounded-xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
         <h2 className="text-xl font-bold text-foreground mb-4">{t("createTitle")}</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
           <div>
             <label className="text-sm font-medium text-foreground">{t("titleLabel")}</label>
             <input type="text" value={title} onChange={e => setTitle(e.target.value)} className="w-full mt-1 px-3 py-2 border border-border rounded-lg bg-background" placeholder={t("titlePlaceholder")} required />

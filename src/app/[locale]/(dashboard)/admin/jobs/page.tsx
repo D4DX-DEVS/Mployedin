@@ -152,6 +152,7 @@ export default function AdminJobsPage() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [showFilters, setShowFilters] = useState(false);
+  const [expandedJobs, setExpandedJobs] = useState<Set<string>>(new Set());
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const [employers, setEmployers] = useState<FilterOption[]>([]);
@@ -334,7 +335,7 @@ export default function AdminJobsPage() {
   }
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-6">
 
       {/* ─── Compact page header ──────────────────────────────────────── */}
       <DashboardPageHeader
@@ -401,7 +402,7 @@ export default function AdminJobsPage() {
               />
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
               <SearchableSelect
                 id="admin-jobs-status-filter"
                 className="h-11 w-full rounded-xl border-border bg-card"
@@ -453,7 +454,7 @@ export default function AdminJobsPage() {
             </div>
 
             {showAdvanced && (
-              <div className="grid gap-3 pt-1 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="grid grid-cols-2 gap-2 pt-1 sm:gap-3 xl:grid-cols-4">
                 <SearchableSelect
                   id="admin-jobs-type-filter"
                   className="h-11 w-full rounded-xl border-border bg-card"
@@ -536,6 +537,7 @@ export default function AdminJobsPage() {
             const posted = new Date(job.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
             const salaryLabel = formatSalary(job, t);
             const jobSummary = getJobSummary(job);
+            const isExpanded = expandedJobs.has(job._id);
 
             return (
               <article
@@ -572,7 +574,7 @@ export default function AdminJobsPage() {
                     </div>
 
                     {(job.requirements?.skills?.length ?? 0) > 0 && (
-                      <div className="mt-1.5 flex flex-wrap gap-1">
+                      <div className={`mt-1.5 flex flex-wrap gap-1 ${isExpanded ? "" : "max-sm:hidden"}`}>
                         {job.requirements!.skills!.slice(0, 4).map((s) => (
                           <Badge key={s} variant="outline" className="rounded-full border-border bg-secondary/65 px-2 py-0.5 text-[11px] font-normal text-muted-foreground dark:border-border dark:bg-background/80 dark:text-slate-300">{s}</Badge>
                         ))}
@@ -580,17 +582,29 @@ export default function AdminJobsPage() {
                     )}
 
                     {jobSummary && (
-                      <p className="mt-1.5 line-clamp-1 max-w-4xl text-xs leading-5 text-muted-foreground">{jobSummary}</p>
+                      <p className={`mt-1.5 line-clamp-1 max-w-4xl text-xs leading-5 text-muted-foreground ${isExpanded ? "" : "max-sm:hidden"}`}>{jobSummary}</p>
                     )}
 
                     <CountCardGrid
-                      className="mt-2"
+                      className={`mt-2 ${isExpanded ? "" : "max-sm:hidden"}`}
                       items={[
                         { label: t("source"), value: getSourceLabel(job, t) },
                         { label: t("applicantsCountLabel"), value: job.applicantsCount ?? 0 },
                         { label: t("capacityLabel"), value: job.vacancies ?? "Open" },
                       ]}
                     />
+                    <button
+                      type="button"
+                      aria-expanded={isExpanded}
+                      onClick={() => setExpandedJobs((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(job._id)) next.delete(job._id); else next.add(job._id);
+                        return next;
+                      })}
+                      className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg border border-border/60 bg-background/60 py-1 text-[11px] font-medium text-muted-foreground sm:hidden"
+                    >
+                      {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                    </button>
                   </div>
 
                   {/* Right: Action panel */}
@@ -627,7 +641,7 @@ export default function AdminJobsPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="h-8 gap-1.5 rounded-lg px-2.5 text-xs font-semibold"
+                        className={`h-8 gap-1.5 rounded-lg px-2.5 text-xs font-semibold ${isExpanded ? "" : "max-sm:hidden"}`}
                         onClick={() => router.push(`/${locale}/admin/jobs/${job._id}/edit`)}
                       >
                         <Edit2 className="h-3.5 w-3.5" /> {t("edit")}
@@ -635,7 +649,7 @@ export default function AdminJobsPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="h-8 gap-1.5 rounded-lg px-2.5 text-xs font-semibold"
+                        className={`h-8 gap-1.5 rounded-lg px-2.5 text-xs font-semibold ${isExpanded ? "" : "max-sm:hidden"}`}
                         onClick={() => router.push(`/${locale}/admin/applications?jobId=${job._id}`)}
                       >
                         <ClipboardList className="h-3.5 w-3.5" /> {t("applications")}
@@ -643,7 +657,7 @@ export default function AdminJobsPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="col-span-2 h-8 gap-1.5 rounded-lg border-destructive/20 px-2.5 text-xs font-semibold text-destructive hover:bg-destructive/5"
+                        className={`col-span-2 h-8 gap-1.5 rounded-lg border-destructive/20 px-2.5 text-xs font-semibold text-destructive hover:bg-destructive/5 ${isExpanded ? "" : "max-sm:hidden"}`}
                         onClick={() => handleDeleteJob(job._id)}
                       >
                         <Trash2 className="h-3.5 w-3.5" /> {t("delete")}
@@ -691,7 +705,7 @@ export default function AdminJobsPage() {
               </div>
 
               <div className="flex-1 overflow-y-auto overscroll-contain scroll-smooth px-6 py-5">
-                <div className="space-y-6">
+                <div className="space-y-3 sm:space-y-6">
                   <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
                     <Fact icon={MapPin} label={t("location")} value={formatLocation(selectedJob.location)} />
                     <Fact icon={DollarSign} label={t("salary")} value={formatSalary(selectedJob, t) || "—"} />

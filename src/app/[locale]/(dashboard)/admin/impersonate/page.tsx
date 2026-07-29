@@ -87,7 +87,7 @@ export default function AdminUserImpersonatePage() {
   };
 
   return (
-    <div className="page-container space-y-4">
+    <div className="page-container space-y-3 sm:space-y-4">
       {impersonateResult?.success && impersonateResult.target && (
         <div className="flex items-center justify-between rounded-xl border border-amber-300 bg-amber-50 px-4 py-3">
           <div>

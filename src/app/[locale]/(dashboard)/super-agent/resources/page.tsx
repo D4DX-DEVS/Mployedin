@@ -79,7 +79,7 @@ export default function ResourceDownloadsPage() {
   };
 
   return (
-    <div className="page-container space-y-6 pb-6">
+    <div className="page-container space-y-3 sm:space-y-4 pb-6">
       <DashboardPageHeader
         icon={FolderOpen}
         eyebrow={t("heroLabel")}
@@ -121,7 +121,7 @@ export default function ResourceDownloadsPage() {
             const CatIcon = item.files?.[0]?.contentType?.startsWith("video/") ? Video : item.files?.[0]?.contentType?.startsWith("image/") ? Image : FileText;
             return (
               <article key={item._id} className="workspace-glass-panel rounded-2xl overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_24px_50px_-38px_rgba(2,132,199,0.38)]">
-                <div className="p-5 space-y-4">
+                <div className="p-3 sm:p-5 space-y-4">
                   <div className="flex items-start gap-3">
                     <div className="rounded-2xl p-2 ring-1 ring-inset ring-border/60 bg-background/80 shrink-0">
                       <CatIcon className="h-4 w-4 text-muted-foreground" />

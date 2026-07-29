@@ -416,7 +416,7 @@ export default function EmployerJobsPage() {
   }
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-6">
       {ConfirmDialogNode}
       <PageHero
         title={t("heroTitle")}
@@ -442,11 +442,11 @@ export default function EmployerJobsPage() {
 
       <div className="space-y-3">
         <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
-          <div className="workspace-glass-panel rounded-2xl p-4">
+          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statActiveLabel")}</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{activeJobs}</p>
+                <p className="mt-1 text-2xl sm:mt-3 sm:text-3xl font-semibold tracking-tight text-foreground">{activeJobs}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{t("statActiveDescription")}</p>
               </div>
               <div className="workspace-tone-emerald rounded-2xl p-2.5">
@@ -458,7 +458,7 @@ export default function EmployerJobsPage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statDraftsLabel")}</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{draftJobs}</p>
+                <p className="mt-1 text-2xl sm:mt-3 sm:text-3xl font-semibold tracking-tight text-foreground">{draftJobs}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{t("statDraftsDescription")}</p>
               </div>
               <div className="workspace-tone-amber rounded-2xl p-2.5">
@@ -470,7 +470,7 @@ export default function EmployerJobsPage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statPausedLabel")}</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{pausedJobs}</p>
+                <p className="mt-1 text-2xl sm:mt-3 sm:text-3xl font-semibold tracking-tight text-foreground">{pausedJobs}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{t("statPausedDescription")}</p>
               </div>
               <div className="workspace-tone-sky rounded-2xl p-2.5">
@@ -482,7 +482,7 @@ export default function EmployerJobsPage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statOpeningsLabel")}</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{totalOpenings}</p>
+                <p className="mt-1 text-2xl sm:mt-3 sm:text-3xl font-semibold tracking-tight text-foreground">{totalOpenings}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{t("statOpeningsDescription")}</p>
               </div>
               <div className="workspace-tone-sky rounded-2xl p-2.5">

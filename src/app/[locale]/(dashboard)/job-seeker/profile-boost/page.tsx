@@ -58,8 +58,8 @@ export default function ProfileBoostPage() {
 
   if (loading) {
     return (
-      <div className="p-6">
-        <div className="animate-pulse space-y-4">
+      <div className="p-3 sm:p-6">
+        <div className="animate-pulse space-y-3 sm:space-y-4">
           <div className="h-8 w-64 bg-muted rounded" />
           <div className="h-48 bg-muted rounded-xl" />
         </div>
@@ -68,13 +68,13 @@ export default function ProfileBoostPage() {
   }
 
   return (
-    <div className="p-6 max-w-2xl mx-auto space-y-6">
+    <div className="p-3 sm:p-6 max-w-2xl mx-auto space-y-3 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <Rocket className="w-6 h-6 text-primary" />
+        <h1 className="text-xl font-bold text-foreground flex items-center gap-2 sm:text-2xl">
+          <Rocket className="w-5 h-5 text-primary sm:w-6 sm:h-6" />
           {t("title")}
         </h1>
-        <p className="text-muted-foreground mt-1">{t("description")}</p>
+        <p className="text-xs text-muted-foreground mt-1 sm:text-sm">{t("description")}</p>
       </div>
 
       {/* Status Card */}

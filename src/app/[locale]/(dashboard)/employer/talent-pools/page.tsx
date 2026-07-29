@@ -167,7 +167,7 @@ export default function EmployerTalentPoolsPage() {
   }, [pools, search, sortBy]);
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-6">
       {ConfirmDialogNode}
       <DashboardPageHeader
         icon={Layers}
@@ -405,7 +405,7 @@ function CreatePoolDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
           <DialogTitle>{t("createPool")}</DialogTitle>
           <DialogDescription className="sr-only">{t("subtitle")}</DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="pool-name">{t("poolName")}</Label>
             <Input
@@ -481,7 +481,7 @@ function RenamePoolDialog({ pool, onClose }: { pool: TalentPool | null; onClose:
         <DialogHeader>
           <DialogTitle>{t("edit")} {pool?.name}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="rename-pool-name">{t("poolName")}</Label>
             <Input id="rename-pool-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={100} />

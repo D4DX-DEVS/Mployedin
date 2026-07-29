@@ -207,7 +207,7 @@ export default function AdminResourcesPage() {
   const categoryCounts = items.reduce<Record<string, number>>((acc, i) => { acc[i.category] = (acc[i.category] ?? 0) + 1; return acc; }, {});
 
   return (
-    <div className="page-container space-y-6 pb-6">
+    <div className="page-container space-y-3 sm:space-y-4 pb-6">
       <DashboardPageHeader
         icon={FolderOpen}
         eyebrow="Resource Center"

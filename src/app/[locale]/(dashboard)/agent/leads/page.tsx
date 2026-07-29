@@ -687,7 +687,7 @@ export default function AgentLeadsPage() {
   }, [leads]);
 
   return (
-    <div className="page-container space-y-5">
+    <div className="page-container space-y-3 sm:space-y-5">
       {ConfirmDialogNode}
 
       {/* ──── Hero Header ──── */}
@@ -709,7 +709,7 @@ export default function AgentLeadsPage() {
       />
 
       {/* ──── Toolbar ──── */}
-      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
+      <section className="workspace-panel-surface rounded-[28px] p-3.5 sm:p-4">
         <div className="flex flex-wrap items-center gap-3">
           {/* View toggle */}
           <div className="inline-flex items-center rounded-xl border border-border bg-muted/50 p-1">

@@ -165,7 +165,7 @@ export default function EmployerWorkflowPage() {
 
   if (loading)
     return (
-      <div className="page-container space-y-4">
+      <div className="page-container space-y-3 sm:space-y-4">
         <div className="h-40 animate-pulse rounded-[28px] border border-border bg-background/70" />
         <div className="grid gap-4 lg:grid-cols-[1.35fr,0.65fr]">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -201,7 +201,7 @@ export default function EmployerWorkflowPage() {
 
   return (
     <FeatureGate feature="workflowCustomization">
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-6">
       <PageHeader
         title={t("title")}
         description={t("description")}
@@ -508,8 +508,8 @@ export default function EmployerWorkflowPage() {
         </section>
 
         {/* ─── Automation Settings ─── */}
-        <div className="space-y-4">
-          <section className="workspace-panel-surface space-y-5 rounded-[28px] p-6">
+        <div className="space-y-3 sm:space-y-4">
+          <section className="workspace-panel-surface space-y-3 sm:space-y-5 rounded-[28px] p-6">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("automation")}</p>
               <h3 className="mt-2 text-lg font-semibold text-foreground">{t("recruitmentRules")}</h3>

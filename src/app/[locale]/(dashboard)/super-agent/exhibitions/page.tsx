@@ -229,7 +229,7 @@ export default function SuperAgentExhibitionsPage() {
   const pendingCount = items.filter((i) => i.status === "submitted").length;
   const reviewCount = items.filter((i) => i.status === "under_review").length;
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-4">
       <DashboardPageHeader
         icon={CalendarDays}
         eyebrow="Super agent workspace"

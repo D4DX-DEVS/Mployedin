@@ -289,7 +289,7 @@ export default function EmployerAnalyticsPage() {
 
   if (isLoading) {
     return (
-      <div className="page-container space-y-6">
+      <div className="page-container space-y-3 sm:space-y-6">
         <PageHero title={t("title")} description={t("description")} />
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -308,7 +308,7 @@ export default function EmployerAnalyticsPage() {
 
   if (error) {
     return (
-      <div className="page-container space-y-6">
+      <div className="page-container space-y-3 sm:space-y-6">
         <PageHero title={t("title")} description={t("description")} />
 
         <AnalyticsPanel className="border-red-500/20 bg-red-500/5">
@@ -335,7 +335,7 @@ export default function EmployerAnalyticsPage() {
   }
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-6">
       <DashboardPageHeader
         icon={activeTabMeta.icon}
         eyebrow={t(activeTab === "response" ? "responseTime" : activeTab)}
@@ -567,7 +567,7 @@ function PipelineTab({
   const totalApplications = data.conversion.applied;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 sm:space-y-6">
       {jobOptions.length > 0 && (
         <AnalyticsPanel>
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -883,7 +883,7 @@ function HistoricalTab({
   }));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 sm:space-y-6">
       <AnalyticsPanel>
         <div className="flex flex-wrap items-center gap-3">
           <div className="rounded-2xl bg-secondary/75 p-2 text-muted-foreground">
@@ -1046,7 +1046,7 @@ function HistoricalTab({
           {historical.dropOff.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">{t("noDataAvailable")}</p>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {historical.dropOff.map((d) => (
                 <div key={d.stage}>
                   <div className="flex items-center justify-between mb-1">
@@ -1231,7 +1231,7 @@ function PerformanceTab({ performance }: { performance: PerformanceData }) {
   const { jobs, summary } = performance;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 sm:space-y-6">
       <section>
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4">
           <SummaryCard label={t("totalJobsCard")} value={summary.totalJobs} />
@@ -1369,7 +1369,7 @@ function ResponseTimeTab({ data }: { data: ResponseTimeData }) {
   const { overall, commitment, perJob, distribution } = data;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 sm:space-y-6">
       <section>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <SummaryCard label={t("avgResponseTime")} value={formatHoursLabel(overall.avgHours, t)} description={t("avgDaysAverage", { days: overall.avgDays })} color="blue" />
@@ -1508,7 +1508,7 @@ function OffersTab({ data }: { data: OfferAnalyticsData }) {
   }));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 sm:space-y-6">
       <section>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <SummaryCard label={t("offersExtended")} value={data.totalOffers} description={t("offersExtendedDesc")} color="blue" />
@@ -1626,7 +1626,7 @@ function DiversityTab({ data }: { data: DiversityReportData }) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 sm:space-y-6">
       <section>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <SummaryCard label={t("diversityResponseRate")} value={`${data.responseRate}%`} description={t("diversityResponseRateDesc")} color="blue" />
@@ -1786,11 +1786,11 @@ function HeroMetricCard({
   const colors = COLOR_MAP[color] || COLOR_MAP.blue;
 
   return (
-    <div className={cn("workspace-glass-panel rounded-2xl border p-4", colors.border)}>
+    <div className={cn("workspace-glass-panel rounded-2xl border p-3 sm:p-4", colors.border)}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-          <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{value}</p>
+          <p className="mt-1 text-2xl sm:mt-3 sm:text-3xl font-semibold tracking-tight text-foreground">{value}</p>
           <p className="mt-1 text-xs text-muted-foreground">{description}</p>
         </div>
         <div className={cn("rounded-2xl p-2.5", colors.surface, colors.icon)}>

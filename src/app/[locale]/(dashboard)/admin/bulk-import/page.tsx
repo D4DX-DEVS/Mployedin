@@ -180,7 +180,7 @@ export default function AdminBulkImportPage() {
   const errorCount = parsedRows.filter((r) => r.status === "error").length;
 
   return (
-    <div className="page-container">
+    <div className="page-container space-y-3 sm:space-y-4">
       <DashboardPageHeader
         icon={Upload}
         eyebrow={t("title")}
@@ -206,8 +206,8 @@ export default function AdminBulkImportPage() {
 
       {/* Step 1: Upload */}
       {step === 1 && (
-        <section className="workspace-panel-surface rounded-[28px] p-6">
-          <div className="space-y-6">
+        <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-6">
+          <div className="space-y-3 sm:space-y-6">
             {/* Type selection */}
             <div>
               <label className="mb-2 block text-sm font-medium text-foreground">{t("labelImportType")}</label>
@@ -266,7 +266,7 @@ export default function AdminBulkImportPage() {
 
       {/* Step 2: Review */}
       {step === 2 && (
-        <section className="workspace-panel-surface rounded-[28px] p-6 space-y-4">
+        <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold text-foreground">{t("headingReviewData")}</h2>
@@ -331,7 +331,7 @@ export default function AdminBulkImportPage() {
 
       {/* Step 3: Complete */}
       {step === 3 && result && (
-        <section className="workspace-panel-surface rounded-[28px] p-6">
+        <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-6">
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <CheckCircle2 className="h-16 w-16 text-emerald-500" />
             <h2 className="mt-4 text-xl font-semibold text-foreground">{t("headingImportComplete")}</h2>

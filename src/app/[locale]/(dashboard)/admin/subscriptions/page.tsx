@@ -126,7 +126,7 @@ export default function AdminSubscriptionsPage() {
   const expiringSoonCount = stats?.expiringSoonCount ?? stats?.expiringSoon?.length ?? 0;
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-4">
       <PageHero
         icon={Crown}
         title={t("subscriptionManagementTitle")}
@@ -181,7 +181,7 @@ export default function AdminSubscriptionsPage() {
       {/* ── Search & Manage (existing flow) ── */}
       {activeTab === "manage" && (
         <>
-          <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-4">
+          <section className="rounded-2xl border border-border/60 bg-card p-4 sm:p-6 space-y-4">
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
               {t("searchUserLabel")}
             </h3>
@@ -794,7 +794,7 @@ function UserSubscriptionPanel({
   return (
     <div className="space-y-4">
       {/* ── User Header ──────────────────────────────────────── */}
-      <section className="rounded-2xl border border-sky-500/30 bg-sky-500/5 p-6">
+      <section className="rounded-2xl border border-sky-500/30 bg-sky-500/5 p-4 sm:p-6">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
             <div className="h-12 w-12 rounded-full bg-sky-500/10 flex items-center justify-center text-sky-500">
@@ -818,7 +818,7 @@ function UserSubscriptionPanel({
       {isLoadingSub ? (
         <div className="h-32 animate-pulse rounded-2xl bg-background/70" />
       ) : subscription && subscription.status === "active" ? (
-        <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-4">
+        <section className="rounded-2xl border border-border/60 bg-card p-4 sm:p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Crown className="h-5 w-5 text-amber-500" />
@@ -948,7 +948,7 @@ function UserSubscriptionPanel({
         </section>
       ) : (
         /* ── No Active Subscription ── */
-        <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-4">
+        <section className="rounded-2xl border border-border/60 bg-card p-4 sm:p-6 space-y-4">
           <div className="text-center py-6">
             <Crown className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
             <p className="font-medium text-muted-foreground">{t("noActiveSubscriptionMsg")}</p>
@@ -1087,7 +1087,7 @@ function AssignPlanForm({
   };
 
   return (
-    <section className="rounded-2xl border border-sky-500/30 bg-sky-500/5 p-6 space-y-4">
+    <section className="rounded-2xl border border-sky-500/30 bg-sky-500/5 p-4 sm:p-6 space-y-4">
       <div className="flex items-center justify-between">
         <h4 className="font-semibold flex items-center gap-2">
           <CreditCard className="h-4 w-4 text-sky-500" />
@@ -1255,7 +1255,7 @@ function HistoryTimeline({ history }: { history: HistoryItem[] }) {
   }
 
   return (
-    <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-4">
+    <section className="rounded-2xl border border-border/60 bg-card p-4 sm:p-6 space-y-4">
       <h4 className="font-semibold flex items-center gap-2">
         <Clock className="h-4 w-4 text-muted-foreground" />
         {t("subscriptionHistoryTitle")}

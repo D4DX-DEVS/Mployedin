@@ -302,7 +302,7 @@ export default function AdminCommunicationsPage() {
   };
 
   return (
-    <div className="page-container space-y-4">
+    <div className="page-container space-y-3 sm:space-y-4">
       {ConfirmDialogNode}
       <PageHero
         title={tr("communicationsCenterHeading")}
@@ -343,8 +343,8 @@ export default function AdminCommunicationsPage() {
       </section>
 
       {tab === "broadcast" ? (
-        <section className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_360px]">
-          <form onSubmit={handleSend} className={`${panelClassName} space-y-6`}>
+        <section className="grid gap-3 sm:gap-6 xl:grid-cols-[minmax(0,1.2fr)_360px]">
+          <form onSubmit={handleSend} className={`${panelClassName} space-y-3 sm:space-y-6`}>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tr("liveBroadcast")}</p>
@@ -464,7 +464,7 @@ export default function AdminCommunicationsPage() {
             </div>
           </form>
 
-          <div className="space-y-6">
+          <div className="space-y-3 sm:space-y-6">
             <aside className={panelClassName}>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tr("deliveryNotes")}</p>
               <h3 className="mt-2 text-lg font-semibold tracking-tight text-foreground">{tr("keepMessageClear")}</h3>
@@ -534,7 +534,7 @@ export default function AdminCommunicationsPage() {
       ) : null}
 
       {tab === "templates" ? (
-        <section className="space-y-6">
+        <section className="space-y-3 sm:space-y-6">
           <div className={`${panelClassName} flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between`}>
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tr("reusableContent")}</p>

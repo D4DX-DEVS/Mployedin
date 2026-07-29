@@ -352,7 +352,7 @@ export default function SuperAgentLeadsPage() {
   /* ---------------------------------------------------------------- */
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-4">
       <SuperAgentPageIntro
         title={t("pageTitle")}
         description={t("pageDescription")}
@@ -369,7 +369,7 @@ export default function SuperAgentLeadsPage() {
       >
         {/* ---- Stage Strip ---- */}
         <div className="flex flex-col gap-4">
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+          <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-6">
             {STAGES.map((s) => (
               <button
                 key={s}
@@ -447,7 +447,7 @@ export default function SuperAgentLeadsPage() {
                 </div>
               )}
 
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <div className="grid grid-cols-2 gap-2 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">{tc("country")}</label>
                   <SearchableSelect
@@ -618,8 +618,8 @@ export default function SuperAgentLeadsPage() {
                   const isOverdue = lead.followUpAt && new Date(lead.followUpAt) < new Date();
                   return (
                     <TableRow key={lead._id} className="bg-transparent">
-                      <TableCell>
-                        <span className="block font-medium text-foreground">{lead.companyName}</span>
+                      <TableCell className="min-w-0">
+                        <span className="block truncate font-medium text-foreground">{lead.companyName}</span>
                         <div className="mt-1 flex flex-wrap items-center gap-1.5">
                           <StatusBadge status={lead.status} />
                           {lead.score != null && (

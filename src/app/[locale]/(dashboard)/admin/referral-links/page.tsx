@@ -118,26 +118,26 @@ export default function AdminReferralLinksPage() {
   });
 
   return (
-    <div className="page-container">
+    <div className="page-container space-y-3 sm:space-y-4">
       <PageHeader title={t("pageTitle")} description={t("pageDescription")} />
 
       {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-4">
-        <div className="rounded-xl border border-border bg-card p-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-xl border border-border bg-card p-3.5 sm:p-4">
           <p className="text-xs font-medium text-muted-foreground">{t("totalLinks")}</p>
-          <p className="mt-1 text-2xl font-bold">{serverTotal}</p>
+          <p className="mt-1 text-xl sm:text-2xl font-bold">{serverTotal}</p>
         </div>
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="rounded-xl border border-border bg-card p-3.5 sm:p-4">
           <p className="text-xs font-medium text-muted-foreground">{t("activeLinks")}</p>
-          <p className="mt-1 text-2xl font-bold text-green-600">{activeLinks}</p>
+          <p className="mt-1 text-xl sm:text-2xl font-bold text-green-600">{activeLinks}</p>
         </div>
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="rounded-xl border border-border bg-card p-3.5 sm:p-4">
           <p className="text-xs font-medium text-muted-foreground">{t("totalRegistrations")}</p>
-          <p className="mt-1 text-2xl font-bold text-blue-600">{totalRegistrations}</p>
+          <p className="mt-1 text-xl sm:text-2xl font-bold text-blue-600">{totalRegistrations}</p>
         </div>
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="rounded-xl border border-border bg-card p-3.5 sm:p-4">
           <p className="text-xs font-medium text-muted-foreground">{t("avgRegistrationsPerLink")}</p>
-          <p className="mt-1 text-2xl font-bold">{serverTotal > 0 ? (totalRegistrations / serverTotal).toFixed(1) : "0"}</p>
+          <p className="mt-1 text-xl sm:text-2xl font-bold">{serverTotal > 0 ? (totalRegistrations / serverTotal).toFixed(1) : "0"}</p>
         </div>
       </div>
 
@@ -269,7 +269,7 @@ export default function AdminReferralLinksPage() {
                           {link.registrations.length === 0 ? (
                             <p className="text-sm text-muted-foreground">{t("noRegistrationsYet")}</p>
                           ) : (
-                            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                            <div className="grid gap-2 sm:grid-cols-2">
                               {link.registrations.map((reg, i) => (
                                 <div key={i} className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
                                   <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-300">

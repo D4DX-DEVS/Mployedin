@@ -139,7 +139,7 @@ export default function UnifiedCandidatePage() {
 
   if (loading) {
     return (
-      <div className="page-container space-y-4">
+      <div className="page-container space-y-3 sm:space-y-4">
         <div className="h-8 w-48 bg-muted animate-pulse rounded" />
         <div className="h-40 bg-muted animate-pulse rounded-lg" />
         <div className="h-60 bg-muted animate-pulse rounded-lg" />
@@ -192,7 +192,7 @@ export default function UnifiedCandidatePage() {
   ];
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-6">
       {/* Back + Header */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="sm" onClick={() => router.push(`/${locale}/employer/candidates`)}>
@@ -310,7 +310,7 @@ export default function UnifiedCandidatePage() {
       {activeTab === "profile" && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left Column — Structured Profile */}
-          <div className="space-y-6">
+          <div className="space-y-3 sm:space-y-6">
             {/* Summary */}
             <div className="card-base p-5 space-y-3">
               <h3 className="font-semibold text-sm flex items-center gap-2">
@@ -381,7 +381,7 @@ export default function UnifiedCandidatePage() {
                 <h3 className="font-semibold text-sm flex items-center gap-2">
                   <Briefcase className="h-4 w-4 text-primary" /> {t("workHistory")}
                 </h3>
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   {candidate.experience.map((exp: { jobTitle: string; company: string; isCurrent: boolean; startDate?: string; endDate?: string; description?: string; country?: string }, i: number) => (
                     <div key={i} className="relative pl-4 border-l-2 border-border">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -469,7 +469,7 @@ export default function UnifiedCandidatePage() {
           </div>
 
           {/* Right Column — AI Insights + Resume */}
-          <div className="space-y-6">
+          <div className="space-y-3 sm:space-y-6">
             {/* AI Match Insights (from first application with score) */}
             {(() => {
               const scoredApp = applications.find((a: UnifiedApplication) => a.aiMatchScore != null && a.matchBreakdown);
@@ -479,7 +479,7 @@ export default function UnifiedCandidatePage() {
               const candidateSkills = candidate.skills ?? [];
               const missingSkills = jobSkills?.filter((s: string) => !candidateSkills.some((cs: string) => cs.toLowerCase() === s.toLowerCase())) ?? [];
               return (
-                <div className="card-base p-5 space-y-4">
+                <div className="card-base p-5 space-y-3 sm:space-y-4">
                   <h3 className="font-semibold text-sm flex items-center gap-2">
                     <Star className="h-4 w-4 text-amber-500" /> {t("aiMatchInsights")}
                     <span className="text-xs text-muted-foreground ms-auto">for {scoredApp.job?.title}</span>
@@ -692,7 +692,7 @@ export default function UnifiedCandidatePage() {
           {timeline.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">{t("noActivity")}</p>
           ) : (
-            <div className="relative pl-6 space-y-4">
+            <div className="relative pl-6 space-y-3 sm:space-y-4">
               <div className="absolute left-2 top-2 bottom-2 w-px bg-border" />
               {timeline.map((entry: TimelineEntry, i: number) => (
                 <div key={i} className="relative">

@@ -451,7 +451,7 @@ export default function EmployerRegisterPage() {
       </div>
 
       {/* Form Content */}
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4">
         {/* Step 1: Company Details */}
         {step === 1 && (
           <div className="space-y-3.5">

@@ -126,11 +126,11 @@ export function SmartWelcome({
   const recruitersThisWeek = stats?.recruiterViews?.delta ?? 0;
 
   return (
-    <div className="card-base p-6">
+    <div className="card-base p-3 sm:p-6">
       {/* Top row: name + auto apply toggle */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h2 className="text-xl font-bold text-foreground">
+          <h2 className="text-lg font-bold text-foreground sm:text-xl">
             {allDone ? `Great job, ${name}!` : `Welcome back, ${name}`}
           </h2>
           {/* Recruiter insight — spec-compliant phrasing */}
@@ -159,14 +159,14 @@ export function SmartWelcome({
       </div>
 
       {/* Thin progress bar */}
-      <Progress value={profileCompleteness} className="mt-4 h-1.5" />
+      <Progress value={profileCompleteness} className="mt-3 sm:mt-4 h-1.5" />
       <p className="mt-1 text-xs text-muted-foreground text-right">
         {profileCompleteness}% profile complete
       </p>
 
       {/* Completion chips + Resume CTA */}
       {!allDone && (
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-3 flex flex-wrap gap-2 sm:gap-3">
           {completionSteps.map((step) => (
             <Link
               key={step.key}
