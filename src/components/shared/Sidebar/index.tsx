@@ -346,7 +346,7 @@ export function Sidebar({
         className={cn(
           "shrink-0 flex items-center gap-3",
           isAdminWorkspace
-            ? "h-20 px-5 border-b border-border/75 bg-white"
+            ? "h-20 px-5 border-b border-border/75 bg-white dark:bg-slate-900"
             : usesDualTierLayout
               ? "h-20 px-4 border-b border-border/75 bg-[linear-gradient(180deg,_hsl(var(--card)/0.72),_hsl(var(--card)/0.24))]"
             : cn("px-4",
