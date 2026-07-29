@@ -4,6 +4,7 @@ import { Inter, Noto_Sans_Arabic, Noto_Sans_Malayalam } from "next/font/google";
 import { headers } from "next/headers";
 import { ThemeProvider } from "@/components/shared/ThemeProvider";
 import { ServiceWorkerRegistration } from "@/components/shared/ServiceWorkerRegistration";
+import { ResponsiveTables } from "@/components/shared/ResponsiveTables";
 import "@/app/globals.css";
 import { getThemeInitializationScript } from "@/lib/theme";
 
@@ -103,6 +104,7 @@ export default async function RootLayout({
       >
         <ThemeProvider>
           {children}
+          <ResponsiveTables />
         </ThemeProvider>
         <ServiceWorkerRegistration />
       </body>

@@ -166,8 +166,10 @@ export const applyToJobTool: CopilotTool<{ jobId: string; coverLetter?: string }
 export const saveJobTool: CopilotTool<{ jobId: string }> = {
   name: "save_job",
   description: "Save/bookmark a job for the user to review later. Requires a real jobId from search_jobs.",
-  resource: "jobs",
-  action: "read",
+  // Saving writes to the user's own saved list — gate on their profile-update
+  // permission, not a jobs read (a read action must never gate a write tool).
+  resource: "job_seekers",
+  action: "update",
   roles: ["job_seeker"],
   mutates: true,
   parameters: {
@@ -185,6 +187,39 @@ export const saveJobTool: CopilotTool<{ jobId: string }> = {
       { upsert: true }
     );
     return { ok: true, message: `Saved "${job.title}" to your list.` };
+  },
+};
+
+export const mySavedJobsTool: CopilotTool<{ limit?: number }> = {
+  name: "my_saved_jobs",
+  description: "List the jobs the user has saved/bookmarked, newest first.",
+  resource: "jobs",
+  action: "read",
+  roles: ["job_seeker"],
+  mutates: false,
+  parameters: {
+    limit: { type: "number", description: "Max results (default 10)", optional: true, min: 1, max: 25 },
+  },
+  summarize: () => "List my saved jobs",
+  execute: async (args, ctx) => {
+    await connectDB();
+    const saved = await SavedJob.find({ jobSeekerId: ctx.userId })
+      .sort({ savedAt: -1 })
+      .limit(Math.min(args.limit ?? 10, 25))
+      .populate("jobId", "title status location")
+      .lean();
+    const rows = saved.flatMap((s) => {
+      const job = s.jobId as unknown as { _id: unknown; title?: string; status?: string; location?: { city?: string; country?: string; isRemote?: boolean } } | null;
+      if (!job) return []; // job since deleted
+      return [{
+        jobId: String(job._id),
+        title: job.title,
+        stillActive: job.status === "active",
+        location: job.location?.isRemote ? "Remote" : `${job.location?.city ?? "?"}, ${job.location?.country ?? "?"}`,
+        savedAt: s.savedAt,
+      }];
+    });
+    return { ok: true, message: `You have ${rows.length} saved job(s).`, data: rows };
   },
 };
 
@@ -235,4 +270,4 @@ export const withdrawApplicationTool: CopilotTool<{ applicationId: string; withd
   },
 };
 
-export const jobSeekerTools = [searchJobsTool, myApplicationsTool, applyToJobTool, saveJobTool, withdrawApplicationTool];
+export const jobSeekerTools = [searchJobsTool, myApplicationsTool, applyToJobTool, saveJobTool, mySavedJobsTool, withdrawApplicationTool];

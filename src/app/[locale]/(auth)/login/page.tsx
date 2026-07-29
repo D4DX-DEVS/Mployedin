@@ -331,7 +331,7 @@ export default function LoginPage() {
         <Button
           variant="outline"
           type="button"
-          className="h-11 rounded-xl border-border/70 bg-background/60 text-sm font-medium transition-colors hover:bg-muted/60"
+          className="h-10 rounded-xl border-border/70 bg-background/60 text-sm font-medium transition-colors hover:bg-muted/60"
           onClick={() => { setAppleLoading(true); setError(""); signIn("apple", { callbackUrl: getOAuthRedirectUrl(locale) }); }}
           disabled={anyLoading}
         >
@@ -347,7 +347,7 @@ export default function LoginPage() {
         <Button
           variant="outline"
           type="button"
-          className="h-11 rounded-xl border-border/70 bg-background/60 text-sm font-medium transition-colors hover:bg-muted/60"
+          className="h-10 rounded-xl border-border/70 bg-background/60 text-sm font-medium transition-colors hover:bg-muted/60"
           onClick={() => { setLinkedInLoading(true); setError(""); signIn("linkedin", { callbackUrl: getOAuthRedirectUrl(locale) }); }}
           disabled={anyLoading}
         >

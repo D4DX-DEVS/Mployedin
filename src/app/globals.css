@@ -1313,10 +1313,6 @@ body {
     padding: 0.75rem;
   }
 
-  .dashboard-shell-workspace .page-header-description {
-    display: none;
-  }
-
   .dashboard-shell-admin .page-header-root {
     padding: 0.75rem;
     border-radius: 1rem;
@@ -1357,15 +1353,12 @@ body {
     min-width: 44px;
   }
 
+  /* ponytail: card-table buttons keep their utility heights (h-8/h-9) on phones —
+     the old 44px override made every table card action row tall. */
   .dashboard-main table.responsive-card-table :where(a[href], button) {
     display: inline-flex;
-    min-height: 44px;
     align-items: center;
     justify-content: center;
-  }
-
-  .dashboard-main a[href]:where([class*="inline-flex"], [class*="font-semibold"]) {
-    min-height: 44px;
   }
 
   .dashboard-main [class*="space-y-6"] {

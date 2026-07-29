@@ -186,7 +186,7 @@ export default function LeadDetailPage() {
         description={[lead.contactPerson, lead.country, lead.industry].filter(Boolean).join(" · ")}
         actions={
           <>
-            <Link href={`/${locale}/agent/leads`} className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition hover:text-foreground">
+            <Link href="../leads" className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition hover:text-foreground">
               <ArrowLeft className="h-3.5 w-3.5" />{t("backToPipeline")}
             </Link>
             <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-semibold ${config.bgColor} ${config.borderColor} ${config.color}`}>

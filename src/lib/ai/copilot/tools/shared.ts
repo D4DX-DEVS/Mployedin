@@ -18,7 +18,7 @@ export const approveJobTool: CopilotTool<{ jobId: string; approve: boolean }> = 
   name: "approve_job",
   description: "Approve or reject a pending job posting. Requires a real jobId. Only jobs within your management scope can be approved.",
   resource: "jobs",
-  action: "update",
+  action: "approve",
   roles: ["admin", "super_agent", "agent"],
   mutates: true,
   parameters: {
@@ -55,6 +55,51 @@ export const approveJobTool: CopilotTool<{ jobId: string; approve: boolean }> = 
     await job.save();
 
     return { ok: true, message: `Job "${job.title}" ${args.approve ? "approved and activated" : "rejected"}.` };
+  },
+};
+
+export const pendingJobsTool: CopilotTool<{ limit?: number }> = {
+  name: "pending_jobs",
+  description: "List job postings awaiting approval within your management scope — use this to get real jobIds for approve_job.",
+  resource: "jobs",
+  action: "read",
+  roles: ["admin", "super_agent", "agent"],
+  mutates: false,
+  parameters: {
+    limit: { type: "number", description: "Max results (default 10)", optional: true, min: 1, max: 25 },
+  },
+  summarize: () => "List jobs awaiting approval",
+  execute: async (args, ctx) => {
+    await connectDB();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const filter: Record<string, any> = { "poster.approvalStatus": "pending", deletedAt: { $exists: false } };
+
+    if (ctx.role === "agent") {
+      const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id assignedEmployerIds").lean();
+      if (!agentDoc) return { ok: false, message: "No agent profile found for this account." };
+      filter.$or = [{ agentId: agentDoc._id }, { employerId: { $in: agentDoc.assignedEmployerIds ?? [] } }];
+    } else if (ctx.role === "super_agent") {
+      const scope = await getSuperAgentScope(ctx.userId);
+      const agentIds = scope?.effectiveAgentIds ?? [];
+      if (!agentIds.length) return { ok: true, message: "No agents in your team yet.", data: [] };
+      const employers = await Employer.find({ agentId: { $in: agentIds } }).select("_id").lean();
+      filter.$or = [{ agentId: { $in: agentIds } }, { employerId: { $in: employers.map((e) => e._id) } }];
+    }
+
+    const jobs = await Job.find(filter)
+      .select("_id title status employerId createdAt")
+      .sort({ createdAt: -1 })
+      .limit(Math.min(args.limit ?? 10, 25))
+      .populate("employerId", "companyName")
+      .lean();
+
+    const rows = jobs.map((j) => ({
+      jobId: String(j._id),
+      title: j.title,
+      company: (j.employerId as unknown as { companyName?: string } | null)?.companyName,
+      submittedAt: j.createdAt,
+    }));
+    return { ok: true, message: `Found ${rows.length} job(s) awaiting approval.`, data: rows };
   },
 };
 
@@ -105,4 +150,4 @@ export const approveCommissionTool: CopilotTool<{ commissionId: string }> = {
   },
 };
 
-export const sharedTools = [approveJobTool, approveCommissionTool];
+export const sharedTools = [approveJobTool, pendingJobsTool, approveCommissionTool];

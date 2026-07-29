@@ -33,6 +33,38 @@ export const platformStatsTool: CopilotTool<Record<string, never>> = {
   },
 };
 
+export const jobApplicantStatsTool: CopilotTool<{ limit?: number }> = {
+  name: "job_applicant_stats",
+  description:
+    "Platform-wide applicant counts per job posting (includes active jobs with zero applicants). Returns the most- and least-applied jobs. Use this — not searches — for most/fewest applicant questions.",
+  resource: "reports",
+  action: "read",
+  roles: ["admin"],
+  mutates: false,
+  parameters: {
+    limit: { type: "number", description: "How many jobs per list (default 10)", optional: true, min: 1, max: 25 },
+  },
+  summarize: () => "Get per-job applicant stats",
+  execute: async (args) => {
+    await connectDB();
+    // ponytail: loads all active jobs in one pass; paginate if job count grows past a few thousand
+    const [jobs, agg] = await Promise.all([
+      Job.find({ status: "active", deletedAt: { $exists: false } }).select("_id title").lean(),
+      Application.aggregate([{ $group: { _id: "$jobId", count: { $sum: 1 } } }]),
+    ]);
+    const countByJob = new Map((agg as Array<{ _id: unknown; count: number }>).map((r) => [String(r._id), r.count]));
+    const rows = jobs
+      .map((j) => ({ jobId: String(j._id), title: j.title, applicants: countByJob.get(String(j._id)) ?? 0 }))
+      .sort((a, b) => b.applicants - a.applicants);
+    const n = Math.min(args.limit ?? 10, 25);
+    return {
+      ok: true,
+      message: "Per-job applicant stats retrieved.",
+      data: { totalActiveJobs: rows.length, most: rows.slice(0, n), fewest: rows.slice(-n).reverse() },
+    };
+  },
+};
+
 export const searchUsersTool: CopilotTool<{ query?: string; role?: string; limit?: number }> = {
   name: "search_users",
   description: "Search platform users by name/email, optionally filtered by role.",
@@ -68,4 +100,4 @@ export const searchUsersTool: CopilotTool<{ query?: string; role?: string; limit
   },
 };
 
-export const adminTools = [platformStatsTool, searchUsersTool];
+export const adminTools = [platformStatsTool, jobApplicantStatsTool, searchUsersTool];

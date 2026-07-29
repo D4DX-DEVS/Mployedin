@@ -272,7 +272,7 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
   }
 
   return (
-    <div className="page-container space-y-3 sm:space-y-6">
+    <div className="page-container space-y-6">
       <DashboardPageHeader
         icon={Target}
         eyebrow={t("hero.eyebrow")}
@@ -293,12 +293,12 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
         }))}
       />
 
-      <div className="grid items-start gap-2.5 sm:gap-4 xl:grid-cols-[minmax(0,0.94fr)_minmax(0,1.06fr)]">
-        <section className="order-2 workspace-panel-surface rounded-2xl p-3.5 sm:p-4 xl:order-1">
-          <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,0.94fr)_minmax(0,1.06fr)]">
+        <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
+          <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sections.funnel.eyebrow")}</p>
-              <h2 className="mt-2 text-lg sm:text-xl font-semibold tracking-tight text-foreground">{t("sections.funnel.title")}</h2>
+              <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("sections.funnel.title")}</h2>
             </div>
             <div className="workspace-subtle-surface rounded-2xl px-3 py-2 text-right text-primary">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">{t("funnel.offerRate")}</p>
@@ -306,24 +306,24 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
             </div>
           </div>
 
-          <div className="mt-3 sm:mt-4 grid grid-cols-2 gap-2.5 xl:grid-cols-3">
+          <div className="mt-4 grid grid-cols-2 gap-2.5 xl:grid-cols-3">
             {funnel.map((item) => (
               <div key={item.label} className="workspace-subtle-surface rounded-xl p-3">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{item.label}</p>
-                <p className="mt-1.5 text-lg sm:text-xl font-semibold tracking-tight text-foreground">{item.value}</p>
+                <p className="mt-1.5 text-xl font-semibold tracking-tight text-foreground">{item.value}</p>
               </div>
             ))}
           </div>
         </section>
 
-        <section className="order-1 workspace-panel-surface rounded-2xl p-3.5 sm:p-4 xl:order-2">
+        <section className="order-1 workspace-panel-surface rounded-2xl p-4 sm:p-5 xl:order-2">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sections.quickActions.eyebrow")}</p>
-            <h2 className="mt-2 text-lg sm:text-xl font-semibold tracking-tight text-foreground">{t("sections.quickActions.title")}</h2>
-            <p className="mt-1 text-xs sm:text-sm text-muted-foreground">{t("sections.quickActions.description")}</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("sections.quickActions.title")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("sections.quickActions.description")}</p>
           </div>
 
-          <div className="mt-3 sm:mt-4 grid grid-cols-2 gap-2.5">
+          <div className="mt-4 grid grid-cols-2 gap-2.5">
             {actions.map((action) => {
               const Icon = action.icon;
 
@@ -331,16 +331,16 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
                 <Link
                   key={action.href}
                   href={action.href}
-                  className="workspace-subtle-surface group relative flex min-h-[76px] flex-col items-start gap-1.5 rounded-xl p-2.5 transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card hover:shadow-[0_24px_50px_-38px_rgba(2,132,199,0.38)] sm:min-h-[76px] sm:flex-row sm:items-center sm:gap-3 sm:p-3"
+                  className="workspace-subtle-surface group relative flex min-h-[96px] flex-col items-start gap-2 rounded-xl p-3 transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card hover:shadow-[0_24px_50px_-38px_rgba(2,132,199,0.38)] sm:min-h-[76px] sm:flex-row sm:items-center sm:gap-3"
                 >
                   <div className={`shrink-0 rounded-xl p-2.5 ${action.tone}`}>
-                    <Icon className="h-4 sm:h-5 w-4 sm:w-5" />
+                    <Icon className="h-5 w-5" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <h3 className="pe-5 text-xs font-semibold leading-5 text-foreground sm:truncate sm:pe-0 sm:text-sm">{action.label}</h3>
-                    <p className="mt-0.5 sm:mt-1 hidden text-xs leading-5 text-muted-foreground sm:line-clamp-1">{action.note}</p>
+                    <p className="mt-1 hidden text-xs leading-5 text-muted-foreground sm:line-clamp-1">{action.note}</p>
                   </div>
-                  <ArrowRight className="absolute end-2.5 top-2.5 h-3.5 sm:h-4 w-3.5 sm:w-4 shrink-0 text-muted-foreground/55 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-primary sm:static sm:end-auto sm:top-auto" />
+                  <ArrowRight className="absolute end-3 top-3 h-4 w-4 shrink-0 text-muted-foreground/55 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-primary sm:static" />
                 </Link>
               );
             })}
@@ -348,12 +348,12 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
         </section>
       </div>
 
-      <section className="workspace-panel-surface rounded-2xl p-3.5 sm:p-4">
-        <div className="flex flex-col gap-2 sm:gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <section className="workspace-panel-surface rounded-2xl p-4 sm:p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sections.rolePerformance.eyebrow")}</p>
-            <h2 className="mt-2 text-lg sm:text-xl font-semibold tracking-tight text-foreground">{t("sections.rolePerformance.title")}</h2>
-            <p className="mt-1 text-xs sm:text-sm text-muted-foreground">{t("sections.rolePerformance.description")}</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("sections.rolePerformance.title")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("sections.rolePerformance.description")}</p>
           </div>
           <Link
             href={`/${locale}/agent/jobs`}
@@ -365,8 +365,8 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
         </div>
 
         {jobMetrics.length > 0 ? (
-          <div className="mt-3 sm:mt-4 overflow-x-auto">
-            <table className="min-w-full text-xs sm:text-sm">
+          <div className="mt-4 overflow-x-auto">
+            <table className="min-w-full text-sm">
               <thead>
                 <tr className="border-b border-border text-left">
                   <th className="pb-3 pr-4 font-semibold text-muted-foreground">{t("table.job")}</th>

@@ -18,6 +18,8 @@ import {
 import { ExhibitionHeroFilters } from "@/components/features/exhibitions/ExhibitionHeroFilters";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { useTranslations } from "next-intl";
+import { usePagination } from "@/hooks/usePagination";
+import { PaginationControls } from "@/components/shared/PaginationControls";
 import { ApprovalTimeline } from "@/components/features/exhibitions/ApprovalTimeline";
 import {
   SuperAgentDataTableShell,
@@ -25,8 +27,6 @@ import {
   SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
-import { PaginationControls } from "@/components/shared/PaginationControls";
-import { usePagination } from "@/hooks/usePagination";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -229,7 +229,7 @@ export default function SuperAgentExhibitionsPage() {
   const pendingCount = items.filter((i) => i.status === "submitted").length;
   const reviewCount = items.filter((i) => i.status === "under_review").length;
   return (
-    <div className="page-container space-y-3 sm:space-y-4">
+    <div className="page-container space-y-6">
       <DashboardPageHeader
         icon={CalendarDays}
         eyebrow="Super agent workspace"

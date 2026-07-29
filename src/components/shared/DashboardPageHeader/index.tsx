@@ -69,22 +69,22 @@ export function DashboardPageHeader({
             {title}
           </Heading>
           {description && (
-            <p className="mt-1 hidden max-w-2xl text-sm leading-5 text-muted-foreground sm:line-clamp-2">
+            <p className="mt-1 max-w-2xl text-sm leading-5 text-muted-foreground sm:line-clamp-2">
               {description}
             </p>
           )}
         </div>
 
         {(summary || actions) && (
-          <div className="flex min-w-0 flex-row flex-wrap items-center gap-2 sm:gap-3 lg:shrink-0">
+          <div className="flex min-w-0 flex-row items-center justify-between gap-2 sm:gap-3 lg:shrink-0">
             {summary && (
               <div className="workspace-glass-panel min-w-0 border-s-2 border-primary/30 ps-3">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                   {summary.label}
                 </p>
-                <p className="mt-0.5 text-base font-semibold leading-5 text-foreground sm:text-lg sm:leading-6">{summary.value}</p>
+                <p className="mt-0.5 text-sm font-semibold leading-5 text-foreground sm:text-lg sm:leading-6">{summary.value}</p>
                 {summary.note && (
-                  <div className="hidden truncate text-xs text-muted-foreground sm:block">{summary.note}</div>
+                  <p className="hidden truncate text-xs text-muted-foreground sm:block">{summary.note}</p>
                 )}
               </div>
             )}
@@ -100,10 +100,14 @@ export function DashboardPageHeader({
       {metrics && metrics.length > 0 && (
         <div
           className={cn(
-            "mt-3 grid grid-cols-2 border-y border-border/60 sm:mt-4",
-            metrics.length === 3 && "sm:grid-cols-3 xl:grid-cols-3",
-            metrics.length === 4 && "xl:grid-cols-4",
-            metrics.length >= 5 && "xl:grid-cols-5",
+            "mt-3 grid border-y border-border/60 sm:mt-4",
+            // Always one row, even on phones — value/label text shrinks instead,
+            // so 4-5 stats don't stack into a tall multi-row block.
+            metrics.length === 1 && "grid-cols-1",
+            metrics.length === 2 && "grid-cols-2",
+            metrics.length === 3 && "grid-cols-3",
+            metrics.length === 4 && "grid-cols-4",
+            metrics.length >= 5 && "grid-cols-5",
             metricsClassName
           )}
         >
@@ -115,31 +119,32 @@ export function DashboardPageHeader({
                 key={`${metric.label}-${index}`}
                 {...(metric.onClick ? { type: "button" as const, onClick: metric.onClick } : {})}
                 className={cn(
-                  "flex min-w-0 items-center justify-between gap-2 px-1 py-2.5 text-start sm:px-3",
-                  "odd:border-e odd:border-border/60 xl:border-e xl:border-border/60 xl:last:border-e-0",
-                  index >= 2 && "border-t border-border/60 xl:border-t-0",
+                  "flex min-w-0 items-center justify-between gap-1 px-1 py-2 text-start sm:gap-2 sm:px-3 sm:py-2.5",
+                  "border-e border-border/60 last:border-e-0",
                   metric.onClick && "transition-colors hover:bg-background/45",
                   metric.active && "bg-primary/5 ring-1 ring-inset ring-primary/30"
                 )}
               >
                 <div className="min-w-0">
-                  <p className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                  {/* Word-wrap instead of truncate on label + value: long labels like
+                      "Total Applications" rendered as "Total Applica…" on phones, which said nothing. */}
+                  <p className="line-clamp-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                     {metric.label}
                   </p>
                   <div className="mt-1 flex min-w-0 items-baseline gap-2">
-                    <div className="truncate text-2xl font-semibold tracking-tight text-foreground">
+                    <p className="line-clamp-2 text-sm font-semibold leading-tight tracking-tight text-foreground sm:text-2xl sm:leading-none">
                       {metric.value}
-                    </div>
+                    </p>
                     {metric.note && (
-                      <div className="hidden truncate text-xs text-muted-foreground sm:block">
+                      <p className="hidden truncate text-xs text-muted-foreground sm:block">
                         {metric.note}
-                      </div>
+                      </p>
                     )}
                   </div>
                 </div>
                 <span
                   className={cn(
-                    "me-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+                    "me-1 hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg sm:flex",
                     metric.iconSurfaceClassName
                   )}
                 >

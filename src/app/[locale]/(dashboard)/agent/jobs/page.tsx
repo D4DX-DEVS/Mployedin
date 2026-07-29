@@ -34,6 +34,7 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
 import { useTranslations } from "next-intl";
+import { TableActionLink } from "@/components/shared/TableActionLink";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -45,7 +46,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
-import { TableActionLink } from "@/components/shared/TableActionLink";
+import { cn } from "@/lib/utils";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -271,7 +272,7 @@ export default function AgentJobsPage() {
   /*  RENDER                                                          */
   /* ================================================================ */
   return (
-    <div className="page-container space-y-3 sm:space-y-6">
+    <div className="page-container space-y-6">
       {/* ──────── HERO ──────── */}
       {/* ──────── HERO + UNIFIED FILTERS ──────── */}
       <DashboardPageHeader
@@ -301,7 +302,7 @@ export default function AgentJobsPage() {
       />
 
         {/* ── Combined Filter Bar ── */}
-        <section className="workspace-panel-surface rounded-[20px] p-3.5 sm:p-4">
+        <section className="workspace-panel-surface rounded-[20px] p-4">
           {/* Toggle button */}
           <button
             onClick={() => setFiltersOpen((prev) => !prev)}
@@ -332,7 +333,7 @@ export default function AgentJobsPage() {
           >
             <div className="overflow-hidden">
               {/* AI Search */}
-              <div className="space-y-2 sm:space-y-3">
+              <div className="space-y-3">
                 <div className="relative">
                   <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-violet-500/60" />
                   <Input
@@ -393,7 +394,7 @@ export default function AgentJobsPage() {
               </div>
 
               {/* Manual Filters */}
-              <div className="grid gap-2 sm:gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
+              <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
                 {/* Text search */}
                 <div className="relative min-w-0">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -448,11 +449,11 @@ export default function AgentJobsPage() {
         </section>
 
       {/* ──────── JOB TABLE ──────── */}
-      <section className="workspace-panel-surface rounded-[28px] p-3.5 sm:p-4">
-        <div className="flex flex-col gap-2 sm:gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("results.eyebrow")}</p>
-            <h2 className="mt-2 text-lg sm:text-xl font-semibold tracking-tight text-foreground">{t("results.title")}</h2>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("results.title")}</h2>
           </div>
           <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">
             <ArrowRight className="h-3.5 w-3.5 text-status-applied" />
