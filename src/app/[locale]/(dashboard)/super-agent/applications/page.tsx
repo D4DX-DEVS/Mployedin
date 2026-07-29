@@ -169,8 +169,6 @@ export default function SuperAgentApplicationsPage() {
               <TableRow className="bg-background/60 hover:bg-background/60">
                 <TableHead className="min-w-[180px]">{t("tableHeaders.candidate")}</TableHead>
                 <TableHead className="min-w-[180px]">{t("tableHeaders.job")}</TableHead>
-                <TableHead>{t("tableHeaders.agent")}</TableHead>
-                <TableHead>{t("tableHeaders.status")}</TableHead>
                 <TableHead>{t("tableHeaders.matchScore")}</TableHead>
                 <TableHead>{t("tableHeaders.source")}</TableHead>
                 <TableHead>{t("tableHeaders.applied")}</TableHead>
@@ -180,14 +178,14 @@ export default function SuperAgentApplicationsPage() {
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    {Array.from({ length: 7 }).map((_, j) => (
+                    {Array.from({ length: 5 }).map((_, j) => (
                       <TableCell key={j}><div className="h-4 w-3/4 animate-pulse rounded bg-muted/50" /></TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : applications.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-16 text-center">
+                  <TableCell colSpan={5} className="py-16 text-center">
                     <div className="flex flex-col items-center gap-3">
                       <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-sky-50 text-sky-600">
                         <FileText className="h-6 w-6" />
@@ -204,13 +202,13 @@ export default function SuperAgentApplicationsPage() {
                   <TableCell>
                     <p className="font-medium text-foreground">{a.candidateName}</p>
                     {a.candidateEmail && <p className="text-xs text-muted-foreground">{a.candidateEmail}</p>}
+                    <StatusBadge status={a.status} />
                   </TableCell>
                   <TableCell>
                     <p className="text-sm">{a.jobTitle}</p>
                     {a.companyName && <p className="text-xs text-muted-foreground">{a.companyName}</p>}
+                    {a.agentName && <p className="text-xs text-muted-foreground">{a.agentName}</p>}
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{a.agentName || "—"}</TableCell>
-                  <TableCell><StatusBadge status={a.status} /></TableCell>
                   <TableCell>
                     {a.matchScore != null ? (
                       <div className="flex items-center gap-2">

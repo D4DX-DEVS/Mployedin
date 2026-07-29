@@ -31,12 +31,15 @@ export function getSecurityHeaders(nonce: string): Record<string, string> {
       isDev
         ? `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-eval'`
         : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'wasm-unsafe-eval'`,
-      // SECURITY (W4-2): 'unsafe-inline' is required here because React emits
-      // inline style= attributes (style-src-attr only accepts 'unsafe-inline',
-      // never a nonce) and Next.js injects non-nonced inline <style> tags.
-      // TODO: drop 'unsafe-inline' once all inline styles are extracted to CSS.
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "img-src 'self' data: blob: https:",
+      // Next.js emits two deterministic framework style blocks without
+      // propagating the request nonce. Permit only their exact hashes.
+      isDev
+        ? "style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com"
+        : `style-src-elem 'self' 'nonce-${nonce}' 'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=' 'sha256-CIxDM5jnsGiKqXs2v7NKCY5MzdR9gu6TtiMJrDw29AY=' https://fonts.googleapis.com`,
+      // React components still use style attributes. Isolating this permission
+      // to attributes prevents it from authorizing arbitrary inline <style>.
+      "style-src-attr 'unsafe-inline'",
+      "img-src 'self' data: blob: https://res.cloudinary.com https://lh3.googleusercontent.com https://media.licdn.com https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com",
       "font-src 'self' data: https://fonts.gstatic.com",
       "media-src 'self' data:",
       // 'data:' is required so @react-pdf/renderer can fetch its yoga-layout
@@ -62,7 +65,7 @@ export function getSecurityHeaders(nonce: string): Record<string, string> {
 /** Static headers for API routes (no inline scripts, no nonce needed). */
 export const SECURITY_HEADERS: Record<string, string> = {
   "Content-Security-Policy":
-    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; media-src 'self' data:; connect-src 'self' data: https://generativelanguage.googleapis.com https://openrouter.ai https://api.anthropic.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://*.firebaseio.com https://*.pusher.com wss://*.pusher.com; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com; object-src 'self' blob: https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+    "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https://res.cloudinary.com https://lh3.googleusercontent.com https://media.licdn.com https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com; font-src 'self' data:; media-src 'self' data:; connect-src 'self' data: https://generativelanguage.googleapis.com https://openrouter.ai https://api.anthropic.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://*.firebaseio.com https://*.pusher.com wss://*.pusher.com; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com; object-src 'self' blob: https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
   ...SHARED_HEADERS,
 };
 

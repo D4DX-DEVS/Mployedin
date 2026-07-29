@@ -206,9 +206,7 @@ export default function EmployerWorkflowPage() {
         title={t("title")}
         description={t("description")}
         actions={
-          /* All three actions on one row; they shrink instead of wrapping so
-             "Save Workflow" no longer lands alone on a second line. */
-          <div className="flex w-full min-w-0 flex-nowrap items-center gap-1.5 sm:w-auto sm:gap-2 [&>button]:min-w-0 [&>button]:flex-1 [&>button]:px-2 [&>button]:text-xs sm:[&>button]:flex-none sm:[&>button]:px-3 sm:[&>button]:text-sm [&_svg]:shrink-0">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">
             <Button
               variant="outline"
               size="sm"
@@ -344,6 +342,7 @@ export default function EmployerWorkflowPage() {
       )}
 
       <DashboardPageHeader
+        headingLevel={2}
         icon={Settings2}
         eyebrow={t("pipelineAutomation")}
         title={t("pipelineAutomationDesc")}
@@ -434,7 +433,7 @@ export default function EmployerWorkflowPage() {
               {sortedStages.map((stage, i) => (
                   <div
                     key={stage.id}
-                    className={`group rounded-[22px] border p-3 transition-all sm:p-4 ${
+                    className={`group rounded-[22px] border p-4 transition-all ${
                       stage.enabled
                         ? "border-border bg-background/80 shadow-[0_20px_45px_-40px_rgba(15,23,42,0.45)] hover:border-sky-500/25"
                         : "border-border/80 bg-background/55 opacity-70"
@@ -468,24 +467,22 @@ export default function EmployerWorkflowPage() {
                             {stage.enabled ? t("enabled") : t("paused")}
                           </span>
                         </div>
-                        {/* One row, nowrap — the two toggles were wrapping onto
-                            separate lines and doubling every stage card's height. */}
-                        <div className="mt-2 flex flex-nowrap items-center gap-3">
-                          <div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-                            <span className="truncate">{t("autoProgress")}</span>
+                        <div className="mt-3 flex flex-wrap items-center gap-4">
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span>{t("autoProgress")}</span>
                             <Switch
                               checked={stage.autoProgress}
                               onCheckedChange={() => toggleStage(stage.id, "autoProgress")}
                               disabled={!stage.enabled}
-                              className="h-5 w-9 shrink-0 data-[state=checked]:[&>span]:translate-x-4 rtl:data-[state=checked]:[&>span]:-translate-x-4 [&>span]:h-4 [&>span]:w-4"
+                              className="h-6 w-11 data-[state=checked]:[&>span]:translate-x-5 rtl:data-[state=checked]:[&>span]:-translate-x-5 [&>span]:h-5 [&>span]:w-5"
                             />
                           </div>
-                          <div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-                            <span className="truncate">{t("stage")}</span>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span>{t("stage")}</span>
                             <Switch
                               checked={stage.enabled}
                               onCheckedChange={() => toggleStage(stage.id, "enabled")}
-                              className="h-5 w-9 shrink-0 data-[state=checked]:[&>span]:translate-x-4 rtl:data-[state=checked]:[&>span]:-translate-x-4 [&>span]:h-4 [&>span]:w-4"
+                              className="h-6 w-11 data-[state=checked]:[&>span]:translate-x-5 rtl:data-[state=checked]:[&>span]:-translate-x-5 [&>span]:h-5 [&>span]:w-5"
                             />
                           </div>
                         </div>
@@ -498,7 +495,7 @@ export default function EmployerWorkflowPage() {
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
-                    <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-border/60 pt-2 text-[11px] text-muted-foreground sm:mt-4 sm:pt-3">
+                    <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border/60 pt-3 text-[11px] text-muted-foreground">
                       <span className="rounded-full bg-background/70 px-2.5 py-1">{t("order", { order: stage.order })}</span>
                       <span className="rounded-full bg-background/70 px-2.5 py-1">
                         {stage.autoProgress ? t("movesAutomatically") : t("manualReviewRequired")}

@@ -197,7 +197,7 @@ export function CommandMenuTrigger({ compact = false }: { locale?: string; compa
       aria-label={t("searchShort")}
       className={
         compact
-          ? "flex h-9 w-9 items-center justify-center rounded-lg border border-border/70 bg-muted/40 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          ? "flex h-11 w-11 items-center justify-center rounded-lg border border-border/70 bg-muted/40 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           : "flex w-full max-w-sm items-center gap-2 rounded-md border border-transparent bg-muted/50 px-3 py-1.5 text-sm text-muted-foreground transition-all hover:border-border hover:bg-muted"
       }
     >

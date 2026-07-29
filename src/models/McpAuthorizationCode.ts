@@ -11,6 +11,7 @@ export interface IMcpAuthorizationCode extends Document {
   userId: mongoose.Types.ObjectId;
   role: UserRole;
   redirectUri: string;
+  resource: string;
   codeChallenge: string;
   scopes: McpScope[];
   expiresAt: Date;
@@ -25,6 +26,7 @@ const McpAuthorizationCodeSchema = new Schema<IMcpAuthorizationCode>(
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     role: { type: String, required: true },
     redirectUri: { type: String, required: true },
+    resource: { type: String, required: true },
     codeChallenge: { type: String, required: true },
     scopes: [{ type: String }],
     expiresAt: { type: Date, required: true },

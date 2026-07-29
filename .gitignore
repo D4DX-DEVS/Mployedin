@@ -135,10 +135,9 @@ tasks.json
 scripts/seed-production-like.mjs
 scripts/seed-applicants.mjs
 
-# E2E tests (not in CI pipeline yet)
-e2e/
+# Playwright results (E2E source and config are committed)
 test-results/
-playwright.config.ts
+playwright-report/
 
 # Coverage reports (generated, not committed)
 coverage/

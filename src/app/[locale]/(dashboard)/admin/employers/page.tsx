@@ -240,7 +240,6 @@ export default function AdminEmployersPage() {
               <TableHead>{t("tableHeaderCompany")}</TableHead>
               <TableHead>{t("tableHeaderEmail")}</TableHead>
               <TableHead>{t("tableHeaderIndustry")}</TableHead>
-              <TableHead>{t("tableHeaderStatus")}</TableHead>
               <TableHead>{t("tableHeaderJoined")}</TableHead>
               {(can("employers", "update") || can("employers", "delete") || can("employers", "approve")) && (
                 <TableHead>{t("tableHeaderActions")}</TableHead>
@@ -251,7 +250,7 @@ export default function AdminEmployersPage() {
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i} className="hover:bg-transparent">
-                  {Array.from({ length: 6 }).map((_, j) => (
+                  {Array.from({ length: 5 }).map((_, j) => (
                     <TableCell key={j}>
                       <div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
                     </TableCell>
@@ -260,7 +259,7 @@ export default function AdminEmployersPage() {
               ))
             ) : employers.length === 0 ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={6} className="h-32 text-center">
+                <TableCell colSpan={5} className="h-32 text-center">
                   <div className="flex flex-col items-center gap-2 text-muted-foreground">
                     <Inbox className="h-8 w-8 opacity-40" />
                     <span className="text-sm">{t("noEmployersFound")}</span>
@@ -270,16 +269,18 @@ export default function AdminEmployersPage() {
             ) : employers.map((emp) => (
               <TableRow key={emp._id}>
                 <TableCell>
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{emp.companyName || emp.name}</span>
-                    {emp.domainVerified && (
-                      <Badge className="text-[10px] px-1.5 py-0 bg-emerald-100 text-emerald-700 border-emerald-200">{t("verifiedBadge")}</Badge>
-                    )}
+                  <div className="flex flex-col items-start gap-1.5">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{emp.companyName || emp.name}</span>
+                      {emp.domainVerified && (
+                        <Badge className="text-[10px] px-1.5 py-0 bg-emerald-100 text-emerald-700 border-emerald-200">{t("verifiedBadge")}</Badge>
+                      )}
+                    </div>
+                    <StatusBadge status={emp.status ?? (emp.isActive !== false ? "active" : "inactive")} />
                   </div>
                 </TableCell>
                 <TableCell className="text-muted-foreground">{emp.email ?? emp.contactEmail ?? "—"}</TableCell>
                 <TableCell className="text-muted-foreground">{emp.industry ?? "—"}</TableCell>
-                <TableCell><StatusBadge status={emp.status ?? (emp.isActive !== false ? "active" : "inactive")} /></TableCell>
                 <TableCell className="text-muted-foreground">{new Date(emp.createdAt).toLocaleDateString()}</TableCell>
                 {(can("employers", "update") || can("employers", "delete") || can("employers", "approve")) && (
                   <TableCell>

@@ -13,6 +13,7 @@ describe("isPublicRoute", () => {
     "/ar/salary-explorer",
     "/ar/agent-register",
     "/ar/jobs/abc123",
+    "/en/poster/audit-dynamic-poster",
   ])("allows public localized route %s", (pathname) => {
     expect(isPublicRoute(pathname)).toBe(true);
   });

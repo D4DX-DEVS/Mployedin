@@ -13,10 +13,10 @@ async function getAgentProfile(userId: string) {
 
 export const myLeadsTool: CopilotTool<{ status?: string; limit?: number }> = {
   name: "my_leads",
-  description: "List your own leads (agents) or your whole team's leads (super-agents), optionally filtered by pipeline status. Use this to get a real leadId before update_lead_status.",
+  description: "List the agent's own leads, optionally filtered by pipeline status.",
   resource: "leads",
   action: "read",
-  roles: ["agent", "super_agent"],
+  roles: ["agent"],
   mutates: false,
   parameters: {
     status: {
@@ -30,19 +30,10 @@ export const myLeadsTool: CopilotTool<{ status?: string; limit?: number }> = {
   summarize: () => "List my leads",
   execute: async (args, ctx) => {
     await connectDB();
+    const agent = await getAgentProfile(ctx.userId);
+    if (!agent) return { ok: false, message: "No agent profile found for this account." };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const filter: Record<string, any> = {};
-    if (ctx.role === "super_agent") {
-      const { getSuperAgentScope } = await import("@/lib/auth/agentRestrictions");
-      const scope = await getSuperAgentScope(ctx.userId);
-      const agentIds = scope?.effectiveAgentIds ?? [];
-      if (!agentIds.length) return { ok: true, message: "No agents in your team yet.", data: [] };
-      filter.agentId = { $in: agentIds };
-    } else {
-      const agent = await getAgentProfile(ctx.userId);
-      if (!agent) return { ok: false, message: "No agent profile found for this account." };
-      filter.agentId = agent._id;
-    }
+    const filter: Record<string, any> = { agentId: agent._id };
     if (args.status) filter.status = args.status;
     const leads = await Lead.find(filter)
       .select("companyName contactPerson status score qualificationLevel followUpAt")
@@ -60,31 +51,6 @@ export const myLeadsTool: CopilotTool<{ status?: string; limit?: number }> = {
       overdue: Boolean(l.followUpAt && new Date(l.followUpAt) < new Date() && !["converted", "lost"].includes(l.status)),
     }));
     return { ok: true, message: `Found ${rows.length} lead(s).`, data: rows };
-  },
-};
-
-export const leadStatsTool: CopilotTool<Record<string, never>> = {
-  name: "lead_stats",
-  description:
-    "Get the agent's total lead counts by pipeline status (includes statuses with zero leads) plus overdue follow-up count. Use this — not my_leads — for counting/ranking questions.",
-  resource: "leads",
-  action: "read",
-  roles: ["agent"],
-  mutates: false,
-  parameters: {},
-  summarize: () => "Get my lead stats",
-  execute: async (_args, ctx) => {
-    await connectDB();
-    const agent = await getAgentProfile(ctx.userId);
-    if (!agent) return { ok: false, message: "No agent profile found for this account." };
-    const [agg, overdueFollowUps] = await Promise.all([
-      Lead.aggregate([{ $match: { agentId: agent._id } }, { $group: { _id: "$status", count: { $sum: 1 } } }]),
-      Lead.countDocuments({ agentId: agent._id, followUpAt: { $lt: new Date() }, status: { $nin: ["converted", "lost"] } }),
-    ]);
-    const byStatus: Record<string, number> = { new: 0, contacted: 0, interested: 0, negotiating: 0, converted: 0, lost: 0 };
-    for (const row of agg as Array<{ _id: string; count: number }>) byStatus[row._id] = row.count;
-    const total = Object.values(byStatus).reduce((a, b) => a + b, 0);
-    return { ok: true, message: "Lead stats retrieved.", data: { total, byStatus, overdueFollowUps } };
   },
 };
 
@@ -233,4 +199,4 @@ export const updateLeadStatusTool: CopilotTool<{ leadId: string; status: string;
   },
 };
 
-export const agentTools = [myLeadsTool, leadStatsTool, createLeadTool, updateLeadStatusTool];
+export const agentTools = [myLeadsTool, createLeadTool, updateLeadStatusTool];

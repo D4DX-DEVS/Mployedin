@@ -37,7 +37,7 @@ jest.mock("@/models/SystemSettings", () => {
 
 jest.mock("@/models/Subscription", () => ({
   __esModule: true,
-  default: { findOne: jest.fn(), findByIdAndUpdate: jest.fn() },
+  default: { findOne: jest.fn(), findOneAndUpdate: jest.fn(), updateOne: jest.fn() },
 }));
 
 jest.mock("@/lib/subscription/gracePeriod", () => ({
@@ -48,8 +48,8 @@ jest.mock("@/lib/subscription/gracePeriod", () => ({
 
 const systemFindOne = (SystemSettings as unknown as { findOne: jest.Mock }).findOne;
 const subFindOne = (Subscription as unknown as { findOne: jest.Mock }).findOne;
-const subFindByIdAndUpdate = (Subscription as unknown as { findByIdAndUpdate: jest.Mock })
-  .findByIdAndUpdate;
+const subFindOneAndUpdate = (Subscription as unknown as { findOneAndUpdate: jest.Mock })
+  .findOneAndUpdate;
 const connectMock = connectDB as unknown as jest.Mock;
 
 // Mutable "DB" value for the flag; findOne reads it lazily at call time so a
@@ -154,7 +154,7 @@ describe("subscription enforcement — scale & concurrency", () => {
     console.log(`[scale] ${CONCURRENCY} ON no-sub → all 403 in ${ms.toFixed(1)}ms`);
   }, 30_000);
 
-  test("enforcement ON: subscribed users within limits are allowed under load", async () => {
+  test("enforcement ON: atomically caps a concurrent burst at the configured limit", async () => {
     dbFlag = true;
     const activeSub = {
       _id: "sub_1",
@@ -166,15 +166,21 @@ describe("subscription enforcement — scale & concurrency", () => {
       },
     };
     subFindOne.mockResolvedValue(activeSub);
-    subFindByIdAndUpdate.mockResolvedValue(null);
+    let reservations = 0;
+    subFindOneAndUpdate.mockImplementation(async () => {
+      if (reservations >= 100) return null;
+      reservations += 1;
+      return activeSub;
+    });
     const wrapped = withSubscription(okHandler, { type: "ai", feature: "ai_chat" });
 
     const responses = await Promise.all(
       Array.from({ length: CONCURRENCY }, () => wrapped(makeReq(), employerCtx)),
     );
 
-    expect(responses.every((r) => r.status === 200)).toBe(true);
-    expect(okHandler).toHaveBeenCalledTimes(CONCURRENCY);
+    expect(responses.filter((r) => r.status === 200)).toHaveLength(100);
+    expect(responses.filter((r) => r.status === 429)).toHaveLength(CONCURRENCY - 100);
+    expect(okHandler).toHaveBeenCalledTimes(100);
     expect(systemFindOne).toHaveBeenCalledTimes(1);
   }, 30_000);
 

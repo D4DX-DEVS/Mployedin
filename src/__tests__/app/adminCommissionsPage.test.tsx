@@ -124,7 +124,7 @@ describe("AdminCommissionsPage", () => {
       render(<AdminCommissionsPage />);
     });
 
-    expect(screen.getByText(/finance workspace/i, { selector: "div.workspace-glass-panel" })).toBeInTheDocument();
+    expect(screen.getByText(/finance workspace/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1, name: "Commissions" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /add commission/i })).toBeInTheDocument();
 

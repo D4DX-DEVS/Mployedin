@@ -164,8 +164,14 @@ export default function SuperAgentAgentsPage() {
       setCreateError(t("validateNameEmailPasswordRequired"));
       return;
     }
-    if (createForm.password.length < 8) {
-      setCreateError(t("validatePasswordMinLength"));
+    if (
+      createForm.password.length < 12 ||
+      !/[a-z]/.test(createForm.password) ||
+      !/[A-Z]/.test(createForm.password) ||
+      !/[0-9]/.test(createForm.password) ||
+      !/[^A-Za-z0-9]/.test(createForm.password)
+    ) {
+      setCreateError("Password must be 12+ characters and include upper-case, lower-case, numeric, and special characters");
       return;
     }
     setCreateLoading(true);
@@ -485,12 +491,8 @@ export default function SuperAgentAgentsPage() {
             <TableHeader>
               <TableRow className="bg-background/60 hover:bg-background/60">
                 <TableHead><SortHeader field="name">{t("agent")}</SortHeader></TableHead>
-                <TableHead>{tc("email")}</TableHead>
-                <TableHead className="text-right"><SortHeader field="leadsCount">{t("leads")}</SortHeader></TableHead>
-                <TableHead className="text-right"><SortHeader field="conversions">{t("conversions")}</SortHeader></TableHead>
-                <TableHead className="text-right"><SortHeader field="placements">{t("placements")}</SortHeader></TableHead>
-                <TableHead className="text-right"><SortHeader field="conversionRate">{t("convRateShort")}</SortHeader></TableHead>
                 <TableHead>{t("progress")}</TableHead>
+                <TableHead className="text-right"><SortHeader field="conversionRate">{t("convRateShort")}</SortHeader></TableHead>
                 <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
@@ -498,14 +500,14 @@ export default function SuperAgentAgentsPage() {
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    {Array.from({ length: 8 }).map((_, j) => (
+                    {Array.from({ length: 4 }).map((_, j) => (
                       <TableCell key={j}><div className="h-4 w-3/4 animate-pulse rounded bg-muted/50" /></TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : agents.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="py-16 text-center">
+                  <TableCell colSpan={4} className="py-16 text-center">
                     <div className="flex flex-col items-center gap-3">
                       <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-sky-50 text-sky-600">
                         <Users2 className="h-6 w-6" />
@@ -528,6 +530,7 @@ export default function SuperAgentAgentsPage() {
                   <TableCell>
                     <div className="flex flex-col gap-1">
                       <span className="font-medium text-foreground">{a.name}</span>
+                      <span className="text-xs text-muted-foreground">{a.email}</span>
                       {badges.length > 0 && (
                         <div className="flex flex-wrap gap-1">
                           {badges.map((b) => (
@@ -539,17 +542,18 @@ export default function SuperAgentAgentsPage() {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{a.email}</TableCell>
-                  <TableCell className="text-right text-foreground/85">{a.leadsCount ?? 0}</TableCell>
-                  <TableCell className="text-right font-medium text-emerald-600">{a.conversions ?? 0}</TableCell>
-                  <TableCell className="text-right font-medium text-primary">{a.placements ?? 0}</TableCell>
-                  <TableCell className="text-right text-foreground/85">
-                    {a.leadsCount > 0
-                      ? `${Math.round((a.conversions / a.leadsCount) * 100)}%`
-                      : "—"}
-                  </TableCell>
                   <TableCell>
-                    <div className="h-2 w-32 overflow-hidden rounded-full bg-muted/75">
+                    <div className="flex flex-wrap gap-2 text-xs">
+                      <span className="rounded-lg bg-muted px-2 py-1">{t("leads")}: <strong>{a.leadsCount ?? 0}</strong></span>
+                      <span className="rounded-lg bg-emerald-500/10 px-2 py-1 text-emerald-700">{t("conversions")}: <strong>{a.conversions ?? 0}</strong></span>
+                      <span className="rounded-lg bg-primary/10 px-2 py-1 text-primary">{t("placements")}: <strong>{a.placements ?? 0}</strong></span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right text-foreground/85">
+                    <span className="block font-semibold">
+                      {a.leadsCount > 0 ? `${Math.round((a.conversions / a.leadsCount) * 100)}%` : "—"}
+                    </span>
+                    <div className="ms-auto mt-1.5 h-2 w-32 max-w-full overflow-hidden rounded-full bg-muted/75">
                       <div
                         className="h-full rounded-full bg-primary"
                         style={{ width: `${Math.min(100, a.leadsCount > 0 ? (a.conversions / a.leadsCount) * 100 : 0)}%` }}

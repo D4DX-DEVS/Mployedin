@@ -346,7 +346,6 @@ export default function AdminUsersPage() {
               </TableHead>
               <TableHead>{t("userTableHeader")}</TableHead>
               <TableHead>{t("roleTableHeader")}</TableHead>
-              <TableHead>{t("statusTableHeader")}</TableHead>
               <TableHead>{t("localeTableHeader")}</TableHead>
               <TableHead>{t("joinedTableHeader")}</TableHead>
               <TableHead>{t("actionsTableHeader")}</TableHead>
@@ -356,7 +355,7 @@ export default function AdminUsersPage() {
             {loading ? (
               Array.from({ length: 8 }).map((_, i) => (
                 <TableRow key={i} className="hover:bg-transparent">
-                  {Array.from({ length: 7 }).map((_, j) => (
+                  {Array.from({ length: 6 }).map((_, j) => (
                     <TableCell key={j}>
                       <div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
                     </TableCell>
@@ -365,7 +364,7 @@ export default function AdminUsersPage() {
               ))
             ) : users.length === 0 ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={7} className="h-32 text-center">
+                <TableCell colSpan={6} className="h-32 text-center">
                   <div className="flex flex-col items-center gap-2 text-muted-foreground">
                     <Inbox className="h-8 w-8 opacity-40" />
                     <span className="text-sm">{t("noUsers")}</span>
@@ -394,6 +393,9 @@ export default function AdminUsersPage() {
                       <div>
                         <p className="font-medium">{user.name || t("unnamed")}</p>
                         <p className="text-xs text-muted-foreground">{user.email}</p>
+                        <Badge className={`mt-1 text-[10px] ${user.isActive ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-muted text-muted-foreground"}`}>
+                          {user.isActive ? t("active") : t("inactive")}
+                        </Badge>
                       </div>
                     </div>
                   </TableCell>
@@ -429,11 +431,6 @@ export default function AdminUsersPage() {
                         <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-600">Custom</Badge>
                       )}
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={user.isActive ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-muted text-muted-foreground"}>
-                      {user.isActive ? t("active") : t("inactive")}
-                    </Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground text-xs uppercase">{user.locale}</TableCell>
                   <TableCell className="text-muted-foreground text-xs">{joined}</TableCell>

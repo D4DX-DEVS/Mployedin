@@ -170,6 +170,9 @@ const BULK_JOB_RESPONSE = `Here are the 3 jobs I've created for your hiring camp
 // ─── Tests ──────────────────────────────────────────────────────
 describe("Bulk Job Creation", () => {
   beforeEach(() => {
+    document.cookie = "csrf-token=test-token; path=/";
+  });
+  beforeEach(() => {
     jest.clearAllMocks();
     global.fetch = jest.fn();
   });

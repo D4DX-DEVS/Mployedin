@@ -11,6 +11,12 @@
     "applications": "الطلبات",
     "messages": "الرسائل",
     "interviews": "المقابلات",
+    "offers": "العروض",
+    "calendar": "التقويم",
+    "savedSearches": "عمليات البحث المحفوظة",
+    "documents": "المستندات",
+    "referralProgram": "برنامج الإحالة",
+    "subscription": "الاشتراك",
     "placements": "التوظيفات",
     "employers": "أصحاب العمل",
     "agents": "الوكلاء",
@@ -30,6 +36,12 @@
     "courses": "الدورات",
     "jobSearch": "البحث عن وظيفة",
     "support": "الدعم",
+    "pipeline": "مسار التوظيف",
+    "inbox": "الوارد",
+    "more": "المزيد",
+    "openMoreMenu": "فتح قائمة المزيد",
+    "employerMobileNavigation": "تنقل صاحب العمل على الجوال",
+    "jobSeekerMobileNavigation": "تنقل الباحث عن عمل على الجوال",
     "customerCare": "خدمة العملاء",
     "employerWorkspace": "مساحة عمل صاحب العمل",
     "adminWorkspace": "مساحة عمل المدير",
@@ -38,8 +50,7 @@
     "a11yNavigationMenu": "قائمة التنقل",
     "a11yOpenMenu": "فتح القائمة",
     "a11yCloseMenu": "إغلاق القائمة",
-    "a11yHome": "الصفحة الرئيسية لمنصة Mployedin",
-    "more": "المزيد"
+    "a11yHome": "الصفحة الرئيسية لمنصة Mployedin"
   },
   "auth": {
     "login": "تسجيل الدخول",
@@ -75,6 +86,7 @@
     "oauth2faSignOut": "تسجيل الخروج",
     "oauth2faRecoveryUsed": "تم استخدام رمز الاسترداد — يُفضّل تسجيل رموز استرداد جديدة من الإعدادات.",
     "accountLocked": "تم قفل حسابك مؤقتًا بعد عدة محاولات فاشلة. حاول مرة أخرى بعد 15 دقيقة أو أعد تعيين كلمة المرور.",
+    "loginRateLimited": "عدد كبير جدًا من محاولات تسجيل الدخول الفاشلة من هذه الشبكة. انتظر خمس دقائق ثم حاول مرة أخرى.",
     "resetPassword": "إعادة تعيين كلمة المرور",
     "sendResetLink": "إرسال رابط الإعادة",
     "welcomeBack": "مرحبًا بعودتك",
@@ -96,6 +108,13 @@
     "signingIn": "جارٍ تسجيل الدخول...",
     "oauthAccountNotLinked": "هذا البريد الإلكتروني مسجل بالفعل بطريقة تسجيل دخول مختلفة. يرجى استخدام طريقة التسجيل الأصلية.",
     "sessionExpiredInactivity": "انتهت جلستك بسبب عدم النشاط. يرجى تسجيل الدخول مرة أخرى.",
+    "chooseAccountType": "ماذا تريد أن تفعل؟",
+    "chooseAccountTypeDescription": "اختر نوع حساب واحد حتى نُبقي الإعداد مركزًا على هدفك.",
+    "jobSeekerAccount": "البحث عن وظيفة",
+    "jobSeekerAccountDescription": "أنشئ ملفك واكتشف الوظائف المطابقة وتابع طلباتك.",
+    "employerAccount": "توظيف المواهب",
+    "employerAccountDescription": "أنشئ مساحة شركتك وانشر الوظائف وأدر المرشحين.",
+    "changeAccountType": "تغيير",
     "createYourAccount": "أنشئ حسابك",
     "startYourJourney": "ابدأ رحلتك مع مبلويدين",
     "fullName": "الاسم الكامل",
@@ -112,9 +131,9 @@
     "registrationFailed": "فشل التسجيل. حاول مرة أخرى.",
     "registerSubtitle": "اعثر على فرصتك التالية بالمطابقة المدعومة بالذكاء الاصطناعي.",
     "emailAddressLabel": "عنوان البريد",
-    "minChars": "بحد أدنى 8 أحرف",
-    "passwordTooShort": "يجب أن تكون كلمة المرور 8 أحرف على الأقل.",
-    "passwordTooWeak": "يجب أن تتضمن كلمة المرور حرفًا كبيرًا وحرفًا صغيرًا ورقمًا.",
+    "minChars": "12 حرفًا مع حروف كبيرة وصغيرة ورقم ورمز",
+    "passwordTooShort": "يجب أن تكون كلمة المرور 12 حرفًا على الأقل.",
+    "passwordTooWeak": "يجب أن تتضمن كلمة المرور أحرفًا كبيرة وصغيرة ورقمًا ورمزًا.",
     "alreadyHaveAccount": "لديك حساب بالفعل؟",
     "hiringQuestion": "توظف؟",
     "registerAsEmployer": "سجل كصاحب عمل"
@@ -153,6 +172,7 @@
   "employerRegister": {
     "title": "تسجيل شركتك",
     "subtitle": "انضم إلى MPLOYEDIN، منصة التوظيف الخليجية المدعومة بالذكاء الاصطناعي",
+    "stepProgress": "الخطوة {current} من {total}: {label}",
     "referral": "إحالة: {code}",
     "steps": {
       "company": "الشركة",
@@ -218,8 +238,10 @@
       "validEmailRequired": "يرجى إدخال بريد إلكتروني صحيح.",
       "passwordRequired": "كلمة المرور مطلوبة.",
       "passwordTooShort": "يجب أن تكون كلمة المرور 8 أحرف على الأقل.",
+      "passwordStrength": "استخدم 12 حرفًا على الأقل مع حرف كبير وصغير ورقم ورمز.",
       "passwordMismatch": "كلمتا المرور غير متطابقتين.",
       "termsRequired": "يجب الموافقة على شروط الخدمة وسياسة الخصوصية.",
+      "fixFields": "يرجى تصحيح الحقول المحددة.",
       "registrationFailed": "فشل التسجيل. يرجى المحاولة مرة أخرى.",
       "serverError": "خطأ في الخادم. يرجى المحاولة لاحقًا.",
       "tooManyRequests": "طلبات كثيرة جدًا. يرجى الانتظار بضع دقائق والمحاولة مرة أخرى.",
@@ -3712,7 +3734,6 @@
     "homepage": "الصفحة الرئيسية"
   },
   "profileDropdown": {
-    "preferences": "التفضيلات",
     "quickLinks": "روابط سريعة",
     "interviews": "المقابلات",
     "offers": "العروض",
@@ -4383,6 +4404,9 @@
     "sortScore": "الأعلى تطابقاً",
     "latestPosting": "الأحدث",
     "filters": "التصفية",
+    "pipelineStages": "مراحل مسار التوظيف",
+    "filterPanelTitle": "تصفية المرشحين",
+    "closeFilters": "إغلاق عوامل التصفية",
     "candidate": "المرشح",
     "roleMatchSkills": "الدور، التطابق، المهارات",
     "actions": "الإجراءات",
@@ -5210,19 +5234,19 @@
     },
     "actions": {
       "agentPerformance": {
-        "label": "أداء الوكلاء",
+        "label": "مراجعة أداء الوكلاء",
         "description": "راجع قائمة الفريق والإنتاجية والمساءلة الفردية."
       },
       "leadPipeline": {
-        "label": "مسار العملاء المحتملين",
+        "label": "متابعة العملاء المحتملين",
         "description": "تابع المتابعات والتنقيب النشط وتحويل أصحاب العمل."
       },
       "jobApprovals": {
-        "label": "موافقات الوظائف",
+        "label": "اعتماد الوظائف",
         "description": "أنهِ الموافقات المعلقة بسرعة دون مغادرة مساحة الإشراف."
       },
       "commissionReport": {
-        "label": "تقرير العمولات",
+        "label": "مراجعة العمولات",
         "description": "تابع أرباح التوظيف وحالة المدفوعات الإقليمية."
       }
     },
@@ -5296,19 +5320,19 @@
         "note": "أطلق دوراً لأحد أصحاب العمل المخصصين لك."
       },
       "myJobs": {
-        "label": "وظائفي",
+        "label": "إدارة وظائفي",
         "note": "راجع المنشورات النشطة والمسودات والمغلقة في عرض واحد."
       },
       "candidates": {
-        "label": "المرشحون",
+        "label": "مراجعة المرشحين",
         "note": "حرّك القوائم المختصرة والمقابلات والعروض للأمام."
       },
       "jobSeekers": {
-        "label": "عرض الباحثين عن عمل",
+        "label": "البحث عن باحثين عن عمل",
         "note": "ابحث في الملفات وطابق المواهب وتابع بسرعة."
       },
       "performanceReport": {
-        "label": "تقرير الأداء",
+        "label": "مراجعة أدائي",
         "note": "تابع جودة التحويل ومعدلات الاستجابة والنتائج."
       }
     },
@@ -7436,6 +7460,8 @@
     "failedToCreateProfiles": "فشل إنشاء ملفات الأهداف",
     "profileNotFound": "الملف غير موجود",
     "failedToLoadProfile": "فشل تحميل الملف",
+    "failedLoadTargets": "فشل تحميل الأهداف",
+    "failedLoadTeamTargets": "فشل تحميل أهداف الفريق",
     "failedToLoadReport": "فشل تحميل التقرير",
     "a11yViewDetails": "عرض التفاصيل",
     "a11yCancel": "إلغاء",
@@ -13441,8 +13467,12 @@
     "checkSpamFolder": "تحقق من مجلد الرسائل غير المرغوب فيها",
     "correctEmailUsed": "تأكد من استخدام عنوان البريد الإلكتروني الصحيح",
     "allowFewMinutes": "انتظر بضع دقائق حتى يصل البريد الإلكتروني",
+    "codeExpiry": "تنتهي صلاحية الرموز بعد 24 ساعة",
     "sendingEllipsis": "جارٍ الإرسال…",
-    "resendVerificationEmail": "إعادة إرسال بريد التحقق"
+    "resendVerificationEmail": "إعادة إرسال بريد التحقق",
+    "resendIn": "إعادة الإرسال خلال {seconds} ث",
+    "changeEmail": "تغيير عنوان البريد الإلكتروني",
+    "contactSupport": "التواصل مع الدعم"
   },
   "confirmEmailChange": {
     "confirmationFailedFallback": "فشل التأكيد. قد يكون الرابط منتهي الصلاحية.",
@@ -14090,7 +14120,11 @@
     "exportData": "تصدير البيانات",
     "rowsPerPage": "عدد الصفوف في الصفحة",
     "showing": "عرض {from}–{to} من {total}",
-    "noRecords": "لا توجد سجلات"
+    "noRecords": "لا توجد سجلات",
+    "firstPage": "الصفحة الأولى",
+    "previousPage": "الصفحة السابقة",
+    "nextPage": "الصفحة التالية",
+    "lastPage": "الصفحة الأخيرة"
   },
   "shareJob": {
     "share": "مشاركة",
@@ -14203,7 +14237,7 @@
     "notifyCandidates": "إخطار المرشحين",
     "sendAlertsOnStageChanges": "إرسال تنبيهات عند تغيير المرحلة",
     "autoRejectThreshold": "حد الرفض التلقائي",
-    "rejectBelowMatchScore": "رفض أقل من {{percent}}% درجة مطابقة",
+    "rejectBelowMatchScore": "رفض أقل من {percent}% درجة مطابقة",
     "percentOff": "0% (إيقاف)",
     "percentDefault": "40% (افتراضي)",
     "percentStrict": "80% (صارم)",
@@ -14214,10 +14248,10 @@
   },
   "jobMatchingWeightsTab": {
     "failedToSaveMatchingWeights": "فشل حفظ أوزان المطابقة",
-    "totalAt": "الإجمالي عند {{total}}%",
+    "totalAt": "الإجمالي عند {total}%",
     "mustTotal100PercentBeforeSaving": "يجب أن يكون الإجمالي 100% قبل الحفظ.",
     "top": "الأعلى",
-    "strongestInfluenceAt": "أقوى تأثير عند {{percent}}%.",
+    "strongestInfluenceAt": "أقوى تأثير عند {percent}%.",
     "saving": "جاري الحفظ…",
     "saved": "تم الحفظ!",
     "weightsSaved": "تم حفظ الأوزان",
@@ -14229,7 +14263,7 @@
     "resetDefaults": "إعادة تعيين الافتراضيات",
     "weightDistribution": "توزيع الوزن",
     "weightsBalanced": "✓ الأوزان متوازنة. سيتم ترتيب المرشحين وفقاً لهذه الأولويات.",
-    "totalIsAdjustTo100": "⚠ الإجمالي {{total}}%. اضبط على 100%.",
+    "totalIsAdjustTo100": "⚠ الإجمالي {total}%. اضبط على 100%.",
     "tuningTip": "نصيحة الضبط",
     "tuningTipDescription": "زِد المهارات للوظائف التقنية. ارفع الخبرة ذات الصلة للمناصب العليا. اعتمد على التعليم والشهادات للوظائف المنظمة أو المرخصة."
   },
@@ -14241,10 +14275,10 @@
     "regenerate": "إعادة الإنشاء",
     "generate": "إنشاء",
     "showLatestOnly": "عرض الأحدث فقط",
-    "viewAllHistory": "عرض كل السجل ({{count}} مجموعات)",
+    "viewAllHistory": "عرض كل السجل ({count} مجموعات)",
     "loadingSavedQuestions": "جاري تحميل الأسئلة المحفوظة...",
-    "generatingQuestions": "جاري إنشاء {{count}} أسئلة {{type}}...",
-    "clickGenerateToCreate": "انقر فوق \"إنشاء\" لإنشاء أسئلة {{type}}",
+    "generatingQuestions": "جاري إنشاء {count} أسئلة {type}...",
+    "clickGenerateToCreate": "انقر فوق \"إنشاء\" لإنشاء أسئلة {type}",
     "latest": "الأحدث",
     "tests": "الاختبارات",
     "strongAnswer": "إجابة قوية",
@@ -14558,7 +14592,7 @@
     "jobSeekersOnly": "يمكن لباحثي الوظائف فقط التقديم",
     "applicationSubmitted": "تم إرسال الطلب!",
     "sentProfile": "لقد أرسلنا ملفك الشخصي إلى صاحب العمل.",
-    "answerRequired": "يرجى الإجابة على السؤال المطلوب: \"{{label}}\"",
+    "answerRequired": "يرجى الإجابة على السؤال المطلوب: \"{label}\"",
     "applyingAs": "التقديم كـ",
     "profileCv": "السيرة الذاتية",
     "profileCvLabel": "السيرة الذاتية للملف الشخصي",
@@ -14579,12 +14613,12 @@
     "easyApply": "تقديم سريع",
     "profileAutoAttached": "يتم إرفاق ملفك الشخصي تلقائياً بالطلب.",
     "confirmSkills": "تأكيد مهاراتك",
-    "experienceQuestion": "هل لديك خبرة في {{skill}}؟",
+    "experienceQuestion": "هل لديك خبرة في {skill}؟",
     "yes": "نعم",
     "no": "لا",
     "skip": "تخطي",
-    "skillsUpdated": "✓ شكراً! تم تحديث ملفك الشخصي بـ {{count}} مهارة{{pluralSkill}}.",
-    "moreSkillQuestions": "{{count}} سؤال مهارة{{pluralQuestion}} آخر"
+    "skillsUpdated": "✓ شكراً! تم تحديث ملفك الشخصي بـ {count} مهارة.",
+    "moreSkillQuestions": "{count} سؤال مهارة آخر"
   },
   "socialShare": {
     "shareJob": "مشاركة الوظيفة",
@@ -14731,6 +14765,9 @@
     "description": "حدث خطأ غير متوقع أثناء تحميل هذه الصفحة.",
     "tryAgain": "إعادة المحاولة",
     "reloadPage": "إعادة تحميل الصفحة",
+    "home": "الذهاب إلى لوحة التحكم",
+    "support": "التواصل مع الدعم",
+    "platformStatus": "التحقق من حالة المنصة",
     "errorId": "رقم الخطأ: {digest}",
     "failedApplications": "فشل تحميل الطلبات",
     "failedApplicationsDescription": "حدث خطأ غير متوقع أثناء تحميل الطلبات.",
@@ -14776,9 +14813,6 @@
     "send": "إرسال",
     "close": "إغلاق",
     "newChat": "محادثة جديدة",
-    "history": "سجل المحادثات",
-    "noHistory": "لا توجد محادثات سابقة بعد.",
-    "deleteChat": "حذف المحادثة",
     "confirm": "تأكيد",
     "cancel": "إلغاء",
     "executing": "جارٍ التنفيذ...",
@@ -14788,27 +14822,7 @@
     "actionFailed": "حدث خطأ ما.",
     "actionExpired": "انتهت صلاحية هذا الإجراء.",
     "errorMessage": "عذراً، حدث خطأ ما. يرجى المحاولة مرة أخرى.",
-    "disclaimer": "قد يخطئ المساعد أحياناً. يطلب دائماً تأكيدك قبل تنفيذ أي إجراء.",
-    "suggestions": {
-      "employer1": "اعرض إحصائيات مسار التوظيف لدي",
-      "employer2": "أي وظيفة لدي لديها أقل عدد من المتقدمين؟",
-      "employer3": "ابحث في المتقدمين لدي",
-      "jobSeeker1": "ابحث عن وظائف تناسب ملفي الشخصي",
-      "jobSeeker2": "اعرض طلبات التوظيف الخاصة بي",
-      "jobSeeker3": "ابحث عن وظائف عن بُعد",
-      "agent1": "اعرض العملاء المحتملين لدي",
-      "agent2": "أنشئ عميلاً محتملاً جديداً",
-      "agent3": "ابحث عن أصحاب العمل",
-      "superAgent1": "اعرض أداء فريقي",
-      "superAgent2": "اعرض العملاء المحتملين لدي",
-      "superAgent3": "أنشئ عميلاً محتملاً جديداً",
-      "admin1": "اعرض إحصائيات المنصة",
-      "admin2": "ابحث عن المستخدمين",
-      "admin3": "هل توجد وظائف بانتظار الموافقة؟",
-      "default1": "ماذا يمكنك أن تفعل؟",
-      "default2": "ابحث عن وظائف",
-      "default3": "اعرض نشاطي الأخير"
-    }
+    "disclaimer": "قد يخطئ المساعد أحياناً. يطلب دائماً تأكيدك قبل تنفيذ أي إجراء."
   },
   "mcpAuthorize": {
     "title": "ربط {clientName} بـ Mployedin",

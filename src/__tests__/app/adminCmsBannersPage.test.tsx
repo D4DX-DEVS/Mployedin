@@ -83,7 +83,10 @@ describe("BannersAdminPage", () => {
     const view = render(<BannersAdminPage />);
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith("/api/admin/cms/banners?page=1&limit=10");
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/admin/cms/banners?page=1&limit=10",
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      );
     });
 
     const workspaceRoot = view.container.querySelector('[data-admin-workspace="cms-page"]');

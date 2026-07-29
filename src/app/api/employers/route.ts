@@ -268,10 +268,6 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       });
     }
     query._id = { $in: userIdConstraint };
-  } else if (search && !query.$or) {
-    // fallback: no matches at all
-  } else if (!search && (industry || location || verified)) {
-    // already handled above
   }
 
   // When search is active AND we also have employer-level filters, narrow by those too

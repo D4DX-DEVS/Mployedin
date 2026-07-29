@@ -20,20 +20,30 @@ export const MCP_SCOPE_ROLES: Record<McpScope, UserRole[]> = {
   "read:jobs": ["job_seeker"],
   "read:applications": ["job_seeker"],
   "read:profile": ["job_seeker"],
-  "read:employer_jobs": ["employer"],
-  "read:applicants": ["employer"],
+  "read:employer_jobs": ["employer", "agent", "super_agent", "admin"],
+  "read:applicants": ["employer", "agent", "super_agent", "admin"],
 };
 
 export const MCP_SCOPE_DESCRIPTIONS: Record<McpScope, string> = {
   "read:jobs": "Search and view job postings",
   "read:applications": "View your job applications",
   "read:profile": "View your job seeker profile",
-  "read:employer_jobs": "View your company's job postings",
-  "read:applicants": "View applicants to your job postings",
+  "read:employer_jobs": "View job postings within your assigned role scope",
+  "read:applicants": "View applicants within your assigned role scope",
 };
 
-/** Drop any requested scope that isn't valid for the session's actual role. */
+/** All scopes the current role can hold. */
+export function defaultScopesForRole(role: UserRole): McpScope[] {
+  return MCP_SCOPES.filter((scope) => MCP_SCOPE_ROLES[scope].includes(role));
+}
+
+/**
+ * Drop any requested scope that isn't valid for the session's actual role.
+ * OAuth clients may omit `scope`; in that case grant the role's documented
+ * defaults so the connector cannot complete with a silently unusable token.
+ */
 export function scopesForRole(requested: string[], role: UserRole): McpScope[] {
+  if (requested.length === 0) return defaultScopesForRole(role);
   return requested.filter((s): s is McpScope =>
     MCP_SCOPES.includes(s as McpScope) && MCP_SCOPE_ROLES[s as McpScope].includes(role)
   );

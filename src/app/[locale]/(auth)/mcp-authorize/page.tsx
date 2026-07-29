@@ -5,6 +5,8 @@ import McpClient from "@/models/McpClient";
 import { scopesForRole, type McpScope } from "@/lib/mcp/scopes";
 import { ConsentForm } from "./ConsentForm";
 import type { UserRole } from "@/types/user";
+import { getMcpResourceUrl } from "@/lib/mcp/baseUrl";
+import { isValidPkceChallenge } from "@/lib/mcp/oauth";
 
 const SCOPE_TRANSLATION_KEY: Record<McpScope, string> = {
   "read:jobs": "scopeReadJobs",
@@ -34,12 +36,20 @@ export default async function McpAuthorizePage({
   const clientId = sp.client_id ?? "";
   const redirectUri = sp.redirect_uri ?? "";
   const codeChallenge = sp.code_challenge ?? "";
+  const resource = sp.resource ?? "";
   const requestedScope = sp.scope ?? "";
   const state = sp.state ?? "";
 
   await connectDB();
   const client = clientId ? await McpClient.findOne({ clientId }).lean() : null;
-  const valid = Boolean(session?.user && role && client && client.redirectUris.includes(redirectUri) && codeChallenge);
+  const valid = Boolean(
+    session?.user &&
+    role &&
+    client &&
+    client.redirectUris.includes(redirectUri) &&
+    isValidPkceChallenge(codeChallenge) &&
+    resource === getMcpResourceUrl()
+  );
 
   if (!valid || !client || !role) {
     return (
@@ -72,6 +82,7 @@ export default async function McpAuthorizePage({
         clientId={clientId}
         redirectUri={redirectUri}
         codeChallenge={codeChallenge}
+        resource={resource}
         scope={grantedScopes.join(" ")}
         state={state}
       />

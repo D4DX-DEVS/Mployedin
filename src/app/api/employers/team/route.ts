@@ -16,6 +16,7 @@ import { canManageTeam } from "@/lib/permissions/team";
 import { ensureEmployerOwnerMembership } from "@/lib/employers/company-membership";
 import { escapeRegex } from "@/lib/security/sanitize";
 import logger from "@/lib/logger";
+import { escapeHtml, sanitizeEmailSubject } from "@/lib/security/html-escape";
 
 /**
  * GET /api/employers/team — list team members for the employer's company
@@ -203,6 +204,9 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
   const sendInviteComms = async (inviteToken: string) => {
     const acceptPath = `/${locale}/employer/team/accept?token=${inviteToken}`;
     const acceptUrl = `${baseUrl}${acceptPath}`;
+    const safeCompanyName = escapeHtml(employer.companyName);
+    const safeRoleName = escapeHtml(roleName);
+    const safeAcceptUrl = escapeHtml(acceptUrl);
     const invitedUser = await User.findOne({ email }).select("_id").lean();
     if (invitedUser) {
       await notify({
@@ -217,13 +221,13 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
       try {
         await sendEmail({
           to: email,
-          subject: `You're invited to join ${employer.companyName} on mployedin`,
+          subject: sanitizeEmailSubject(`You're invited to join ${employer.companyName} on mployedin`),
           html: `
             <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto;">
               <h2>Team Invitation</h2>
-              <p>You've been invited to join <strong>${employer.companyName}</strong> as a <strong>${roleName}</strong> on mployedin.</p>
+              <p>You've been invited to join <strong>${safeCompanyName}</strong> as a <strong>${safeRoleName}</strong> on mployedin.</p>
               <p>This invitation expires in 48 hours.</p>
-              <a href="${acceptUrl}" style="display: inline-block; background: #2563eb; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">Accept Invitation</a>
+              <a href="${safeAcceptUrl}" style="display: inline-block; background: #2563eb; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">Accept Invitation</a> <!-- nosemgrep: javascript.express.security.injection.raw-html-format.raw-html-format -- safeAcceptUrl is HTML attribute-escaped above -->
               <p style="color: #6b7280; font-size: 13px; margin-top: 24px;">If you didn't expect this invitation, you can safely ignore this email.</p>
             </div>
           `,

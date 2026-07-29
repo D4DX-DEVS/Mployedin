@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { X, Send, Loader2, Sparkles, RotateCcw, Check, History, Trash2 } from "lucide-react";
+import { Bot, X, Send, Loader2, Sparkles, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -16,53 +16,6 @@ import type { CopilotStreamFrame, TranscriptItem } from "./types";
 
 let idCounter = 0;
 const nextId = () => `ci-${Date.now()}-${idCounter++}`;
-
-const CHATS_KEY = "copilot-chats";
-const MAX_SAVED_CHATS = 10;
-
-interface SavedChat {
-  id: string;
-  title: string;
-  updatedAt: number;
-  transcript: TranscriptItem[];
-  history: { role: "user" | "assistant"; content: string }[];
-}
-
-function loadChats(): SavedChat[] {
-  try {
-    const raw = localStorage.getItem(CHATS_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function persistChats(chats: SavedChat[]) {
-  try {
-    localStorage.setItem(CHATS_KEY, JSON.stringify(chats.slice(0, MAX_SAVED_CHATS)));
-  } catch { /* ignore unavailable storage */ }
-}
-
-type SuggestionRole = "employer" | "jobSeeker" | "agent" | "superAgent" | "admin" | "default";
-
-function roleFromPathname(pathname: string): SuggestionRole {
-  if (pathname.includes("/super-agent")) return "superAgent";
-  if (pathname.includes("/job-seeker")) return "jobSeeker";
-  if (pathname.includes("/employer")) return "employer";
-  if (pathname.includes("/agent")) return "agent";
-  if (pathname.includes("/admin")) return "admin";
-  return "default";
-}
-
-// ponytail: in-flight items restored from storage can never resolve — mark them settled
-function settleRestoredItem(item: TranscriptItem): TranscriptItem {
-  if (item.kind === "tool_call" && !item.done) return { ...item, done: true };
-  if (item.kind === "proposal" && ["pending", "confirming", "cancelling"].includes(item.status)) {
-    return { ...item, status: "expired" };
-  }
-  return item;
-}
 
 function AssistantMarkdown({ content }: { content: string }) {
   return (
@@ -94,9 +47,10 @@ function AssistantMarkdown({ content }: { content: string }) {
 
 interface CopilotProps {
   className?: string;
+  triggerClassName?: string;
 }
 
-export function Copilot({ className }: CopilotProps) {
+export function Copilot({ className, triggerClassName }: CopilotProps) {
   const pathname = usePathname();
   const locale = useLocale();
   const isRtl = locale === "ar";
@@ -106,85 +60,13 @@ export function Copilot({ className }: CopilotProps) {
   const [transcript, setTranscript] = useState<TranscriptItem[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
-  const [fabPos, setFabPos] = useState<{ x: number; y: number } | null>(null);
-  const [showHistory, setShowHistory] = useState(false);
-  const [savedChats, setSavedChats] = useState<SavedChat[]>([]);
-  const chatIdRef = useRef(nextId());
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const historyForRequest = useRef<{ role: "user" | "assistant"; content: string }[]>([]);
-  const dragRef = useRef({ dragging: false, moved: false, grabX: 0, grabY: 0 });
 
   useEffect(() => setMounted(true), []);
-
-  const clampFabPos = useCallback((x: number, y: number) => {
-    const size = 48;
-    const margin = 4;
-    return {
-      x: Math.min(Math.max(x, margin), window.innerWidth - size - margin),
-      y: Math.min(Math.max(y, margin), window.innerHeight - size - margin),
-    };
-  }, []);
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("copilot-fab-pos");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        setFabPos(clampFabPos(parsed.x, parsed.y));
-      }
-    } catch { /* ignore malformed/unavailable storage */ }
-  }, [clampFabPos]);
-
-  // Re-clamp on viewport/orientation changes so a position saved on a wider
-  // screen can't strand the button off-screen on a smaller one.
-  useEffect(() => {
-    const onResize = () => setFabPos((p) => (p ? clampFabPos(p.x, p.y) : p));
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, [clampFabPos]);
-
-  // Auto-save current chat into history list (opened fresh — old chats live behind the History button)
-  useEffect(() => {
-    if (transcript.length === 0) return;
-    const others = loadChats().filter((c) => c.id !== chatIdRef.current);
-    const firstUserMsg = transcript.find((it) => it.kind === "user");
-    persistChats([
-      {
-        id: chatIdRef.current,
-        title: firstUserMsg?.kind === "user" ? firstUserMsg.content.slice(0, 60) : "",
-        updatedAt: Date.now(),
-        transcript,
-        history: historyForRequest.current,
-      },
-      ...others,
-    ]);
-  }, [transcript]);
-
-  const handleFabPointerDown = useCallback((e: React.PointerEvent<HTMLButtonElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    dragRef.current = { dragging: true, moved: false, grabX: e.clientX - rect.left, grabY: e.clientY - rect.top };
-    e.currentTarget.setPointerCapture(e.pointerId);
-  }, []);
-
-  const handleFabPointerMove = useCallback((e: React.PointerEvent<HTMLButtonElement>) => {
-    if (!dragRef.current.dragging) return;
-    dragRef.current.moved = true;
-    setFabPos(clampFabPos(e.clientX - dragRef.current.grabX, e.clientY - dragRef.current.grabY));
-  }, [clampFabPos]);
-
-  const handleFabPointerUp = useCallback(() => {
-    if (!dragRef.current.dragging) return;
-    dragRef.current.dragging = false;
-    setFabPos((current) => {
-      try {
-        if (current) localStorage.setItem("copilot-fab-pos", JSON.stringify(current));
-      } catch { /* ignore unavailable storage */ }
-      return current;
-    });
-  }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -286,8 +168,8 @@ export function Copilot({ className }: CopilotProps) {
     updateProposal(item.proposalId, { status: "cancelled" });
   }, [transcript, updateProposal]);
 
-  const sendMessage = useCallback(async (overrideContent?: string) => {
-    const content = (overrideContent ?? input).trim();
+  const sendMessage = useCallback(async () => {
+    const content = input.trim();
     if (!content || isStreaming) return;
     setInput("");
     setTranscript((prev) => [...prev, { id: nextId(), kind: "user", content }]);
@@ -312,7 +194,6 @@ export function Copilot({ className }: CopilotProps) {
       const decoder = new TextDecoder();
       let buffer = "";
       let assistantText = "";
-      let streamingId: string | null = null;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -328,33 +209,10 @@ export function Copilot({ className }: CopilotProps) {
           } catch {
             continue;
           }
-          if (frame.type === "text_delta") {
-            const chunk = frame.content;
-            if (streamingId) {
-              const sid = streamingId;
-              setTranscript((prev) => prev.map((it) => (it.id === sid && it.kind === "assistant_text" ? { ...it, content: it.content + chunk } : it)));
-            } else {
-              streamingId = nextId();
-              const sid = streamingId;
-              setTranscript((prev) => [...prev, { id: sid, kind: "assistant_text", content: chunk }]);
-            }
-          } else if (frame.type === "tool_call") {
-            streamingId = null; // any interim text becomes its own bubble
+          if (frame.type === "tool_call") {
             setTranscript((prev) => [...prev, { id: nextId(), kind: "tool_call", tool: frame.tool, label: frame.label }]);
           } else if (frame.type === "tool_result") {
-            const { tool, ok, message } = frame;
-            if (ok) {
-              // Keep a compact copy of tool data in the request history so
-              // follow-up questions ("shortlist the second one") still have context.
-              const payload = JSON.stringify(frame.data ?? message).slice(0, 1500);
-              historyForRequest.current = [...historyForRequest.current, { role: "assistant", content: `[data from ${tool}] ${payload}` }];
-            }
-            setTranscript((prev) => {
-              const idx = prev.findLastIndex((it) => it.kind === "tool_call" && it.tool === tool && !it.done);
-              const next = idx === -1 ? prev : prev.map((it, i) => (i === idx && it.kind === "tool_call" ? { ...it, done: true, ok } : it));
-              // ponytail: only surface failures; successful raw tool messages stay hidden
-              return ok ? next : [...next, { id: nextId(), kind: "tool_result", tool, ok, message }];
-            });
+            setTranscript((prev) => [...prev, { id: nextId(), kind: "tool_result", tool: frame.tool, ok: frame.ok, message: frame.message }]);
           } else if (frame.type === "proposal") {
             setTranscript((prev) => [
               ...prev,
@@ -372,16 +230,9 @@ export function Copilot({ className }: CopilotProps) {
           } else if (frame.type === "text") {
             assistantText = frame.content;
             if (assistantText) {
-              if (streamingId) {
-                // Replace the progressively streamed buffer with the authoritative full text.
-                const sid = streamingId;
-                setTranscript((prev) => prev.map((it) => (it.id === sid && it.kind === "assistant_text" ? { ...it, content: assistantText } : it)));
-              } else {
-                setTranscript((prev) => [...prev, { id: nextId(), kind: "assistant_text", content: assistantText }]);
-              }
+              setTranscript((prev) => [...prev, { id: nextId(), kind: "assistant_text", content: assistantText }]);
               historyForRequest.current = [...historyForRequest.current, { role: "assistant", content: assistantText }];
             }
-            streamingId = null;
           } else if (frame.type === "error") {
             setTranscript((prev) => [...prev, { id: nextId(), kind: "error", message: frame.message }]);
           }
@@ -402,46 +253,11 @@ export function Copilot({ className }: CopilotProps) {
   };
 
   const resetChat = () => {
-    // Current chat is already auto-saved to history — just start a fresh one
     setTranscript([]);
     historyForRequest.current = [];
-    chatIdRef.current = nextId();
-    setShowHistory(false);
-  };
-
-  const toggleHistory = () => {
-    setShowHistory((v) => {
-      const next = !v;
-      if (next) setSavedChats(loadChats());
-      return next;
-    });
-  };
-
-  const loadChat = (chat: SavedChat) => {
-    setTranscript((chat.transcript ?? []).map(settleRestoredItem));
-    historyForRequest.current = chat.history ?? [];
-    chatIdRef.current = chat.id;
-    setShowHistory(false);
-  };
-
-  const deleteChat = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const chats = loadChats().filter((c) => c.id !== id);
-    persistChats(chats);
-    setSavedChats(chats);
-    if (chatIdRef.current === id) {
-      setTranscript([]);
-      historyForRequest.current = [];
-      chatIdRef.current = nextId();
-    }
   };
 
   const hasMessages = transcript.length > 0;
-
-  const suggestions = useMemo(() => {
-    const role = roleFromPathname(pathname);
-    return [1, 2, 3].map((i) => t(`suggestions.${role}${i}`));
-  }, [pathname, t]);
 
   const panel = useMemo(() => (
     <div
@@ -452,7 +268,7 @@ export function Copilot({ className }: CopilotProps) {
       aria-label={t("title")}
       tabIndex={-1}
       className={cn(
-        "fixed bottom-20 right-4 z-[70] flex h-[min(640px,calc(100vh-2rem))] w-[min(400px,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border border-border bg-background shadow-2xl lg:bottom-4",
+        "fixed bottom-4 right-4 z-[70] flex h-[min(640px,calc(100vh-2rem))] w-[min(400px,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border border-border bg-background shadow-2xl",
         isRtl && "left-4 right-auto",
         className
       )}
@@ -466,16 +282,6 @@ export function Copilot({ className }: CopilotProps) {
           <span className="text-sm font-semibold">{t("title")}</span>
         </div>
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn("h-7 w-7", showHistory && "bg-muted text-foreground")}
-            onClick={toggleHistory}
-            title={t("history")}
-            aria-label={t("history")}
-          >
-            <History className="h-3.5 w-3.5" />
-          </Button>
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={resetChat} title={t("newChat")} aria-label={t("newChat")}>
             <RotateCcw className="h-3.5 w-3.5" />
           </Button>
@@ -497,58 +303,15 @@ export function Copilot({ className }: CopilotProps) {
 
       {/* Transcript */}
       <div className="flex-1 space-y-3 overflow-y-auto px-3 py-3">
-        {showHistory && (
-          <div className="space-y-1">
-            <p className="px-1 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("history")}</p>
-            {savedChats.length === 0 && (
-              <p className="py-8 text-center text-xs text-muted-foreground">{t("noHistory")}</p>
-            )}
-            {savedChats.map((chat) => (
-              <div
-                key={chat.id}
-                onClick={() => loadChat(chat)}
-                className="group flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 transition-colors hover:bg-muted/60"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{chat.title || t("newChat")}</p>
-                  <p className="text-xs text-muted-foreground">{new Date(chat.updatedAt).toLocaleDateString()}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={(e) => deleteChat(chat.id, e)}
-                  className="p-1 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
-                  aria-label={t("deleteChat")}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {!showHistory && !hasMessages && (
+        {!hasMessages && (
           <div className="flex h-full flex-col items-center justify-center gap-1.5 text-center text-muted-foreground">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-              <img src="/favicon.ico" alt="" className="h-8 w-8" draggable={false} />
-            </div>
+            <Sparkles className="h-6 w-6 text-primary/60" />
             <p className="text-sm font-medium text-foreground">{t("greeting")}</p>
             <p className="text-xs">{t("howCanIHelp")}</p>
-            <div className="mt-3 flex w-full flex-col gap-1.5">
-              {suggestions.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => sendMessage(s)}
-                  className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-start text-xs text-foreground transition-colors hover:bg-muted"
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
           </div>
         )}
 
-        {!showHistory && transcript.map((item) => {
+        {transcript.map((item) => {
           if (item.kind === "user") {
             return (
               <div key={item.id} className="flex justify-end">
@@ -570,11 +333,7 @@ export function Copilot({ className }: CopilotProps) {
           if (item.kind === "tool_call") {
             return (
               <div key={item.id} className="flex items-center gap-1.5 pl-1 text-xs text-muted-foreground">
-                {item.done ? (
-                  <Check className={cn("h-3 w-3", item.ok === false ? "text-destructive" : "text-primary")} />
-                ) : (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                )}
+                <Loader2 className="h-3 w-3 animate-spin" />
                 {item.label}
               </div>
             );
@@ -599,7 +358,7 @@ export function Copilot({ className }: CopilotProps) {
           return null;
         })}
 
-        {!showHistory && isStreaming && (
+        {isStreaming && (
           <div className="flex items-center gap-1.5 pl-1 text-xs text-muted-foreground">
             <Loader2 className="h-3 w-3 animate-spin" />
             {t("thinking")}
@@ -624,7 +383,7 @@ export function Copilot({ className }: CopilotProps) {
             size="icon"
             className="h-8 w-8 shrink-0"
             disabled={!input.trim() || isStreaming}
-            onClick={() => sendMessage()}
+            onClick={sendMessage}
             aria-label={t("send")}
           >
             <Send className="h-4 w-4" />
@@ -634,7 +393,7 @@ export function Copilot({ className }: CopilotProps) {
       </div>
     </div>
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  ), [transcript, input, isStreaming, isRtl, hasMessages, t, handleConfirm, handleCancel, suggestions, sendMessage, showHistory, savedChats]);
+  ), [transcript, input, isStreaming, isRtl, hasMessages, t, handleConfirm, handleCancel]);
 
   if (!mounted) return null;
 
@@ -644,18 +403,15 @@ export function Copilot({ className }: CopilotProps) {
         <button
           ref={triggerRef}
           type="button"
-          onClick={() => { if (!dragRef.current.moved) setOpen(true); }}
-          onPointerDown={handleFabPointerDown}
-          onPointerMove={handleFabPointerMove}
-          onPointerUp={handleFabPointerUp}
-          style={fabPos ? { left: fabPos.x, top: fabPos.y, right: "auto", bottom: "auto" } : undefined}
+          onClick={() => setOpen(true)}
           className={cn(
-            "fixed z-[70] flex h-12 w-12 touch-none items-center justify-center rounded-full bg-white shadow-lg transition-transform hover:scale-105 active:scale-95",
-            !fabPos && cn("bottom-20 right-4 lg:bottom-4", isRtl && "left-4 right-auto")
+            "fixed bottom-4 right-4 z-[70] flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105",
+            isRtl && "left-4 right-auto",
+            triggerClassName
           )}
           aria-label={t("openCopilot")}
         >
-          <img src="/favicon.ico" alt="" className="h-8 w-8" draggable={false} />
+          <Bot className="h-5 w-5" />
         </button>
       )}
       {open && panel}

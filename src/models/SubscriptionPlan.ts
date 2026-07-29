@@ -114,7 +114,14 @@ const SubscriptionPlanSchema = new Schema<ISubscriptionPlan>(
 );
 
 SubscriptionPlanSchema.index({ targetRole: 1, isActive: 1, sortOrder: 1 });
-SubscriptionPlanSchema.index({ isDefault: 1, targetRole: 1 });
+SubscriptionPlanSchema.index(
+  { targetRole: 1, isDefault: 1 },
+  {
+    unique: true,
+    name: "unique_default_subscription_plan_per_role",
+    partialFilterExpression: { isDefault: true },
+  },
+);
 
 // Auto-generate slug from targetRole + name
 SubscriptionPlanSchema.pre("validate", function () {

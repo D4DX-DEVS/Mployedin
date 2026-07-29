@@ -1,9 +1,25 @@
-import { protectedResourceHandler, metadataCorsOptionsRequestHandler } from "mcp-handler";
-import { getAppBaseUrl } from "@/lib/mcp/baseUrl";
+import { generateProtectedResourceMetadata, metadataCorsOptionsRequestHandler } from "mcp-handler";
+import { getAppBaseUrl, getMcpResourceUrl } from "@/lib/mcp/baseUrl";
+import { MCP_SCOPES } from "@/lib/mcp/scopes";
 
-const handler = protectedResourceHandler({
-  authServerUrls: [getAppBaseUrl()],
-});
+export function GET() {
+  const metadata = generateProtectedResourceMetadata({
+    authServerUrls: [getAppBaseUrl()],
+    resourceUrl: getMcpResourceUrl(),
+    additionalMetadata: {
+      scopes_supported: MCP_SCOPES,
+      resource_documentation: `${getAppBaseUrl()}/en/privacy`,
+    },
+  });
 
-export { handler as GET };
+  return Response.json(metadata, {
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, OPTIONS",
+      "Access-Control-Allow-Headers": "*",
+      "Cache-Control": "max-age=3600",
+    },
+  });
+}
+
 export const OPTIONS = metadataCorsOptionsRequestHandler();

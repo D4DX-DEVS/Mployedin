@@ -7,6 +7,7 @@ import { sendEmail, EmailTemplates } from "@/lib/communications/email";
 import { hashOtp } from "@/lib/auth/emailVerification";
 import logger from "@/lib/logger";
 import { z } from "zod";
+import { getClientIp } from "@/lib/security/clientIp";
 
 const schema = z.object({
   email: z.string().email().max(254),
@@ -17,7 +18,7 @@ const schema = z.object({
  * Re-send the email verification link. Rate-limited to prevent abuse.
  */
 export async function POST(req: NextRequest) {
-  const ip = req.headers.get("x-forwarded-for") ?? "unknown";
+  const ip = getClientIp(req.headers);
   const { allowed } = await checkRateLimit(`resend-verify:${ip}`, { limit: 3, windowSec: 300, prefix: "rsndv", failClosed: true });
   if (!allowed) {
     return NextResponse.json({ error: "Too many requests. Please wait a few minutes." }, { status: 429 });

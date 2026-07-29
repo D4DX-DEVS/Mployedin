@@ -291,7 +291,12 @@ export async function ensureIndexes() {
   await safeCreateIndexes(db, "subscriptionplans", [
     { key: { slug: 1 }, unique: true },
     { key: { targetRole: 1, isActive: 1, sortOrder: 1 } },
-    { key: { isDefault: 1, targetRole: 1 } },
+    {
+      key: { targetRole: 1, isDefault: 1 },
+      unique: true,
+      name: "unique_default_subscription_plan_per_role",
+      partialFilterExpression: { isDefault: true },
+    },
   ]);
 
   // ── Subscriptions ─────────────────────────────────────────────────────────

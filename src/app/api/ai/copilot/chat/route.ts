@@ -34,18 +34,7 @@ interface ORMessage {
   name?: string;
 }
 
-interface ORDelta {
-  content?: string;
-  tool_calls?: Array<{ index?: number; id?: string; function?: { name?: string; arguments?: string } }>;
-}
-
-async function callOpenRouterOnce(
-  model: string,
-  messages: ORMessage[],
-  tools: unknown[],
-  apiKey: string,
-  onDelta?: (chunk: string) => void
-): Promise<ORMessage> {
+async function callOpenRouterOnce(model: string, messages: ORMessage[], tools: unknown[], apiKey: string) {
   const res = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
     method: "POST",
     headers: {
@@ -58,58 +47,15 @@ async function callOpenRouterOnce(
       model,
       messages,
       max_tokens: AI_TOKEN_LIMITS.chat,
-      stream: true,
       ...(tools.length ? { tools, tool_choice: "auto" } : {}),
     }),
   });
-  if (!res.ok || !res.body) {
-    const err = await res.text().catch(() => "");
+  if (!res.ok) {
+    const err = await res.text();
     throw new Error(`OpenRouter error ${res.status}: ${err}`);
   }
-
-  // Assemble the full assistant message from SSE deltas, forwarding text
-  // chunks to onDelta as they arrive so the client can render progressively.
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  let content = "";
-  const toolCalls: ORToolCall[] = [];
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() ?? "";
-    for (const line of lines) {
-      const payload = line.trim();
-      if (!payload.startsWith("data:")) continue;
-      const data = payload.slice(5).trim();
-      if (!data || data === "[DONE]") continue;
-      let json: { choices?: { delta?: ORDelta }[] };
-      try {
-        json = JSON.parse(data);
-      } catch {
-        continue;
-      }
-      const delta = json.choices?.[0]?.delta;
-      if (!delta) continue;
-      if (delta.content) {
-        content += delta.content;
-        onDelta?.(delta.content);
-      }
-      for (const tc of delta.tool_calls ?? []) {
-        const i = tc.index ?? 0;
-        if (!toolCalls[i]) toolCalls[i] = { id: "", type: "function", function: { name: "", arguments: "" } };
-        if (tc.id) toolCalls[i].id = tc.id;
-        if (tc.function?.name) toolCalls[i].function.name += tc.function.name;
-        if (tc.function?.arguments) toolCalls[i].function.arguments += tc.function.arguments;
-      }
-    }
-  }
-
-  const filtered = toolCalls.filter(Boolean);
-  return { role: "assistant", content: content || null, ...(filtered.length ? { tool_calls: filtered } : {}) };
+  const data = (await res.json()) as { choices: { message: ORMessage }[] };
+  return data.choices[0].message;
 }
 
 /**
@@ -117,15 +63,13 @@ async function callOpenRouterOnce(
  * briefly unavailable) transparently retries once on LARGE_MODEL so a flaky
  * cheap tier degrades to "costs more this turn" instead of a broken reply.
  */
-async function callOpenRouter(model: string, messages: ORMessage[], tools: unknown[], apiKey: string, onDelta?: (chunk: string) => void) {
+async function callOpenRouter(model: string, messages: ORMessage[], tools: unknown[], apiKey: string) {
   try {
-    return { message: await callOpenRouterOnce(model, messages, tools, apiKey, onDelta), modelUsed: model };
+    return { message: await callOpenRouterOnce(model, messages, tools, apiKey), modelUsed: model };
   } catch (err) {
     if (model === LARGE_MODEL) throw err;
     logger.warn({ err, model }, "[AI Copilot] small model failed, falling back to large model");
-    // ponytail: a mid-stream failure may have emitted partial deltas before the retry
-    // re-streams — the final "text" frame replaces the client's buffer, so it self-heals.
-    return { message: await callOpenRouterOnce(LARGE_MODEL, messages, tools, apiKey, onDelta), modelUsed: LARGE_MODEL };
+    return { message: await callOpenRouterOnce(LARGE_MODEL, messages, tools, apiKey), modelUsed: LARGE_MODEL };
   }
 }
 
@@ -199,12 +143,9 @@ export async function POST(req: NextRequest) {
           let toolCallsLogged = 0;
           let currentModel = classifyComplexity(messages) === "large" ? LARGE_MODEL : SMALL_MODEL;
           const modelsUsed = new Set<string>();
-          let answered = false;
-
-          const onDelta = (chunk: string) => send({ type: "text_delta", content: chunk });
 
           for (let iter = 0; iter < MAX_TOOL_ITERATIONS; iter++) {
-            const { message, modelUsed } = await callOpenRouter(currentModel, orMessages, orTools, apiKey, onDelta);
+            const { message, modelUsed } = await callOpenRouter(currentModel, orMessages, orTools, apiKey);
             currentModel = modelUsed; // stick with whatever actually served this call
             modelsUsed.add(modelUsed);
 
@@ -307,16 +248,7 @@ export async function POST(req: NextRequest) {
 
             // No tool calls — this is the final natural-language reply.
             send({ type: "text", content: message.content ?? "" });
-            answered = true;
             break;
-          }
-
-          if (!answered) {
-            // Model was still calling tools when the iteration cap hit — force a
-            // final answer by calling once with no tools, so the user never gets
-            // a turn that ends in silence.
-            const { message } = await callOpenRouter(currentModel, orMessages, [], apiKey, onDelta);
-            send({ type: "text", content: message.content ?? "" });
           }
 
           logActivity({

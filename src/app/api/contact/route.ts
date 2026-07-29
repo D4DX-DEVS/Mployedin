@@ -6,6 +6,7 @@ import { contactSchema } from "@/lib/validators/misc";
 import { checkRateLimit } from "@/lib/security/rateLimit";
 import { logActivity } from "@/lib/audit/log";
 import logger from "@/lib/logger";
+import { getClientIp } from "@/lib/security/clientIp";
 
 /**
  * Public contact form submission — NO AUTH required.
@@ -14,7 +15,7 @@ import logger from "@/lib/logger";
 export async function POST(req: NextRequest) {
   try {
     // Rate limit: 5 submissions per 10 minutes per IP
-    const ip = (req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown").split(",")[0].trim();
+    const ip = getClientIp(req.headers);
     const { allowed } = await checkRateLimit(`contact:${ip}`, { limit: 5, windowSec: 600, prefix: "contact" });
     if (!allowed) {
       return NextResponse.json({ error: "Too many submissions. Please try again later." }, { status: 429 });
@@ -25,9 +26,12 @@ export async function POST(req: NextRequest) {
 
     const { name, email, phone, subject, message, captchaToken } = body;
 
-    // Optional reCAPTCHA v3 verification
+    // When reCAPTCHA is configured it is mandatory and fails closed.
     const captchaSecret = process.env.RECAPTCHA_SECRET_KEY;
-    if (captchaSecret && captchaToken) {
+    if (captchaSecret) {
+      if (!captchaToken) {
+        return NextResponse.json({ error: "CAPTCHA verification required" }, { status: 403 });
+      }
       try {
         const params = new URLSearchParams();
         params.append("secret", captchaSecret);
@@ -37,23 +41,39 @@ export async function POST(req: NextRequest) {
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
           body: params.toString(),
         });
-        const captchaData = await captchaRes.json();
-        if (!captchaData.success || (captchaData.score !== undefined && captchaData.score < 0.3)) {
+        if (!captchaRes.ok) throw new Error(`CAPTCHA service returned ${captchaRes.status}`);
+        const captchaData = (await captchaRes.json()) as {
+          success?: boolean;
+          score?: number;
+          action?: string;
+          hostname?: string;
+        };
+        const allowedHosts = (process.env.RECAPTCHA_ALLOWED_HOSTS ?? req.nextUrl.hostname)
+          .split(",")
+          .map((host) => host.trim().toLowerCase())
+          .filter(Boolean);
+        if (
+          !captchaData.success ||
+          (captchaData.score !== undefined && captchaData.score < 0.3) ||
+          (captchaData.action !== undefined && captchaData.action !== "contact") ||
+          !captchaData.hostname ||
+          !allowedHosts.includes(captchaData.hostname.toLowerCase())
+        ) {
           return NextResponse.json(
             { error: "CAPTCHA verification failed" },
             { status: 403 }
           );
         }
-      } catch {
-        // If captcha service fails, proceed — don't block legit users
-        logger.warn("[Contact] CAPTCHA verification failed, proceeding");
+      } catch (error) {
+        logger.warn({ error }, "[Contact] CAPTCHA service unavailable");
+        return NextResponse.json(
+          { error: "CAPTCHA verification is temporarily unavailable" },
+          { status: 503 },
+        );
       }
     }
 
-    const ipAddress =
-      req.headers.get("x-forwarded-for") ??
-      req.headers.get("x-real-ip") ??
-      "unknown";
+    const ipAddress = ip;
 
     const submission = await ContactSubmission.create({
       name: name.trim(),
@@ -77,6 +97,7 @@ export async function POST(req: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
+    if (error instanceof NextResponse) return error;
     logger.error({ error }, "[Contact] Submission error");
     return NextResponse.json(
       { error: "Failed to submit your message. Please try again." },

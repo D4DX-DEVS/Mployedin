@@ -13,6 +13,7 @@ export async function GET() {
     issuer: base,
     authorization_endpoint: `${base}/api/mcp/authorize`,
     token_endpoint: `${base}/api/mcp/token`,
+    revocation_endpoint: `${base}/api/mcp/revoke`,
     registration_endpoint: `${base}/api/mcp/register`,
     response_types_supported: ["code"],
     grant_types_supported: ["authorization_code", "refresh_token"],

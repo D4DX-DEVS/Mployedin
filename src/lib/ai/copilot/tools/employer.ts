@@ -81,8 +81,7 @@ export const searchCandidatesTool: CopilotTool<{ jobId?: string; status?: string
 
 export const pipelineStatsTool: CopilotTool<Record<string, never>> = {
   name: "pipeline_stats",
-  description:
-    "Get the employer's applicant counts by pipeline stage AND per job posting (includes jobs with zero applicants). Use this — not search_candidates — for questions like which job has the most/fewest applicants.",
+  description: "Get a summary count of the employer's applicants by pipeline stage across all their jobs.",
   resource: "applications",
   action: "read",
   roles: ["employer"],
@@ -93,28 +92,15 @@ export const pipelineStatsTool: CopilotTool<Record<string, never>> = {
     await connectDB();
     const employer = await getEmployer(ctx.userId);
     if (!employer) return { ok: false, message: "No employer profile found for this account." };
-    const jobs = await Job.find({ employerId: employer._id, deletedAt: { $exists: false } }).select("_id title").lean();
-    if (!jobs.length) return { ok: true, message: "No jobs posted yet.", data: {} };
-    const jobIds = jobs.map((j) => j._id);
-    const [byStageAgg, byJobAgg] = await Promise.all([
-      Application.aggregate([
-        { $match: { jobId: { $in: jobIds } } },
-        { $group: { _id: "$status", count: { $sum: 1 } } },
-      ]),
-      Application.aggregate([
-        { $match: { jobId: { $in: jobIds } } },
-        { $group: { _id: "$jobId", count: { $sum: 1 } } },
-      ]),
+    const jobIds = (await Job.find({ employerId: employer._id, deletedAt: { $exists: false } }).select("_id").lean()).map((j) => j._id);
+    if (!jobIds.length) return { ok: true, message: "No jobs posted yet.", data: {} };
+    const agg = await Application.aggregate([
+      { $match: { jobId: { $in: jobIds } } },
+      { $group: { _id: "$status", count: { $sum: 1 } } },
     ]);
-    const byStage: Record<string, number> = {};
-    for (const row of byStageAgg as Array<{ _id: string; count: number }>) byStage[row._id] = row.count;
-    const countByJob = new Map((byJobAgg as Array<{ _id: unknown; count: number }>).map((r) => [String(r._id), r.count]));
-    const byJob = jobs.map((j) => ({
-      jobId: String(j._id),
-      title: (j as { title?: string }).title ?? "Untitled job",
-      applicants: countByJob.get(String(j._id)) ?? 0,
-    }));
-    return { ok: true, message: "Pipeline stats retrieved.", data: { byStage, byJob } };
+    const stats: Record<string, number> = {};
+    for (const row of agg as Array<{ _id: string; count: number }>) stats[row._id] = row.count;
+    return { ok: true, message: "Pipeline stats retrieved.", data: stats };
   },
 };
 

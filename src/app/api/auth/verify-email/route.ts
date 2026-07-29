@@ -6,6 +6,7 @@ import { checkRateLimit } from "@/lib/security/rateLimit";
 import { logActivity } from "@/lib/audit/log";
 import { hashOtp } from "@/lib/auth/emailVerification";
 import { z } from "zod";
+import { getClientIp } from "@/lib/security/clientIp";
 
 const schema = z.object({
   token: z.string().min(1).max(128).optional(),
@@ -22,7 +23,7 @@ const schema = z.object({
  *   - In-app OTP (otp): a 6-digit code entered in the verify-email page.
  */
 export async function POST(req: NextRequest) {
-  const ip = req.headers.get("x-forwarded-for") ?? "unknown";
+  const ip = getClientIp(req.headers);
   // OTP attempts get a tighter limit than link clicks to resist brute force.
   const { allowed } = await checkRateLimit(`verify-email:${ip}`, { limit: 10, windowSec: 300, prefix: "vemail", failClosed: true });
   if (!allowed) {

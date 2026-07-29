@@ -6,10 +6,12 @@ import crypto from "crypto";
 import { checkRateLimit } from "@/lib/security/rateLimit";
 import { logActivity } from "@/lib/audit/log";
 import { z } from "zod";
+import { strongPasswordSchema } from "@/lib/security/passwordPolicy";
+import { getClientIp } from "@/lib/security/clientIp";
 
 const schema = z.object({
   token: z.string().min(1),
-  password: z.string().min(8).max(128),
+  password: strongPasswordSchema,
 });
 
 /**
@@ -17,7 +19,7 @@ const schema = z.object({
  * Validate reset token and update password.
  */
 export async function POST(req: NextRequest) {
-  const ip = req.headers.get("x-forwarded-for") ?? "unknown";
+  const ip = getClientIp(req.headers);
   const { allowed } = await checkRateLimit(`reset-pwd:${ip}`, { limit: 5, windowSec: 300, prefix: "rpwd", failClosed: true });
   if (!allowed) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });

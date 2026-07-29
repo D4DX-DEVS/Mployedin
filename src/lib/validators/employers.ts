@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { commonSchemas } from "./index";
+import { strongPasswordSchema } from "@/lib/security/passwordPolicy";
 
 export const employerCreateSchema = z.object({
   companyName: z.string().min(2).max(100).trim(),
@@ -56,7 +57,7 @@ export const employerUpdateSchema = z.object({
 export const employerRegisterSchema = z.object({
   name: z.string().min(2).max(100).trim(),
   email: commonSchemas.email,
-  password: z.string().min(8).max(128),
+  password: strongPasswordSchema,
   companyName: z.string().min(2).max(100).trim(),
   companyEmail: commonSchemas.email.optional(),
   phone: commonSchemas.phone,
@@ -70,7 +71,7 @@ export const employerRegisterSchema = z.object({
 export const employerAdminCreateSchema = z.object({
   name: z.string().min(2).max(100).trim(),
   email: commonSchemas.email,
-  password: z.string().min(8).max(128),
+  password: strongPasswordSchema,
   companyName: z.string().max(100).trim().optional(),
   industry: z.string().max(100).optional(),
   location: z.string().max(200).optional(),

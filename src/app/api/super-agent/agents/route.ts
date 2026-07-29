@@ -8,6 +8,7 @@ import Lead from "@/models/Lead";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { z } from "zod";
+import { strongPasswordSchema } from "@/lib/security/passwordPolicy";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { getSuperAgentOwnRegion, getSuperAgentScope, isRegionSubset } from "@/lib/auth/agentRestrictions";
 import { commonSchemas } from "@/lib/validators";
@@ -155,7 +156,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 const saAgentCreateSchema = z.object({
   name: z.string().min(1).max(100).trim(),
   email: commonSchemas.email,
-  password: z.string().min(8).max(128),
+  password: strongPasswordSchema,
   assignedCityIds: z.array(commonSchemas.objectId).max(200).optional(),
   assignedStateIds: z.array(commonSchemas.objectId).max(200).optional(),
   commissionRate: z.number().min(0).max(100).optional(),

@@ -472,18 +472,16 @@ export default function AdminInterviewOversightPage() {
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead className="md:min-w-[160px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">{t("candidate")}</TableHead>
                 <TableHead className="md:min-w-[180px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">{t("role")}</TableHead>
-                <TableHead className="md:min-w-[140px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">{t("company")}</TableHead>
                 <TableHead className="md:min-w-[80px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">{t("type")}</TableHead>
                 <TableHead className="md:min-w-[100px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">{t("agent")}</TableHead>
                 <TableHead className="md:min-w-[110px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">{t("date")}</TableHead>
-                <TableHead className="md:min-w-[100px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">{t("status")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i} className="hover:bg-transparent">
-                    {Array.from({ length: 7 }).map((_, j) => (
+                    {Array.from({ length: 5 }).map((_, j) => (
                       <TableCell key={j} className="px-4 py-3">
                         <div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
                       </TableCell>
@@ -492,7 +490,7 @@ export default function AdminInterviewOversightPage() {
                 ))
               ) : interviews.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={7} className="h-44 text-center">
+                  <TableCell colSpan={5} className="h-44 text-center">
                     <div className="flex flex-col items-center gap-3 text-muted-foreground">
                       <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-muted/50">
                         <Inbox className="h-7 w-7 opacity-40" />
@@ -518,12 +516,11 @@ export default function AdminInterviewOversightPage() {
                     <TableCell className="px-4 py-3">
                       <p className="font-medium">{iv.jobSeeker?.name ?? "—"}</p>
                       <p className="text-xs text-muted-foreground">{iv.jobSeeker?.email}</p>
+                      <StatusBadge status={iv.status} />
                     </TableCell>
                     <TableCell className="px-4 py-3">
                       <span className="text-sm text-foreground">{iv.job?.title ?? "—"}</span>
-                    </TableCell>
-                    <TableCell className="px-4 py-3">
-                      <span className="text-sm text-foreground">{iv.employer?.companyName ?? "—"}</span>
+                      <span className="mt-1 block text-xs text-muted-foreground">{iv.employer?.companyName ?? "—"}</span>
                     </TableCell>
                     <TableCell className="px-4 py-3">
                       <div className="flex items-center gap-1.5">
@@ -538,9 +535,6 @@ export default function AdminInterviewOversightPage() {
                       <span className="text-sm text-muted-foreground">
                         {new Date(iv.scheduledAt).toLocaleDateString("en-AE", { day: "2-digit", month: "short", year: "numeric" })}
                       </span>
-                    </TableCell>
-                    <TableCell className="px-4 py-3">
-                      <StatusBadge status={iv.status} />
                     </TableCell>
                   </TableRow>
                 );

@@ -151,6 +151,10 @@ export default function LoginPage() {
           setError(t("accountLocked"));
           return;
         }
+        if (code === "login_rate_limited") {
+          setError(t("loginRateLimited"));
+          return;
+        }
         setError(t("invalidCredentials"));
         return;
       }
@@ -246,7 +250,7 @@ export default function LoginPage() {
             <Label htmlFor="password" className="text-sm font-medium">{t("password")}</Label>
             <Link
               href={`/${locale}/forgot-password`}
-              className="text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+              className="inline-flex min-h-11 items-center text-sm font-medium text-primary transition-colors hover:text-primary/80"
             >
               {t("forgotPasswordLink")}
             </Link>
@@ -296,7 +300,7 @@ export default function LoginPage() {
           </div>
         )}
 
-        <div className="flex items-center gap-2">
+        <div className="flex min-h-11 items-center gap-2">
           <Checkbox
             id="remember-me"
             checked={rememberMe}
@@ -327,7 +331,7 @@ export default function LoginPage() {
         <Button
           variant="outline"
           type="button"
-          className="h-10 rounded-xl border-border/70 bg-background/60 text-sm font-medium transition-colors hover:bg-muted/60"
+          className="h-11 rounded-xl border-border/70 bg-background/60 text-sm font-medium transition-colors hover:bg-muted/60"
           onClick={() => { setAppleLoading(true); setError(""); signIn("apple", { callbackUrl: getOAuthRedirectUrl(locale) }); }}
           disabled={anyLoading}
         >
@@ -343,7 +347,7 @@ export default function LoginPage() {
         <Button
           variant="outline"
           type="button"
-          className="h-10 rounded-xl border-border/70 bg-background/60 text-sm font-medium transition-colors hover:bg-muted/60"
+          className="h-11 rounded-xl border-border/70 bg-background/60 text-sm font-medium transition-colors hover:bg-muted/60"
           onClick={() => { setLinkedInLoading(true); setError(""); signIn("linkedin", { callbackUrl: getOAuthRedirectUrl(locale) }); }}
           disabled={anyLoading}
         >
@@ -362,14 +366,14 @@ export default function LoginPage() {
         {t("noAccount")}{" "}
         <Link
           href={`/${locale}/register`}
-          className="text-primary hover:text-primary/80 font-semibold transition-colors"
+          className="inline-flex min-h-11 items-center text-primary font-semibold transition-colors hover:text-primary/80"
         >
           {t("createAccount")}
         </Link>
         {" \u00B7 "}
         <Link
           href={`/${locale}/employer-register`}
-          className="text-muted-foreground hover:text-foreground font-medium transition-colors text-xs"
+          className="inline-flex min-h-11 items-center text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
         >
           {t("postJobsAsEmployer")}
         </Link>

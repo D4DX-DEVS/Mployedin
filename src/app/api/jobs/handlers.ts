@@ -467,7 +467,7 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
             "jobs.$.postedJobId": job._id,
           },
         },
-        { returnDocument: "after" }
+        { new: true }
       ).lean();
 
       // Auto-complete the draft when nothing is left pending.

@@ -5,7 +5,7 @@ import { render, waitFor } from "@testing-library/react";
 import { ResponsiveTables } from "@/components/shared/ResponsiveTables";
 
 describe("ResponsiveTables", () => {
-  it("labels native table cells from their semantic headers", () => {
+  it("labels native table cells from their semantic headers", async () => {
     const { container } = render(
       <>
         <table>
@@ -29,9 +29,16 @@ describe("ResponsiveTables", () => {
     const table = container.querySelector("table");
     const cells = container.querySelectorAll("tbody td");
 
-    expect(table).toHaveClass("responsive-card-table");
-    expect(cells[0]).toHaveAttribute("data-label", "Name");
-    expect(cells[1]).toHaveAttribute("data-label", "Status");
+    // Progressive enhancement must not mutate React's server-shaped markup
+    // during the initial hydration/commit.
+    expect(table).not.toHaveClass("responsive-card-table");
+    expect(cells[0]).not.toHaveAttribute("data-label");
+
+    await waitFor(() => {
+      expect(table).toHaveClass("responsive-card-table");
+      expect(cells[0]).toHaveAttribute("data-label", "Name");
+      expect(cells[1]).toHaveAttribute("data-label", "Status");
+    }, { timeout: 2_000 });
   });
 
   it("enhances rows added after the initial render", async () => {
@@ -72,10 +79,40 @@ describe("ResponsiveTables", () => {
         "data-label",
         "Email"
       );
-    });
+    }, { timeout: 2_000 });
   });
 
-  it("preserves manual labels and supports the scroll opt-out", () => {
+  it("marks the final interactive cell as mobile row actions", async () => {
+    const { container } = render(
+      <>
+        <table>
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Ada</td>
+              <td>
+                <button type="button" title="Edit user">Edit</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <ResponsiveTables />
+      </>
+    );
+
+    await waitFor(() => {
+      expect(container.querySelector("tbody td:last-child")).toHaveAttribute(
+        "data-mobile-actions"
+      );
+    }, { timeout: 2_000 });
+  });
+
+  it("preserves manual labels and supports the scroll opt-out", async () => {
     const { container } = render(
       <>
         <table>
@@ -102,10 +139,12 @@ describe("ResponsiveTables", () => {
     );
 
     const tables = container.querySelectorAll("table");
-    expect(tables[0].querySelector("td")).toHaveAttribute(
-      "data-label",
-      "Custom label"
-    );
-    expect(tables[1]).not.toHaveClass("responsive-card-table");
+    await waitFor(() => {
+      expect(tables[0].querySelector("td")).toHaveAttribute(
+        "data-label",
+        "Custom label"
+      );
+      expect(tables[1]).not.toHaveClass("responsive-card-table");
+    }, { timeout: 2_000 });
   });
 });

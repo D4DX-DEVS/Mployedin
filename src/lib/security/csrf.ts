@@ -126,6 +126,7 @@ const CSRF_EXEMPT_PREFIXES = [
   // CSRF-protected like any other dashboard action.
   "/api/mcp/register",
   "/api/mcp/token",
+  "/api/mcp/revoke",
 ];
 
 /**

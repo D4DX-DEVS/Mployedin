@@ -88,9 +88,11 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const status = searchParams.get("status") ?? "active";
   const region = searchParams.get("region");
   const assigneeRole = searchParams.get("assigneeRole");
-  const page = parseInt(searchParams.get("page") ?? "1");
-  const limit = parseInt(searchParams.get("limit") ?? "50");
-  const skip = (page - 1) * limit;
+  const search = (searchParams.get("search") ?? "").trim().toLowerCase();
+  const risk = searchParams.get("risk");
+  const completion = searchParams.get("completion");
+  const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
+  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "50")));
 
   const query: Record<string, unknown> = { year };
   if (status && status !== "all") query.status = status;
@@ -101,10 +103,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     query.assigneeRole = assigneeRole && assigneeRole !== "all" ? assigneeRole : "super_agent";
   }
 
-  const [profiles, total] = await Promise.all([
-    TargetProfile.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
-    TargetProfile.countDocuments(query),
-  ]);
+  const profiles = await TargetProfile.find(query).sort({ createdAt: -1 }).lean();
 
   // Resolve assignee names
   const assigneeIds = [...new Set(profiles.map((p) => String(p.assigneeId)))];
@@ -127,7 +126,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   // Enrich with achievements
   const enriched = await enrichProfiles(profiles as unknown as Record<string, unknown>[]);
 
-  const rows = enriched.map((p) => {
+  const allRows = enriched.map((p) => {
     const user = userMap.get(p.assigneeId);
     return {
       ...p,
@@ -139,36 +138,53 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
   // Aggregated totals
   const totals = {
-    totalProfiles: total,
-    supervisors: rows.filter((r) => r.assigneeRole === "super_agent").length,
-    totalTeamSize: rows.reduce((s, r) => s + r.teamSize, 0),
+    totalProfiles: allRows.length,
+    supervisors: allRows.filter((r) => r.assigneeRole === "super_agent").length,
+    totalTeamSize: allRows.reduce((s, r) => s + r.teamSize, 0),
     employer: {
-      target: rows.reduce((s, r) => s + r.employerTarget, 0),
-      achieved: rows.reduce((s, r) => s + r.employerAchieved, 0),
+      target: allRows.reduce((s, r) => s + r.employerTarget, 0),
+      achieved: allRows.reduce((s, r) => s + r.employerAchieved, 0),
     },
     employee: {
-      target: rows.reduce((s, r) => s + r.employeeTarget, 0),
-      achieved: rows.reduce((s, r) => s + r.employeeAchieved, 0),
+      target: allRows.reduce((s, r) => s + r.employeeTarget, 0),
+      achieved: allRows.reduce((s, r) => s + r.employeeAchieved, 0),
     },
     finance: {
-      target: rows.reduce((s, r) => s + r.financeTarget, 0),
-      achieved: rows.reduce((s, r) => s + r.financeAchieved, 0),
+      target: allRows.reduce((s, r) => s + r.financeTarget, 0),
+      achieved: allRows.reduce((s, r) => s + r.financeAchieved, 0),
     },
-    avgPerformance: rows.length > 0
-      ? Math.round(rows.reduce((s, r) => s + r.overallProgress, 0) / rows.length)
+    avgPerformance: allRows.length > 0
+      ? Math.round(allRows.reduce((s, r) => s + r.overallProgress, 0) / allRows.length)
       : 0,
     riskBreakdown: {
-      high: rows.filter((r) => r.riskScore === "high").length,
-      medium: rows.filter((r) => r.riskScore === "medium").length,
-      low: rows.filter((r) => r.riskScore === "low").length,
+      high: allRows.filter((r) => r.riskScore === "high").length,
+      medium: allRows.filter((r) => r.riskScore === "medium").length,
+      low: allRows.filter((r) => r.riskScore === "low").length,
     },
-    regions: [...new Set(rows.map((r) => r.region).filter(Boolean))] as string[],
+    regions: [...new Set(allRows.map((r) => r.region).filter(Boolean))] as string[],
   };
+
+  const filteredRows = allRows.filter((row) => {
+    if (risk && risk !== "all" && row.riskScore !== risk) return false;
+    if (completion && completion !== "all") {
+      const stage = row.overallProgress >= 100
+        ? "completed"
+        : row.overallProgress > 0 ? "in_progress" : "not_started";
+      if (stage !== completion) return false;
+    }
+    if (!search) return true;
+    return row.assigneeName.toLowerCase().includes(search)
+      || row.assigneeEmail.toLowerCase().includes(search)
+      || (row.region ?? "").toLowerCase().includes(search);
+  });
+  const total = filteredRows.length;
+  const skip = (page - 1) * limit;
+  const rows = filteredRows.slice(skip, skip + limit);
 
   return NextResponse.json({
     profiles: rows,
     totals,
-    pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+    pagination: { page, limit, total, pages: Math.max(1, Math.ceil(total / limit)) },
   });
 }
 

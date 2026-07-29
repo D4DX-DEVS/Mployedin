@@ -417,12 +417,8 @@ export default function SuperAgentJobsPage() {
   const tableHeaders = [
     t("jobTitleHeader"),
     t("employerHeader"),
-    t("locationHeader"),
     t("typeHeader"),
-    t("workModeHeader"),
     t("salaryHeader"),
-    tc("status"),
-    tc("date"),
     "",
   ];
 
@@ -861,12 +857,8 @@ export default function SuperAgentJobsPage() {
                 <TableRow className="bg-background/60 hover:bg-background/60">
                   <TableHead>{t("jobTitleHeader")}</TableHead>
                   <TableHead>{t("employerHeader")}</TableHead>
-                  <TableHead>{t("locationHeader")}</TableHead>
                   <TableHead>{t("typeHeader")}</TableHead>
-                  <TableHead>{t("workModeHeader")}</TableHead>
                   <TableHead>{t("salaryHeader")}</TableHead>
-                  <TableHead>{tc("status")}</TableHead>
-                  <TableHead>{tc("date")}</TableHead>
                   <TableHead className="text-right" />
                 </TableRow>
               </TableHeader>
@@ -876,6 +868,10 @@ export default function SuperAgentJobsPage() {
                     <TableCell>
                       <div>
                         <p className="font-medium text-foreground">{job.title}</p>
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                          <StatusBadge status={job.status ?? "draft"} />
+                          <span className="text-[10px] text-muted-foreground">{new Date(job.createdAt).toLocaleDateString()}</span>
+                        </div>
                         {job.tags && job.tags.length > 0 && (
                           <div className="mt-1 flex flex-wrap gap-1">
                             {job.tags.slice(0, 3).map((tag) => (
@@ -891,20 +887,16 @@ export default function SuperAgentJobsPage() {
                       </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {job.employerId?.companyName ?? job.employerId?.name ?? "—"}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      <span className="inline-flex items-center gap-1">
+                      <span className="block font-medium text-foreground/80">{job.employerId?.companyName ?? job.employerId?.name ?? "—"}</span>
+                      <span className="mt-1 inline-flex items-center gap-1 text-xs">
                         <MapPin className="h-3 w-3 shrink-0" />
                         {formatLocation(job.location)}
                       </span>
                     </TableCell>
                     <TableCell className="text-muted-foreground text-xs">
-                      {formatEmploymentType(job.employmentType)}
-                    </TableCell>
-                    <TableCell>
+                      <span className="block">{formatEmploymentType(job.employmentType)}</span>
                       {job.workMode ? (
-                        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                        <span className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
                           {job.workMode === "remote" ? (
                             <Laptop className="h-3 w-3" />
                           ) : job.workMode === "hybrid" ? (
@@ -920,12 +912,6 @@ export default function SuperAgentJobsPage() {
                     </TableCell>
                     <TableCell className="text-muted-foreground text-xs">
                       {formatSalary(job.salary)}
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge status={job.status ?? "draft"} />
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-xs">
-                      {new Date(job.createdAt).toLocaleDateString()}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-end">

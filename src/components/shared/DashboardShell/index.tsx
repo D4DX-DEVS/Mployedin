@@ -23,14 +23,13 @@ const NotificationBell = dynamic(
     import("@/components/shared/NotificationBell").then((m) => m.NotificationBell),
   { ssr: false }
 );
-import PublicFooter from "@/components/shared/PublicFooter";
+import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
+import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { UserProfileDropdown } from "@/components/shared/UserProfileDropdown";
 import { JobSeekerTopNav, JobSeekerBottomNav } from "@/components/shared/JobSeekerTopNav";
-import { WorkspaceBottomNav } from "@/components/shared/WorkspaceBottomNav";
+import { EmployerBottomNav } from "@/components/shared/EmployerBottomNav";
 import { TenantViewBanner } from "@/components/features/tenant/TenantViewBanner";
 import type { NavGroup } from "@/lib/nav/menuConfig";
-import { getIcon } from "@/lib/nav/iconRegistry";
-import { WORKSPACE_BOTTOM_NAV_TABS } from "@/lib/nav/bottomNavTabs";
 import type { UserRole } from "@/types/user";
 
 interface TenantViewData {
@@ -67,15 +66,9 @@ export function DashboardShell({
   const tNav = useTranslations("nav");
   const [mobileOpen, setMobileOpen] = useState(false);
   const isJobSeeker = userRole === "job_seeker";
+  const isEmployer = userRole === "employer";
   const isAdminWorkspace = userRole === "admin";
   const usesModernWorkspaceShell = userRole === "admin" || userRole === "employer" || userRole === "agent" || userRole === "super_agent";
-  const bottomNavTabs = (WORKSPACE_BOTTOM_NAV_TABS[userRole as UserRole] ?? []).map((tab) => ({
-    key: tab.key,
-    href: tab.href,
-    icon: getIcon(tab.icon),
-    label: tNav(tab.labelKey),
-    exact: tab.exact,
-  }));
   // Defer Radix-based components to avoid SSR/client ID mismatch hydration errors
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
@@ -105,7 +98,7 @@ export function DashboardShell({
           />
         )}
         {/* Topbar */}
-        <header className={`dashboard-topbar border-b border-border/40 bg-background z-30 sticky top-0 transition-all ${usesModernWorkspaceShell ? "dashboard-topbar-workspace h-14 sm:h-16" : isJobSeeker ? "h-14 sm:h-16" : "h-14"}`}>
+        <header className={`dashboard-topbar border-b border-border/40 bg-background z-30 sticky top-0 transition-all ${usesModernWorkspaceShell ? "dashboard-topbar-workspace h-14 sm:h-16 lg:h-20" : isJobSeeker ? "h-14 sm:h-16" : "h-14"}`}>
           <div className="flex h-full items-center gap-1.5 px-3 sm:gap-2 sm:px-4 md:gap-3 lg:px-6">
             {!isJobSeeker && <MobileMenuButton onClick={() => setMobileOpen(true)} />}
 
@@ -137,9 +130,11 @@ export function DashboardShell({
               </div>
               {mounted && (
                 <>
-                  {/* Theme + locale moved into the profile menu (all breakpoints) —
-                      four topbar controls left no room for the search trigger. */}
-                  <NotificationBell locale={locale} />
+                  <div className="hidden items-center gap-3 md:flex">
+                    <ThemeToggle />
+                    <LanguageSwitcher />
+                    <NotificationBell locale={locale} />
+                  </div>
                   <UserProfileDropdown
                     userName={userName ?? "User"}
                     userEmail={userEmail ?? ""}
@@ -156,39 +151,32 @@ export function DashboardShell({
         {/* Page content */}
         {isJobSeeker ? (
           <>
-            <main className="dashboard-main isolate flex-1 bg-background">
+            <main className="dashboard-main isolate flex-1 bg-background pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
               {children}
             </main>
-            <div className="flex-shrink-0 pt-8 pb-16 lg:pb-0">
-              <PublicFooter locale={locale} variant="embedded" />
-            </div>
             <JobSeekerBottomNav locale={locale} />
           </>
         ) : (
-          <>
-            <main className={`dashboard-main isolate min-h-0 flex-1 overflow-y-auto overscroll-contain bg-background ${usesModernWorkspaceShell ? "dashboard-main-workspace" : ""} ${bottomNavTabs.length > 0 ? "pb-16 lg:pb-0" : ""}`}>
-              {children}
-            </main>
-            {/* Workspace phones get a tab bar for each role's daily destinations;
-                everything else stays one tap away behind the "More" tab. */}
-            {bottomNavTabs.length > 0 && (
-              <WorkspaceBottomNav
-                locale={locale}
-                tabs={bottomNavTabs}
-                onOpenMenu={() => setMobileOpen(true)}
-                menuLabel={tNav("more")}
-                ariaLabel={tNav("a11yNavigationMenu")}
-              />
-            )}
-          </>
+          <main className={`dashboard-main isolate min-h-0 flex-1 overflow-y-auto overscroll-contain bg-background ${usesModernWorkspaceShell ? "dashboard-main-workspace" : ""} ${isEmployer ? "pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0" : ""}`}>
+            {children}
+          </main>
         )}
+        {isEmployer && <EmployerBottomNav locale={locale} onMore={() => setMobileOpen(true)} />}
       </div>
 
       {/* Cmd+K menu */}
       <CommandMenu navGroups={navGroups} locale={locale} />
 
       {/* Floating AI Copilot — role-scoped read + action tools for every dashboard role */}
-      <Copilot />
+      {!mobileOpen && (
+        <Copilot
+          triggerClassName={
+            isJobSeeker || isEmployer
+              ? "bottom-[calc(5rem+env(safe-area-inset-bottom))] lg:bottom-4"
+              : undefined
+          }
+        />
+      )}
     </div>
   );
 }

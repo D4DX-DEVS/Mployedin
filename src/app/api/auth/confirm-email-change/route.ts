@@ -7,6 +7,7 @@ import { checkRateLimit } from "@/lib/security/rateLimit";
 import { sendEmail, EmailTemplates } from "@/lib/communications/email";
 import { logActivity } from "@/lib/audit/log";
 import logger from "@/lib/logger";
+import { getClientIp } from "@/lib/security/clientIp";
 
 const schema = z.object({
   token: z.string().min(1).max(128),
@@ -18,7 +19,7 @@ const schema = z.object({
  * Public — the link may be opened in a different browser/session.
  */
 export async function POST(req: NextRequest) {
-  const ip = req.headers.get("x-forwarded-for") ?? "unknown";
+  const ip = getClientIp(req.headers);
   const { allowed } = await checkRateLimit(`confirm-email-change:${ip}`, { limit: 10, windowSec: 300, prefix: "cemch" });
   if (!allowed) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });

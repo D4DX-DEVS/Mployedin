@@ -5,6 +5,7 @@ interface PageHeaderProps {
   description?: string;
   actions?: React.ReactNode;
   className?: string;
+  headingLevel?: 1 | 2;
 }
 
 export function PageHeader({
@@ -12,7 +13,10 @@ export function PageHeader({
   description,
   actions,
   className,
+  headingLevel = 1,
 }: PageHeaderProps) {
+  const Heading = headingLevel === 2 ? "h2" : "h1";
+
   return (
     <div
       className={cn(
@@ -21,9 +25,9 @@ export function PageHeader({
       )}
     >
       <div className="min-w-0 space-y-1.5">
-        <h1 className="page-header-title text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+        <Heading className="page-header-title text-xl sm:text-2xl font-bold tracking-tight text-foreground">
           {title}
-        </h1>
+        </Heading>
         {description && (
           <p className="page-header-description text-[15px] font-medium text-muted-foreground/80">{description}</p>
         )}

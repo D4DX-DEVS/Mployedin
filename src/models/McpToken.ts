@@ -8,7 +8,9 @@ export interface IMcpToken extends Document {
   _id: mongoose.Types.ObjectId;
   accessTokenHash: string;
   refreshTokenHash?: string;
+  familyId: string;
   clientId: string;
+  resource: string;
   userId: mongoose.Types.ObjectId;
   role: UserRole;
   scopes: McpScope[];
@@ -16,6 +18,7 @@ export interface IMcpToken extends Document {
   lastUsedAt?: Date;
   accessTokenExpiresAt: Date;
   refreshTokenExpiresAt?: Date;
+  authorizationExpiresAt: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -24,7 +27,9 @@ const McpTokenSchema = new Schema<IMcpToken>(
   {
     accessTokenHash: { type: String, required: true, unique: true },
     refreshTokenHash: { type: String, unique: true, sparse: true },
+    familyId: { type: String, required: true },
     clientId: { type: String, required: true },
+    resource: { type: String, required: true },
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     role: { type: String, required: true },
     scopes: [{ type: String }],
@@ -32,6 +37,7 @@ const McpTokenSchema = new Schema<IMcpToken>(
     lastUsedAt: Date,
     accessTokenExpiresAt: { type: Date, required: true },
     refreshTokenExpiresAt: Date,
+    authorizationExpiresAt: { type: Date, required: true },
   },
   { timestamps: true }
 );
@@ -39,6 +45,7 @@ const McpTokenSchema = new Schema<IMcpToken>(
 McpTokenSchema.index({ accessTokenHash: 1 });
 McpTokenSchema.index({ refreshTokenHash: 1 });
 McpTokenSchema.index({ userId: 1 });
+McpTokenSchema.index({ familyId: 1 });
 
 const PREFIX = { access: "mcp_at_", refresh: "mcp_rt_" } as const;
 

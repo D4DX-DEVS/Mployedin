@@ -34,6 +34,9 @@ interface Step3Data {
   confirmPassword: string;
 }
 
+type RegistrationField = keyof Step1Data | keyof Step2Data | keyof Step3Data | "terms";
+type FieldErrors = Partial<Record<RegistrationField, string>>;
+
 const INDUSTRY_VALUES = [
   "technology",
   "construction",
@@ -178,6 +181,7 @@ export default function EmployerRegisterPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const [step1, setStep1] = useState<Step1Data>({
@@ -212,37 +216,89 @@ export default function EmployerRegisterPage() {
   const BackIcon = locale === "ar" ? ChevronRight : ChevronLeft;
   const NextIcon = locale === "ar" ? ChevronLeft : ChevronRight;
 
+  const clearFieldError = (field: RegistrationField) => {
+    setFieldErrors((current) => {
+      if (!current[field]) return current;
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+  };
+
+  const showFieldErrors = (errors: FieldErrors) => {
+    setFieldErrors(errors);
+    setError("");
+    const firstField = Object.keys(errors)[0];
+    if (!firstField) return;
+    requestAnimationFrame(() => {
+      const container = document.querySelector<HTMLElement>(`[data-registration-field="${firstField}"]`);
+      const focusTarget = container?.querySelector<HTMLElement>("input, button, [tabindex]");
+      focusTarget?.focus();
+      container?.scrollIntoView({ block: "center", behavior: "smooth" });
+    });
+  };
+
   const validateStep1 = () => {
-    if (!step1.companyName.trim()) { setError(t("validation.companyNameRequired")); return false; }
-    if (!step1.industry) { setError(t("validation.industryRequired")); return false; }
-    if (!step1.size) { setError(t("validation.sizeRequired")); return false; }
-    if (!step1.country) { setError(t("validation.countryRequired")); return false; }
-    if (!step1.city.trim()) { setError(t("validation.cityRequired")); return false; }
+    const errors: FieldErrors = {};
+    if (!step1.companyName.trim()) errors.companyName = t("validation.companyNameRequired");
+    if (!step1.industry) errors.industry = t("validation.industryRequired");
+    if (!step1.size) errors.size = t("validation.sizeRequired");
+    if (!step1.country) errors.country = t("validation.countryRequired");
+    if (!step1.city.trim()) errors.city = t("validation.cityRequired");
+    if (Object.keys(errors).length > 0) {
+      showFieldErrors(errors);
+      return false;
+    }
+    setFieldErrors({});
     setError("");
     return true;
   };
 
   const validateStep2 = () => {
+    const errors: FieldErrors = {};
     if (step2.verificationLevel !== "basic" && !step2.tradeLicenseFile) {
-      setError(t("validation.tradeLicenceRequired"));
-      return false;
+      errors.tradeLicenseFile = t("validation.tradeLicenceRequired");
     }
     if (step2.verificationLevel === "premium" && !step2.mohCertFile) {
-      setError(t("validation.mohRequired"));
+      errors.mohCertFile = t("validation.mohRequired");
+    }
+    if (Object.keys(errors).length > 0) {
+      showFieldErrors(errors);
       return false;
     }
+    setFieldErrors({});
     setError("");
     return true;
   };
 
   const validateStep3 = () => {
-    if (!step3.contactName.trim()) { setError(t("validation.fullNameRequired")); return false; }
-    if (!step3.contactEmail.trim()) { setError(t("validation.workEmailRequired")); return false; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(step3.contactEmail)) { setError(t("validation.validEmailRequired")); return false; }
-    if (!step3.password) { setError(t("validation.passwordRequired")); return false; }
-    if (step3.password.length < 8) { setError(t("validation.passwordTooShort")); return false; }
-    if (step3.password !== step3.confirmPassword) { setError(t("validation.passwordMismatch")); return false; }
-    if (!agreedToTerms) { setError(t("validation.termsRequired")); return false; }
+    const errors: FieldErrors = {};
+    if (!step3.contactName.trim()) errors.contactName = t("validation.fullNameRequired");
+    if (!step3.contactEmail.trim()) {
+      errors.contactEmail = t("validation.workEmailRequired");
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(step3.contactEmail)) {
+      errors.contactEmail = t("validation.validEmailRequired");
+    }
+    if (!step3.password) {
+      errors.password = t("validation.passwordRequired");
+    } else if (
+      step3.password.length < 12 ||
+      !/[a-z]/.test(step3.password) ||
+      !/[A-Z]/.test(step3.password) ||
+      !/[0-9]/.test(step3.password) ||
+      !/[^A-Za-z0-9]/.test(step3.password)
+    ) {
+      errors.password = t("validation.passwordStrength");
+    }
+    if (step3.password !== step3.confirmPassword) {
+      errors.confirmPassword = t("validation.passwordMismatch");
+    }
+    if (!agreedToTerms) errors.terms = t("validation.termsRequired");
+    if (Object.keys(errors).length > 0) {
+      showFieldErrors(errors);
+      return false;
+    }
+    setFieldErrors({});
     setError("");
     return true;
   };
@@ -250,6 +306,7 @@ export default function EmployerRegisterPage() {
   const handleNext = () => {
     if (step === 1 && !validateStep1()) return;
     if (step === 2 && !validateStep2()) return;
+    setFieldErrors({});
     setStep((s) => s + 1);
   };
 
@@ -307,6 +364,7 @@ export default function EmployerRegisterPage() {
         }
       }
       const query = new URLSearchParams({ email: step3.contactEmail });
+      query.set("role", "employer");
       if (emailSendFailed) query.set("emailFailed", "1");
       router.push(`/${locale}/verify-email?${query.toString()}`);
     } catch (err) {
@@ -345,14 +403,29 @@ export default function EmployerRegisterPage() {
       </div>
 
       {/* Step Tracker */}
-      <div className="flex items-center justify-between px-1">
+      <p className="text-center text-sm font-medium text-foreground sm:hidden" aria-live="polite">
+        {t("stepProgress", {
+          current: step,
+          total: STEP_LABELS.length,
+          label: t(`steps.${STEP_LABELS[step - 1]!.labelKey}`),
+        })}
+      </p>
+      <div
+        className="flex items-center justify-between px-1"
+        role="list"
+        aria-label={t("stepProgress", {
+          current: step,
+          total: STEP_LABELS.length,
+          label: t(`steps.${STEP_LABELS[step - 1]!.labelKey}`),
+        })}
+      >
         {STEP_LABELS.map(({ icon: Icon, labelKey }, i) => {
           const s = i + 1;
           const label = t(`steps.${labelKey}`);
           const isActive = s === step;
           const isCompleted = s < step;
           return (
-            <div key={label} className="flex items-center gap-1.5 flex-1">
+            <div key={label} className="flex items-center gap-1.5 flex-1" role="listitem" aria-current={isActive ? "step" : undefined}>
               <div className="flex items-center gap-1.5">
                 <div className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
                   isCompleted
@@ -385,25 +458,55 @@ export default function EmployerRegisterPage() {
             <h2 className="text-sm font-semibold flex items-center gap-2 text-foreground">
               <Building2 className="h-4 w-4 text-primary" /> {t("companyDetails")}
             </h2>
-            <FormInput label={t("companyName")} required value={step1.companyName}
-              placeholder={t("companyNamePlaceholder")}
-              onChange={(e) => setStep1(p => ({ ...p, companyName: e.target.value }))} />
+            <div data-registration-field="companyName">
+              <FormInput label={t("companyName")} required value={step1.companyName}
+                error={fieldErrors.companyName}
+                placeholder={t("companyNamePlaceholder")}
+                onChange={(e) => {
+                  clearFieldError("companyName");
+                  setStep1(p => ({ ...p, companyName: e.target.value }));
+                }} />
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <FormSelect label={t("industry")} required value={step1.industry} options={industryOptions}
-                placeholder={t("industryPlaceholder")}
-                onChange={(v) => setStep1(p => ({ ...p, industry: v }))} />
-              <FormSelect label={t("companySize")} required value={step1.size} options={sizeOptions}
-                placeholder={t("sizePlaceholder")}
-                onChange={(v) => setStep1(p => ({ ...p, size: v }))} />
+              <div data-registration-field="industry">
+                <FormSelect label={t("industry")} required value={step1.industry} options={industryOptions}
+                  error={fieldErrors.industry}
+                  placeholder={t("industryPlaceholder")}
+                  onChange={(v) => {
+                    clearFieldError("industry");
+                    setStep1(p => ({ ...p, industry: v }));
+                  }} />
+              </div>
+              <div data-registration-field="size">
+                <FormSelect label={t("companySize")} required value={step1.size} options={sizeOptions}
+                  error={fieldErrors.size}
+                  placeholder={t("sizePlaceholder")}
+                  onChange={(v) => {
+                    clearFieldError("size");
+                    setStep1(p => ({ ...p, size: v }));
+                  }} />
+              </div>
             </div>
             <FormInput label={t("website")} value={step1.website} placeholder="https://example.com"
               onChange={(e) => setStep1(p => ({ ...p, website: e.target.value }))} />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <FormSelect label={t("country")} required value={step1.country} options={countryOptions}
-                placeholder={t("countryPlaceholder")}
-                onChange={(v) => setStep1(p => ({ ...p, country: v }))} />
-              <FormInput label={t("city")} required value={step1.city} placeholder={t("cityPlaceholder")}
-                onChange={(e) => setStep1(p => ({ ...p, city: e.target.value }))} />
+              <div data-registration-field="country">
+                <FormSelect label={t("country")} required value={step1.country} options={countryOptions}
+                  error={fieldErrors.country}
+                  placeholder={t("countryPlaceholder")}
+                  onChange={(v) => {
+                    clearFieldError("country");
+                    setStep1(p => ({ ...p, country: v }));
+                  }} />
+              </div>
+              <div data-registration-field="city">
+                <FormInput label={t("city")} required value={step1.city} placeholder={t("cityPlaceholder")}
+                  error={fieldErrors.city}
+                  onChange={(e) => {
+                    clearFieldError("city");
+                    setStep1(p => ({ ...p, city: e.target.value }));
+                  }} />
+              </div>
             </div>
           </div>
         )}
@@ -461,16 +564,28 @@ export default function EmployerRegisterPage() {
               ))}
             </div>
             {step2.verificationLevel !== "basic" && (
-              <FormFileDrop label={t("tradeLicence")} required accept=".pdf,.jpg,.jpeg,.png"
-                hint={t("uploadHint")}
-                value={step2.tradeLicenseFile}
-                onChange={(file: File | null) => setStep2(p => ({ ...p, tradeLicenseFile: file }))} />
+              <div data-registration-field="tradeLicenseFile">
+                <FormFileDrop label={t("tradeLicence")} required accept=".pdf,.jpg,.jpeg,.png"
+                  error={fieldErrors.tradeLicenseFile}
+                  hint={t("uploadHint")}
+                  value={step2.tradeLicenseFile}
+                  onChange={(file: File | null) => {
+                    clearFieldError("tradeLicenseFile");
+                    setStep2(p => ({ ...p, tradeLicenseFile: file }));
+                  }} />
+              </div>
             )}
             {step2.verificationLevel === "premium" && (
-              <FormFileDrop label={t("mohCertificate")} required accept=".pdf,.jpg,.jpeg,.png"
-                hint={t("uploadHint")}
-                value={step2.mohCertFile}
-                onChange={(file: File | null) => setStep2(p => ({ ...p, mohCertFile: file }))} />
+              <div data-registration-field="mohCertFile">
+                <FormFileDrop label={t("mohCertificate")} required accept=".pdf,.jpg,.jpeg,.png"
+                  error={fieldErrors.mohCertFile}
+                  hint={t("uploadHint")}
+                  value={step2.mohCertFile}
+                  onChange={(file: File | null) => {
+                    clearFieldError("mohCertFile");
+                    setStep2(p => ({ ...p, mohCertFile: file }));
+                  }} />
+              </div>
             )}
           </div>
         )}
@@ -485,34 +600,62 @@ export default function EmployerRegisterPage() {
               <UserCircle className="h-4 w-4 text-primary" /> {t("contactPerson")}
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <FormInput label={t("fullName")} required value={step3.contactName}
-                placeholder={t("fullNamePlaceholder")}
-                onChange={(e) => setStep3(p => ({ ...p, contactName: e.target.value }))} />
+              <div data-registration-field="contactName">
+                <FormInput label={t("fullName")} required value={step3.contactName}
+                  error={fieldErrors.contactName}
+                  placeholder={t("fullNamePlaceholder")}
+                  onChange={(e) => {
+                    clearFieldError("contactName");
+                    setStep3(p => ({ ...p, contactName: e.target.value }));
+                  }} />
+              </div>
               <FormInput label={t("jobTitle")} value={step3.contactTitle}
                 placeholder={t("jobTitlePlaceholder")}
                 onChange={(e) => setStep3(p => ({ ...p, contactTitle: e.target.value }))} />
             </div>
-            <FormInput label={t("workEmail")} required type="email" value={step3.contactEmail}
-              placeholder={t("workEmailPlaceholder")}
-              onChange={(e) => setStep3(p => ({ ...p, contactEmail: e.target.value }))} />
+            <div data-registration-field="contactEmail">
+              <FormInput label={t("workEmail")} required type="email" value={step3.contactEmail}
+                error={fieldErrors.contactEmail}
+                placeholder={t("workEmailPlaceholder")}
+                onChange={(e) => {
+                  clearFieldError("contactEmail");
+                  setStep3(p => ({ ...p, contactEmail: e.target.value }));
+                }} />
+            </div>
             <FormInput label={t("phone")} value={step3.contactPhone}
               placeholder={t("phonePlaceholder")}
               onChange={(e) => setStep3(p => ({ ...p, contactPhone: e.target.value }))} />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <FormInput label={t("password")} required type="password" value={step3.password}
-                placeholder={t("passwordPlaceholder")}
-                onChange={(e) => setStep3(p => ({ ...p, password: e.target.value }))} />
-              <FormInput label={t("confirmPassword")} required type="password" value={step3.confirmPassword}
-                placeholder={t("confirmPasswordPlaceholder")}
-                onChange={(e) => setStep3(p => ({ ...p, confirmPassword: e.target.value }))} />
+              <div data-registration-field="password">
+                <FormInput label={t("password")} required type="password" value={step3.password}
+                  error={fieldErrors.password}
+                  placeholder={t("passwordPlaceholder")}
+                  onChange={(e) => {
+                    clearFieldError("password");
+                    setStep3(p => ({ ...p, password: e.target.value }));
+                  }} />
+              </div>
+              <div data-registration-field="confirmPassword">
+                <FormInput label={t("confirmPassword")} required type="password" value={step3.confirmPassword}
+                  error={fieldErrors.confirmPassword}
+                  placeholder={t("confirmPasswordPlaceholder")}
+                  onChange={(e) => {
+                    clearFieldError("confirmPassword");
+                    setStep3(p => ({ ...p, confirmPassword: e.target.value }));
+                  }} />
+              </div>
             </div>
-            <div className="flex items-start gap-2.5">
+            <div data-registration-field="terms">
+              <div className="flex min-h-11 items-start gap-2.5">
               <input
                 id="employer-terms"
                 type="checkbox"
                 checked={agreedToTerms}
-                onChange={(e) => setAgreedToTerms(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary/40"
+                onChange={(e) => {
+                  clearFieldError("terms");
+                  setAgreedToTerms(e.target.checked);
+                }}
+                className="mt-0.5 h-5 w-5 rounded border-border text-primary focus:ring-primary/40"
               />
               <label htmlFor="employer-terms" className="text-xs text-muted-foreground leading-5">
                 {t("agreePrefix")}{" "}
@@ -524,11 +667,23 @@ export default function EmployerRegisterPage() {
                   {t("privacyPolicy")}
                 </Link>
               </label>
+              </div>
+              {fieldErrors.terms && <p className="mt-1 text-xs text-destructive">{fieldErrors.terms}</p>}
             </div>
           </form>
         )}
 
         {/* Error Display */}
+        {Object.keys(fieldErrors).length > 0 && (
+          <div role="alert" className="rounded-lg border border-destructive/20 bg-destructive/10 p-3">
+            <p className="text-sm font-semibold text-destructive">{t("validation.fixFields")}</p>
+            <ul className="mt-1 list-disc space-y-1 pl-5 text-xs text-destructive">
+              {Object.values(fieldErrors).map((fieldError) => (
+                <li key={fieldError}>{fieldError}</li>
+              ))}
+            </ul>
+          </div>
+        )}
         {error && (
           <div className="flex items-center gap-2 p-2.5 rounded-lg bg-destructive/10 border border-destructive/20">
             <span className="text-xs text-destructive font-medium">{error}</span>
@@ -538,7 +693,7 @@ export default function EmployerRegisterPage() {
         {/* Navigation */}
         <div className="flex items-center justify-between pt-3 border-t border-border/60">
           <button
-            onClick={() => { setError(""); setStep(s => s - 1); }}
+            onClick={() => { setError(""); setFieldErrors({}); setStep(s => s - 1); }}
             disabled={step === 1}
             className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >

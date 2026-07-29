@@ -119,19 +119,63 @@ async function applyHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     lastActiveAt: (seeker as { updatedAt?: Date }).updatedAt,
   });
 
-  const application = await Application.create({
+  const appliedAt = new Date();
+  const applicationData = {
     jobSeekerId: seeker._id,
     jobId,
     employerId: job.employerId,
     status: "applied",
     source: "easy_apply",
     autoApplied: false,
-    appliedAt: new Date(),
+    appliedAt,
     documents: appDocuments,
-    statusHistory: [{ status: "applied", changedAt: new Date() }],
     behaviorSignals: signals,
     behaviorScore: bScore,
-  });
+  };
+
+  let application;
+  try {
+    const withdrawn = await Application.findOne({
+      jobSeekerId: seeker._id,
+      jobId,
+      status: "withdrawn",
+    }).select("_id").lean();
+
+    if (withdrawn) {
+      application = await Application.findOneAndUpdate(
+        { _id: withdrawn._id, status: "withdrawn" },
+        {
+          $set: applicationData,
+          $unset: {
+            withdrawalReason: 1,
+            withdrawalNote: 1,
+            rejectionReason: 1,
+          },
+          $push: {
+            statusHistory: {
+              status: "applied",
+              changedAt: appliedAt,
+              note: "Re-applied after withdrawal",
+            },
+          },
+        },
+        { new: true, runValidators: true },
+      );
+      if (!application) {
+        return NextResponse.json({ error: "Already applied to this job" }, { status: 409 });
+      }
+    } else {
+      application = await Application.create({
+        ...applicationData,
+        statusHistory: [{ status: "applied", changedAt: appliedAt, note: "Application submitted" }],
+      });
+    }
+  } catch (err: unknown) {
+    if (err && typeof err === "object" && "code" in err && (err as { code: number }).code === 11000) {
+      return NextResponse.json({ error: "Already applied to this job" }, { status: 409 });
+    }
+    throw err;
+  }
 
   // Track applicant on the job document for accurate applicant counts (parity with full apply)
   await Job.updateOne({ _id: jobId }, { $addToSet: { applicantIds: seeker._id } });

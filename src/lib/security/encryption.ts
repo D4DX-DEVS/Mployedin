@@ -64,7 +64,9 @@ export function decrypt(ciphertext: string): string {
   const tag = combined.subarray(combined.length - TAG_LENGTH);
   const encryptedData = combined.subarray(IV_LENGTH, combined.length - TAG_LENGTH);
 
-  const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+  const decipher = crypto.createDecipheriv(ALGORITHM, key, iv, {
+    authTagLength: TAG_LENGTH,
+  });
   decipher.setAuthTag(tag);
 
   const decrypted = Buffer.concat([

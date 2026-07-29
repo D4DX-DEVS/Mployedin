@@ -6,6 +6,7 @@ import CookieConsent from "@/components/shared/CookieConsent";
 import { SessionWrapper } from "@/components/shared/SessionWrapper";
 import { DashboardProviders } from "@/components/shared/DashboardProviders";
 import { CsrfProvider } from "@/components/shared/CsrfProvider";
+import { serializeJsonLd } from "@/lib/security/jsonLd";
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://mployedin-8a4rc.ondigitalocean.app";
 
@@ -63,15 +64,15 @@ export default async function PublicLayout({
     <NextIntlClientProvider locale={locale} messages={messages}>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(organizationSchema) }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(websiteSchema) }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(softwareSchema) }}
       />
       <SessionWrapper disableIdleTimeout>
         {/* Easy Apply and other public-page mutations need the CSRF fetch patch

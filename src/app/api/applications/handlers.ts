@@ -104,8 +104,15 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       const agentJobs = await Job.find(jobFilter).select("_id").lean();
       accessibleJobIds = agentJobs.map((j) => j._id);
       query.jobId = { $in: accessibleJobIds };
+    } else {
+      // Default-deny: a user with role=agent but no active Agent profile must
+      // never fall through to an unscoped platform-wide applications query.
+      return NextResponse.json({
+        applications: [],
+        pagination: { page, limit, total: 0, pages: 0 },
+        ...(fetchJobs ? { employerJobs: [] } : {}),
+      });
     }
-    // If no Agent doc, skip filtering (consistent with jobs API)
   } else if (ctx.role === "super_agent") {
     // S1: scope super_agent to applications for employers within their book of
     // business (team + region agents). Default-deny: an SA with no scope sees
@@ -596,14 +603,22 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   try {
     if (existing && existing.status === "withdrawn") {
       // Re-apply: update the withdrawn application instead of creating a duplicate
-      application = await Application.findByIdAndUpdate(
-        existing._id,
+      application = await Application.findOneAndUpdate(
+        { _id: existing._id, status: "withdrawn" },
         {
-          ...applicationData,
+          $set: applicationData,
+          $unset: {
+            withdrawalReason: 1,
+            withdrawalNote: 1,
+            rejectionReason: 1,
+          },
           $push: { statusHistory: { status: "applied", changedAt: new Date(), note: "Re-applied after withdrawal" } },
         },
-        { returnDocument: "after" }
+        { new: true, runValidators: true }
       );
+      if (!application) {
+        return NextResponse.json({ error: "Already applied to this job" }, { status: 409 });
+      }
     } else {
       application = await Application.create({
         ...applicationData,

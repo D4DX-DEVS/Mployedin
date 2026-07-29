@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { strongPasswordSchema } from "@/lib/security/passwordPolicy";
 import { commonSchemas } from "./index";
 
 /** Contact form submission (public, no auth) */
@@ -90,7 +91,7 @@ export const matchingWeightTemplateSchema = z.object({
 /** Password change */
 export const changePasswordSchema = z.object({
   currentPassword: z.string().min(1).max(128),
-  newPassword: z.string().min(8).max(128),
+  newPassword: strongPasswordSchema,
 });
 
 /** PATCH /api/users/locale */
@@ -128,7 +129,7 @@ export const jobApprovalSchema = z.object({
 export const agentRegisterSchema = z.object({
   fullName: z.string().min(1).max(200).trim(),
   email: z.string().email().max(254).trim().toLowerCase(),
-  password: z.string().min(8, "Password must be at least 8 characters").max(128),
+  password: strongPasswordSchema,
   phone: z.string().max(30).trim().optional(),
   country: z.string().max(100).optional(),
   city: z.string().max(100).optional(),
@@ -142,11 +143,5 @@ export const agentRegisterSchema = z.object({
 export const jobSeekerRegisterSchema = z.object({
   name: z.string().min(1).max(200).trim(),
   email: z.string().email().max(254).trim().toLowerCase(),
-  password: z
-    .string()
-    .min(8, "Password must be at least 8 characters")
-    .max(128)
-    .regex(/[a-z]/, "Password must include a lowercase letter")
-    .regex(/[A-Z]/, "Password must include an uppercase letter")
-    .regex(/[0-9]/, "Password must include a number"),
+  password: strongPasswordSchema,
 });
