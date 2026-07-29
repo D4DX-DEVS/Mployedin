@@ -33,6 +33,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
         with:
+          version: v0.65.0
+          token-setup-trivy: ${{ secrets.GITHUB_TOKEN }}
           scan-type: fs
           scan-ref: .
           severity: CRITICAL,HIGH
