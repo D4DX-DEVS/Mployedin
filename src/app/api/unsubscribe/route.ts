@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
     const updated = await SavedSearch.findOneAndUpdate(
       { _id: payload.savedSearchId, userId: payload.userId },
       { $set: { emailAlert: false } },
-      { new: true },
+      { returnDocument: "after" },
     ).lean();
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://mployedin.com";
     const name = (updated as { name?: string } | null)?.name;

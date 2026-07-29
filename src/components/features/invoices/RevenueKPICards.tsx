@@ -75,7 +75,7 @@ export function RevenueKPICards({ kpi, currency = "AED", variant = "admin" }: Re
   return (
     <section className={`grid gap-3 sm:grid-cols-2 ${gridCols}`}>
       {cards.map((card) => (
-        <div key={card.label} className="workspace-glass-panel rounded-2xl p-4">
+        <div key={card.label} className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{card.label}</p>

@@ -493,7 +493,7 @@ export default function AdminResourcesPage() {
                       <>
                         <p className="text-sm font-semibold">{formFiles.length} file{formFiles.length > 1 ? "s" : ""} selected</p>
                         <div className="flex flex-wrap justify-center gap-1.5 mt-1">
-                          {formFiles.slice(0, 3).map((f, i) => (<Badge key={i} variant="secondary" className="text-xs max-w-[140px] truncate">{f.name}</Badge>))}
+                          {formFiles.slice(0, 3).map((f, i) => (<Badge key={i} variant="secondary" className="max-w-full break-all text-xs">{f.name}</Badge>))}
                           {formFiles.length > 3 && <Badge variant="secondary" className="text-xs">+{formFiles.length - 3} more</Badge>}
                         </div>
                       </>

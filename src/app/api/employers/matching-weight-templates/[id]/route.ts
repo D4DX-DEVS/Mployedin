@@ -56,7 +56,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const template = await MatchingWeightTemplate.findOneAndUpdate(
     { _id: id, scope: "employer", employerId: employer._id },
     { $set: body },
-    { new: true },
+    { returnDocument: "after" },
   );
 
   if (!template) {

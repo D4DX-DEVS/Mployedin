@@ -95,7 +95,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const profile = await TargetProfile.findByIdAndUpdate(
     id,
     { $set: body },
-    { new: true }
+    { returnDocument: "after" }
   ).lean();
 
   if (!profile) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
@@ -145,7 +145,7 @@ async function deleteHandler(req: NextRequest, ctx: AuthCtx, params?: Record<str
   const profile = await TargetProfile.findByIdAndUpdate(
     id,
     { $set: { status: "cancelled" } },
-    { new: true }
+    { returnDocument: "after" }
   ).lean();
 
   if (!profile) return NextResponse.json({ error: "Profile not found" }, { status: 404 });

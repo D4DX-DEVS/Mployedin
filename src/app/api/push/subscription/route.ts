@@ -28,7 +28,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       keys: body.keys,
       userAgent: req.headers.get("user-agent") ?? undefined,
     },
-    { upsert: true, new: true }
+    { upsert: true, returnDocument: "after" }
   );
   return NextResponse.json({ ok: true });
 }

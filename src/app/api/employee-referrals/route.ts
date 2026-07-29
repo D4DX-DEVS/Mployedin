@@ -55,7 +55,7 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
         maxReferralsPerEmployee: body.maxReferralsPerEmployee || 0,
         createdBy: new mongoose.Types.ObjectId(ctx.userId),
       },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: "after" }
     );
     return NextResponse.json({ program }, { status: 201 });
   }

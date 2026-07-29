@@ -336,7 +336,7 @@ export default function AdminInvoicesPage() {
             <div className="rounded-2xl border border-rose-200 bg-rose-50/90 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">{errorMessage}</div>
           )}
 
-          <section className="workspace-panel-surface overflow-hidden rounded-[24px]">
+          <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-[24px]">
             <div className="flex flex-col gap-2 border-b border-border/80 px-4 py-4 sm:px-5">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("invoiceLedger")}</p>
               <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">

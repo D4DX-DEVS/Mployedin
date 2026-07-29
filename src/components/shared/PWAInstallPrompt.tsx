@@ -66,7 +66,9 @@ export function PWAInstallPrompt() {
   if (!showPrompt) return null;
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 z-50 mx-auto max-w-sm animate-in slide-in-from-bottom-4 duration-300">
+    /* On phones this sat under the AI assistant FAB (fixed bottom-20, z-[100])
+       and the bottom tab bar, so its dismiss X was unreachable. Sit above both. */
+    <div className="fixed bottom-40 left-4 right-4 z-[110] mx-auto max-w-sm animate-in slide-in-from-bottom-4 duration-300 lg:bottom-4">
       <div className="rounded-lg border bg-card p-4 shadow-lg">
         <div className="flex items-start gap-3">
           <img

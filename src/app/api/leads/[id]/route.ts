@@ -103,7 +103,7 @@ export const PATCH = withAuth(async (req: NextRequest, ctx: AuthCtx) => {
   update.score = score;
   update.qualificationLevel = deriveQualification(score);
 
-  const lead = await Lead.findByIdAndUpdate(id, { $set: update }, { new: true });
+  const lead = await Lead.findByIdAndUpdate(id, { $set: update }, { returnDocument: "after" });
   if (!lead) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   await logActivity({

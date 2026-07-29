@@ -385,7 +385,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
     const saDoc = await SuperAgent.findOneAndUpdate(
       { userId },
       { $set: profileUpdate },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: "after" }
     );
 
     // Sync agent references: set superAgentId on assigned agents, clear on removed ones

@@ -43,7 +43,7 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   const employer = await Employer.findOneAndUpdate(
     { userId: ctx.userId },
     { $set: update },
-    { new: true },
+    { returnDocument: "after" },
   );
 
   if (!employer) {

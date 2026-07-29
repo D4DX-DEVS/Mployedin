@@ -83,7 +83,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   const reserved = await Employer.findOneAndUpdate(
     { _id: employer._id, "posterCredits.used": { $lte: employer.posterCredits.limit - CREDITS_PER_MORE_VARIATIONS } },
     { $inc: { "posterCredits.used": CREDITS_PER_MORE_VARIATIONS } },
-    { new: true },
+    { returnDocument: "after" },
   ).select("posterCredits").lean();
   if (!reserved) {
     return NextResponse.json(

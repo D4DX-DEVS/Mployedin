@@ -193,12 +193,12 @@ export const JobFeedCard = memo(function JobFeedCard({
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 flex-col gap-3 min-[420px]:flex-row min-[420px]:items-start min-[420px]:justify-between">
             <div className="min-w-0 flex-1">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              <div className="hidden text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground sm:block">
                 {remote ? t("remoteReady") : t("recommendedRole")}
               </div>
               <Link
                 href={`/${locale}/job-seeker/jobs/${job._id}`}
-                className="mt-1 block line-clamp-2 text-base font-semibold text-foreground transition-colors hover:text-primary sm:text-[17px]"
+                className="block line-clamp-2 text-base font-semibold text-foreground transition-colors hover:text-primary sm:mt-1 sm:text-[17px]"
               >
                 {job.title}
               </Link>
@@ -232,7 +232,7 @@ export const JobFeedCard = memo(function JobFeedCard({
                   className="transition-transform hover:scale-[1.02]"
                 >
                   <div
-                    className={`flex h-12 w-12 items-center justify-center rounded-2xl text-xs font-semibold shadow-sm ${palette.bg} ${palette.text}`}
+                    className={`flex h-10 w-10 items-center justify-center rounded-2xl text-xs font-semibold shadow-sm sm:h-12 sm:w-12 ${palette.bg} ${palette.text}`}
                   >
                     {job.employerId?.logo ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -244,7 +244,7 @@ export const JobFeedCard = memo(function JobFeedCard({
                 </Link>
               ) : (
                 <div
-                  className={`flex h-12 w-12 items-center justify-center rounded-2xl text-xs font-semibold shadow-sm ${palette.bg} ${palette.text}`}
+                  className={`flex h-10 w-10 items-center justify-center rounded-2xl text-xs font-semibold shadow-sm sm:h-12 sm:w-12 ${palette.bg} ${palette.text}`}
                 >
                   {job.employerId?.logo ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -279,9 +279,10 @@ export const JobFeedCard = memo(function JobFeedCard({
           )}
 
           {/* Meta: experience · location · salary */}
-          <div className="mt-3 flex flex-wrap gap-2 text-xs font-medium text-muted-foreground">
+          {/* One scrollable line on phones instead of two wrapped rows of chips. */}
+          <div className="scrollbar-none mt-2 flex flex-nowrap gap-1.5 overflow-x-auto text-xs font-medium text-muted-foreground sm:mt-3 sm:flex-wrap sm:gap-2 sm:overflow-visible">
             {(job.requirements?.experienceMin != null || job.requirements?.experienceMax != null) && (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/20 px-2.5 py-1">
+              <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-border/60 bg-muted/20 px-2.5 py-1">
                 <Briefcase className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
                 {t("yearsRange", {
                   min: (job.requirements.experienceMin ?? 0).toLocaleString(numberLocale),
@@ -289,7 +290,7 @@ export const JobFeedCard = memo(function JobFeedCard({
                 })}
               </span>
             )}
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/20 px-2.5 py-1">
+            <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-border/60 bg-muted/20 px-2.5 py-1">
               <MapPin className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
               {formatLocalizedLocation(job.location, locale, {
                 remoteLabel: t("remote"),
@@ -297,23 +298,25 @@ export const JobFeedCard = memo(function JobFeedCard({
               })}
             </span>
             {job.salary?.min > 0 && (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/20 px-2.5 py-1">
+              <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-border/60 bg-muted/20 px-2.5 py-1">
                 <DollarSign className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
                 {fmtSalary(job.salary, numberLocale)}
               </span>
             )}
           </div>
 
-          {/* Description */}
+          {/* Description — hidden on phones: costs 2 lines per card and the full
+              text is one tap away on the job detail page. */}
           {job.description && (
-            <p className="mt-2 text-xs text-muted-foreground leading-relaxed line-clamp-2">
+            <p className="mt-2 hidden text-xs text-muted-foreground leading-relaxed line-clamp-2 sm:block">
               {stripMarkdown(job.description)}
             </p>
           )}
 
-          {/* Skill tags with match indicators */}
+          {/* Skill tags with match indicators — clamped to one chip row on phones
+              so a long skill list can't stretch the card. */}
           {job.requirements?.skills?.length > 0 && (
-            <div className="mt-2.5 flex flex-wrap gap-1.5">
+            <div className="mt-2 flex max-h-7 flex-wrap gap-1.5 overflow-hidden sm:mt-2.5 sm:max-h-none">
               {job.requirements.skills.slice(0, 6).map((skill) => {
                 const isMatched = matchedSet.has(skill.toLowerCase());
                 return (
@@ -339,23 +342,23 @@ export const JobFeedCard = memo(function JobFeedCard({
           )}
 
           {/* Bottom: posted date + stats + actions */}
-          <div className="mt-4 flex flex-col gap-3 border-t border-border/40 pt-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[11px] text-muted-foreground">
+          <div className="mt-2.5 flex flex-row items-center justify-between gap-2 border-t border-border/40 pt-2.5 sm:mt-4 sm:gap-3 sm:pt-3">
+            <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3 text-[11px] text-muted-foreground">
               <span>{posted.value == null ? t(`time.${posted.key}`) : t(`time.${posted.key}`, { value: posted.value.toLocaleString(numberLocale) })}</span>
               {(job.views ?? 0) > 0 && (
-                <span className="flex items-center gap-1">
+                <span className="hidden items-center gap-1 sm:flex">
                   <Eye className="h-3 w-3" />
                   {fmtCount(job.views!, numberLocale)}
                 </span>
               )}
               {(job.uniqueViews ?? 0) > 0 && (
-                <span className="flex items-center gap-1">
+                <span className="hidden items-center gap-1 sm:flex">
                   <Users className="h-3 w-3" />
                   {t("viewers", { count: fmtCount(job.uniqueViews!, numberLocale) })}
                 </span>
               )}
             </div>
-            <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+            <div className="flex shrink-0 items-center gap-1.5 sm:gap-2 sm:justify-end">
               <ShareJob
                 jobId={job._id}
                 jobTitle={job.title}
@@ -365,14 +368,14 @@ export const JobFeedCard = memo(function JobFeedCard({
               />
               <button
                 onClick={onHide}
-                className="inline-flex items-center gap-1 rounded-xl border border-border bg-secondary/80 px-3 py-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                className="inline-flex items-center gap-1 rounded-xl border border-border bg-secondary/80 px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground sm:px-3 sm:py-2"
               >
                 <EyeOff className="h-3 w-3" />
                 <span className="hidden sm:inline">{t("hide")}</span>
               </button>
               <button
                 onClick={onSave}
-                className={`inline-flex items-center gap-1 rounded-xl border px-3 py-2 text-xs transition-colors ${
+                className={`inline-flex items-center gap-1 rounded-xl border px-2.5 py-1.5 text-xs transition-colors sm:px-3 sm:py-2 ${
                   isSaved
                     ? "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-400"
                     : "border-border bg-secondary/80 text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -384,7 +387,7 @@ export const JobFeedCard = memo(function JobFeedCard({
               <button
                 onClick={onApply}
                 disabled={isApplied}
-                className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
+                className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all sm:px-4 sm:py-2 ${
                   isApplied
                     ? "bg-muted text-muted-foreground cursor-not-allowed"
                     : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm hover:shadow-md"

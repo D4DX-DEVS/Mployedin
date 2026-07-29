@@ -237,15 +237,15 @@ export default function EmployerAIJobCreatePage() {
   const t = useTranslations("ai");
   const currentLocale = useLocale();
   const isRtl = currentLocale === "ar";
-  const [messages, setMessages] = useState<Message[]>(() => {
-    const saved = readChatSession();
-    if (saved?.messages && saved.messages.length > 0) return saved.messages;
-    return [{ role: "assistant", content: t("jobCreator.initialMessage") }];
-  });
+  // Deterministic initial state (matches SSR HTML); the saved session is
+  // restored in an effect below to avoid a hydration mismatch.
+  const [messages, setMessages] = useState<Message[]>([
+    { role: "assistant", content: t("jobCreator.initialMessage") },
+  ]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
-  const [extractedJob, setExtractedJob] = useState<ExtractedJob | null>(() => readChatSession()?.extractedJob ?? null);
-  const [extractedBulkJobs, setExtractedBulkJobs] = useState<ExtractedJob[]>(() => readChatSession()?.extractedBulkJobs ?? []);
+  const [extractedJob, setExtractedJob] = useState<ExtractedJob | null>(null);
+  const [extractedBulkJobs, setExtractedBulkJobs] = useState<ExtractedJob[]>([]);
   const [creatingBulk, setCreatingBulk] = useState(false);
   const [bulkProgress, setBulkProgress] = useState<{ created: number; total: number; errors: string[] } | null>(null);
   const [voiceLanguage, setVoiceLanguage] = useState("auto");
@@ -293,6 +293,17 @@ export default function EmployerAIJobCreatePage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Restore the persisted session after mount (client-only; sessionStorage
+  // can't be read during SSR without causing a hydration mismatch).
+  useEffect(() => {
+    const saved = readChatSession();
+    if (!saved) return;
+    if (saved.messages && saved.messages.length > 0) setMessages(saved.messages);
+    if (saved.extractedJob) setExtractedJob(saved.extractedJob);
+    if (saved.extractedBulkJobs && saved.extractedBulkJobs.length > 0) setExtractedBulkJobs(saved.extractedBulkJobs);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Persist the conversation + draft so an accidental remount or navigation
   // (back from the form, tab switch, dev Fast Refresh) doesn't discard the

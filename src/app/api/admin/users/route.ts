@@ -196,7 +196,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
   const updated = await User.findByIdAndUpdate(
     userId,
     { $set: updateData },
-    { new: true }
+    { returnDocument: "after" }
   ).select("-passwordHash").lean();
 
   if (!updated) return NextResponse.json({ error: "User not found" }, { status: 404 });

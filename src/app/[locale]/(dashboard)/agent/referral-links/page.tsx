@@ -178,7 +178,7 @@ export default function AgentReferralLinksPage() {
 
       {/* Create Modal */}
       {createOpen && (
-        <section className="workspace-panel-surface rounded-[28px] p-5">
+        <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-foreground">{t("createModalTitle")}</h2>
             <button onClick={() => setCreateOpen(false)} className="rounded-lg p-1 hover:bg-secondary/80"><X className="h-4 w-4" /></button>
@@ -211,7 +211,7 @@ export default function AgentReferralLinksPage() {
       )}
 
       {/* Search */}
-      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
+      <section className="workspace-panel-surface rounded-2xl p-3.5 sm:rounded-[28px] sm:p-5">
         <div className="max-w-xl">
           <TableToolbar
             search={search}
@@ -228,7 +228,7 @@ export default function AgentReferralLinksPage() {
       {isLoading ? (
         <section className="space-y-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="workspace-panel-surface rounded-[28px] p-5">
+            <div key={i} className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5">
               <div className="flex items-center gap-3">
                 <Skeleton className="h-11 w-11 rounded-2xl" />
                 <div className="space-y-2">
@@ -251,7 +251,7 @@ export default function AgentReferralLinksPage() {
             const status = linkStatus(link);
             const isExpanded = expandedId === link._id;
             return (
-              <div key={link._id} className="workspace-panel-surface rounded-[28px] p-5 transition-all duration-200">
+              <div key={link._id} className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 transition-all duration-200">
                 {/* Link header */}
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-3">

@@ -56,7 +56,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           $push: { messages: { $each: messages.map((m) => ({ ...m, timestamp: new Date() })) } },
           ...(title && { title }),
         },
-        { new: true }
+        { returnDocument: "after" }
       );
       if (!thread) return NextResponse.json({ error: "Thread not found" }, { status: 404 });
       await logActivity({ ...actorFromCtx(ctx), action: "ai.chat_append", resource: "conversation_threads", resourceId: threadId, req });

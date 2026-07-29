@@ -71,7 +71,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
   const profile = await SuperAgent.findOneAndUpdate(
     { userId: ctx.userId },
     { $set: updates },
-    { new: true }
+    { returnDocument: "after" }
   )
     .select("country currencyCode overrideRate timezone workingHoursStart workingHoursEnd workingDays")
     .lean();

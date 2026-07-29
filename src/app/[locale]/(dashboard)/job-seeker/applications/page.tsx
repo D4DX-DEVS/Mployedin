@@ -24,10 +24,7 @@ import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { useTableExport } from "@/hooks/useTableExport";
-import { TableToolbar } from "@/components/shared/TableToolbar";
 import { formatLocalizedLocation } from "@/lib/i18n/locations";
-import type { ExportColumn } from "@/lib/export";
 
 interface ApplicationJob {
   _id: string;
@@ -180,28 +177,6 @@ export default function ApplicationsPage() {
 
   const hasActiveFilters = !!debouncedSearch || !!dateFrom || !!dateTo;
 
-  const exportData = applications.map((app) => ({
-    jobTitle: app.jobId?.title ?? "",
-    company: typeof app.jobId?.employerId === "object" ? (app.jobId.employerId as { companyName?: string })?.companyName ?? "" : "",
-    status: app.status,
-    aiMatchScore: app.aiMatchScore ?? 0,
-    appliedAt: new Date(app.appliedAt).toLocaleDateString(numberLocale),
-  }));
-
-  const exportColumns = [
-    { header: t("export.jobTitle"), key: "jobTitle" },
-    { header: t("export.company"), key: "company" },
-    { header: t("export.status"), key: "status" },
-    { header: t("export.matchScore"), key: "aiMatchScore" },
-    { header: t("export.appliedDate"), key: "appliedAt" },
-  ];
-
-  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
-    data: exportData as unknown as Record<string, unknown>[],
-    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
-    filename: "my-applications",
-    title: t("export.title"),
-  });
 
   const activeStatus = STATUS_TABS.includes(activeTab as (typeof STATUS_TABS)[number]) ? activeTab : STATUS_TABS[0];
   const activeStatusLabel = t(`status.${activeStatus}`);
@@ -211,16 +186,22 @@ export default function ApplicationsPage() {
   const activeApplicationsCount = applications.filter((application) => !TERMINAL_STATUSES.includes(application.status)).length;
 
   return (
-    <div className="page-container max-w-[1240px] gap-2 pt-3 md:gap-3 md:pt-4 lg:gap-3 lg:pt-4">
-      <section className="card-base overflow-hidden rounded-[24px] border border-border/70 p-0 shadow-[0_8px_24px_rgba(15,23,42,0.05)]">
-        <div className="border-b border-border/60 px-3.5 py-3 sm:px-4 sm:py-3.5 lg:px-5 lg:py-4">
+    /* max-sm:px-0 — the job-seeker layout already pads 16px; page-container's own
+       24px stacked on top of it and left rows only 304px wide on a 390px screen. */
+    <div className="page-container max-w-[1240px] gap-2 pt-3 max-sm:px-0 md:gap-3 md:pt-4 lg:gap-3 lg:pt-4">
+      {/* Flattened below sm — the outer shell around a list of cards read as a
+          box-in-box on phones and ate horizontal room from every row. */}
+      <section className="card-base overflow-hidden rounded-[24px] border border-border/70 p-0 shadow-[0_8px_24px_rgba(15,23,42,0.05)] max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:shadow-none">
+        <div className="border-b border-border/60 px-3.5 py-3 max-sm:px-0 sm:px-4 sm:py-3.5 lg:px-5 lg:py-4">
           <div className="flex flex-col gap-2.5">
             <div className="flex flex-col gap-1.5 lg:flex-row lg:items-center lg:justify-between">
               <PageHeader
                 title={t("title")}
               />
 
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-muted-foreground sm:text-sm">
+              {/* Counters are reference info, not navigation — kept off phones
+                  where they pushed the actual list below the fold. */}
+              <div className="hidden flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-muted-foreground sm:flex sm:text-sm">
                 <span><span className="text-foreground">{t("summary.total")}</span> {formatNumber(overallTotal)}</span>
                 <span aria-hidden="true" className="hidden text-muted-foreground/60 sm:inline">|</span>
                 <span><span className="text-foreground">{t("summary.active")}</span> {formatNumber(activeApplicationsCount)}</span>
@@ -231,7 +212,8 @@ export default function ApplicationsPage() {
               </div>
             </div>
 
-            <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-2.5">
+            {/* Search + Filters share one row on phones instead of stacking. */}
+            <div className="flex flex-row flex-wrap items-center gap-2 lg:gap-2.5">
               <div className="relative min-w-0 flex-1 lg:max-w-[420px] xl:max-w-[520px]">
                 <label htmlFor="applications-search" className="sr-only">{t("searchLabel")}</label>
                 <Search className="absolute start-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -272,7 +254,7 @@ export default function ApplicationsPage() {
                 )}
               </Button>
 
-              <div className="overflow-x-auto scrollbar-none lg:flex-1">
+              <div className="w-full overflow-x-auto scrollbar-none lg:w-auto lg:flex-1">
                 <div
                   role="tablist"
                   aria-label={t("statusFiltersLabel")}
@@ -348,13 +330,7 @@ export default function ApplicationsPage() {
           )}
         </div>
 
-        <div className="px-3.5 py-3 sm:px-4 sm:py-3.5 lg:px-5 lg:py-4">
-          <TableToolbar
-            onExportCsv={handleExportCsv}
-            onExportExcel={handleExportExcel}
-            onExportPdf={handleExportPdf}
-            className="mb-3"
-          />
+        <div className="px-3.5 py-3 max-sm:px-0 max-sm:pt-2 sm:px-4 sm:py-3.5 lg:px-5 lg:py-4">
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={activeTab}
@@ -394,7 +370,7 @@ export default function ApplicationsPage() {
           </AnimatePresence>
         </div>
 
-        <div className="border-t border-border/60 bg-muted/10 px-3.5 py-3 sm:px-4 sm:py-3.5 lg:px-5">
+        <div className="border-t border-border/60 bg-muted/10 px-3.5 py-3 max-sm:bg-transparent max-sm:px-0 sm:px-4 sm:py-3.5 lg:px-5">
           <PaginationControls
             page={pagination.page}
             totalPages={pagination.totalPages}
@@ -546,10 +522,12 @@ function ApplicationCard({
               <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px] leading-4 text-muted-foreground sm:flex-nowrap sm:gap-x-2">
                 <span className="truncate font-medium text-muted-foreground">{companyName ?? t("companyFallback")}</span>
 
+                {/* Location and salary drop off phones so the row stays 2 lines;
+                    both are still shown in the expanded details. */}
                 {locationLabel && (
                   <>
-                    <span aria-hidden="true" className="text-muted-foreground/60">•</span>
-                    <span className="inline-flex min-w-0 items-center gap-1 truncate">
+                    <span aria-hidden="true" className="hidden text-muted-foreground/60 sm:inline">•</span>
+                    <span className="hidden min-w-0 items-center gap-1 truncate sm:inline-flex">
                       <MapPin className="h-3 w-3 shrink-0" />
                       <span className="truncate">{locationLabel}</span>
                     </span>
@@ -558,8 +536,8 @@ function ApplicationCard({
 
                 {salaryLabel && (
                   <>
-                    <span aria-hidden="true" className="text-muted-foreground/60">•</span>
-                    <span className="truncate">{salaryLabel}</span>
+                    <span aria-hidden="true" className="hidden text-muted-foreground/60 sm:inline">•</span>
+                    <span className="hidden truncate sm:inline">{salaryLabel}</span>
                   </>
                 )}
 
@@ -597,7 +575,7 @@ function ApplicationCard({
         </button>
 
         {(isActive || TERMINAL_STATUSES.includes(app.status)) && (
-          <div className="mt-1.5 flex items-center justify-end gap-3">
+          <div className="mt-0.5 flex items-center justify-end gap-3 sm:mt-1.5">
             {TERMINAL_STATUSES.includes(app.status) && (
               <Button variant="ghost" size="sm" className="h-6 gap-1 px-0 text-[12px] text-amber-600 hover:text-amber-700" asChild>
                 <Link href={`/${locale}/job-seeker/applications/${app._id}/feedback`}>

@@ -144,7 +144,7 @@ async function PATCH(req: NextRequest, ctx: { userId: string; role: string }) {
   const updated = await JobSeeker.findOneAndUpdate(
     { userId: ctx.userId },
     { $set: jsUpdate },
-    { upsert: true, new: true }
+    { upsert: true, returnDocument: "after" }
   );
 
   await logActivity({

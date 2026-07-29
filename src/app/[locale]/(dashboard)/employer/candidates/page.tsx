@@ -366,19 +366,26 @@ function CandidateMatchCard({
           <p className="truncate text-sm text-muted-foreground">{currentRole ?? t("roleNotSpecified")}</p>
           <p className="truncate text-xs text-muted-foreground/90">{primaryMeta || t("locationExpNotSpecified")}</p>
           <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-            {visibleSkills.map((skill) => {
+            {/* 3rd tag hides on phones and folds into the mobile "+more" count —
+                showing all 3 there wrapped the last tag onto its own orphan line. */}
+            {visibleSkills.map((skill, skillIndex) => {
               const isRequired = requiredSkills.some((requiredSkill) => normalizeText(requiredSkill) === normalizeText(skill));
 
               return (
                 <span
                   key={skill}
-                  className={`inline-flex max-w-full items-center rounded-full px-2 py-0.5 font-medium ${isRequired ? "bg-status-applied-bg text-status-applied dark:bg-sky-500/15 dark:text-sky-300" : "bg-secondary/75 text-muted-foreground dark:bg-slate-800/80 dark:text-slate-300"}`}
+                  className={`inline-flex max-w-full items-center rounded-full px-2 py-0.5 font-medium ${skillIndex === 2 ? "hidden sm:inline-flex" : ""} ${isRequired ? "bg-status-applied-bg text-status-applied dark:bg-sky-500/15 dark:text-sky-300" : "bg-secondary/75 text-muted-foreground dark:bg-slate-800/80 dark:text-slate-300"}`}
                 >
                   <span className="truncate">{skill}</span>
                 </span>
               );
             })}
-            {overflowSkillCount > 0 ? <span>+{overflowSkillCount} {t("moreSuffix")}</span> : null}
+            {overflowSkillCount > 0 ? <span className="hidden sm:inline">+{overflowSkillCount} {t("moreSuffix")}</span> : null}
+            {visibleSkills.length >= 3 ? (
+              <span className="sm:hidden">+{overflowSkillCount + 1} {t("moreSuffix")}</span>
+            ) : overflowSkillCount > 0 ? (
+              <span className="sm:hidden">+{overflowSkillCount} {t("moreSuffix")}</span>
+            ) : null}
             {selectedJobData && matchedSkills.length === 0 && missingSkills.length > 0 ? (
               <span className="text-status-shortlisted dark:text-amber-300">{missingSkills.length === 1 ? t("skillGap", { count: missingSkills.length }) : t("skillGaps", { count: missingSkills.length })}</span>
             ) : null}
@@ -564,8 +571,8 @@ function CandidateInsightsDialog({
           </div>
 
           <div className="space-y-5 px-6 py-6 sm:px-8">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <div className="workspace-glass-panel rounded-2xl p-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
+              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("availability")}</p>
                 <p className="mt-2 text-sm font-semibold text-foreground">
                   {candidate.availabilityStatus === "immediately"
@@ -579,15 +586,15 @@ function CandidateInsightsDialog({
                           : t("unknown")}
                 </p>
               </div>
-              <div className="workspace-glass-panel rounded-2xl p-4">
+              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("profileQuality")}</p>
                 <p className="mt-2 text-sm font-semibold text-foreground">{candidate.profileCompleteness != null ? t("percentComplete", { percent: candidate.profileCompleteness }) : t("awaitingSignals")}</p>
               </div>
-              <div className="workspace-glass-panel rounded-2xl p-4">
+              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{selectedJobData ? t("matchedSkills") : t("keySkills")}</p>
                 <p className="mt-2 text-sm font-semibold text-foreground">{selectedJobData ? matchedSkills.length : (candidate.skills?.length ?? 0)}</p>
               </div>
-              <div className="workspace-glass-panel rounded-2xl p-4">
+              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("missingSignals")}</p>
                 <p className="mt-2 text-sm font-semibold text-foreground">{selectedJobData ? missingSkills.length : "—"}</p>
               </div>
@@ -1538,7 +1545,7 @@ export default function EmployerCandidatesPage() {
             </Button>
           </div>
 
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input

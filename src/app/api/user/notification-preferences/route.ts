@@ -67,7 +67,7 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
   const prefs = await NotificationPreference.findOneAndUpdate(
     { userId: ctx.userId },
     { $set: updateOps },
-    { new: true, upsert: true },
+    { returnDocument: "after", upsert: true },
   );
 
   await logActivity({

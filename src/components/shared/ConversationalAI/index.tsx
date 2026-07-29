@@ -513,11 +513,18 @@ export function ConversationalAI({
           className={cn(
             "fixed z-[100] flex flex-col shadow-2xl border border-border bg-background",
             "transition-all duration-300 ease-in-out",
+            // Below sm the panel spans the viewport with a small inset: a fixed
+            // 380px width plus right-6 resolved to left:-20px on a 384px screen,
+            // and bottom-6 put it under the mobile tab bar.
             minimized
-              ? cn("bottom-6 rounded-xl h-14 w-80", isRtl ? "left-6" : "right-6")
+              ? cn("bottom-24 inset-x-3 w-auto rounded-xl h-14 sm:bottom-6 sm:inset-x-auto sm:w-80", isRtl ? "sm:left-6" : "sm:right-6")
               : expanded
                 ? cn("top-0 bottom-0 w-full md:w-[480px] lg:w-[520px]", isRtl ? "left-0 rounded-none md:rounded-r-2xl" : "right-0 rounded-none md:rounded-l-2xl")
-                : cn("bottom-6 rounded-xl h-[520px] w-[380px]", isRtl ? "left-6" : "right-6")
+                : cn(
+                    "bottom-20 inset-x-3 w-auto rounded-xl h-[65vh] max-h-[520px]",
+                    "sm:bottom-6 sm:inset-x-auto sm:h-[520px] sm:w-[380px]",
+                    isRtl ? "sm:left-6" : "sm:right-6"
+                  )
           )}
         >
           {/* Header */}

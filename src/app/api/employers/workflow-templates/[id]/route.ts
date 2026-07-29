@@ -60,7 +60,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
         },
       },
     },
-    { new: true },
+    { returnDocument: "after" },
   );
 
   if (!template) {

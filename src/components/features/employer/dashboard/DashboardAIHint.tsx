@@ -50,7 +50,7 @@ export function DashboardAIHint({ hasJobs, hasApplications, hasInterviews }: Das
     <div className="card-base p-0 overflow-hidden">
       <button
         onClick={openAI}
-        className="w-full px-5 py-4 sm:px-6 flex items-center gap-4 hover:bg-muted/30 transition-colors text-left group"
+        className="w-full px-3.5 py-3 sm:px-6 sm:py-4 flex items-center gap-4 hover:bg-muted/30 transition-colors text-left group"
       >
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/10 to-indigo-500/10 flex items-center justify-center shrink-0 group-hover:from-primary/20 group-hover:to-indigo-500/20 transition-colors">
           <Bot className="h-5 w-5 text-primary" />

@@ -283,7 +283,7 @@ function LeadCard({
         )}
         {lead.contactEmail && (
           <span className="inline-flex items-center gap-1">
-            <Mail className="h-3 w-3" /><span className="max-w-[100px] truncate">{lead.contactEmail}</span>
+            <Mail className="h-3 w-3" /><span className="break-all">{lead.contactEmail}</span>
           </span>
         )}
       </div>

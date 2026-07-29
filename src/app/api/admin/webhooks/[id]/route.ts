@@ -50,7 +50,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
   const webhook = await Webhook.findByIdAndUpdate(
     id,
     { $set: body },
-    { new: true },
+    { returnDocument: "after" },
   ).lean();
 
   if (!webhook) {

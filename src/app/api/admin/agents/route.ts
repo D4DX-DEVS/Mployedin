@@ -352,7 +352,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
     await Agent.findOneAndUpdate(
       { userId },
       { $set: profileUpdate },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: "after" }
     );
   }
 

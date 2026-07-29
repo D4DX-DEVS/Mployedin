@@ -900,7 +900,7 @@ export default function EmployerInvoicesPage() {
       />
 
       {/* Summary Cards */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
         <div className="rounded-2xl border border-border/70 bg-card p-4">
           <p className="text-xs text-muted-foreground">{t("totalBilled")}</p>
           <p className="mt-1 text-xl font-bold">{fmt(summary.totalAmount)}</p>
@@ -922,7 +922,7 @@ export default function EmployerInvoicesPage() {
       {/* Invoice Table */}
       {errorMessage && <div className="rounded-2xl border border-status-rejected/20 bg-status-rejected-bg/90 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">{errorMessage}</div>}
 
-      <section className="workspace-panel-surface overflow-hidden rounded-[24px]">
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-[24px]">
         <div className="flex flex-col gap-2 border-b border-border/80 px-4 py-4 sm:px-5">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("billingHistory")}</p>
           <h3 className="text-lg font-semibold text-foreground">{t("yourInvoices")}</h3>

@@ -9,7 +9,7 @@ import {
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Loader2, Sparkles, Zap, Search, X, ChevronLeft, ChevronRight, ArrowUp, BookmarkPlus } from "lucide-react";
+import { Loader2, Sparkles, Zap, Search, X, ChevronLeft, ChevronRight, ArrowUp, BookmarkPlus, SlidersHorizontal } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useFeatureGate } from "@/hooks/useFeatureGate";
 import Link from "next/link";
@@ -339,7 +339,12 @@ export function JobFeedPage({ locale }: { locale: string }) {
 
   // ── Derived data ────────────────────────────────────────────────────────────
 
-  const allJobs = data?.pages.flatMap((p) => p.jobs) ?? [];
+  // Dedupe across infinite-scroll pages — a job can legitimately appear in two
+  // fetched pages if it was re-ranked between requests, and this list is keyed
+  // by _id, so a repeat means duplicate React keys.
+  const allJobs = [
+    ...new Map((data?.pages.flatMap((p) => p.jobs) ?? []).map((j) => [String(j._id), j])).values(),
+  ];
   const total = data?.pages[0]?.total ?? 0;
   const totalPoolPages = data?.pages[0]?.totalPoolPages ?? 1;
   const totalJobs = data?.pages[0]?.totalJobs ?? 0;
@@ -357,60 +362,65 @@ export function JobFeedPage({ locale }: { locale: string }) {
   return (
     <div className="space-y-5">
       <section className="overflow-hidden rounded-xl sm:rounded-[30px] border border-border/60 bg-gradient-to-br from-card via-card to-primary/[0.05] px-4 py-4 shadow-[0_20px_60px_rgba(15,23,42,0.06)] sm:px-5 sm:py-5 lg:px-6 lg:py-6">
-        <div className="space-y-5">
-            <div className="space-y-3">
-              <div className="inline-flex items-center gap-2 rounded-full border border-primary/10 bg-primary/[0.06] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
+        <div className="space-y-3 sm:space-y-5">
+            <div className="space-y-2 sm:space-y-3">
+              {/* Badge is decorative — dropped on phones so the hero is title +
+                  stats + search instead of five stacked bands. */}
+              <div className="hidden items-center gap-2 rounded-full border border-primary/10 bg-primary/[0.06] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary sm:inline-flex">
                 <Sparkles className="h-3.5 w-3.5" />
                 {t("hero.badge")}
               </div>
               <div>
-                <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl lg:text-3xl">
+                <h1 className="text-lg font-semibold tracking-tight text-foreground sm:text-2xl lg:text-3xl">
                   {t("hero.title")}
                 </h1>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-[15px]">
+                <p className="mt-2 hidden max-w-2xl text-sm leading-6 text-muted-foreground sm:block sm:text-[15px]">
                   {t("hero.description")}
                 </p>
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl border border-border/60 bg-background/90 px-4 py-3">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            {/* Three side-by-side tiles on phones — stacked full-width blocks pushed
+                the actual job list a full screen down. Hints hide below sm. */}
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+              <div className="rounded-xl border border-border/60 bg-background/90 px-2.5 py-2 sm:rounded-2xl sm:px-4 sm:py-3">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">
                   {t("stats.liveMatches")}
                 </div>
-                <div className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
+                <div className="mt-1 text-xl font-semibold tracking-tight text-foreground sm:mt-2 sm:text-2xl">
                   {isSearchMode ? searchData?.total ?? 0 : matchedCount}
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className="mt-1 hidden text-xs text-muted-foreground sm:block">
                   {isSearchMode ? t("stats.searchReturned") : t("stats.profileAligned")}
                 </p>
               </div>
-              <div className="rounded-2xl border border-border/60 bg-background/90 px-4 py-3">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              <div className="rounded-xl border border-border/60 bg-background/90 px-2.5 py-2 sm:rounded-2xl sm:px-4 sm:py-3">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">
                   {t("stats.strongMatches")}
                 </div>
-                <div className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
+                <div className="mt-1 text-xl font-semibold tracking-tight text-foreground sm:mt-2 sm:text-2xl">
                   {strongMatches}
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className="mt-1 hidden text-xs text-muted-foreground sm:block">
                   {t("stats.strongMatchesHint")}
                 </p>
               </div>
-              <div className="rounded-2xl border border-border/60 bg-background/90 px-4 py-3">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              <div className="rounded-xl border border-border/60 bg-background/90 px-2.5 py-2 sm:rounded-2xl sm:px-4 sm:py-3">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">
                   {t("stats.newThisWeek")}
                 </div>
-                <div className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
+                <div className="mt-1 text-xl font-semibold tracking-tight text-foreground sm:mt-2 sm:text-2xl">
                   {newThisWeek}
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className="mt-1 hidden text-xs text-muted-foreground sm:block">
                   {t("stats.newThisWeekHint")}
                 </p>
               </div>
             </div>
 
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
-              <div className="relative">
+            {/* Search and the preferences link share one row on phones. */}
+            <div className="flex flex-row items-center gap-2 lg:grid lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-3">
+              <div className="relative min-w-0 flex-1">
                 <Search className="pointer-events-none absolute start-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <input
                   type="text"
@@ -423,7 +433,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
                   placeholder={t("search.placeholder")}
                   aria-label={t("search.ariaLabel")}
                   style={{ paddingInlineStart: "2.75rem", paddingInlineEnd: "3rem" }}
-                  className="input-field h-12 w-full rounded-2xl border-border/70 bg-background/95 text-sm shadow-none"
+                  className="input-field h-11 w-full rounded-2xl border-border/70 bg-background/95 text-sm shadow-none sm:h-12"
                 />
                 {searchQuery && (
                   <button
@@ -439,12 +449,14 @@ export function JobFeedPage({ locale }: { locale: string }) {
                 )}
               </div>
 
-              <div className="flex flex-col gap-3 sm:flex-row lg:justify-end">
+              <div className="flex shrink-0 flex-col gap-3 sm:flex-row lg:justify-end">
                 <Link
                   href={`/${locale}/job-seeker/preferences`}
-                  className="inline-flex h-12 items-center justify-center rounded-2xl border border-border/70 bg-background/90 px-4 text-sm font-semibold text-foreground transition-colors hover:border-primary/30 hover:text-primary"
+                  aria-label={t("actions.refinePreferences")}
+                  className="inline-flex h-11 items-center justify-center rounded-2xl border border-border/70 bg-background/90 px-3 text-sm font-semibold text-foreground transition-colors hover:border-primary/30 hover:text-primary sm:h-12 sm:px-4"
                 >
-                  {t("actions.refinePreferences")}
+                  <SlidersHorizontal className="h-4 w-4 sm:hidden" />
+                  <span className="hidden sm:inline">{t("actions.refinePreferences")}</span>
                 </Link>
               </div>
             </div>
@@ -568,7 +580,9 @@ export function JobFeedPage({ locale }: { locale: string }) {
             </>
           ) : (
             <>
-              <div className="rounded-[24px] border border-border/60 bg-card px-4 py-4 shadow-[0_16px_40px_rgba(15,23,42,0.04)] sm:px-5">
+              {/* A whole card for three sort chips is wasted height on a phone —
+                  flattened to a bare row below sm. */}
+              <div className="rounded-[24px] border-border/60 bg-card px-4 py-4 shadow-[0_16px_40px_rgba(15,23,42,0.04)] max-sm:rounded-none max-sm:bg-transparent max-sm:px-0 max-sm:py-0 max-sm:shadow-none sm:border sm:px-5">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-2.5">
                     <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">

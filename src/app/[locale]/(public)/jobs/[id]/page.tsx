@@ -177,6 +177,7 @@ export default async function JobDetailPage({ params }: PageProps) {
     <>
       <script
         type="application/ld+json"
+        // nosemgrep: typescript.react.security.audit.react-dangerouslysetinnerhtml.react-dangerouslysetinnerhtml -- JSON-LD escaped by serializeJsonLd
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
       <TrackJobView jobId={String(job._id)} />

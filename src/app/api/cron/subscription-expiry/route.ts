@@ -80,7 +80,7 @@ export async function GET(req: NextRequest) {
             "usage.aiUsage": initAiUsage(),
           },
         },
-        { new: true }
+        { returnDocument: "after" }
       );
 
       if (!updateResult) {
@@ -145,7 +145,7 @@ export async function GET(req: NextRequest) {
       const updateResult = await Subscription.findByIdAndUpdate(
         sub._id,
         { $set: { status: "expired" } },
-        { new: true }
+        { returnDocument: "after" }
       );
 
       if (!updateResult) {

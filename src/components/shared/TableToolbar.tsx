@@ -171,18 +171,28 @@ export function TableToolbar({
     );
   }
 
+  // Export-only callers get just the button — rendering an empty left column
+  // left a dead gap beside it and broke the alignment on phones.
+  const hasLeftColumn = Boolean(left || searchControl);
+
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between",
+        // Single row on phones too — stacking dropped Export onto its own line
+        // flush-left, which read as an orphaned button.
+        hasLeftColumn
+          ? "flex flex-row items-center justify-between gap-2 sm:gap-3"
+          : "flex items-center justify-end gap-3",
         className,
       )}
     >
-      <div className="flex items-center gap-2 flex-1 min-w-0">
-        {left}
-        {searchControl}
-      </div>
-      <div className="flex items-center gap-2">
+      {hasLeftColumn && (
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          {left}
+          {searchControl}
+        </div>
+      )}
+      <div className="flex shrink-0 items-center gap-2">
         {right}
         {exportMenu}
       </div>

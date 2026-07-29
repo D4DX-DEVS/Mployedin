@@ -58,7 +58,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
   }
 
-  await User.findByIdAndUpdate(ctx.userId, { $set: userUpdates }, { new: true })
+  await User.findByIdAndUpdate(ctx.userId, { $set: userUpdates }, { returnDocument: "after" })
     .select("name phone")
     .lean();
 

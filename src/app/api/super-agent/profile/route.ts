@@ -74,14 +74,14 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
       SuperAgent.findOneAndUpdate(
         { userId: ctx.userId },
         { $set: saUpdates },
-        { new: true },
+        { returnDocument: "after" },
       ).select("overrideRate commissions").lean(),
     );
   }
 
   if (Object.keys(userUpdates).length > 0) {
     promises.push(
-      User.findByIdAndUpdate(ctx.userId, { $set: userUpdates }, { new: true })
+      User.findByIdAndUpdate(ctx.userId, { $set: userUpdates }, { returnDocument: "after" })
         .select("name phone")
         .lean(),
     );

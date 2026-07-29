@@ -242,7 +242,7 @@ export default function AdminAnalyticsPage() {
             <p className="mt-1 text-sm text-muted-foreground">{t("promptLibraryDescription")}</p>
           </div>
 
-          <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+          <div className="mt-6 grid gap-2.5 sm:gap-3 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
             {ANALYTICS_QUERIES.map((item) => (
               <button
                 key={item.label}
@@ -253,17 +253,19 @@ export default function AdminAnalyticsPage() {
                 }}
                 disabled={loading}
                 className={[
-                  "group rounded-[24px] border border-border/80 bg-card p-4 text-left shadow-[0_16px_28px_-28px_rgba(15,23,42,0.1)] transition-all disabled:cursor-not-allowed disabled:opacity-60",
+                  "group flex items-start gap-3 rounded-2xl border border-border/80 bg-card p-3 text-left shadow-[0_16px_28px_-28px_rgba(15,23,42,0.1)] transition-all disabled:cursor-not-allowed disabled:opacity-60 sm:rounded-[24px] sm:p-4",
                   activeTemplate === item.query && result
                     ? "border-sky-300 bg-sky-50/70 shadow-[0_22px_40px_-34px_rgba(2,132,199,0.18)]"
                     : "hover:-translate-y-0.5 hover:border-border hover:bg-muted",
                 ].join(" ")}
               >
-                <div className="inline-flex rounded-2xl bg-sky-100 p-2.5 text-sky-700">
+                <div className="inline-flex shrink-0 rounded-xl bg-sky-100 p-2 text-sky-700 sm:rounded-2xl sm:p-2.5">
                   <BarChart3 className="h-4 w-4" />
                 </div>
-                <p className="mt-4 text-[15px] font-semibold text-foreground transition-colors group-hover:text-sky-700">{item.label}</p>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.query}</p>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground transition-colors group-hover:text-sky-700 sm:text-[15px]">{item.label}</p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground sm:mt-2 sm:text-sm sm:leading-6">{item.query}</p>
+                </div>
               </button>
             ))}
           </div>

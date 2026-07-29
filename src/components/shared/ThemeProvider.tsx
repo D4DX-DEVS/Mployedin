@@ -98,10 +98,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       preference,
       resolvedTheme,
       setTheme: (theme: ResolvedTheme) => {
+        // ponytail: paint class now; useEffect runs after paint = visible lag
+        applyThemeToDocument(theme);
         setPreference(theme);
       },
       toggleTheme: () => {
-        setPreference(resolvedTheme === "dark" ? "light" : "dark");
+        const next = resolvedTheme === "dark" ? "light" : "dark";
+        applyThemeToDocument(next);
+        setPreference(next);
       },
       setPreference,
     }),

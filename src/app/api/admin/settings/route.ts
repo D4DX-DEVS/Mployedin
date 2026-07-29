@@ -24,7 +24,7 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx) {
     settings = await SystemSettings.findOneAndUpdate(
       {},
       { $setOnInsert: { platformName: "MPLOYEDIN", supportEmail: "support@mployedin.com", maintenanceMode: false } },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: "after" }
     ).lean();
   }
   // Mask the password for the response — send a placeholder if set
@@ -64,7 +64,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   const settings = await SystemSettings.findOneAndUpdate(
     {},
     { $set: update },
-    { upsert: true, new: true }
+    { upsert: true, returnDocument: "after" }
   ).lean();
 
   // Invalidate commission rate cache when overrides change

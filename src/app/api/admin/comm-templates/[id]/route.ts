@@ -20,7 +20,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const template = await BroadcastTemplate.findByIdAndUpdate(
     params!.id,
     { $set: data },
-    { new: true }
+    { returnDocument: "after" }
   ).lean();
   if (!template) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ template });

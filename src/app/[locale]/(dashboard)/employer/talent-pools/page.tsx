@@ -204,13 +204,14 @@ export default function EmployerTalentPoolsPage() {
 
       {filtersOpen && pools.length > 0 && (
         <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="relative flex-1">
+          {/* Search + sort share one row on phones too. */}
+          <div className="flex flex-row items-center gap-2 sm:gap-3">
+            <div className="relative min-w-0 flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input placeholder={t("searchPools")} value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
             </div>
             <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortKey)}>
-              <SelectTrigger className="w-full sm:w-[200px]" aria-label={t("sortBy")}>
+              <SelectTrigger className="w-[7.5rem] shrink-0 sm:w-[200px]" aria-label={t("sortBy")}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

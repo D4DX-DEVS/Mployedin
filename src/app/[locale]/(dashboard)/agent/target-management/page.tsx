@@ -333,7 +333,7 @@ export default function AgentTargetManagementPage() {
               {/* Daily / Weekly Goals */}
               {dailyGoals && weeklyGoals && (
                 <section className="grid gap-3 sm:grid-cols-2">
-                  <div className="workspace-glass-panel rounded-2xl p-4">
+                  <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
                     <div className="flex items-center gap-2 mb-3">
                       <div className="rounded-xl bg-primary/10 p-2"><Zap className="h-4 w-4 text-primary" /></div>
                       <span className="text-sm font-semibold">Daily Goals ({MONTHS_SHORT[currentMonth - 1]})</span>
@@ -353,7 +353,7 @@ export default function AgentTargetManagementPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="workspace-glass-panel rounded-2xl p-4">
+                  <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
                     <div className="flex items-center gap-2 mb-3">
                       <div className="rounded-xl bg-primary/10 p-2"><Clock className="h-4 w-4 text-primary" /></div>
                       <span className="text-sm font-semibold">Weekly Goals ({MONTHS_SHORT[currentMonth - 1]})</span>

@@ -455,7 +455,7 @@ export default function JobSeekerProfilePage() {
       />
 
       <div
-        className="card-base border-primary/15 p-5 sm:p-6"
+        className="card-base border-primary/15 p-4 sm:p-6"
         style={{ background: "linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--accent)) 100%)" }}
       >
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -464,8 +464,9 @@ export default function JobSeekerProfilePage() {
               <Sparkles className="h-3.5 w-3.5" />
               {t("aiTools")}
             </div>
-            <h2 className="mt-3 text-lg font-semibold text-foreground sm:text-xl">{t("aiTitle")}</h2>
-            <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+            <h2 className="mt-2 text-base font-semibold text-foreground sm:mt-3 sm:text-xl">{t("aiTitle")}</h2>
+            {/* Four lines of explainer above the fold on a phone — kept from sm up. */}
+            <p className="mt-1.5 hidden text-sm leading-relaxed text-muted-foreground sm:block">
               {t("aiDescription")}
             </p>
           </div>
@@ -484,15 +485,15 @@ export default function JobSeekerProfilePage() {
                   {aiExtracted ? t("aiReady") : hasCv ? t("cvUploaded") : t("new")}
                 </Badge>
               </div>
-              <p className="mt-4 text-sm font-semibold text-foreground">{t("aiExtractor")}</p>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              <p className="mt-2.5 text-sm font-semibold text-foreground sm:mt-4">{t("aiExtractor")}</p>
+              <p className="mt-1 hidden text-xs leading-relaxed text-muted-foreground sm:block">
                 {aiExtracted
                   ? t("aiExtractedDescription")
                   : hasCv
                     ? t("cvUploadedDescription")
                     : t("noCvDescription")}
               </p>
-              <div className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-primary">
+              <div className="mt-2.5 inline-flex items-center gap-1 text-xs font-semibold text-primary sm:mt-4">
                 {aiExtracted ? t("refreshWithAi") : t("uploadCvAi")}
                 <ChevronRight className="h-3.5 w-3.5" />
               </div>
@@ -525,7 +526,7 @@ export default function JobSeekerProfilePage() {
       </button>
 
       {/* ── Profile Header Card ─────────────────────────────────────────── */}
-      <div className="card-base p-5 sm:p-6">
+      <div className="card-base p-4 sm:p-6">
         <div className="flex items-start gap-4">
           {/* Avatar with upload overlay */}
           <div className="relative shrink-0 group">
@@ -753,7 +754,7 @@ export default function JobSeekerProfilePage() {
 
       {/* ── AI Insight Card ───────────────────────────────────────────── */}
       {completeness < 80 && (
-        <div className="card-base p-5 sm:p-6 border-violet-200 dark:border-violet-800/40"
+        <div className="card-base p-4 sm:p-6 border-violet-200 dark:border-violet-800/40"
           style={{ background: "linear-gradient(135deg, hsl(var(--card)) 0%, hsl(270 60% 98%) 100%)" }}>
           <div className="flex items-start gap-4">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/50">
@@ -855,7 +856,7 @@ export default function JobSeekerProfilePage() {
 
           {/* ── Setup Checklist ─────────────────────────────────────────── */}
           {completeness < 100 && (
-            <div className="card-base p-5 sm:p-6">
+            <div className="card-base p-4 sm:p-6">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <Zap className="w-4 h-4 text-amber-500" />
@@ -873,8 +874,10 @@ export default function JobSeekerProfilePage() {
                     onClick={() => !step.done && router.push(step.href)}
                     disabled={step.done}
                     className={cn(
-                      "group w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors",
-                      step.done ? "cursor-default" : "hover:bg-muted/60 cursor-pointer",
+                      "group w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors sm:py-2.5",
+                      // Completed steps are read-only history — on phones they only
+                      // add scroll, so the mobile list shows just what's left to do.
+                      step.done ? "hidden cursor-default sm:flex" : "flex hover:bg-muted/60 cursor-pointer",
                       idx === 0 && !step.done && "bg-primary/5 hover:bg-primary/10"
                     )}
                   >
@@ -1267,7 +1270,7 @@ export default function JobSeekerProfilePage() {
       </div>
 
       {/* ── Quick Actions ──────────────────────────────────────────────── */}
-      <div className="card-base p-5 sm:p-6">
+      <div className="card-base p-4 sm:p-6">
         <div className="flex items-center gap-2 mb-4">
           <Zap className="w-4 h-4 text-amber-500" />
           <span className="text-sm font-semibold">{t("quickActions.title")}</span>
@@ -1509,7 +1512,7 @@ function SectionCard({
   const t = useTranslations("jobSeekerExtra.profile");
 
   return (
-    <div className="card-base p-5 sm:p-6">
+    <div className="card-base p-4 sm:p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
