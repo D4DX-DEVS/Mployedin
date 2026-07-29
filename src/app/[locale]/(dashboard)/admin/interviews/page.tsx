@@ -277,7 +277,7 @@ export default function AdminInterviewOversightPage() {
   const noShowCount = serverNoShow ?? interviews.filter((i) => i.outcome === "no_show").length;
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-6">
 
       {/* ─── Compact page header ──────────────────────────────────────── */}
       <DashboardPageHeader
@@ -342,10 +342,10 @@ export default function AdminInterviewOversightPage() {
               <Sparkles className="h-5 w-5 text-sky-500" />
               <h3 className="text-lg font-semibold">{t("aiInterviewInsights")}</h3>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {loading ? (
                 Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="workspace-glass-panel space-y-2 rounded-2xl p-4">
+                  <div key={i} className="workspace-glass-panel space-y-2 rounded-2xl p-3 sm:p-4">
                     <div className="h-4 w-24 animate-shimmer rounded bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
                     <div className="h-3 w-full animate-shimmer rounded bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
                   </div>
@@ -385,7 +385,7 @@ export default function AdminInterviewOversightPage() {
               />
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <SearchableSelect
                 id="admin-interviews-status"
                 className="h-11 w-full rounded-xl border-border bg-card"

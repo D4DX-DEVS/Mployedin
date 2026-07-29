@@ -68,7 +68,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
   const profile = await JobSeeker.findOneAndUpdate(
     { userId: ctx.userId },
     { $set: safeUpdate },
-    { upsert: true, new: true, runValidators: true }
+    { upsert: true, returnDocument: "after", runValidators: true }
   );
 
   // Recalculate and persist profile completeness after every update

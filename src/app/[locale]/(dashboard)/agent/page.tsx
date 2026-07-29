@@ -293,8 +293,8 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
         }))}
       />
 
-      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,0.94fr)_minmax(0,1.06fr)]">
-        <section className="order-2 workspace-panel-surface rounded-2xl p-4 sm:p-5 xl:order-1">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,0.94fr)_minmax(0,1.06fr)]">
+        <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sections.funnel.eyebrow")}</p>

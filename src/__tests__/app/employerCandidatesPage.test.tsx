@@ -21,7 +21,7 @@ global.fetch = mockFetch as unknown as typeof fetch;
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock, replace: jest.fn() }),
   useParams: () => ({ locale: "en" }),
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => ({ get: () => null }),
 }));
 
 jest.mock("sonner", () => ({

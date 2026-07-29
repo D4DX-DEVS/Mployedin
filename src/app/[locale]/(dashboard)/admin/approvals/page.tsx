@@ -222,7 +222,7 @@ export default function AdminApprovalsPage() {
   const active = statusCounts.active ?? jobs.filter((j) => j.status === "active").length;
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-6">
       <DashboardPageHeader
         eyebrow={t("allJobs")}
         title={t("platformJobsOverview")}
@@ -270,7 +270,7 @@ export default function AdminApprovalsPage() {
         onExportPdf={handleExportPdf}
         hasActiveFilters={status !== "all" || approvalStatus !== "all" || selectedEmployer !== "all" || selectedAgent !== "all" || selectedSuperAgent !== "all"}
         filterContent={
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-3">
             <div>
               <label htmlFor="approvals-status" className="sr-only">{t("statusLabel")}</label>
               <SearchableSelect id="approvals-status" className="h-11 w-full rounded-xl border-border bg-card" options={STATUS_OPTIONS} value={status} onValueChange={(v) => { setStatus(v); resetPage(); }} placeholder={t("allStatuses")} />

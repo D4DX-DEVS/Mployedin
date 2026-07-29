@@ -37,7 +37,6 @@ describe("AuthLayout", () => {
       })
     );
 
-    expect(screen.getByRole("button", { name: /theme-toggle/i })).toBeInTheDocument();
     expect(screen.getByText("Login form")).toBeInTheDocument();
   });
 

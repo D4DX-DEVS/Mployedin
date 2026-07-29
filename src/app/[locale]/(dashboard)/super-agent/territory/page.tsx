@@ -96,7 +96,7 @@ export default function SuperAgentTerritoryPage() {
   };
 
   return (
-    <div className="page-container">
+    <div className="page-container space-y-3 sm:space-y-4">
       <SuperAgentPageIntro
         title={t("pageTitle")}
         description={t("pageDescription")}
@@ -159,7 +159,7 @@ export default function SuperAgentTerritoryPage() {
             {regions.map((region) => (
               <div
                 key={region._id}
-                className={`group relative rounded-2xl border p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg ${getHeatColor(region.agentCount)}`}
+                className={`group relative rounded-2xl border p-3 sm:p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg ${getHeatColor(region.agentCount)}`}
               >
                 {/* Header */}
                 <div className="flex items-start justify-between gap-3">

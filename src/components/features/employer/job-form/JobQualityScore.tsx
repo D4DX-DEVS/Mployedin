@@ -96,7 +96,7 @@ export function JobQualityScore({ values }: JobQualityScoreProps) {
         : "[&>div]:bg-orange-500";
 
   return (
-    <div className="space-y-3 rounded-2xl border border-border bg-gradient-to-br from-background via-background to-primary/[0.04] p-4 shadow-sm">
+    <div className="space-y-3 rounded-2xl border border-border bg-gradient-to-br from-background via-background to-primary/[0.04] p-3 sm:p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1">
           <div className="flex items-center gap-1.5 text-sm font-semibold">

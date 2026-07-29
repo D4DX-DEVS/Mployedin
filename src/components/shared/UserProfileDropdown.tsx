@@ -17,6 +17,13 @@ import {
   AlertTriangle,
   Bell,
   Crown,
+  Video,
+  Gift,
+  Calendar,
+  Search,
+  FileText,
+  BookOpen,
+  Building2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -35,8 +42,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
+import { ThemeToggle } from "@/components/shared/ThemeToggle";
 
 const ROLE_KEYS: Record<string, string> = {
   admin: "admin",
@@ -208,18 +215,88 @@ export function UserProfileDropdown({
 
           <DropdownMenuSeparator />
 
-          <div className="grid grid-cols-[2.75rem_minmax(0,1fr)] items-center gap-2 px-2 py-1.5 md:hidden">
-            <ThemeToggle />
-            <LanguageSwitcher />
-          </div>
-          <DropdownMenuItem
-            className="cursor-pointer gap-2 rounded-md hover:bg-muted/50 transition-colors md:hidden"
-            onSelect={() => router.push(`/${locale}/notifications`)}
+          {/* Theme + locale live here on every breakpoint — three standalone
+              controls crowded the topbar and left no room on phones.
+              onSelect preventDefault so toggling does not close the menu. */}
+          <div
+            className="flex items-center justify-between gap-2 px-2 py-2"
+            onClick={(e) => e.stopPropagation()}
           >
-            <Bell className="h-4 w-4" />
-            <span className="font-medium text-sm">{tNotifications("title")}</span>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator className="md:hidden" />
+            <span className="truncate text-sm text-muted-foreground">{t("preferences")}</span>
+            {/* Force the switcher to its compact flag-only width — its sm: breakpoint
+                is viewport-based and would overflow this 288px menu. */}
+            <div className="flex shrink-0 items-center gap-2 [&>div:first-child]:!w-16 [&>div:first-child]:[&_span]:hidden">
+              <LanguageSwitcher />
+              <ThemeToggle />
+            </div>
+          </div>
+
+          <DropdownMenuSeparator />
+
+          {userRole === "job_seeker" && (
+            <>
+              <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                {t("quickLinks")}
+              </div>
+              <DropdownMenuItem
+                className="cursor-pointer gap-2 rounded-md hover:bg-muted/50 transition-colors"
+                onSelect={() => router.push(`/${locale}/job-seeker/interviews`)}
+              >
+                <Video className="h-4 w-4" />
+                <span className="text-sm">{t("interviews")}</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="cursor-pointer gap-2 rounded-md hover:bg-muted/50 transition-colors"
+                onSelect={() => router.push(`/${locale}/job-seeker/offers`)}
+              >
+                <Gift className="h-4 w-4" />
+                <span className="text-sm">{t("offers")}</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="cursor-pointer gap-2 rounded-md hover:bg-muted/50 transition-colors"
+                onSelect={() => router.push(`/${locale}/job-seeker/calendar`)}
+              >
+                <Calendar className="h-4 w-4" />
+                <span className="text-sm">{t("calendar")}</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="cursor-pointer gap-2 rounded-md hover:bg-muted/50 transition-colors"
+                onSelect={() => router.push(`/${locale}/job-seeker/saved-searches`)}
+              >
+                <Search className="h-4 w-4" />
+                <span className="text-sm">{t("savedSearches")}</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="cursor-pointer gap-2 rounded-md hover:bg-muted/50 transition-colors"
+                onSelect={() => router.push(`/${locale}/job-seeker/documents`)}
+              >
+                <FileText className="h-4 w-4" />
+                <span className="text-sm">{t("documents")}</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="cursor-pointer gap-2 rounded-md hover:bg-muted/50 transition-colors"
+                onSelect={() => router.push(`/${locale}/job-seeker/cv`)}
+              >
+                <BookOpen className="h-4 w-4" />
+                <span className="text-sm">{t("cvBuilder")}</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="cursor-pointer gap-2 rounded-md hover:bg-muted/50 transition-colors"
+                onSelect={() => router.push(`/${locale}/job-seeker/companies`)}
+              >
+                <Building2 className="h-4 w-4" />
+                <span className="text-sm">{t("companies")}</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="cursor-pointer gap-2 rounded-md hover:bg-muted/50 transition-colors"
+                onSelect={() => router.push(`/${locale}/job-seeker/subscription`)}
+              >
+                <Crown className="h-4 w-4" />
+                <span className="text-sm">{t("subscription")}</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          )}
 
           {(userRole === "job_seeker" || userRole === "employer" || userRole === "super_agent" || userRole === "agent") && (
             <DropdownMenuItem

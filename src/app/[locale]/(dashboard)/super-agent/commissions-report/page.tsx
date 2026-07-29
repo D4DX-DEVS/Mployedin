@@ -142,7 +142,7 @@ export default function SuperAgentCommissionsReportPage() {
   const s = data?.overviewSummary;
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-4">
       {/* ── Hero Section ── */}
       <SuperAgentPageIntro
         title={t("pageTitle")}
@@ -181,7 +181,7 @@ export default function SuperAgentCommissionsReportPage() {
       />
 
       {/* ── Monthly Trend ── */}
-      <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-5 md:p-6">
+      <section className="workspace-panel-surface rounded-2xl p-3 sm:p-4 sm:rounded-[28px] lg:p-5">
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("monthlyTrendHeading", { year: yearFilter })}</h2>
         <ResponsiveContainer width="100%" height={240}>
           <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>

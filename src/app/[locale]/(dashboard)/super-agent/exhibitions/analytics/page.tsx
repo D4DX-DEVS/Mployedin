@@ -174,7 +174,7 @@ export default function SuperAgentExhibitionAnalyticsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6 p-4 md:p-6">
+      <div className="space-y-3 sm:space-y-4 p-3 sm:p-4 lg:p-6">
         <DashboardPageHeader icon={BarChart3} eyebrow={t("superAgentAnalytics")} title={t("heroTitle")} description={t("heroDescription")} />
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -201,7 +201,7 @@ export default function SuperAgentExhibitionAnalyticsPage() {
   const strongestMonth = [...monthly].sort((left, right) => right.total - left.total)[0];
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
+    <div className="space-y-3 sm:space-y-4 p-3 sm:p-4 lg:p-6">
       <DashboardPageHeader
         icon={BarChart3}
         eyebrow={t("superAgentAnalytics")}
@@ -253,7 +253,7 @@ export default function SuperAgentExhibitionAnalyticsPage() {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.4fr_0.8fr]">
-        <div className="rounded-3xl border bg-card p-5 shadow-sm">
+        <div className="rounded-3xl border bg-card p-3 sm:p-4 lg:p-5 shadow-sm">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold tracking-tight">{t("monthlyRequestFlowTitle")}</h2>
@@ -281,7 +281,7 @@ export default function SuperAgentExhibitionAnalyticsPage() {
           </div>
         </div>
 
-        <div className="rounded-3xl border bg-card p-5 shadow-sm">
+        <div className="rounded-3xl border bg-card p-3 sm:p-4 lg:p-5 shadow-sm">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold tracking-tight">{t("requestPipelineTitle")}</h2>
@@ -307,7 +307,7 @@ export default function SuperAgentExhibitionAnalyticsPage() {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <div className="rounded-3xl border bg-card p-5 shadow-sm">
+        <div className="rounded-3xl border bg-card p-3 sm:p-4 lg:p-5 shadow-sm">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold tracking-tight">{t("participationMixTitle")}</h2>
@@ -366,7 +366,7 @@ export default function SuperAgentExhibitionAnalyticsPage() {
           )}
         </div>
 
-        <div className="rounded-3xl border bg-card p-5 shadow-sm">
+        <div className="rounded-3xl border bg-card p-3 sm:p-4 lg:p-5 shadow-sm">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold tracking-tight">{t("topAgentsTitle")}</h2>
@@ -451,7 +451,7 @@ function MetricCard({
   sub: string;
 }) {
   return (
-    <div className="rounded-3xl border bg-card p-5 shadow-sm">
+    <div className="rounded-3xl border bg-card p-3 sm:p-4 lg:p-5 shadow-sm">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
@@ -474,7 +474,7 @@ function MiniSummaryCard({
   icon: ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border bg-muted/20 p-4">
+    <div className="rounded-2xl border bg-muted/20 p-3 sm:p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{label}</p>

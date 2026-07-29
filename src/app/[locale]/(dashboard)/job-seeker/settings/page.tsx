@@ -468,7 +468,7 @@ export default function JobSeekerSettingsPage() {
   // ── Skeleton ────────────────────────────────────────────────────────────────
   if (initialLoading) {
     return (
-      <div className="w-full max-w-4xl mx-auto px-6 py-8 space-y-6">
+      <div className="w-full max-w-4xl mx-auto px-3 sm:px-6 py-4 sm:py-8 space-y-3 sm:space-y-6">
         {/* Header skeleton */}
         <div className="rounded-2xl border bg-card p-6 shadow-sm">
           <div className="flex items-center gap-4">

@@ -345,7 +345,7 @@ export default function AdminApplicationsPage() {
   ];
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-6">
 
       {/* ─── Compact page header ──────────────────────────────────────── */}
       <DashboardPageHeader
@@ -435,7 +435,7 @@ export default function AdminApplicationsPage() {
                 <div className="flex flex-wrap items-start gap-4">
                   {aiInsights.healthScore != null && (
                     <div className="flex flex-col items-center gap-1">
-                      <div className={`text-3xl font-bold ${
+                      <div className={`text-2xl sm:text-3xl font-bold ${
                         aiInsights.healthScore >= 70 ? "text-status-selected dark:text-emerald-400"
                         : aiInsights.healthScore >= 40 ? "text-status-shortlisted dark:text-amber-400"
                         : "text-status-rejected dark:text-red-400"
@@ -531,7 +531,7 @@ export default function AdminApplicationsPage() {
               />
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <SearchableSelect
                 className="h-11 w-full rounded-xl border-border bg-card"
                 options={STATUS_OPTIONS}
@@ -573,7 +573,7 @@ export default function AdminApplicationsPage() {
             </div>
 
             {showAdvancedFilters && (
-              <div className="grid gap-3 pt-1 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3 pt-1 sm:grid-cols-2 xl:grid-cols-4">
                 <SearchableSelect
                   className="h-11 w-full rounded-xl border-border bg-card"
                   options={SCORE_RANGE_OPTIONS}
@@ -645,7 +645,7 @@ export default function AdminApplicationsPage() {
           ))}
         </div>
       ) : applications.length === 0 ? (
-        <div className="workspace-panel-surface rounded-[28px] px-6 py-16 text-center">
+        <div className="workspace-panel-surface rounded-[28px] px-4 py-8 sm:px-6 sm:py-16 text-center">
           <div className="workspace-muted-pill mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-[24px]">
             <Inbox className="h-7 w-7" />
           </div>

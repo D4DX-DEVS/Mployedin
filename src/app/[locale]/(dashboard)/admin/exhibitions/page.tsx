@@ -684,7 +684,7 @@ export default function AdminExhibitionsPage() {
   }, [actionItem, detailItem, handleDetailOpen, nextDetailItem, previousDetailItem]);
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-6">
       <DashboardPageHeader
         icon={CalendarDays}
         eyebrow={t("adminOperations")}
@@ -1192,7 +1192,7 @@ function DetailDrawer({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
-        <div className="space-y-6">
+        <div className="space-y-3 sm:space-y-6">
           <RequestSummaryCard item={item} tr={tr} />
 
           <SectionBlock title={tr("workflow")} tr={tr}>

@@ -97,7 +97,7 @@ export default function AdminSystemHealthPage() {
     : "unknown";
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-4">
       <DashboardPageHeader
         icon={Activity}
         eyebrow={t("pageTitle")}
@@ -123,9 +123,9 @@ export default function AdminSystemHealthPage() {
 
       {loading && !health ? (
         <section className="workspace-panel-surface rounded-[28px] p-5">
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="workspace-glass-panel space-y-4 rounded-2xl p-5">
+              <div key={i} className="workspace-glass-panel space-y-4 rounded-2xl p-3 sm:p-5">
                 <div className="flex items-center justify-between">
                   <Skeleton className="h-5 w-28" />
                   <Skeleton className="h-5 w-5 rounded-full" />
@@ -143,9 +143,9 @@ export default function AdminSystemHealthPage() {
           {/* Core Services */}
           <section className="workspace-panel-surface rounded-[28px] p-5">
             <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t("coreServicesHeading")}</h2>
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {/* Database */}
-              <div className="workspace-glass-panel rounded-2xl p-5">
+              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Database className="h-5 w-5 text-indigo-500" />
@@ -220,8 +220,8 @@ export default function AdminSystemHealthPage() {
           {/* Platform Metrics */}
           <section className="workspace-panel-surface rounded-[28px] p-5">
             <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t("platformMetricsHeading")}</h2>
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <div className="workspace-glass-panel rounded-2xl p-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Users className="h-4 w-4" />
                   <span className="text-xs font-semibold uppercase tracking-wider">{t("activeUsersLabel")}</span>

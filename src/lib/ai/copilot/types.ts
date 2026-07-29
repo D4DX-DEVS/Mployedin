@@ -41,6 +41,7 @@ export interface CopilotTool<Args = Record<string, unknown>> {
 /** Frames streamed to the client as newline-delimited JSON. */
 export type CopilotStreamFrame =
   | { type: "text"; content: string }
+  | { type: "text_delta"; content: string }
   | { type: "tool_call"; tool: string; label: string }
   | { type: "tool_result"; tool: string; ok: boolean; message: string; data?: unknown }
   | { type: "proposal"; proposalId: string; tool: string; label: string; summary: string; args: Record<string, unknown> }

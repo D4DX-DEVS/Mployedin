@@ -7,11 +7,17 @@ describe("employer task-based navigation", () => {
     expect(items.map((item) => item.title)).toEqual([
       "Dashboard",
       "Jobs",
-      "Pipeline",
-      "Talent",
-      "Engage",
-      "Insights",
-      "Company",
+      "Applications",
+      "Interviews",
+      "Candidates",
+      "Hiring",
+      "Tools",
+      "Job Posters",
+      "Calendar",
+      "Analytics",
+      "Messages",
+      "Activity",
+      "Company Settings",
     ]);
 
     const hrefs = items.flatMap((item) => [

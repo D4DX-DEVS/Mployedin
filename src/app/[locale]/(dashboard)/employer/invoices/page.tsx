@@ -966,7 +966,11 @@ export default function EmployerInvoicesPage() {
               <TableRow className="border-border/80 bg-secondary/72 hover:bg-secondary/72">
                 <TableHead>{t("invoiceHash")}</TableHead>
                 <TableHead>{t("job")}</TableHead>
+                <TableHead>{t("categoryCol")}</TableHead>
                 <TableHead className="text-right">{t("total")}</TableHead>
+                <TableHead className="text-right">{t("paid")}</TableHead>
+                <TableHead className="text-right">{t("balance")}</TableHead>
+                <TableHead>{t("status")}</TableHead>
                 <TableHead>{t("dueDate")}</TableHead>
                 <TableHead className="text-right">{t("actions")}</TableHead>
               </TableRow>
@@ -974,11 +978,11 @@ export default function EmployerInvoicesPage() {
             <TableBody>
               {loading ? Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i} className="border-border/70 hover:bg-transparent">
-                  {Array.from({ length: 5 }).map((_, j) => <TableCell key={j}><div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" /></TableCell>)}
+                  {Array.from({ length: 9 }).map((_, j) => <TableCell key={j}><div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" /></TableCell>)}
                 </TableRow>
               )) : invoices.length === 0 ? (
                 <TableRow className="border-border/70 hover:bg-transparent">
-                  <TableCell colSpan={5} className="px-6 py-14 text-center">
+                  <TableCell colSpan={9} className="px-6 py-14 text-center">
                     <div className="flex flex-col items-center gap-3">
                       <div className="workspace-muted-pill rounded-[20px] p-3"><Inbox className="h-6 w-6" /></div>
                       <div><p className="text-sm font-semibold">{t("noInvoices")}</p><p className="mt-1 text-sm text-muted-foreground">{t("noInvoicesDesc")}</p></div>
@@ -987,19 +991,13 @@ export default function EmployerInvoicesPage() {
                 </TableRow>
               ) : invoices.map((inv) => (
                 <TableRow key={inv._id} className="border-border/70 cursor-pointer hover:bg-secondary/30" onClick={() => setSelectedInvoice(inv)}>
-                  <TableCell>
-                    <p className="font-mono text-sm font-medium">{inv.invoiceNumber}</p>
-                    <StatusBadge status={inv.status} />
-                  </TableCell>
-                  <TableCell>
-                    <p className="max-w-[160px] truncate text-sm">{inv.jobId?.title ?? "—"}</p>
-                    <span className="text-[10px] capitalize text-muted-foreground">{inv.category?.replace(/_/g, " ")}</span>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <span className="block font-semibold">{inv.currency} {(inv.totalAmount ?? 0).toLocaleString()}</span>
-                    <span className="mt-1 block text-xs text-status-selected dark:text-emerald-400">{t("paid")}: {inv.currency} {(inv.paidAmount ?? 0).toLocaleString()}</span>
-                    <span className="mt-1 block text-xs text-status-shortlisted dark:text-amber-400">{t("balance")}: {inv.currency} {(inv.balanceDue ?? 0).toLocaleString()}</span>
-                  </TableCell>
+                  <TableCell><p className="font-mono text-sm font-medium">{inv.invoiceNumber}</p></TableCell>
+                  <TableCell><p className="max-w-[160px] truncate text-sm">{inv.jobId?.title ?? "—"}</p></TableCell>
+                  <TableCell><span className="text-[10px] capitalize text-muted-foreground">{inv.category?.replace(/_/g, " ")}</span></TableCell>
+                  <TableCell className="text-right font-semibold">{inv.currency} {(inv.totalAmount ?? 0).toLocaleString()}</TableCell>
+                  <TableCell className="text-right text-sm text-status-selected dark:text-emerald-400">{inv.currency} {(inv.paidAmount ?? 0).toLocaleString()}</TableCell>
+                  <TableCell className="text-right text-sm text-status-shortlisted dark:text-amber-400">{inv.currency} {(inv.balanceDue ?? 0).toLocaleString()}</TableCell>
+                  <TableCell><StatusBadge status={inv.status} /></TableCell>
                   <TableCell className="text-xs text-muted-foreground">{inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : "—"}</TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-1" onClick={e => e.stopPropagation()}>

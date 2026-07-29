@@ -89,7 +89,7 @@ export default function CommTemplatesPage() {
 
   return (
     <FeatureGate feature="commTemplates">
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-6">
       {ConfirmDialogNode}
       <PageHero
         icon={Mail}
@@ -125,9 +125,9 @@ export default function CommTemplatesPage() {
 
       {/* New Template Form */}
       {showForm && (
-        <div className="border rounded-lg p-6 bg-card space-y-4">
+        <div className="border rounded-lg p-6 bg-card space-y-3 sm:space-y-4">
           <h3 className="font-semibold text-lg">{t("newTemplate")}</h3>
-          <form onSubmit={handleCreateTemplate} className="space-y-4">
+          <form onSubmit={handleCreateTemplate} className="space-y-3 sm:space-y-4">
             <div>
               <label className="block text-sm font-medium mb-1">{t("templateName")}</label>
               <Input

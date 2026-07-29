@@ -332,7 +332,7 @@ export default function AdminTargetManagementPage() {
   const reassignTarget = profiles.find((profile) => profile._id === reassigningId) ?? null;
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-4">
       {/* Toolbar */}
       <TableToolbar
         title={t("title")}
@@ -435,7 +435,7 @@ export default function AdminTargetManagementPage() {
       />
 
       {/* KPI Summary Row 1 */}
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard
           label="Supervisors"
           value={totals?.supervisors ?? 0}
@@ -467,7 +467,7 @@ export default function AdminTargetManagementPage() {
       </section>
 
       {/* KPI Summary Row 2 */}
-      <section className="grid gap-3 sm:grid-cols-3">
+      <section className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-3">
         <KpiCard
           label="Avg Performance"
           value={`${totals?.avgPerformance ?? 0}%`}

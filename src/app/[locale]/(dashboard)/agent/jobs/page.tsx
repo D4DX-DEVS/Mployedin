@@ -34,6 +34,7 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
 import { useTranslations } from "next-intl";
+import { TableActionLink } from "@/components/shared/TableActionLink";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -45,7 +46,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
-import { TableActionLink } from "@/components/shared/TableActionLink";
+import { cn } from "@/lib/utils";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */

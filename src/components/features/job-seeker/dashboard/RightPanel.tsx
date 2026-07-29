@@ -37,7 +37,7 @@ function RecruiterViews({ stats, t }: { stats?: DashboardStats; t: ReturnType<ty
   const views = stats?.recruiterViews;
   if (!views) {
     return (
-      <div className="card-base p-4">
+      <div className="card-base p-3 sm:p-4">
         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
           {t("recruiterViews")}
         </h4>
@@ -49,7 +49,7 @@ function RecruiterViews({ stats, t }: { stats?: DashboardStats; t: ReturnType<ty
   const max = Math.max(...views.daily, 1);
 
   return (
-    <div className="card-base p-4">
+    <div className="card-base p-3 sm:p-4">
       <div className="flex items-center justify-between mb-3">
         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
           {t("recruiterViews")}
@@ -70,7 +70,7 @@ function RecruiterViews({ stats, t }: { stats?: DashboardStats; t: ReturnType<ty
       </div>
 
       {/* Mini bar chart */}
-      <div className="flex items-end gap-1 h-12">
+      <div className="flex items-end gap-1 h-12 sm:h-14">
         {views.daily.map((val, i) => (
           <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
             <div
@@ -84,7 +84,7 @@ function RecruiterViews({ stats, t }: { stats?: DashboardStats; t: ReturnType<ty
         ))}
       </div>
 
-      <p className="mt-2 text-xs text-muted-foreground">
+      <p className="mt-2 sm:mt-3 text-xs text-muted-foreground">
         <span className="font-semibold text-foreground">{views.total}</span> {t("searchesThisWeek")}
       </p>
     </div>
@@ -150,7 +150,7 @@ function AICoach({ t }: { t: ReturnType<typeof useTranslations> }) {
     : AI_COACH_FALLBACK;
 
   return (
-    <div className="card-base p-4">
+    <div className="card-base p-3 sm:p-4">
       <div className="flex items-center gap-2 mb-3">
         <Sparkles className="h-4 w-4 text-violet-500" />
         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
@@ -160,7 +160,7 @@ function AICoach({ t }: { t: ReturnType<typeof useTranslations> }) {
           <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-violet-400 border-t-transparent" />
         )}
       </div>
-      <div className="space-y-3">
+      <div className="space-y-2 sm:space-y-3">
         {items.map((item) => (
           <div key={item.action} className="rounded-lg bg-violet-50 border border-violet-100 p-3 transition-all duration-150 hover:border-violet-200 hover:shadow-sm dark:bg-violet-500/10 dark:border-violet-500/20">
             <p className="text-xs text-violet-900 dark:text-violet-200">{item.suggestion}</p>
@@ -194,11 +194,11 @@ function NextSteps({ completion, t }: { completion?: ProfileCompletion; t: Retur
   if (!completion || completion.missing.length === 0) return null;
 
   return (
-    <div className="card-base p-4">
+    <div className="card-base p-3 sm:p-4">
       <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
         {t("nextSteps")}
       </h4>
-      <ol className="space-y-2">
+      <ol className="space-y-2 sm:space-y-2.5">
         {completion.missing.slice(0, 4).map((key, i) => {
           const cfg = NEXT_STEP_CONFIG[key];
           return (
@@ -235,7 +235,7 @@ function formatRelativeTime(isoString: string) {
 function ActivityFeed({ events, t }: { events?: ActivityEvent[]; t: ReturnType<typeof useTranslations> }) {
   if (!events || events.length === 0) {
     return (
-      <div className="card-base p-4">
+      <div className="card-base p-3 sm:p-4">
         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
           {t("activity")}
         </h4>
@@ -247,11 +247,11 @@ function ActivityFeed({ events, t }: { events?: ActivityEvent[]; t: ReturnType<t
   }
 
   return (
-    <div className="card-base p-4">
+    <div className="card-base p-3 sm:p-4">
       <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
         {t("activity")}
       </h4>
-      <div className="space-y-3">
+      <div className="space-y-2 sm:space-y-3">
         {events.slice(0, 5).map((ev) => (
           <div key={ev.id} className="flex items-start gap-2 rounded-lg p-1.5 -mx-1.5 transition-colors hover:bg-muted/50">
             <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10">

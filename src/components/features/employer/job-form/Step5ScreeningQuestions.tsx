@@ -117,7 +117,7 @@ export function Step5ScreeningQuestions() {
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
       transition={{ duration: 0.25 }}
-      className="space-y-5"
+      className="space-y-3 sm:space-y-5"
     >
       {/* Header */}
       <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-muted/20 p-4 lg:flex-row lg:items-center lg:justify-between">
@@ -144,7 +144,7 @@ export function Step5ScreeningQuestions() {
       </div>
 
       {/* Question List */}
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4">
         {fields.map((field, index) => {
           const qType = questions[index]?.type ?? "text";
           const needsOptions = NEEDS_OPTIONS.has(qType);

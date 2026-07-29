@@ -149,8 +149,8 @@ export function PriorityActions({
 
   return (
     <section className="workspace-panel-surface overflow-hidden rounded-2xl">
-      <div className="border-b border-border/60 px-5 py-3.5 sm:px-6 flex items-center gap-3">
-        <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300">
+      <div className="flex items-center gap-3 border-b border-border/60 px-3 py-2 sm:px-6 sm:py-3.5">
+        <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300 sm:px-3 sm:py-1 sm:text-[11px] sm:tracking-[0.18em]">
           <Flame className="h-3.5 w-3.5" />
           {t("priorityActionsLabel")}
         </div>
@@ -159,7 +159,7 @@ export function PriorityActions({
         </span>
       </div>
 
-      <div className="grid gap-2.5 px-4 py-4 sm:px-5 sm:py-5 md:grid-cols-3">
+      <div className="grid grid-cols-2 gap-1.5 px-2.5 py-2.5 sm:gap-2.5 sm:px-5 sm:py-5 md:grid-cols-3">
         {shown.map((action, idx) => {
           const Icon = action.icon;
           const config = priorityConfig[action.priority];
@@ -174,7 +174,7 @@ export function PriorityActions({
               key={`${action.href}-${action.textKey}`}
               href={action.href}
               className={cn(
-                "group flex min-w-0 items-start gap-3 rounded-xl border p-3.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500",
+                "group flex min-w-0 items-start gap-2 rounded-xl border p-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 sm:gap-3 sm:p-3.5",
                 isUrgent && idx === 0
                   ? "border-red-200 dark:border-red-500/30 bg-[linear-gradient(135deg,_rgba(254,242,242,0.96),_rgba(255,255,255,0.98))] dark:bg-[linear-gradient(135deg,_rgba(127,29,29,0.18),_rgba(30,30,30,0.95))]"
                   : "border-border bg-background/80 hover:border-sky-500/25"
@@ -182,19 +182,20 @@ export function PriorityActions({
             >
               <div
                 className={cn(
-                  "rounded-2xl p-2.5 shrink-0",
+                  // Sits inline with the priority badge on the first line.
+                  "shrink-0 rounded-lg p-1.5 sm:rounded-2xl sm:p-2.5",
                   isUrgent
                     ? "bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-300"
                     : "bg-slate-100 text-slate-600 dark:bg-slate-800/80 dark:text-slate-300"
                 )}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </div>
 
               <div className="min-w-0 flex-1">
                 <span
                   className={cn(
-                    "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em]",
+                    "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] sm:px-2.5 sm:text-[10px] sm:tracking-[0.18em]",
                     config.badgeBg,
                     config.badgeText
                   )}
@@ -202,12 +203,12 @@ export function PriorityActions({
                   <PriorityIcon className="h-3 w-3" />
                   {t(config.labelKey)}
                 </span>
-                <p className="mt-2 text-sm font-medium leading-snug text-foreground/90">
+                <p className="mt-1 text-xs font-medium leading-snug text-foreground/90 sm:mt-2 sm:text-sm">
                   {t(action.textKey, action.textValues)}
                 </p>
                 <span
                   className={cn(
-                    "mt-2 inline-flex items-center gap-1 text-xs font-semibold",
+                    "mt-1 inline-flex items-center gap-1 text-[11px] font-semibold sm:mt-2 sm:text-xs",
                     isUrgent
                       ? "text-sky-700 dark:text-sky-300"
                       : "text-foreground/70 group-hover:text-sky-700 dark:group-hover:text-sky-300"

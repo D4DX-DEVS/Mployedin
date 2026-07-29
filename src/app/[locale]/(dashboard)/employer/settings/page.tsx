@@ -389,7 +389,7 @@ function CompanySettingsPage() {
               <div key={i} className="h-14 bg-muted/40 animate-pulse rounded-lg" />
             ))}
           </div>
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <div className="h-64 bg-muted/30 animate-pulse rounded-xl" />
             <div className="h-48 bg-muted/30 animate-pulse rounded-xl" />
           </div>
@@ -557,7 +557,7 @@ function CompanySettingsPage() {
           </nav>
 
           {/* â”€â”€ Right Content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-          <div className="space-y-5 min-w-0">
+          <div className="space-y-3 sm:space-y-5 min-w-0">
 
             {/* â”€â”€ Profile Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
             {activeTab === "profile" && (
@@ -584,7 +584,7 @@ function CompanySettingsPage() {
                 {/* Basic info */}
                 <SectionCard>
                   <SectionHeader icon={Building2} title={t("companyInfo")} description={t("companyInfoDesc")} />
-                  <div className="p-6 space-y-5">
+                  <div className="p-6 space-y-3 sm:space-y-5">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div data-field="companyName" className="transition-all duration-300">
                         <FieldLabel required>{t("companyName")}</FieldLabel>
@@ -708,7 +708,7 @@ function CompanySettingsPage() {
               <>
                 <SectionCard>
                   <SectionHeader icon={Mail} title={t("contactDetails")} description={t("contactDetailsDesc")} />
-                  <div className="p-6 space-y-5">
+                  <div className="p-6 space-y-3 sm:space-y-5">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div data-field="companyEmail" className="transition-all duration-300">
                         <FieldLabel required>{t("companyEmail")}</FieldLabel>
@@ -822,7 +822,7 @@ function CompanySettingsPage() {
             {activeTab === "hiring" && (
               <SectionCard>
                 <SectionHeader icon={Briefcase} title={t("hiringPreferences")} description={t("hiringPrefsSectionDesc")} />
-                <div className="p-6 space-y-5">
+                <div className="p-6 space-y-3 sm:space-y-5">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     <div>
                       <FieldLabel>{t("defaultJobVisibility")}</FieldLabel>
@@ -875,7 +875,7 @@ function CompanySettingsPage() {
               <>
                 <SectionCard>
                   <SectionHeader icon={Shield} title={t("verificationTrust")} description={t("verificationTrustDesc")} />
-                  <div className="p-6 space-y-4">
+                  <div className="p-6 space-y-3 sm:space-y-4">
                     <div className="flex items-start gap-4 p-4 rounded-xl bg-muted/30 border border-border/30">
                       <div className={`flex items-center justify-center w-10 h-10 rounded-xl shrink-0 ${
                         company?.verificationLevel === "basic" ? "bg-slate-100" : "bg-emerald-50"
@@ -933,7 +933,7 @@ function CompanySettingsPage() {
                 {/* Document Upload */}
                 <SectionCard>
                   <SectionHeader icon={FileText} title={t("verificationDocuments")} description={t("verificationDocumentsDesc")} />
-                  <div className="p-6 space-y-4">
+                  <div className="p-6 space-y-3 sm:space-y-4">
                     <p className="text-xs text-muted-foreground bg-muted/30 border border-border/30 rounded-lg px-3 py-2 leading-relaxed">
                       {t("verificationProcessNote")}
                     </p>
@@ -994,7 +994,7 @@ function CompanySettingsPage() {
             <CalendarFeedCard />
 
                 {/* Danger Zone */}
-                <div className="rounded-xl border-2 border-dashed border-destructive/25 bg-destructive/[0.02] p-6 space-y-4">
+                <div className="rounded-xl border-2 border-dashed border-destructive/25 bg-destructive/[0.02] p-6 space-y-3 sm:space-y-4">
                   <div className="flex items-center gap-2.5">
                     <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-destructive/10">
                       <AlertTriangle className="w-4 h-4 text-destructive" />
@@ -1407,7 +1407,7 @@ function EmployerSmtpOverride({ isPremium }: { isPremium: boolean }) {
   return (
     <SectionCard>
       <SectionHeader icon={Mail} title={t("customEmailSmtp")} description={t("customEmailSmtpDesc")} />
-      <div className="p-6 space-y-4">
+      <div className="p-6 space-y-3 sm:space-y-4">
         <p className="text-xs text-muted-foreground">
           {t("smtpIntro")}
         </p>

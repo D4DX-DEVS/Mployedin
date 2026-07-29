@@ -77,7 +77,7 @@ export default function EmployerSubscriptionPage() {
 
   if (isLoading) {
     return (
-      <div className="page-container space-y-4">
+      <div className="page-container space-y-3 sm:space-y-4">
         <PageHero icon={Crown} title={t("title")} />
         {[1, 2, 3].map((i) => (
           <div key={i} className="h-32 animate-pulse rounded-2xl bg-muted/30" />
@@ -87,7 +87,7 @@ export default function EmployerSubscriptionPage() {
   }
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-6">
       <PageHero
         icon={Crown}
         title={t("title")}
@@ -164,7 +164,7 @@ function ActiveView({
   const locked = featureList.filter((f) => !f.allowed);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 sm:space-y-6">
       {/* ── 1. Current Plan ── */}
       <section className="rounded-2xl border border-border/60 bg-card p-6">
         <div className="flex flex-col sm:flex-row sm:items-start gap-4">
@@ -216,7 +216,7 @@ function ActiveView({
       </section>
 
       {/* ── 2. Usage Overview ── */}
-      <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-4">
+      <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-3 sm:space-y-4">
         <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
           <BarChart3 className="h-4 w-4" /> {t("usageOverview")}
         </h4>
@@ -254,7 +254,7 @@ function ActiveView({
 
       {/* ── 3. Choose Your Plan ── */}
       {plans.length > 0 && (
-        <section className="space-y-4">
+        <section className="space-y-3 sm:space-y-4">
           <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><Crown className="h-4 w-4" /> {t("chooseYourPlan")}</h4>
           <PricingGrid plans={plans} currentTier={currentTier} displayCurrency={displayCurrency} rates={rates} />
         </section>
@@ -320,7 +320,7 @@ function NoPlanView({ plans, displayCurrency, rates }: { plans: AvailablePlan[];
   const t = useTranslations("subscription");
   const { mutate: selfAssign, isPending } = useSelfAssignFreePlan();
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 sm:space-y-6">
       <section className="rounded-2xl border border-sky-500/30 bg-gradient-to-br from-sky-500/5 to-transparent p-6 flex items-start gap-4">
         <div className="h-12 w-12 rounded-2xl bg-sky-500/10 flex items-center justify-center shrink-0"><Crown className="h-6 w-6 text-sky-500" /></div>
         <div className="flex-1 min-w-0">
@@ -330,7 +330,7 @@ function NoPlanView({ plans, displayCurrency, rates }: { plans: AvailablePlan[];
         <Button onClick={() => selfAssign()} disabled={isPending} className="shrink-0">{isPending ? t("activating") : t("activateFreePlan")}</Button>
       </section>
       {plans.length > 0 && (
-        <section className="space-y-4">
+        <section className="space-y-3 sm:space-y-4">
           <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><Crown className="h-4 w-4" /> {t("chooseRightPlanForTeam")}</h4>
           <PricingGrid plans={plans} showActivateFree displayCurrency={displayCurrency} rates={rates} />
         </section>
@@ -347,7 +347,7 @@ function InvoiceSection({ invoices, displayCurrency, rates }: { invoices: Invoic
   const visible = expanded ? invoices : invoices.slice(0, 3);
 
   return (
-    <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-4">
+    <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-3 sm:space-y-4">
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><FileText className="h-4 w-4" /> {t("billingAndInvoices")}</h4>
         <span className="text-xs text-muted-foreground">{t("invoiceCountLabel", { count: invoices.length })}</span>

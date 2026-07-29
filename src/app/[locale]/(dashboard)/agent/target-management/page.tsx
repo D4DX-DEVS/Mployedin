@@ -153,7 +153,7 @@ export default function AgentTargetManagementPage() {
   }, [leaderboard, leaderboardCompletionFilter, leaderboardRiskFilter, leaderboardSearch]);
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2">
@@ -235,7 +235,7 @@ export default function AgentTargetManagementPage() {
       {tab === "dashboard" && (
         <>
           {loading ? (
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="h-28 animate-pulse rounded-2xl bg-muted/50" />
               ))}
@@ -257,7 +257,7 @@ export default function AgentTargetManagementPage() {
               </div>
 
               {/* Annual KPIs */}
-              <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <section className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <KpiCard
                   label={t("employerTarget")}
                   value={<>{profile.employerAchieved}<span className="text-lg text-muted-foreground">/{profile.employerTarget}</span></>}
@@ -288,8 +288,8 @@ export default function AgentTargetManagementPage() {
                 />
               </section>
 
-              <section className="grid gap-3 lg:grid-cols-3">
-                <Link href={`/${locale}/agent/employers`} className="workspace-glass-panel group rounded-2xl p-4 transition hover:-translate-y-0.5 hover:shadow-lg">
+              <section className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <Link href={`/${locale}/agent/employers`} className="workspace-glass-panel group rounded-2xl p-3 sm:p-4 transition hover:-translate-y-0.5 hover:shadow-lg">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Next employer work</p>
@@ -302,7 +302,7 @@ export default function AgentTargetManagementPage() {
                     Add employers <ArrowRight className="h-3.5 w-3.5" />
                   </div>
                 </Link>
-                <Link href={`/${locale}/agent/placements`} className="workspace-glass-panel group rounded-2xl p-4 transition hover:-translate-y-0.5 hover:shadow-lg">
+                <Link href={`/${locale}/agent/placements`} className="workspace-glass-panel group rounded-2xl p-3 sm:p-4 transition hover:-translate-y-0.5 hover:shadow-lg">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Next employee work</p>
@@ -315,7 +315,7 @@ export default function AgentTargetManagementPage() {
                     Close placements <ArrowRight className="h-3.5 w-3.5" />
                   </div>
                 </Link>
-                <Link href={`/${locale}/agent/commissions`} className="workspace-glass-panel group rounded-2xl p-4 transition hover:-translate-y-0.5 hover:shadow-lg">
+                <Link href={`/${locale}/agent/commissions`} className="workspace-glass-panel group rounded-2xl p-3 sm:p-4 transition hover:-translate-y-0.5 hover:shadow-lg">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Next finance work</p>

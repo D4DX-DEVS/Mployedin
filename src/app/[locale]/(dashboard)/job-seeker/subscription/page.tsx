@@ -83,7 +83,7 @@ export default function JobSeekerSubscriptionPage() {
   }
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <PageHeader title={t("title")} description={t("description")} />
         <div className="flex items-center gap-2 text-xs text-muted-foreground">

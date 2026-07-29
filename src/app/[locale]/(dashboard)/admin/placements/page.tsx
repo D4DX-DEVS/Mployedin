@@ -251,7 +251,7 @@ export default function AdminPlacementsPage() {
   });
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-4">
       {ConfirmDialogNode}
 
       {/* ─── Compact page header ──────────────────────────────────────── */}
@@ -333,7 +333,7 @@ export default function AdminPlacementsPage() {
               />
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
               <SearchableSelect
                 className="h-11 w-full rounded-xl border-border bg-card"
                 options={[
@@ -387,7 +387,7 @@ export default function AdminPlacementsPage() {
             </div>
 
             {showAdvanced && (
-              <div className="grid gap-3 pt-1 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="grid gap-2 pt-1 sm:grid-cols-2 xl:grid-cols-4">
                 <DateTimePicker
                   mode="date"
                   value={dateFrom}

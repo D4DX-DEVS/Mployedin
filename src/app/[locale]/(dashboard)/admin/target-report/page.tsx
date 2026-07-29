@@ -252,9 +252,9 @@ export default function AdminTargetReportPage() {
 
   if (loading) {
     return (
-      <div className="page-container space-y-6">
+      <div className="page-container space-y-3 sm:space-y-4">
         <div className="h-20 w-full animate-pulse rounded-[20px] bg-muted/40" />
-        <div className="grid gap-4 sm:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="h-28 animate-pulse rounded-2xl bg-muted/50" />
           ))}

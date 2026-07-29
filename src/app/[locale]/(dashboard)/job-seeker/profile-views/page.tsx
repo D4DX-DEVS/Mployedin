@@ -50,10 +50,10 @@ export default function ProfileViewsPage() {
 
   if (loading) {
     return (
-      <div className="p-6">
-        <div className="animate-pulse space-y-4">
+      <div className="p-3 sm:p-6">
+        <div className="animate-pulse space-y-3 sm:space-y-4">
           <div className="h-8 w-48 bg-muted rounded" />
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-3 sm:gap-4 sm:grid-cols-3">
             {[1, 2, 3].map((i) => <div key={i} className="h-24 bg-muted rounded-xl" />)}
           </div>
         </div>
@@ -63,7 +63,7 @@ export default function ProfileViewsPage() {
 
   if (loadError || !stats) {
     return (
-      <div className="p-6">
+      <div className="p-3 sm:p-6">
         <EmptyState
           icon={Eye}
           title={t("unable")}
@@ -78,46 +78,46 @@ export default function ProfileViewsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-6 space-y-3 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <Eye className="w-6 h-6 text-primary" />
+        <h1 className="text-xl font-bold text-foreground flex items-center gap-2 sm:text-2xl">
+          <Eye className="w-5 h-5 text-primary sm:w-6 sm:h-6" />
           {t("title")}
         </h1>
-        <p className="text-muted-foreground mt-1">{t("description")}</p>
+        <p className="text-xs text-muted-foreground mt-1 sm:text-sm">{t("description")}</p>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="p-5 bg-card border border-border rounded-xl">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <Eye className="w-5 h-5 text-primary" />
+      <div className="grid gap-3 sm:gap-4 sm:grid-cols-3">
+        <div className="p-3 sm:p-5 bg-card border border-border rounded-xl">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 bg-primary/10 rounded-lg">
+              <Eye className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{stats.totalViews.toLocaleString(numberLocale)}</p>
+              <p className="text-xl font-bold text-foreground sm:text-2xl">{stats.totalViews.toLocaleString(numberLocale)}</p>
               <p className="text-xs text-muted-foreground">{t("total")}</p>
             </div>
           </div>
         </div>
-        <div className="p-5 bg-card border border-border rounded-xl">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-500/10 rounded-lg">
-              <TrendingUp className="w-5 h-5 text-green-600" />
+        <div className="p-3 sm:p-5 bg-card border border-border rounded-xl">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 bg-green-500/10 rounded-lg">
+              <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{stats.last7Days.toLocaleString(numberLocale)}</p>
+              <p className="text-xl font-bold text-foreground sm:text-2xl">{stats.last7Days.toLocaleString(numberLocale)}</p>
               <p className="text-xs text-muted-foreground">{t("last7")}</p>
             </div>
           </div>
         </div>
-        <div className="p-5 bg-card border border-border rounded-xl">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-500/10 rounded-lg">
-              <Calendar className="w-5 h-5 text-blue-600" />
+        <div className="p-3 sm:p-5 bg-card border border-border rounded-xl">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 bg-blue-500/10 rounded-lg">
+              <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{stats.last30Days.toLocaleString(numberLocale)}</p>
+              <p className="text-xl font-bold text-foreground sm:text-2xl">{stats.last30Days.toLocaleString(numberLocale)}</p>
               <p className="text-xs text-muted-foreground">{t("last30")}</p>
             </div>
           </div>

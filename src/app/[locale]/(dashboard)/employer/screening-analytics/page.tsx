@@ -93,7 +93,7 @@ export default function ScreeningAnalyticsPage() {
       )}
 
       {data && !loading && (
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {/* Summary */}
           <div className="p-4 bg-card border border-border rounded-xl flex items-center gap-4">
             <div className="p-2 bg-primary/10 rounded-lg">

@@ -206,7 +206,7 @@ export default function CmsPage({
   ).length;
 
   return (
-    <div className="page-container admin-cms-page-container space-y-6" data-admin-workspace="cms-page">
+    <div className="page-container admin-cms-page-container space-y-3 sm:space-y-4" data-admin-workspace="cms-page">
       {ConfirmDialogNode}
 
       <DashboardPageHeader
@@ -248,15 +248,15 @@ export default function CmsPage({
         />
       </DashboardPageHeader>
 
-      <section className="workspace-panel-surface overflow-hidden rounded-[28px]">
-        <div className="overflow-x-auto">
-          <Table>
+      <section className="workspace-panel-surface overflow-hidden rounded-[20px] sm:rounded-[28px]">
+        <div className="overflow-x-auto" data-mobile-table="responsive">
+          <Table className="responsive-card-table">
             <TableHeader>
               <TableRow className="bg-secondary/70 hover:bg-secondary/70">
                 {columns.map((col) => (
-                  <TableHead key={col.key}>{col.label}</TableHead>
+                  <TableHead key={col.key} data-label={col.label}>{col.label}</TableHead>
                 ))}
-                <TableHead className="w-[100px]">{t("actions")}</TableHead>
+                <TableHead className="w-[100px]" data-label={t("actions")}>{t("actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -275,20 +275,20 @@ export default function CmsPage({
                 ))
               ) : items.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={columns.length + 1} className="px-6 py-16 text-center">
+                  <TableCell colSpan={columns.length + 1} className="px-4 py-8 text-center sm:px-6 sm:py-16">
                     <div className="flex flex-col items-center gap-2">
-                      <div className="workspace-muted-pill mx-auto mb-2 flex h-16 w-16 items-center justify-center rounded-[24px]">
-                        <Inbox className="h-7 w-7 text-muted-foreground" />
+                      <div className="workspace-muted-pill mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-[20px] sm:h-16 sm:w-16 sm:rounded-[24px]">
+                        <Inbox className="h-5 w-5 text-muted-foreground sm:h-7 sm:w-7" />
                       </div>
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">
                         {hasActiveFilters ? t("noMatchingItems") : t("noItemsYet")}
                       </p>
-                      <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">
+                      <h3 className="mt-1 text-base font-semibold tracking-tight text-foreground sm:text-lg">
                         {hasActiveFilters
                           ? t("noItemsMatchFilters")
                           : t("noFoundTitle", { title: title.toLowerCase() })}
                       </h3>
-                      <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-muted-foreground">
+                      <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6">
                         {hasActiveFilters
                           ? t("adjustFiltersMsg")
                           : t("clickAddNewMsg")}
@@ -297,7 +297,7 @@ export default function CmsPage({
                         <Button
                           onClick={resetFilters}
                           variant="outline"
-                          className="mt-4 h-9 rounded-xl border-border bg-background/70 px-4 text-sm"
+                          className="mt-3 h-9 rounded-xl border-border bg-background/70 px-3 text-xs sm:mt-4 sm:px-4 sm:text-sm"
                         >
                           {t("clearFilters")}
                         </Button>
@@ -309,7 +309,7 @@ export default function CmsPage({
                 items.map((item) => (
                   <TableRow key={String(item._id)}>
                     {columns.map((col) => (
-                      <TableCell key={col.key}>
+                      <TableCell key={col.key} className="min-w-0">
                         {col.render
                           ? col.render(item[col.key], item)
                           : col.key === "isActive"
@@ -325,12 +325,12 @@ export default function CmsPage({
                               )}
                       </TableCell>
                     ))}
-                    <TableCell>
-                      <div className="flex items-center gap-1">
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
                         {allowCreate && can(resource as "cms", "update") && (
                           <Button
                             variant="ghost"
-                            size="icon"
+                            size="sm"
                             onClick={() =>
                               editPageBasePath
                                 ? router.push(`/${locale}${editPageBasePath}/${item._id}/edit`)
@@ -338,20 +338,21 @@ export default function CmsPage({
                             }
                             title={t("edit")}
                             aria-label={t("edit")}
+                            className="h-8 w-8"
                           >
-                            <Pencil className="h-4 w-4" />
+                            <Pencil className="h-3.5 w-3.5" />
                           </Button>
                         )}
                         {can(resource as "cms", "delete") && (
                           <Button
                             variant="ghost"
-                            size="icon"
+                            size="sm"
                             onClick={() => handleDelete(String(item._id))}
                             title={t("delete")}
                             aria-label={t("delete")}
-                            className="text-destructive hover:text-destructive"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         )}
                       </div>
@@ -363,7 +364,7 @@ export default function CmsPage({
           </Table>
         </div>
 
-        <div className="border-t border-border/80 px-5 py-3">
+        <div className="border-t border-border/80 px-4 py-3 sm:px-5">
           <PaginationControls
             page={page}
             totalPages={totalPages}

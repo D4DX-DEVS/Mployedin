@@ -326,7 +326,7 @@ export default function BackgroundChecksPage() {
             <DialogTitle>{t("newCheck")}</DialogTitle>
             <DialogDescription>{t("createDesc")}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <div className="space-y-1.5">
               <Label>{t("fields.candidate")}</Label>
               <SearchableSelect
@@ -411,7 +411,7 @@ export default function BackgroundChecksPage() {
                   {detail.jobId?.title} · {t(`type.${detail.checkType}`)}
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <Label className="text-xs uppercase tracking-wide text-muted-foreground">{t("fields.status")}</Label>
                   {(["pending", "in_progress", "completed", "cancelled"] as CheckStatus[]).map((s) => (

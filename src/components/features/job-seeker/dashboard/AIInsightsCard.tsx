@@ -49,7 +49,7 @@ export function AIInsightsCard() {
 
   if (insights.length === 0) {
     return (
-      <div className="card-base p-6 text-center">
+      <div className="card-base p-3 sm:p-6 text-center">
         <Sparkles className="mx-auto h-8 w-8 text-muted-foreground/40" />
         <p className="mt-2 text-sm text-muted-foreground">
           {t("noInsightsAvailable")}
@@ -59,8 +59,8 @@ export function AIInsightsCard() {
   }
 
   return (
-    <div className="card-base p-6">
-      <div className="mb-4 flex items-center justify-between">
+    <div className="card-base p-3 sm:p-6">
+      <div className="mb-3 sm:mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
           <h3 className="text-sm font-semibold">{t("aiInsights")}</h3>
@@ -75,7 +75,7 @@ export function AIInsightsCard() {
         </button>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2 sm:space-y-3">
         {insights.map((insight, i) => {
           const config = typeConfig[insight.type] ?? typeConfig.tip;
           const Icon = config.icon;

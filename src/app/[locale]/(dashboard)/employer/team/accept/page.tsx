@@ -50,7 +50,7 @@ function AcceptInviteInner() {
 
   return (
     <div className="page-container flex items-center justify-center min-h-[60vh]">
-      <div className="card-base p-8 max-w-md w-full text-center space-y-4">
+      <div className="card-base p-8 max-w-md w-full text-center space-y-3 sm:space-y-4">
         <div className="mx-auto h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center">
           {state.phase === "loading" && <Loader2 className="h-7 w-7 text-primary animate-spin" />}
           {state.phase === "success" && <CheckCircle2 className="h-7 w-7 text-emerald-600" />}

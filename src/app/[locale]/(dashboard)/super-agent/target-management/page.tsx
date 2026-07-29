@@ -447,7 +447,7 @@ export default function SuperAgentTargetProfilesPage() {
   };
 
   return (
-    <div className="page-container space-y-4">
+    <div className="page-container space-y-3 sm:space-y-4">
       <PageHero
         icon={Target}
         eyebrow={t("eyebrow")}
@@ -606,7 +606,7 @@ export default function SuperAgentTargetProfilesPage() {
 
       {/* ============ OWN TAB ============ */}
       {tab === "own" && (
-        <div className="space-y-6">
+        <div className="space-y-3 sm:space-y-4">
           {loading ? (
             <div className="grid gap-4 sm:grid-cols-3">
               {Array.from({ length: 3 }).map((_, i) => (
@@ -966,7 +966,7 @@ export default function SuperAgentTargetProfilesPage() {
               <BarChart3 className="h-5 w-5 text-primary" /> Team Insights
             </DialogTitle>
           </DialogHeader>
-          <div className="max-h-[70vh] space-y-6 overflow-y-auto pr-1" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
+          <div className="max-h-[70vh] space-y-3 sm:space-y-4 overflow-y-auto pr-1" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
             <style>{`.insights-scroll::-webkit-scrollbar { display: none; }`}</style>
 
             {/* Target Progress Chart */}

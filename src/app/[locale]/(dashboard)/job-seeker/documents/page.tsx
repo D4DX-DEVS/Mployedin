@@ -306,11 +306,11 @@ export default function JobSeekerDocumentsPage() {
         description={t("description")}
       />
 
-      <div className="space-y-6">
+      <div className="space-y-3 sm:space-y-6">
         {/* ── Category selector ── */}
-        <div className="card-base p-4">
+        <div className="card-base p-3 sm:p-4">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">{t("type")}</p>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 sm:gap-3">
             {DOC_CATEGORIES.map((cat) => {
               const Icon = cat.icon;
               const isActive = category === cat.value;
@@ -337,7 +337,7 @@ export default function JobSeekerDocumentsPage() {
           onDrop={handleDrop}
           onDragOver={(e) => e.preventDefault()}
           onClick={() => inputRef.current?.click()}
-          className="border-2 border-dashed rounded-xl p-8 text-center cursor-pointer hover:border-primary/60 hover:bg-primary/5 transition-all"
+          className="border-2 border-dashed rounded-xl p-4 sm:p-8 text-center cursor-pointer hover:border-primary/60 hover:bg-primary/5 transition-all"
         >
           <input
             ref={inputRef}
@@ -371,7 +371,7 @@ export default function JobSeekerDocumentsPage() {
 
         {/* Action buttons */}
         {file && (
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <button
               onClick={uploadDocument}
               disabled={uploading}

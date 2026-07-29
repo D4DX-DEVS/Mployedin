@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Users, Briefcase, TrendingUp, Inbox, CircleCheckBig, ClipboardList } from "lucide-react";
+import { Users, Briefcase, TrendingUp, Inbox, CircleCheckBig, ClipboardList, ChevronDown } from "lucide-react";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -32,6 +32,7 @@ export default function EmployerPlacementsPage() {
     router.replace(`?${params.toString()}`, { scroll: false });
   }
   const [limit, setLimit] = useState(10);
+  const [expandedPlacementId, setExpandedPlacementId] = useState<string | null>(null);
   const [filter, setFilter] = useState("all");
   const [visaFilter, setVisaFilter] = useState("all");
 
@@ -137,10 +138,11 @@ export default function EmployerPlacementsPage() {
             })}
           </div>
         </div>
-        {/* Visa status filter (GCC) */}
+        {/* Visa status filter (GCC) — no scroll, text/padding shrink hard
+            enough on phones that all 6 chips stay on one wrapped row. */}
         <div className="mt-4 flex flex-col gap-2 border-t border-border/40 pt-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("filterVisaTitle")}</p>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1 sm:gap-2">
             {(["all", "not_required", "pending", "approved", "rejected", "stamped"] as const).map((visaOption) => {
               const visaLabelMap = { all: "visaAll", not_required: "visaNotRequired", pending: "visaPending", approved: "visaApproved", rejected: "visaRejected", stamped: "visaStamped" } as const;
               return (
@@ -149,10 +151,10 @@ export default function EmployerPlacementsPage() {
                   onClick={() => setVisaFilter(visaOption)}
                   variant="ghost"
                   size="sm"
-                  className={visaFilter === visaOption
-                    ? "rounded-full bg-emerald-600 px-4 text-white hover:bg-emerald-700 hover:text-white"
-                    : "rounded-full border border-border bg-background/80 px-4 text-muted-foreground hover:bg-background"
-                  }
+                  className={`h-auto whitespace-nowrap rounded-full px-1.5 py-0.5 text-[9px] leading-tight sm:h-9 sm:px-4 sm:py-1.5 sm:text-sm ${visaFilter === visaOption
+                    ? "bg-emerald-600 text-white hover:bg-emerald-700 hover:text-white"
+                    : "border border-border bg-background/80 text-muted-foreground hover:bg-background"
+                  }`}
                 >
                   {t(visaLabelMap[visaOption])}
                 </Button>
@@ -187,17 +189,74 @@ export default function EmployerPlacementsPage() {
               {t("tableDescription")}
             </p>
           </div>
-          <p className="text-sm text-muted-foreground">{t("placementsOnPage", { count: placements.length })}</p>
+          <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end sm:gap-2">
+            <p className="text-sm text-muted-foreground">{t("placementsOnPage", { count: placements.length })}</p>
+            <TableToolbar
+              onExportCsv={handleExportCsv}
+              onExportExcel={handleExportExcel}
+              onExportPdf={handleExportPdf}
+            />
+          </div>
         </div>
 
-        <TableToolbar
-          onExportCsv={handleExportCsv}
-          onExportExcel={handleExportExcel}
-          onExportPdf={handleExportPdf}
-          className="mt-4"
-        />
+        {/* Phones get compact expandable rows — the shared <Table> stacks every
+            cell into a labelled block, which made one placement fill the screen. */}
+        <ul className="mt-3 space-y-1.5 sm:hidden">
+          {placements.map((placement) => {
+            const isOpen = expandedPlacementId === placement._id;
+            return (
+              <li key={placement._id} className="rounded-xl border border-border/60 bg-background/70">
+                <button
+                  type="button"
+                  onClick={() => setExpandedPlacementId(isOpen ? null : placement._id)}
+                  aria-expanded={isOpen}
+                  className="flex w-full items-center gap-2 px-2.5 py-2 text-left"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-semibold text-foreground">
+                      {placement.candidateName ?? t("candidateFallback")}
+                    </p>
+                    <p className="truncate text-[11px] text-muted-foreground">
+                      {placement.jobTitle ?? t("untitledRole")}
+                    </p>
+                  </div>
+                  <StatusBadge status={placement.status} />
+                  <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                </button>
 
-        <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
+                {isOpen && (
+                  <div className="border-t border-border/60 px-2.5 py-2 text-[11px]">
+                    <dl className="grid grid-cols-2 gap-x-2 gap-y-1">
+                      <dt className="text-muted-foreground">{t("startDate")}</dt>
+                      <dd className="text-end text-foreground">{formatDate(placement.startDate)}</dd>
+                      <dt className="text-muted-foreground">{t("salary")}</dt>
+                      <dd className="text-end font-medium text-foreground">{formatSalary(placement)}</dd>
+                    </dl>
+                    <p className="mt-1 truncate text-muted-foreground">{placement.candidateEmail ?? t("noEmail")}</p>
+                    {placement.type ? (
+                      <span className="mt-1.5 inline-flex rounded-full bg-secondary/75 px-2 py-0.5 text-[10px] font-medium capitalize text-muted-foreground">
+                        {placement.type}
+                      </span>
+                    ) : null}
+                    <div className="mt-2 flex gap-2">
+                      <Button asChild variant="outline" size="sm" className="h-8 flex-1 rounded-lg text-[11px] font-semibold">
+                        <Link href={`/${locale}/employer/placements/${placement._id}`}>{t("viewDetails")}</Link>
+                      </Button>
+                      <Button asChild variant="outline" size="sm" className="h-8 flex-1 rounded-lg text-[11px] font-semibold">
+                        <Link href={`/${locale}/employer/placements/${placement._id}/onboarding`}>
+                          <ClipboardList className="me-1 h-3.5 w-3.5" />
+                          {t("onboardingColumn")}
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+
+        <div className="mt-5 hidden overflow-x-auto rounded-3xl border border-border/60 sm:block">
           <Table>
             <TableHeader>
               <TableRow className="bg-background/60 hover:bg-background/60">
@@ -205,6 +264,7 @@ export default function EmployerPlacementsPage() {
                 <TableHead className="min-w-[220px]">{t("position")}</TableHead>
                 <TableHead>{t("startDate")}</TableHead>
                 <TableHead>{t("salary")}</TableHead>
+                <TableHead>{t("status")}</TableHead>
                 <TableHead className="text-right">{t("onboardingColumn")}</TableHead>
               </TableRow>
             </TableHeader>
@@ -212,14 +272,14 @@ export default function EmployerPlacementsPage() {
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    {Array.from({ length: 5 }).map((_, j) => (
+                    {Array.from({ length: 6 }).map((_, j) => (
                       <TableCell key={j}><div className="h-4 w-3/4 animate-pulse rounded bg-muted/50" /></TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : placements.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-16 text-center">
+                  <TableCell colSpan={6} className="py-16 text-center">
                     <div className="flex flex-col items-center gap-3">
                       <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-status-applied-bg text-status-applied">
                         <Inbox className="h-6 w-6" />
@@ -237,7 +297,6 @@ export default function EmployerPlacementsPage() {
                     <div className="space-y-1">
                       <p className="font-semibold text-foreground">{placement.candidateName ?? t("candidateFallback")}</p>
                       <p className="text-xs text-muted-foreground">{placement.candidateEmail ?? t("noEmail")}</p>
-                      <StatusBadge status={placement.status} />
                     </div>
                   </TableCell>
                   <TableCell>
@@ -252,6 +311,7 @@ export default function EmployerPlacementsPage() {
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{formatDate(placement.startDate)}</TableCell>
                   <TableCell className="font-medium text-foreground">{formatSalary(placement)}</TableCell>
+                  <TableCell><StatusBadge status={placement.status} /></TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button asChild variant="outline" size="sm" className="rounded-xl">

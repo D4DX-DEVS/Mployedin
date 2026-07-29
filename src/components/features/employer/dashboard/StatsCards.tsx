@@ -19,7 +19,7 @@ export function CurrentOpeningsList({
 
   return (
     <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-[28px]">
-      <div className="border-b border-border/60 px-5 py-5 sm:px-6">
+      <div className="border-b border-border/60 px-3 sm:px-5 py-5 sm:px-3 sm:px-6">
         <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
           <Briefcase className="h-3.5 w-3.5 text-sky-600" />
           {t("currentOpenings")}
@@ -74,7 +74,7 @@ export function OpeningsStats({ activeJobs, totalApplications }: OpeningsStatsPr
   const t = useTranslations("employerDashboard.statsCards");
 
   return (
-    <section className="workspace-panel-surface rounded-2xl p-3.5 sm:rounded-[28px] sm:p-5">
+    <section className="workspace-panel-surface rounded-2xl p-3.5 sm:rounded-[28px] sm:p-3 sm:p-5">
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("currentPortfolio")}</p>
       <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground sm:text-2xl">{t("seeHiringVolume")}</h2>
       <div className="mt-4 space-y-2.5">
@@ -101,7 +101,7 @@ export function TimeToHire({ avgDays }: TimeToHireProps) {
   const t = useTranslations("employerDashboard.statsCards");
 
   return (
-    <section className="rounded-[28px] border border-amber-200 bg-[linear-gradient(180deg,_rgba(255,251,235,0.98),_rgba(255,247,237,0.96))] p-4 shadow-[0_24px_60px_-46px_rgba(245,158,11,0.32)] dark:border-amber-500/25 dark:bg-[linear-gradient(180deg,_rgba(120,53,15,0.28),_rgba(15,23,42,0.96))] sm:p-5">
+    <section className="rounded-[28px] border border-amber-200 bg-[linear-gradient(180deg,_rgba(255,251,235,0.98),_rgba(255,247,237,0.96))] p-3 sm:p-4 shadow-[0_24px_60px_-46px_rgba(245,158,11,0.32)] dark:border-amber-500/25 dark:bg-[linear-gradient(180deg,_rgba(120,53,15,0.28),_rgba(15,23,42,0.96))] sm:p-3 sm:p-5">
       <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700 dark:text-amber-300">
         <Clock className="h-3.5 w-3.5" />
         {t("timeToHire")}

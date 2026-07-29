@@ -194,7 +194,7 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
     : 0;
 
   return (
-    <div className="page-container flex flex-col gap-6">
+    <div className="page-container space-y-6">
       <DashboardPageHeader
         icon={ShieldCheck}
         eyebrow={t("hero.eyebrow")}

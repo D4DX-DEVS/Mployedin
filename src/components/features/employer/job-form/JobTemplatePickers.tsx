@@ -39,7 +39,7 @@ export function JobTemplatePickers({
   return (
     <div className="grid gap-4 xl:grid-cols-2">
       {/* Workflow Template Picker */}
-      <div className="space-y-1.5 rounded-xl border border-border/70 bg-muted/20 p-4">
+      <div className="space-y-1.5 rounded-xl border border-border/70 bg-muted/20 p-3 sm:p-4">
         <label className="flex items-center gap-2 text-sm font-medium">
           <GitBranch className="h-4 w-4 text-sky-600" />
           {t("workflowTemplate")}
@@ -107,7 +107,7 @@ export function JobTemplatePickers({
       </div>
 
       {/* Matching Weight Template Picker */}
-      <div className="space-y-1.5 rounded-xl border border-border/70 bg-muted/20 p-4">
+      <div className="space-y-1.5 rounded-xl border border-border/70 bg-muted/20 p-3 sm:p-4">
         <label className="flex items-center gap-2 text-sm font-medium">
           <Scale className="h-4 w-4 text-sky-600" />
           {t("matchingWeightTemplate")}

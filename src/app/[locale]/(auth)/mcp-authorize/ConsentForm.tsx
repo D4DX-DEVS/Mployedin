@@ -10,14 +10,12 @@ export function ConsentForm({
   clientId,
   redirectUri,
   codeChallenge,
-  resource,
   scope,
   state,
 }: {
   clientId: string;
   redirectUri: string;
   codeChallenge: string;
-  resource: string;
   scope: string;
   state: string;
 }) {
@@ -37,7 +35,6 @@ export function ConsentForm({
           client_id: clientId,
           redirect_uri: redirectUri,
           code_challenge: codeChallenge,
-          resource,
           scope,
           state,
         }),
@@ -62,7 +59,7 @@ export function ConsentForm({
         <Button variant="outline" className="flex-1" onClick={() => submit("deny")} disabled={loading !== null}>
           {loading === "deny" ? <Loader2 className="h-4 w-4 animate-spin" /> : t("deny")}
         </Button>
-        <Button className="flex-1" onClick={() => submit("approve")} disabled={loading !== null || !scope}>
+        <Button className="flex-1" onClick={() => submit("approve")} disabled={loading !== null}>
           {loading === "approve" ? <Loader2 className="h-4 w-4 animate-spin" /> : t("allow")}
         </Button>
       </div>

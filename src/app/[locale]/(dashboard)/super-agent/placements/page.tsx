@@ -348,7 +348,7 @@ export default function SuperAgentPlacementsPage() {
   /* ---------------------------------------------------------------- */
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-4">
       <SuperAgentPageIntro
         title={t("pageTitle")}
         description={t("pageDescription")}
@@ -365,7 +365,7 @@ export default function SuperAgentPlacementsPage() {
       >
         {/* ---- Visa Status Strip ---- */}
         <div className="flex flex-col gap-4">
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-5">
             {VISA_STATUSES.map((s) => (
               <button
                 key={s}
@@ -429,7 +429,7 @@ export default function SuperAgentPlacementsPage() {
                 </div>
               )}
 
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <div className="grid grid-cols-2 gap-2 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">{t("filterCurrency")}</label>
                   <SearchableSelect options={[{ value: "", label: t("filterCurrencyPlaceholder") }, ...CURRENCY_OPTIONS.slice(1)]} value={filters.currency} onValueChange={(v) => updateFilter("currency", v)} placeholder={t("filterCurrencyPlaceholder")} searchPlaceholder={t("filterCurrencySearch")} />

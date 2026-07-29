@@ -183,7 +183,7 @@ export default function AdminWorkflowTemplatesPage() {
 
       {/* ─── Create / Edit Form ─── */}
       {showForm && (
-        <section className="rounded-2xl border border-sky-500/30 bg-sky-500/5 p-6 space-y-5">
+        <section className="rounded-2xl border border-sky-500/30 bg-sky-500/5 p-4 sm:p-6 space-y-5">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold text-foreground">
               {editId ? tr("editTemplateHeading") : tr("createNewTemplateHeading")}

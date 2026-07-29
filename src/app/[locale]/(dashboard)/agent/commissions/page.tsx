@@ -158,7 +158,7 @@ export default function AgentCommissionsPage() {
   };
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-3 sm:space-y-6">
       <DashboardPageHeader
         icon={DollarSign}
         eyebrow={t("agentWorkspace")}
@@ -174,7 +174,7 @@ export default function AgentCommissionsPage() {
       />
 
       {/* ── Search & Filters ── */}
-      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5 space-y-5">
+      <section className="workspace-panel-surface rounded-[28px] p-3.5 sm:p-4 space-y-3 sm:space-y-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("filterLedgerLabel")}</p>

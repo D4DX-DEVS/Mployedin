@@ -27,8 +27,8 @@ interface StatsGridProps {
 
 function StatCardSkeleton() {
   return (
-    <div className="card-base p-5 animate-pulse">
-      <div className="flex items-start gap-4">
+    <div className="card-base p-3 sm:p-5 animate-pulse">
+      <div className="flex items-start gap-3 sm:gap-4">
         <div className="h-9 w-9 rounded-lg bg-muted" />
         <div className="flex-1 space-y-2">
           <div className="h-2.5 w-20 rounded bg-muted" />
@@ -52,7 +52,7 @@ export function StatsGrid({ stats: propStats }: StatsGridProps) {
 
   if (isLoading && !propStats) {
     return (
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-4 lg:gap-4">
         {[1, 2, 3, 4].map((i) => <StatCardSkeleton key={i} />)}
       </div>
     );
@@ -102,17 +102,17 @@ export function StatsGrid({ stats: propStats }: StatsGridProps) {
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-4 lg:gap-4">
       {cards.map((card) => (
-        <div key={card.label} className="card-base flex items-start gap-4 p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
-          <div className={`rounded-lg border p-2.5 ${card.tone}`}>
+        <div key={card.label} className="card-base flex items-start gap-3 sm:gap-4 p-3 sm:p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+          <div className={`rounded-lg border p-2 sm:p-2.5 ${card.tone}`}>
             <card.icon className="h-5 w-5" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-xs font-medium text-muted-foreground">{card.label}</p>
             {card.value !== null ? (
               <div className="flex items-baseline gap-2">
-                <p className={`mt-1 text-2xl font-bold ${card.tone}`}>{card.value}</p>
+                <p className={`mt-1 text-xl sm:text-2xl font-bold ${card.tone}`}>{card.value}</p>
                 {typeof card.delta === "number" && card.delta !== 0 && (
                   <span
                     className={`text-xs font-medium ${
@@ -173,13 +173,13 @@ export function CareerInsights({
   ];
 
   return (
-    <div className="card-base p-6">
-      <h3 className="mb-4 text-sm font-semibold">{t("careerInsights")}</h3>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <div className="card-base p-3 sm:p-6">
+      <h3 className="mb-3 sm:mb-4 text-sm font-semibold">{t("careerInsights")}</h3>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-4">
         {insights.map((insight) => (
           <div
             key={insight.label}
-            className="flex items-start gap-3 rounded-lg border border-border p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-md"
+            className="flex items-start gap-3 rounded-lg border border-border p-3 sm:p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-md"
           >
             <div className="rounded-lg bg-primary/10 p-2">
               <insight.icon className="h-4 w-4 text-primary" />

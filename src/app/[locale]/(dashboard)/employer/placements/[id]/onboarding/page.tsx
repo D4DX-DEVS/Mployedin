@@ -326,7 +326,7 @@ export default function PlacementOnboardingPage() {
       </div>
 
       {loading ? (
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           <div className="rounded-2xl border border-border/60 bg-card p-5 space-y-3">
             <div className="flex items-center justify-between">
               <Skeleton className="h-4 w-24" />

@@ -221,7 +221,7 @@ export default function AgentTargetReportPage() {
 
   if (loading) {
     return (
-      <div className="page-container space-y-6">
+      <div className="page-container space-y-3 sm:space-y-6">
         <div className="h-20 w-full animate-pulse rounded-[20px] bg-muted/40" />
         <div className="grid gap-4 sm:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -249,7 +249,7 @@ export default function AgentTargetReportPage() {
   const currency = profile.currency ?? "AED";
 
   return (
-    <div className="page-container space-y-6 print:space-y-4">
+    <div className="page-container space-y-3 sm:space-y-6 print:space-y-4">
       {/* ═══════ HERO ═══════ */}
       <DashboardPageHeader
         icon={Target}

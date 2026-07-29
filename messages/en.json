@@ -50,7 +50,8 @@
     "a11yNavigationMenu": "Navigation menu",
     "a11yOpenMenu": "Open menu",
     "a11yCloseMenu": "Close menu",
-    "a11yHome": "Mployedin home"
+    "a11yHome": "Mployedin home",
+    "more": "More"
   },
   "auth": {
     "login": "Login",
@@ -3734,6 +3735,7 @@
     "homepage": "Homepage"
   },
   "profileDropdown": {
+    "preferences": "Preferences",
     "quickLinks": "Quick Links",
     "interviews": "Interviews",
     "offers": "Offers",
@@ -14813,6 +14815,9 @@
     "send": "Send",
     "close": "Close",
     "newChat": "New chat",
+    "history": "Chat history",
+    "noHistory": "No previous chats yet.",
+    "deleteChat": "Delete chat",
     "confirm": "Confirm",
     "cancel": "Cancel",
     "executing": "Running...",
@@ -14822,7 +14827,27 @@
     "actionFailed": "Something went wrong.",
     "actionExpired": "This action expired.",
     "errorMessage": "Sorry, something went wrong. Please try again.",
-    "disclaimer": "Copilot can make mistakes. Actions always ask for your confirmation first."
+    "disclaimer": "Copilot can make mistakes. Actions always ask for your confirmation first.",
+    "suggestions": {
+      "employer1": "Show my hiring pipeline stats",
+      "employer2": "Which of my jobs has the fewest applicants?",
+      "employer3": "Search my applicants",
+      "jobSeeker1": "Find jobs that match my profile",
+      "jobSeeker2": "Show my applications",
+      "jobSeeker3": "Search remote jobs",
+      "agent1": "Show my leads",
+      "agent2": "Create a new lead",
+      "agent3": "Search employers",
+      "superAgent1": "Show my team's performance",
+      "superAgent2": "Show my leads",
+      "superAgent3": "Create a new lead",
+      "admin1": "Show platform stats",
+      "admin2": "Search users",
+      "admin3": "Are any jobs pending approval?",
+      "default1": "What can you do?",
+      "default2": "Search jobs",
+      "default3": "Show my recent activity"
+    }
   },
   "mcpAuthorize": {
     "title": "Connect {clientName} to Mployedin",

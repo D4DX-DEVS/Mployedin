@@ -33,6 +33,8 @@ import {
 } from "lucide-react";
 import { ExhibitionHeroFilters } from "@/components/features/exhibitions/ExhibitionHeroFilters";
 import { useTranslations } from "next-intl";
+import { usePagination } from "@/hooks/usePagination";
+import { PaginationControls } from "@/components/shared/PaginationControls";
 import { useConfirm } from "@/hooks/useConfirm";
 import { SUPPORTED_CURRENCIES, formatCurrency } from "@/lib/currency";
 import {
@@ -44,8 +46,6 @@ import {
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { ApprovalTimeline, type TimelineEntry } from "@/components/features/exhibitions/ApprovalTimeline";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
-import { PaginationControls } from "@/components/shared/PaginationControls";
-import { usePagination } from "@/hooks/usePagination";
 
 interface ExhibitionRequest {
   _id: string;
