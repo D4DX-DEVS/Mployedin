@@ -234,6 +234,9 @@ export default function EmployerApplicationsPage() {
   });
   const [daysFilter, setDaysFilter] = useState<number | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  // Phones collapse the whole primary filter row behind a toggle — six stacked
+  // full-width controls pushed the applicant list off the first screen.
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [timelinePanel, setTimelinePanel] = useState<{ appId: string; candidateLabel: string } | null>(null);
   const [detailPanel, setDetailPanel] = useState<Applicant | null>(null);
@@ -277,21 +280,6 @@ export default function EmployerApplicationsPage() {
   const [skillsFilter, setSkillsFilter] = useState<string[]>([]);
   const [nationalityFilter, setNationalityFilter] = useState("");
   const [jobsLoaded, setJobsLoaded] = useState(false);
-
-  useEffect(() => {
-    if (!showFilters) return;
-    const isMobile = window.matchMedia("(max-width: 639px)").matches;
-    const previousOverflow = document.body.style.overflow;
-    if (isMobile) document.body.style.overflow = "hidden";
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setShowFilters(false);
-    };
-    document.addEventListener("keydown", closeOnEscape);
-    return () => {
-      if (isMobile) document.body.style.overflow = previousOverflow;
-      document.removeEventListener("keydown", closeOnEscape);
-    };
-  }, [showFilters]);
 
   interface EmployerJob {
     _id: string;
@@ -819,11 +807,11 @@ export default function EmployerApplicationsPage() {
   }
 
   return (
-    <div className="page-container space-y-3 sm:space-y-4 pb-1">
+    <div className="page-container space-y-4 pb-1">
       <PageHeader
         title={selectedJob ? `${selectedJob.title} — ${t("title")}` : t("title")}
         actions={canUpdate ? (
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-nowrap items-center gap-2 overflow-x-auto">
             <Button
               size="sm"
               variant="outline"
@@ -859,7 +847,7 @@ export default function EmployerApplicationsPage() {
         ) : undefined}
       />
 
-      <div className="text-sm text-muted-foreground">
+      <div className="px-3 text-sm text-muted-foreground sm:px-4">
         <span className="font-medium text-foreground">{isLoading ? "—" : filteredApplications.length}</span> {t("applicants")}
         <span className="px-2 text-border">•</span>
         <span className="font-medium text-foreground">{isLoading ? "—" : highMatchCount}</span> {t("highMatch")}
@@ -869,43 +857,32 @@ export default function EmployerApplicationsPage() {
         <span className="font-medium text-foreground">{isLoading ? "—" : selectedStageCount}</span> {t("selected")}
       </div>
 
-      <div
-        role="tablist"
-        aria-label={t("pipelineStages")}
-        className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0"
-      >
-        {[{ value: "all", label: t("allStatuses") }, ...pipelineStages].map((stage) => {
-          const active = statusFilter === stage.value;
-          return (
-            <button
-              key={stage.value}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => setStatusFilter(stage.value)}
-              className={`min-h-11 shrink-0 rounded-xl border px-4 text-sm font-medium transition-colors ${
-                active
-                  ? "border-primary/30 bg-primary/10 text-primary"
-                  : "border-border/60 bg-card text-muted-foreground hover:bg-muted"
-              }`}
-            >
-              {stage.label}
-            </button>
-          );
-        })}
-      </div>
-
       <section className="workspace-panel-surface rounded-[22px] p-3 sm:p-4">
 
-          <TableToolbar
-            onExportCsv={handleExportCsv}
-            onExportExcel={handleExportExcel}
-            onExportPdf={handleExportPdf}
-            className="mb-3"
-          />
+          <div className="mb-2 flex items-center gap-2 sm:mb-3">
+            <button
+              type="button"
+              onClick={() => setMobileFiltersOpen((v) => !v)}
+              aria-expanded={mobileFiltersOpen}
+              className="flex flex-1 items-center justify-between gap-3 rounded-xl border border-border bg-background/70 px-3 py-2 text-left text-sm font-semibold text-foreground sm:hidden"
+            >
+              <span className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-primary" />
+                {t("filters")}
+              </span>
+              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${mobileFiltersOpen ? "rotate-180" : ""}`} />
+            </button>
 
-          {/* Primary filter row: keep high-frequency controls visible and move refinements into Filters. */}
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(170px,1fr)_minmax(0,1.5fr)_minmax(150px,0.7fr)_auto_auto]">
+            <TableToolbar
+              onExportCsv={handleExportCsv}
+              onExportExcel={handleExportExcel}
+              onExportPdf={handleExportPdf}
+              className="shrink-0"
+            />
+          </div>
+
+          {/* Primary filter row: Job selector + search + status + sort + toggle */}
+          <div className={`grid-cols-2 gap-2 sm:grid-cols-1 xl:grid-cols-[minmax(170px,1fr)_minmax(0,1.5fr)_minmax(150px,0.7fr)_minmax(150px,0.7fr)_auto_auto] ${mobileFiltersOpen ? "grid" : "hidden sm:grid"}`}>
             <SearchableSelect
               className="h-10 w-full rounded-xl border-border bg-status-applied-bg/50 dark:border-sky-500/30 dark:bg-sky-500/10"
               options={jobOptions}
@@ -917,7 +894,7 @@ export default function EmployerApplicationsPage() {
               }}
               placeholder={t("selectJob")}
             />
-            <div className="relative">
+            <div className="relative col-span-2 sm:col-span-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={searchQuery}
@@ -930,6 +907,16 @@ export default function EmployerApplicationsPage() {
               <SearchableSelect
                 className="h-10 w-full rounded-xl border-border bg-background/70"
                 options={[
+                  { value: "all", label: t("allStatuses") },
+                  ...pipelineStages.map((s) => ({ value: s.value, label: s.label })),
+                ]}
+                value={statusFilter}
+                onValueChange={setStatusFilter}
+                placeholder={t("allStatuses")}
+              />
+              <SearchableSelect
+                className="h-10 w-full rounded-xl border-border bg-background/70"
+                options={[
                   { value: "newest", label: t("sortNewest") },
                   { value: "oldest", label: t("sortOldest") },
                   { value: "score", label: t("sortScore") },
@@ -939,14 +926,7 @@ export default function EmployerApplicationsPage() {
                 placeholder={t("sortLabel")}
                 ariaLabel={t("sortLabel")}
               />
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setShowFilters(!showFilters)}
-                aria-expanded={showFilters}
-                aria-controls="application-filter-panel"
-                className="h-10 rounded-xl border-border bg-background/80 px-3 text-sm"
-              >
+              <Button size="sm" variant="outline" onClick={() => setShowFilters(!showFilters)} className="h-10 rounded-xl border-border bg-background/80 px-3 text-sm">
                 <Filter className="mr-2 h-3.5 w-3.5" />
                 {t("filters")}
                 {(scoreRange[0] > 0 || scoreRange[1] < 100 || daysFilter || experienceRange[0] !== null || experienceRange[1] !== null || skillsFilter.length > 0) && (
@@ -1007,31 +987,7 @@ export default function EmployerApplicationsPage() {
           )}
 
       {showFilters && (
-        <>
-        <button
-          type="button"
-          aria-label={t("closeFilters")}
-          onClick={() => setShowFilters(false)}
-          className="fixed inset-0 z-[94] bg-black/50 backdrop-blur-sm sm:hidden"
-        />
-        <div
-          id="application-filter-panel"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="application-filter-title"
-          className="fixed inset-x-0 bottom-0 z-[95] grid max-h-[82vh] gap-4 overflow-y-auto rounded-t-3xl border border-border/60 bg-background p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl sm:static sm:mt-3 sm:max-h-none sm:grid-cols-2 sm:overflow-visible sm:rounded-[20px] sm:bg-background/60 sm:pb-4 sm:shadow-none lg:grid-cols-4"
-        >
-          <div className="col-span-full flex items-center justify-between sm:hidden">
-            <h2 id="application-filter-title" className="text-lg font-semibold">{t("filterPanelTitle")}</h2>
-            <button
-              type="button"
-              onClick={() => setShowFilters(false)}
-              aria-label={t("closeFilters")}
-              className="flex h-11 w-11 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
+        <div className="mt-3 grid grid-cols-2 gap-2 rounded-[20px] border border-border/60 bg-background/60 p-2.5 sm:gap-4 sm:p-4 lg:grid-cols-4">
           {/* AI Score Range */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("aiScoreRange")}</label>
@@ -1190,7 +1146,6 @@ export default function EmployerApplicationsPage() {
             </div>
           )}
         </div>
-        </>
       )}
       </section>
 
@@ -1616,7 +1571,7 @@ function TableView({
   }
 
   return (
-    <section className="workspace-panel-surface overflow-hidden rounded-[24px]">
+    <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-[24px]">
       <div className="hidden items-center gap-3 border-b border-border/70 bg-background/50 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground lg:grid" style={{ gridTemplateColumns: gridCols }}>
         <span />
         <span>{t("candidate")}</span>
@@ -2182,7 +2137,7 @@ function ApplicationDetailsPanel({
 
             {/* Row 1: AI Match Score | Application Overview (2 equal cards) */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="workspace-glass-panel rounded-2xl p-4">
+              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("aiMatchScore")}</p>
                 {app.aiMatchScore != null ? (
                   <div className="mt-3">
@@ -2221,7 +2176,7 @@ function ApplicationDetailsPanel({
                 )}
               </div>
 
-              <div className="workspace-glass-panel rounded-2xl p-4">
+              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("applicationOverview")}</p>
                 <div className="mt-3 space-y-2 text-sm">
                   <div className="flex items-center justify-between">
@@ -2241,7 +2196,7 @@ function ApplicationDetailsPanel({
 
             {/* Row 3: Skills | Experience (2 cards) */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="workspace-glass-panel rounded-2xl p-4">
+              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("keySkills")}</p>
                 {app.jobSeekerId?.skills?.length ? (
                   <div className="mt-3 flex flex-wrap gap-1.5">
@@ -2256,7 +2211,7 @@ function ApplicationDetailsPanel({
                 )}
               </div>
 
-              <div className="workspace-glass-panel rounded-2xl p-4">
+              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("experience")}</p>
                 {app.jobSeekerId?.experience?.length ? (
                   <div className="mt-3 space-y-2">
@@ -2306,7 +2261,7 @@ function ApplicationDetailsPanel({
             ) : null}
 
             {/* Row 5: Quick Actions (full width) */}
-            <div className="workspace-glass-panel rounded-2xl p-4">
+            <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("quickActions")}</p>
               <div className="mt-3 grid grid-cols-3 gap-2">
                 <Button variant="outline" size="sm" className="h-9 rounded-xl border-border text-[11px]" onClick={() => setActiveTab("notes")}>
@@ -3432,3 +3387,4 @@ function ActivityTimelinePanel({
   if (!mounted) return null;
   return createPortal(sheet, document.body);
 }
+

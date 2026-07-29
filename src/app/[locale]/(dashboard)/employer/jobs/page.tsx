@@ -86,6 +86,9 @@ export default function EmployerJobsPage() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [jobDraftsCount, setJobDraftsCount] = useState(0);
   const [aiDraftsCount, setAiDraftsCount] = useState(0);
+  // Phones show one collapsed row per job; tapping the header expands it. Desktop
+  // ignores this entirely (details are always `sm:block`).
+  const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
 
   const [pendingJobAction, setPendingJobAction] = useState<{ jobId: string; action: PendingJobAction } | null>(null);
   const debouncedSearch = useDebounce(search, 300);
@@ -416,7 +419,7 @@ export default function EmployerJobsPage() {
   }
 
   return (
-    <div className="page-container space-y-3 sm:space-y-6">
+    <div className="page-container space-y-6">
       {ConfirmDialogNode}
       <PageHero
         title={t("heroTitle")}
@@ -424,14 +427,15 @@ export default function EmployerJobsPage() {
         eyebrow={t("heroBadge")}
         actions={can("jobs", "create") && (isLoading || jobs.length > 0 || hasActiveFilters) ? (
           <>
-            <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
+            {/* Hidden on phones — the same totals sit in the stat grid right below. */}
+            <div className="workspace-glass-panel hidden rounded-2xl px-4 py-3 text-left sm:block">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("portfolioLabel")}</p>
               <p className="mt-1 text-lg font-semibold text-foreground">{total} {t("totalJobsSuffix")}</p>
               <p className="text-xs text-muted-foreground">{t("portfolioDescription")}</p>
             </div>
             <Button
               onClick={() => router.push(`/${locale}/employer/jobs/ai-create`)}
-              className="h-11 gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+              className="h-10 w-full gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:h-11 sm:w-auto"
             >
               <Plus className="h-4 w-4" />
               {t("postAJob")}
@@ -441,91 +445,77 @@ export default function EmployerJobsPage() {
       />
 
       <div className="space-y-3">
-        <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
-          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statActiveLabel")}</p>
-                <p className="mt-1 text-2xl sm:mt-3 sm:text-3xl font-semibold tracking-tight text-foreground">{activeJobs}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{t("statActiveDescription")}</p>
-              </div>
-              <div className="workspace-tone-emerald rounded-2xl p-2.5">
-                <ShieldCheck className="h-5 w-5" />
-              </div>
-            </div>
-          </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statDraftsLabel")}</p>
-                <p className="mt-1 text-2xl sm:mt-3 sm:text-3xl font-semibold tracking-tight text-foreground">{draftJobs}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{t("statDraftsDescription")}</p>
-              </div>
-              <div className="workspace-tone-amber rounded-2xl p-2.5">
-              <BriefcaseBusiness className="h-5 w-5" />
+        {/* Phones get all four counters on one row: label + number only. Icon and
+            description are desktop-only so each tile survives an ~80px column. */}
+        <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-2 sm:gap-3 xl:grid-cols-4">
+          {[
+            { label: t("statActiveLabel"), value: activeJobs, description: t("statActiveDescription"), Icon: ShieldCheck, tone: "workspace-tone-emerald" },
+            { label: t("statDraftsLabel"), value: draftJobs, description: t("statDraftsDescription"), Icon: BriefcaseBusiness, tone: "workspace-tone-amber" },
+            { label: t("statPausedLabel"), value: pausedJobs, description: t("statPausedDescription"), Icon: PauseCircle, tone: "workspace-tone-sky" },
+            { label: t("statOpeningsLabel"), value: totalOpenings, description: t("statOpeningsDescription"), Icon: Users, tone: "workspace-tone-sky" },
+          ].map(({ label, value, description, Icon, tone }) => (
+            <div key={label} className="workspace-glass-panel rounded-xl p-2 sm:rounded-2xl sm:p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-[9px] font-semibold uppercase tracking-wide text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">{label}</p>
+                  <p className="mt-0.5 text-lg font-semibold tracking-tight text-foreground sm:mt-3 sm:text-3xl">{value}</p>
+                  <p className="mt-1 hidden text-xs text-muted-foreground sm:block">{description}</p>
+                </div>
+                <div className={`${tone} hidden rounded-2xl p-2.5 sm:block`}>
+                  <Icon className="h-5 w-5" />
+                </div>
               </div>
             </div>
-          </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statPausedLabel")}</p>
-                <p className="mt-1 text-2xl sm:mt-3 sm:text-3xl font-semibold tracking-tight text-foreground">{pausedJobs}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{t("statPausedDescription")}</p>
-              </div>
-              <div className="workspace-tone-sky rounded-2xl p-2.5">
-              <PauseCircle className="h-5 w-5" />
-              </div>
-            </div>
-          </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statOpeningsLabel")}</p>
-                <p className="mt-1 text-2xl sm:mt-3 sm:text-3xl font-semibold tracking-tight text-foreground">{totalOpenings}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{t("statOpeningsDescription")}</p>
-              </div>
-              <div className="workspace-tone-sky rounded-2xl p-2.5">
-              <Users className="h-5 w-5" />
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
 
-        {/* Filter jobs — toggle + filters live in one card and expand in place */}
+        {/* Filter jobs — toggle + filters live in one card and expand in place.
+            Export sits on the same row instead of a standalone toolbar strip. */}
         <div className="workspace-panel-surface overflow-hidden rounded-2xl">
-          <button
-            type="button"
-            onClick={() => setFiltersOpen((v) => !v)}
-            aria-expanded={filtersOpen}
-            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-primary/5"
-          >
-            <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              <SlidersHorizontal className="h-4 w-4 text-primary" />
-              {t("filterHeading")}
-              {hasActiveFilters && (
-                <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
-              )}
-            </span>
-            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${filtersOpen ? "rotate-180" : ""}`} />
-          </button>
+          <div className="flex items-center gap-1 pe-2">
+            <button
+              type="button"
+              onClick={() => setFiltersOpen((v) => !v)}
+              aria-expanded={filtersOpen}
+              className="flex min-w-0 flex-1 items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-primary/5"
+            >
+              <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                <SlidersHorizontal className="h-4 w-4 text-primary" />
+                {t("filterHeading")}
+                {hasActiveFilters && (
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
+                )}
+              </span>
+              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${filtersOpen ? "rotate-180" : ""}`} />
+            </button>
+            {jobs.length > 0 && (
+              <TableToolbar
+                className="shrink-0"
+                onExportCsv={handleExportCsv}
+                onExportExcel={handleExportExcel}
+                onExportPdf={handleExportPdf}
+              />
+            )}
+          </div>
 
           {filtersOpen && (
-            <div className="border-t border-border/60 p-4 sm:p-5">
-              <p className="text-sm text-muted-foreground">{t("filterDescription")}</p>
+            <div className="border-t border-border/60 p-3 sm:p-5">
+              <p className="hidden text-sm text-muted-foreground sm:block">{t("filterDescription")}</p>
 
-              <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_220px_220px]">
-                <div className="relative min-w-0">
+              {/* Two controls per row on phones — eight stacked full-width inputs
+                  turned the open filter panel into three screens of scrolling. */}
+              <div className="mt-3 grid grid-cols-2 gap-2 sm:mt-4 sm:gap-3 xl:grid-cols-[minmax(0,1fr)_220px_220px]">
+                <div className="relative col-span-2 min-w-0 xl:col-span-1">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     placeholder={t("searchJobsPlaceholder")}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="h-11 rounded-xl border-border bg-background/70 pl-9 text-sm shadow-none"
+                    className="h-10 rounded-xl border-border bg-background/70 pl-9 text-sm shadow-none sm:h-11"
                   />
                 </div>
                 <SearchableSelect
-                  className="h-11 w-full rounded-xl border-border bg-background/70"
+                  className="h-10 w-full rounded-xl border-border bg-background/70 sm:h-11"
                   options={[
                     { value: "all", label: t("allStatuses") },
                     { value: "active", label: t("statusActive") },
@@ -539,7 +529,7 @@ export default function EmployerJobsPage() {
                   placeholder={t("allStatuses")}
                 />
                 <SearchableSelect
-                  className="h-11 w-full rounded-xl border-border bg-background/70"
+                  className="h-10 w-full rounded-xl border-border bg-background/70 sm:h-11"
                   options={[
                     { value: "default", label: t("sortDefault") },
                     { value: "applications_desc", label: t("sortMostApplications") },
@@ -553,9 +543,9 @@ export default function EmployerJobsPage() {
                 />
               </div>
 
-              <div className="mt-3 grid gap-3 xl:grid-cols-[220px_220px_220px_minmax(0,1fr)_minmax(0,1fr)_150px]">
+              <div className="mt-2 grid grid-cols-2 gap-2 sm:mt-3 sm:gap-3 xl:grid-cols-[220px_220px_220px_minmax(0,1fr)_minmax(0,1fr)_150px]">
                 <SearchableSelect
-                  className="h-11 w-full rounded-xl border-border bg-background/70"
+                  className="h-10 w-full rounded-xl border-border bg-background/70 sm:h-11"
                   options={[
                     { value: "all", label: t("allWorkModes") },
                     { value: "onsite", label: t("workModeOnsite") },
@@ -567,7 +557,7 @@ export default function EmployerJobsPage() {
                   placeholder={t("allWorkModes")}
                 />
                 <SearchableSelect
-                  className="h-11 w-full rounded-xl border-border bg-background/70"
+                  className="h-10 w-full rounded-xl border-border bg-background/70 sm:h-11"
                   options={[
                     { value: "all", label: t("allSalaryVisibility") },
                     { value: "shown", label: t("salaryShown") },
@@ -605,7 +595,7 @@ export default function EmployerJobsPage() {
                         void handleApplyAiSearch();
                       }
                     }}
-                    className="h-11 rounded-xl border-border bg-background/70 pl-9 text-sm shadow-none"
+                    className="h-10 rounded-xl border-border bg-background/70 pl-9 text-sm shadow-none sm:h-11"
                   />
                 </div>
               </div>
@@ -643,7 +633,9 @@ export default function EmployerJobsPage() {
       </div>
 
       {/* ── Resume unfinished work (banners — self-hide when none) ── */}
-      <div className={`grid gap-3 ${jobDraftsCount > 0 && aiDraftsCount > 0 ? "sm:grid-cols-2" : "grid-cols-1"}`}>
+      {/* Stays mounted so the children can report their counts, but drops out of
+          layout when both are empty — otherwise it burns two space-y-6 gaps. */}
+      <div className={`gap-3 ${jobDraftsCount === 0 && aiDraftsCount === 0 ? "hidden" : "grid"} ${jobDraftsCount > 0 && aiDraftsCount > 0 ? "sm:grid-cols-2" : "grid-cols-1"}`}>
         <DraftJobsCard locale={locale} variant="banner" onCountChange={setJobDraftsCount} />
         <DraftExtractionsCard locale={locale} variant="banner" onCountChange={setAiDraftsCount} />
       </div>
@@ -695,12 +687,7 @@ export default function EmployerJobsPage() {
           )}
         </div>
       ) : (
-        <div className="space-y-4">
-          <TableToolbar
-            onExportCsv={handleExportCsv}
-            onExportExcel={handleExportExcel}
-            onExportPdf={handleExportPdf}
-          />
+        <div className="space-y-2 sm:space-y-4">
           {jobs.map((job) => {
             const posted = new Date(job.createdAt).toLocaleDateString(locale === "ar" ? "ar" : "en-US", { month: "short", day: "numeric", year: "numeric" });
             const expires = job.expiresAt ? new Date(job.expiresAt).toLocaleDateString(locale === "ar" ? "ar" : "en-US", { month: "short", day: "numeric" }) : null;
@@ -712,27 +699,34 @@ export default function EmployerJobsPage() {
             const isWithdrawing = pendingJobAction?.jobId === job._id && pendingJobAction.action === "withdraw";
             const jobSummary = getJobSummary(job);
             const isUnpublished = job.status === "draft" || job.status === "pending_approval";
+            const isExpanded = expandedJobId === job._id;
+            const collapsible = isExpanded ? "" : "hidden sm:block";
 
             return (
               <article
                 key={job._id}
-                className="workspace-panel-surface rounded-[20px] p-3 transition-all hover:-translate-y-0.5 hover:border-border sm:p-3.5"
+                className="workspace-panel-surface rounded-[20px] p-2 transition-all hover:-translate-y-0.5 hover:border-border sm:p-3.5"
               >
                 <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_268px] xl:items-start">
                   <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-base font-semibold tracking-tight text-foreground">{job.title}</h3>
-                      <Badge className={`${STATUS_COLORS[job.status] ?? ""} border px-2 py-0.5 text-[11px] font-medium`}>
-                        {t(getStatusLabelKey(job.status))}
-                      </Badge>
-                      {job.clonedFrom ? <Badge variant="outline" className="border-status-applied/20 bg-status-applied-bg px-2 py-0.5 text-[11px] font-medium text-status-applied dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300"><Copy className="mr-1 h-3 w-3" />{t("clonedBadge")}</Badge> : null}
-                    </div>
-                    {job.status === "draft" ? (
-                      <p className="mt-1 text-[11px] font-medium text-status-shortlisted dark:text-amber-300">{t("draftHint")}</p>
-                    ) : null}
-                    {job.status === "pending_approval" ? (
-                      <p className="mt-1 text-[11px] font-medium text-status-applied dark:text-blue-300">{t("inReviewHint")}</p>
-                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => setExpandedJobId(isExpanded ? null : job._id)}
+                      aria-expanded={isExpanded}
+                      className="flex w-full items-center gap-2 text-left sm:pointer-events-none"
+                    >
+                      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                        <h3 className="min-w-0 truncate text-base font-semibold tracking-tight text-foreground sm:whitespace-normal">{job.title}</h3>
+                        <Badge className={`${STATUS_COLORS[job.status] ?? ""} border px-2 py-0.5 text-[11px] font-medium`}>
+                          {t(getStatusLabelKey(job.status))}
+                        </Badge>
+                        {job.clonedFrom ? <Badge variant="outline" className="border-status-applied/20 bg-status-applied-bg px-2 py-0.5 text-[11px] font-medium text-status-applied dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300"><Copy className="mr-1 h-3 w-3" />{t("clonedBadge")}</Badge> : null}
+                      </div>
+                      <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform sm:hidden ${isExpanded ? "rotate-180" : ""}`} />
+                    </button>
+                    {/* Always-visible meta: location / category / salary / openings /
+                        dates / skills. A collapsed row showing only a title gave no
+                        reason to tap. Heavier content stays behind the toggle. */}
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
                       <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-muted-foreground">{formatLocation(job)}</span>
                       {job.category ? (
@@ -751,13 +745,20 @@ export default function EmployerJobsPage() {
                     </div>
 
                     {job.requirements?.skills?.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1.5">
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
                         {job.requirements.skills.slice(0, 4).map((s) => (
-                          <Badge key={s} variant="outline" className="rounded-full border-border bg-secondary/65 px-2.5 py-1 text-xs font-normal text-muted-foreground dark:border-border dark:bg-background/80 dark:text-muted-foreground">{s}</Badge>
+                          <Badge key={s} variant="outline" className="rounded-full border-border bg-secondary/65 px-2.5 py-0.5 text-[11px] font-normal text-muted-foreground dark:border-border dark:bg-background/80 dark:text-muted-foreground">{s}</Badge>
                         ))}
                       </div>
                     )}
 
+                    <div className={collapsible}>
+                    {job.status === "draft" ? (
+                      <p className="mt-1 text-[11px] font-medium text-status-shortlisted dark:text-amber-300">{t("draftHint")}</p>
+                    ) : null}
+                    {job.status === "pending_approval" ? (
+                      <p className="mt-1 text-[11px] font-medium text-status-applied dark:text-blue-300">{t("inReviewHint")}</p>
+                    ) : null}
                     {jobSummary ? (
                       <p className="mt-1.5 line-clamp-1 max-w-3xl text-xs leading-4 text-muted-foreground">{jobSummary}</p>
                     ) : null}
@@ -770,9 +771,10 @@ export default function EmployerJobsPage() {
                         { label: t("capacityStat"), value: job.maxApplicants ?? t("capacityOpen") },
                       ]}
                     />
+                    </div>
                   </div>
 
-                  <div aria-label={`Actions for ${job.title}`} role="group" className="workspace-subtle-surface flex flex-col gap-1.5 rounded-[16px] border border-border p-2 xl:self-start">
+                  <div aria-label={`Actions for ${job.title}`} role="group" className={`workspace-subtle-surface flex-col gap-1.5 rounded-[16px] border border-border p-2 xl:self-start ${isExpanded ? "flex" : "hidden sm:flex"}`}>
                     <div className="grid grid-cols-2 gap-2">
                       <Button
                         size="sm"

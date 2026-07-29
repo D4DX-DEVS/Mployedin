@@ -122,7 +122,7 @@ export default function EmployerMatchingWeightsPage() {
   const saveStateLabel = saveWeights.isPending ? "Saving changes" : saved ? "Weights saved" : "Ready to update";
 
   if (loading) return (
-    <div className="page-container space-y-3 sm:space-y-4">
+    <div className="page-container space-y-4">
       <div className="h-40 animate-pulse rounded-[28px] border border-border bg-background/70" />
       <div className="grid gap-4 lg:grid-cols-[1.35fr,0.65fr]">
         <div className="h-[28rem] animate-pulse rounded-[28px] border border-border bg-background/70" />
@@ -133,12 +133,12 @@ export default function EmployerMatchingWeightsPage() {
 
   return (
     <FeatureGate feature="matchingWeightCustomization">
-    <div className="page-container space-y-3 sm:space-y-6">
+    <div className="page-container space-y-6">
       <PageHeader
         title={t("title")}
         description={t("description")}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex w-full min-w-0 flex-nowrap items-center gap-1.5 sm:w-auto sm:gap-2 [&>button]:min-w-0 [&>button]:flex-1 [&>button]:px-2 [&>button]:text-xs sm:[&>button]:flex-none sm:[&>button]:px-3 sm:[&>button]:text-sm [&_svg]:shrink-0">
             <Button
               variant="outline"
               size="sm"
@@ -250,7 +250,6 @@ export default function EmployerMatchingWeightsPage() {
       )}
 
       <DashboardPageHeader
-        headingLevel={2}
         icon={Sliders}
         eyebrow={t("rankingControls")}
         title={t("rankingControlsDesc")}
@@ -264,7 +263,7 @@ export default function EmployerMatchingWeightsPage() {
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.35fr,0.65fr]">
         {/* Sliders */}
-        <section className="workspace-panel-surface space-y-3 sm:space-y-5 rounded-[28px] p-6">
+        <section className="workspace-panel-surface space-y-5 rounded-[28px] p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("weightBuilder")}</p>
@@ -279,33 +278,33 @@ export default function EmployerMatchingWeightsPage() {
           </div>
 
           {weightKeys.map((key) => (
-            <div key={key} className="rounded-[22px] border border-border bg-background/60 p-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div className="max-w-2xl">
-                  <label className="text-sm font-semibold text-foreground">{t(WEIGHT_LABEL_KEYS[key])}</label>
-                  <p className="mt-1 text-xs leading-5 text-muted-foreground">{t(WEIGHT_DESC_KEYS[key])}</p>
-                </div>
-                <div className="flex items-center gap-2 self-start">
-                  <Input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={weights[key]}
-                    onChange={(e) => updateWeight(key, parseInt(e.target.value) || 0)}
-                    className="h-10 w-20 border-border bg-background/80 text-center text-sm"
-                  />
-                  <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">%</span>
-                </div>
+            <div key={key} className="rounded-[22px] border border-border bg-background/60 p-3 sm:p-4">
+              <div className="max-w-2xl">
+                <label className="text-sm font-semibold text-foreground">{t(WEIGHT_LABEL_KEYS[key])}</label>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">{t(WEIGHT_DESC_KEYS[key])}</p>
               </div>
-              <input
-                type="range"
-                min={0}
-                max={100}
-                step={5}
-                value={weights[key]}
-                onChange={(e) => updateWeight(key, parseInt(e.target.value))}
-                className="mt-4 h-1.5 w-full cursor-pointer accent-sky-600"
-              />
+              {/* Number box and slider share one row — stacked they burned a
+                  full extra line of height per weight, five times over. */}
+              <div className="mt-2 flex items-center gap-2 sm:mt-3 sm:gap-3">
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={weights[key]}
+                  onChange={(e) => updateWeight(key, parseInt(e.target.value) || 0)}
+                  className="h-9 w-16 shrink-0 border-border bg-background/80 text-center text-sm sm:h-10 sm:w-20"
+                />
+                <span className="shrink-0 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">%</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={weights[key]}
+                  onChange={(e) => updateWeight(key, parseInt(e.target.value))}
+                  className="h-1.5 min-w-0 flex-1 cursor-pointer accent-sky-600"
+                />
+              </div>
             </div>
           ))}
 
@@ -330,7 +329,7 @@ export default function EmployerMatchingWeightsPage() {
         </section>
 
         {/* Visualization */}
-        <div className="space-y-3 sm:space-y-5">
+        <div className="space-y-5">
           <section className="workspace-panel-surface space-y-4 rounded-[28px] p-6">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("distribution")}</p>

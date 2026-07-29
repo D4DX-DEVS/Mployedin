@@ -101,7 +101,7 @@ export default function PortfolioPage() {
   };
 
   return (
-    <div className="space-y-3 sm:space-y-6">
+    <div className="space-y-6">
       <PageHero
         icon={FolderOpen}
         title={t("title")}
@@ -114,9 +114,9 @@ export default function PortfolioPage() {
       />
 
       {showForm && (
-        <section className="workspace-panel-surface rounded-[28px] p-3 sm:p-5 space-y-3 sm:space-y-4">
-          <h2 className="text-base font-semibold text-foreground sm:text-lg">{t("addProject")}</h2>
-          <div className="grid gap-2 sm:gap-3 sm:grid-cols-2">
+        <section className="workspace-panel-surface rounded-[28px] p-5 space-y-4">
+          <h2 className="text-lg font-semibold text-foreground">{t("addProject")}</h2>
+          <div className="grid gap-3 sm:grid-cols-2">
             <Input placeholder={t("projectTitlePlaceholder")} value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} />
             <Input placeholder={t("urlPlaceholder")} value={form.url} onChange={(e) => setForm((p) => ({ ...p, url: e.target.value }))} />
             <textarea
@@ -137,13 +137,13 @@ export default function PortfolioPage() {
         </section>
       )}
 
-      <section className="workspace-panel-surface rounded-[28px] p-3 sm:p-5">
+      <section className="workspace-panel-surface rounded-[28px] p-5">
         {loading ? (
-          <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="workspace-glass-panel rounded-2xl overflow-hidden">
                 <Skeleton className="h-40 w-full" />
-                <div className="p-3 sm:p-5 space-y-2 sm:space-y-3">
+                <div className="p-5 space-y-3">
                   <Skeleton className="h-4 w-32" />
                   <Skeleton className="h-3 w-full" />
                   <Skeleton className="h-3 w-2/3" />
@@ -152,13 +152,13 @@ export default function PortfolioPage() {
             ))}
           </div>
         ) : projects.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 sm:py-16 text-center">
-            <FolderOpen className="h-10 w-10 text-muted-foreground/40 sm:h-12 sm:w-12" />
-            <p className="mt-2 text-xs font-medium text-muted-foreground sm:mt-4 sm:text-sm">{t("empty")}</p>
-            <p className="mt-1 text-[10px] text-muted-foreground/70">{t("emptyDescription")}</p>
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <FolderOpen className="h-12 w-12 text-muted-foreground/40" />
+            <p className="mt-4 text-sm font-medium text-muted-foreground">{t("empty")}</p>
+            <p className="mt-1 text-xs text-muted-foreground/70">{t("emptyDescription")}</p>
           </div>
         ) : (
-          <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {projects.map((project) => (
               <div key={project._id} className="workspace-glass-panel rounded-2xl overflow-hidden">
                 {project.imageUrl && (
@@ -170,18 +170,18 @@ export default function PortfolioPage() {
                     />
                   </div>
                 )}
-                <div className="p-3 sm:p-5 space-y-2 sm:space-y-3">
+                <div className="p-5 space-y-3">
                   <div className="flex items-start justify-between">
-                    <p className="text-xs font-semibold text-foreground sm:text-sm">{project.title}</p>
+                    <p className="text-sm font-semibold text-foreground">{project.title}</p>
                     <Button variant="ghost" size="sm" onClick={() => deleteProject(project._id)}>
-                      <Trash2 className="h-3 w-3 text-red-400 sm:h-3.5 sm:w-3.5" />
+                      <Trash2 className="h-3.5 w-3.5 text-red-400" />
                     </Button>
                   </div>
 
-                  <p className="text-[10px] text-muted-foreground line-clamp-3 sm:text-xs">{project.description}</p>
+                  <p className="text-xs text-muted-foreground line-clamp-3">{project.description}</p>
 
                   {project.technologies.length > 0 && (
-                    <div className="flex flex-wrap gap-1 sm:gap-1.5">
+                    <div className="flex flex-wrap gap-1">
                       {project.technologies.map((t) => (
                         <span key={t} className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{t}</span>
                       ))}

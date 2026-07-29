@@ -139,7 +139,7 @@ export default function SavedSearchesPage() {
   };
 
   return (
-    <div className="space-y-3 sm:space-y-6">
+    <div className="space-y-6">
       <DashboardPageHeader
         icon={Bell}
         eyebrow={t("title")}
@@ -157,9 +157,9 @@ export default function SavedSearchesPage() {
       />
 
       {showForm && (
-        <section className="workspace-panel-surface rounded-[28px] p-3 sm:p-5 space-y-3 sm:space-y-4">
-          <h2 className="text-base font-semibold text-foreground sm:text-lg">{t("createTitle")}</h2>
-          <div className="grid gap-2 sm:gap-3 sm:grid-cols-2">
+        <section className="workspace-panel-surface rounded-[28px] p-5 space-y-4">
+          <h2 className="text-lg font-semibold text-foreground">{t("createTitle")}</h2>
+          <div className="grid gap-3 sm:grid-cols-2">
             <Input placeholder={t("namePlaceholder")} value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} />
             <Input placeholder={t("queryPlaceholder")} value={form.query} onChange={(e) => setForm((p) => ({ ...p, query: e.target.value }))} />
             <Input placeholder={t("locationPlaceholder")} value={form.location} onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))} />

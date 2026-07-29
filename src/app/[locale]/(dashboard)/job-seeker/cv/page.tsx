@@ -467,7 +467,7 @@ export default function CVBuilderPage() {
   /* ── Loading state ── */
   if (loading) {
     return (
-      <div className="page-container space-y-3 sm:space-y-6">
+      <div className="page-container space-y-6">
         <div className="flex items-center justify-between">
           <div className="space-y-2">
             <Skeleton className="h-7 w-48" />
@@ -475,10 +475,10 @@ export default function CVBuilderPage() {
           </div>
           <Skeleton className="h-10 w-32 rounded-xl" />
         </div>
-        <div className="grid gap-3 sm:gap-6 lg:grid-cols-[2fr_1fr]">
-          <div className="space-y-3 sm:space-y-4">
+        <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+          <div className="space-y-4">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="rounded-2xl border border-border/60 bg-card p-3 sm:p-5 space-y-2 sm:space-y-3">
+              <div key={i} className="rounded-2xl border border-border/60 bg-card p-5 space-y-3">
                 <Skeleton className="h-5 w-32" />
                 <Skeleton className="h-4 w-full" />
                 <Skeleton className="h-4 w-3/4" />
@@ -542,7 +542,7 @@ export default function CVBuilderPage() {
       )}
 
       {/* ── Split layout: Editor (left) + Live Preview (right) ── */}
-      <div className="flex flex-col lg:flex-row gap-3 sm:gap-6 items-start">
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
 
         {/* ────── LEFT: EDITOR PANEL ────── */}
         <div className={`transition-all duration-300 ${previewExpanded ? "hidden" : "w-full lg:w-[55%]"}`}>

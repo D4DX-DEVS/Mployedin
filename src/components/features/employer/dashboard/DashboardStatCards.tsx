@@ -84,31 +84,33 @@ export function DashboardStatCards({
   ];
 
   return (
-    <section className="workspace-panel-surface grid overflow-hidden rounded-2xl sm:grid-cols-2 lg:grid-cols-4">
+    // 2×2 on phones — four stacked full-width rows ate most of the fold.
+    <section className="workspace-panel-surface grid grid-cols-2 overflow-hidden rounded-2xl lg:grid-cols-4">
       {cards.map(({ labelKey, descKey, value, href, Icon, chip, secondary }, index) => (
         <Link
           key={labelKey}
           href={href}
-          className={`group relative min-w-0 p-3.5 transition-colors hover:bg-primary/[0.035] focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-500 sm:p-3 sm:p-4 ${
-            index > 0 ? "border-t border-border/60 sm:border-t-0 sm:odd:border-s lg:border-s" : ""
-          } ${index >= 2 ? "sm:border-t lg:border-t-0" : ""}`}
+          className={`group relative min-w-0 border-border/60 p-2.5 transition-colors hover:bg-primary/[0.035] focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-500 sm:p-4 ${
+            index % 2 === 1 ? "border-s" : ""
+          } ${index >= 2 ? "border-t lg:border-t-0" : ""} ${index > 0 ? "lg:border-s" : ""}`}
         >
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center justify-between gap-2">
             <span className="truncate text-[10px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
               {t(labelKey)}
             </span>
-            <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${chip}`}>
-              <Icon className="h-4 w-4" />
+            <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg sm:h-8 sm:w-8 ${chip}`}>
+              <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </span>
           </div>
-          <div className="mt-2 flex items-end justify-between gap-2">
-            <div className="text-2xl font-semibold tabular-nums tracking-tight text-foreground">{value}</div>
-            <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/50 transition-colors group-hover:text-primary" />
+          <div className="mt-1 flex items-end justify-between gap-2 sm:mt-2">
+            <div className="text-xl font-semibold tabular-nums tracking-tight text-foreground sm:text-2xl">{value}</div>
+            <ArrowUpRight className="hidden h-3.5 w-3.5 text-muted-foreground/50 transition-colors group-hover:text-primary sm:block" />
           </div>
           {secondary ? (
-            <div className="mt-1.5 text-[11px] leading-4 text-muted-foreground">{secondary}</div>
+            <div className="mt-1 text-[10px] leading-4 text-muted-foreground sm:mt-1.5 sm:text-[11px]">{secondary}</div>
           ) : (
-            <p className="mt-1.5 truncate text-[11px] leading-4 text-muted-foreground">{t(descKey)}</p>
+            // Half-sentence truncations read as broken in a 2-up mobile tile.
+            <p className="mt-1 hidden truncate text-[10px] leading-4 text-muted-foreground sm:mt-1.5 sm:block sm:text-[11px]">{t(descKey)}</p>
           )}
         </Link>
       ))}

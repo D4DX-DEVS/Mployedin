@@ -270,7 +270,7 @@ export default function TeamManagementPage() {
           </Button>
         </div>
       ) : (
-        <div className="space-y-3 sm:space-y-4">
+        <div className="space-y-4">
           {/* ── Search & Export Toolbar ── */}
           <TableToolbar
             search={search}
