@@ -459,9 +459,7 @@ export default function SuperAgentEmployersPage() {
                 <TableHead className="min-w-[180px]"><SortHeader field="name">{t("companyHeader")}</SortHeader></TableHead>
                 <TableHead className="min-w-[180px]"><SortHeader field="email">{t("contactHeader")}</SortHeader></TableHead>
                 <TableHead>{t("industryHeader")}</TableHead>
-                <TableHead>{t("locationHeader")}</TableHead>
                 <TableHead>{t("agentHeader")}</TableHead>
-                <TableHead>{tc("status")}</TableHead>
                 <TableHead className="w-[80px] text-right">{tc("actions")}</TableHead>
               </TableRow>
             </TableHeader>
@@ -469,14 +467,14 @@ export default function SuperAgentEmployersPage() {
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    {Array.from({ length: 7 }).map((_, j) => (
+                    {Array.from({ length: 5 }).map((_, j) => (
                       <TableCell key={j}><div className="h-4 w-3/4 animate-pulse rounded bg-muted/50" /></TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : employers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-16 text-center">
+                  <TableCell colSpan={5} className="py-16 text-center">
                     <div className="flex flex-col items-center gap-3">
                       <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-sky-50 text-sky-600">
                         <Building2 className="h-6 w-6" />
@@ -490,19 +488,21 @@ export default function SuperAgentEmployersPage() {
                 </TableRow>
               ) : employers.map((em) => (
                 <TableRow key={em._id} className="bg-transparent">
-                  <TableCell className="font-medium text-foreground">{em.companyName ?? em.name}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{em.email}</TableCell>
-                  <TableCell className="text-muted-foreground">{em.industry ?? "—"}</TableCell>
-                  <TableCell className="text-muted-foreground">{em.location ?? "—"}</TableCell>
-                  <TableCell className="text-muted-foreground">{em.assignedAgent?.name ?? t("unassigned")}</TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-1.5">
+                    <span className="block font-medium text-foreground">{em.companyName ?? em.name}</span>
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
                       {em.isAgentVerified && (
                         <span className="text-[10px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full font-medium">{t("verified")}</span>
                       )}
                       <StatusBadge status={em.isActive ? "active" : "inactive"} />
                     </div>
                   </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{em.email}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    <span className="block">{em.industry ?? "—"}</span>
+                    <span className="mt-1 block text-xs">{em.location ?? "—"}</span>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{em.assignedAgent?.name ?? t("unassigned")}</TableCell>
                   <TableCell className="text-right">
                     <button
                       onClick={() => handleSwitchToEmployerView(em._id)}

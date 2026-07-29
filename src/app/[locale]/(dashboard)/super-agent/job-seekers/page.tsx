@@ -194,11 +194,8 @@ export default function SuperAgentJobSeekersPage() {
             <TableHeader>
               <TableRow className="bg-background/60 hover:bg-background/60">
                 <TableHead className="min-w-[180px]">{tc("name")}</TableHead>
-                <TableHead>{t("location")}</TableHead>
                 <TableHead>{t("currentRole")}</TableHead>
-                <TableHead>{t("experience")}</TableHead>
                 <TableHead>{t("profile")}</TableHead>
-                <TableHead>{t("skills")}</TableHead>
                 <TableHead>{tc("date")}</TableHead>
               </TableRow>
             </TableHeader>
@@ -206,14 +203,14 @@ export default function SuperAgentJobSeekersPage() {
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    {Array.from({ length: 7 }).map((_, j) => (
+                    {Array.from({ length: 4 }).map((_, j) => (
                       <TableCell key={j}><div className="h-4 w-3/4 animate-pulse rounded bg-muted/50" /></TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : seekers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-16 text-center">
+                  <TableCell colSpan={4} className="py-16 text-center">
                     <div className="flex flex-col items-center gap-3">
                       <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-sky-50 text-sky-600">
                         <Users className="h-6 w-6" />
@@ -230,15 +227,15 @@ export default function SuperAgentJobSeekersPage() {
                   <TableCell>
                     <p className="font-medium text-foreground">{s.fullName}</p>
                     <p className="text-xs text-muted-foreground">{s.email}</p>
-                  </TableCell>
-                  <TableCell>
                     <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
                       <MapPin className="h-3.5 w-3.5" />
                       {[s.city, s.country].filter(Boolean).join(", ") || "—"}
                     </span>
                   </TableCell>
-                  <TableCell className="text-sm">{s.currentJobTitle || "—"}</TableCell>
-                  <TableCell className="text-sm">{s.experienceYears != null ? `${s.experienceYears} ${t("yearsAbbr")}` : "—"}</TableCell>
+                  <TableCell className="text-sm">
+                    <span className="block">{s.currentJobTitle || "—"}</span>
+                    <span className="mt-1 block text-xs text-muted-foreground">{s.experienceYears != null ? `${s.experienceYears} ${t("yearsAbbr")}` : "—"}</span>
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <div className="h-2 w-16 overflow-hidden rounded-full bg-muted">
@@ -249,9 +246,7 @@ export default function SuperAgentJobSeekersPage() {
                       </div>
                       <span className="text-xs text-muted-foreground">{s.profileCompletion ?? 0}%</span>
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
+                    <div className="mt-1.5 flex flex-wrap gap-1">
                       {(s.skills ?? []).slice(0, 3).map((sk) => (
                         <span key={sk} className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{sk}</span>
                       ))}

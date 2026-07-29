@@ -621,6 +621,13 @@ body {
   }
 
   .dashboard-shell-workspace {
+    --workspace-radius-hero: 1rem;
+    --workspace-radius-panel: 1rem;
+    --workspace-radius-card: 0.75rem;
+    --workspace-radius-control: 0.625rem;
+    --workspace-panel-padding-mobile: 0.75rem;
+    --workspace-panel-padding-desktop: 1.25rem;
+    --workspace-section-gap: 1rem;
     background:
       radial-gradient(circle at top left, hsl(var(--brand-cyan) / 0.07), transparent 18%),
       linear-gradient(180deg, hsl(var(--surface-2)), hsl(var(--secondary) / 0.96));
@@ -738,6 +745,7 @@ body {
 
   .workspace-hero-surface {
     border: 1px solid hsl(var(--border) / 0.78);
+    border-radius: var(--workspace-radius-hero);
     background:
       radial-gradient(circle at top left, hsl(var(--brand-cyan) / 0.18), transparent 38%),
       linear-gradient(135deg, hsl(var(--card) / 0.98), hsl(var(--surface-3) / 0.92));
@@ -808,10 +816,10 @@ body {
   }
 
   .workspace-glass-panel {
-    border: 1px solid hsl(var(--border) / 0.76);
-    background: hsl(var(--card) / 0.82);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid hsl(var(--border) / 0.72);
+    background: hsl(var(--card));
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 
   .workspace-panel-surface {
@@ -821,8 +829,16 @@ body {
   }
 
   .workspace-subtle-surface {
-    border: 1px solid hsl(var(--border) / 0.78);
-    background: hsl(var(--secondary) / 0.62);
+    border: 1px solid hsl(var(--border) / 0.72);
+    background: hsl(var(--card));
+  }
+
+  .dashboard-shell-workspace .workspace-glass-panel,
+  .dashboard-shell-workspace .workspace-subtle-surface {
+    /* Intentional design-system override: legacy routes carry one-off
+       rounded-[22px]/rounded-3xl utilities. Nested workspace surfaces must
+       remain visually subordinate to their 16px parent panels. */
+    border-radius: var(--workspace-radius-card) !important;
   }
 
   .workspace-muted-pill {

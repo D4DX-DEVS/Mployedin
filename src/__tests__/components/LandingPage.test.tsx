@@ -24,6 +24,7 @@ describe("LandingPage", () => {
   beforeEach(() => {
     fetchMock.mockReset();
     fetchMock.mockResolvedValue({
+      ok: true,
       json: async () => ({
         banners: [
           {

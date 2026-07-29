@@ -1,0 +1,16 @@
+export function escapeHtml(value: unknown): string {
+  return String(value ?? "").replace(/[&<>"']/g, (character) => {
+    const entities: Record<string, string> = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    };
+    return entities[character];
+  });
+}
+
+export function sanitizeEmailSubject(value: unknown): string {
+  return String(value ?? "").replace(/[\r\n]+/g, " ").trim();
+}

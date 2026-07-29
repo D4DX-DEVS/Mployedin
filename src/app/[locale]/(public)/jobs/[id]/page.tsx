@@ -12,6 +12,7 @@ import SocialShare from "@/components/features/public/SocialShare";
 import { SimilarJobs } from "@/components/features/job-seeker/SimilarJobs";
 import RelativeDate from "@/components/shared/RelativeDate";
 import { MarkdownRenderer } from "@/components/shared/MarkdownRenderer";
+import { serializeJsonLd } from "@/lib/security/jsonLd";
 
 interface PageProps {
   params: Promise<{ locale: string; id: string }>;
@@ -176,7 +177,7 @@ export default async function JobDetailPage({ params }: PageProps) {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
       <TrackJobView jobId={String(job._id)} />
 

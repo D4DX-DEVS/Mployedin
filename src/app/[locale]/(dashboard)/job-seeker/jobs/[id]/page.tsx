@@ -14,6 +14,7 @@ import { SimilarJobs } from "@/components/features/job-seeker/SimilarJobs";
 import { SkillInsights } from "@/components/features/job-seeker/skills/SkillInsights";
 import RelativeDate from "@/components/shared/RelativeDate";
 import { ShareJob } from "@/components/shared/ShareJob";
+import { serializeJsonLd } from "@/lib/security/jsonLd";
 
 interface PageProps {
   params: Promise<{ locale: string; id: string }>;
@@ -197,7 +198,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
       <TrackJobView jobId={String(job._id)} />
 

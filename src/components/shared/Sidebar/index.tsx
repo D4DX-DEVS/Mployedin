@@ -29,7 +29,6 @@ export function Sidebar({
   userRole,
   mobileOpen = false,
   onMobileClose,
-  companyLogo,
 }: SidebarProps) {
   const pathname = usePathname();
   const { data: session, status } = useSession();
@@ -49,24 +48,207 @@ export function Sidebar({
   const usesModernWorkspaceShell = effectiveRole === "admin" || effectiveRole === "employer" || effectiveRole === "agent" || effectiveRole === "super_agent";
   const usesDualTierLayout = effectiveRole === "admin" || effectiveRole === "employer" || effectiveRole === "agent" || effectiveRole === "super_agent";
   const usesInlineWorkspaceSidebar = usesModernWorkspaceShell && !usesDualTierLayout;
-  const workspaceLabel = effectiveRole === "super_agent"
-    ? t("superAgentWorkspace")
-    : effectiveRole === "admin"
-      ? t("adminWorkspace")
-    : effectiveRole === "agent"
-      ? t("agentWorkspace")
-      : t("employerWorkspace");
   const usesLightWorkspaceSidebar = false;
-  const userImage = session?.user?.image;
-  const displayImage = companyLogo ?? userImage;
-  const [imageLoadFailed, setImageLoadFailed] = useState(false);
   const mobileSidebarRef = useRef<HTMLElement | null>(null);
 
-  useEffect(() => {
-    setImageLoadFailed(false);
-  }, [displayImage]);
-
   const allMainItems = navGroups.flatMap((group) => group.items);
+
+  const rootItem = (title: string) =>
+    allMainItems.find((item) => item.title === title);
+  const childItems = (rootTitle: string, titles: string[]) => {
+    const children = rootItem(rootTitle)?.children ?? [];
+    return titles
+      .map((title) => children.find((item) => item.title === title))
+      .filter((item): item is NavItem => Boolean(item));
+  };
+  const standaloneAsChild = (title: string, group?: string, groupAr?: string) => {
+    const item = rootItem(title);
+    return item ? { ...item, group, groupAr } : undefined;
+  };
+  const compactChildren = (
+    items: Array<NavItem | undefined>,
+    group?: string,
+    groupAr?: string
+  ) =>
+    items
+      .filter((item): item is NavItem => Boolean(item))
+      .map((item) => ({ ...item, group: item.group ?? group, groupAr: item.groupAr ?? groupAr }));
+
+  const adminPrimaryTitles = ["Dashboard", "Recruitment", "People", "Finance", "CMS / Content"];
+  const adminMoreChildren = allMainItems
+    .filter((item) => !adminPrimaryTitles.includes(item.title))
+    .map((item) => ({ ...item, group: undefined, groupAr: undefined }));
+  const adminMobileItems: NavItem[] = [
+    ...adminPrimaryTitles.map(rootItem).filter((item): item is NavItem => Boolean(item)),
+    {
+      title: "More Admin Tools",
+      titleAr: "المزيد من أدوات الإدارة",
+      href: adminMoreChildren[0]?.href ?? `/${locale}/admin/reports`,
+      icon: "Grid3x3",
+      description: "Reports, platform data, system, exhibitions and communication",
+      descriptionAr: "التقارير وبيانات المنصة والنظام والمعارض والتواصل",
+      children: adminMoreChildren,
+    },
+  ];
+
+  const agentTools = rootItem("Tools")?.children ?? [];
+  const findAgentTool = (title: string) => agentTools.find((item) => item.title === title);
+  const agentMobileItems: NavItem[] = [
+    rootItem("Dashboard"),
+    {
+      ...(rootItem("Hiring") ?? {
+        title: "Hiring",
+        titleAr: "التوظيف",
+        href: `/${locale}/agent/jobs`,
+        icon: "Briefcase" as const,
+      }),
+      children: [
+        ...childItems("Hiring", ["Jobs", "Candidates", "Job Seekers", "Interviews"]),
+        ...compactChildren([findAgentTool("Offers")]),
+        ...childItems("Hiring", ["Placements"]),
+      ],
+    },
+    {
+      title: "Accounts",
+      titleAr: "الحسابات",
+      href: `/${locale}/agent/employers`,
+      icon: "Building2",
+      description: "Employers, leads and referral links",
+      descriptionAr: "أصحاب العمل والعملاء المحتملون وروابط الإحالة",
+      children: compactChildren(
+        ["Employers", "Leads", "Referral Links"].map(findAgentTool)
+      ),
+    },
+    {
+      title: "Tasks",
+      titleAr: "المهام",
+      href: `/${locale}/agent/tasks`,
+      icon: "CheckSquare",
+      description: "Tasks and calendar",
+      descriptionAr: "المهام والتقويم",
+      children: compactChildren(["Tasks", "Calendar"].map(findAgentTool)),
+    },
+    {
+      title: "Messages",
+      titleAr: "الرسائل",
+      href: `/${locale}/agent/messages`,
+      icon: "MessageSquare",
+      description: "Employer messages and team chat",
+      descriptionAr: "رسائل أصحاب العمل ودردشة الفريق",
+      children: compactChildren([
+        standaloneAsChild("Messages"),
+        standaloneAsChild("Team Chat"),
+      ]),
+    },
+    {
+      title: "More",
+      titleAr: "المزيد",
+      href: `/${locale}/agent/reports`,
+      icon: "Grid3x3",
+      description: "Performance, finance and resources",
+      descriptionAr: "الأداء والمالية والموارد",
+      children: [
+        ...compactChildren(
+          ["Reports", "Targets", "Target Report"].map(findAgentTool),
+          "Performance",
+          "الأداء"
+        ),
+        ...compactChildren(
+          ["Commissions", "Commission Report", "Invoices"].map(findAgentTool),
+          "Finance",
+          "المالية"
+        ),
+        ...compactChildren(
+          [
+            standaloneAsChild("Exhibition Requests"),
+            standaloneAsChild("Resource Downloads"),
+          ],
+          "Resources",
+          "الموارد"
+        ),
+      ],
+    },
+  ].filter((item): item is NavItem => Boolean(item));
+
+  const superOverview = rootItem("Overview")?.children ?? [];
+  const findSuperOverview = (title: string) =>
+    superOverview.find((item) => item.title === title);
+  const superAgentMobileItems: NavItem[] = [
+    rootItem("Dashboard"),
+    rootItem("Team"),
+    {
+      title: "Hiring",
+      titleAr: "التوظيف",
+      href: `/${locale}/super-agent/jobs`,
+      icon: "Briefcase",
+      description: "Team hiring pipeline",
+      descriptionAr: "مسار توظيف الفريق",
+      children: compactChildren(
+        ["Jobs", "Applications", "Interviews", "Placements"].map(findSuperOverview)
+      ),
+    },
+    {
+      title: "Performance",
+      titleAr: "الأداء",
+      href: `/${locale}/super-agent/reports`,
+      icon: "BarChart2",
+      description: "Team performance, finance and insights",
+      descriptionAr: "أداء الفريق والمالية والرؤى",
+      children: [
+        ...compactChildren(
+          [{
+            title: "Job Approvals",
+            titleAr: "الموافقات على الوظائف",
+            href: `/${locale}/super-agent/approvals`,
+            icon: "CheckCircle",
+            description: "Review jobs waiting for approval",
+            descriptionAr: "مراجعة الوظائف التي تنتظر الموافقة",
+          }],
+          "Action queue",
+          "قائمة الإجراءات"
+        ),
+        ...compactChildren(
+          ["Reports", "Targets", "Target Report", "Territory"].map(findSuperOverview),
+          "Performance",
+          "الأداء"
+        ),
+        ...compactChildren(
+          ["Commissions", "Commission Report", "Invoices"].map(findSuperOverview),
+          "Finance",
+          "المالية"
+        ),
+        ...compactChildren(
+          ["Market", "Insights"].map(findSuperOverview),
+          "Insights",
+          "الرؤى"
+        ),
+      ],
+    },
+    rootItem("Messages"),
+    {
+      title: "More",
+      titleAr: "المزيد",
+      href: `/${locale}/super-agent/exhibitions`,
+      icon: "Grid3x3",
+      description: "Exhibitions and resources",
+      descriptionAr: "المعارض والموارد",
+      children: compactChildren([
+        standaloneAsChild("Exhibition Requests"),
+        standaloneAsChild("Exhibition Analytics"),
+        standaloneAsChild("Resource Downloads"),
+      ]),
+    },
+  ].filter((item): item is NavItem => Boolean(item));
+
+  const navigationMainItems = mobileOpen
+    ? effectiveRole === "admin"
+      ? adminMobileItems
+      : effectiveRole === "agent"
+        ? agentMobileItems
+        : effectiveRole === "super_agent"
+          ? superAgentMobileItems
+          : allMainItems
+    : allMainItems;
 
   const getInitialActiveItem = () => {
     for (const item of allMainItems) {
@@ -113,6 +295,16 @@ export function Sidebar({
       document.body.style.overflow = "";
     };
   }, [mobileOpen]);
+
+  useEffect(() => {
+    // A desktop secondary tier can remain expanded while the viewport changes.
+    // Mobile navigation should always open at the root so users are not dropped
+    // into a stale submenu with no context.
+    if (mobileOpen && usesDualTierLayout) {
+      setSubmenuExpanded(false);
+      setActiveMobileNestedItem(null);
+    }
+  }, [mobileOpen, usesDualTierLayout]);
 
   useEffect(() => {
     if (!mobileOpen || !mobileSidebarRef.current) return;
@@ -240,6 +432,28 @@ export function Sidebar({
       : isChildActive
         ? "text-primary"
         : "text-muted-foreground group-hover:text-primary";
+
+    if (mobileOpen && variant === "panel" && child.children?.length) {
+      return (
+        <button
+          key={child.title}
+          type="button"
+          onClick={() => setActiveMobileNestedItem(child)}
+          className={cn(
+            "group flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-3 text-[13px] font-medium text-muted-foreground transition-all hover:bg-card/80 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/35",
+            isRtl ? "text-right" : "text-left"
+          )}
+        >
+          <ChildIcon className="h-[18px] w-[18px] shrink-0 text-muted-foreground group-hover:text-primary" />
+          <span className="min-w-0 flex-1 break-words leading-5 line-clamp-2">
+            {locale === "ar" ? child.titleAr : child.title}
+          </span>
+          {isRtl
+            ? <ChevronLeft className="h-4 w-4 shrink-0" />
+            : <ChevronRight className="h-4 w-4 shrink-0" />}
+        </button>
+      );
+    }
 
     return (
       <Link
@@ -420,9 +634,9 @@ export function Sidebar({
         "flex-1 overflow-y-auto flex flex-col sidebar-scroll",
         usesDualTierLayout ? "py-4 px-3 gap-1" : "py-4 px-3 gap-1"
       )}>
-        {allMainItems.map((item) => {
+        {navigationMainItems.map((item) => {
           const Icon = getIcon(item.icon);
-          const isSelected = activeMainTitle === item.title;
+          const isSelected = resolvedActiveMainTitle === item.title;
           const hasChildren = Boolean(item.children?.length);
           const itemSubmenuId = `sidebar-submenu-${item.title.toLowerCase().replace(/\s+/g, "-")}`;
           const showInlineChildren = usesInlineWorkspaceSidebar && hasChildren && isSelected && submenuExpanded;
@@ -685,7 +899,10 @@ export function Sidebar({
             {/* Mobile drill-down: back to the primary menu (drawer shows one tier at a time) */}
             <button
               type="button"
-              onClick={() => setSubmenuExpanded(false)}
+              onClick={() => {
+                if (activeMobileNestedItem) setActiveMobileNestedItem(null);
+                else setSubmenuExpanded(false);
+              }}
               aria-label={t("back")}
               className={cn(
                 "lg:hidden flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted",
@@ -698,7 +915,9 @@ export function Sidebar({
               "min-w-0 truncate text-base font-bold tracking-tight",
               usesDualTierLayout ? "text-foreground" : "text-sidebar-fg"
             )}>
-              {locale === "ar" ? activeMainItem.titleAr : activeMainItem.title}
+              {locale === "ar"
+                ? (activeMobileNestedItem?.titleAr ?? activeMainItem.titleAr)
+                : (activeMobileNestedItem?.title ?? activeMainItem.title)}
             </h2>
             <button
               type="button"
@@ -720,7 +939,7 @@ export function Sidebar({
             <div className="space-y-1">
               <div id={submenuId} className="space-y-4">
                 {(() => {
-                  const children = activeMainItem.children!;
+                  const children = activeMobileNestedItem?.children ?? activeMainItem.children!;
                   const allHrefs = children.map((entry) => entry.href);
                   const hasGroups = children.some((c) => c.group);
 
@@ -806,7 +1025,7 @@ export function MobileMenuButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="lg:hidden flex h-10 w-10 items-center justify-center rounded-xl border border-border/80 bg-card/80 hover:bg-card shadow-[0_18px_36px_-28px_rgba(15,23,42,0.24)] backdrop-blur-sm transition-colors"
+      className="lg:hidden flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border/80 bg-card/80 hover:bg-card shadow-[0_18px_36px_-28px_rgba(15,23,42,0.24)] backdrop-blur-sm transition-colors"
       aria-label={t("a11yOpenMenu")}
     >
       <Menu className="h-5 w-5 text-foreground" />

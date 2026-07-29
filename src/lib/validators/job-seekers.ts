@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { commonSchemas } from "./index";
+import { isLinkedInProfileUrl } from "@/lib/security/linkedin-url";
 
 /**
  * PATCH /api/job-seeker/profile — self-update by job seeker.
@@ -28,7 +29,18 @@ export const jobSeekerProfileUpdateSchema = z
     certifications: z.array(z.string().max(200).trim()).max(50).optional(),
     projects: z.array(z.record(z.string(), z.unknown())).max(30).optional(),
     socialLinks: z
-      .array(z.object({ label: z.string().max(50).trim(), url: z.string().url().max(2048) }))
+      .array(
+        z
+          .object({
+            label: z.string().max(50).trim(),
+            url: z.string().url().max(2048),
+          })
+          .refine(
+            ({ label, url }) =>
+              label.trim().toLowerCase() !== "linkedin" || isLinkedInProfileUrl(url),
+            { message: "LinkedIn links must use https://www.linkedin.com/in/..." },
+          ),
+      )
       .max(20)
       .optional(),
     coverLetter: z.string().max(10000).trim().optional(),

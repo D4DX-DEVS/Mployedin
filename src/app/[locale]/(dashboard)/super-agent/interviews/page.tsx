@@ -195,25 +195,22 @@ export default function SuperAgentInterviewsPage() {
               <TableRow className="bg-background/60 hover:bg-background/60">
                 <TableHead className="min-w-[180px]">{t("columnCandidate")}</TableHead>
                 <TableHead className="min-w-[180px]">{t("columnJob")}</TableHead>
-                <TableHead>{t("columnAgent")}</TableHead>
                 <TableHead>{t("columnType")}</TableHead>
-                <TableHead>{tc("status")}</TableHead>
                 <TableHead>{t("columnScheduled")}</TableHead>
-                <TableHead>{t("columnDuration")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    {Array.from({ length: 7 }).map((_, j) => (
+                    {Array.from({ length: 4 }).map((_, j) => (
                       <TableCell key={j}><div className="h-4 w-3/4 animate-pulse rounded bg-muted/50" /></TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : interviews.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-16 text-center">
+                  <TableCell colSpan={4} className="py-16 text-center">
                     <div className="flex flex-col items-center gap-3">
                       <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-sky-50 text-sky-600">
                         <Calendar className="h-6 w-6" />
@@ -230,23 +227,23 @@ export default function SuperAgentInterviewsPage() {
                   <TableCell>
                     <p className="font-medium text-foreground">{i.candidateName}</p>
                     {i.candidateEmail && <p className="text-xs text-muted-foreground">{i.candidateEmail}</p>}
+                    <StatusBadge status={i.status} />
                   </TableCell>
                   <TableCell>
                     <p className="text-sm">{i.jobTitle}</p>
                     {i.companyName && <p className="text-xs text-muted-foreground">{i.companyName}</p>}
+                    {i.agentName && <p className="text-xs text-muted-foreground">{i.agentName}</p>}
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{i.agentName || "—"}</TableCell>
                   <TableCell>
                     <span className="inline-flex items-center gap-1 text-sm capitalize">
                       {typeIcon(i.type)} {i.type}
                     </span>
                   </TableCell>
-                  <TableCell><StatusBadge status={i.status} /></TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {new Date(i.scheduledAt).toLocaleDateString()}{" "}
                     <span className="text-xs">{new Date(i.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                    <span className="mt-1 block text-xs">{i.duration ? t("durationMinutes", { duration: i.duration }) : "—"}</span>
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{i.duration ? t("durationMinutes", { duration: i.duration }) : "—"}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

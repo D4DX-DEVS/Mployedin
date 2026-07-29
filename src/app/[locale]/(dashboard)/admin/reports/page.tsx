@@ -198,6 +198,7 @@ function TrendBadge({ trend }: { trend: TrendData }) {
 }
 
 export default function AdminReportsPage() {
+  const locale = useLocale();
   const t = useTranslations("adminReports");
   const [stats, setStats] = useState<ReportStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -262,7 +263,7 @@ export default function AdminReportsPage() {
       indicatorClassName: "bg-blue-500",
       toneClassName: "workspace-tone-sky",
       icon: Briefcase,
-      href: "../jobs",
+      href: `/${locale}/admin/jobs`,
     },
     {
       label: t("applications"),
@@ -274,7 +275,7 @@ export default function AdminReportsPage() {
       indicatorClassName: "bg-violet-500",
       toneClassName: "workspace-tone-violet",
       icon: FileText,
-      href: "../applications",
+      href: `/${locale}/admin/applications`,
     },
     {
       label: t("placements"),
@@ -286,7 +287,7 @@ export default function AdminReportsPage() {
       indicatorClassName: totalPlacements > 0 ? "bg-emerald-500" : "bg-yellow-500",
       toneClassName: totalPlacements > 0 ? "workspace-tone-emerald" : "workspace-tone-amber",
       icon: UserCheck,
-      href: "../applications?status=placed",
+      href: `/${locale}/admin/applications?status=placed`,
     },
     {
       label: t("revenue"),
@@ -300,7 +301,7 @@ export default function AdminReportsPage() {
       indicatorClassName: totalRevenue > 0 ? "bg-amber-500" : "bg-slate-400",
       toneClassName: "workspace-tone-amber",
       icon: Wallet,
-      href: "../subscriptions",
+      href: `/${locale}/admin/subscriptions`,
     },
   ];
 
@@ -568,7 +569,7 @@ export default function AdminReportsPage() {
                       {stats.recentJobs.map((job) => (
                         <TableRow key={job.id} className="cursor-pointer hover:bg-muted/40 transition-colors">
                           <TableCell>
-                            <Link href={`../jobs`} className="block">
+                            <Link href={`/${locale}/admin/jobs`} className="block">
                               <p className="font-medium text-foreground">{job.title}</p>
                               <p className="text-xs text-muted-foreground">{job.employerName} · {job.status}</p>
                             </Link>
@@ -615,7 +616,7 @@ export default function AdminReportsPage() {
                       {stats.recentApplications.map((application) => (
                         <TableRow key={application.id} className="cursor-pointer hover:bg-muted/40 transition-colors">
                           <TableCell>
-                            <Link href={`../applications`} className="block">
+                            <Link href={`/${locale}/admin/applications`} className="block">
                               <p className="font-medium text-foreground">{application.jobTitle}</p>
                               <p className="text-xs text-muted-foreground">{application.employerName}</p>
                             </Link>

@@ -33,6 +33,14 @@ jest.mock("@tanstack/react-query", () => ({
   }),
 }));
 
+jest.mock("@tanstack/react-query", () => {
+  const actual = jest.requireActual("@tanstack/react-query");
+  return {
+    ...actual,
+    useQueryClient: () => ({ invalidateQueries: jest.fn() }),
+  };
+});
+
 jest.mock("@/hooks/usePermissions", () => ({
   usePermissions: () => ({ can: () => true }),
 }));

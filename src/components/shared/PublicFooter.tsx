@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
-import { ArrowRight, Mail, MapPin } from "lucide-react";
+import { ArrowRight, ChevronDown, Mail, MapPin } from "lucide-react";
 
 type FooterVariant = "full" | "embedded";
 
@@ -60,6 +60,7 @@ export default function PublicFooter({ locale, variant = "full" }: PublicFooterP
   // Obfuscation" from rewriting it (which injects a CSP-blocked decode
   // script and triggers a React hydration mismatch, error #418).
   const [mounted, setMounted] = useState(false);
+  const [openMobileSection, setOpenMobileSection] = useState<string | null>(null);
   useEffect(() => setMounted(true), []);
 
   const platformSection: FooterSection = {
@@ -126,7 +127,7 @@ export default function PublicFooter({ locale, variant = "full" }: PublicFooterP
             </div>
 
             {!isEmbedded && (
-              <ul className="flex flex-wrap gap-2" role="list">
+              <ul className="hidden flex-wrap gap-2 sm:flex" role="list">
                 {platformHighlights.map((highlight) => (
                   <li
                     key={highlight}
@@ -141,7 +142,7 @@ export default function PublicFooter({ locale, variant = "full" }: PublicFooterP
             <div className="flex flex-wrap items-center gap-3">
               <Link
                 href={`/${locale}/jobs`}
-                className="inline-flex h-10 items-center gap-2 rounded-full bg-white px-4 text-sm font-semibold text-[hsl(var(--brand-blue-dark))] transition-transform hover:-translate-y-0.5"
+                className="inline-flex h-11 items-center gap-2 rounded-full bg-white px-4 text-sm font-semibold text-[hsl(var(--brand-blue-dark))] transition-transform hover:-translate-y-0.5"
               >
                 {t("browseJobs")}
                 <ArrowRight className="h-4 w-4" />
@@ -149,7 +150,7 @@ export default function PublicFooter({ locale, variant = "full" }: PublicFooterP
               {!isEmbedded && (
                 <Link
                   href={`/${locale}/employer-register`}
-                  className="inline-flex h-10 items-center rounded-full border border-white/18 px-4 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+                  className="inline-flex h-11 items-center rounded-full border border-white/18 px-4 text-sm font-semibold text-white transition-colors hover:bg-white/10"
                 >
                   {t("forEmployers")}
                 </Link>

@@ -14,7 +14,8 @@ jest.mock("@/models/Subscription", () => ({
   __esModule: true,
   default: {
     findOne: jest.fn(),
-    findByIdAndUpdate: jest.fn(),
+    findOneAndUpdate: jest.fn(),
+    updateOne: jest.fn(),
   },
 }));
 
@@ -33,7 +34,8 @@ jest.mock("@/lib/subscription/enforcementFlag", () => ({
 }));
 
 const mockFindOne = Subscription.findOne as jest.Mock;
-const mockFindByIdAndUpdate = Subscription.findByIdAndUpdate as jest.Mock;
+const mockFindOneAndUpdate = Subscription.findOneAndUpdate as jest.Mock;
+const mockUpdateOne = Subscription.updateOne as jest.Mock;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -80,6 +82,8 @@ const activeSub = {
 describe("withSubscription", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockFindOneAndUpdate.mockResolvedValue(activeSub);
+    mockUpdateOne.mockResolvedValue({ matchedCount: 1 });
   });
 
   // ── Bypass roles ─────────────────────────────────────────────────────────
@@ -142,18 +146,18 @@ describe("withSubscription", () => {
   describe("AI feature checks", () => {
     test("allows enabled feature within limit and increments usage", async () => {
       mockFindOne.mockResolvedValue(activeSub);
-      mockFindByIdAndUpdate.mockResolvedValue(null);
       const wrapped = withSubscription(mockHandler, { type: "ai", feature: "ai_chat" });
       const res = await wrapped(makeReq(), employerCtx);
       expect(mockHandler).toHaveBeenCalled();
-      expect(mockFindByIdAndUpdate).toHaveBeenCalledWith("sub1", {
-        $inc: { "usage.aiUsage.ai_chat": 1 },
-      });
+      expect(mockFindOneAndUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({ _id: "sub1", $expr: expect.any(Object) }),
+        { $inc: { "usage.aiUsage.ai_chat": 1 } },
+        { new: true },
+      );
     });
 
     test("allows unlimited AI feature (monthlyLimit=0)", async () => {
       mockFindOne.mockResolvedValue(activeSub);
-      mockFindByIdAndUpdate.mockResolvedValue(null);
       const wrapped = withSubscription(mockHandler, { type: "ai", feature: "ai_cv_extraction" });
       await wrapped(makeReq(), employerCtx);
       expect(mockHandler).toHaveBeenCalled();
@@ -175,6 +179,7 @@ describe("withSubscription", () => {
         usage: { ...activeSub.usage, aiUsage: { ai_chat: 20 } },
       };
       mockFindOne.mockResolvedValue(subAtLimit);
+      mockFindOneAndUpdate.mockResolvedValue(null);
       const wrapped = withSubscription(mockHandler, { type: "ai", feature: "ai_chat" });
       const res = await wrapped(makeReq(), employerCtx);
       const body = await res.json();
@@ -190,13 +195,14 @@ describe("withSubscription", () => {
   describe("numeric limit checks", () => {
     test("allows when under limit and increments usage on success", async () => {
       mockFindOne.mockResolvedValue(activeSub);
-      mockFindByIdAndUpdate.mockResolvedValue(null);
       const wrapped = withSubscription(mockHandler, { type: "limit", feature: "activeJobs" });
       await wrapped(makeReq(), employerCtx);
       expect(mockHandler).toHaveBeenCalled();
-      expect(mockFindByIdAndUpdate).toHaveBeenCalledWith("sub1", {
-        $inc: { "usage.activeJobs": 1 },
-      });
+      expect(mockFindOneAndUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({ _id: "sub1", $expr: expect.any(Object) }),
+        { $inc: { "usage.activeJobs": 1 } },
+        { new: true },
+      );
     });
 
     test("does not increment usage when handler fails", async () => {
@@ -207,18 +213,22 @@ describe("withSubscription", () => {
       const wrapped = withSubscription(failingHandler, { type: "limit", feature: "activeJobs" });
       const res = await wrapped(makeReq(), employerCtx);
       expect(res.status).toBe(500);
-      expect(mockFindByIdAndUpdate).not.toHaveBeenCalled();
+      expect(mockUpdateOne).toHaveBeenCalledWith(
+        { _id: "sub1", "usage.activeJobs": { $gt: 0 } },
+        { $inc: { "usage.activeJobs": -1 } },
+      );
     });
 
     test("blocks when at limit with 429", async () => {
       const subAtLimit = { ...activeSub, usage: { ...activeSub.usage, activeJobs: 5 } };
       mockFindOne.mockResolvedValue(subAtLimit);
+      mockFindOneAndUpdate.mockResolvedValue(null);
       const wrapped = withSubscription(mockHandler, { type: "limit", feature: "activeJobs" });
       const res = await wrapped(makeReq(), employerCtx);
       const body = await res.json();
       expect(res.status).toBe(429);
       expect(body.error).toBe("LIMIT_EXCEEDED");
-      expect(mockFindByIdAndUpdate).not.toHaveBeenCalled();
+      expect(mockFindOneAndUpdate).toHaveBeenCalled();
     });
 
     test("allows unlimited (-1)", async () => {

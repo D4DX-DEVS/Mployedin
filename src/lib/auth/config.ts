@@ -19,6 +19,7 @@ import { encrypt, decrypt } from "@/lib/security/encryption";
 import { verifyTotp, hashRecoveryCode } from "@/lib/security/totp";
 import { checkRateLimit } from "@/lib/security/rateLimit";
 import { ensureEmployerOwnerMembership } from "@/lib/employers/company-membership";
+import { getClientIp } from "@/lib/security/clientIp";
 
 const credentialsSchema = z.object({
   email: z.string().email(),
@@ -42,6 +43,10 @@ class TwoFactorInvalidError extends CredentialsSignin {
 class AccountLockedError extends CredentialsSignin {
   code = "account_locked";
 }
+/** Thrown when failed credential attempts from one IP exceed the safety limit. */
+class LoginRateLimitedError extends CredentialsSignin {
+  code = "login_rate_limited";
+}
 
 export const authConfig: NextAuthConfig = {
   providers: [
@@ -50,21 +55,7 @@ export const authConfig: NextAuthConfig = {
         try {
         // IP-level brute-force protection (complements per-account lockout).
         // Throttles distributed attacks that rotate across many accounts.
-        const ip = (
-          request?.headers?.get("x-forwarded-for") ??
-          request?.headers?.get("x-real-ip") ??
-          "unknown"
-        ).split(",")[0].trim();
-        const ipCheck = await checkRateLimit(ip, { limit: 10, windowSec: 300, prefix: "login-ip" });
-        if (!ipCheck.allowed) {
-          logActivity({
-            action: "login.failed",
-            resource: "auth",
-            meta: { ip, reason: "ip_rate_limited" },
-          });
-          return null;
-        }
-
+        const ip = getClientIp(request?.headers ?? new Headers());
         const parsed = credentialsSchema.safeParse(credentials);
         if (!parsed.success) return null;
 
@@ -74,11 +65,17 @@ export const authConfig: NextAuthConfig = {
         }).select("+passwordHash +failedLoginAttempts +lockUntil +twoFactorSecretEnc +twoFactorRecoveryCodes");
 
         if (!user || !user.passwordHash) {
+          const ipCheck = await checkRateLimit(ip, {
+            limit: 10,
+            windowSec: 300,
+            prefix: "login-ip-failed",
+          });
           logActivity({
             action: "login.failed",
             resource: "auth",
             meta: { email: parsed.data.email, reason: user ? "no_password" : "user_not_found" },
           });
+          if (!ipCheck.allowed) throw new LoginRateLimitedError();
           return null;
         }
 
@@ -108,6 +105,22 @@ export const authConfig: NextAuthConfig = {
 
         const valid = await user.comparePassword(parsed.data.password);
         if (!valid) {
+          const ipCheck = await checkRateLimit(ip, {
+            limit: 10,
+            windowSec: 300,
+            prefix: "login-ip-failed",
+          });
+          if (!ipCheck.allowed) {
+            logActivity({
+              actorId: user._id.toString(),
+              actorRole: user.role,
+              action: "login.failed",
+              resource: "auth",
+              meta: { email: user.email, ip, reason: "ip_rate_limited" },
+            });
+            throw new LoginRateLimitedError();
+          }
+
           // Increment failed attempts
           const attempts = (user.failedLoginAttempts || 0) + 1;
           const nowLocked = attempts >= MAX_FAILED_ATTEMPTS;

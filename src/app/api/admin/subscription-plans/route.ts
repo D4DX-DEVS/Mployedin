@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import mongoose from "mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import connectDB from "@/lib/db/mongoose";
-import SubscriptionPlan from "@/models/SubscriptionPlan";
+import SubscriptionPlan, { type ISubscriptionPlan } from "@/models/SubscriptionPlan";
 import { validateBody } from "@/lib/validators";
 import { subscriptionPlanCreateSchema } from "@/lib/validators/subscriptions";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
@@ -45,19 +46,36 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
   const body = await validateBody(req, subscriptionPlanCreateSchema);
 
-  // If marked as default, unset other defaults for the same targetRole
-  if (body.isDefault) {
-    await SubscriptionPlan.updateMany(
-      { targetRole: body.targetRole, isDefault: true },
-      { $set: { isDefault: false } },
-    );
+  let plan: ISubscriptionPlan;
+  const session = await mongoose.startSession();
+  try {
+    const transactionPlan = await session.withTransaction(async () => {
+      if (body.isDefault) {
+        await SubscriptionPlan.updateMany(
+          { targetRole: body.targetRole, isDefault: true },
+          { $set: { isDefault: false } },
+          { session },
+        );
+      }
+      const [createdPlan] = await SubscriptionPlan.create(
+        [{ ...body, createdBy: ctx.userId }],
+        { session },
+      );
+      return createdPlan;
+    });
+    if (!transactionPlan) throw new Error("PLAN_TRANSACTION_NOT_COMMITTED");
+    plan = transactionPlan;
+  } catch (error: unknown) {
+    if (error && typeof error === "object" && "code" in error && (error as { code: number }).code === 11000) {
+      return NextResponse.json(
+        { error: "Another default plan was selected concurrently. Please retry." },
+        { status: 409 },
+      );
+    }
+    throw error;
+  } finally {
+    await session.endSession();
   }
-
-  const plan = await SubscriptionPlan.create({
-    ...body,
-    createdBy: ctx.userId,
-  });
-
   await logActivity({
     ...actorFromCtx(ctx),
     action: "subscription_plan.create",

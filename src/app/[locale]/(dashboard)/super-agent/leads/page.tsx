@@ -586,29 +586,23 @@ export default function SuperAgentLeadsPage() {
                 <TableRow className="bg-background/60 hover:bg-background/60">
                   <TableHead><SortHeader field="companyName">{t("columnCompany")}</SortHeader></TableHead>
                   <TableHead>{t("columnContact")}</TableHead>
-                  <TableHead><SortHeader field="country">{tc("country")}</SortHeader></TableHead>
                   <TableHead><SortHeader field="industry">{t("columnIndustry")}</SortHeader></TableHead>
-                  <TableHead>{t("columnSource")}</TableHead>
-                  <TableHead>{t("columnExhibition")}</TableHead>
-                  <TableHead><SortHeader field="status">{t("columnStage")}</SortHeader></TableHead>
-                  <TableHead><SortHeader field="score">{t("columnScore")}</SortHeader></TableHead>
                   <TableHead>{t("columnAgent")}</TableHead>
                   <TableHead><SortHeader field="followUpAt">{t("columnFollowUp")}</SortHeader></TableHead>
-                  <TableHead><SortHeader field="createdAt">{tc("date")}</SortHeader></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <TableRow key={i}>
-                      {Array.from({ length: 11 }).map((_, j) => (
+                      {Array.from({ length: 5 }).map((_, j) => (
                         <TableCell key={j}><div className="h-4 w-3/4 animate-pulse rounded bg-muted/50" /></TableCell>
                       ))}
                     </TableRow>
                   ))
                 ) : leads.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={11} className="py-16 text-center">
+                    <TableCell colSpan={5} className="py-16 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-sky-50 text-sky-600">
                           <Target className="h-6 w-6" />
@@ -624,30 +618,30 @@ export default function SuperAgentLeadsPage() {
                   const isOverdue = lead.followUpAt && new Date(lead.followUpAt) < new Date();
                   return (
                     <TableRow key={lead._id} className="bg-transparent">
-                      <TableCell className="font-medium text-foreground">{lead.companyName}</TableCell>
+                      <TableCell>
+                        <span className="block font-medium text-foreground">{lead.companyName}</span>
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                          <StatusBadge status={lead.status} />
+                          {lead.score != null && (
+                            <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${QUAL_STYLES[lead.qualificationLevel ?? "cold"] ?? QUAL_STYLES.cold}`}>
+                              <Gauge className="h-3 w-3" />{lead.score}
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <div className="text-foreground/85">{lead.contactPerson}</div>
                         {lead.contactEmail && <div className="text-xs text-muted-foreground/70">{lead.contactEmail}</div>}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        <span>{lead.country ?? "—"}</span>
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          <span>{lead.country ?? "—"}</span>
+                        </div>
                         {lead.autoRouted && (
                           <span className="ml-1 rounded bg-emerald-100 px-1 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">{t("badgeRouted")}</span>
                         )}
                       </TableCell>
-                      <TableCell className="text-muted-foreground">{lead.industry ?? "—"}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{lead.source ?? "—"}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{lead.exhibitionId ? "Linked" : "—"}</TableCell>
-                      <TableCell><StatusBadge status={lead.status} /></TableCell>
-                      <TableCell>
-                        {lead.score != null ? (
-                          <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${QUAL_STYLES[lead.qualificationLevel ?? "cold"] ?? QUAL_STYLES.cold}`}>
-                            <Gauge className="h-3 w-3" />
-                            {lead.score}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-muted-foreground/50">—</span>
-                        )}
+                      <TableCell className="text-muted-foreground">
+                        <span className="block">{lead.industry ?? "—"}</span>
+                        <span className="mt-1 block text-xs">{lead.source ?? "—"}{lead.exhibitionId ? " · Linked" : ""}</span>
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">{lead.agentId?.userId?.name ?? "—"}</TableCell>
                       <TableCell className="text-xs">
@@ -659,8 +653,8 @@ export default function SuperAgentLeadsPage() {
                         ) : (
                           <span className="text-muted-foreground/50">—</span>
                         )}
+                        <span className="mt-1 block text-[10px] text-muted-foreground">{new Date(lead.createdAt).toLocaleDateString()}</span>
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{new Date(lead.createdAt).toLocaleDateString()}</TableCell>
                     </TableRow>
                   );
                 })}

@@ -95,6 +95,7 @@ export default function LeadDetailPage() {
   const params = useParams();
   const router = useRouter();
   const leadId = params?.id as string;
+  const locale = params?.locale as string;
   const t = useTranslations("agentLeadDetail");
   const tc = useTranslations("common");
 

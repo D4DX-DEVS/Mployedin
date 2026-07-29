@@ -15,15 +15,8 @@ import {
   Mail,
   Loader2,
   AlertTriangle,
-  Video,
-  Gift,
-  Calendar,
-  Search,
-  FileText,
-  BookOpen,
-  Building2,
+  Bell,
   Crown,
-  MoreHorizontal,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -80,6 +73,7 @@ export function UserProfileDropdown({
   const userImage = session?.user?.image;
   const router = useRouter();
   const t = useTranslations("profileDropdown");
+  const tNotifications = useTranslations("notificationsPage");
   const isAr = locale === "ar";
 
   const roleKey = ROLE_KEYS[userRole] ?? userRole;
@@ -149,7 +143,10 @@ export function UserProfileDropdown({
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button className="flex h-9 w-9 items-center justify-center rounded-full brand-gradient text-white text-sm font-semibold shrink-0 shadow-soft ring-2 ring-background cursor-pointer hover:ring-primary/20 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ring overflow-hidden">
+          <button
+            aria-label="Open user menu"
+            className="flex h-11 w-11 items-center justify-center rounded-full brand-gradient text-white text-sm font-semibold shrink-0 shadow-soft ring-2 ring-background cursor-pointer hover:ring-primary/20 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ring overflow-hidden"
+          >
             {companyLogo ? (
               <Image src={companyLogo} alt="Company logo" width={36} height={36} className="w-full h-full object-contain" unoptimized />
             ) : userImage ? (
@@ -166,14 +163,7 @@ export function UserProfileDropdown({
           sideOffset={8}
         >
           <DropdownMenuLabel className="font-normal">
-            <button
-              type="button"
-              onClick={() => {
-                const profilePath = userRole === "job_seeker" ? `/${locale}/job-seeker/profile` : userRole === "employer" ? `/${locale}/employer/profile` : null;
-                if (profilePath) router.push(profilePath);
-              }}
-              className="flex items-start gap-3 py-1 w-full text-left hover:opacity-80 transition-opacity cursor-pointer"
-            >
+            <div className="flex items-start gap-3 py-1 w-full text-left">
               <div className="flex h-10 w-10 items-center justify-center rounded-full brand-gradient text-white text-sm font-semibold shrink-0 overflow-hidden">
                 {companyLogo ? (
                   <Image src={companyLogo} alt="Company logo" width={40} height={40} className="w-full h-full object-contain" unoptimized />
@@ -191,7 +181,7 @@ export function UserProfileDropdown({
                   {userEmail}
                 </p>
               </div>
-            </button>
+            </div>
           </DropdownMenuLabel>
 
           <DropdownMenuSeparator />
@@ -316,6 +306,16 @@ export function UserProfileDropdown({
             >
               <Settings className="h-4 w-4" />
               <span className="font-medium text-sm">{t("settings")}</span>
+            </DropdownMenuItem>
+          )}
+
+          {userRole === "job_seeker" && (
+            <DropdownMenuItem
+              className="cursor-pointer gap-2 rounded-md hover:bg-muted/50 transition-colors"
+              onSelect={() => router.push(`/${locale}/job-seeker/subscription`)}
+            >
+              <Crown className="h-4 w-4" />
+              <span className="font-medium text-sm">{t("subscription")}</span>
             </DropdownMenuItem>
           )}
 

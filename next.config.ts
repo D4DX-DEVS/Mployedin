@@ -20,6 +20,7 @@ if (process.env.NODE_ENV === "production") {
 const nextConfig: NextConfig = {
   compress: true,
   poweredByHeader: false,
+  outputFileTracingRoot: process.cwd(),
 
   // Vercel's nft (node-file-trace) can miss files whose paths contain special
   // characters like "[" or "(" (dynamic segments / route groups). Explicitly

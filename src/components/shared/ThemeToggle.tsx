@@ -13,7 +13,7 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
   const { isMounted, resolvedTheme, toggleTheme } = useTheme();
 
   if (!isMounted) {
-    return <div aria-hidden className={cn("h-9 w-9 shrink-0", className)} />;
+    return <div aria-hidden className={cn("h-11 w-11 shrink-0", className)} />;
   }
 
   const nextModeLabel = resolvedTheme === "dark" ? "light" : "dark";
@@ -24,7 +24,7 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
       variant="outline"
       size="icon"
       className={cn(
-        "h-9 w-9 rounded-full border-border/60 bg-background/80 text-foreground shadow-sm shadow-black/[0.04] backdrop-blur hover:bg-accent/70",
+        "h-11 w-11 rounded-full border-border/60 bg-background/80 text-foreground shadow-sm shadow-black/[0.04] backdrop-blur hover:bg-accent/70",
         className
       )}
       onClick={toggleTheme}

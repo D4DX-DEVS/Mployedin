@@ -15,6 +15,7 @@ import { SECURITY_HEADERS, getSecurityHeaders } from "@/lib/security/headers";
 import { setCsrfCookie, validateCsrf, isCsrfExempt } from "@/lib/security/csrf";
 import { TENANT_COOKIE_NAME, verifyTenantCookie } from "@/lib/security/tenantCookie";
 import { isPublicRoute } from "@/lib/routing/publicRoutes";
+import { withTrustedClientIp } from "@/lib/security/clientIp";
 
 const locales = ["en", "ar"] as const;
 const defaultLocale = "en";
@@ -149,7 +150,9 @@ export default auth(async function middleware(req: NextAuthRequest) {
         );
       }
     }
-    return withSecurityHeaders(NextResponse.next());
+    return withSecurityHeaders(
+      NextResponse.next({ request: { headers: trustedRequestHeaders } }),
+    );
   }
 
   // Generate a per-request nonce for page CSP
@@ -163,7 +166,7 @@ export default auth(async function middleware(req: NextAuthRequest) {
 
   // Build request headers that will be forwarded to the app (includes x-nonce).
   // Next.js App Router reads x-nonce to attach the nonce to its own inline scripts.
-  const requestHeaders = new Headers(req.headers);
+  const requestHeaders = trustedRequestHeaders;
   requestHeaders.set("x-nonce", nonce);
   requestHeaders.set("x-locale", activeLocale);
 

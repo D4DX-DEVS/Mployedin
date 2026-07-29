@@ -15,6 +15,7 @@ const jobAggregateMock = jest.fn();
 const applicationCountDocumentsMock = jest.fn();
 const applicationAggregateMock = jest.fn();
 const interviewCountDocumentsMock = jest.fn();
+const placementCountDocumentsMock = jest.fn();
 
 jest.mock("@/lib/auth/config", () => ({
   auth: () => authMock(),
@@ -60,6 +61,22 @@ jest.mock("@/models/Interview", () => ({
   },
 }));
 
+jest.mock("@/models/Placement", () => ({
+  __esModule: true,
+  default: {
+    countDocuments: (...args: unknown[]) => placementCountDocumentsMock(...args),
+  },
+}));
+
+jest.mock("@/app/[locale]/(dashboard)/admin/_components/platform-health", () => ({
+  BadgeSkeleton: () => null,
+  InsightTextSkeleton: () => null,
+  PlatformInsightsSkeleton: () => null,
+  KpiActiveJobsInsightText: () => <span>Active jobs are healthy</span>,
+  QuickActionHealthBadge: () => <span>Healthy</span>,
+  PlatformInsightsSection: () => <div>Employer is still the dominant cohort</div>,
+}));
+
 describe("AdminDashboardPage", () => {
   beforeEach(() => {
     authMock.mockReset();
@@ -72,6 +89,7 @@ describe("AdminDashboardPage", () => {
     applicationCountDocumentsMock.mockReset();
     applicationAggregateMock.mockReset();
     interviewCountDocumentsMock.mockReset();
+    placementCountDocumentsMock.mockReset();
 
     authMock.mockResolvedValue({
       user: {
@@ -95,6 +113,7 @@ describe("AdminDashboardPage", () => {
       .mockResolvedValueOnce(3)
       .mockResolvedValueOnce(1);
     interviewCountDocumentsMock.mockResolvedValue(4);
+    placementCountDocumentsMock.mockResolvedValue(2);
 
     userAggregateMock
       .mockResolvedValueOnce([

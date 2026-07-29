@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { commonSchemas } from "./index";
+import { strongPasswordSchema } from "@/lib/security/passwordPolicy";
 
 const VALID_ROLES = ["admin", "super_agent", "agent", "employer", "job_seeker"] as const;
 const PERMISSION_MODES = ["role_default", "custom"] as const;
@@ -9,7 +10,7 @@ const BULK_ACTIONS = ["setRole", "activate", "deactivate", "delete"] as const;
 export const adminUserCreateSchema = z.object({
   name: z.string().min(1).max(100).trim(),
   email: commonSchemas.email,
-  password: z.string().min(8).max(128),
+  password: strongPasswordSchema,
   role: z.enum(VALID_ROLES),
   locale: z.enum(["en", "ar"]).optional(),
   permissionMode: z.enum(PERMISSION_MODES).optional(),
@@ -44,7 +45,7 @@ export const adminUserBulkSchema = z.object({
 export const superAgentCreateSchema = z.object({
   name: z.string().min(1).max(100).trim(),
   email: commonSchemas.email,
-  password: z.string().min(8).max(128),
+  password: strongPasswordSchema,
   overrideCommissionRate: z.number().min(0).max(100).optional(),
   defaultAgentCommissionRate: z.number().min(0).max(100).optional(),
   assignedCityIds: z.array(commonSchemas.objectId).max(200).optional(),
@@ -69,7 +70,7 @@ export const superAgentUpdateSchema = z.object({
 export const agentCreateSchema = z.object({
   name: z.string().min(1).max(100).trim(),
   email: commonSchemas.email,
-  password: z.string().min(8).max(128),
+  password: strongPasswordSchema,
   superAgentId: commonSchemas.objectId.optional(),
   commissionRate: z.number().min(0).max(100).optional(),
   assignedCityIds: z.array(commonSchemas.objectId).max(200).optional(),

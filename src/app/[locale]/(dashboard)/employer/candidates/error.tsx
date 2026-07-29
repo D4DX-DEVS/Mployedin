@@ -2,7 +2,8 @@
 
 import { useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { AlertTriangle, RefreshCw } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
+import { RecoveryActions } from "@/components/shared/RecoveryActions";
 
 export default function CandidatesError({
   error,
@@ -28,12 +29,7 @@ export default function CandidatesError({
             {error.message || t("failedCandidatesDescription")}
           </p>
         </div>
-        <button
-          onClick={reset}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-        >
-          <RefreshCw className="w-4 h-4" /> {t("tryAgain")}
-        </button>
+        <RecoveryActions reset={reset} />
       </div>
     </div>
   );

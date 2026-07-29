@@ -499,26 +499,22 @@ export default function SuperAgentPlacementsPage() {
               <TableRow className="bg-background/60 hover:bg-background/60">
                 <TableHead className="min-w-[180px]"><SortHeader field="candidateName">{t("columnCandidate")}</SortHeader></TableHead>
                 <TableHead>{t("columnJob")}</TableHead>
-                <TableHead>{t("columnEmployer")}</TableHead>
-                <TableHead>{t("columnVisaStatus")}</TableHead>
                 <TableHead><SortHeader field="salary">{t("columnSalary")}</SortHeader></TableHead>
-                <TableHead>{t("columnCommission")}</TableHead>
                 <TableHead><SortHeader field="startDate">{t("columnStartDate")}</SortHeader></TableHead>
-                <TableHead><SortHeader field="placedAt">{t("columnPlaced")}</SortHeader></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    {Array.from({ length: 8 }).map((_, j) => (
+                    {Array.from({ length: 4 }).map((_, j) => (
                       <TableCell key={j}><div className="h-4 w-3/4 animate-pulse rounded bg-muted/50" /></TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : placements.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="py-16 text-center">
+                  <TableCell colSpan={4} className="py-16 text-center">
                     <div className="flex flex-col items-center gap-3">
                       <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-sky-50 text-sky-600">
                         <Trophy className="h-6 w-6" />
@@ -540,25 +536,27 @@ export default function SuperAgentPlacementsPage() {
                     <div>
                       <p className="font-medium text-foreground">{getCandidateName(p)}</p>
                       {p.candidateEmail && <p className="text-xs text-muted-foreground">{p.candidateEmail}</p>}
+                      <StatusBadge status={getVisaStatus(p)} />
                     </div>
                   </TableCell>
-                  <TableCell className="text-foreground/85">{getJobTitle(p)}</TableCell>
-                  <TableCell className="text-muted-foreground">{getCompanyName(p)}</TableCell>
-                  <TableCell><StatusBadge status={getVisaStatus(p)} /></TableCell>
-                  <TableCell className="text-foreground/85 tabular-nums">
-                    {formatPlacementSalary(p)}
+                  <TableCell className="text-foreground/85">
+                    <span className="block">{getJobTitle(p)}</span>
+                    <span className="mt-1 block text-xs text-muted-foreground">{getCompanyName(p)}</span>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="text-foreground/85 tabular-nums">
+                    <span className="block">{formatPlacementSalary(p)}</span>
                     {p.commissionPaid ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                      <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
                         <ShieldCheck className="h-3 w-3" /> {t("commissionBadgePaid")}{p.commissionAmount ? ` · ${p.commissionAmount.toLocaleString()}` : ""}
                       </span>
                     ) : (
                       <span className="text-xs text-muted-foreground">{t("commissionBadgeUnpaid")}</span>
                     )}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{p.startDate ? new Date(p.startDate).toLocaleDateString() : "—"}</TableCell>
-                  <TableCell className="text-muted-foreground">{p.placedAt ? new Date(p.placedAt).toLocaleDateString() : "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    <span className="block">{p.startDate ? new Date(p.startDate).toLocaleDateString() : "—"}</span>
+                    <span className="mt-1 block text-xs">{p.placedAt ? new Date(p.placedAt).toLocaleDateString() : "—"}</span>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

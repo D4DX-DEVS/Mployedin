@@ -11,6 +11,7 @@ import {
   Users,
 } from "lucide-react";
 import { SessionWrapper } from "@/components/shared/SessionWrapper";
+import { ThemeToggle } from "@/components/shared/ThemeToggle";
 
 export default async function AuthLayout({
   children,

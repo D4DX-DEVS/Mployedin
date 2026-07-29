@@ -336,8 +336,8 @@ export default function EmployerInterviewsPage() {
         {t("title")}
       </div>
       <PageHeader
-        title={t("subtitle")}
-        description={t("description")}
+        title={t("title")}
+        description={t("subtitle")}
         actions={
           /* Tile + both buttons share one row on phones too — icon-only
              button labels on mobile keep them narrow enough that the tile
@@ -601,11 +601,8 @@ export default function EmployerInterviewsPage() {
               <TableRow className="workspace-subtle-surface hover:bg-secondary/70">
                 <TableHead className="min-w-[220px]">{t("candidate")}</TableHead>
                 <TableHead className="min-w-[260px]">{t("role")}</TableHead>
-                <TableHead>{t("round")}</TableHead>
                 <TableHead>{t("typeLabel")}</TableHead>
                 <TableHead>{t("scheduledCol")}</TableHead>
-                <TableHead>{t("status")}</TableHead>
-                <TableHead>{t("outcomeLabel")}</TableHead>
                 <TableHead>{t("ai")}</TableHead>
                 {can("interviews", "update") ? <TableHead className="text-right min-w-[280px]">{t("actions")}</TableHead> : null}
               </TableRow>
@@ -614,14 +611,14 @@ export default function EmployerInterviewsPage() {
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    {Array.from({ length: can("interviews", "update") ? 9 : 8 }).map((_, j) => (
+                    {Array.from({ length: can("interviews", "update") ? 6 : 5 }).map((_, j) => (
                       <TableCell key={j}><div className="h-4 w-3/4 animate-pulse rounded bg-muted" /></TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : deduplicatedInterviews.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={can("interviews", "update") ? 9 : 8} className="py-16 text-center">
+                  <TableCell colSpan={can("interviews", "update") ? 6 : 5} className="py-16 text-center">
                     <div className="flex flex-col items-center gap-3">
                       <div className="workspace-tone-sky flex h-14 w-14 items-center justify-center rounded-3xl">
                         <Inbox className="h-6 w-6" />
@@ -648,11 +645,22 @@ export default function EmployerInterviewsPage() {
                       <div className="space-y-1">
                         <p className="font-semibold text-foreground">{iv.jobSeekerId?.fullName ?? "Candidate"}</p>
                         <p className="text-xs text-muted-foreground">{iv.jobSeekerId?.email ?? "No email available"}</p>
+                        <div className="flex flex-wrap gap-1">
+                          <StatusBadge status={iv.status} />
+                          {outcomeMeta && (
+                            <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${outcomeMeta.color}`}>
+                              {outcomeMeta.label}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="space-y-2">
                         <p className="font-medium text-foreground">{iv.jobId?.title ?? "Untitled role"}</p>
+                        <span className="inline-flex rounded-full bg-status-interview-bg px-2.5 py-1 text-xs font-semibold text-indigo-700 border border-status-interview/20">
+                          R{round}
+                        </span>
                         {skills.length ? (
                           <div className="flex flex-wrap gap-2">
                             {skills.map((skill) => (
@@ -664,10 +672,8 @@ export default function EmployerInterviewsPage() {
                         ) : null}
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <span className="inline-flex items-center gap-1 rounded-full bg-status-interview-bg px-2.5 py-1 text-xs font-semibold text-indigo-700 border border-status-interview/20">
-                        R{round}
-                      </span>
+                    <TableCell className="capitalize text-muted-foreground">
+                      <span>{iv.type ?? "in-person"}</span>
                       {(() => {
                         const prior = historyByApp.get(iv.applicationId ?? iv._id);
                         if (!prior?.length) return null;
@@ -690,22 +696,11 @@ export default function EmployerInterviewsPage() {
                         );
                       })()}
                     </TableCell>
-                    <TableCell className="capitalize text-muted-foreground">{iv.type ?? "in-person"}</TableCell>
                     <TableCell>
                       <div className="space-y-1 text-sm text-muted-foreground">
                         <p>{scheduled.date}</p>
                         <p className="text-xs text-muted-foreground">{scheduled.time}</p>
                       </div>
-                    </TableCell>
-                    <TableCell><StatusBadge status={iv.status} /></TableCell>
-                    <TableCell>
-                      {outcomeMeta ? (
-                        <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${outcomeMeta.color}`}>
-                          {outcomeMeta.label}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col gap-1">

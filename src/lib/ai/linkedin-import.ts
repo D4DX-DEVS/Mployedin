@@ -10,6 +10,10 @@
 
 import { generateText, parseAIJson, GEMINI_MODELS } from "@/lib/ai/gemini";
 import logger from "@/lib/logger";
+import { safeFetch } from "@/lib/security/ssrf";
+import { parseLinkedInProfileUrl } from "@/lib/security/linkedin-url";
+
+const MAX_PROFILE_RESPONSE_BYTES = 1_000_000;
 
 export interface LinkedInImportedProfile {
   name?: string;
@@ -45,19 +49,41 @@ export interface LinkedInImportedProfile {
  */
 async function fetchPublicProfileHtml(profileUrl: string): Promise<string | null> {
   try {
-    const res = await fetch(profileUrl, {
+    const url = parseLinkedInProfileUrl(profileUrl);
+    const res = await safeFetch(url.toString(), {
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         Accept: "text/html,application/xhtml+xml",
         "Accept-Language": "en-US,en;q=0.9",
       },
-      redirect: "follow",
+      signal: AbortSignal.timeout(10_000),
     });
 
     if (!res.ok) return null;
+    if (!(res.headers.get("content-type") ?? "").toLowerCase().includes("text/html")) {
+      return null;
+    }
 
-    const html = await res.text();
+    const declaredLength = Number(res.headers.get("content-length") ?? "0");
+    if (declaredLength > MAX_PROFILE_RESPONSE_BYTES) return null;
+
+    const reader = res.body?.getReader();
+    if (!reader) return null;
+    const decoder = new TextDecoder();
+    let bytesRead = 0;
+    let html = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      bytesRead += value.byteLength;
+      if (bytesRead > MAX_PROFILE_RESPONSE_BYTES) {
+        await reader.cancel();
+        return null;
+      }
+      html += decoder.decode(value, { stream: true });
+    }
+    html += decoder.decode();
 
     // Extract text content — strip scripts/styles, keep meaningful text
     const cleaned = html

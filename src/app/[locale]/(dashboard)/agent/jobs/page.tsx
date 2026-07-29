@@ -474,7 +474,6 @@ export default function AgentJobsPage() {
                   <TableHead>{t("table.title")}</TableHead>
                   <TableHead>{t("table.employer")}</TableHead>
                   <TableHead>{t("table.location")}</TableHead>
-                  <TableHead>{t("table.status")}</TableHead>
                   <TableHead>{t("table.applicants")}</TableHead>
                   <TableHead>{t("table.posted")}</TableHead>
                   <TableHead className="text-right">{t("table.actions")}</TableHead>
@@ -483,7 +482,7 @@ export default function AgentJobsPage() {
               <TableBody>
                 {Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i} className="hover:bg-transparent">
-                    {Array.from({ length: 7 }).map((_, j) => (
+                    {Array.from({ length: 6 }).map((_, j) => (
                       <TableCell key={j}>
                         <Skeleton className="h-4 w-full" />
                       </TableCell>
@@ -507,7 +506,6 @@ export default function AgentJobsPage() {
                   <TableHead>{t("table.title")}</TableHead>
                   <TableHead>{t("table.employer")}</TableHead>
                   <TableHead>{t("table.location")}</TableHead>
-                  <TableHead>{t("table.status")}</TableHead>
                   <TableHead>{t("table.applicants")}</TableHead>
                   <TableHead>{t("table.posted")}</TableHead>
                   <TableHead className="text-right">{t("table.actions")}</TableHead>
@@ -519,41 +517,33 @@ export default function AgentJobsPage() {
 
                   return (
                     <TableRow key={job._id} className="hover:bg-secondary/60">
-                      <TableCell className="font-medium text-foreground">{job.title}</TableCell>
+                      <TableCell>
+                        <div className="flex min-w-0 flex-col items-start gap-1.5">
+                          <span className="font-medium text-foreground">{job.title}</span>
+                          <StatusBadge status={job.status} label={statusLabels[job.status] ?? job.status} />
+                        </div>
+                      </TableCell>
                       <TableCell className="text-muted-foreground">{job.employerId?.companyName ?? common("dash")}</TableCell>
                       <TableCell className="text-muted-foreground">{locationText(job.location)}</TableCell>
-                      <TableCell><StatusBadge status={job.status} label={statusLabels[job.status] ?? job.status} /></TableCell>
                       <TableCell className="text-muted-foreground">{appCount}</TableCell>
                       <TableCell className="text-muted-foreground">{new Date(job.createdAt).toLocaleDateString(dateLocale)}</TableCell>
                       <TableCell>
                         <div className="flex items-center justify-end gap-1.5">
-                          {/* View candidates — redirects to candidates page */}
-                          <Link href={`/${locale}/agent/candidates?jobId=${job._id}`}>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-9 rounded-xl px-2.5"
-                              title={t("actions.viewCandidates")}
-                              aria-label={t("actions.viewCandidatesFor", { title: job.title })}
-                            >
-                              <Users className="h-4 w-4 text-muted-foreground" />
-                              {appCount > 0 && (
-                                <span className="ml-1 text-xs text-muted-foreground">{appCount}</span>
-                              )}
-                            </Button>
-                          </Link>
-                          {/* View job details */}
-                          <Link href={`/${locale}/agent/jobs/${job._id}`}>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-9 rounded-xl px-2.5"
-                              title={t("actions.viewJob")}
-                              aria-label={t("actions.viewJobFor", { title: job.title })}
-                            >
-                              <Eye className="h-4 w-4 text-status-applied" />
-                            </Button>
-                          </Link>
+                          <TableActionLink
+                            href={`/${locale}/agent/candidates?jobId=${job._id}`}
+                            icon={Users}
+                            label={t("actions.viewCandidates")}
+                            ariaLabel={t("actions.viewCandidatesFor", { title: job.title })}
+                            count={appCount}
+                            iconClassName="text-muted-foreground"
+                          />
+                          <TableActionLink
+                            href={`/${locale}/agent/jobs/${job._id}`}
+                            icon={Eye}
+                            label={t("actions.viewJob")}
+                            ariaLabel={t("actions.viewJobFor", { title: job.title })}
+                            iconClassName="text-status-applied"
+                          />
                         </div>
                       </TableCell>
                     </TableRow>

@@ -24,6 +24,8 @@ import {
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { PaginationControls } from "@/components/shared/PaginationControls";
+import { usePagination } from "@/hooks/usePagination";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -112,6 +114,10 @@ export default function AdminTargetManagementPage() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const locale = pathname.split("/")[1] || "en";
+  const {
+    page, limit, total, totalPages,
+    setPage, setLimit, updateTotal, resetPage, paginationParams,
+  } = usePagination();
   const currentYear = new Date().getFullYear();
   const requestedYear = Number.parseInt(searchParams.get("year") ?? "", 10);
   const initialYearFilter = Number.isFinite(requestedYear) && requestedYear > 0
@@ -146,20 +152,26 @@ export default function AdminTargetManagementPage() {
   const fetchProfiles = useCallback(async () => {
     setLoading(true);
     try {
-      let url = `/api/admin/target-profiles?year=${yearFilter}&status=active`;
-      if (regionFilter) url += `&region=${encodeURIComponent(regionFilter)}`;
-      const res = await fetch(url);
+      const params = paginationParams();
+      params.set("year", String(yearFilter));
+      params.set("status", "active");
+      if (regionFilter) params.set("region", regionFilter);
+      if (riskFilter !== "all") params.set("risk", riskFilter);
+      if (completionFilter !== "all") params.set("completion", completionFilter);
+      if (searchQuery.trim()) params.set("search", searchQuery.trim());
+      const res = await fetch(`/api/admin/target-profiles?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         setProfiles(data.profiles ?? []);
         setTotals(data.totals ?? null);
+        updateTotal(data.pagination?.total ?? 0);
       }
     } catch {
       toast.error(t("failedToLoadProfiles"));
     } finally {
       setLoading(false);
     }
-  }, [yearFilter, regionFilter]);
+  }, [yearFilter, regionFilter, riskFilter, completionFilter, searchQuery, page, limit, paginationParams, updateTotal]);
 
   const fetchAnalytics = useCallback(async () => {
     try {
@@ -211,20 +223,14 @@ export default function AdminTargetManagementPage() {
   }, [yearFilter]);
 
   useEffect(() => { fetchProfiles(); }, [fetchProfiles]);
+  useEffect(() => {
+    resetPage();
+  }, [yearFilter, regionFilter, riskFilter, completionFilter, searchQuery, resetPage]);
   useEffect(() => { fetchAnalytics(); }, [fetchAnalytics]);
   useEffect(() => { fetchRegions(); }, [fetchRegions]);
   useEffect(() => { fetchReassignOptions(); }, [fetchReassignOptions]);
 
-  // Filter by search
-  const filteredProfiles = profiles.filter((p) => {
-    if (riskFilter !== "all" && p.riskScore !== riskFilter) return false;
-    if (completionFilter !== "all" && getCompletionStage(p.overallProgress) !== completionFilter) return false;
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    return p.assigneeName.toLowerCase().includes(q) ||
-      p.assigneeEmail.toLowerCase().includes(q) ||
-      (p.region ?? "").toLowerCase().includes(q);
-  });
+  const filteredProfiles = profiles;
 
   // Actions
   const handleCancel = async (id: string) => {
@@ -670,6 +676,14 @@ export default function AdminTargetManagementPage() {
               </TableBody>
             </Table>
           </div>
+          <PaginationControls
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            limit={limit}
+            onPageChange={setPage}
+            onLimitChange={setLimit}
+          />
 
           {/* Underperformance Alerts */}
           {underperformers.length > 0 && (

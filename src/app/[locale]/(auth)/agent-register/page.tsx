@@ -96,8 +96,8 @@ export default function AgentRegisterPage() {
       setError(t("invalidEmailAddress"));
       return false;
     }
-    if (step1.password.length < 8) {
-      setError(t("passwordMinLength"));
+    if (step1.password.length < 12 || !/[a-z]/.test(step1.password) || !/[A-Z]/.test(step1.password) || !/[0-9]/.test(step1.password) || !/[^A-Za-z0-9]/.test(step1.password)) {
+      setError("Password must be 12+ characters and include upper-case, lower-case, numeric, and special characters");
       return false;
     }
     if (step1.password !== step1.confirmPassword) {
@@ -145,7 +145,7 @@ export default function AgentRegisterPage() {
       if (res.ok) {
         setStep(2);
         setTimeout(() => {
-          router.push(`/en/verify-email?email=${encodeURIComponent(step1.email)}`);
+          router.push(`/en/verify-email?email=${encodeURIComponent(step1.email)}&role=agent`);
         }, 2000);
       } else {
         setError(data.error ?? t("registrationFailed"));

@@ -23,6 +23,7 @@ const PUBLIC_ROUTES = [
   "/terms",
   "/gdpr",
   "/companies",
+  "/poster",
   "/salary-explorer",
   "/jobs",
 ] as const;

@@ -281,6 +281,21 @@ export default function EmployerApplicationsPage() {
   const [nationalityFilter, setNationalityFilter] = useState("");
   const [jobsLoaded, setJobsLoaded] = useState(false);
 
+  useEffect(() => {
+    if (!showFilters) return;
+    const isMobile = window.matchMedia("(max-width: 639px)").matches;
+    const previousOverflow = document.body.style.overflow;
+    if (isMobile) document.body.style.overflow = "hidden";
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setShowFilters(false);
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      if (isMobile) document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [showFilters]);
+
   interface EmployerJob {
     _id: string;
     title: string;
@@ -857,6 +872,32 @@ export default function EmployerApplicationsPage() {
         <span className="font-medium text-foreground">{isLoading ? "—" : selectedStageCount}</span> {t("selected")}
       </div>
 
+      <div
+        role="tablist"
+        aria-label={t("pipelineStages")}
+        className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0"
+      >
+        {[{ value: "all", label: t("allStatuses") }, ...pipelineStages].map((stage) => {
+          const active = statusFilter === stage.value;
+          return (
+            <button
+              key={stage.value}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setStatusFilter(stage.value)}
+              className={`min-h-11 shrink-0 rounded-xl border px-4 text-sm font-medium transition-colors ${
+                active
+                  ? "border-primary/30 bg-primary/10 text-primary"
+                  : "border-border/60 bg-card text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              {stage.label}
+            </button>
+          );
+        })}
+      </div>
+
       <section className="workspace-panel-surface rounded-[22px] p-3 sm:p-4">
 
           <div className="mb-2 flex items-center gap-2 sm:mb-3">
@@ -907,16 +948,6 @@ export default function EmployerApplicationsPage() {
               <SearchableSelect
                 className="h-10 w-full rounded-xl border-border bg-background/70"
                 options={[
-                  { value: "all", label: t("allStatuses") },
-                  ...pipelineStages.map((s) => ({ value: s.value, label: s.label })),
-                ]}
-                value={statusFilter}
-                onValueChange={setStatusFilter}
-                placeholder={t("allStatuses")}
-              />
-              <SearchableSelect
-                className="h-10 w-full rounded-xl border-border bg-background/70"
-                options={[
                   { value: "newest", label: t("sortNewest") },
                   { value: "oldest", label: t("sortOldest") },
                   { value: "score", label: t("sortScore") },
@@ -926,7 +957,14 @@ export default function EmployerApplicationsPage() {
                 placeholder={t("sortLabel")}
                 ariaLabel={t("sortLabel")}
               />
-              <Button size="sm" variant="outline" onClick={() => setShowFilters(!showFilters)} className="h-10 rounded-xl border-border bg-background/80 px-3 text-sm">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowFilters(!showFilters)}
+                aria-expanded={showFilters}
+                aria-controls="application-filter-panel"
+                className="h-10 rounded-xl border-border bg-background/80 px-3 text-sm"
+              >
                 <Filter className="mr-2 h-3.5 w-3.5" />
                 {t("filters")}
                 {(scoreRange[0] > 0 || scoreRange[1] < 100 || daysFilter || experienceRange[0] !== null || experienceRange[1] !== null || skillsFilter.length > 0) && (
@@ -1146,6 +1184,7 @@ export default function EmployerApplicationsPage() {
             </div>
           )}
         </div>
+        </>
       )}
       </section>
 
@@ -3387,4 +3426,3 @@ function ActivityTimelinePanel({
   if (!mounted) return null;
   return createPortal(sheet, document.body);
 }
-

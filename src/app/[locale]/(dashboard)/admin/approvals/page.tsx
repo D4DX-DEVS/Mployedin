@@ -322,11 +322,7 @@ export default function AdminApprovalsPage() {
                 <TableRow className="border-border/80 bg-secondary/72 hover:bg-secondary/72">
                   <TableHead>{t("tableHeaderTitle")}</TableHead>
                   <TableHead>{t("tableHeaderEmployer")}</TableHead>
-                  <TableHead>{t("tableHeaderPostedBy")}</TableHead>
-                  <TableHead>{t("tableHeaderSuperAgent")}</TableHead>
                   <TableHead>{t("tableHeaderLocation")}</TableHead>
-                  <TableHead>{t("tableHeaderStatus")}</TableHead>
-                  <TableHead>{t("tableHeaderApproval")}</TableHead>
                   <TableHead className="text-right">{t("tableHeaderApps")}</TableHead>
                   <TableHead>{t("tableHeaderPosted")}</TableHead>
                   <TableHead className="text-center">{t("tableHeaderView")}</TableHead>
@@ -339,19 +335,23 @@ export default function AdminApprovalsPage() {
                       <div>
                         <p className="truncate font-medium text-foreground">{job.title}</p>
                         {job.category && <p className="mt-0.5 text-xs text-muted-foreground">{job.category}</p>}
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          <StatusBadge status={job.status} />
+                          <StatusBadge status={getApproval(job)} />
+                        </div>
                       </div>
                     </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{job.employerId?.companyName ?? "—"}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{getAgentName(job) ?? t("employer")}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{getSuperAgentName(job) ?? "—"}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      <span className="block font-medium text-foreground/80">{job.employerId?.companyName ?? "—"}</span>
+                      <span className="mt-1 block">{getAgentName(job) ?? t("employer")}</span>
+                      {getSuperAgentName(job) && <span className="mt-0.5 block">{getSuperAgentName(job)}</span>}
+                    </TableCell>
                     <TableCell className="text-xs text-muted-foreground">{formatLocation(job.location)}</TableCell>
-                    <TableCell><StatusBadge status={job.status} /></TableCell>
-                    <TableCell><StatusBadge status={getApproval(job)} /></TableCell>
                     <TableCell className="text-right text-muted-foreground">{job.applicantsCount ?? 0}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{new Date(job.createdAt).toLocaleDateString()}</TableCell>
                     <TableCell className="text-center">
                       <div className="flex items-center justify-center gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedJob(job)}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedJob(job)} title={t("viewDetails")}>
                           <Eye className="h-4 w-4" />
                           <span className="sr-only">{t("viewDetails")}</span>
                         </Button>

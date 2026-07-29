@@ -17,6 +17,7 @@ jest.mock("next/navigation", () => ({
   useRouter: () => ({
     push: pushMock,
   }),
+  usePathname: () => "/en/employer",
 }));
 
 describe("CommandMenu", () => {
@@ -48,14 +49,14 @@ describe("CommandMenu", () => {
     );
 
     for (const item of standaloneItems) {
-      expect(dialogScope.getByText(item.title)).toBeInTheDocument();
+      expect(dialogScope.getAllByText(item.title).length).toBeGreaterThan(0);
     }
 
     for (const parent of groupedItems) {
-      expect(dialogScope.getByText(parent.title)).toBeInTheDocument();
+      expect(dialogScope.getAllByText(parent.title).length).toBeGreaterThan(0);
 
       for (const child of parent.children ?? []) {
-        expect(dialogScope.getByText(child.title)).toBeInTheDocument();
+        expect(dialogScope.getAllByText(child.title).length).toBeGreaterThan(0);
       }
     }
   });

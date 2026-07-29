@@ -190,6 +190,10 @@ export default function AgentExhibitionsPage() {
   const t = useTranslations("exhibitions");
   const tc = useTranslations("common");
   const { confirm, ConfirmDialogNode } = useConfirm();
+  const {
+    page, limit, total, totalPages,
+    setPage, setLimit, updateTotal, resetPage, paginationParams,
+  } = usePagination();
 
   const [items, setItems] = useState<ExhibitionRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -228,7 +232,7 @@ export default function AgentExhibitionsPage() {
   const fetchItems = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
+      const params = paginationParams();
       if (statusFilter !== "all") {
         params.set("status", statusFilter);
       }
@@ -242,17 +246,21 @@ export default function AgentExhibitionsPage() {
       if (response.ok) {
         const data = await response.json();
         setItems(data.items ?? []);
+        updateTotal(data.total ?? 0);
       }
     } catch {
       toast.error(t("fetchError"));
     } finally {
       setLoading(false);
     }
-  }, [search, statusFilter, categoryFilter, t]);
+  }, [search, statusFilter, categoryFilter, t, page, limit, paginationParams, updateTotal]);
 
   useEffect(() => {
     fetchItems();
   }, [fetchItems]);
+  useEffect(() => {
+    resetPage();
+  }, [search, statusFilter, categoryFilter, resetPage]);
 
   const updateForm = useCallback(<Key extends keyof AgentExhibitionFormState>(field: Key, value: AgentExhibitionFormState[Key]) => {
     setForm((currentForm) => ({
@@ -564,19 +572,19 @@ export default function AgentExhibitionsPage() {
                   </td>
                   <td className="px-4 py-3.5 text-right">
                     <div className="flex items-center justify-end gap-0.5">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-primary" onClick={() => setDetailItem(item)}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-primary" title="View details" onClick={() => setDetailItem(item)}>
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-primary" onClick={() => handleDuplicate(item)}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-primary" title="Duplicate request" onClick={() => handleDuplicate(item)}>
                         <Copy className="h-4 w-4" />
                       </Button>
                       {["draft", "submitted", "revision_requested"].includes(item.status) && (
                         <>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-primary" onClick={() => startEdit(item)}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-primary" title="Edit request" onClick={() => startEdit(item)}>
                             <Edit className="h-4 w-4" />
                           </Button>
                           {["draft", "submitted"].includes(item.status) && (
-                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-destructive" onClick={() => handleDelete(item._id)}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-destructive" title="Delete request" onClick={() => handleDelete(item._id)}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           )}
@@ -593,6 +601,14 @@ export default function AgentExhibitionsPage() {
       )}
         </div>
       </section>
+      <PaginationControls
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        limit={limit}
+        onPageChange={setPage}
+        onLimitChange={setLimit}
+      />
 
       <Dialog open={Boolean(detailItem)} onOpenChange={() => setDetailItem(null)}>
         <DialogContent className="max-h-[90vh] max-w-4xl overflow-hidden p-0">

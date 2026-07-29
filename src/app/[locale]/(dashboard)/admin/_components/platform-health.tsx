@@ -50,7 +50,7 @@ export async function QuickActionHealthBadge() {
   const t = await getTranslations("adminDashboard");
   return (
     <span
-      className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${
+      className={`inline-flex max-w-full items-center truncate whitespace-nowrap rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${
         jobsWithoutApplications > 0
           ? "bg-amber-100 text-amber-900 ring-1 ring-amber-200"
           : "bg-emerald-100 text-emerald-900 ring-1 ring-emerald-200"

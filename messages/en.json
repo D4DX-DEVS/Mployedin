@@ -11,6 +11,12 @@
     "applications": "Applications",
     "messages": "Messages",
     "interviews": "Interviews",
+    "offers": "Offers",
+    "calendar": "Calendar",
+    "savedSearches": "Saved searches",
+    "documents": "Documents",
+    "referralProgram": "Referral program",
+    "subscription": "Subscription",
     "placements": "Placements",
     "employers": "Employers",
     "agents": "Agents",
@@ -30,6 +36,12 @@
     "courses": "Courses",
     "jobSearch": "Job Search",
     "support": "Support",
+    "pipeline": "Pipeline",
+    "inbox": "Inbox",
+    "more": "More",
+    "openMoreMenu": "Open more menu",
+    "employerMobileNavigation": "Employer mobile navigation",
+    "jobSeekerMobileNavigation": "Job seeker mobile navigation",
     "customerCare": "Customer Care",
     "employerWorkspace": "Employer workspace",
     "adminWorkspace": "Admin workspace",
@@ -75,6 +87,7 @@
     "oauth2faSignOut": "Sign out",
     "oauth2faRecoveryUsed": "Recovery code used — please enroll new codes from your settings when convenient.",
     "accountLocked": "Your account is temporarily locked after too many failed attempts. Try again in 15 minutes or reset your password.",
+    "loginRateLimited": "Too many failed sign-in attempts from this network. Please wait five minutes and try again.",
     "resetPassword": "Reset Password",
     "sendResetLink": "Send Reset Link",
     "welcomeBack": "Welcome back",
@@ -96,6 +109,13 @@
     "signingIn": "Signing in...",
     "oauthAccountNotLinked": "This email is already registered with a different sign-in method. Please use your original sign-in method.",
     "sessionExpiredInactivity": "Your session has expired due to inactivity. Please sign in again.",
+    "chooseAccountType": "What would you like to do?",
+    "chooseAccountTypeDescription": "Choose one account type so we can keep setup focused on your goal.",
+    "jobSeekerAccount": "Find a job",
+    "jobSeekerAccountDescription": "Build your profile, discover matched roles, and track applications.",
+    "employerAccount": "Hire talent",
+    "employerAccountDescription": "Create your company workspace, publish jobs, and manage candidates.",
+    "changeAccountType": "Change",
     "createYourAccount": "Create your account",
     "startYourJourney": "Start your journey with Mployedin",
     "fullName": "Full Name",
@@ -112,9 +132,9 @@
     "registrationFailed": "Registration failed. Please try again.",
     "registerSubtitle": "Find your next opportunity with AI-powered matching.",
     "emailAddressLabel": "Email address",
-    "minChars": "Min. 8 characters",
-    "passwordTooShort": "Password must be at least 8 characters.",
-    "passwordTooWeak": "Password must include uppercase, lowercase, and a number.",
+    "minChars": "12+ characters with upper/lowercase, number, and symbol",
+    "passwordTooShort": "Password must be at least 12 characters.",
+    "passwordTooWeak": "Password must include uppercase, lowercase, a number, and a symbol.",
     "alreadyHaveAccount": "Already have an account?",
     "hiringQuestion": "Hiring?",
     "registerAsEmployer": "Register as an employer"
@@ -153,6 +173,7 @@
   "employerRegister": {
     "title": "Register Your Company",
     "subtitle": "Join MPLOYEDIN — Gulf's AI-powered recruitment platform",
+    "stepProgress": "Step {current} of {total}: {label}",
     "referral": "Referral: {code}",
     "steps": {
       "company": "Company",
@@ -218,8 +239,10 @@
       "validEmailRequired": "Please enter a valid email.",
       "passwordRequired": "Password is required.",
       "passwordTooShort": "Password must be at least 8 characters.",
+      "passwordStrength": "Use 12+ characters with uppercase, lowercase, a number, and a symbol.",
       "passwordMismatch": "Passwords do not match.",
       "termsRequired": "You must agree to the Terms of Service and Privacy Policy.",
+      "fixFields": "Please fix the highlighted fields.",
       "registrationFailed": "Registration failed. Please try again.",
       "serverError": "Server error. Please try again later.",
       "tooManyRequests": "Too many requests. Please wait a few minutes and try again.",
@@ -4383,6 +4406,9 @@
     "sortScore": "Highest match",
     "latestPosting": "Latest",
     "filters": "Filters",
+    "pipelineStages": "Hiring pipeline stages",
+    "filterPanelTitle": "Filter candidates",
+    "closeFilters": "Close filters",
     "candidate": "Candidate",
     "roleMatchSkills": "Role, Match, Skills",
     "actions": "Actions",
@@ -5210,19 +5236,19 @@
     },
     "actions": {
       "agentPerformance": {
-        "label": "Agent Performance",
+        "label": "Review Agent Performance",
         "description": "Review the team roster, throughput, and individual accountability."
       },
       "leadPipeline": {
-        "label": "Lead Pipeline",
+        "label": "Follow Up Leads",
         "description": "Track follow-ups, active prospecting, and employer conversion flow."
       },
       "jobApprovals": {
-        "label": "Job Approvals",
+        "label": "Approve Jobs",
         "description": "Clear pending approvals quickly without leaving the oversight workspace."
       },
       "commissionReport": {
-        "label": "Commission Report",
+        "label": "Check Commissions",
         "description": "Stay on top of placement-driven earnings and regional payout status."
       }
     },
@@ -5296,19 +5322,19 @@
         "note": "Launch a role for one of your assigned employers."
       },
       "myJobs": {
-        "label": "My Jobs",
+        "label": "Manage My Jobs",
         "note": "Review active, draft, and closed postings in one view."
       },
       "candidates": {
-        "label": "Candidates",
+        "label": "Review Candidates",
         "note": "Move shortlists, interviews, and offers forward."
       },
       "jobSeekers": {
-        "label": "View Job Seekers",
+        "label": "Find Job Seekers",
         "note": "Search profiles, match talent, and follow up faster."
       },
       "performanceReport": {
-        "label": "Performance Report",
+        "label": "Check My Performance",
         "note": "Track conversion quality, response rates, and wins."
       }
     },
@@ -7436,6 +7462,8 @@
     "failedToCreateProfiles": "Failed to create target profiles",
     "profileNotFound": "Profile not found",
     "failedToLoadProfile": "Failed to load profile",
+    "failedLoadTargets": "Failed to load targets",
+    "failedLoadTeamTargets": "Failed to load team targets",
     "failedToLoadReport": "Failed to load report",
     "a11yViewDetails": "View details",
     "a11yCancel": "Cancel",
@@ -13441,8 +13469,12 @@
     "checkSpamFolder": "Check your spam or junk folder",
     "correctEmailUsed": "Make sure you used the correct email address",
     "allowFewMinutes": "Allow a few minutes for the email to arrive",
+    "codeExpiry": "Codes expire after 24 hours",
     "sendingEllipsis": "Sending…",
-    "resendVerificationEmail": "Resend verification email"
+    "resendVerificationEmail": "Resend verification email",
+    "resendIn": "Resend in {seconds}s",
+    "changeEmail": "Change email address",
+    "contactSupport": "Contact support"
   },
   "confirmEmailChange": {
     "confirmationFailedFallback": "Confirmation failed. The link may have expired.",
@@ -14090,7 +14122,11 @@
     "exportData": "Export data",
     "rowsPerPage": "Rows per page",
     "showing": "Showing {from}–{to} of {total}",
-    "noRecords": "No records"
+    "noRecords": "No records",
+    "firstPage": "First page",
+    "previousPage": "Previous page",
+    "nextPage": "Next page",
+    "lastPage": "Last page"
   },
   "shareJob": {
     "share": "Share",
@@ -14203,7 +14239,7 @@
     "notifyCandidates": "Notify Candidates",
     "sendAlertsOnStageChanges": "Send alerts on stage changes",
     "autoRejectThreshold": "Auto-reject Threshold",
-    "rejectBelowMatchScore": "Reject below {{percent}}% match score",
+    "rejectBelowMatchScore": "Reject below {percent}% match score",
     "percentOff": "0% (off)",
     "percentDefault": "40% (default)",
     "percentStrict": "80% (strict)",
@@ -14214,10 +14250,10 @@
   },
   "jobMatchingWeightsTab": {
     "failedToSaveMatchingWeights": "Failed to save matching weights",
-    "totalAt": "Total at {{total}}%",
+    "totalAt": "Total at {total}%",
     "mustTotal100PercentBeforeSaving": "Must total 100% before saving.",
     "top": "Top",
-    "strongestInfluenceAt": "Strongest influence at {{percent}}%.",
+    "strongestInfluenceAt": "Strongest influence at {percent}%.",
     "saving": "Saving…",
     "saved": "Saved!",
     "weightsSaved": "Weights saved",
@@ -14229,7 +14265,7 @@
     "resetDefaults": "Reset Defaults",
     "weightDistribution": "Weight Distribution",
     "weightsBalanced": "✓ Weights balanced. Candidates will be ranked by these priorities.",
-    "totalIsAdjustTo100": "⚠ Total is {{total}}%. Adjust to 100%.",
+    "totalIsAdjustTo100": "⚠ Total is {total}%. Adjust to 100%.",
     "tuningTip": "Tuning Tip",
     "tuningTipDescription": "Increase skills for technical roles. Raise relevant experience for senior positions. Lean on education and certifications for regulated or licensed roles."
   },
@@ -14241,10 +14277,10 @@
     "regenerate": "Regenerate",
     "generate": "Generate",
     "showLatestOnly": "Show latest only",
-    "viewAllHistory": "View all history ({{count}} sets)",
+    "viewAllHistory": "View all history ({count} sets)",
     "loadingSavedQuestions": "Loading saved questions...",
-    "generatingQuestions": "Generating {{count}} {{type}} questions...",
-    "clickGenerateToCreate": "Click \"Generate\" to create {{type}} questions",
+    "generatingQuestions": "Generating {count} {type} questions...",
+    "clickGenerateToCreate": "Click \"Generate\" to create {type} questions",
     "latest": "Latest",
     "tests": "Tests",
     "strongAnswer": "Strong Answer",
@@ -14558,7 +14594,7 @@
     "jobSeekersOnly": "Job seekers only can apply",
     "applicationSubmitted": "Application submitted!",
     "sentProfile": "We've sent your profile to the employer.",
-    "answerRequired": "Please answer the required question: \"{{label}}\"",
+    "answerRequired": "Please answer the required question: \"{label}\"",
     "applyingAs": "Applying as",
     "profileCv": "CV / Resume",
     "profileCvLabel": "Profile CV",
@@ -14579,12 +14615,12 @@
     "easyApply": "Easy Apply",
     "profileAutoAttached": "Your profile is auto-attached to the application.",
     "confirmSkills": "Confirm your skills",
-    "experienceQuestion": "Do you have experience in {{skill}}?",
+    "experienceQuestion": "Do you have experience in {skill}?",
     "yes": "Yes",
     "no": "No",
     "skip": "Skip",
-    "skillsUpdated": "✓ Thanks! Your profile has been updated with {{count}} skill{{pluralSkill}}.",
-    "moreSkillQuestions": "{{count}} more skill question{{pluralQuestion}}"
+    "skillsUpdated": "✓ Thanks! Your profile has been updated with {count, plural, one {# skill} other {# skills}}.",
+    "moreSkillQuestions": "{count, plural, one {# more skill question} other {# more skill questions}}"
   },
   "socialShare": {
     "shareJob": "Share this job",
@@ -14731,6 +14767,9 @@
     "description": "An unexpected error occurred while loading this page.",
     "tryAgain": "Try Again",
     "reloadPage": "Reload Page",
+    "home": "Go to dashboard",
+    "support": "Contact support",
+    "platformStatus": "Check platform status",
     "errorId": "Error ID: {digest}",
     "failedApplications": "Failed to load applications",
     "failedApplicationsDescription": "An unexpected error occurred while loading applications.",

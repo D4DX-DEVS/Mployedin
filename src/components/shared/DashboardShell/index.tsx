@@ -67,6 +67,7 @@ export function DashboardShell({
   const tNav = useTranslations("nav");
   const [mobileOpen, setMobileOpen] = useState(false);
   const isJobSeeker = userRole === "job_seeker";
+  const isEmployer = userRole === "employer";
   const isAdminWorkspace = userRole === "admin";
   const usesModernWorkspaceShell = userRole === "admin" || userRole === "employer" || userRole === "agent" || userRole === "super_agent";
   const bottomNavTabs = (WORKSPACE_BOTTOM_NAV_TABS[userRole as UserRole] ?? []).map((tab) => ({
@@ -156,12 +157,9 @@ export function DashboardShell({
         {/* Page content */}
         {isJobSeeker ? (
           <>
-            <main className="dashboard-main isolate flex-1 bg-background">
+            <main className="dashboard-main isolate flex-1 bg-background pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
               {children}
             </main>
-            <div className="flex-shrink-0 pt-8 pb-16 lg:pb-0">
-              <PublicFooter locale={locale} variant="embedded" />
-            </div>
             <JobSeekerBottomNav locale={locale} />
           </>
         ) : (
@@ -182,6 +180,7 @@ export function DashboardShell({
             )}
           </>
         )}
+        {isEmployer && <EmployerBottomNav locale={locale} onMore={() => setMobileOpen(true)} />}
       </div>
 
       {/* Cmd+K menu */}

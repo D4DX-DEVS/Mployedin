@@ -5,6 +5,7 @@ import JobSeeker from "@/models/JobSeeker";
 import { AI_TOKEN_LIMITS, redactPII } from "@/lib/ai/sanitize";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
+import logger from "@/lib/logger";
 
 /**
  * GET /api/ai/skills-suggest
@@ -42,15 +43,33 @@ Return ONLY a JSON array of objects (no markdown):
   ...
 ]`;
 
-  const text = redactPII(
-    await generateText(prompt, GEMINI_MODELS.flash, AI_TOKEN_LIMITS.skills_suggest)
-  ).replace(/```json\n?|```/g, "").trim();
+  let text: string;
+  try {
+    text = redactPII(
+      await generateText(prompt, GEMINI_MODELS.flash, AI_TOKEN_LIMITS.skills_suggest)
+    ).replace(/```json\n?|```/g, "").trim();
+  } catch (error) {
+    // Skills management remains usable when the optional AI provider is
+    // unavailable or misconfigured. Avoid turning a provider outage into a
+    // broken page and do not expose upstream credential details to the client.
+    logger.warn({ err: error, userId: ctx.userId }, "AI skill suggestions unavailable");
+    return NextResponse.json({
+      suggestions: [],
+      unavailable: true,
+      message: "AI suggestions are temporarily unavailable. You can still add skills manually.",
+    });
+  }
 
   let suggestions;
   try {
     suggestions = JSON.parse(text);
   } catch {
-    return NextResponse.json({ error: "AI response could not be parsed. Please try again." }, { status: 500 });
+    logger.warn({ userId: ctx.userId }, "AI skill suggestions returned invalid JSON");
+    return NextResponse.json({
+      suggestions: [],
+      unavailable: true,
+      message: "AI suggestions are temporarily unavailable. You can still add skills manually.",
+    });
   }
 
   return NextResponse.json({ suggestions });

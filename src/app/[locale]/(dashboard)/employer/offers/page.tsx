@@ -332,8 +332,6 @@ export default function EmployerOffersPage() {
                   <TableHead className="min-w-[180px]">{t("role")}</TableHead>
                   <TableHead>{t("salary")}</TableHead>
                   <TableHead>{t("startDate")}</TableHead>
-                  <TableHead>{t("status")}</TableHead>
-                  <TableHead>{t("expired")}</TableHead>
                   <TableHead className="text-right">{t("actions")}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -346,6 +344,9 @@ export default function EmployerOffersPage() {
                           {candidateName(offer)}
                         </p>
                         <p className="text-xs text-muted-foreground">{t("createdAt")} {formatDate(offer.createdAt)}</p>
+                        <Badge variant="outline" className={getStatusColor(offer.status)}>
+                          {isExpired(offer) ? t("expired") : t(offer.status)}
+                        </Badge>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -364,15 +365,10 @@ export default function EmployerOffersPage() {
                       <p className="font-medium text-foreground">{formatSalary(offer)}</p>
                       <p className="text-xs text-muted-foreground">{offer.salary.period === "monthly" ? t("perMonth") : t("perYear")}</p>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{formatDate(offer.startDate)}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={getStatusColor(offer.status)}>
-                        {isExpired(offer) ? t("expired") : t(offer.status)}
-                      </Badge>
-                    </TableCell>
                     <TableCell>
                       <div className="text-sm text-muted-foreground">
-                        {formatDate(offer.expiresAt)}
+                        <span className="block">{formatDate(offer.startDate)}</span>
+                        <span className="mt-1 block text-xs">{t("expired")}: {formatDate(offer.expiresAt)}</span>
                         {isExpiring(offer) ? (
                           <span className="mt-1 block text-xs font-semibold text-status-shortlisted">{t("expired")}</span>
                         ) : null}

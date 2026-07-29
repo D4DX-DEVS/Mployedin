@@ -158,7 +158,7 @@ export default function JobSeekerNLSearchPage() {
                     <div className="flex items-center gap-2">
                       <StatusBadge status={job.employmentType.replace("_", " ")} />
                       <a
-                        href={`./jobs/${job._id}`}
+                        href={`/${locale}/job-seeker/jobs/${job._id}`}
                         className="btn-primary text-xs px-3 py-1.5"
                       >
                         {t("apply")}
