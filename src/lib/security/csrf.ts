@@ -126,6 +126,7 @@ const CSRF_EXEMPT_PREFIXES = [
   // CSRF-protected like any other dashboard action.
   "/api/mcp/register",
   "/api/mcp/token",
+  "/api/mcp/revoke", // RFC 7009 token revocation — server-to-server, bearer-authenticated
 ];
 
 /**
