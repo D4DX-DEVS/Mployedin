@@ -281,7 +281,7 @@ export default function AdminTargetReportPage() {
       />
 
       {/* ═══════ KPI Summary ═══════ */}
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div className="workspace-glass-panel rounded-2xl p-4">
           <div className="flex items-start justify-between">
             <div>
@@ -485,7 +485,7 @@ export default function AdminTargetReportPage() {
             <p className="text-sm text-muted-foreground">{data.yearOverYear.previousYear.year} vs {data.yearOverYear.currentYear.year}</p>
           </div>
         </div>
-        <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
           {([
             { label: "Emp. Target", curr: data.yearOverYear.currentYear.employerTarget, prev: data.yearOverYear.previousYear.employerTarget, growth: data.yearOverYear.growth.employerTarget },
             { label: "Emp. Achieved", curr: data.yearOverYear.currentYear.employerAchieved, prev: data.yearOverYear.previousYear.employerAchieved, growth: data.yearOverYear.growth.employerAchieved },

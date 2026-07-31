@@ -106,7 +106,10 @@ export function SearchableSelect({
           aria-label={ariaLabel ?? placeholder}
           disabled={disabled}
           className={cn(
-            "flex h-10 w-full items-center gap-2 rounded-lg border border-border/60 bg-background px-3 py-2 text-sm shadow-sm shadow-black/[0.04] transition-all duration-200 hover:border-border focus:outline-none focus:ring-1 focus:ring-ring/50 focus:border-ring disabled:cursor-not-allowed disabled:opacity-50",
+            // Phones fit three of these on one filter row, so the trigger gives
+            // up padding and type size rather than truncating its label.
+            "flex h-9 w-full min-w-0 items-center gap-1 rounded-lg border border-border/60 bg-background px-2 py-1 text-[11px] shadow-sm shadow-black/[0.04] transition-all duration-200 hover:border-border focus:outline-none focus:ring-1 focus:ring-ring/50 focus:border-ring disabled:cursor-not-allowed disabled:opacity-50",
+            "sm:h-10 sm:gap-2 sm:px-3 sm:py-2 sm:text-sm",
             className
           )}
         >

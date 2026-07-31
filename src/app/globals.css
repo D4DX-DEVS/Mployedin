@@ -1400,8 +1400,8 @@ body {
   table.responsive-card-table > tfoot {
     display: grid;
     width: 100%;
-    gap: 0.625rem;
-    padding: 0.625rem;
+    gap: 0.375rem;
+    padding: 0.5rem;
   }
 
   table.responsive-card-table > tbody > tr,
@@ -1409,10 +1409,10 @@ body {
     display: block;
     width: 100%;
     min-width: 0;
-    padding: 0.2rem 0.75rem;
+    padding: 0.125rem 0.625rem;
     overflow: hidden;
     border: 1px solid hsl(var(--border) / 0.65);
-    border-radius: 0.875rem;
+    border-radius: 0.75rem;
     background: hsl(var(--card));
     box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
   }
@@ -1428,13 +1428,13 @@ body {
     width: 100% !important;
     min-width: 0 !important;
     max-width: none !important;
-    grid-template-columns: minmax(6.25rem, 36%) minmax(0, 1fr);
+    grid-template-columns: minmax(5rem, 34%) minmax(0, 1fr);
     align-items: center;
     gap: 0.5rem;
-    padding: 0.375rem 0 !important;
+    padding: 0.25rem 0 !important;
     overflow-wrap: anywhere;
-    font-size: 0.8125rem;
-    line-height: 1.25rem;
+    font-size: 0.75rem;
+    line-height: 1.05rem;
     text-align: end;
     white-space: normal !important;
     border: 0;
@@ -1517,6 +1517,92 @@ body {
   [dir="rtl"] table.responsive-card-table > tfoot > tr > td {
     text-align: start;
   }
+
+  /* ── Collapsed cards ──────────────────────────────────────────────────────
+     A wide admin table becomes one very tall card per row on a phone. Show the
+     identifying columns only, and let the chevron reveal the rest — the same
+     progressive-disclosure the employer jobs list uses. */
+  table.responsive-card-table > tbody > tr[data-mobile-collapsible] > td:nth-child(n + 3) {
+    display: none;
+  }
+
+  table.responsive-card-table > tbody > tr[data-mobile-collapsible][data-mobile-expanded] > td:nth-child(n + 3) {
+    display: grid;
+  }
+
+  /* The last visible cell shouldn't draw a divider into empty space. */
+  table.responsive-card-table > tbody > tr[data-mobile-collapsible]:not([data-mobile-expanded]) > td:nth-child(2) {
+    border-bottom: 0;
+  }
+
+  /* Selection checkboxes are label-less; without this they render as a card row
+     with an empty label column and a stranded box. */
+  table.responsive-card-table > tbody > tr > td[data-label=""] {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: start;
+    padding: 0.125rem 0 !important;
+  }
+
+  table.responsive-card-table > tbody > tr > td[data-label=""] > * {
+    justify-self: start;
+  }
+
+  table.responsive-card-table > tbody > tr > td::before {
+    font-size: 0.625rem;
+    line-height: 1rem;
+  }
+
+  /* Chevron affordance, drawn on the row itself. Using a pseudo-element rather
+     than an injected button keeps the DOM identical to what the server sent,
+     which is what hydration requires. */
+  table.responsive-card-table > tbody > tr[data-mobile-collapsible] {
+    position: relative;
+    cursor: pointer;
+  }
+
+  table.responsive-card-table > tbody > tr[data-mobile-collapsible]::after {
+    position: absolute;
+    inset-block-start: 0.75rem;
+    inset-inline-end: 0.75rem;
+    width: 0.4rem;
+    height: 0.4rem;
+    border-right: 1.5px solid hsl(var(--muted-foreground));
+    border-bottom: 1.5px solid hsl(var(--muted-foreground));
+    content: "";
+    transform: rotate(45deg);
+    transition: transform 150ms ease;
+  }
+
+  table.responsive-card-table > tbody > tr[data-mobile-collapsible][data-mobile-expanded]::after {
+    transform: rotate(225deg);
+  }
+
+  /* Keep the summary clear of the chevron. Card values are end-aligned, so both
+     visible cells need the gutter or the first row collides with it. */
+  table.responsive-card-table > tbody > tr[data-mobile-collapsible] > td:nth-child(1),
+  table.responsive-card-table > tbody > tr[data-mobile-collapsible] > td:nth-child(2) {
+    padding-inline-end: 1.125rem !important;
+  }
+
+  /* ── Expanded detail rows ────────────────────────────────────────────────
+     Label and value share one line with a narrow label column, so revealing a
+     card adds a few short rows instead of a tall stacked block. */
+  table.responsive-card-table > tbody > tr[data-mobile-expanded] > td:nth-child(n + 3) {
+    grid-template-columns: minmax(3.5rem, 30%) minmax(0, 1fr);
+    gap: 0.375rem;
+    min-height: 0;
+    padding-block: 0.1875rem !important;
+    line-height: 1rem;
+  }
+
+  table.responsive-card-table > tbody > tr[data-mobile-expanded] > td:nth-child(n + 3) > * {
+    margin: 0;
+  }
+
+  /* Action icons line up on the right of their own single row. */
+  table.responsive-card-table > tbody > tr[data-mobile-expanded] > td:nth-child(n + 3) :where(button, a) {
+    min-height: 0;
+  }
 }
 
 /* Voice recording waveform animation */
@@ -1524,3 +1610,685 @@ body {
   from { transform: scaleY(0.3); opacity: 0.6; }
   to { transform: scaleY(1); opacity: 1; }
 }
+
+/* Row-selection checkboxes are `<button role="checkbox">`, so the 44px
+   touch-target baseline gave every card a ~49px tall empty band above its
+   content. Inside a card table the checkbox is a compact control instead —
+   the whole card row remains tappable, so no touch target is actually lost. */
+@media (max-width: 639px) {
+  table.responsive-card-table > tbody > tr > td [role="checkbox"] {
+    width: 1.125rem !important;
+    height: 1.125rem !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    flex: none !important;
+    align-self: center !important;
+    /* The cell is a grid; without this the box stretches to the row height and
+       renders as the tall sliver instead of a square. */
+    place-self: center start !important;
+  }
+
+  /* Checkbox and chevron share one short line at the top of the card rather
+     than each claiming a full-height band. */
+  table.responsive-card-table > tbody > tr > td[data-label=""] {
+    display: flex !important;
+    min-height: 0;
+    align-items: center;
+    padding-block: 0.125rem !important;
+  }
+
+  table.responsive-card-table > tbody > tr > td:first-child {
+    min-height: 0;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Admin mobile density
+   ═══════════════════════════════════════════════════════════════════════════
+   The admin module was authored desktop-first: 34 of its 77 pages carry no
+   responsive prefix at all, so phones inherit desktop padding, gaps, type
+   scale and control heights. Compacting the utilities those pages actually
+   use is scoped two ways, so nothing outside admin-on-a-phone can regress:
+
+     • `.dashboard-shell-admin` — employer and job-seeker keep the tuned mobile
+       layouts they already have (they are the reference this matches).
+     • `@media (max-width: 639px)` — desktop is untouched by construction.
+
+   Elements that already declare a responsive value (`p-3 sm:p-6`,
+   `gap-2 sm:gap-6`, …) are skipped: that page opted into its own mobile
+   treatment and overriding it would undo deliberate work.
+
+   These rules sit outside `@layer components`, so unlayered cascade priority
+   beats both the layered admin styles and Tailwind's utility layer — no
+   !important needed, and desktop rules keep their normal precedence.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 639px) {
+  /* ── Box padding ──────────────────────────────────────────────────────────
+     Containers only. Buttons and links keep their padding: it is hit area. */
+  .dashboard-shell-admin :is([class~="p-6"], [class~="p-7"], [class~="p-8"]):not([class*="sm:p-"]):not(button):not(a) {
+    padding: 0.75rem;
+  }
+  .dashboard-shell-admin [class~="p-5"]:not([class*="sm:p-"]):not(button):not(a) {
+    padding: 0.6875rem;
+  }
+  .dashboard-shell-admin [class~="p-4"]:not([class*="sm:p-"]):not(button):not(a) {
+    padding: 0.625rem;
+  }
+
+  .dashboard-shell-admin :is([class~="px-6"], [class~="px-8"]):not([class*="sm:px-"]):not(button):not(a) {
+    padding-inline: 0.75rem;
+  }
+  .dashboard-shell-admin [class~="px-5"]:not([class*="sm:px-"]):not(button):not(a) {
+    padding-inline: 0.6875rem;
+  }
+  .dashboard-shell-admin [class~="px-4"]:not([class*="sm:px-"]):not(button):not(a) {
+    padding-inline: 0.625rem;
+  }
+
+  .dashboard-shell-admin :is([class~="py-6"], [class~="py-8"]):not([class*="sm:py-"]):not(button):not(a) {
+    padding-block: 0.625rem;
+  }
+  .dashboard-shell-admin [class~="py-5"]:not([class*="sm:py-"]):not(button):not(a) {
+    padding-block: 0.5625rem;
+  }
+  .dashboard-shell-admin [class~="py-4"]:not([class*="sm:py-"]):not(button):not(a) {
+    padding-block: 0.5rem;
+  }
+
+  /* ── Grid / flex gaps ─────────────────────────────────────────────────── */
+  .dashboard-shell-admin :is([class~="gap-4"], [class~="gap-5"], [class~="gap-6"], [class~="gap-8"]):not([class*="sm:gap-"]) {
+    gap: 0.5rem;
+  }
+  .dashboard-shell-admin :is([class~="gap-x-4"], [class~="gap-x-6"], [class~="gap-x-8"]):not([class*="sm:gap-x-"]) {
+    column-gap: 0.5rem;
+  }
+  .dashboard-shell-admin :is([class~="gap-y-4"], [class~="gap-y-6"], [class~="gap-y-8"]):not([class*="sm:gap-y-"]) {
+    row-gap: 0.5rem;
+  }
+
+  /* ── Stacked-section rhythm ───────────────────────────────────────────────
+     Tailwind v4 emits `space-y-*` as margin-block-end on every child but the
+     last; the older `.dashboard-main` overrides above emit margin-top. Set
+     both so the two cannot collapse to the larger desktop value. */
+  .dashboard-shell-admin .dashboard-main [class~="space-y-8"]:not([class*="sm:space-y-"]) > :not([hidden]) ~ :not([hidden]),
+  .dashboard-shell-admin .dashboard-main [class~="space-y-6"]:not([class*="sm:space-y-"]) > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.625rem;
+    margin-bottom: 0;
+  }
+  .dashboard-shell-admin .dashboard-main :is([class~="space-y-4"], [class~="space-y-5"]):not([class*="sm:space-y-"]) > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.5rem;
+    margin-bottom: 0;
+  }
+
+  /* ── Type scale ───────────────────────────────────────────────────────────
+     Desktop headings run to 36px, which eats a third of a 390px-wide card. */
+  .dashboard-shell-admin [class~="text-5xl"]:not([class*="sm:text-"]) {
+    font-size: 1.75rem;
+    line-height: 2rem;
+  }
+  .dashboard-shell-admin [class~="text-4xl"]:not([class*="sm:text-"]) {
+    font-size: 1.5rem;
+    line-height: 1.875rem;
+  }
+  .dashboard-shell-admin [class~="text-3xl"]:not([class*="sm:text-"]) {
+    font-size: 1.375rem;
+    line-height: 1.75rem;
+  }
+  .dashboard-shell-admin [class~="text-2xl"]:not([class*="sm:text-"]) {
+    font-size: 1.125rem;
+    line-height: 1.5rem;
+  }
+  .dashboard-shell-admin [class~="text-xl"]:not([class*="sm:text-"]) {
+    font-size: 1.0625rem;
+    line-height: 1.4rem;
+  }
+  .dashboard-shell-admin [class~="text-lg"]:not([class*="sm:text-"]) {
+    font-size: 0.9375rem;
+    line-height: 1.3rem;
+  }
+
+  /* ── Control heights ──────────────────────────────────────────────────────
+     A control that declares its own height has opted out of the 44px baseline
+     set for undeclared controls further up. The whole row stays tappable, so
+     no real touch target is lost — this is the same trade the card tables make.
+     Square icon buttons are excluded so they cannot turn into rectangles. */
+  .dashboard-shell-admin .dashboard-main :is(button, [role="button"], input, select, textarea):is(
+      [class~="h-3"], [class~="h-3.5"], [class~="h-4"], [class~="h-5"], [class~="h-6"],
+      [class~="h-7"], [class~="h-8"], [class~="h-9"], [class~="h-10"], [class~="h-11"], [class~="h-12"], [class~="h-14"]
+    ) {
+    min-height: 0;
+  }
+
+  /* Tight vertical padding is the other way an author says "this is a compact
+     control": filter pills, segmented toggles and icon buttons all use it. The
+     baseline was inflating a 20px icon button and a 22px pill to 44px, which is
+     most of what makes admin lists feel twice as tall as they need to be. */
+  .dashboard-shell-admin .dashboard-main :is(button, [role="button"]):is(
+      [class~="py-0"], [class~="py-0.5"], [class~="py-1"], [class~="py-1.5"]
+    ) {
+    min-height: 0;
+  }
+
+  /* Everything else keeps a floor, just a shorter one. 44px is the phone
+     touch-target guideline for a public site; these are dense internal consoles
+     where the surrounding row is tappable too, and the guideline was adding
+     ~8px to every button, tab and input on every page. 36px stays well above
+     the size where taps start missing, and matches the compact select height
+     already used across the admin filter bars. */
+  .dashboard-shell-admin .dashboard-main :where(button, [role="button"]),
+  .dashboard-shell-admin .dashboard-main :where(
+    input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]),
+    select,
+    textarea
+  ) {
+    min-height: 36px;
+  }
+
+  /* Checkboxes and radios rendered as buttons are sized by their own utilities. */
+  .dashboard-shell-admin .dashboard-main :is([role="checkbox"], [role="radio"]) {
+    min-height: 0;
+    min-width: 0;
+  }
+
+  .dashboard-shell-admin .dashboard-main :is(button, [role="button"], input, select, textarea)[class~="h-10"]:not([class~="w-10"]):not([class*="sm:h-"]),
+  .dashboard-shell-admin .dashboard-main :is(button, [role="button"], input, select, textarea)[class~="h-11"]:not([class~="w-11"]):not([class*="sm:h-"]),
+  .dashboard-shell-admin .dashboard-main :is(button, [role="button"], input, select, textarea)[class~="h-12"]:not([class~="w-12"]):not([class*="sm:h-"]),
+  .dashboard-shell-admin .dashboard-main :is(button, [role="button"], input, select, textarea)[class~="h-14"]:not([class~="w-14"]):not([class*="sm:h-"]) {
+    height: 2.25rem;
+  }
+
+  /* ── Corner radius ────────────────────────────────────────────────────────
+     Desktop radii read as wasted margin once the card is only 358px wide. */
+  .dashboard-shell-admin [class~="rounded-3xl"]:not([class*="sm:rounded-"]) {
+    border-radius: 1rem;
+  }
+  .dashboard-shell-admin [class~="rounded-2xl"]:not([class*="sm:rounded-"]) {
+    border-radius: 0.875rem;
+  }
+}
+
+/* Row-select checkboxes sat on their own full-width line at the top of every
+   card — roughly 20px of height spent on an 18px control, on every row of every
+   selectable admin list. Pin it into the card's top-left corner and indent only
+   the summary cell next to it, so the card starts at its real content instead.
+   Scoped to collapsible rows: spanning rows (empty states, group headers) have
+   no checkbox and must keep flowing normally. */
+@media (max-width: 639px) {
+  table.responsive-card-table > tbody > tr[data-mobile-collapsible]:has(> td:first-child [role="checkbox"]) {
+    position: relative;
+  }
+
+  table.responsive-card-table > tbody > tr[data-mobile-collapsible] > td:first-child:has([role="checkbox"]) {
+    position: absolute;
+    top: 0.3125rem;
+    inset-inline-start: 0.5rem;
+    z-index: 1;
+    display: block;
+    width: auto !important;
+    min-height: 0;
+    padding: 0 !important;
+    border-bottom: 0;
+  }
+
+  table.responsive-card-table > tbody > tr[data-mobile-collapsible] > td:first-child:has([role="checkbox"]) + td {
+    padding-inline-start: 1.625rem !important;
+  }
+}
+
+/* Identity cells are what actually make a collapsed card 90px tall: avatar,
+   name, email and a status badge stacked in a column that was laid out for a
+   wide desktop table cell. On a phone the card is narrow enough that one
+   wrapping line reads fine and costs a third of the height. Reflow the value
+   side only — the label column and the card's own grid are untouched.
+   This is the same "put the row's content inline" treatment already applied to
+   the expanded detail rows. */
+@media (max-width: 639px) {
+  table.responsive-card-table > tbody > tr > td [class*="flex-col"],
+  table.responsive-card-table > tfoot > tr > td [class*="flex-col"] {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.0625rem 0.375rem;
+  }
+
+  /* Avatars are sized for a desktop table row; inside a card they only need to
+     read as an identity chip next to the name. */
+  table.responsive-card-table > tbody > tr > td :where(img, span, div):is(
+      [class~="h-8"], [class~="h-9"], [class~="h-10"], [class~="h-11"], [class~="h-12"]
+    ):is([class~="w-8"], [class~="w-9"], [class~="w-10"], [class~="w-11"], [class~="w-12"]) {
+    width: 1.5rem !important;
+    height: 1.5rem !important;
+    min-width: 0 !important;
+    font-size: 0.625rem !important;
+  }
+}
+
+/* The identity stack is almost always a plain block div holding <p>name</p>,
+   <p>email</p> and a badge — no flex class to hook, so the rule above missed it
+   and the cell stayed three lines tall. Inside a card cell, treat an unstyled
+   block container as a wrapping inline row. Anything the page explicitly laid
+   out as flex or grid keeps its own layout. */
+@media (max-width: 639px) {
+  table.responsive-card-table > tbody > tr > td div:not([class*="flex"]):not([class*="grid"]):not([class*="space-y"]),
+  table.responsive-card-table > tfoot > tr > td div:not([class*="flex"]):not([class*="grid"]):not([class*="space-y"]) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.0625rem 0.375rem;
+  }
+
+  /* Vertical margins inside that row are leftovers from the stacked layout. */
+  table.responsive-card-table > tbody > tr > td :is([class*="mt-0.5"], [class*="mt-1"], [class*="mt-2"]) {
+    margin-top: 0;
+  }
+}
+
+/* The first content cell of a card is the row's identity — avatar plus name,
+   plus usually an email and a status chip. Its label ("User", "Name", "Title",
+   "Candidate") only repeats what the value already says, yet it was claiming
+   34% of the card and squeezing the value into ~142px, where every email
+   wrapped onto a second line and pushed the chip onto a third. Give that one
+   cell the full card width, left-aligned like a list item, and let long values
+   truncate instead of wrapping. Every other cell keeps the label/value pair. */
+@media (max-width: 639px) {
+  table.responsive-card-table > tbody > tr[data-mobile-collapsible] > td:first-child:not([data-label=""]),
+  table.responsive-card-table > tbody > tr[data-mobile-collapsible] > td[data-label=""]:first-child + td {
+    /* Flex, not a single grid column: some pages nest the name/email/status in
+       a wrapper div, others drop them straight into the cell as siblings. As
+       grid items siblings become one row each; as flex items they share a line
+       and wrap only when they genuinely run out of width. */
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.125rem 0.375rem;
+    text-align: start;
+  }
+
+  table.responsive-card-table > tbody > tr[data-mobile-collapsible] > td:first-child:not([data-label=""])::before,
+  table.responsive-card-table > tbody > tr[data-mobile-collapsible] > td[data-label=""]:first-child + td::before {
+    display: none;
+  }
+
+  table.responsive-card-table > tbody > tr[data-mobile-collapsible] > td:first-child:not([data-label=""]) > *,
+  table.responsive-card-table > tbody > tr[data-mobile-collapsible] > td[data-label=""]:first-child + td > * {
+    justify-self: start;
+  }
+
+  table.responsive-card-table > tbody > tr[data-mobile-collapsible] > td:first-child:not([data-label=""]) [class*="flex"],
+  table.responsive-card-table > tbody > tr[data-mobile-collapsible] > td[data-label=""]:first-child + td [class*="flex"] {
+    justify-content: flex-start;
+  }
+
+  /* One line each. The full value stays available on the detail rows and on
+     desktop; on a phone a wrapped email is what made these cards 90px tall. */
+  table.responsive-card-table > tbody > tr[data-mobile-collapsible] > td:first-child:not([data-label=""]) p,
+  table.responsive-card-table > tbody > tr[data-mobile-collapsible] > td[data-label=""]:first-child + td p {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+
+/* Label/value cells hold more than one value surprisingly often — a job title
+   with the company under it, a status with a sub-note. As grid items each of
+   those became its own row, and the second one wrapped under the *label*
+   column rather than beside it. Flex keeps the label pinned left and lets the
+   values share a line, wrapping only when they truly need to. */
+@media (max-width: 639px) {
+  table.responsive-card-table > tbody > tr > td:not([data-label=""]),
+  table.responsive-card-table > tfoot > tr > td:not([data-label=""]) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.125rem 0.375rem;
+  }
+
+  table.responsive-card-table > tbody > tr > td:not([data-label=""])::before,
+  table.responsive-card-table > tfoot > tr > td:not([data-label=""])::before {
+    flex: 0 0 auto;
+    margin-inline-end: auto;
+  }
+}
+
+
+/* Row actions — view, approve, reject — live in the table's last cell, which
+   the collapse rule hid along with every other detail column. That left no way
+   to open or action a record on a phone: the eye icon simply was not there.
+   Keep that one cell on the collapsed card, right-aligned and unlabelled. */
+@media (max-width: 639px) {
+  table.responsive-card-table > tbody > tr[data-mobile-collapsible] > td:last-child:has(:is(button, a)) {
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.25rem;
+    min-height: 0;
+    padding-block: 0.125rem !important;
+    border-bottom: 0;
+  }
+
+  table.responsive-card-table > tbody > tr[data-mobile-collapsible] > td:last-child:has(:is(button, a))::before {
+    display: none;
+  }
+}
+
+/* Dialogs scroll their own body on phones; the native scrollbar sat on top of
+   the content as a grey track. Keep the scrolling, drop the visible bar. */
+@media (max-width: 639px) {
+  [role="dialog"],
+  [role="dialog"] * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  [role="dialog"]::-webkit-scrollbar,
+  [role="dialog"] *::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+}
+
+
+/* ── Admin table toolbars on phones ───────────────────────────────────────
+   Every admin list has the same header: a search field plus one or two
+   actions (Export, Add X, Filters). At 390px the labels push the buttons onto
+   a second, third — on Job Seekers, fourth — line, which is what made these
+   headers taller than the rows they filter.
+
+   Keyed off `data-table-toolbar`, which `TableToolbar` already sets, so the 15
+   pages using it are covered at once; the handful of pages that hand-roll a
+   toolbar opt in by setting the same attribute. New pages get this for free.
+
+   Buttons that carry an icon go icon-only: `font-size: 0` collapses the label
+   text node (which CSS cannot select directly) while the icon, sized in rem,
+   is unaffected. Text-only buttons are left alone — they would vanish. The
+   accessible name is untouched either way, since it comes from the DOM text. */
+@media (max-width: 639px) {
+  .dashboard-shell-admin [data-table-toolbar] :is(.flex, [class*="flex-wrap"]):has(> :is(button, a)):has(input) {
+    flex-wrap: wrap;
+    gap: 0.375rem;
+  }
+
+  /* Sharing the line with the buttons is what starved the field: on the
+     invoices toolbar (search + Filters + Add + count pill + 3 view tabs +
+     Export) it was left ~40px — a magnifier icon with no room to type in.
+     Give it the whole first line and let the now icon-only buttons wrap
+     underneath. Costs one row of height, always typeable.
+     ponytail: full-width row, not a tap-to-expand field — swap if the extra
+     row ever matters more than the always-visible input. */
+  .dashboard-shell-admin [data-table-toolbar] div:has(> input) {
+    flex: 1 0 100%;
+    min-width: 0;
+  }
+
+  .dashboard-shell-admin [data-table-toolbar] div:has(> input) > input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* A *leading* icon marks an action button ("<Download/> Export"), so its
+     label is a caption and can go. A dropdown puts its icon last
+     ("<span>All roles</span><chevron/>") because the label is the selected
+     value — collapsing that would leave a filter showing only a chevron. Child
+     order separates the two reliably; these triggers carry no role or data
+     attribute to test instead. */
+  .dashboard-shell-admin [data-table-toolbar] :is(button, a):has(> svg:first-child) {
+    flex: none;
+    gap: 0;
+    padding-inline: 0.5rem;
+    font-size: 0;
+    white-space: nowrap;
+  }
+
+  .dashboard-shell-admin [data-table-toolbar] :is(button, a):has(> svg:first-child) > svg {
+    font-size: 0.875rem;
+  }
+
+  /* Count pills (e.g. the "3" on Filters) carry real information, so they keep
+     a size — only the label text collapses. */
+  .dashboard-shell-admin [data-table-toolbar] :is(button, a):has(> svg:first-child) > [class*="rounded-full"] {
+    margin-inline-start: 0.25rem;
+    font-size: 0.625rem;
+  }
+}
+
+
+/* ── Squeezed rows and under-columned stat grids ──────────────────────────
+   Two failure modes the row/toolbar work above does not touch, both of which
+   only appear once the viewport is narrow enough to force the issue. */
+@media (max-width: 639px) {
+  /* 1. Meta rows. A non-wrapping flex row of label chips ("AED 179.95 /
+        monthly · 11 AI features · ∞ jobs · ∞ seats") keeps shrinking its
+        children instead of breaking, until each is ~14px wide and the text
+        wraps one character per line. Let such a row wrap. Rows containing
+        controls are excluded — toolbars and action groups are deliberately
+        single-line and are handled by their own rules. */
+  .dashboard-shell-admin .dashboard-main [class~="flex"]:not([class*="flex-wrap"]):not([class*="flex-col"]):not([class*="grid"]):not(:has(input, select, textarea, button, a)) {
+    flex-wrap: wrap;
+  }
+
+  /* 2. Badges never break mid-word: a 6-character "System" pill was rendering
+        over three lines inside a narrow column. */
+  .dashboard-shell-admin .dashboard-main [class*="rounded-full"][class*="text-["],
+  .dashboard-shell-admin .dashboard-main [class*="rounded-full"][class*="text-xs"] {
+    white-space: nowrap;
+  }
+
+  /* 3. Stat grids. Pages author these as two-up for phones and four-up for
+        wide screens, so a phone spends its whole first screen on four tiles
+        and pushes the actual list below the fold. Four fit once the type and
+        icons scale to the tile. Grids holding form controls are excluded —
+        four-up inputs would be unusable. */
+  .dashboard-shell-admin .dashboard-main [class*="grid-cols-4"][class~="grid-cols-2"]:not(:has(input, select, textarea, [role="combobox"])) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.3125rem;
+  }
+
+  .dashboard-shell-admin .dashboard-main [class*="grid-cols-4"][class~="grid-cols-2"]:not(:has(input, select, textarea, [role="combobox"])) > * {
+    min-width: 0;
+    padding: 0.375rem !important;
+  }
+
+  .dashboard-shell-admin .dashboard-main [class*="grid-cols-4"][class~="grid-cols-2"]:not(:has(input, select, textarea, [role="combobox"])) :is([class*="text-3xl"], [class*="text-2xl"], [class*="text-xl"], [class*="text-lg"]) {
+    font-size: 0.8125rem;
+    line-height: 1rem;
+  }
+
+  .dashboard-shell-admin .dashboard-main [class*="grid-cols-4"][class~="grid-cols-2"]:not(:has(input, select, textarea, [role="combobox"])) :is([class*="text-sm"], [class*="text-xs"], [class*="text-["]) {
+    font-size: 0.5625rem;
+    line-height: 0.75rem;
+  }
+
+  .dashboard-shell-admin .dashboard-main [class*="grid-cols-4"][class~="grid-cols-2"]:not(:has(input, select, textarea, [role="combobox"])) svg {
+    width: 0.75rem;
+    height: 0.75rem;
+  }
+
+  /* The icon chip beside a stat value is sized for a 170px tile. */
+  .dashboard-shell-admin .dashboard-main [class*="grid-cols-4"][class~="grid-cols-2"]:not(:has(input, select, textarea, [role="combobox"])) > * > :is(div, span):has(> svg) {
+    padding: 0.25rem !important;
+    border-radius: 0.5rem;
+  }
+}
+
+
+/* Stat grids that target three or six columns get the same treatment as the
+   four-column ones above; six-up is unreadable on a phone, so they land on
+   three. Grids holding form controls or a table are left alone. */
+@media (max-width: 639px) {
+  .dashboard-shell-admin .dashboard-main :is([class*="grid-cols-6"], [class*="grid-cols-3"])[class~="grid-cols-2"]:not(:has(input, select, textarea, [role="combobox"])):not(:has(table)) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.3125rem;
+  }
+
+  .dashboard-shell-admin .dashboard-main :is([class*="grid-cols-6"], [class*="grid-cols-3"])[class~="grid-cols-2"]:not(:has(input, select, textarea, [role="combobox"])):not(:has(table)) > * {
+    min-width: 0;
+    padding: 0.375rem !important;
+  }
+
+  .dashboard-shell-admin .dashboard-main :is([class*="grid-cols-6"], [class*="grid-cols-3"])[class~="grid-cols-2"]:not(:has(input, select, textarea, [role="combobox"])):not(:has(table)) :is([class*="text-3xl"], [class*="text-2xl"], [class*="text-xl"], [class*="text-lg"]) {
+    font-size: 0.875rem;
+    line-height: 1.05rem;
+  }
+
+  .dashboard-shell-admin .dashboard-main :is([class*="grid-cols-6"], [class*="grid-cols-3"])[class~="grid-cols-2"]:not(:has(input, select, textarea, [role="combobox"])):not(:has(table)) :is([class*="text-sm"], [class*="text-xs"], [class*="text-["]) {
+    font-size: 0.5625rem;
+    line-height: 0.75rem;
+  }
+
+  .dashboard-shell-admin .dashboard-main :is([class*="grid-cols-6"], [class*="grid-cols-3"])[class~="grid-cols-2"]:not(:has(input, select, textarea, [role="combobox"])):not(:has(table)) svg {
+    width: 0.75rem;
+    height: 0.75rem;
+  }
+
+  /* Tile labels are uppercase with wide tracking (`tracking-[0.18em]`), sized
+     for a 170px tile. In a packed 3/4-up row that extra 0.18em per character
+     is what pushed "SUPERVISORS" past the tile width and split it mid-word as
+     "SUPERVISOR / S". Dropping the tracking buys back ~18% and keeps the word
+     whole; the label is still uppercase, so it still reads as a label. */
+  .dashboard-shell-admin .dashboard-main :is([class*="grid-cols-6"], [class*="grid-cols-4"], [class*="grid-cols-3"])[class~="grid-cols-2"]:not(:has(input, select, textarea, [role="combobox"])):not(:has(table)) [class*="tracking-"] {
+    letter-spacing: 0;
+    word-break: normal;
+    overflow-wrap: normal;
+  }
+
+  /* Filter panels. These are authored one-up for phones
+     (`grid gap-3 sm:grid-cols-2 xl:grid-cols-5`), so five filters became five
+     full-width rows and the list itself was pushed off screen. Inside a
+     toolbar the only grids are the filter panel, so two-up is safe here. */
+  .dashboard-shell-admin [data-table-toolbar] [class~="grid"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  .dashboard-shell-admin [data-table-toolbar] [class~="grid"] label {
+    margin-bottom: 0.125rem;
+    font-size: 0.625rem;
+    line-height: 0.875rem;
+  }
+}
+
+
+/* At three or four tiles per row each tile is ~90-110px, which is too narrow
+   for the icon-beside-label row these were designed with — the label collapses
+   to a 14px column and breaks one character per line. Stack the tile's
+   internals instead. */
+@media (max-width: 639px) {
+  .dashboard-shell-admin .dashboard-main :is([class*="grid-cols-6"], [class*="grid-cols-4"], [class*="grid-cols-3"])[class~="grid-cols-2"]:not(:has(input, select, textarea, [role="combobox"])):not(:has(table)) > * :is(div, span, dl)[class*="flex"]:not([class*="flex-col"]):not([class*="justify-between"]) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.0625rem;
+  }
+
+  /* ...but a `justify-between` row exists precisely to hold text on one side
+     and an icon chip on the other, so opt those rows out of both the stacking
+     rule above and the meta-row wrap rule further up — either one drops the
+     chip onto its own line and costs the tile ~40px of height.
+     The chip itself then goes away: at a 132px tile it measured only 1px inside
+     the card and 4px clear of the label, i.e. geometrically legal but visually
+     wedged into the corner, and it took a quarter of the width that
+     "MONTHLY RECURRING REVENUE" needed — which is why every label wrapped to
+     three squeezed lines. It is decoration the label already states, so on
+     phones the label gets the space. Tiles whose icon IS the content keep it
+     for free: the CMS module tiles wrap their icon in an inner <span>, so
+     `:has(> svg)` never matches their chip. (A sibling-aware guard would need
+     :has() inside :has(), which is invalid and silently kills the rule.) */
+  .dashboard-shell-admin .dashboard-main :is([class*="grid-cols-6"], [class*="grid-cols-4"], [class*="grid-cols-3"])[class~="grid-cols-2"]:not(:has(input, select, textarea, [role="combobox"])):not(:has(table)) > * [class*="justify-between"] {
+    flex-wrap: nowrap;
+    gap: 0.25rem;
+  }
+
+  .dashboard-shell-admin .dashboard-main :is([class*="grid-cols-6"], [class*="grid-cols-4"], [class*="grid-cols-3"])[class~="grid-cols-2"]:not(:has(input, select, textarea, [role="combobox"])):not(:has(table)) > * [class*="justify-between"] > :not(:has(> svg)) {
+    min-width: 0;
+  }
+
+  .dashboard-shell-admin .dashboard-main :is([class*="grid-cols-6"], [class*="grid-cols-4"], [class*="grid-cols-3"])[class~="grid-cols-2"]:not(:has(input, select, textarea, [role="combobox"])):not(:has(table)) > * [class*="justify-between"] > :is(div, span):has(> svg),
+  .dashboard-shell-admin .dashboard-main :is([class*="grid-cols-6"], [class*="grid-cols-4"], [class*="grid-cols-3"])[class~="grid-cols-2"]:not(:has(input, select, textarea, [role="combobox"])):not(:has(table)) > [class*="flex"]:not([class*="flex-col"]) > :is(div, span):has(> svg) {
+    display: none;
+  }
+}
+
+
+/* Compact stat grids must not nest. When one of these grids sits inside a tile
+   of another, the inner one subdivides an already ~105px column into three,
+   leaving a 14px label. The inner grid stays single-column. */
+@media (max-width: 639px) {
+  .dashboard-shell-admin .dashboard-main :is([class*="grid-cols-6"], [class*="grid-cols-4"], [class*="grid-cols-3"]) :is([class*="grid-cols-6"], [class*="grid-cols-4"], [class*="grid-cols-3"]) {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.25rem;
+  }
+}
+
+
+/* Filter chips are buttons, not badges, so the badge rule above missed them —
+   a 4-character "d4dx" chip was breaking over three lines in a 21px column. */
+@media (max-width: 639px) {
+  .dashboard-shell-admin .dashboard-main button[class*="rounded-full"],
+  .dashboard-shell-admin .dashboard-main button[class*="text-["] {
+    white-space: nowrap;
+  }
+}
+
+
+/* Buttons inside a compact stat grid are short chips ("d4dx", "All"), never
+   sentences, so they should shrink the column rather than break mid-word. */
+@media (max-width: 639px) {
+  .dashboard-shell-admin .dashboard-main :is([class*="grid-cols-6"], [class*="grid-cols-4"], [class*="grid-cols-3"])[class~="grid-cols-2"] button {
+    white-space: nowrap;
+  }
+}
+
+
+
+/* rebuild nudge: packed-tile tracking reset */
+
+/* rebuild nudge: justify-between tile rows */
+
+/* rebuild nudge 2 */
+
+/* rebuild nudge 3 */
+
+/* rebuild nudge 4 */
+
+/* rebuild nudge 5 */
+
+/* rebuild nudge 6 */
+
+
+/* Tap targets. A 16px row checkbox and a 16px-tall "View Jobs" link are both
+   legal layout and both miss under a thumb — the geometry audits had no reason
+   to flag either. Grow the *hit area* with a pseudo-element rather than the box,
+   so nothing on the page moves: the control still measures 16px, it just also
+   answers to a 24px touch. Kept small (4px) so neighbouring controls in a row
+   cannot start swallowing each other's taps. */
+@media (max-width: 639px) {
+  .dashboard-shell-admin .dashboard-main :is([role="checkbox"], [role="radio"]) {
+    position: relative;
+  }
+
+  .dashboard-shell-admin .dashboard-main :is([role="checkbox"], [role="radio"])::after {
+    content: "";
+    position: absolute;
+    inset: -0.25rem;
+  }
+
+  /* Inline text links ("View", "Fix Now") sit at their line height, ~16px. Only
+     the vertical box grows — widening these would overlap the text beside them. */
+  .dashboard-shell-admin .dashboard-main :is(a, button)[class*="underline"] {
+    position: relative;
+  }
+
+  .dashboard-shell-admin .dashboard-main :is(a, button)[class*="underline"]::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    inset-block: -0.25rem;
+  }
+}
+
+/* rebuild nudge 7 */

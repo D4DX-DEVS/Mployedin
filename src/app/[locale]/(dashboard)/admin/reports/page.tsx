@@ -314,7 +314,7 @@ export default function AdminReportsPage() {
       />
 
       <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
-        <div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 p-5 sm:grid-cols-2 xl:grid-cols-4">
           {kpis.map((kpi) => (
             <Link key={kpi.label} href={kpi.href} className="rounded-2xl border border-border/60 bg-card p-4 transition-shadow hover:ring-2 hover:ring-primary/20 hover:shadow-md">
               <div className="flex items-start justify-between gap-3">

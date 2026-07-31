@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
+import { apiErrorMessage } from "@/lib/utils";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -173,8 +174,8 @@ export default function AdminSuperAgentsPage() {
         }),
       });
       if (!res.ok) {
-        const e = await res.json();
-        const errorMsg = e.error ?? "Failed to create super agent";
+        const e = await res.json().catch(() => ({}));
+        const errorMsg = apiErrorMessage(e, "Failed to create super agent");
         setAddError(errorMsg);
         toast.error(errorMsg);
         return;
@@ -231,8 +232,8 @@ export default function AdminSuperAgentsPage() {
         }),
       });
       if (!res.ok) {
-        const e = await res.json();
-        const errorMsg = e.error ?? "Failed to update super agent";
+        const e = await res.json().catch(() => ({}));
+        const errorMsg = apiErrorMessage(e, "Failed to update super agent");
         setEditError(errorMsg);
         toast.error(errorMsg);
         return;

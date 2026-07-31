@@ -167,7 +167,7 @@ export default function CmsHeroFilters({
           )}
 
           {gridFields.length > 0 && (
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {gridFields.map((field) => {
                 if (field.type === "status") {
                   return (

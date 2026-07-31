@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Types } from "mongoose";
+import { Types, Error as MongooseError } from "mongoose";
 import { connectDB } from "@/lib/db/mongoose";
 import Job from "@/models/Job";
 import { Application } from "@/models/Application";
@@ -338,14 +338,29 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
     if (!agent) return NextResponse.json({ error: "Agent profile not found" }, { status: 404 });
     agentId = String(agent._id);
     employerId = body.employerId;
-    if (employerId && !agent.assignedEmployerIds?.map(String).includes(employerId)) {
+    if (!employerId) {
+      return NextResponse.json({ error: "EMPLOYER_REQUIRED" }, { status: 400 });
+    }
+    if (!agent.assignedEmployerIds?.map(String).includes(employerId)) {
       return NextResponse.json(
         { error: "Forbidden — you are not assigned to this employer" },
         { status: 403 }
       );
     }
   } else if (ctx.role === "admin") {
-    employerId = body.employerId;
+    // An admin posts on behalf of an employer. Job.employerId is `required: true`,
+    // so a missing/unknown id previously surfaced as an unhandled Mongoose
+    // ValidationError — a 500 on Publish, and a silently dropped Save-as-Draft
+    // (the draft row was never written, so it never reached the Draft list).
+    // Answer with an actionable 4xx instead.
+    if (!body.employerId) {
+      return NextResponse.json({ error: "EMPLOYER_REQUIRED" }, { status: 400 });
+    }
+    const emp = await Employer.findById(body.employerId).select("_id").lean();
+    if (!emp) {
+      return NextResponse.json({ error: "Employer not found" }, { status: 404 });
+    }
+    employerId = String(emp._id);
     if (body.agentId) agentId = body.agentId;
   }
 
@@ -392,7 +407,7 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
     resolvedStatus = status ?? "active";
   }
 
-  const job = await Job.create({
+  const jobDoc = new Job({
     title,
     description: sanitizeHtml(description),
     category,
@@ -417,6 +432,24 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
     screeningQuestions: body.screeningQuestions ?? [],
     "poster.approvalStatus": approvalStatus,
   });
+
+  // Drafts are intentionally partial — a user can save one before filling in
+  // description/location, which are `required` on the schema. Skip validation for
+  // them (same rule as /api/jobs/auto-draft); publishing re-validates in full.
+  // For everything else, surface a schema violation as a 400 rather than letting
+  // it bubble up to withAuth's generic 500.
+  try {
+    await jobDoc.save({ validateBeforeSave: resolvedStatus !== "draft" });
+  } catch (err) {
+    if (err instanceof MongooseError.ValidationError) {
+      return NextResponse.json(
+        { error: "VALIDATION_FAILED", fields: Object.keys(err.errors) },
+        { status: 400 },
+      );
+    }
+    throw err;
+  }
+  const job = jobDoc;
 
   await logActivity({
     ...actorFromCtx(ctx),

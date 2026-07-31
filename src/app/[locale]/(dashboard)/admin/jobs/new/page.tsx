@@ -16,7 +16,7 @@ export default async function AdminNewJobPage({ params }: PageProps) {
         title={t("postJobAdmin")}
         description={t("createJobPostingDescription")}
       />
-      <JobFormWizard locale={locale} />
+      <JobFormWizard locale={locale} basePath="admin" />
     </div>
   );
 }

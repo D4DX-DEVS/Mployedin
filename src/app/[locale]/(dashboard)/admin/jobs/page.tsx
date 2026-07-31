@@ -237,7 +237,16 @@ export default function AdminJobsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ approved: true }),
       });
-      if (!res.ok) throw new Error(t("jobApprovalFailed"));
+      if (!res.ok) {
+        // An incomplete draft cannot be published. Name the missing fields
+        // rather than showing a generic failure the admin cannot act on.
+        const data = await res.json().catch(() => null);
+        if (data?.error === "INCOMPLETE_JOB") {
+          toast.error(t("jobIncompleteForApproval", { fields: (data.fields ?? []).join(", ") }));
+          return;
+        }
+        throw new Error(t("jobApprovalFailed"));
+      }
       toast.success(t("jobApprovedSuccess"));
       fetchJobs();
     } catch { toast.error(t("jobApprovalFailed")); }
@@ -402,7 +411,10 @@ export default function AdminJobsPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
+            {/* Three filters per row on phones instead of two, so the four
+                selects take two short rows rather than four stacked ones.
+                `sm:` restores the original 2-up / `xl:` 4-up layout. */}
+            <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-2 sm:gap-3 xl:grid-cols-4">
               <SearchableSelect
                 id="admin-jobs-status-filter"
                 className="h-11 w-full rounded-xl border-border bg-card"
@@ -454,7 +466,7 @@ export default function AdminJobsPage() {
             </div>
 
             {showAdvanced && (
-              <div className="grid grid-cols-2 gap-2 pt-1 sm:gap-3 xl:grid-cols-4">
+              <div className="grid grid-cols-3 gap-1.5 pt-1 sm:grid-cols-2 sm:gap-3 xl:grid-cols-4">
                 <SearchableSelect
                   id="admin-jobs-type-filter"
                   className="h-11 w-full rounded-xl border-border bg-card"
@@ -481,7 +493,9 @@ export default function AdminJobsPage() {
               </div>
             )}
 
-            <div className="grid gap-3 xl:grid-cols-[1fr_auto]">
+            {/* Field and button share one row on phones; `sm:` keeps them
+                stacked exactly as before until `xl:` splits them again. */}
+            <div className="grid grid-cols-[1fr_auto] gap-1.5 sm:grid-cols-1 sm:gap-3 xl:grid-cols-[1fr_auto]">
               <div className="relative">
                 <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-sky-500" />
                 <Input
@@ -601,6 +615,7 @@ export default function AdminJobsPage() {
                         if (next.has(job._id)) next.delete(job._id); else next.add(job._id);
                         return next;
                       })}
+                      aria-label={t(isExpanded ? "collapseJobDetails" : "expandJobDetails", { title: job.title })}
                       className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg border border-border/60 bg-background/60 py-1 text-[11px] font-medium text-muted-foreground sm:hidden"
                     >
                       {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}

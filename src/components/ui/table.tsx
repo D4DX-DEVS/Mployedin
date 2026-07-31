@@ -4,7 +4,16 @@ import { cn } from "@/lib/utils"
 const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(
   ({ className, ...props }, ref) => (
     <div className="relative w-full max-w-full overflow-x-auto overscroll-x-contain rounded-lg">
-      <table ref={ref} className={cn("w-full caption-bottom text-sm border-collapse", className)} {...props} />
+      {/* ResponsiveTables rewrites this element's class and the data-* attributes
+          on rows/cells after mount to build the mobile card layout. Those are
+          deliberate client-only mutations, so React must not report them as a
+          hydration mismatch. */}
+      <table
+        ref={ref}
+        suppressHydrationWarning
+        className={cn("w-full caption-bottom text-sm border-collapse", className)}
+        {...props}
+      />
     </div>
   )
 )
@@ -35,6 +44,7 @@ const TableRow = React.forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTML
   ({ className, ...props }, ref) => (
     <tr
       ref={ref}
+      suppressHydrationWarning
       className={cn(
         "border-b border-border/40 transition-colors duration-150 hover:bg-muted/30 data-[state=selected]:bg-primary/5",
         className
@@ -63,6 +73,7 @@ const TableCell = React.forwardRef<HTMLTableCellElement, React.TdHTMLAttributes<
   ({ className, ...props }, ref) => (
     <td
       ref={ref}
+      suppressHydrationWarning
       className={cn(
         "px-2.5 py-2.5 align-middle text-[13px] sm:px-4 sm:py-3 sm:text-sm [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]",
         className

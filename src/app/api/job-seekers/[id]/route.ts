@@ -117,6 +117,11 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const update: Record<string, unknown> = {};
   for (const k of allowed) if (body[k] !== undefined) update[k] = body[k];
 
+  // Admin-only: (re)activate the linked user account (counterpart of soft-delete DELETE)
+  if (typeof body.isActive === "boolean" && ctx.role === "admin") {
+    await User.findByIdAndUpdate(seeker.userId, { isActive: body.isActive });
+  }
+
   // SECURITY (W1-1): User-account fields (name/email) must never be mutated
   // through this profile route — that path enabled account takeover. Account
   // fields are managed only via the dedicated user-administration route.
@@ -145,7 +150,15 @@ async function deleteHandler(req: NextRequest, ctx: AuthCtx, params?: Record<str
   const seeker = await JobSeeker.findById(params?.id);
   if (!seeker) return NextResponse.json({ error: "Job seeker not found" }, { status: 404 });
 
+  // Same staff-ownership guard as GET/PATCH — was missing, letting any agent
+  // with delete permission deactivate seekers outside their scope.
+  const accessError = await verifySeekerStaffAccess(seeker.agentId, ctx);
+  if (accessError) return accessError;
+
   const permanent = new URL(req.url).searchParams.get("permanent") === "true";
+  if (permanent && ctx.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   if (permanent) {
     const { cascadeDeleteJobSeeker } = await import("@/lib/db/cascade");

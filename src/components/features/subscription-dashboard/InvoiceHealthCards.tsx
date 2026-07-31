@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Receipt } from "lucide-react";
 import type { InvoiceHealth as InvoiceHealthData } from "./useSubscriptionDashboard";
@@ -16,34 +17,36 @@ function formatCurrency(n: number) {
 export function InvoiceHealthCards({ data }: InvoiceHealthCardsProps) {
   const t = useTranslations("invoiceHealthCards");
   const tc = useTranslations("common");
+  const { locale } = useParams<{ locale: string }>();
+  const invoicesHref = `/${locale}/admin/invoices`;
   const cards = [
     {
       label: t("paidThisMonth"),
       value: data.paidCount,
       bg: "bg-emerald-50 dark:bg-emerald-900/20",
       textColor: "text-emerald-600 dark:text-emerald-400",
-      href: "/admin/invoices?status=paid",
+      href: `${invoicesHref}?status=paid`,
     },
     {
       label: t("pending"),
       value: data.pendingCount,
       bg: "bg-amber-50 dark:bg-amber-900/20",
       textColor: "text-amber-600 dark:text-amber-400",
-      href: "/admin/invoices?status=pending",
+      href: `${invoicesHref}?status=pending`,
     },
     {
       label: t("overdue"),
       value: data.overdueCount,
       bg: "bg-rose-50 dark:bg-rose-900/20",
       textColor: "text-rose-600 dark:text-rose-400",
-      href: "/admin/invoices?status=overdue",
+      href: `${invoicesHref}?status=overdue`,
     },
     {
       label: t("aedCollected"),
       value: formatCurrency(data.collectedRevenue),
       bg: "bg-muted/40",
       textColor: "text-foreground",
-      href: "/admin/invoices",
+      href: invoicesHref,
     },
   ];
 
@@ -53,7 +56,7 @@ export function InvoiceHealthCards({ data }: InvoiceHealthCardsProps) {
         <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
           <Receipt className="h-4 w-4" /> {t("invoices")}
         </h4>
-        <Link href="/admin/invoices" className="text-xs text-primary hover:underline">
+        <Link href={invoicesHref} className="text-xs text-primary hover:underline">
           {tc("view")}
         </Link>
       </div>

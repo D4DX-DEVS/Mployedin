@@ -179,6 +179,9 @@ export const jobFormSchema = z.object({
   expiresAt: z.string().optional(),
   tags: z.array(z.string().max(50)).max(20).default([]),
   agentId: z.string().optional(),
+  /** Only collected when an admin posts on behalf of an employer — the API
+   *  requires it for that role and rejects the request without it. */
+  employerId: z.string().optional(),
 
   // Screening Questions
   screeningQuestions: z.array(

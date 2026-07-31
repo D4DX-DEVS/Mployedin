@@ -405,7 +405,7 @@ export function MonthlyDistributionGrid({
   const currentMonth = new Date().getMonth() + 1;
 
   return (
-    <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
       {months.map((m) => {
         const isCurrent = m.month === currentMonth;
         const isPast = m.month < currentMonth;

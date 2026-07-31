@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { Autocomplete } from "@/components/ui/tag-autocomplete";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
@@ -29,12 +30,6 @@ import { useCountrySearch } from "@/hooks/useCountrySearch";
 import { useTranslations } from "next-intl";
 
 // â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-const INDUSTRIES = [
-  "Technology", "Healthcare", "Finance", "Construction", "Hospitality",
-  "Education", "Manufacturing", "Logistics", "Oil & Gas", "Retail",
-  "Real Estate", "Consulting", "Telecommunications", "Media", "Other",
-];
 
 const COMPANY_SIZES = [
   "1-10", "11-50", "51-200", "201-500", "501-1000", "1001-5000", "5001+",
@@ -597,10 +592,11 @@ function CompanySettingsPage() {
                       </div>
                       <div data-field="industry" className="transition-all duration-300">
                         <FieldLabel>{t("industry")}</FieldLabel>
-                        <SearchableSelect
-                          options={INDUSTRIES.map((i) => ({ value: i, label: i }))}
+                        {/* Options come from admin → Platform Data → Industries (merged with seeds) */}
+                        <Autocomplete
+                          type="industries"
                           value={form.industry}
-                          onValueChange={(v) => setField("industry", v)}
+                          onChange={(v) => setField("industry", v)}
                           placeholder={t("selectIndustry")}
                         />
                       </div>

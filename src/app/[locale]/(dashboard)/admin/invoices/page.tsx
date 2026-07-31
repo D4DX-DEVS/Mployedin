@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -135,6 +135,7 @@ export default function AdminInvoicesPage() {
 
   // Invoice Builder & Detail View
   const router = useRouter();
+  const { locale } = useParams<{ locale: string }>();
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
 
   // Analytics
@@ -269,7 +270,7 @@ export default function AdminInvoicesPage() {
           </div>
         }
         actions={can("subscriptions", "create") ? (
-          <Button onClick={() => router.push("/admin/invoices/new")} size="sm" className="h-9 gap-2 rounded-lg px-4">
+          <Button onClick={() => router.push(`/${locale}/admin/invoices/new`)} size="sm" className="h-9 gap-2 rounded-lg px-4">
             <Plus className="h-4 w-4" /> {t("createInvoice")}
           </Button>
         ) : undefined}

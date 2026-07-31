@@ -109,7 +109,6 @@ const CSRF_EXEMPT_PREFIXES = [
   "/api/public/",
   "/api/contact",
   "/api/cron/",
-  "/api/filters",
   "/api/inngest", // Inngest has its own signature verification
   // GraphQL endpoint — read-only dashboard queries. Auth-guarded (admin/super_agent)
   // and sameSite=lax session cookie prevents cross-site forged requests.

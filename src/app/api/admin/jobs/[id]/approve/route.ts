@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Error as MongooseError } from "mongoose";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import Job from "@/models/Job";
@@ -61,7 +62,27 @@ async function handler(
   if (approved) job.status = "active";
   else job.status = "closed";
 
-  await job.save();
+  // Drafts are saved without validation on purpose — a half-filled draft is
+  // still worth keeping. Approving one publishes it, so the full schema has to
+  // hold here. Without this check Mongoose throws on save and the admin sees a
+  // bare 500 instead of "this draft has no description".
+  // Rejection stays possible either way: closing an incomplete draft is exactly
+  // what an admin wants to do with it.
+  if (approved) {
+    try {
+      await job.validate();
+    } catch (err) {
+      if (err instanceof MongooseError.ValidationError) {
+        return NextResponse.json(
+          { error: "INCOMPLETE_JOB", fields: Object.keys(err.errors) },
+          { status: 400 },
+        );
+      }
+      throw err;
+    }
+  }
+
+  await job.save({ validateBeforeSave: approved });
 
   await logActivity({
     ...actorFromCtx(ctx),

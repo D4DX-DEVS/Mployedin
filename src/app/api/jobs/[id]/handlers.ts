@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Error as MongooseError } from "mongoose";
 import { connectDB } from "@/lib/db/mongoose";
 import Job from "@/models/Job";
 import { Employer } from "@/models/Employer";
@@ -95,7 +96,18 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   }
 
   Object.assign(job, updateData);
-  await job.save();
+  try {
+    // Drafts may be incomplete; full validation applies once leaving draft (matches POST handler)
+    await job.save({ validateBeforeSave: job.status !== "draft" });
+  } catch (err) {
+    if (err instanceof MongooseError.ValidationError) {
+      return NextResponse.json(
+        { error: "VALIDATION_FAILED", fields: Object.keys(err.errors) },
+        { status: 400 },
+      );
+    }
+    throw err;
+  }
 
   await logActivity({
     ...actorFromCtx(ctx),

@@ -13,9 +13,10 @@ import {
   Pencil, Trash2, UserX, ChevronDown, ChevronUp, Briefcase,
   GraduationCap, Globe, Award, Search, Inbox, Download,
   FileSpreadsheet, FileText, Sparkles, X, SlidersHorizontal,
-  FileDown, Loader2, Eye,
+  FileDown, Loader2, Eye, RotateCcw,
 } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
+import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -39,7 +40,7 @@ interface JobSeeker {
   nationality?: string;
   currentLocation?: string;
   status?: string;
-  userId?: { name?: string; email?: string };
+  userId?: { name?: string; email?: string; isActive?: boolean };
   headline?: string;
   summary?: string;
   skills?: string[];
@@ -102,6 +103,7 @@ export default function AdminJobSeekersPage() {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editItem, setEditItem] = useState<JobSeeker | null>(null);
+  const [viewCv, setViewCv] = useState<{ id: string; name: string } | null>(null);
 
   // ── Filter state ────────────────────────────────────────
   const [search, setSearch] = useState("");
@@ -115,6 +117,9 @@ export default function AdminJobSeekersPage() {
   const [nationalityFilter, setNationalityFilter] = useState("");
   const [experienceYearsFilter, setExperienceYearsFilter] = useState(0);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  // Phones only: the five example queries stack into five rows above the list.
+  // They sit behind a toggle there and stay always-visible from `sm:` up.
+  const [showAiSuggestions, setShowAiSuggestions] = useState(false);
 
   // ── AI search state ─────────────────────────────────────
   const [aiQuery, setAiQuery] = useState("");
@@ -159,9 +164,16 @@ export default function AdminJobSeekersPage() {
     { header: "Joined", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
   ], []);
 
+  // PDF fits ~10 columns in landscape A4; the full 17-column set is unreadable
+  const pdfColumns = useMemo(() => {
+    const keep = ["Name", "Email", "Phone", "Nationality", "Location", "Experience (Years)", "Availability", "Profile %", "Has CV", "Joined"];
+    return exportColumns.filter((c) => keep.includes(c.header));
+  }, [exportColumns]);
+
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: jobSeekers as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    pdfColumns: pdfColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "job-seekers-search-results",
     title: "Job Seekers — Search Results",
   });
@@ -289,8 +301,13 @@ export default function AdminJobSeekersPage() {
     resetPage();
   };
 
-  // ── Bulk CV Download ────────────────────────────────────
+  // ── Bulk CV Download (single ZIP: CVs + details sheet) ──
   const handleBulkCvDownload = async () => {
+    const ok = await confirmDialog({
+      message: "Download the matching CVs (up to 50) as one ZIP file with a candidate details sheet?",
+      confirmLabel: "Download ZIP",
+    });
+    if (!ok) return;
     setCvDownloading(true);
     try {
       const res = await fetch("/api/job-seekers/bulk-cv-download", {
@@ -307,32 +324,62 @@ export default function AdminJobSeekersPage() {
       });
       if (!res.ok) throw new Error("Failed to fetch CVs");
       const data = await res.json();
-      const cvs = data.cvs as { id: string; name: string; url: string }[];
+      const cvs = data.cvs as {
+        id: string; name: string; headline?: string; email?: string;
+        nationality?: string; location?: string; experienceYears?: number;
+      }[];
 
       if (cvs.length === 0) {
         toast.error(tr("noCvsFound"));
         return;
       }
 
-      // Download each CV
-      let downloaded = 0;
+      const [{ default: JSZip }, { excelBlobFromRows }] = await Promise.all([
+        import("jszip"),
+        import("@/lib/export"),
+      ]);
+      const zip = new JSZip();
+      const extFromType = (ct: string | null): string =>
+        ct?.includes("pdf") ? "pdf"
+        : ct?.includes("wordprocessingml") ? "docx"
+        : ct?.includes("msword") ? "doc"
+        : ct?.includes("png") ? "png"
+        : ct?.includes("jpeg") ? "jpg"
+        : "pdf";
+      const rows: string[][] = [["Name", "Email", "Nationality", "Location", "Experience (Years)", "Headline", "CV File"]];
+      let added = 0;
       for (const cv of cvs.slice(0, 50)) {
         try {
-          const link = document.createElement("a");
-          link.href = cv.url;
-          link.download = `${cv.name.replace(/[^a-zA-Z0-9 ]/g, "")}_CV.pdf`;
-          link.target = "_blank";
-          link.rel = "noopener noreferrer";
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          downloaded++;
-          await new Promise((resolve) => setTimeout(resolve, 300));
+          // Stream through our authenticated endpoint — raw storage URLs are private-ACL
+          const fileRes = await fetch(`/api/employers/candidates/${cv.id}/cv`);
+          if (!fileRes.ok) continue;
+          const ext = extFromType(fileRes.headers.get("content-type"));
+          const safe = cv.name.replace(/[^a-zA-Z0-9 _-]/g, "").trim() || cv.id;
+          const fileName = `CVs/${safe}_${cv.id.slice(-6)}.${ext}`;
+          zip.file(fileName, await fileRes.arrayBuffer());
+          rows.push([
+            cv.name, cv.email ?? "", cv.nationality ?? "", cv.location ?? "",
+            cv.experienceYears != null ? String(cv.experienceYears) : "", cv.headline ?? "", fileName,
+          ]);
+          added++;
         } catch {
           // Skip individual failures
         }
       }
-      toast.success(tr("cvsDownloadedSuccess", { count: downloaded }));
+      if (added === 0) {
+        toast.error(tr("cvsDownloadFailed"));
+        return;
+      }
+      zip.file("candidates.xls", excelBlobFromRows(rows, "Candidates"));
+      const blob = await zip.generateAsync({ type: "blob" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "job-seeker-cvs.zip";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+      toast.success(tr("cvsDownloadedSuccess", { count: added }));
     } catch {
       toast.error(tr("cvsDownloadFailed"));
     } finally {
@@ -355,14 +402,29 @@ export default function AdminJobSeekersPage() {
   const handleDelete = async (id: string) => {
     const ok = await confirmDialog({ message: tr("confirmDeactivateMessage"), confirmLabel: tr("confirmDeactivateButton") });
     if (!ok) return;
-    await fetch(`/api/job-seekers/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/job-seekers/${id}`, { method: "DELETE" });
+    if (res.ok) toast.success("Account deactivated");
+    else { const e = await res.json().catch(() => ({})); toast.error(e.error ?? "Failed to deactivate"); }
+    fetchJobSeekers();
+  };
+
+  const handleReactivate = async (id: string) => {
+    const res = await fetch(`/api/job-seekers/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isActive: true }),
+    });
+    if (res.ok) toast.success("Account reactivated");
+    else { const e = await res.json().catch(() => ({})); toast.error(e.error ?? "Failed to reactivate"); }
     fetchJobSeekers();
   };
 
   const handlePermanentDelete = async (id: string) => {
     const ok = await confirmDialog({ title: tr("confirmDeleteTitle"), message: tr("confirmDeleteMessage"), confirmLabel: tr("confirmDeleteButton") });
     if (!ok) return;
-    await fetch(`/api/job-seekers/${id}?permanent=true`, { method: "DELETE" });
+    const res = await fetch(`/api/job-seekers/${id}?permanent=true`, { method: "DELETE" });
+    if (res.ok) toast.success("Job seeker permanently deleted");
+    else { const e = await res.json().catch(() => ({})); toast.error(e.error ?? "Failed to delete"); }
     fetchJobSeekers();
   };
 
@@ -424,8 +486,18 @@ export default function AdminJobSeekersPage() {
           )}
         </div>
 
-        {/* AI Suggestions */}
-        <div className="mt-2 flex flex-wrap gap-1.5">
+        {/* AI Suggestions — revealed on tap on phones, always shown from sm: up */}
+        <button
+          type="button"
+          onClick={() => setShowAiSuggestions((open) => !open)}
+          aria-expanded={showAiSuggestions}
+          className="mt-2 flex items-center gap-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground sm:hidden"
+        >
+          <Sparkles className="h-3 w-3" />
+          {tr("aiSuggestionsToggle")}
+          {showAiSuggestions ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+        </button>
+        <div className={`mt-2 flex-wrap gap-1.5 sm:flex ${showAiSuggestions ? "flex" : "hidden"}`}>
           {aiSuggestions.map((suggestion) => (
             <button
               key={suggestion}
@@ -456,7 +528,9 @@ export default function AdminJobSeekersPage() {
               description={total > 0 ? tr("candidatesFound", { count: total }) : tr("mainSubtitle")}
               headingLevel={2}
             />
-            <div className="flex flex-wrap items-center gap-2">
+            {/* data-table-toolbar opts this hand-rolled header into the shared
+                mobile toolbar rules: one row, icon-only action buttons. */}
+            <div data-table-toolbar="compact-admin" className="flex flex-wrap items-center gap-2">
               {/* Generate Embeddings (admin only) */}
               <Button
                 variant="ghost"
@@ -675,7 +749,7 @@ export default function AdminJobSeekersPage() {
                     <div className="flex min-w-0 flex-col items-start gap-1">
                       <span className="font-medium">{js.fullName || js.userId?.name || "—"}</span>
                       <span className="max-w-[15rem] truncate text-xs text-muted-foreground">{js.email ?? js.userId?.email ?? "—"}</span>
-                      <StatusBadge status={js.status ?? "active"} />
+                      <StatusBadge status={js.userId?.isActive === false ? "inactive" : (js.status ?? "active")} />
                     </div>
                   </div>
                 </TableCell>
@@ -705,17 +779,15 @@ export default function AdminJobSeekersPage() {
                 <TableCell className="text-xs">
                   <span className="mb-1.5 block font-semibold tabular-nums">{js.profileCompleteness != null ? `${js.profileCompleteness}%` : "—"}</span>
                   {js.cv?.originalUrl ? (
-                    <a
-                      href={js.cv.originalUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setViewCv({ id: js._id, name: js.fullName || js.userId?.name || "CV" }); }}
                       className="inline-flex items-center justify-center h-7 w-7 rounded-md hover:bg-primary/10 text-primary transition-colors"
                       title={tr("viewCvTitle")}
                       aria-label={tr("viewCvTitle")}
                     >
                       <Eye className="h-4 w-4" />
-                    </a>
+                    </button>
                   ) : <span className="text-muted-foreground">—</span>}
                 </TableCell>
                 <TableCell className="text-muted-foreground text-xs">{new Date(js.createdAt).toLocaleDateString()}</TableCell>
@@ -728,9 +800,15 @@ export default function AdminJobSeekersPage() {
                         </Button>
                       )}
                       {can("job_seekers", "delete") && (
-                        <Button variant="ghost" size="xs" onClick={() => handleDelete(js._id)} title={tr("actionDeactivateTitle")}>
-                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                        </Button>
+                        js.userId?.isActive === false ? (
+                          <Button variant="ghost" size="xs" onClick={() => handleReactivate(js._id)} title="Reactivate">
+                            <RotateCcw className="h-3.5 w-3.5 text-emerald-600" />
+                          </Button>
+                        ) : (
+                          <Button variant="ghost" size="xs" onClick={() => handleDelete(js._id)} title={tr("actionDeactivateTitle")}>
+                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          </Button>
+                        )
                       )}
                       {can("job_seekers", "delete") && (
                         <Button variant="ghost" size="xs" onClick={() => handlePermanentDelete(js._id)} title={tr("actionDeletePermanentlyTitle")}>
@@ -819,15 +897,14 @@ export default function AdminJobSeekersPage() {
                       {js.cv?.originalUrl && (
                         <div>
                           <p className="text-xs font-semibold text-muted-foreground mb-1">{tr("expandedLabelCvResume")}</p>
-                          <a
-                            href={js.cv.originalUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <button
+                            type="button"
+                            onClick={() => setViewCv({ id: js._id, name: js.fullName || js.userId?.name || "CV" })}
                             className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/5 px-2.5 py-1 text-xs text-primary hover:bg-primary/10 transition-colors"
                           >
                             <Download className="h-3 w-3" />
                             {tr("downloadCvLink")}
-                          </a>
+                          </button>
                         </div>
                       )}
                     </div>
@@ -842,6 +919,16 @@ export default function AdminJobSeekersPage() {
 
       {/* ── Pagination ────────────────────────────────────── */}
       <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
+
+      {/* ── In-app CV Viewer ──────────────────────────────── */}
+      {viewCv && (
+        <ResumeViewerModal
+          url={`/api/employers/candidates/${viewCv.id}/cv#cv.pdf`}
+          candidateName={viewCv.name}
+          jobSeekerId={viewCv.id}
+          onClose={() => setViewCv(null)}
+        />
+      )}
 
       {/* ── Edit Modal ────────────────────────────────────── */}
       <CrudModal open={!!editItem} onClose={() => setEditItem(null)} title={tr("editModalTitle")} fields={editFields}

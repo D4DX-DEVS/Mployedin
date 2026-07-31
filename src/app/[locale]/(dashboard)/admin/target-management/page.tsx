@@ -353,16 +353,19 @@ export default function AdminTargetManagementPage() {
           </div>
         }
         actions={
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="h-9 gap-2 rounded-lg" onClick={handleExport} disabled={profiles.length === 0}>
-              <Download className="h-4 w-4" /> {t("common.export")}
+          /* Three full labels do not fit a 390px row, so the two secondary
+             actions go icon-only on phones (title carries the name) and the
+             primary one keeps its label. Unchanged from `sm:` up. */
+          <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+            <Button variant="outline" size="sm" className="h-9 gap-1 rounded-lg px-2 sm:gap-2 sm:px-3" onClick={handleExport} disabled={profiles.length === 0} title={t("common.export")}>
+              <Download className="h-4 w-4" /> <span className="hidden sm:inline">{t("common.export")}</span>
             </Button>
-            <Button variant="outline" size="sm" className="h-9 gap-2 rounded-lg" onClick={handleClone}>
-              <Copy className="h-4 w-4" /> {t("cloneYear", { year: yearFilter - 1 })}
+            <Button variant="outline" size="sm" className="h-9 gap-1 rounded-lg px-2 sm:gap-2 sm:px-3" onClick={handleClone} title={t("cloneYear", { year: yearFilter - 1 })}>
+              <Copy className="h-4 w-4" /> <span className="hidden sm:inline">{t("cloneYear", { year: yearFilter - 1 })}</span>
             </Button>
-            <Link href={`/${locale}/admin/target-management/create`}>
-              <Button className="h-9 gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
-                <Plus className="h-4 w-4" /> {t("newTargetProfile")}
+            <Link href={`/${locale}/admin/target-management/create`} className="min-w-0">
+              <Button className="h-9 gap-1 rounded-lg bg-primary px-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 sm:gap-2 sm:px-4 sm:text-sm">
+                <Plus className="h-4 w-4 shrink-0" /> {t("newTargetProfile")}
               </Button>
             </Link>
           </div>
