@@ -10,6 +10,8 @@
 
 import { AlertTriangle } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { exportCSV } from "@/lib/export";
+import type { SubscriptionDashboardData } from "@/components/features/subscription-dashboard/useSubscriptionDashboard";
 import { useSubscriptionDashboard } from "@/components/features/subscription-dashboard/useSubscriptionDashboard";
 import { SubscriptionHero } from "@/components/features/subscription-dashboard/SubscriptionHero";
 import { KpiCardsRow } from "@/components/features/subscription-dashboard/KpiCardsRow";
@@ -27,11 +29,32 @@ import { AlertsCenter } from "@/components/features/subscription-dashboard/Alert
 import { PlanPerformanceTable } from "@/components/features/subscription-dashboard/PlanPerformanceTable";
 import { ConversionFunnelChart } from "@/components/features/subscription-dashboard/ConversionFunnelChart";
 
+// ── Export ───────────────────────────────────────────────────────────────────
+
+// ponytail: flat metric summary only. Per-row tables (customers, agents, invoices)
+// already export from their own pages — add sheets here only if asked.
+function buildExportRows(data: SubscriptionDashboardData): { metric: string; value: string }[] {
+  const groups: [string, object][] = [
+    ["Overview", data.overview],
+    ["Revenue Health", data.revenueHealth],
+    ["Invoices", data.invoiceHealth],
+    ["Alerts", data.alerts],
+    ["Conversion Funnel", data.conversionFunnel],
+  ];
+
+  return groups.flatMap(([group, metrics]) =>
+    Object.entries(metrics).map(([key, value]) => ({
+      metric: `${group} — ${key}`,
+      value: String(value),
+    })),
+  );
+}
+
 // ── Main Page ────────────────────────────────────────────────────────────────
 
 export default function AdminSubscriptionDashboardPage() {
   const t = useTranslations("adminSubscriptionDashboard");
-  const { data, isLoading, error, refetch } = useSubscriptionDashboard();
+  const { data, isLoading, isFetching, error, refetch } = useSubscriptionDashboard();
 
   /* ── Loading skeleton ── */
   if (isLoading) {
@@ -71,7 +94,20 @@ export default function AdminSubscriptionDashboardPage() {
   return (
     <div className="page-container space-y-5">
       {/* ── Hero with Quick Actions ── */}
-      <SubscriptionHero onRefresh={() => refetch()} />
+      <SubscriptionHero
+        onRefresh={() => refetch()}
+        isRefreshing={isFetching}
+        onExport={() =>
+          exportCSV(
+            buildExportRows(data),
+            [
+              { header: "Metric", key: "metric" },
+              { header: "Value", key: "value" },
+            ],
+            "subscription-dashboard.csv",
+          )
+        }
+      />
 
       {/* ── KPI Cards (4 main metrics) ── */}
       <KpiCardsRow overview={data.overview} comparisons={data.kpiComparisons} revenueTrend={data.revenueTrend} />

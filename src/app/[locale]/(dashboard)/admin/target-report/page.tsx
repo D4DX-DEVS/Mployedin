@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -130,26 +131,21 @@ export default function AdminTargetReportPage() {
   const [roleFilter, setRoleFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<ReportData | null>(null);
-
-  const fetchReport = useCallback(async () => {
-    setLoading(true);
-    try {
+  // Cached per year: revisiting the page paints from cache instead of
+  // re-running the whole report aggregation behind a skeleton.
+  const { data = null, isLoading: loading, isError } = useQuery<ReportData>({
+    queryKey: ["admin", "target-report", yearFilter],
+    queryFn: async () => {
       const res = await fetch(`/api/admin/target-report?year=${yearFilter}`);
-      if (res.ok) {
-        setData(await res.json());
-      } else {
-        toast.error(t("failedToLoadReport"));
-      }
-    } catch {
-      toast.error(t("failedToLoadReport"));
-    } finally {
-      setLoading(false);
-    }
-  }, [yearFilter]);
+      if (!res.ok) throw new Error(`Target report error: ${res.status}`);
+      return res.json();
+    },
+    staleTime: 5 * 60_000,
+  });
 
-  useEffect(() => { fetchReport(); }, [fetchReport]);
+  useEffect(() => {
+    if (isError) toast.error(t("failedToLoadReport"));
+  }, [isError, t]);
 
   const hasActiveFilters = quarterFilter !== "all" || categoryFilter !== "all" || riskFilter !== "all" || roleFilter !== "all" || Boolean(searchQuery);
 

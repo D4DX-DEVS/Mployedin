@@ -23,6 +23,7 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
+import { useDebounce } from "@/hooks/useDebounce";
 import type { ExportColumn } from "@/lib/export";
 import {
   useAdminSubscriptions,
@@ -242,8 +243,15 @@ function SubscribersTable() {
   const [dateTo, setDateTo] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // Merge pagination into filters for the API call
-  const queryFilters = useMemo(() => ({ ...filters, page, limit }), [filters, page, limit]);
+  // Search box drives the query directly — the Apply Filters button lives inside the
+  // collapsed filter panel, so typing has to filter on its own.
+  const debouncedSearch = useDebounce(searchInput, 300);
+
+  // Merge search + pagination into filters for the API call
+  const queryFilters = useMemo(
+    () => ({ ...filters, search: debouncedSearch || undefined, page, limit }),
+    [filters, debouncedSearch, page, limit],
+  );
 
   const { data, isLoading } = useAdminSubscriptions(queryFilters);
   const subscriptions = data?.subscriptions ?? [];
@@ -262,7 +270,7 @@ function SubscribersTable() {
     return [...(employerPlans ?? []), ...(jobSeekerPlans ?? [])];
   }, [filters.role, employerPlans, jobSeekerPlans]);
 
-  const hasActiveFilters = !!(filters.status || filters.role || filters.planId || filters.autoRenew || filters.search || dateFrom || dateTo);
+  const hasActiveFilters = !!(filters.status || filters.role || filters.planId || filters.autoRenew || searchInput || dateFrom || dateTo);
 
   const clearFilters = useCallback(() => {
     setFilters({ sortBy: "createdAt", sortOrder: "desc" });
@@ -323,7 +331,7 @@ function SubscribersTable() {
       <div className="rounded-2xl border border-border/60 bg-card">
         <TableToolbar
           search={searchInput}
-          onSearchChange={(v) => { setSearchInput(v); }}
+          onSearchChange={(v) => { setSearchInput(v); resetPage(); }}
           searchPlaceholder={t("searchPlaceholder")}
           onExportCsv={exportCsv}
           onExportExcel={exportExcel}
