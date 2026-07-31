@@ -323,6 +323,30 @@ export default function AdminApplicationsPage() {
     }
   }
 
+  /* ---- Manage: change application status ---- */
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const handleStatusChange = async (id: string, newStatus: string) => {
+    setUpdatingId(id);
+    try {
+      const res = await fetch(`/api/applications/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.ok) {
+        toast.success("Status updated");
+        setApplications((prev) => prev.map((a) => (a._id === id ? { ...a, status: newStatus } : a)));
+      } else {
+        const e = await res.json().catch(() => ({}));
+        toast.error(e.error ?? "Failed to update status");
+      }
+    } catch {
+      toast.error("Failed to update status");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
   const clearAllFilters = () => {
     setSearch(""); setStatus(""); setEmployerId(""); setSource("");
     setScoreRange(""); setDateFrom(""); setDateTo("");
@@ -531,9 +555,9 @@ export default function AdminApplicationsPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-3 gap-1.5 sm:gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <SearchableSelect
-                className="h-11 w-full rounded-xl border-border bg-card"
+                className="h-9 w-full rounded-xl border-border bg-card sm:h-11"
                 options={STATUS_OPTIONS}
                 value={status}
                 onValueChange={(v) => { setStatus(v); resetPage(); }}
@@ -541,7 +565,7 @@ export default function AdminApplicationsPage() {
               />
               {employerOptions.length > 2 && (
                 <SearchableSelect
-                  className="h-11 w-full rounded-xl border-border bg-card"
+                  className="h-9 w-full rounded-xl border-border bg-card sm:h-11"
                   options={employerOptions}
                   value={employerId}
                   onValueChange={(v) => { setEmployerId(v); resetPage(); }}
@@ -549,7 +573,7 @@ export default function AdminApplicationsPage() {
                 />
               )}
               <SearchableSelect
-                className="h-11 w-full rounded-xl border-border bg-card"
+                className="h-9 w-full rounded-xl border-border bg-card sm:h-11"
                 options={SOURCE_OPTIONS}
                 value={source}
                 onValueChange={(v) => { setSource(v); resetPage(); }}
@@ -573,9 +597,9 @@ export default function AdminApplicationsPage() {
             </div>
 
             {showAdvancedFilters && (
-              <div className="grid grid-cols-2 gap-2 sm:gap-3 pt-1 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="grid grid-cols-3 gap-1.5 pt-1 sm:gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <SearchableSelect
-                  className="h-11 w-full rounded-xl border-border bg-card"
+                  className="h-9 w-full rounded-xl border-border bg-card sm:h-11"
                   options={SCORE_RANGE_OPTIONS}
                   value={scoreRange}
                   onValueChange={(v) => { setScoreRange(v); resetPage(); }}
@@ -596,7 +620,7 @@ export default function AdminApplicationsPage() {
                   className="h-11 rounded-xl border-border bg-card text-sm"
                 />
                 <SearchableSelect
-                  className="h-11 w-full rounded-xl border-border bg-card"
+                  className="h-9 w-full rounded-xl border-border bg-card sm:h-11"
                   options={SORT_OPTIONS}
                   value={sortBy}
                   onValueChange={(v) => { setSortBy(v); resetPage(); }}
@@ -702,21 +726,24 @@ export default function AdminApplicationsPage() {
               return (
                 <article
                   key={app._id}
-                  className="grid gap-3 bg-transparent px-5 py-4 transition-all duration-200 hover:bg-background/70 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] sm:items-center"
+                  className="grid gap-1 bg-transparent px-3 py-2 transition-all duration-200 hover:bg-background/70 sm:gap-3 sm:px-5 sm:py-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] sm:items-center"
                 >
                   {/* Candidate */}
-                  <div className="flex min-w-0 items-center gap-3.5">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-status-applied shadow-inner dark:text-sky-300">
-                      <User className="h-5 w-5" />
+                  <div className="flex min-w-0 items-center gap-2 sm:gap-3.5">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-status-applied shadow-inner dark:text-sky-300 sm:h-10 sm:w-10 sm:rounded-xl">
+                      <User className="h-3.5 w-3.5 sm:h-5 sm:w-5" />
                     </div>
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="truncate text-sm font-semibold tracking-tight text-foreground sm:text-base">{candidateName}</span>
+                    {/* flex-1 only on phones: it lets the name column use the
+                        width freed by the smaller avatar. On desktop the column
+                        must stay content-sized, exactly as it was. */}
+                    <div className="min-w-0 flex-1 sm:flex-initial">
+                      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                        <span className="truncate text-[13px] font-semibold tracking-tight text-foreground sm:text-base">{candidateName}</span>
                         <StatusBadge status={app.status} />
                       </div>
                       {employer?.companyName && (
-                        <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <Building2 className="h-3.5 w-3.5" />
+                        <p className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground sm:mt-1 sm:gap-1.5 sm:text-xs">
+                          <Building2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                           {employer.companyName}
                         </p>
                       )}
@@ -734,22 +761,30 @@ export default function AdminApplicationsPage() {
                         </>
                       )}
                     </div>
-                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    {/* Match, skills, applied date and source share one wrapping
+                        line on phones — they were three stacked rows before. */}
+                    <div className="mt-1 flex flex-wrap items-center gap-1 sm:mt-1.5 sm:gap-1.5">
                       {aiScoreLabel && (
-                        <Badge className={`${aiScoreColor} rounded-full px-2.5 py-0.5 text-[11px] font-semibold`}>
+                        <Badge className={`${aiScoreColor} rounded-full px-2 py-0 text-[10px] font-semibold sm:px-2.5 sm:py-0.5 sm:text-[11px]`}>
                           {aiScoreLabel}
                         </Badge>
                       )}
-                      {topSkills.map((skill) => (
-                        <span key={skill} className="rounded-full border border-border bg-background/70 px-2.5 py-0.5 text-xs text-muted-foreground">
+                      {topSkills.map((skill, i) => (
+                        <span
+                          key={skill}
+                          className={`rounded-full border border-border bg-background/70 px-2 py-0 text-[10px] text-muted-foreground sm:px-2.5 sm:py-0.5 sm:text-xs ${i >= 2 ? "hidden sm:inline-block" : ""}`}
+                        >
                           {skill}
                         </span>
                       ))}
                       {topSkills.length === 0 && !aiScoreLabel && (
-                        <span className="text-xs text-muted-foreground">{t("noSkillsListed")}</span>
+                        <span className="text-[10px] text-muted-foreground sm:text-xs">{t("noSkillsListed")}</span>
                       )}
+                      <span className="text-[10px] text-muted-foreground sm:hidden">
+                        {t("applied")} {appliedDate}
+                      </span>
                     </div>
-                    <div className="mt-1.5 flex flex-wrap items-center gap-2.5 text-xs text-muted-foreground">
+                    <div className="mt-1.5 hidden flex-wrap items-center gap-2.5 text-xs text-muted-foreground sm:flex">
                       <span>{t("applied")} {appliedDate}</span>
                       <Badge variant={app.autoApplied ? "warning" : "secondary"} className="text-[11px]">
                         {sourceLabel(app.source)}
@@ -757,9 +792,17 @@ export default function AdminApplicationsPage() {
                     </div>
                   </div>
 
-                  {/* Score */}
+                  {/* Score + manage — the match badge above already states score on phones. */}
                   <div className="flex items-center gap-2 sm:justify-end">
-                    <ScoreBadge score={app.aiMatchScore} />
+                    <span className="hidden sm:inline-flex"><ScoreBadge score={app.aiMatchScore} /></span>
+                    <SearchableSelect
+                      className="h-8 w-40 rounded-lg border-border bg-card text-xs"
+                      options={STATUSES.map((s) => ({ value: s, label: t(statusLabelKey(s)) }))}
+                      value={app.status}
+                      onValueChange={(v) => { if (v && v !== app.status) void handleStatusChange(app._id, v); }}
+                      placeholder={t("status")}
+                      disabled={updatingId === app._id}
+                    />
                   </div>
                 </article>
               );

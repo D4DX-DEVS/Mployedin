@@ -258,17 +258,19 @@ export default function AdminUsersPage() {
       />
 
       <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
-        <div className="flex flex-wrap items-center gap-2 border-b border-border/80 px-5 py-4">
-            <div className="relative">
+        {/* data-table-toolbar opts this hand-rolled header into the shared
+            mobile toolbar rules, same as pages built on <TableToolbar>. */}
+        <div data-table-toolbar="compact-admin" className="flex flex-wrap items-center gap-1.5 border-b border-border/80 px-3 py-2.5 sm:gap-2 sm:px-5 sm:py-4">
+            <div className="relative min-w-0 flex-1 basis-full sm:basis-auto sm:flex-none">
               <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); resetPage(); }}
                 placeholder={t("searchPlaceholder")}
-                className="h-8 w-52 rounded-lg pl-8 text-sm"
+                className="h-8 w-full rounded-lg pl-8 text-xs sm:w-52 sm:text-sm"
               />
             </div>
-            <div className="w-[130px]">
+            <div className="min-w-0 flex-1 sm:w-[130px] sm:flex-none">
               <InlineSearchSelect
                 options={[
                   { value: "all", label: t("allRoles") },
@@ -279,7 +281,7 @@ export default function AdminUsersPage() {
                 placeholder={t("allRoles")}
               />
             </div>
-            <div className="w-[120px]">
+            <div className="min-w-0 flex-1 sm:w-[120px] sm:flex-none">
               <InlineSearchSelect
                 options={[
                   { value: "all", label: t("allStatus") },
@@ -293,8 +295,9 @@ export default function AdminUsersPage() {
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 rounded-lg border-border/80">
-                  <Download className="h-3.5 w-3.5" /> {t("export")}
+                <Button variant="outline" size="sm" aria-label={t("export")} className="h-8 shrink-0 rounded-lg border-border/80 px-2 text-xs sm:px-3 sm:text-sm">
+                  <Download className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">{t("export")}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-44">
@@ -305,7 +308,7 @@ export default function AdminUsersPage() {
                 <DropdownMenuItem onClick={handleExportPdf}><FileText className="h-4 w-4" />{t("pdf")}</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button onClick={() => setShowCreate(true)} size="sm" className="h-8 rounded-lg">
+            <Button onClick={() => setShowCreate(true)} size="sm" className="h-8 rounded-lg px-2 text-xs sm:px-3 sm:text-sm">
               <Plus className="h-3.5 w-3.5" /> {t("createUser")}
             </Button>
         </div>

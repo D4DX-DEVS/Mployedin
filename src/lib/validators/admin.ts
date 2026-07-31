@@ -83,7 +83,8 @@ export const agentUpdateSchema = z.object({
   name: z.string().min(1).max(100).trim().optional(),
   email: commonSchemas.email.optional(),
   isActive: z.boolean().optional(),
-  superAgentId: commonSchemas.objectId.optional(),
+  // null = unassign from super agent (handler maps null → unset)
+  superAgentId: commonSchemas.objectId.nullable().optional(),
   commissionRate: z.number().min(0).max(100).optional(),
   assignedCityIds: z.array(commonSchemas.objectId).max(200).optional(),
   assignedStateIds: z.array(commonSchemas.objectId).max(200).optional(),

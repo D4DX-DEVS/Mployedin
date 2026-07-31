@@ -8,6 +8,8 @@ interface UseTableExportOptions<T extends Record<string, unknown>> {
   columns: ExportColumn<T>[];
   filename?: string;
   title?: string;
+  /** Optional narrower column set for PDF — wide tables become unreadable in A4 */
+  pdfColumns?: ExportColumn<T>[];
 }
 
 interface UseTableExportReturn {
@@ -21,6 +23,7 @@ export function useTableExport<T extends Record<string, unknown>>({
   columns,
   filename = "export",
   title = "Export",
+  pdfColumns,
 }: UseTableExportOptions<T>): UseTableExportReturn {
   const handleExportCsv = useCallback(() => {
     import("@/lib/export").then(({ exportCSV }) =>
@@ -36,9 +39,9 @@ export function useTableExport<T extends Record<string, unknown>>({
 
   const handleExportPdf = useCallback(() => {
     import("@/lib/export").then(({ exportPdf }) =>
-      exportPdf(data, columns, `${filename}.pdf`, title),
+      exportPdf(data, pdfColumns ?? columns, `${filename}.pdf`, title),
     );
-  }, [data, columns, filename, title]);
+  }, [data, columns, pdfColumns, filename, title]);
 
   return { handleExportCsv, handleExportExcel, handleExportPdf };
 }

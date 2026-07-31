@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -130,26 +131,21 @@ export default function AdminTargetReportPage() {
   const [roleFilter, setRoleFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<ReportData | null>(null);
-
-  const fetchReport = useCallback(async () => {
-    setLoading(true);
-    try {
+  // Cached per year: revisiting the page paints from cache instead of
+  // re-running the whole report aggregation behind a skeleton.
+  const { data = null, isLoading: loading, isError } = useQuery<ReportData>({
+    queryKey: ["admin", "target-report", yearFilter],
+    queryFn: async () => {
       const res = await fetch(`/api/admin/target-report?year=${yearFilter}`);
-      if (res.ok) {
-        setData(await res.json());
-      } else {
-        toast.error(t("failedToLoadReport"));
-      }
-    } catch {
-      toast.error(t("failedToLoadReport"));
-    } finally {
-      setLoading(false);
-    }
-  }, [yearFilter]);
+      if (!res.ok) throw new Error(`Target report error: ${res.status}`);
+      return res.json();
+    },
+    staleTime: 5 * 60_000,
+  });
 
-  useEffect(() => { fetchReport(); }, [fetchReport]);
+  useEffect(() => {
+    if (isError) toast.error(t("failedToLoadReport"));
+  }, [isError, t]);
 
   const hasActiveFilters = quarterFilter !== "all" || categoryFilter !== "all" || riskFilter !== "all" || roleFilter !== "all" || Boolean(searchQuery);
 
@@ -281,7 +277,7 @@ export default function AdminTargetReportPage() {
       />
 
       {/* ═══════ KPI Summary ═══════ */}
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div className="workspace-glass-panel rounded-2xl p-4">
           <div className="flex items-start justify-between">
             <div>
@@ -485,7 +481,7 @@ export default function AdminTargetReportPage() {
             <p className="text-sm text-muted-foreground">{data.yearOverYear.previousYear.year} vs {data.yearOverYear.currentYear.year}</p>
           </div>
         </div>
-        <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
           {([
             { label: "Emp. Target", curr: data.yearOverYear.currentYear.employerTarget, prev: data.yearOverYear.previousYear.employerTarget, growth: data.yearOverYear.growth.employerTarget },
             { label: "Emp. Achieved", curr: data.yearOverYear.currentYear.employerAchieved, prev: data.yearOverYear.previousYear.employerAchieved, growth: data.yearOverYear.growth.employerAchieved },

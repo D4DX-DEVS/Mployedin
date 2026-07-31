@@ -95,6 +95,15 @@ export function debounce<T extends (...args: unknown[]) => void>(
   };
 }
 
+/** Human-readable message from an API error body ({ error, details?: [{path,message}] }). */
+export function apiErrorMessage(body: unknown, fallback: string): string {
+  const b = body as { error?: string; details?: { path?: string; message?: string }[] } | null;
+  if (b?.details?.length) {
+    return b.details.map((d) => (d.path ? `${d.path}: ${d.message}` : d.message)).filter(Boolean).join("; ");
+  }
+  return b?.error ?? fallback;
+}
+
 export function parseApiError(error: unknown): string {
   if (typeof error === "string") return error;
   if (error instanceof Error) return error.message;

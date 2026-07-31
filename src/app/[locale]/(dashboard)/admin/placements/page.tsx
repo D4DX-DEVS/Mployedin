@@ -138,12 +138,19 @@ export default function AdminPlacementsPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: `Analyze the current placement data and provide brief actionable insights. We have ${total} total placements. Salary breakdown: ${formatCurrencyBreakdown(salaryByCurrency, t)}. Pending visas: ${pendingVisa}. Unpaid commissions: ${unpaidCommissions}. Recent placements this page: ${placements.length}. Give 3-4 bullet points with trends, risks, and recommendations. Keep it concise.`,
+          messages: [
+            {
+              role: "user",
+              content: `Analyze the current placement data and provide brief actionable insights. We have ${total} total placements. Salary breakdown: ${formatCurrencyBreakdown(salaryByCurrency, t)}. Pending visas: ${pendingVisa}. Unpaid commissions: ${unpaidCommissions}. Recent placements this page: ${placements.length}. Give 3-4 bullet points with trends, risks, and recommendations. Keep it concise.`,
+            },
+          ],
+          currentPage: "admin/placements",
         }),
       });
       if (res.ok) {
-        const data = await res.json();
-        setAiInsights(data.reply ?? data.message ?? "No insights available.");
+        // /api/ai/chat streams plain text, not JSON
+        const text = await res.text();
+        setAiInsights(text.trim() || "No insights available.");
       } else {
         const err = await res.json().catch(() => ({}));
         toast.error(err.error || "Failed to generate insights");

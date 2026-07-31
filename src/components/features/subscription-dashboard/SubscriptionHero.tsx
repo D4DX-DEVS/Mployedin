@@ -1,47 +1,59 @@
 "use client";
 
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Crown, Download, Settings, Plus, RefreshCw } from "lucide-react";
 import { PageHero } from "@/components/shared/PageHero";
 
 interface SubscriptionHeroProps {
   onRefresh?: () => void;
+  onExport?: () => void;
+  isRefreshing?: boolean;
 }
 
-export function SubscriptionHero({ onRefresh }: SubscriptionHeroProps) {
+export function SubscriptionHero({ onRefresh, onExport, isRefreshing }: SubscriptionHeroProps) {
   const t = useTranslations("subscriptionHero");
+  const { locale } = useParams<{ locale: string }>();
 
   return (
     <PageHero
-      title="Subscription Dashboard"
-      eyebrow="Finance · Subscriptions"
+      title={t("pageTitle")}
+      eyebrow={t("eyebrow")}
       icon={Crown}
-      description="A complete view of revenue, plans, and activity across employers and job seekers."
+      description={t("pageDescription")}
       actions={
         <>
           {onRefresh && (
             <button
+              type="button"
               onClick={onRefresh}
-              className="inline-flex items-center gap-2 rounded-xl border border-border/60 bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-accent"
+              disabled={isRefreshing}
+              className="inline-flex items-center gap-2 rounded-xl border border-border/60 bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-60"
             >
-              <RefreshCw className="h-4 w-4" />
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
               {t("refresh")}
             </button>
           )}
-          <button className="inline-flex items-center gap-2 rounded-xl border border-border/60 bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-accent">
-            <Download className="h-4 w-4" />
-            {t("exportReport")}
-          </button>
+          {onExport && (
+            <button
+              type="button"
+              onClick={onExport}
+              className="inline-flex items-center gap-2 rounded-xl border border-border/60 bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-accent"
+            >
+              <Download className="h-4 w-4" />
+              {t("exportReport")}
+            </button>
+          )}
           <Link
-            href="/admin/subscription-plans"
+            href={`/${locale}/admin/subscription-plans`}
             className="inline-flex items-center gap-2 rounded-xl border border-border/60 bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-accent"
           >
             <Settings className="h-4 w-4" />
             {t("managePlans")}
           </Link>
           <Link
-            href="/admin/subscriptions"
+            href={`/${locale}/admin/subscriptions`}
             className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
             <Plus className="h-4 w-4" />

@@ -45,18 +45,21 @@ function normalizeExcelFilename(filename: string): string {
   return filename.replace(/\.xlsx$/i, ".xls") || "export.xls";
 }
 
-export function exportExcelRows(
-  rows: string[][],
-  filename = "export.xls",
-  sheetName = "Sheet1",
-): void {
+export function excelBlobFromRows(rows: string[][], sheetName = "Sheet1"): Blob {
   const safeSheetName = escapeHtml(sheetName.slice(0, 31) || "Sheet1");
   const tableRows = rows
     .map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(sanitizeSpreadsheetCell(cell))}</td>`).join("")}</tr>`)
     .join("");
   const html = `<!doctype html><html><head><meta charset="utf-8"><style>td{mso-number-format:"\\@";}</style></head><body><table><caption>${safeSheetName}</caption>${tableRows}</table></body></html>`;
-  const blob = new Blob(["\uFEFF", html], { type: "application/vnd.ms-excel;charset=utf-8;" });
-  triggerDownload(blob, normalizeExcelFilename(filename));
+  return new Blob(["\uFEFF", html], { type: "application/vnd.ms-excel;charset=utf-8;" });
+}
+
+export function exportExcelRows(
+  rows: string[][],
+  filename = "export.xls",
+  sheetName = "Sheet1",
+): void {
+  triggerDownload(excelBlobFromRows(rows, sheetName), normalizeExcelFilename(filename));
 }
 
 /* ── CSV ─────────────────────────────────────────────── */

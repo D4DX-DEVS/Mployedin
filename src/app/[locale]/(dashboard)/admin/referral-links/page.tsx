@@ -122,7 +122,7 @@ export default function AdminReferralLinksPage() {
       <PageHeader title={t("pageTitle")} description={t("pageDescription")} />
 
       {/* Stats */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl border border-border bg-card p-3.5 sm:p-4">
           <p className="text-xs font-medium text-muted-foreground">{t("totalLinks")}</p>
           <p className="mt-1 text-xl sm:text-2xl font-bold">{serverTotal}</p>

@@ -75,7 +75,8 @@ export const employerAdminCreateSchema = z.object({
   companyName: z.string().max(100).trim().optional(),
   industry: z.string().max(100).optional(),
   location: z.string().max(200).optional(),
-  phone: commonSchemas.phone.optional(),
+  // Note: empty string is valid (optional form field left blank)
+  phone: commonSchemas.phone.optional().or(z.literal("")),
 });
 
 /** For admin updating employer user accounts */
@@ -85,7 +86,7 @@ export const employerAdminUpdateSchema = z.object({
   companyName: z.string().max(100).trim().optional(),
   industry: z.string().max(100).optional(),
   location: z.string().max(200).optional(),
-  phone: commonSchemas.phone.optional(),
+  phone: commonSchemas.phone.optional().or(z.literal("")),
   isActive: z.boolean().optional(),
 });
 

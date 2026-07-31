@@ -177,6 +177,9 @@ export function TableToolbar({
 
   return (
     <div
+      // Same marker as the compact variant above, so the shared mobile toolbar
+      // rules (one row, icon-only action buttons) apply to this layout too.
+      data-table-toolbar="simple"
       className={cn(
         // Single row on phones too — stacking dropped Export onto its own line
         // flush-left, which read as an orphaned button.

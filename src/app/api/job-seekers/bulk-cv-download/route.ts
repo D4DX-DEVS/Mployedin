@@ -71,7 +71,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
   const results = await JobSeeker.find(filter)
     .populate("userId", "name email")
-    .select("fullName cv.originalUrl userId headline")
+    .select("fullName email cv.originalUrl userId headline nationality currentLocation totalExperienceYears")
     .limit(200)
     .lean();
 
@@ -81,6 +81,10 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       id: String(js._id),
       name: js.fullName || (js.userId as { name?: string })?.name || "Unknown",
       headline: js.headline || "",
+      email: js.email || (js.userId as { email?: string })?.email || "",
+      nationality: js.nationality || "",
+      location: js.currentLocation || "",
+      experienceYears: js.totalExperienceYears ?? null,
       url: js.cv.originalUrl,
     }));
 

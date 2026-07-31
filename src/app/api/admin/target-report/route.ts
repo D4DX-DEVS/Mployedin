@@ -25,9 +25,11 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const year = Number.isFinite(requestedYear) ? requestedYear : currentYear;
   const compareYear = year - 1;
 
-  // --- Load current year profiles (all roles) ---
-  const currentProfiles = await TargetProfile.find({ year, status: "active" }).lean();
-  const prevProfiles = await TargetProfile.find({ year: compareYear, status: "active" }).lean();
+  // --- Load current + previous year profiles (all roles) ---
+  const [currentProfiles, prevProfiles] = await Promise.all([
+    TargetProfile.find({ year, status: "active" }).lean(),
+    TargetProfile.find({ year: compareYear, status: "active" }).lean(),
+  ]);
 
   // Resolve user names
   const allUserIds = [
@@ -36,18 +38,17 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       ...prevProfiles.map((p) => String(p.assigneeId)),
     ]),
   ];
-  const users = await User.find({ _id: { $in: allUserIds } }).select("_id name email").lean();
+  // User lookup + both enrichment passes are independent — run them together.
+  const [users, enrichedCurrent, enrichedPrev] = await Promise.all([
+    User.find({ _id: { $in: allUserIds } }).select("_id name email").lean(),
+    currentProfiles.length > 0
+      ? enrichProfiles(currentProfiles as unknown as Record<string, unknown>[])
+      : Promise.resolve([]),
+    prevProfiles.length > 0
+      ? enrichProfiles(prevProfiles as unknown as Record<string, unknown>[])
+      : Promise.resolve([]),
+  ]);
   const userMap = new Map(users.map((u) => [String(u._id), u]));
-
-  // Enrich current year
-  const enrichedCurrent = currentProfiles.length > 0
-    ? await enrichProfiles(currentProfiles as unknown as Record<string, unknown>[])
-    : [];
-
-  // Enrich previous year
-  const enrichedPrev = prevProfiles.length > 0
-    ? await enrichProfiles(prevProfiles as unknown as Record<string, unknown>[])
-    : [];
 
   // --- Monthly Trend (current year aggregated) ---
   const monthlyTrend = Array.from({ length: 12 }, (_, i) => {

@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { csrfFetch } from "@/lib/security/csrf-client";
 
 import { jobFormSchema, JOB_FORM_STEPS, type JobFormValues } from "./jobFormSchema";
@@ -59,6 +60,18 @@ interface JobTemplateData {
 interface JobFormWizardProps {
   locale: string;
   useAiPrefill?: boolean;
+  /** Dashboard segment this wizard is mounted under. Drives post-save redirects
+   *  and, for "admin", the on-behalf-of employer picker the API requires. */
+  basePath?: "employer" | "admin";
+}
+
+interface EmployerOption {
+  /** User id — NOT the Employer profile id the jobs API expects. */
+  _id: string;
+  /** Employer profile id; this is what POST /api/jobs stores as job.employerId. */
+  employerProfileId?: string;
+  companyName?: string;
+  name?: string;
 }
 
 const AI_PREFILL_STORAGE_KEY = "job-ai-prefill";
@@ -117,8 +130,10 @@ function mergeJobFormValues(base: JobFormValues, incoming: Partial<JobFormValues
   };
 }
 
-export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardProps) {
+export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employer" }: JobFormWizardProps) {
   const router = useRouter();
+  const isAdmin = basePath === "admin";
+  const [employerOptions, setEmployerOptions] = useState<EmployerOption[]>([]);
   const t = useTranslations("employerJobForm");
   const [currentStep, setCurrentStep] = useState(1);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
@@ -144,6 +159,21 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
   const formValues = watch();
 
   const { draftId, savedIndicator, saveDraft, loadDraft, autosaveLocal, clearDraft } = useJobFormDraft(locale);
+
+  // Admins post on behalf of an employer, so they must pick one — POST /api/jobs
+  // rejects an admin-authored job that carries no employerId.
+  useEffect(() => {
+    if (!isAdmin) return;
+    let cancelled = false;
+    fetch("/api/employers?limit=500&fields=companyName")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (cancelled || !d) return;
+        setEmployerOptions((d.employers ?? d.data ?? []) as EmployerOption[]);
+      })
+      .catch(() => { /* picker stays empty; submit is blocked with a message */ });
+    return () => { cancelled = true; };
+  }, [isAdmin]);
 
   // Track whether AI prefill has been applied to prevent localStorage draft from overwriting it
   const aiPrefillApplied = useRef(false);
@@ -290,20 +320,35 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
   // ─── Draft Save ───────────────────────────────────────────────────────────────
 
   async function handleSaveDraft() {
+    if (isAdmin && !methods.getValues().employerId) {
+      setSubmitError(t("employerRequired"));
+      return;
+    }
+    setSubmitError("");
     setSavingDraft(true);
     const savedId = await saveDraft(methods.getValues());
     setSavingDraft(false);
+    // A failed server save used to fall through to the jobs list as if it had
+    // worked, so the draft silently never appeared. Keep the user on the form.
+    if (savedId === null) {
+      setSubmitError(t("draftSaveFailed"));
+      return;
+    }
     // Navigate to the saved draft or jobs list after saving
     if (savedId) {
-      router.push(`/${locale}/employer/jobs/${savedId}`);
+      router.push(`/${locale}/${basePath}/jobs/${savedId}`);
     } else {
-      router.push(`/${locale}/employer/jobs`);
+      router.push(`/${locale}/${basePath}/jobs`);
     }
   }
 
   // ─── Submit ───────────────────────────────────────────────────────────────────
 
   const onSubmit = handleSubmit(async (values) => {
+    if (isAdmin && !values.employerId) {
+      setSubmitError(t("employerRequired"));
+      return;
+    }
     setSubmitting(true);
     setSubmitError("");
     try {
@@ -344,7 +389,7 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
             description: t("pendingApprovalDescription"),
             duration: 8000,
           });
-          router.push(`/${locale}/employer/jobs/${jobId}`);
+          router.push(`/${locale}/${basePath}/jobs/${jobId}`);
           return;
         }
         toast.success(t("postSuccess"), {
@@ -353,12 +398,12 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
             label: t("createPoster"),
             onClick: () => {
               // Navigate with poster query param to auto-open dialog
-              router.push(`/${locale}/employer/jobs/${jobId}?poster=1`);
+              router.push(`/${locale}/${basePath}/jobs/${jobId}?poster=1`);
             },
           },
           duration: 8000,
         });
-        router.push(`/${locale}/employer/jobs/${jobId}`);
+        router.push(`/${locale}/${basePath}/jobs/${jobId}`);
       } else {
         const err = (await res.json()) as { error?: string };
         setSubmitError(err.error ?? t("postFailed"));
@@ -488,6 +533,27 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
             </div>
           }
         />
+
+        {isAdmin && (
+          <div className="mt-3 rounded-xl border border-border/70 bg-background/85 p-2.5 shadow-sm sm:p-3">
+            <label htmlFor="job-form-employer" className="mb-1.5 block text-xs font-medium text-muted-foreground sm:text-sm">
+              {t("employerLabel")} <span className="text-destructive">*</span>
+            </label>
+            <SearchableSelect
+              id="job-form-employer"
+              options={employerOptions
+                .filter((e) => e.employerProfileId)
+                .map((e) => ({
+                  value: e.employerProfileId as string,
+                  label: e.companyName ?? e.name ?? (e.employerProfileId as string),
+                }))}
+              value={formValues.employerId ?? ""}
+              onValueChange={(v) => methods.setValue("employerId", v, { shouldDirty: true })}
+              placeholder={t("employerPlaceholder")}
+              className="w-full"
+            />
+          </div>
+        )}
 
         <div className="mt-3 rounded-xl border border-border/70 bg-background/85 p-2.5 shadow-sm sm:p-3">
           <StepIndicator

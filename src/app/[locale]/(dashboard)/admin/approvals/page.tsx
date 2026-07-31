@@ -190,7 +190,16 @@ export default function AdminApprovalsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ approved }),
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        // A draft missing required fields cannot be published — say which ones
+        // instead of a generic failure the admin cannot act on.
+        const data = await res.json().catch(() => null);
+        if (data?.error === "INCOMPLETE_JOB") {
+          toast.error(tJobs("jobIncompleteForApproval", { fields: (data.fields ?? []).join(", ") }));
+          return;
+        }
+        throw new Error();
+      }
       toast.success(approved ? tJobs("jobApprovedSuccess") : tJobs("jobRejectedSuccess"));
       setSelectedJob(null);
       fetchJobs();

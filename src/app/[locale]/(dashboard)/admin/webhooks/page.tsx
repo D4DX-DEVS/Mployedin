@@ -422,7 +422,7 @@ export default function AdminWebhooksPage() {
       <section className="workspace-panel-surface overflow-hidden rounded-[20px] p-4">
 
         {/* Stats Row */}
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {([
             { label: "Active", value: activeCount, note: "Listening for events", icon: CheckCircle2, tone: "text-status-selected", chip: "bg-status-selected-bg dark:bg-emerald-950/30" },
             { label: "Inactive", value: inactiveCount, note: "Paused endpoints", icon: XCircle, tone: "text-muted-foreground", chip: "bg-muted/30" },

@@ -136,4 +136,6 @@ export const jobSeekerAdminUpdateSchema = z.object({
   languages: z.array(z.record(z.string(), z.unknown())).max(15).optional(),
   name: z.string().min(1).max(100).trim().optional(),
   email: commonSchemas.email.optional(),
+  // Admin-only in the route handler: (re)activates the linked user account
+  isActive: z.boolean().optional(),
 });

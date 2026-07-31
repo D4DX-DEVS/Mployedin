@@ -23,22 +23,11 @@ export type { IActivityEvent, ActivityEventType } from "./ActivityEvent";
 export { InterviewQuestion } from "./InterviewQuestion";
 
 // ── Job Attribute Master Data ─────────────────────────────────────────────────
-export { SalaryPeriod } from "./SalaryPeriod";
-export { OwnershipType } from "./OwnershipType";
 export { MaritalStatus } from "./MaritalStatus";
-export { ResultType } from "./ResultType";
 export { MajorSubject } from "./MajorSubject";
-export { DegreeType } from "./DegreeType";
-export { DegreeLevel } from "./DegreeLevel";
-export { JobShift } from "./JobShift";
-export { JobType } from "./JobType";
 export { JobSkill } from "./JobSkill";
-export { JobExperience } from "./JobExperience";
 export { Industry } from "./Industry";
 export { Gender } from "./Gender";
-export { FunctionalArea } from "./FunctionalArea";
-export { CareerLevel } from "./CareerLevel";
-export { LanguageLevel } from "./LanguageLevel";
 
 // ── Location Master Data ──────────────────────────────────────────────────────
 export { Country } from "./Country";

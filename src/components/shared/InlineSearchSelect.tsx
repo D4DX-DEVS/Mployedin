@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { Check, ChevronsUpDown, Search, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export interface InlineSelectOption {
   value: string;
@@ -26,6 +27,7 @@ export function InlineSearchSelect({
   placeholder = "Select...",
   disabled = false,
   loading = false,
+  className,
 }: InlineSearchSelectProps) {
   const t = useTranslations("inlineSearchSelect");
   const [open, setOpen] = useState(false);
@@ -61,7 +63,14 @@ export function InlineSearchSelect({
         type="button"
         disabled={disabled}
         onClick={() => { if (!disabled) { setOpen(!open); setQuery(""); } }}
-        className="flex h-10 w-full items-center justify-between gap-1 rounded-lg border border-border/60 bg-background px-3 py-2 text-sm shadow-sm shadow-black/[0.04] transition-all duration-200 hover:border-border focus:outline-none focus:ring-1 focus:ring-ring/50 focus:border-ring disabled:cursor-not-allowed disabled:opacity-50"
+        className={cn(
+          // Phones squeeze several of these into one filter row, so the trigger
+          // trades padding and type size for label room instead of truncating
+          // every option down to "All…". Desktop sizing is unchanged.
+          "flex h-8 w-full min-w-0 items-center justify-between gap-0.5 rounded-lg border border-border/60 bg-background px-1.5 py-1 text-[11px] shadow-sm shadow-black/[0.04] transition-all duration-200 hover:border-border focus:outline-none focus:ring-1 focus:ring-ring/50 focus:border-ring disabled:cursor-not-allowed disabled:opacity-50",
+          "sm:h-10 sm:gap-1 sm:px-3 sm:py-2 sm:text-sm",
+          className
+        )}
       >
         <span className={selectedLabel ? "truncate text-left" : "truncate text-left text-muted-foreground"}>
           {loading ? (
@@ -72,7 +81,7 @@ export function InlineSearchSelect({
             selectedLabel ?? (placeholder || t("select"))
           )}
         </span>
-        <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-40" />
+        <ChevronsUpDown className="h-3 w-3 shrink-0 opacity-40 sm:h-4 sm:w-4" />
       </button>
 
       {open && (

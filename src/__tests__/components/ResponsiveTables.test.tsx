@@ -5,7 +5,10 @@ import { render, waitFor } from "@testing-library/react";
 import { ResponsiveTables } from "@/components/shared/ResponsiveTables";
 
 describe("ResponsiveTables", () => {
-  it("labels native table cells from their semantic headers", () => {
+  // The initial sweep is deferred by a macrotask so it cannot rewrite markup
+  // React is still hydrating, so the enhancement lands asynchronously — the
+  // same way it does for rows streamed in later, covered by the next test.
+  it("labels native table cells from their semantic headers", async () => {
     const { container } = render(
       <>
         <table>
@@ -26,10 +29,11 @@ describe("ResponsiveTables", () => {
       </>
     );
 
-    const table = container.querySelector("table");
-    const cells = container.querySelectorAll("tbody td");
+    await waitFor(() => {
+      expect(container.querySelector("table")).toHaveClass("responsive-card-table");
+    });
 
-    expect(table).toHaveClass("responsive-card-table");
+    const cells = container.querySelectorAll("tbody td");
     expect(cells[0]).toHaveAttribute("data-label", "Name");
     expect(cells[1]).toHaveAttribute("data-label", "Status");
   });

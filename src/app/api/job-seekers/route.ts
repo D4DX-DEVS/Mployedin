@@ -198,7 +198,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       ...(searchConditions.length > 0 ? [{ $match: { $and: searchConditions } }] : []),
       {
         $project: {
-          "userId._id": 1, "userId.name": 1, "userId.email": 1,
+          "userId._id": 1, "userId.name": 1, "userId.email": 1, "userId.isActive": 1,
           fullName: 1, email: 1, phone: 1, headline: 1, summary: 1,
           nationality: 1, status: 1,
           skills: 1, currentLocation: 1, experience: 1, education: 1,
@@ -229,7 +229,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const baseFilter = filterConditions.length > 0 ? { $and: filterConditions } : {};
   const [items, total] = await Promise.all([
     JobSeeker.find(baseFilter)
-      .populate("userId", "name email")
+      .populate("userId", "name email isActive")
       .sort(sortOption)
       .skip((page - 1) * limit)
       .limit(limit)
