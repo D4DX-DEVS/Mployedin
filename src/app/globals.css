@@ -2014,19 +2014,16 @@ body {
     gap: 0.375rem;
   }
 
-  /* Sharing the line with the buttons is what starved the field: on the
-     invoices toolbar (search + Filters + Add + count pill + 3 view tabs +
-     Export) it was left ~40px — a magnifier icon with no room to type in.
-     Give it the whole first line and let the now icon-only buttons wrap
-     underneath. Costs one row of height, always typeable.
-     ponytail: full-width row, not a tap-to-expand field — swap if the extra
-     row ever matters more than the always-visible input. */
-  .dashboard-shell-admin [data-table-toolbar] div:has(> input) {
-    flex: 1 0 100%;
-    min-width: 0;
+  /* Share the row with the icon buttons (filter/export/AI) instead of always
+     claiming a full line on its own — grows to fill remaining space, shrinks
+     down to a still-typeable ~112px, and only wraps to its own line via the
+     row's flex-wrap when there truly isn't room (many buttons at once). */
+  .dashboard-shell-admin [data-table-toolbar] .toolbar-search-field {
+    flex: 1 1 9rem;
+    min-width: 7rem;
   }
 
-  .dashboard-shell-admin [data-table-toolbar] div:has(> input) > input {
+  .dashboard-shell-admin [data-table-toolbar] .toolbar-search-field > input {
     width: 100%;
     min-width: 0;
   }

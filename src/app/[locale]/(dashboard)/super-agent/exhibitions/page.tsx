@@ -15,7 +15,12 @@ import {
   MapPin, ThumbsUp, ThumbsDown, Eye,
   RotateCcw,
 } from "lucide-react";
-import { ExhibitionHeroFilters } from "@/components/features/exhibitions/ExhibitionHeroFilters";
+import {
+  ExhibitionFilterTrigger,
+  ExhibitionFilterClearButton,
+  ExhibitionFilterPanel,
+  exhibitionFiltersAreActive,
+} from "@/components/features/exhibitions/ExhibitionHeroFilters";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { useTranslations } from "next-intl";
 import { usePagination } from "@/hooks/usePagination";
@@ -159,6 +164,7 @@ export default function SuperAgentExhibitionsPage() {
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
 
   // Review dialog
   const [reviewItem, setReviewItem] = useState<ExhibitionRequest | null>(null);
@@ -228,6 +234,13 @@ export default function SuperAgentExhibitionsPage() {
   // Stats
   const pendingCount = items.filter((i) => i.status === "submitted").length;
   const reviewCount = items.filter((i) => i.status === "under_review").length;
+  const hasActiveFilters = exhibitionFiltersAreActive(search, statusFilter, priorityFilter, categoryFilter);
+  const clearFilters = () => {
+    setSearch("");
+    setStatusFilter("all");
+    setPriorityFilter("all");
+    setCategoryFilter("all");
+  };
   return (
     <div className="page-container space-y-6">
       <DashboardPageHeader
@@ -236,8 +249,19 @@ export default function SuperAgentExhibitionsPage() {
         title="Exhibition Management"
         description="Review and approve exhibition requests from your team. Use filters to narrow the queue, then act on submissions inline."
         summary={{ label: "Queue health", value: `${pendingCount + reviewCount} requests`, note: "Awaiting your review" }}
+        actions={
+          <div className="flex items-center gap-1">
+            <ExhibitionFilterTrigger
+              open={showFilters}
+              onToggle={() => setShowFilters((value) => !value)}
+              hasActiveFilters={hasActiveFilters}
+            />
+            {hasActiveFilters && <ExhibitionFilterClearButton onClear={clearFilters} />}
+          </div>
+        }
       >
-        <ExhibitionHeroFilters
+        <ExhibitionFilterPanel
+          open={showFilters}
           search={search}
           onSearchChange={setSearch}
           statusFilter={statusFilter}

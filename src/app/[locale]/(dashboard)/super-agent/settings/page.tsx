@@ -1453,8 +1453,9 @@ export default function SuperAgentSettingsPage() {
                 type="button"
                 onClick={() => setActiveTab(item.key)}
                 className={`
-                  flex items-center gap-3 px-3.5 py-3 rounded-xl text-left transition-all duration-150
-                  whitespace-nowrap lg:whitespace-normal min-w-[140px] lg:min-w-0 group
+                  flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-left transition-all duration-150
+                  whitespace-nowrap lg:whitespace-normal min-w-0 group
+                  lg:gap-3 lg:px-3.5 lg:py-3 lg:rounded-xl
                   ${isActive
                     ? "bg-primary/[0.08] text-primary shadow-sm border border-primary/15"
                     : "text-muted-foreground hover:bg-muted/50 hover:text-foreground border border-transparent"
@@ -1462,10 +1463,11 @@ export default function SuperAgentSettingsPage() {
                 `}
               >
                 <div className={`
-                  flex items-center justify-center w-8 h-8 rounded-lg shrink-0 transition-colors
+                  flex items-center justify-center w-6 h-6 rounded-md shrink-0 transition-colors
+                  lg:w-8 lg:h-8 lg:rounded-lg
                   ${isActive ? "bg-primary/15" : "bg-muted/60 group-hover:bg-muted"}
                 `}>
-                  <Icon className={`w-4 h-4 ${isActive ? "text-primary" : ""}`} />
+                  <Icon className={`w-3.5 h-3.5 lg:w-4 lg:h-4 ${isActive ? "text-primary" : ""}`} />
                 </div>
                 <div className="hidden lg:block flex-1 min-w-0">
                   <p className={`text-sm font-medium truncate ${isActive ? "text-primary" : ""}`}>{item.label}</p>
@@ -1474,7 +1476,7 @@ export default function SuperAgentSettingsPage() {
                 <span className="hidden lg:block text-xs text-muted-foreground ml-auto">
                   <ChevronRight className={`w-3.5 h-3.5 transition-transform ${isActive ? "text-primary" : ""}`} />
                 </span>
-                <span className="lg:hidden text-xs font-medium">{item.label.split(" ")[0]}</span>
+                <span className="lg:hidden text-[11px] font-medium">{item.label.split(" ")[0]}</span>
               </button>
             );
           })}

@@ -110,6 +110,7 @@ export default function AdminEmployersPage() {
     setLoading(true);
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
     if (search) params.set("search", search);
+    params.set("status", "all");
     const res = await fetch(`/api/employers?${params}`);
     if (res.ok) {
       const data = await res.json();
@@ -121,13 +122,50 @@ export default function AdminEmployersPage() {
 
   useEffect(() => { fetchEmployers(); }, [fetchEmployers]);
 
+  const parseApiError = async (res: Response) => {
+    let body: any;
+    try {
+      body = await res.json();
+    } catch {
+      return res.statusText || "Failed";
+    }
+
+    if (body?.details?.length) {
+      return `${body.error}: ${body.details.map((issue: { path?: string; message: string }) =>
+        issue.path ? `${issue.path}: ${issue.message}` : issue.message
+      ).join("; ")}`;
+    }
+
+    return body?.error || res.statusText || "Failed";
+  };
+
+  const validateAdminPassword = (password: string) => {
+    const trimmed = password.trim();
+    if (trimmed.length < 12) return "Password must be at least 12 characters long.";
+    if (!/[a-z]/.test(trimmed)) return "Password must include a lowercase letter.";
+    if (!/[A-Z]/.test(trimmed)) return "Password must include an uppercase letter.";
+    if (!/[0-9]/.test(trimmed)) return "Password must include a number.";
+    if (!/[^A-Za-z0-9]/.test(trimmed)) return "Password must include a special character.";
+    const commonPasswords = ["password123!", "admin@1234", "qwerty123!", "welcome123!", "letmein123!"];
+    if (commonPasswords.includes(trimmed.toLowerCase())) return "Choose a less common password.";
+    return null;
+  };
+
   const handleCreate = async (values: Record<string, string>) => {
+    const passwordError = values.password ? validateAdminPassword(values.password) : "Password is required.";
+    if (passwordError) {
+      throw new Error(passwordError);
+    }
+
     const res = await fetch("/api/employers", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(values),
     });
-    if (!res.ok) { const e = await res.json(); throw new Error(e.error ?? "Failed"); }
+    if (!res.ok) {
+      const message = await parseApiError(res);
+      throw new Error(message);
+    }
     fetchEmployers();
   };
 
@@ -137,7 +175,10 @@ export default function AdminEmployersPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(values),
     });
-    if (!res.ok) { const e = await res.json(); throw new Error(e.error ?? "Failed"); }
+    if (!res.ok) {
+      const message = await parseApiError(res);
+      throw new Error(message);
+    }
     setEditItem(null);
     fetchEmployers();
   };
@@ -207,7 +248,7 @@ export default function AdminEmployersPage() {
         {/* data-table-toolbar opts this hand-rolled header into the shared
             mobile toolbar rules, same as pages built on <TableToolbar>. */}
         <div data-table-toolbar="compact-admin" className="flex flex-wrap items-center gap-2 border-b border-border/80 px-3 py-2.5 sm:px-5 sm:py-4">
-            <div className="relative">
+            <div className="relative toolbar-search-field">
               <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={search}

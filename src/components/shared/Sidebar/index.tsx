@@ -48,6 +48,7 @@ export function Sidebar({
   const usesInlineWorkspaceSidebar = usesModernWorkspaceShell && !usesDualTierLayout;
   const usesLightWorkspaceSidebar = false;
   const mobileSidebarRef = useRef<HTMLElement | null>(null);
+  const desktopSidebarRef = useRef<HTMLElement | null>(null);
 
   const allMainItems = navGroups.flatMap((group) => group.items);
 
@@ -371,8 +372,21 @@ export function Sidebar({
       if (event.key === "Escape") setSubmenuExpanded(false);
     };
 
+    // Clicking anywhere in the page dismisses the flyout, like every other
+    // popover — previously only Escape or the X button closed it.
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (target && !desktopSidebarRef.current?.contains(target)) {
+        setSubmenuExpanded(false);
+      }
+    };
+
     document.addEventListener("keydown", closeSubmenu);
-    return () => document.removeEventListener("keydown", closeSubmenu);
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    return () => {
+      document.removeEventListener("keydown", closeSubmenu);
+      document.removeEventListener("pointerdown", closeOnOutsideClick);
+    };
   }, [mobileOpen, submenuExpanded, usesDualTierLayout]);
 
   const compactRootTitles = navigationMainItems.map((item) => item.title);
@@ -564,15 +578,15 @@ export function Sidebar({
         className={cn(
           "shrink-0 flex items-center gap-3",
           isAdminWorkspace
-            ? "h-20 px-5 border-b border-border/75 bg-white dark:bg-slate-900"
+            ? "h-14 sm:h-16 px-5 border-b border-border/75 bg-white dark:bg-slate-900"
             : usesDualTierLayout
-              ? "h-20 px-4 border-b border-border/75 bg-[linear-gradient(180deg,_hsl(var(--card)/0.72),_hsl(var(--card)/0.24))]"
+              ? "h-14 sm:h-16 px-4 border-b border-border/75 bg-[linear-gradient(180deg,_hsl(var(--card)/0.72),_hsl(var(--card)/0.24))]"
             : cn("px-4",
               usesModernWorkspaceShell
                 ? usesLightWorkspaceSidebar
-                  ? "h-20 border-b border-sky-100/80 bg-[linear-gradient(180deg,_rgba(255,255,255,0.6),_rgba(255,255,255,0.22))]"
-                  : "h-20 border-b border-border/75 bg-[linear-gradient(180deg,_hsl(var(--card)/0.72),_hsl(var(--card)/0.24))]"
-                : "h-16 border-b border-slate-800"
+                  ? "h-14 sm:h-16 border-b border-sky-100/80 bg-[linear-gradient(180deg,_rgba(255,255,255,0.6),_rgba(255,255,255,0.22))]"
+                  : "h-14 sm:h-16 border-b border-border/75 bg-[linear-gradient(180deg,_hsl(var(--card)/0.72),_hsl(var(--card)/0.24))]"
+                : "h-14 sm:h-16 border-b border-slate-800"
               )
         )}
       >
@@ -582,7 +596,7 @@ export function Sidebar({
             alt="Mployedin"
             width={200}
             height={69}
-            className="h-auto w-[150px] object-contain"
+            className="h-auto w-[132px] object-contain sm:w-[150px]"
             priority
           />
         ) : (
@@ -865,11 +879,13 @@ export function Sidebar({
     >
       {activeMainItem && hasSubmenu && submenuExpanded && (
         <div className="flex h-full min-w-[280px] max-w-[88vw] flex-col lg:min-w-[272px]">
+          {/* Same height as the logo row and the topbar — h-20 here left the
+              submenu header sitting below both, so no border line matched. */}
           <div className={cn(
-            "shrink-0 flex items-center px-4",
+            "shrink-0 flex h-14 items-center px-4 sm:h-16",
             usesDualTierLayout
-              ? "h-20 border-b border-border/50 bg-[linear-gradient(180deg,_hsl(var(--card)/0.72),_hsl(var(--card)/0.24))] backdrop-blur-sm"
-              : "h-20 border-b border-sidebar-border/50 bg-background/50 backdrop-blur-sm"
+              ? "border-b border-border/50 bg-[linear-gradient(180deg,_hsl(var(--card)/0.72),_hsl(var(--card)/0.24))] backdrop-blur-sm"
+              : "border-b border-sidebar-border/50 bg-background/50 backdrop-blur-sm"
           )}>
             {/* Mobile drill-down: back to the primary menu (drawer shows one tier at a time) */}
             <button
@@ -964,7 +980,9 @@ export function Sidebar({
 
   return (
     <>
-      <aside className={cn(
+      <aside
+        ref={desktopSidebarRef}
+        className={cn(
         "hidden lg:flex h-full transition-all duration-300 relative z-40",
         usesDualTierLayout ? "bg-transparent" : "bg-background"
       )}>

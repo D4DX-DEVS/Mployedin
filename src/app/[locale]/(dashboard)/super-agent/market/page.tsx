@@ -44,6 +44,7 @@ export default function MarketIntelligencePage() {
   const t = useTranslations("superAgentMarket");
   const tc = useTranslations("common");
   const [query, setQuery] = useState("");
+  const [showAllSuggestions, setShowAllSuggestions] = useState(false);
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<MarketReport | null>(null);
   const [error, setError] = useState("");
@@ -127,7 +128,7 @@ export default function MarketIntelligencePage() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            {getQuickQueries(t).map((q, i) => (
+            {(showAllSuggestions ? getQuickQueries(t) : getQuickQueries(t).slice(0, 4)).map((q, i) => (
               <button
                 key={i}
                 onClick={() => { setQuery(q); runQuery(q); }}
@@ -136,6 +137,14 @@ export default function MarketIntelligencePage() {
                 {q.length > 58 ? `${q.slice(0, 58)}...` : q}
               </button>
             ))}
+            <button
+              type="button"
+              onClick={() => setShowAllSuggestions((v) => !v)}
+              aria-expanded={showAllSuggestions}
+              className="rounded-full border border-dashed border-border/70 px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/5"
+            >
+              {showAllSuggestions ? "Show less" : "More suggestions"}
+            </button>
           </div>
         </div>
       </SuperAgentSection>

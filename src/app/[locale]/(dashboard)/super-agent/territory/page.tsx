@@ -110,17 +110,17 @@ export default function SuperAgentTerritoryPage() {
       <div className="workspace-glass-panel rounded-2xl px-5 py-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("coverageDistribution")}</p>
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-nowrap items-center gap-2 overflow-x-auto scrollbar-none sm:flex-wrap sm:gap-4 sm:overflow-visible">
             {[
               { color: "bg-emerald-500", label: t("legendHigh"), count: coverageSummary.high },
               { color: "bg-sky-500", label: t("legendGood"), count: coverageSummary.good },
               { color: "bg-amber-500", label: t("legendLow"), count: coverageSummary.low },
               { color: "bg-red-400", label: t("legendNone"), count: coverageSummary.none },
             ].map((l) => (
-              <div key={l.label} className="flex items-center gap-2">
-                <div className={`h-2.5 w-2.5 rounded-full ${l.color}`} />
-                <span className="text-xs text-muted-foreground">{l.label}</span>
-                <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{l.count}</span>
+              <div key={l.label} className="flex shrink-0 items-center gap-1 sm:gap-2">
+                <div className={`h-2 w-2 shrink-0 rounded-full sm:h-2.5 sm:w-2.5 ${l.color}`} />
+                <span className="whitespace-nowrap text-[10px] text-muted-foreground sm:text-xs">{l.label}</span>
+                <span className="whitespace-nowrap rounded-md bg-muted px-1 py-0.5 text-[9px] font-semibold text-muted-foreground sm:px-1.5 sm:text-[10px]">{l.count}</span>
               </div>
             ))}
           </div>

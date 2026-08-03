@@ -3,7 +3,7 @@ import { withAuth, AuthContext } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import Interview from "@/models/Interview";
-import { escapeRegex } from "@/lib/security/sanitize";
+import { relatedEntitySearchOr } from "@/lib/search/relatedEntitySearch";
 
 async function handler(req: NextRequest, ctx: AuthContext) {
   if (ctx.role !== "super_agent" && ctx.role !== "admin") {
@@ -30,12 +30,7 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   if (status && status !== "all") filter.status = status;
   if (type && type !== "all") filter.type = type;
   if (search) {
-    const safe = escapeRegex(search);
-    filter.$or = [
-      { candidateName: { $regex: safe, $options: "i" } },
-      { jobTitle: { $regex: safe, $options: "i" } },
-      { companyName: { $regex: safe, $options: "i" } },
-    ];
+    filter.$or = await relatedEntitySearchOr(search);
   }
 
   const [items, total, scheduled, completed, cancelled] = await Promise.all([

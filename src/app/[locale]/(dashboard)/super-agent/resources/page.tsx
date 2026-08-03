@@ -87,12 +87,16 @@ export default function ResourceDownloadsPage() {
         description={t("downloadsSubtitle")}
         footer={
           <div className="flex w-full min-w-0 flex-wrap items-center gap-2">
-            <div className="relative min-w-52 flex-1">
+            <div className="relative min-w-52 flex-1 basis-full sm:basis-auto">
               <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input placeholder={t("searchPlaceholder")} value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 pl-9 text-sm" />
             </div>
-            <SearchableSelect options={CATEGORY_OPTIONS} value={categoryFilter} onValueChange={setCategoryFilter} placeholder={t("filterCategory")} />
-            <SearchableSelect options={SORT_OPTIONS} value={sortBy} onValueChange={setSortBy} placeholder={t("sortLabel")} />
+            <div className="min-w-0 flex-1 basis-0 sm:flex-none">
+              <SearchableSelect options={CATEGORY_OPTIONS} value={categoryFilter} onValueChange={setCategoryFilter} placeholder={t("filterCategory")} />
+            </div>
+            <div className="min-w-0 flex-1 basis-0 sm:flex-none">
+              <SearchableSelect options={SORT_OPTIONS} value={sortBy} onValueChange={setSortBy} placeholder={t("sortLabel")} />
+            </div>
             {categoryFilter !== "all" && <button onClick={() => setCategoryFilter("all")} className="text-xs text-muted-foreground underline">{t("clear")}</button>}
           </div>
         }

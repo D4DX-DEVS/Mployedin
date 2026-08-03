@@ -266,8 +266,11 @@ export default function SuperAgentEmployersPage() {
       <SuperAgentPageIntro
         title={t("pageTitle")}
         description={t("pageDescription")}
-        summaryTitle={t("summaryTitle")}
-        summaryDescription={t("summaryDescription")}
+        summary={{
+          label: t("summaryTitle"),
+          value: `${stats.total} ${t("employerAccounts")}`,
+          note: t("summaryDescription"),
+        }}
       >
         <div className="flex gap-2 mt-3">
           <button

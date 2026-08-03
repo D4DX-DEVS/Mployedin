@@ -712,8 +712,8 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
         }))}
       />
 
-      <div className="grid items-start gap-4 xl:grid-cols-[1.08fr_0.92fr]">
-        <section className="workspace-panel-surface rounded-2xl p-4 sm:p-5" data-surface="light-panel">
+      <div className="grid items-stretch gap-4 xl:grid-cols-[1.08fr_0.92fr]">
+        <section className="workspace-panel-surface flex flex-col rounded-2xl p-4 sm:p-5" data-surface="light-panel">
           <div>
             <h2 className="text-base font-semibold tracking-tight text-foreground">
               {t("sections.quickActions.title")}
@@ -723,7 +723,9 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
             </p>
           </div>
 
-          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {/* auto-rows-fr = every card same height; the trailing odd card spans
+              both columns instead of leaving a dead half-row gap. */}
+          <div className="mt-3 grid flex-1 auto-rows-fr grid-cols-1 gap-2 sm:grid-cols-2 sm:[&>a:last-child:nth-child(odd)]:col-span-2">
             {quickActions.map((action, idx) => {
               const Icon = action.icon;
 
@@ -742,11 +744,11 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
                     {/* flex-wrap so the badge drops to its own line instead of truncating
                         ("72 INACTIVE EMPLOY…") when it can't fit beside the label on phones. */}
                     <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                      <p className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
+                      <p className="min-w-0 flex-1 text-sm font-semibold leading-5 text-foreground">
                         {action.label}
                       </p>
                       {action.badgeNode ?? (
-                        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] ${action.badgeClassName}`}>
+                        <span className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] ${action.badgeClassName}`}>
                           {action.badge}
                         </span>
                       )}
@@ -763,7 +765,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
           </div>
         </section>
 
-        <section className="workspace-panel-surface rounded-2xl p-4 sm:p-5" data-surface="light-panel">
+        <section className="workspace-panel-surface flex flex-col rounded-2xl p-4 sm:p-5" data-surface="light-panel">
           <div>
             <h2 className="text-base font-semibold tracking-tight text-foreground">
               {t("sections.recentActivity.title")}
@@ -807,7 +809,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
         </section>
       </div>
 
-      <div className="order-1 grid items-start gap-4 xl:grid-cols-[1.02fr_0.98fr]">
+      <div className="order-1 grid items-stretch gap-4 xl:grid-cols-[1.02fr_0.98fr]">
         <Suspense fallback={<PlatformInsightsSkeleton />}>
           <PlatformInsightsSection
             inactiveEmployers={stats.inactiveEmployers}
@@ -817,7 +819,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
           />
         </Suspense>
 
-        <section className={adminPanelClassName} data-surface="light-panel">
+        <section className={`${adminPanelClassName} flex flex-col`} data-surface="light-panel">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
             <div>
               <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">{t("sections.hiringFunnel.title")}</h2>
@@ -825,13 +827,13 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
                 {t("sections.hiringFunnel.description")}
               </p>
             </div>
-            <div className="self-start rounded-2xl border border-emerald-100 bg-emerald-50/80 px-3 py-2 text-emerald-700 shadow-sm dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] sm:text-[11px] sm:tracking-[0.18em]">{t("funnel.placements")}</p>
+            <div className="shrink-0 self-start rounded-2xl border border-emerald-100 bg-emerald-50/80 px-3 py-2 text-emerald-700 shadow-sm dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200">
+              <p className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.16em] sm:text-[11px] sm:tracking-[0.18em]">{t("funnel.placements")}</p>
               <p className="mt-1 text-xs font-semibold sm:text-sm">{t("sections.hiringFunnel.closed", { count: stats.totalPlacements })}</p>
             </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-2 gap-2.5">
+          <div className="mt-4 grid flex-1 auto-rows-fr grid-cols-2 gap-2.5">
             {funnelStages.map((stage, index) => {
               const nextStage = funnelStages[index + 1];
               const stageWidth = stage.count === 0 ? 0 : Math.max(6, Math.round((stage.count / funnelMax) * 100));
@@ -843,7 +845,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
                 <div
                   key={stage.label}
                   aria-label={t("sections.hiringFunnel.stageAria", { label: stage.label, count: stage.count })}
-                  className="workspace-glass-panel rounded-xl p-3"
+                  className="workspace-glass-panel flex flex-col rounded-xl p-3"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <span className="text-xs font-semibold text-muted-foreground">{stage.label}</span>
@@ -856,9 +858,9 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
                     />
                   </div>
                   {conversion !== null ? (
-                    <p className="mt-2 text-[11px] text-muted-foreground">{t("sections.hiringFunnel.nextStage", { value: conversion })}</p>
+                    <p className="mt-auto pt-2 text-[11px] text-muted-foreground">{t("sections.hiringFunnel.nextStage", { value: conversion })}</p>
                   ) : (
-                    <p className="mt-2 text-[11px] text-muted-foreground">
+                    <p className="mt-auto pt-2 text-[11px] text-muted-foreground">
                       {stage.count === 0 ? t("sections.hiringFunnel.noData", { label: stage.label }) : t("sections.hiringFunnel.closed", { count: stage.count })}
                     </p>
                   )}
@@ -869,8 +871,8 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
         </section>
       </div>
 
-      <div className="order-3 grid items-start gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-        <section className={adminPanelClassName} data-surface="light-panel">
+      <div className="order-3 grid items-stretch gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+        <section className={`${adminPanelClassName} flex flex-col`} data-surface="light-panel">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h2 className="text-xl font-semibold tracking-tight text-foreground">{t("sections.trends.title")}</h2>
@@ -888,12 +890,14 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
             </div>
           </div>
 
-          <div className="mt-4 rounded-2xl border border-border/70 bg-card/95 p-3 shadow-sm backdrop-blur-sm">
+          {/* Chart takes the slack so this panel matches its taller neighbour
+              instead of ending in dead whitespace. */}
+          <div className="mt-4 flex flex-1 rounded-2xl border border-border/70 bg-card/95 p-3 shadow-sm backdrop-blur-sm">
             <svg
               viewBox={`0 0 ${chartWidth} ${chartHeight}`}
               role="img"
               aria-label={t("sections.trends.chartAria")}
-              className="h-[190px] w-full text-muted-foreground"
+              className="h-full min-h-[190px] w-full text-muted-foreground"
               preserveAspectRatio="none"
             >
               {[0.25, 0.5, 0.75, 1].map((tick) => {
@@ -934,7 +938,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
             </svg>
           </div>
 
-          <div className="mt-5 grid grid-cols-3 gap-2 sm:gap-4">
+          <div className="mt-4 grid shrink-0 grid-cols-3 gap-2 sm:gap-4">
             <div className={`${adminCardClassName} px-2.5 py-3 sm:px-4 sm:py-4`} data-surface="light-card">
               <p className="text-[9px] font-semibold uppercase tracking-[0.08em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">{t("sections.trends.jobsOpened")}</p>
               <p className="mt-1.5 text-lg font-semibold tracking-tight text-foreground sm:mt-2 sm:text-2xl">{stats.jobsCreatedThisMonth}</p>
@@ -953,7 +957,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
           </div>
         </section>
 
-        <section className={adminPanelClassName} data-surface="light-panel">
+        <section className={`${adminPanelClassName} flex flex-col`} data-surface="light-panel">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
             <div>
               <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">{t("sections.usersByRole.title")}</h2>
@@ -962,31 +966,41 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
               </p>
             </div>
             {dominantRole ? (
-              <div className="self-start rounded-2xl border border-sky-100 bg-sky-50/70 px-3 py-2 text-sky-700 shadow-sm dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-200 sm:text-right">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-sky-700 dark:text-sky-200 sm:text-[11px] sm:tracking-[0.18em]">{t("roleInsights.dominant")}</p>
+              <div className="shrink-0 self-start rounded-2xl border border-sky-100 bg-sky-50/70 px-3 py-2 text-sky-700 shadow-sm dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-200 sm:text-right">
+                <p className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.16em] text-sky-700 dark:text-sky-200 sm:text-[11px] sm:tracking-[0.18em]">{t("roleInsights.dominant")}</p>
                 <p className="mt-1 text-xs font-semibold text-sky-700 dark:text-sky-100 sm:text-sm">{formatRoleLabel(dominantRole._id, t)}</p>
               </div>
             ) : null}
           </div>
 
-          <div className="mt-5 space-y-3 sm:mt-6 sm:space-y-4">
+          {/* One compact row per role instead of six stacked cards — six card
+              blocks made this panel ~2x taller than the chart beside it. */}
+          {/* Rows share the leftover height instead of leaving a gap under the
+              list when the chart beside it is taller. Text size never changes. */}
+          <div className="workspace-subtle-surface mt-4 flex flex-1 flex-col overflow-hidden rounded-xl">
             {roleDistribution.map((role, index) => (
-              <div key={`${role._id ?? "unknown"}-${index}`} className={`${adminCardClassName} px-3 py-3 sm:px-4 sm:py-4`} data-surface="light-card">
-                <div className="flex items-start justify-between gap-3 sm:gap-4">
-                  <div>
-                    <p className="text-sm font-semibold text-foreground sm:text-[15px]">{role.label}</p>
-                    <p className="mt-1 text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6">{role.insight}</p>
+              <div
+                key={`${role._id ?? "unknown"}-${index}`}
+                className="flex flex-1 items-center gap-3 border-b border-border/50 px-3 py-2.5 last:border-b-0"
+                data-surface="light-card"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex min-w-0 items-baseline gap-2">
+                    <p className="shrink-0 text-[13px] font-semibold text-foreground">{role.label}</p>
+                    <p className="min-w-0 truncate text-[11px] leading-4 text-muted-foreground">{role.insight}</p>
                   </div>
-                  <div className="shrink-0 text-right">
-                    <p className="text-xs font-semibold text-foreground sm:text-sm">{role.percentage}%</p>
-                    <p className="text-[10px] text-muted-foreground sm:text-xs">{t("sections.usersByRole.userCount", { count: role.count })}</p>
+                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-background/95 ring-1 ring-inset ring-border/60">
+                    <div
+                      className="h-full rounded-full bg-[linear-gradient(135deg,_rgba(14,165,233,0.92),_rgba(37,99,235,0.92))] transition-all duration-1000 ease-out"
+                      style={{ width: `${Math.max(6, role.percentage)}%` }}
+                    />
                   </div>
                 </div>
-                <div className="mt-3 h-2 overflow-hidden rounded-full border border-border/60 bg-background/95 shadow-inner">
-                  <div
-                    className="h-full rounded-full bg-[linear-gradient(135deg,_rgba(14,165,233,0.92),_rgba(37,99,235,0.92))] transition-all duration-1000 ease-out"
-                    style={{ width: `${Math.max(6, role.percentage)}%` }}
-                  />
+                <div className="shrink-0 text-end">
+                  <p className="text-[13px] font-semibold tabular-nums text-foreground">{role.percentage}%</p>
+                  <p className="text-[10px] tabular-nums text-muted-foreground">
+                    {t("sections.usersByRole.userCount", { count: role.count })}
+                  </p>
                 </div>
               </div>
             ))}

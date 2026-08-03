@@ -24,6 +24,11 @@ interface SuperAgentPageIntroProps {
   title: string;
   description: string;
   eyebrow?: string;
+  summary?: {
+    label: string;
+    value: ReactNode;
+    note?: ReactNode;
+  };
   summaryTitle?: string;
   summaryDescription?: string;
   children?: ReactNode;
@@ -56,31 +61,49 @@ export function SuperAgentPageIntro({
   title,
   description,
   eyebrow = "Super agent workspace",
+  summary,
   summaryTitle,
   summaryDescription,
   children,
 }: SuperAgentPageIntroProps) {
+  const headerSummary = summary ?? (summaryTitle || summaryDescription ? {
+    label: summaryTitle ?? eyebrow,
+    value: summaryDescription ?? summaryTitle,
+  } : undefined);
+
   return (
     <DashboardPageHeader
       icon={Sparkles}
       eyebrow={eyebrow}
       title={title}
       description={description}
-      summary={summaryTitle || summaryDescription ? {
-        label: summaryTitle ?? eyebrow,
-        value: summaryDescription ?? summaryTitle,
-      } : undefined}
+      summary={headerSummary}
       actions={children}
     />
   );
 }
 
 export function SuperAgentMetricsGrid({ items }: { items: SuperAgentMetricItem[] }) {
+  const cols = Math.max(1, Math.min(items.length, 5));
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div
+      className="grid gap-1.5 sm:gap-3"
+      style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+    >
       {items.map((item) => (
-        <div key={item.label} className="workspace-glass-panel rounded-2xl p-3.5 sm:p-4">
-          <div className="flex items-start justify-between gap-3">
+        <div key={item.label} className="workspace-glass-panel rounded-lg p-1.5 sm:rounded-2xl sm:p-4">
+          {/* Mobile: all 4 fit one row, so the card goes vertical and tiny —
+              icon chip on top, truncated label, small value — instead of the
+              horizontal icon+text layout that only had room for 2 per row. */}
+          <div className="flex flex-col items-start gap-1 sm:hidden">
+            <div className={cn("shrink-0 rounded-md p-1", getToneClassName(item.toneClassName))}>
+              {item.icon}
+            </div>
+            <p className="w-full truncate text-[7px] font-semibold uppercase tracking-wide text-muted-foreground">{item.label}</p>
+            <p className="text-sm font-semibold leading-none tracking-tight text-foreground">{item.value}</p>
+          </div>
+
+          <div className="hidden sm:flex sm:items-start sm:justify-between sm:gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{item.label}</p>
               <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{item.value}</p>

@@ -145,6 +145,20 @@ export default function CmsPage({
     return payload;
   };
 
+  // The API returns per-field zod issues in `details`; showing only `error`
+  // left admins with a bare "Validation failed" and no idea which field broke.
+  const readError = async (r: Response, fallback: string): Promise<string> => {
+    const err = (await r.json().catch(() => ({}))) as {
+      error?: string;
+      details?: { path?: string; message?: string }[];
+    };
+    const detail = err.details
+      ?.map((d) => [d.path, d.message].filter(Boolean).join(": "))
+      .filter(Boolean)
+      .join(" • ");
+    return [err.error ?? fallback, detail].filter(Boolean).join(" — ");
+  };
+
   const handleFilterChange = (next: CmsFilterValues) => {
     setFilterValues(next);
     resetPage();
@@ -158,8 +172,7 @@ export default function CmsPage({
       body: JSON.stringify(payload),
     });
     if (!r.ok) {
-      const err = await r.json();
-      throw new Error(err.error || "Failed to create");
+      throw new Error(await readError(r, "Failed to create"));
     }
     await fetchItems();
   };
@@ -173,8 +186,7 @@ export default function CmsPage({
       body: JSON.stringify(payload),
     });
     if (!r.ok) {
-      const err = await r.json();
-      throw new Error(err.error || "Failed to update");
+      throw new Error(await readError(r, "Failed to update"));
     }
     setEditItem(null);
     await fetchItems();

@@ -70,7 +70,11 @@ export function TableToolbar({
   const [filtersOpen, setFiltersOpen] = useState(defaultFiltersOpen);
 
   const searchControl = onSearchChange ? (
-    <div className="relative">
+    // toolbar-search-field marks *this* field for the shared mobile toolbar
+    // CSS (full-width row, own line). Custom controls passed via `actions`
+    // (e.g. an inline AI search box) must not match that rule, or they get
+    // forced full-width inside a non-wrapping row and overlap their sibling.
+    <div className="relative toolbar-search-field">
       <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
       <Input
         aria-label={resolvedSearchPlaceholder}

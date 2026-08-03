@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { CalendarDays, CheckCircle2, Coins, ReceiptText, Search, Settings2, SlidersHorizontal, Wallet, X } from "lucide-react";
+import { CalendarDays, CheckCircle2, Coins, Info, ReceiptText, Search, Settings2, SlidersHorizontal, Wallet, X } from "lucide-react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
@@ -51,6 +51,7 @@ export default function SuperAgentCommissionsPage() {
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("");
+  const [showOverrideInfo, setShowOverrideInfo] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [currencyFilter, setCurrencyFilter] = useState("");
@@ -172,20 +173,33 @@ export default function SuperAgentCommissionsPage() {
         title={t("sectionTitle")}
         description={t("sectionDescription")}
       >
-        {/* Override rate row — read-only, set by admin */}
+        {/* Override rate row — read-only, set by admin. On phones this collapses
+            to one short line (label + rate + ⓘ); the "set by admin" note and the
+            contact-admin sentence only appear when the ⓘ is tapped. */}
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/70 bg-secondary/50 p-4">
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/70 bg-secondary/50 p-2.5 sm:gap-3 sm:rounded-2xl sm:p-4">
             <div className="flex items-center gap-2">
-              <Settings2 className="h-4 w-4 text-muted-foreground" />
-              <Label className="whitespace-nowrap text-sm font-medium text-foreground">
+              <Settings2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <Label className="whitespace-nowrap text-xs font-medium text-foreground sm:text-sm">
                 {t("overrideRateLabel")}
               </Label>
             </div>
-            <div className="flex items-center gap-2 h-11 rounded-xl border border-border bg-muted/30 px-4">
-              <span className="text-lg font-semibold text-foreground">{overrideRate}%</span>
-              <span className="ml-2 text-[10px] text-muted-foreground uppercase tracking-wide">{t("setByAdmin")}</span>
+            <div className="flex h-8 items-center gap-2 rounded-lg border border-border bg-muted/30 px-2.5 sm:h-11 sm:rounded-xl sm:px-4">
+              <span className="text-sm font-semibold text-foreground sm:text-lg">{overrideRate}%</span>
+              <span className="ml-2 hidden text-[10px] uppercase tracking-wide text-muted-foreground sm:inline">{t("setByAdmin")}</span>
             </div>
-            <p className="text-xs text-muted-foreground">{t("contactAdminMessage")}</p>
+            <button
+              type="button"
+              onClick={() => setShowOverrideInfo((v) => !v)}
+              aria-expanded={showOverrideInfo}
+              aria-label={t("contactAdminMessage")}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:hidden"
+            >
+              <Info className="h-4 w-4" />
+            </button>
+            <p className={`${showOverrideInfo ? "block" : "hidden"} basis-full text-xs text-muted-foreground sm:block sm:basis-auto`}>
+              {t("setByAdmin")} — {t("contactAdminMessage")}
+            </p>
           </div>
         </div>
 
@@ -199,7 +213,7 @@ export default function SuperAgentCommissionsPage() {
           onExportPdf={handleExportPdf}
           hasActiveFilters={!!(statusFilter || typeFilter || currencyFilter || dateFrom || dateTo)}
           actions={
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="order-last flex w-full flex-wrap items-center gap-1.5 sm:order-none sm:w-auto">
               {(["", "pending", "approved", "paid", "disputed"] as const).map((s) => (
                 <Button
                   key={s}
@@ -207,7 +221,7 @@ export default function SuperAgentCommissionsPage() {
                   aria-pressed={statusFilter === s}
                   variant={statusFilter === s ? "default" : "outline"}
                   size="sm"
-                  className={statusFilter === s ? "rounded-xl" : "rounded-xl border-border/70 bg-card text-muted-foreground hover:bg-secondary/80 hover:text-foreground"}
+                  className={statusFilter === s ? "h-7 shrink-0 rounded-lg px-2 text-xs sm:h-9 sm:px-3 sm:text-sm" : "h-7 shrink-0 rounded-lg border-border/70 bg-card px-2 text-xs text-muted-foreground hover:bg-secondary/80 hover:text-foreground sm:h-9 sm:px-3 sm:text-sm"}
                 >
                   {s === "" ? tc("all") : t(`status_${s}`)}
                 </Button>
@@ -287,11 +301,11 @@ export default function SuperAgentCommissionsPage() {
                 ) : commissions.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="py-16 text-center">
-                      <div className="flex flex-col items-center gap-3">
+                      <div className="flex w-full flex-col items-center gap-3 text-center">
                         <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-sky-50 text-sky-600">
                           <Coins className="h-6 w-6" />
                         </div>
-                        <div>
+                        <div className="w-full">
                           <p className="text-base font-semibold text-foreground">{t("emptyStateTitle")}</p>
                           <p className="mt-1 text-sm text-muted-foreground">{t("emptyStateMessage")}</p>
                         </div>

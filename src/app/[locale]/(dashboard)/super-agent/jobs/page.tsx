@@ -200,6 +200,7 @@ export default function SuperAgentJobsPage() {
   const [selectedJob, setSelectedJob] = useState<JobDetail | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
 
   /* ────────────────── Build query params ────────────────── */
   const buildParams = useCallback(
@@ -347,12 +348,19 @@ export default function SuperAgentJobsPage() {
     setDetailLoading(true);
     setDetailOpen(true);
     setSelectedJob(null);
+    setDetailError(null);
     try {
       const res = await fetch(`/api/jobs/${jobId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setSelectedJob(data.job ?? null);
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.job) {
+        setSelectedJob(data.job);
+      } else {
+        // ponytail: surface the server reason — swallowing it made an expired
+        // tenant-view 401 look identical to a deleted job.
+        setDetailError(data?.error ?? `HTTP ${res.status}`);
       }
+    } catch (err) {
+      setDetailError(err instanceof Error ? err.message : "Network error");
     } finally {
       setDetailLoading(false);
     }
@@ -1146,6 +1154,9 @@ export default function SuperAgentJobsPage() {
               </DialogHeader>
               <div className="py-16 text-center text-sm text-muted-foreground">
                 {t("failedToLoadJobDetails")}
+                {detailError && (
+                  <span className="mt-2 block text-xs text-destructive">{detailError}</span>
+                )}
               </div>
             </>
           )}

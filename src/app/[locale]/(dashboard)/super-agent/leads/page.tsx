@@ -394,42 +394,43 @@ export default function SuperAgentLeadsPage() {
           onExportPdf={handleExportPdf}
           hasActiveFilters={activeFilterCount > 0 || !!filters.status || !!aiSummary}
           actions={
-            <div className="flex items-center gap-2">
-              {/* AI Search inline */}
-              <div className="relative flex items-center gap-2">
-                <div className="relative">
-                  <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-500/70" />
-                  <Input
-                    ref={aiInputRef}
-                    aria-label={t("aiSearchLabel")}
-                    placeholder={t("aiSearchPlaceholder")}
-                    value={aiQuery}
-                    onChange={(e) => setAiQuery(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") handleAiSearch(); }}
-                    className="h-9 w-56 rounded-xl border-amber-500/20 bg-amber-50/50 pl-9 pr-3 text-sm shadow-none focus:border-amber-500/40 focus:ring-amber-500/20 dark:bg-amber-950/20"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={handleAiSearch}
-                  disabled={aiLoading || !aiQuery.trim()}
-                  className="flex h-9 items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 text-xs font-medium text-amber-700 transition-all hover:bg-amber-500/20 disabled:opacity-50 dark:text-amber-400"
-                >
-                  {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                  {t("aiButton")}
-                </button>
+            <>
+              {/* AI search shares the same wrapping icon row as the filter/export
+                  buttons (flex-1 so it fills the remaining space) instead of
+                  being boxed in a sub-container that forced it onto its own
+                  stacked lines. */}
+              <div className="relative min-w-[9rem] flex-1 sm:min-w-0 sm:flex-none">
+                <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-500/70" />
+                <Input
+                  ref={aiInputRef}
+                  aria-label={t("aiSearchLabel")}
+                  placeholder={t("aiSearchPlaceholder")}
+                  value={aiQuery}
+                  onChange={(e) => setAiQuery(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleAiSearch(); }}
+                  className="h-9 w-full rounded-xl border-amber-500/20 bg-amber-50/50 pl-9 pr-3 text-sm shadow-none focus:border-amber-500/40 focus:ring-amber-500/20 dark:bg-amber-950/20 sm:w-56"
+                />
               </div>
+              <button
+                type="button"
+                onClick={handleAiSearch}
+                disabled={aiLoading || !aiQuery.trim()}
+                className="flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 text-xs font-medium text-amber-700 transition-all hover:bg-amber-500/20 disabled:opacity-50 dark:text-amber-400"
+              >
+                {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                <span className="hidden sm:inline">{t("aiButton")}</span>
+              </button>
               {(activeFilterCount > 0 || filters.status || filters.search || aiSummary) && (
                 <button
                   type="button"
                   onClick={resetFilters}
-                  className="flex h-9 items-center gap-2 rounded-lg border border-border/70 bg-card px-3 text-sm text-muted-foreground hover:bg-secondary/80 transition-all"
+                  className="flex h-9 shrink-0 items-center gap-2 rounded-lg border border-border/70 bg-card px-3 text-sm text-muted-foreground hover:bg-secondary/80 transition-all"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
-                  {t("resetButton")}
+                  <span className="hidden sm:inline">{t("resetButton")}</span>
                 </button>
               )}
-            </div>
+            </>
           }
           filterContent={
             <div className="space-y-4">

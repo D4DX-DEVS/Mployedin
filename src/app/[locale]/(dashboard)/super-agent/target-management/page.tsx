@@ -319,6 +319,7 @@ export default function SuperAgentTargetProfilesPage() {
 
   // Distribute dialog
   const [showDistribute, setShowDistribute] = useState(false);
+  const [showTeamFilters, setShowTeamFilters] = useState(false);
 
   // Agent detail dialog
   const [detailAgent, setDetailAgent] = useState<EnrichedProfile | null>(null);
@@ -454,8 +455,8 @@ export default function SuperAgentTargetProfilesPage() {
         title={t("title")}
         description={t("superAgentDescription")}
         actions={
-          <Badge variant="outline" className="rounded-full px-3 py-1.5">
-            <CircleDollarSign className="mr-1.5 h-3.5 w-3.5" /> {currencyLabel}
+          <Badge variant="outline" className="rounded-full px-2.5 py-1.5 sm:px-3">
+            <CircleDollarSign className="h-3.5 w-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">{currencyLabel}</span>
           </Badge>
         }
       />
@@ -487,19 +488,30 @@ export default function SuperAgentTargetProfilesPage() {
               if (parsed >= 2020 && parsed <= 2099) setYearFilter(parsed);
             }}
           >
-            <CalendarDays className="mr-1.5 h-3.5 w-3.5" /> Go
+            <CalendarDays className="h-3.5 w-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Go</span>
           </Button>
           <Button variant="outline" size="sm" onClick={handleResetDashboard} className="h-10 rounded-xl" disabled={!hasActiveDashboardFilters}>
-            <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Reset
+            <RotateCcw className="h-3.5 w-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Reset</span>
           </Button>
           <div className="flex rounded-xl border border-border/60 bg-background p-0.5">
             <Button variant={tab === "own" ? "default" : "ghost"} size="sm" onClick={() => setTab("own")} className="h-9 flex-1 rounded-lg px-3">Mine</Button>
             <Button variant={tab === "team" ? "default" : "ghost"} size="sm" onClick={() => setTab("team")} className="h-9 flex-1 rounded-lg px-3">Team</Button>
             <Button variant={tab === "analytics" ? "default" : "ghost"} size="sm" onClick={() => setTab("analytics")} className="h-9 flex-1 rounded-lg px-3">Analytics</Button>
           </div>
-          {tab === "team" ? (
+          {tab === "team" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowTeamFilters((v) => !v)}
+              aria-expanded={showTeamFilters}
+              className={showTeamFilters ? "h-10 rounded-xl border-primary/30 bg-primary/10 text-primary" : "h-10 rounded-xl"}
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Filters</span>
+            </Button>
+          )}
+          {tab === "team" && showTeamFilters ? (
             <>
-              <div className="relative min-w-[220px] flex-1">
+              <div className="relative min-w-[220px] flex-1 basis-full sm:basis-auto">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   value={teamSearch}
@@ -539,20 +551,20 @@ export default function SuperAgentTargetProfilesPage() {
                 placeholder="Risk"
                 className="h-10 w-32 rounded-xl"
               />
-              <Button variant="outline" size="sm" className="h-10 gap-2 rounded-xl" onClick={handleExport} disabled={teamProfiles.length === 0}>
-                <Download className="h-4 w-4" /> Export
+              <Button variant="outline" size="sm" className="h-10 gap-0 rounded-xl sm:gap-2" onClick={handleExport} disabled={teamProfiles.length === 0}>
+                <Download className="h-4 w-4" /> <span className="hidden sm:inline">Export</span>
               </Button>
             </>
           ) : null}
-          <Button className="h-10 gap-2 rounded-xl bg-blue-700 px-4 text-white hover:bg-blue-800" onClick={() => setShowDistribute(true)}>
-            <SplitSquareVertical className="h-4 w-4" /> Distribute
+          <Button className="h-10 gap-0 rounded-xl bg-blue-700 px-3 text-white hover:bg-blue-800 sm:gap-2 sm:px-4" onClick={() => setShowDistribute(true)}>
+            <SplitSquareVertical className="h-4 w-4" /> <span className="hidden sm:inline">Distribute</span>
           </Button>
         </div>
       </div>
 
       {tab === "team" && (
         <>
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+        <section className="grid grid-cols-2 gap-3 xl:grid-cols-3 2xl:grid-cols-6">
           <DashboardMetricCard
             label="Team completion"
             value={`${filteredTotals.avgPerformance}%`}
@@ -674,14 +686,14 @@ export default function SuperAgentTargetProfilesPage() {
       {tab === "analytics" && (
         <div className="space-y-4">
           {analyticsLoading ? (
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
               {Array.from({ length: 4 }).map((_, index) => (
                 <div key={index} className="h-28 animate-pulse rounded-2xl bg-muted/50" />
               ))}
             </div>
           ) : analytics ? (
             <>
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
                 <DashboardMetricCard
                   label="Team agents"
                   value={analytics.teamSummary.totalAgents}

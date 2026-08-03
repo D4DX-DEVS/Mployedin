@@ -5,8 +5,7 @@ import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import Application from "@/models/Application";
 import Agent from "@/models/Agent";
 import Job from "@/models/Job";
-import User from "@/models/User";
-import { escapeRegex } from "@/lib/security/sanitize";
+import { relatedEntitySearchOr } from "@/lib/search/relatedEntitySearch";
 
 async function handler(req: NextRequest, ctx: AuthContext) {
   if (ctx.role !== "super_agent" && ctx.role !== "admin") {
@@ -71,16 +70,9 @@ async function handler(req: NextRequest, ctx: AuthContext) {
 
   if (status && status !== "all") filter.status = status;
   if (search) {
-    const safe = escapeRegex(search);
     filter.$and = [
       ...((filter.$and as Record<string, unknown>[]) ?? []),
-      {
-        $or: [
-          { candidateName: { $regex: safe, $options: "i" } },
-          { jobTitle: { $regex: safe, $options: "i" } },
-          { companyName: { $regex: safe, $options: "i" } },
-        ],
-      },
+      { $or: await relatedEntitySearchOr(search) },
     ];
   }
 

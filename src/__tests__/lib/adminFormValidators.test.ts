@@ -23,6 +23,20 @@ describe("employer admin schemas accept blank optional fields", () => {
     expect(r.success).toBe(true);
   });
 
+  it("create: short password fails validation", () => {
+    const r = employerAdminCreateSchema.safeParse({
+      name: "Test Contact",
+      email: "emp@example.com",
+      password: "Short1!Abc",
+      companyName: "Acme",
+      industry: "",
+      location: "",
+      phone: "",
+    });
+    expect(r.success).toBe(false);
+    expect(r.error.issues.some((issue) => issue.path.includes("password"))).toBe(true);
+  });
+
   it("update: empty phone passes", () => {
     const r = employerAdminUpdateSchema.safeParse({ name: "X Y", phone: "" });
     expect(r.success).toBe(true);

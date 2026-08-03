@@ -7,6 +7,7 @@ import { validateBody } from "@/lib/validators";
 import { employerAdminUpdateSchema } from "@/lib/validators/employers";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
+import { buildEmployerAdminUpdatePayload } from "@/lib/employers/admin";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -64,18 +65,29 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   }
 
   const body = await validateBody(req, employerAdminUpdateSchema);
-  const update: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(body)) if (v !== undefined) update[k] = v;
+  const payload = buildEmployerAdminUpdatePayload(body);
 
-  Object.assign(user, update);
-  await user.save();
+  const userUpdate = payload.userUpdate;
+  if (Object.keys(userUpdate).length > 0) {
+    Object.assign(user, userUpdate);
+    await user.save();
+  }
+
+  const employer = await (await import("@/models/Employer")).default.findOne({ userId: user._id });
+  if (employer) {
+    const employerUpdate = payload.employerUpdate;
+    if (Object.keys(employerUpdate).length > 0) {
+      Object.assign(employer, employerUpdate);
+      await employer.save();
+    }
+  }
 
   await logActivity({
     ...actorFromCtx(ctx),
     action: "employer.update",
     resource: "employers",
     resourceId: params?.id,
-    changes: { after: update },
+    changes: { after: { ...userUpdate, ...payload.employerUpdate } },
     req,
   });
 

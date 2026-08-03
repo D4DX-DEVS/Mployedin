@@ -342,19 +342,19 @@ export function SuperAgentInsightsPanel() {
   return (
     <>
       {ConfirmDialogNode}
-      <div className="workspace-glass-panel rounded-2xl px-4 py-4 text-left w-full space-y-0">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-primary" />
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+      <div className="workspace-glass-panel rounded-xl px-3 py-3 text-left w-full space-y-0 sm:rounded-2xl sm:px-4 sm:py-4">
+      <div className="flex flex-nowrap items-center justify-between gap-2 mb-2.5 sm:mb-3">
+        <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+          <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary sm:h-4 sm:w-4" />
+          <p className="truncate text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">
             {t("aiInsights")}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           {dismissedCount > 0 && (
             <button
               onClick={() => showDismissed ? restoreAll() : setShowDismissed(true)}
-              className="text-[10px] text-muted-foreground/60 hover:text-primary transition-colors flex items-center gap-1"
+              className="whitespace-nowrap text-[10px] text-muted-foreground/60 hover:text-primary transition-colors flex items-center gap-1"
             >
               <Eye className="h-3 w-3" />
               {showDismissed ? t("restoreAll") : `${dismissedCount} ${t("hidden")}`}
@@ -370,7 +370,7 @@ export function SuperAgentInsightsPanel() {
         </div>
       </div>
 
-      <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="grid gap-2 sm:gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {visibleInsights.map((insight, idx) => {
           const sev = severityStyles[insight.severity];
           const isVisible = idx < visibleCount;
