@@ -69,14 +69,14 @@ export function DashboardPageHeader({
             {title}
           </Heading>
           {description && (
-            <p className="mt-1 max-w-2xl text-sm leading-5 text-muted-foreground sm:line-clamp-2">
+            <p className="mt-1 line-clamp-2 max-w-2xl text-xs leading-4 text-muted-foreground sm:text-sm sm:leading-5">
               {description}
             </p>
           )}
         </div>
 
         {(summary || actions) && (
-          <div className="flex min-w-0 flex-row items-center justify-between gap-2 sm:gap-3 lg:shrink-0">
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 sm:gap-3 lg:flex-nowrap lg:shrink-0">
             {summary && (
               <div className="workspace-glass-panel min-w-0 border-s-2 border-primary/30 ps-3">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">

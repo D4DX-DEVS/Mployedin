@@ -77,13 +77,32 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     });
   } catch (err) {
     const responseTime = Date.now() - start;
-    const message = err instanceof Error ? err.message : "Connection failed";
     return NextResponse.json({
       success: false,
       responseTime,
-      message,
+      message: friendlyDeliveryError(err),
     });
   }
+}
+
+/** Map raw network errors to messages an admin can act on. */
+function friendlyDeliveryError(err: unknown): string {
+  const raw = err instanceof Error ? err.message : "";
+  const cause =
+    err instanceof Error && err.cause instanceof Error ? err.cause.message : "";
+  const text = `${raw} ${cause}`;
+
+  if (text.includes("ENOTFOUND") || text.includes("Host does not resolve"))
+    return "Host not found — the URL's domain does not exist. Check the webhook URL.";
+  if (text.includes("ECONNREFUSED"))
+    return "Connection refused — the endpoint is not accepting requests.";
+  if (err instanceof Error && err.name === "AbortError")
+    return "Timed out — the endpoint did not respond within 10 seconds.";
+  if (text.includes("blocked address") || text.includes("Only http(s)"))
+    return "URL not allowed — webhooks must point to a public http(s) endpoint.";
+  if (text.includes("certificate") || text.includes("CERT"))
+    return "TLS certificate error — the endpoint's HTTPS certificate is invalid.";
+  return raw || "Connection failed";
 }
 
 export const POST = withAuth(postHandler, { resource: "users", action: "update" });

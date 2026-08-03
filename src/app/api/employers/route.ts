@@ -15,6 +15,7 @@ import { sendEmail, EmailTemplates } from "@/lib/communications/email";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import logger from "@/lib/logger";
+import { buildEmployerAdminCreatePayload } from "@/lib/employers/admin";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
 
@@ -384,10 +385,10 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   const existing = await User.findOne({ email });
   if (existing) return NextResponse.json({ error: "Email already in use" }, { status: 409 });
 
-  const passwordHash = await bcrypt.hash(password, 12);
+  const payload = buildEmployerAdminCreatePayload({ name, email, password, companyName, industry, location, phone });
+  const passwordHash = await bcrypt.hash(payload.password, 12);
   const user = await User.create({
-    name,
-    email,
+    ...payload.userUpdate,
     passwordHash,
     role: "employer",
     isActive: true,
@@ -404,10 +405,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   // Create Employer profile (matching employer-register flow)
   const employer = await Employer.create({
     userId: user._id,
-    companyName: companyName || name,
-    companyEmail: email,
-    phone: phone || "",
-    industry,
+    ...payload.employerUpdate,
     ...(agentId ? { agentId } : {}),
     verificationLevel: "basic",
     isAgentVerified: !!(ctx.role === "agent" || ctx.role === "super_agent"),

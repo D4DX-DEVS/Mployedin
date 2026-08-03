@@ -157,7 +157,7 @@ export async function PlatformInsightsSection({
   ];
 
   return (
-    <section className="workspace-panel-surface rounded-2xl p-4 sm:rounded-[28px] sm:p-6 md:p-7" data-surface="light-panel">
+    <section className="workspace-panel-surface flex flex-col rounded-2xl p-4 sm:p-5" data-surface="light-panel">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div>
           <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">{t("sections.platformInsights.title")}</h2>
@@ -165,28 +165,28 @@ export async function PlatformInsightsSection({
             {t("sections.platformInsights.description")}
           </p>
         </div>
-        <div className="self-start rounded-2xl border border-sky-100 bg-sky-50/70 px-3 py-2 text-sky-700 shadow-sm dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-200 sm:text-right">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] sm:text-[11px] sm:tracking-[0.18em]">{t("sections.platformInsights.engine")}</p>
+        <div className="shrink-0 self-start rounded-2xl border border-sky-100 bg-sky-50/70 px-3 py-2 text-sky-700 shadow-sm dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-200 sm:text-right">
+          <p className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.16em] sm:text-[11px] sm:tracking-[0.18em]">{t("sections.platformInsights.engine")}</p>
           <p className="mt-1 text-xs font-semibold sm:text-sm">{t("sections.platformInsights.engineDetail")}</p>
         </div>
       </div>
 
-      <div className="mt-5 grid gap-3 sm:mt-6 sm:gap-4 md:grid-cols-3">
+      <div className="mt-4 grid flex-1 auto-rows-fr gap-3 sm:gap-4 md:grid-cols-3">
         {insights.map((insight) => (
           <article
             key={insight.id}
-            className={`p-4 transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_28px_60px_-44px_rgba(15,23,42,0.16)] sm:p-5 ${toneClasses[insight.tone]}`}
+            className={`flex flex-col p-4 transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_28px_60px_-44px_rgba(15,23,42,0.16)] sm:p-5 ${toneClasses[insight.tone]}`}
             data-surface="light-card"
             data-tone={insight.tone}
           >
-            <div className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] sm:text-[11px] sm:tracking-[0.18em] ${badgeClasses[insight.tone]}`}>
+            <div className={`inline-flex self-start whitespace-nowrap rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] sm:text-[11px] sm:tracking-[0.18em] ${badgeClasses[insight.tone]}`}>
               {insight.tone === "critical" ? t("tones.critical") : insight.tone === "warning" ? t("tones.attention") : t("tones.stable")}
             </div>
             <h3 className={`mt-3 text-base font-semibold tracking-tight sm:mt-4 sm:text-lg ${titleClasses[insight.tone]}`}>{insight.title}</h3>
             <p className={`mt-2 text-xs leading-5 sm:text-sm sm:leading-6 ${detailClasses[insight.tone]}`}>{insight.detail}</p>
             <Link
               href={insight.href}
-              className={`mt-4 inline-flex items-center gap-2 text-xs font-semibold transition-colors sm:mt-5 sm:text-sm ${actionClasses[insight.tone]}`}
+              className={`mt-auto inline-flex items-center gap-2 self-start pt-4 text-xs font-semibold transition-colors sm:text-sm ${actionClasses[insight.tone]}`}
             >
               {insight.action}
               <ArrowRight className="h-4 w-4" />

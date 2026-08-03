@@ -7,7 +7,7 @@ import {
   Plus, Trash2, RefreshCw, Copy, Check, Webhook as WebhookIcon,
   AlertCircle, CheckCircle2, XCircle, Search, Filter,
   ChevronDown, ChevronUp, RotateCcw, Activity, Inbox,
-  Send, Eye, ToggleLeft, ToggleRight, KeyRound, Clock, X,
+  Send, Eye, ToggleLeft, ToggleRight, KeyRound, Clock, X, Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -70,6 +70,7 @@ export default function AdminWebhooksPage() {
   const [stats, setStats] = useState({ active: 0, inactive: 0, failed: 0, healthy: 0 });
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [copiedSecret, setCopiedSecret] = useState(false);
   const [newSecret, setNewSecret] = useState<string | null>(null);
@@ -316,6 +317,69 @@ export default function AdminWebhooksPage() {
         title="Webhooks"
         description="Manage outbound webhook integrations for your accounting system — track delivery status, retry failures, and monitor endpoint health."
         actions={
+          <>
+            <Dialog open={infoOpen} onOpenChange={setInfoOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="h-11 w-11 rounded-xl p-0"
+                  title="How webhooks work"
+                  aria-label="How webhooks work"
+                >
+                  <Info className="h-4 w-4" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-lg">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Info className="h-4 w-4 text-sky-500" />
+                    How webhooks work
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 text-sm leading-relaxed">
+                  <p className="text-muted-foreground">
+                    When a finance event happens in Mployedin (an invoice is created or paid, a
+                    commission changes status), the platform sends a signed JSON POST to the URL
+                    you register here — so an external system like your accounting software can
+                    record it automatically. Nothing is received by Mployedin; this is outbound only.
+                  </p>
+                  <ol className="list-decimal space-y-2.5 pl-5">
+                    <li>
+                      <span className="font-medium text-foreground">Prepare a receiver.</span>{" "}
+                      You need a public HTTPS endpoint on the other system that accepts POST JSON
+                      and responds with 2xx. Don&apos;t have one yet? Create a free test URL at{" "}
+                      <span className="font-mono text-xs">webhook.site</span> to try it out.
+                    </li>
+                    <li>
+                      <span className="font-medium text-foreground">Click Add Webhook.</span>{" "}
+                      Give it a name and paste the endpoint URL — it must be a real public domain
+                      (e.g. <span className="font-mono text-xs">https://api.yourcompany.com/hooks</span>),
+                      not a placeholder.
+                    </li>
+                    <li>
+                      <span className="font-medium text-foreground">Pick events.</span>{" "}
+                      Only the selected invoice / commission events are delivered to that URL.
+                    </li>
+                    <li>
+                      <span className="font-medium text-foreground">Save the signing secret.</span>{" "}
+                      It is shown once after creation. The receiver uses it to verify the{" "}
+                      <span className="font-mono text-xs">X-Webhook-Signature</span> header
+                      (HMAC-SHA256 of the request body) — proof the call really came from Mployedin.
+                    </li>
+                    <li>
+                      <span className="font-medium text-foreground">Test it.</span>{" "}
+                      Use the <Send className="inline h-3 w-3" /> button on the row to send a test
+                      ping, and the <Eye className="inline h-3 w-3" /> button to view the delivery
+                      log with errors and response times.
+                    </li>
+                  </ol>
+                  <p className="rounded-lg bg-muted/40 p-3 text-xs text-muted-foreground">
+                    Until a real external system is connected, webhooks simply stay idle — failed
+                    test deliveries to placeholder URLs are expected and harmless.
+                  </p>
+                </div>
+              </DialogContent>
+            </Dialog>
             <Dialog open={dialogOpen} onOpenChange={(v) => { if (!v) resetForm(); setDialogOpen(v); }}>
               <DialogTrigger asChild>
                 <Button
@@ -416,6 +480,7 @@ export default function AdminWebhooksPage() {
                 )}
               </DialogContent>
             </Dialog>
+          </>
         }
       />
 

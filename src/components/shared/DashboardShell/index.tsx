@@ -67,7 +67,10 @@ export function DashboardShell({
   const tNav = useTranslations("nav");
   const [mobileOpen, setMobileOpen] = useState(false);
   const isJobSeeker = userRole === "job_seeker";
-  const isAdminWorkspace = userRole === "admin";
+  // Agent/super-agent list pages share the exact same admin-authored
+  // components (PageHero, data-table-toolbar, <Table>), so they get the same
+  // untuned-on-mobile problem the CSS below already fixes for admin.
+  const isAdminWorkspace = userRole === "admin" || userRole === "agent" || userRole === "super_agent";
   const usesModernWorkspaceShell = userRole === "admin" || userRole === "employer" || userRole === "agent" || userRole === "super_agent";
   const bottomNavTabs = (WORKSPACE_BOTTOM_NAV_TABS[userRole as UserRole] ?? []).map((tab) => ({
     key: tab.key,

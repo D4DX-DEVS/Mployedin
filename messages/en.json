@@ -7170,6 +7170,7 @@
     "roadmapStep4": "Step 4: Set up webhook for payment events"
   },
   "exhibitions": {
+    "viewDetails": "View details",
     "title": "Exhibition Requests",
     "subtitle": "Submit and track your exhibition participation requests",
     "saSubtitle": "Review and approve exhibition requests from your agents",
@@ -11725,6 +11726,7 @@
     "totalEmployersHelper": "Employer accounts currently visible in the regional workspace.",
     "activeAccountsLabel": "Active Accounts",
     "activeAccountsHelper": "Accounts marked active and ready to work with your team.",
+    "employerAccounts": "employer accounts",
     "assignedLabel": "Assigned",
     "assignedHelper": "Employer records that already have an assigned agent.",
     "revenueLabel": "Revenue Tracked",

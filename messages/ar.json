@@ -7170,6 +7170,7 @@
     "roadmapStep4": "الخطوة ٤: إعداد Webhook لأحداث الدفع"
   },
   "exhibitions": {
+    "viewDetails": "عرض التفاصيل",
     "title": "طلبات المعارض",
     "subtitle": "تقديم وتتبع طلبات المشاركة في المعارض",
     "saSubtitle": "مراجعة واعتماد طلبات المعارض من وكلائك",
@@ -11725,6 +11726,7 @@
     "totalEmployersHelper": "حسابات الموظفين المرئية حاليًا في مساحة العمل الإقليمية.",
     "activeAccountsLabel": "الحسابات النشطة",
     "activeAccountsHelper": "الحسابات المحددة كنشطة وجاهزة للعمل مع فريقك.",
+    "employerAccounts": "حسابات الموظفين",
     "assignedLabel": "المعينة",
     "assignedHelper": "سجلات الموظفين التي تحتوي بالفعل على وكيل معين.",
     "revenueLabel": "الإيرادات المتتبعة",

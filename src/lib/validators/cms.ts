@@ -3,6 +3,17 @@ import { z } from "zod";
 const bilingualText = (maxLen: number) =>
   z.string().max(maxLen).trim().optional().or(z.literal(""));
 
+// Admins paste uploaded paths ("/uploads/a.png") as often as absolute URLs;
+// z.string().url() rejected those and the UI only showed "Validation failed".
+const urlOrPath = (maxLen = 2048) =>
+  z
+    .string()
+    .trim()
+    .max(maxLen)
+    .refine((v) => v.startsWith("/") || z.string().url().safeParse(v).success, {
+      message: "Must be a URL (https://…) or a path starting with /",
+    });
+
 const sortActive = {
   sortOrder: z.number().int().min(0).max(9999).optional(),
   isActive: z.boolean().optional(),
@@ -15,7 +26,7 @@ export const videoCreateSchema = z.object({
   titleAr: bilingualText(200),
   description: z.string().max(2000).trim().optional().or(z.literal("")),
   descriptionAr: bilingualText(2000),
-  thumbnail: z.string().url().max(2048).optional().or(z.literal("")),
+  thumbnail: urlOrPath().optional().or(z.literal("")),
   ...sortActive,
 });
 
@@ -30,7 +41,7 @@ export const blogCreateSchema = z.object({
   excerpt: z.string().max(1000).trim().optional().or(z.literal("")),
   excerptAr: bilingualText(1000),
   bodyAr: z.string().max(50000).trim().optional().or(z.literal("")),
-  coverImage: z.string().url().max(2048).optional().or(z.literal("")),
+  coverImage: urlOrPath().optional().or(z.literal("")),
   author: z.string().max(100).trim().optional().or(z.literal("")),
   tags: z.array(z.string().max(50).trim()).max(20).optional(),
   status: z.enum(["draft", "published"]).optional(),
@@ -42,13 +53,13 @@ export const blogUpdateSchema = blogCreateSchema.partial().extend({
 
 // ── Banners ─────────────────────────────────────────────────────────
 export const bannerCreateSchema = z.object({
-  image: z.string().url().max(2048),
+  image: urlOrPath(),
   title: bilingualText(200),
   titleAr: bilingualText(200),
   subtitle: bilingualText(500),
   subtitleAr: bilingualText(500),
-  imageMobile: z.string().url().max(2048).optional().or(z.literal("")),
-  linkUrl: z.string().url().max(2048).optional().or(z.literal("")),
+  imageMobile: urlOrPath().optional().or(z.literal("")),
+  linkUrl: urlOrPath().optional().or(z.literal("")),
   linkText: bilingualText(100),
   linkTextAr: bilingualText(100),
   ...sortActive,
@@ -66,7 +77,7 @@ export const testimonialCreateSchema = z.object({
   company: z.string().max(100).trim().optional().or(z.literal("")),
   companyAr: bilingualText(100),
   quoteAr: bilingualText(2000),
-  avatar: z.string().url().max(2048).optional().or(z.literal("")),
+  avatar: urlOrPath().optional().or(z.literal("")),
   rating: z.number().int().min(1).max(5).optional(),
   ...sortActive,
 });

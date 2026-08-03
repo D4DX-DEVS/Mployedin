@@ -560,7 +560,10 @@ export function TargetEmptyState({
   const displayTitle = title ?? t("noTargetsFound");
   const displayDescription = description ?? t("assignAnnualTargets");
   return (
-    <div className="flex flex-col items-center gap-3 py-16">
+    // w-full/min-w-0: this often renders inside a colSpan cell that the mobile
+    // card-table CSS flips to `display:flex`. Without a width constraint the
+    // content sizes to max-content and overflows right instead of centering.
+    <div className="flex w-full min-w-0 flex-col items-center gap-3 py-10 text-center sm:py-16">
       <div className="rounded-2xl bg-muted/50 p-4">
         <Target className="h-8 w-8 text-muted-foreground/40" />
       </div>
