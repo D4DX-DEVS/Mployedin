@@ -170,6 +170,8 @@ export default auth(async function middleware(req: NextAuthRequest) {
   const requestHeaders = trustedRequestHeaders;
   requestHeaders.set("x-nonce", nonce);
   requestHeaders.set("x-locale", activeLocale);
+  // Consumed by the dashboard layout for path-aware checks (2FA enforcement).
+  requestHeaders.set("x-pathname", pathname);
 
   // Apply i18n middleware to get locale redirects / rewrites / cookies
   const intlResponse = intlMiddleware(plainReq);
@@ -179,10 +181,17 @@ export default auth(async function middleware(req: NextAuthRequest) {
   const isPublic = isPublicRoute(pathname);
 
   if (!session?.user && !isPublic) {
-    const locale = pathname.split("/")[1] || defaultLocale;
-    const loginUrl = new URL(`/${locale}/login`, req.url);
-    loginUrl.searchParams.set("callbackUrl", req.url);
-    return withSecurityHeaders(NextResponse.redirect(loginUrl));
+    // Only genuinely protected areas earn a login redirect. Unknown paths fall
+    // through so Next renders its 404 instead of implying the page exists.
+    const protectedPrefixes = ["/admin", "/super-agent", "/agent", "/employer", "/job-seeker", "/notifications", "/onboarding"];
+    const strippedPath = pathname.replace(/^\/(?:en|ar)/, "") || "/";
+    const isProtected = protectedPrefixes.some((p) => strippedPath === p || strippedPath.startsWith(p + "/"));
+    if (isProtected) {
+      const locale = pathname.split("/")[1] || defaultLocale;
+      const loginUrl = new URL(`/${locale}/login`, req.url);
+      loginUrl.searchParams.set("callbackUrl", req.url);
+      return withSecurityHeaders(NextResponse.redirect(loginUrl));
+    }
   }
 
   // H4a: OAuth 2FA challenge lock-down. A partial session (pending2fa=true)

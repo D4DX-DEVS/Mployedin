@@ -118,6 +118,9 @@ export default function AgentJobsPage() {
 
   /* ----- Filter panel toggle ----- */
   const [filtersOpen, setFiltersOpen] = useState(false);
+  // AI search is the exception, not the default: opening Filters used to
+  // expand it too, so a phone got two search boxes when it asked for one.
+  const [aiOpen, setAiOpen] = useState(false);
 
   /* ---------------------------------------------------------------- */
   /*  Load employers for filter                                       */
@@ -332,8 +335,23 @@ export default function AgentJobsPage() {
             className={`grid transition-all duration-300 ease-in-out ${filtersOpen ? "mt-4 grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
           >
             <div className="overflow-hidden">
+              {/* AI toggle sits above the panel it controls. */}
+              <button
+                type="button"
+                onClick={() => setAiOpen((prev) => !prev)}
+                aria-expanded={aiOpen}
+                className={`mb-3 inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${
+                  aiOpen
+                    ? "border-violet-500/30 bg-violet-500/10 text-status-interview dark:text-violet-300"
+                    : "border-border/60 text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Sparkles className="h-3 w-3" />
+                {t("ai.search")}
+              </button>
+
               {/* AI Search */}
-              <div className="space-y-3">
+              <div className={aiOpen ? "space-y-3" : "hidden"}>
                 <div className="relative">
                   <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-violet-500/60" />
                   <Input
@@ -352,7 +370,7 @@ export default function AgentJobsPage() {
                     className="absolute right-1.5 top-1/2 h-8 -translate-y-1/2 gap-1.5 rounded-lg bg-violet-600 px-3 text-xs font-medium text-white hover:bg-violet-700"
                   >
                     {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                    {t("ai.search")}
+                    <span className="hidden sm:inline">{t("ai.search")}</span>
                   </Button>
                 </div>
 
@@ -365,7 +383,7 @@ export default function AgentJobsPage() {
                         <button
                           key={key}
                           onClick={() => { setAiQuery(suggestion); handleAiSearch(suggestion); }}
-                          className="rounded-lg border border-border bg-secondary/40 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                          className="max-w-full truncate rounded-lg border border-border bg-secondary/40 px-2 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground sm:px-2.5 sm:py-1 sm:text-xs"
                         >
                           {suggestion}
                         </button>
@@ -386,17 +404,16 @@ export default function AgentJobsPage() {
                 )}
               </div>
 
-              {/* Divider */}
-              <div className="my-4 flex items-center gap-3">
-                <div className="h-px flex-1 bg-border" />
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{common("or")}</span>
-                <div className="h-px flex-1 bg-border" />
-              </div>
+              <div className="my-3 h-px bg-border" />
 
               {/* Manual Filters */}
-              <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
+              {/* Wraps on phones so the status tabs and the employer dropdown
+                  share a line instead of each claiming a row. */}
+              <div className="flex flex-wrap items-center gap-2 lg:grid lg:gap-3 lg:grid-cols-[minmax(0,1fr)_auto]" data-table-toolbar="simple">
                 {/* Text search */}
-                <div className="relative min-w-0">
+                {/* Keeps its own line — the shared .toolbar-search-field rule
+                    would shrink it into the tab row. */}
+                <div className="relative min-w-0 basis-full lg:basis-auto">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     value={search}
@@ -405,8 +422,8 @@ export default function AgentJobsPage() {
                     className="h-11 rounded-xl border-border bg-secondary/65 pl-9 text-sm text-foreground shadow-none placeholder:text-muted-foreground"
                   />
                 </div>
-                {/* Status tabs */}
-                <div className="flex flex-wrap gap-2">
+                {/* Status tabs — share the line with the employer dropdown. */}
+                <div className="flex flex-1 basis-[56%] flex-wrap items-center gap-1.5 sm:basis-auto sm:gap-2">
                   {STATUS_TABS.map((value) => {
                     const isSelected = statusFilter === value;
                     return (
@@ -416,8 +433,8 @@ export default function AgentJobsPage() {
                         variant="outline"
                         size="sm"
                         className={isSelected
-                          ? "h-11 rounded-xl border-primary/20 bg-primary/10 px-4 text-primary hover:bg-primary/15"
-                          : "h-11 rounded-xl border-border bg-secondary/65 px-4 text-muted-foreground hover:bg-card"
+                          ? "h-11 rounded-xl border-primary/20 bg-primary/10 !px-2 !text-[10px] text-primary hover:bg-primary/15 sm:!px-4 sm:!text-sm"
+                          : "h-11 rounded-xl border-border bg-secondary/65 !px-2 !text-[10px] text-muted-foreground hover:bg-card sm:!px-4 sm:!text-sm"
                         }
                       >
                         {value ? statusLabels[value] ?? value : common("all")}
@@ -428,10 +445,10 @@ export default function AgentJobsPage() {
 
                 {/* Employer filter */}
                 {employers.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex min-w-0 max-w-[40%] shrink flex-nowrap items-center gap-1 sm:max-w-none sm:gap-1.5">
+                    <Building2 className="hidden h-4 w-4 shrink-0 text-muted-foreground sm:block" />
                     <Select value={employerFilter} onValueChange={setEmployerFilter}>
-                      <SelectTrigger className="h-11 w-auto rounded-xl border border-border bg-secondary/65">
+                      <SelectTrigger className="h-9 w-auto min-w-0 truncate rounded-xl border border-border bg-secondary/65 sm:h-11">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -455,19 +472,22 @@ export default function AgentJobsPage() {
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("results.eyebrow")}</p>
             <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("results.title")}</h2>
           </div>
-          <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">
-            <ArrowRight className="h-3.5 w-3.5 text-status-applied" />
-            {t("results.summary", { total: pagination.total, pages: pagination.totalPages })}
+          {/* Export sits beside the result count. On its own line above the
+              table it read as an orphaned button floating in empty space. */}
+          <div className="flex items-center gap-2">
+            <div className="workspace-muted-pill inline-flex min-w-0 flex-1 items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">
+              <ArrowRight className="h-3.5 w-3.5 shrink-0 text-status-applied" />
+              {t("results.summary", { total: pagination.total, pages: pagination.totalPages })}
+            </div>
+            <TableToolbar
+              onExportCsv={handleExportCsv}
+              onExportExcel={handleExportExcel}
+              onExportPdf={handleExportPdf}
+            />
           </div>
         </div>
 
         <div className="mt-5 overflow-hidden rounded-[24px] border border-border bg-card">
-          <TableToolbar
-            onExportCsv={handleExportCsv}
-            onExportExcel={handleExportExcel}
-            onExportPdf={handleExportPdf}
-            className="px-4 pt-4"
-          />
           {loading ? (
             <Table>
               <TableHeader>

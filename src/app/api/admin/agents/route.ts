@@ -40,10 +40,18 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     ];
   }
 
+  // Status filter — isActive is absent on legacy docs, so "active" means "not false"
+  const statusParam = searchParams.get("status");
+  if (statusParam === "active") query.isActive = { $ne: false };
+  else if (statusParam === "inactive") query.isActive = false;
+
+  const sortBy = searchParams.get("sortBy") === "name" ? "name" : "createdAt";
+  const sortOrder = searchParams.get("sortOrder") === "asc" ? 1 : -1;
+
   const [users, total] = await Promise.all([
     User.find(query)
       .select("-passwordHash")
-      .sort({ createdAt: -1 })
+      .sort({ [sortBy]: sortOrder })
       .skip((page - 1) * limit)
       .limit(limit)
       .lean(),

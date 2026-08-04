@@ -13,7 +13,7 @@ export async function generateMetadata({
   const canonicalUrl = `${BASE_URL}/${locale}/faq`;
 
   return {
-    title: `${t("faqHeading")} | MPLOYEDIN`,
+    title: t("faqHeading"),
     description: t("faqSubtitle2"),
     alternates: {
       canonical: canonicalUrl,

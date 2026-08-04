@@ -216,8 +216,10 @@ export default function AgentTasksPage() {
 
       {/* Filters */}
       <section className="workspace-panel-surface rounded-[28px] p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1">
+        {/* Wraps rather than stacks on phones, so the status dropdown and Reset
+            share a line with the search box (see [data-table-toolbar] in globals.css). */}
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3" data-table-toolbar="simple">
+          <div className="relative toolbar-search-field flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input placeholder={t("searchPlaceholder")} value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
           </div>

@@ -214,7 +214,9 @@ export default function AgentJobSeekersPage() {
           <p className="mt-1 text-sm text-muted-foreground">{t("searchDescription")}</p>
         </div>
 
-        <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
+        {/* Wraps instead of stacking, so Filter shares the line with the
+            search box rather than becoming a full-width band on phones. */}
+        <div className="mt-5 flex flex-wrap items-center gap-2 sm:gap-3">
           <TableToolbar
             search={search}
             onSearchChange={setSearch}
@@ -247,8 +249,10 @@ export default function AgentJobSeekersPage() {
         </div>
 
         {/* Collapsible filter panel */}
+        {/* data-table-toolbar opts this panel into the shared mobile filter
+            rules (globals.css): two-up instead of seven full-width rows. */}
         {showFilters && (
-          <div className="mt-4 grid gap-3 rounded-2xl border border-border/50 bg-background/50 p-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div data-table-toolbar="simple" className="mt-4 grid gap-3 rounded-2xl border border-border/50 bg-background/50 p-3 sm:p-4 sm:grid-cols-2 lg:grid-cols-4">
             {/* Availability */}
             <div className="space-y-1.5">
               <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("filterAvailabilityLabel")}</label>

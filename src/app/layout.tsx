@@ -94,7 +94,12 @@ export default async function RootLayout({
           async
           suppressHydrationWarning
           nonce={nonce}
-          dangerouslySetInnerHTML={{ __html: getThemeInitializationScript() }}
+          dangerouslySetInnerHTML={{
+            // __webpack_nonce__ lets runtime style injectors (react-style-singleton,
+            // used by Radix dialogs for scroll-lock) tag their <style> with the CSP
+            // nonce — without it the app's own CSP blocks those styles.
+            __html: getThemeInitializationScript() + (nonce ? `;window.__webpack_nonce__=${JSON.stringify(nonce)};` : ""),
+          }}
         />
       </head>
       <body

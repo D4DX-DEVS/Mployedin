@@ -12,7 +12,7 @@ export async function generateMetadata({
   const canonicalUrl = `${BASE_URL}/${locale}/terms`;
 
   return {
-    title: isAr ? "شروط الاستخدام | MPLOYEDIN" : "Terms of Service | MPLOYEDIN",
+    title: isAr ? "شروط الاستخدام" : "Terms of Service",
     description: isAr
       ? "اقرأ شروط استخدام منصة MPLOYEDIN."
       : "Read the Terms of Service for the MPLOYEDIN recruitment platform.",

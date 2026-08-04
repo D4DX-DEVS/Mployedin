@@ -10,7 +10,8 @@ import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CascadingLocationPicker } from "@/components/shared/CascadingLocationPicker";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePagination } from "@/hooks/usePagination";
-import { Plus, Pencil, Trash2, MapPin, Globe, Users, Ban } from "lucide-react";
+import { Plus, Pencil, Trash2, MapPin, Globe, Users, Ban, CheckCircle2, ArrowUpDown } from "lucide-react";
+import { InlineSearchSelect } from "@/components/shared/InlineSearchSelect";
 import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,6 +70,9 @@ export default function AdminSuperAgentsPage() {
   const [superAgents, setSuperAgents] = useState<SuperAgent[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [sortBy, setSortBy] = useState<"createdAt" | "name">("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
 
   // Available agents for assignment
@@ -118,6 +122,9 @@ export default function AdminSuperAgentsPage() {
     setLoading(true);
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
     if (search) params.set("search", search);
+    if (statusFilter !== "all") params.set("status", statusFilter);
+    params.set("sortBy", sortBy);
+    params.set("sortOrder", sortOrder);
     try {
       const res = await fetch(`/api/admin/super-agents?${params}`);
       if (res.ok) {
@@ -132,7 +139,16 @@ export default function AdminSuperAgentsPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, page, limit, updateTotal]);
+  }, [search, statusFilter, sortBy, sortOrder, page, limit, updateTotal]);
+
+  const toggleSort = (col: "name" | "createdAt") => {
+    if (sortBy === col) {
+      setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(col);
+      setSortOrder(col === "name" ? "asc" : "desc");
+    }
+  };
 
   useEffect(() => { fetchSuperAgents(); }, [fetchSuperAgents]);
 
@@ -177,7 +193,9 @@ export default function AdminSuperAgentsPage() {
         const e = await res.json().catch(() => ({}));
         const errorMsg = apiErrorMessage(e, "Failed to create super agent");
         setAddError(errorMsg);
-        toast.error(errorMsg);
+        // Field-level validation detail lives in the inline banner only — the
+        // duplicate toast with the same raw string was noise.
+        if (!Array.isArray((e as { details?: unknown[] }).details)) toast.error(errorMsg);
         return;
       }
       setShowAdd(false);
@@ -235,7 +253,7 @@ export default function AdminSuperAgentsPage() {
         const e = await res.json().catch(() => ({}));
         const errorMsg = apiErrorMessage(e, "Failed to update super agent");
         setEditError(errorMsg);
-        toast.error(errorMsg);
+        if (!Array.isArray((e as { details?: unknown[] }).details)) toast.error(errorMsg);
         return;
       }
       setEditSA(null);
@@ -268,6 +286,25 @@ export default function AdminSuperAgentsPage() {
       }
     } catch (error) {
       toast.error("Failed to deactivate super agent");
+    }
+  };
+
+  const handleActivate = async (id: string) => {
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: id, isActive: true }),
+      });
+      if (res.ok) {
+        toast.success("Super agent activated successfully");
+        fetchSuperAgents();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Failed to activate super agent");
+      }
+    } catch (error) {
+      toast.error("Failed to activate super agent");
     }
   };
 
@@ -345,6 +382,18 @@ export default function AdminSuperAgentsPage() {
                 className="h-8 w-52 rounded-lg pl-8 text-sm"
               />
             </div>
+            <div className="w-[120px]">
+              <InlineSearchSelect
+                options={[
+                  { value: "all", label: t("statusFilterAll") },
+                  { value: "active", label: t("statusFilterActive") },
+                  { value: "inactive", label: t("statusFilterInactive") },
+                ]}
+                value={statusFilter}
+                onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
+                placeholder={t("statusFilterAll")}
+              />
+            </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="h-8 rounded-lg border-border/80">
@@ -369,11 +418,19 @@ export default function AdminSuperAgentsPage() {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
-              <TableHead>{t("tableHeaderName")}</TableHead>
+              <TableHead>
+                <button type="button" onClick={() => toggleSort("name")} className="flex items-center gap-1 hover:text-foreground">
+                  {t("tableHeaderName")} <ArrowUpDown className={`h-3 w-3 ${sortBy === "name" ? "text-primary" : "opacity-50"}`} />
+                </button>
+              </TableHead>
               <TableHead>{t("tableHeaderAgents")}</TableHead>
               <TableHead>{t("tableHeaderRegion")}</TableHead>
               <TableHead>{t("tableHeaderCommissionOverride")}</TableHead>
-              <TableHead>{t("tableHeaderJoined")}</TableHead>
+              <TableHead>
+                <button type="button" onClick={() => toggleSort("createdAt")} className="flex items-center gap-1 hover:text-foreground">
+                  {t("tableHeaderJoined")} <ArrowUpDown className={`h-3 w-3 ${sortBy === "createdAt" ? "text-primary" : "opacity-50"}`} />
+                </button>
+              </TableHead>
               {(can("super_agents", "update") || can("super_agents", "delete")) && (
                 <TableHead>{t("tableHeaderActions")}</TableHead>
               )}
@@ -417,7 +474,7 @@ export default function AdminSuperAgentsPage() {
                   </div>
                 </TableCell>
                 <TableCell className="text-sm max-w-[200px]">
-                  <div className="flex items-center gap-1 truncate">
+                  <div className="flex items-center gap-1 truncate" title={getLocationSummary(sa.superAgentProfile)}>
                     {(sa.superAgentProfile?.assignedStateIds?.length ?? 0) > 0 && (
                       <Globe className="h-3 w-3 text-primary shrink-0" />
                     )}
@@ -441,11 +498,15 @@ export default function AdminSuperAgentsPage() {
                           <Pencil className="h-3.5 w-3.5 text-primary" />
                         </Button>
                       )}
-                      {can("super_agents", "delete") && (
+                      {can("super_agents", "delete") && (sa.isActive !== false ? (
                         <Button variant="ghost" size="xs" onClick={() => handleDelete(sa._id)} title={t("deactivateTooltip")}>
                           <Ban className="h-3.5 w-3.5 text-amber-500" />
                         </Button>
-                      )}
+                      ) : (
+                        <Button variant="ghost" size="xs" onClick={() => handleActivate(sa._id)} title={t("activateTooltip")}>
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                        </Button>
+                      ))}
                       {can("super_agents", "delete") && (
                         <Button variant="ghost" size="xs" onClick={() => handlePermanentDelete(sa._id)} title={t("deletePermanentlyTooltip")}>
                           <Trash2 className="h-3.5 w-3.5 text-destructive" />
@@ -472,8 +533,11 @@ export default function AdminSuperAgentsPage() {
 
           <div className="space-y-4">
             {addError && (
-              <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
-                <AlertCircle className="h-4 w-4 shrink-0" />{addError}
+              <div className="flex items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <div className="flex flex-col gap-0.5">
+                  {addError.split("; ").map((line, i) => <span key={i}>{line}</span>)}
+                </div>
               </div>
             )}
 
@@ -538,8 +602,11 @@ export default function AdminSuperAgentsPage() {
 
           <div className="space-y-4">
             {editError && (
-              <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
-                <AlertCircle className="h-4 w-4 shrink-0" />{editError}
+              <div className="flex items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <div className="flex flex-col gap-0.5">
+                  {editError.split("; ").map((line, i) => <span key={i}>{line}</span>)}
+                </div>
               </div>
             )}
 

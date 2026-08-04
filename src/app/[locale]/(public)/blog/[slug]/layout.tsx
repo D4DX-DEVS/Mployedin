@@ -13,18 +13,18 @@ export async function generateMetadata({
     const res = await fetch(`${BASE_URL}/api/public/blogs/${slug}`, {
       next: { revalidate: 3600 },
     });
-    if (!res.ok) return { title: "Article Not Found | MPLOYEDIN" };
+    if (!res.ok) return { title: "Article Not Found" };
 
     const post = await res.json();
     const isAr = locale === "ar";
-    const title = isAr ? post.titleAr || post.title : post.title;
+    const title = (isAr ? post.titleAr || post.title : post.title) || "Blog";
     const description = isAr
       ? (post.excerptAr || post.bodyAr || "").slice(0, 160)
       : (post.excerpt || post.body || "").slice(0, 160);
     const canonicalUrl = `${BASE_URL}/${locale}/blog/${slug}`;
 
     return {
-      title: `${title} | MPLOYEDIN`,
+      title,
       description,
       alternates: {
         canonical: canonicalUrl,
@@ -51,7 +51,7 @@ export async function generateMetadata({
       },
     };
   } catch {
-    return { title: "Blog | MPLOYEDIN" };
+    return { title: "Blog" };
   }
 }
 

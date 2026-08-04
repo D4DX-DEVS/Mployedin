@@ -84,8 +84,8 @@ export default function ResourceDownloadsPage() {
         title={t("downloadsTitle")}
         description={t("downloadsSubtitle")}
         footer={
-          <div className="flex w-full min-w-0 flex-wrap items-center gap-2">
-            <div className="relative min-w-52 flex-1">
+          <div className="flex w-full min-w-0 flex-wrap items-center gap-2" data-table-toolbar="simple">
+            <div className="relative toolbar-search-field min-w-52 flex-1">
               <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input placeholder={t("searchPlaceholder")} value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 pl-9 text-sm" />
             </div>

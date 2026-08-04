@@ -62,20 +62,16 @@ export default function RegisterPage() {
     e.preventDefault();
     setError("");
 
-    if (!agreedToTerms) {
-      setError(t("mustAgreeToTerms"));
-      return;
-    }
-    if (password !== confirmPassword) {
-      setError(t("passwordsDoNotMatch"));
-      return;
-    }
-    if (password.length < 12) {
-      setError(t("passwordTooShort"));
-      return;
-    }
+    // Collect every violated rule so the user sees them all in one submit.
+    const errors: string[] = [];
+    if (!agreedToTerms) errors.push(t("mustAgreeToTerms"));
+    if (password !== confirmPassword) errors.push(t("passwordsDoNotMatch"));
+    if (password.length < 12) errors.push(t("passwordTooShort"));
     if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
-      setError(t("passwordTooWeak"));
+      errors.push(t("passwordTooWeak"));
+    }
+    if (errors.length > 0) {
+      setError(errors.join(" • "));
       return;
     }
 

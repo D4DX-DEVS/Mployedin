@@ -275,6 +275,7 @@ export default function AdminUsersPage() {
                 options={[
                   { value: "all", label: t("allRoles") },
                   ...ROLES.map((r) => ({ value: r, label: r.replace("_", " ") })),
+                  { value: "unknown", label: "unknown" },
                 ]}
                 value={roleFilter}
                 onValueChange={(v) => { setRoleFilter(v); resetPage(); }}

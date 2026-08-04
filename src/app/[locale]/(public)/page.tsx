@@ -18,7 +18,7 @@ export async function generateMetadata({
   return {
     title: isAr
       ? "MPLOYEDIN — منصة التوظيف الذكية العالمية"
-      : "AI-Powered International Recruitment Platform – Hire Top Talent Worldwide | MPLOYEDIN",
+      : "AI-Powered International Recruitment Platform – Hire Top Talent Worldwide",
     description: isAr
       ? "منصة توظيف دولية مدعومة بالذكاء الاصطناعي — ابحث عن أفضل المواهب حول العالم واتخذ قرارات توظيف مبنية على البيانات"
       : "AI-powered international recruitment platform connecting employers with top talent worldwide. Discover candidates, streamline hiring, and make data-driven decisions.",

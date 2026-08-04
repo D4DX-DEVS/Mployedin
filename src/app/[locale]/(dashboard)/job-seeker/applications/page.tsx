@@ -254,11 +254,13 @@ export default function ApplicationsPage() {
                 )}
               </Button>
 
-              <div className="w-full overflow-x-auto scrollbar-none lg:w-auto lg:flex-1">
+              {/* fade mask hints there's more to scroll on phones, where all 8
+                  tabs never fit and the cut-off edge previously read as broken. */}
+              <div className="relative w-full min-w-0 lg:w-auto lg:flex-1">
                 <div
                   role="tablist"
                   aria-label={t("statusFiltersLabel")}
-                  className="inline-flex min-w-full items-center gap-1 rounded-full border border-border/70 bg-muted/20 p-1 lg:min-w-0"
+                  className="scrollbar-none flex snap-x snap-proximity items-center gap-1 overflow-x-auto rounded-full border border-border/70 bg-muted/20 p-1 [mask-image:linear-gradient(to_right,black_92%,transparent)] lg:[mask-image:none]"
                 >
                   {STATUS_TABS.map((tab) => {
                     const isActive = tab === activeTab;
@@ -273,7 +275,7 @@ export default function ApplicationsPage() {
                         aria-controls={`applications-panel-${tab}`}
                         onClick={() => handleTabChange(tab)}
                         className={cn(
-                          "relative shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors duration-200 sm:px-3.5 sm:text-sm",
+                          "relative shrink-0 snap-start rounded-full px-2.5 py-1.5 text-[11px] font-medium transition-colors duration-200 sm:px-3.5 sm:text-sm",
                           isActive
                             ? "text-primary-foreground"
                             : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
