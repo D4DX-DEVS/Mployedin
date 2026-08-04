@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
+
+/* Registration/login forms must never be covered by the install card
+   (it landed on top of active fields at 375px). */
+const SUPPRESSED_PREFIXES = ["/login", "/register", "/employer-register", "/agent-register", "/onboarding", "/forgot-password", "/reset-password"];
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -10,6 +15,9 @@ interface BeforeInstallPromptEvent extends Event {
 
 export function PWAInstallPrompt() {
   const t = useTranslations("pwaInstallPrompt");
+  const pathname = usePathname();
+  const stripped = pathname?.replace(/^\/(?:en|ar)/, "") || "/";
+  const suppressed = SUPPRESSED_PREFIXES.some((p) => stripped === p || stripped.startsWith(p + "/"));
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
@@ -63,7 +71,7 @@ export function PWAInstallPrompt() {
     localStorage.setItem("pwa-install-dismissed", Date.now().toString());
   };
 
-  if (!showPrompt) return null;
+  if (!showPrompt || suppressed) return null;
 
   return (
     /* On phones this sat under the AI assistant FAB (fixed bottom-20, z-[100])

@@ -129,7 +129,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const profile = await getEmployerProfile(id);
 
   if (!profile) {
-    return { title: "Company Not Found | mployedin" };
+    return { title: "Company Not Found" };
   }
 
   const description =
@@ -137,7 +137,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     `Explore jobs and company information for ${profile.employer.companyName}.`;
 
   return {
-    title: `${profile.employer.companyName} | mployedin`,
+    title: profile.employer.companyName,
     description,
     openGraph: {
       title: `${profile.employer.companyName} | mployedin`,

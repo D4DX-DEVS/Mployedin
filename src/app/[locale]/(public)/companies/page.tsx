@@ -18,7 +18,7 @@ export async function generateMetadata({
   const canonicalUrl = `${BASE_URL}/${locale}/companies`;
 
   return {
-    title: isAr ? "الشركات | MPLOYEDIN" : "Top Hiring Companies in GCC & Worldwide | MPLOYEDIN",
+    title: isAr ? "الشركات" : "Top Hiring Companies in GCC & Worldwide",
     description: isAr
       ? "تصفح أفضل الشركات التي توظف على MPLOYEDIN. اعثر على صاحب عملك القادم."
       : "Browse top companies hiring on MPLOYEDIN. Discover employers in UAE, Saudi Arabia, Qatar and worldwide.",

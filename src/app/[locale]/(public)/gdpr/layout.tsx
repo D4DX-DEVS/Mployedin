@@ -12,7 +12,7 @@ export async function generateMetadata({
   const canonicalUrl = `${BASE_URL}/${locale}/gdpr`;
 
   return {
-    title: isAr ? "سياسة حماية البيانات (GDPR) | MPLOYEDIN" : "GDPR & Data Protection | MPLOYEDIN",
+    title: isAr ? "سياسة حماية البيانات (GDPR)" : "GDPR & Data Protection",
     description: isAr
       ? "سياسة حماية البيانات الشخصية وفقاً للائحة GDPR على منصة MPLOYEDIN."
       : "GDPR compliance and data protection policy for MPLOYEDIN users.",

@@ -28,11 +28,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     .lean()
     .catch(() => null);
 
-  if (!job) return { title: "Job Not Found | mployedin" };
+  if (!job) return { title: "Job Not Found" };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const employer = job.employerId as any;
-  const title = `${job.title} at ${employer?.companyName ?? "Company"} | mployedin`;
+  // Site name is appended by the root layout's title template ("%s | MPLOYEDIN").
+  const title = `${job.title} at ${employer?.companyName ?? "Company"}`;
   const description = job.description?.slice(0, 160);
   const ogImageUrl = `${BASE_URL}/api/og/job?id=${id}`;
   const canonicalUrl = `${BASE_URL}/${locale}/jobs/${id}`;
@@ -217,7 +218,7 @@ export default async function JobDetailPage({ params }: PageProps) {
                 <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
                   <span className="flex items-center gap-1.5">
                     <MapPin className="h-4 w-4" />
-                    {job.location?.isRemote ? t("remote") : `${job.location?.city}, ${job.location?.country}`}
+                    {job.location?.isRemote ? t("remote") : [job.location?.city, job.location?.country].filter(Boolean).join(", ")}
                   </span>
                   {salary && (
                     <span className="flex items-center gap-1.5">
@@ -261,8 +262,8 @@ export default async function JobDetailPage({ params }: PageProps) {
                 </div>
               </div>
 
-              {/* Requirements */}
-              {job.requirements && (
+              {/* Requirements — hidden entirely when every sub-field is empty */}
+              {job.requirements && (job.requirements.skills?.length > 0 || job.requirements.education || job.requirements.languages?.length > 0) && (
                 <div className="bg-card border border-border rounded-xl p-5 sm:p-6 space-y-4">
                   <h2 className="text-base font-semibold text-foreground">{t("requirements")}</h2>
 

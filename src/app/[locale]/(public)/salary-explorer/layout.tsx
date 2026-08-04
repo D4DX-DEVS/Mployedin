@@ -13,8 +13,8 @@ export async function generateMetadata({
 
   return {
     title: isAr
-      ? "مستكشف الرواتب | MPLOYEDIN"
-      : "Salary Explorer – GCC & International Salary Benchmarks | MPLOYEDIN",
+      ? "مستكشف الرواتب"
+      : "Salary Explorer – GCC & International Salary Benchmarks",
     description: isAr
       ? "استكشف متوسطات الرواتب حسب المسمى الوظيفي والمنطقة في دول الخليج والعالم."
       : "Explore salary benchmarks by job title and region across the GCC and worldwide. Make informed career decisions.",

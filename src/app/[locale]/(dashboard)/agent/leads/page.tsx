@@ -386,7 +386,7 @@ function DroppableKanbanColumn({
   const totalRevenue = leads.reduce((sum, l) => sum + (l.expectedRevenue ?? 0), 0);
 
   return (
-    <div className={`flex h-full w-[300px] min-w-[300px] flex-col rounded-2xl border bg-muted/30 transition-colors dark:bg-muted/10 ${isOver ? "border-primary/50 bg-primary/5 dark:bg-primary/10" : "border-border/50"}`}>
+    <div className={`flex h-full w-full min-w-0 flex-col rounded-2xl border bg-muted/30 transition-colors dark:bg-muted/10 sm:w-[300px] sm:min-w-[300px] ${isOver ? "border-primary/50 bg-primary/5 dark:bg-primary/10" : "border-border/50"}`}>
       {/* Column Header */}
       <div className={`flex items-center gap-3 rounded-t-2xl border-b px-4 py-3 ${config.bgColor} ${config.borderColor}`}>
         <span className={config.color}>{config.icon}</span>
@@ -710,7 +710,10 @@ export default function AgentLeadsPage() {
 
       {/* ──── Toolbar ──── */}
       <section className="workspace-panel-surface rounded-[28px] p-3.5 sm:p-4">
-        <div className="flex flex-wrap items-center gap-3">
+        {/* Opt into the shared mobile toolbar rules (see globals.css). Scoped to
+            this row, not the whole section — the stage pills below carry leading
+            icons too, and the icon-only rule would strip their labels. */}
+        <div className="flex flex-wrap items-center gap-3" data-table-toolbar="simple">
           {/* View toggle */}
           <div className="inline-flex items-center rounded-xl border border-border bg-muted/50 p-1">
             <button
@@ -735,9 +738,11 @@ export default function AgentLeadsPage() {
             </button>
           </div>
 
-          {/* Search & Filters */}
-          <div className="flex flex-1 flex-wrap items-center gap-3">
-            <div className="relative min-w-[200px] flex-1 max-w-[320px]">
+          {/* Search & Filters — flat children of the toolbar row. A nested
+              wrapper made these wrap inside themselves on phones, which left
+              the search box stranded on a line of its own. */}
+          <>
+            <div className="relative toolbar-search-field min-w-[200px] flex-1 max-w-[320px]">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="text"
@@ -769,7 +774,7 @@ export default function AgentLeadsPage() {
                 ))}
               </SelectContent>
             </Select>
-          </div>
+          </>
 
           {/* Export */}
           <TableToolbar
@@ -787,7 +792,7 @@ export default function AgentLeadsPage() {
               <button
                 key={s}
                 onClick={() => setStatusFilter(statusFilter === s ? "all" : s)}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${
+                className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-1 text-[10px] font-semibold transition [&_svg]:h-3 [&_svg]:w-3 sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-[11px] sm:[&_svg]:h-3.5 sm:[&_svg]:w-3.5 ${
                   statusFilter === s
                     ? `${config.bgColor} ${config.borderColor} ${config.color}`
                     : "border-border/50 text-muted-foreground hover:border-border hover:text-foreground"
@@ -795,7 +800,7 @@ export default function AgentLeadsPage() {
               >
                 {config.icon}
                 <span>{config.label}</span>
-                <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${statusFilter === s ? "bg-background/50" : "bg-muted"}`}>
+                <span className={`rounded-full px-1 py-0 text-[9px] sm:px-1.5 sm:py-0.5 sm:text-[10px] ${statusFilter === s ? "bg-background/50" : "bg-muted"}`}>
                   {stageCounts[s]}
                 </span>
               </button>
@@ -824,8 +829,10 @@ export default function AgentLeadsPage() {
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
-          <section className="overflow-x-auto pb-4">
-            <div className="flex gap-4" style={{ minWidth: "fit-content" }}>
+          {/* Phones stack the stages; sideways scrolling hid every column but
+              the first and fought the page's own vertical scroll. */}
+          <section className="pb-4 sm:overflow-x-auto">
+            <div className="flex flex-col gap-3 sm:flex-row sm:gap-4 sm:[min-width:fit-content]">
               {STAGES.filter((s) => statusFilter === "all" || s === statusFilter).map((stage) => (
                 <DroppableKanbanColumn
                   key={stage}

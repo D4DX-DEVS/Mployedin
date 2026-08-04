@@ -73,9 +73,11 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     commissionSummary,
     overdueSummary,
   ] = await Promise.all([
-    // Revenue breakdown by status
+    // Revenue breakdown by status — feeds the headline KPI tiles, so it is
+    // all-time (scope only). Period-scoping this while the overdue tile was
+    // all-time made "Total Revenue: 0" sit next to "Overdue: 3,150".
     Invoice.aggregate([
-      { $match: matchFilter },
+      { $match: scopeFilter },
       {
         $group: {
           _id: "$status",
@@ -183,7 +185,9 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       {
         $match: {
           ...scopeFilter,
-          status: { $in: ["issued", "sent", "partially_paid"] },
+          // Include the literal "overdue" status — invoices flagged by the
+          // overdue cron were invisible to this tile.
+          status: { $in: ["issued", "sent", "partially_paid", "overdue"] },
           dueDate: { $lt: new Date() },
         },
       },

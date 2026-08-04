@@ -128,6 +128,12 @@ export function StatusBadge({
 }: StatusBadgeProps) {
   const t = useTranslations("statusBadge");
 
+  // Records with a missing/empty status (legacy data) get a visible dash
+  // instead of an empty pill — and no crash on undefined.
+  if (!status) {
+    return <span className="text-xs text-muted-foreground">—</span>;
+  }
+
   const variant = statusVariants[status] ?? {
     // Humanize any unmapped enum (e.g. "no_show" -> "No Show") so the
     // raw database value is never shown to the user.

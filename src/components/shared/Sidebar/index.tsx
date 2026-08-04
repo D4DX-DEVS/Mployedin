@@ -270,16 +270,12 @@ export function Sidebar({
   };
 
   const [activeMainTitle, setActiveMainTitle] = useState<string>(getInitialActiveItem());
-  // The secondary tier overlays the workspace on desktop, so it can safely open
-  // on a deep link without reducing the page's available width.
-  const [submenuExpanded, setSubmenuExpanded] = useState(() =>
-    !usesDualTierLayout ||
-    allMainItems.some((item) =>
-      item.children?.some(
-        (child) => pathname === child.href || pathname.startsWith(child.href + "/")
-      )
-    )
-  );
+  // The dual-tier secondary panel overlays the workspace (lg:absolute), so it
+  // must never start pinned open on a deep link — it sat over the destination
+  // page and intercepted clicks on the content beneath (QA SA-BUG-01). It now
+  // opens only when the user clicks a main nav item. Inline layouts keep it
+  // expanded as before.
+  const [submenuExpanded, setSubmenuExpanded] = useState(() => !usesDualTierLayout);
   const [activeMobileNestedItem, setActiveMobileNestedItem] = useState<NavItem | null>(null);
 
   useEffect(() => {
@@ -484,7 +480,9 @@ export function Sidebar({
         aria-current={isChildActive ? "page" : undefined}
         prefetch={false}
         onClick={() => {
-          if (usesDualTierLayout) setSubmenuExpanded(!mobileOpen);
+          // Close the flyout after navigating — leaving it open kept the
+          // overlay sitting on top of the destination page's content.
+          if (usesDualTierLayout) setSubmenuExpanded(false);
           onMobileClose?.();
         }}
         title={locale === "ar" ? child.titleAr : child.title}

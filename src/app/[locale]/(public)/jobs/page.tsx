@@ -25,8 +25,8 @@ export async function generateMetadata({
 
   return {
     title: isAr
-      ? "تصفح الوظائف | MPLOYEDIN"
-      : "Browse Jobs in UAE, GCC & Worldwide | MPLOYEDIN",
+      ? "تصفح الوظائف"
+      : "Browse Jobs in UAE, GCC & Worldwide",
     description: isAr
       ? "اكتشف آلاف الوظائف في الإمارات والسعودية وقطر ودول الخليج. ابحث حسب المهارات والموقع والراتب."
       : "Discover thousands of jobs in the UAE, Saudi Arabia, Qatar and across the GCC. Search by skills, location, and salary.",
@@ -261,7 +261,7 @@ export default async function JobsPage({ params, searchParams }: PageProps) {
                       <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <MapPin className="h-3 w-3" />
-                          {job.location?.isRemote ? t("remote") : `${job.location?.city}, ${job.location?.country}`}
+                          {job.location?.isRemote ? t("remote") : [job.location?.city, job.location?.country].filter(Boolean).join(", ")}
                         </span>
                         {salary && (
                           <span className="flex items-center gap-1">

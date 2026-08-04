@@ -10,7 +10,7 @@ import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CascadingLocationPicker } from "@/components/shared/CascadingLocationPicker";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePagination } from "@/hooks/usePagination";
-import { Plus, Pencil, Trash2, MapPin, Globe, Ban } from "lucide-react";
+import { Plus, Pencil, Trash2, MapPin, Globe, Ban, CheckCircle2, ArrowUpDown } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,6 +69,9 @@ export default function AdminAgentsPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [sortBy, setSortBy] = useState<"createdAt" | "name">("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
 
   // Super agent options for dropdown
@@ -136,6 +139,9 @@ export default function AdminAgentsPage() {
     setLoading(true);
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
     if (search) params.set("search", search);
+    if (statusFilter !== "all") params.set("status", statusFilter);
+    params.set("sortBy", sortBy);
+    params.set("sortOrder", sortOrder);
     const res = await fetch(`/api/admin/agents?${params}`);
     if (res.ok) {
       const data = await res.json();
@@ -143,9 +149,37 @@ export default function AdminAgentsPage() {
       updateTotal(data.pagination?.total ?? 0);
     }
     setLoading(false);
-  }, [search, page, limit, updateTotal]);
+  }, [search, statusFilter, sortBy, sortOrder, page, limit, updateTotal]);
 
   useEffect(() => { fetchAgents(); }, [fetchAgents]);
+
+  const toggleSort = (col: "name" | "createdAt") => {
+    if (sortBy === col) {
+      setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(col);
+      setSortOrder(col === "name" ? "asc" : "desc");
+    }
+  };
+
+  const handleActivate = async (id: string) => {
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: id, isActive: true }),
+      });
+      if (res.ok) {
+        toast.success("Agent activated successfully");
+        fetchAgents();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Failed to activate agent");
+      }
+    } catch (error) {
+      toast.error("Failed to activate agent");
+    }
+  };
 
   const applySARegion = (
     saId: string,
@@ -345,6 +379,18 @@ export default function AdminAgentsPage() {
                 className="h-8 w-52 rounded-lg pl-8 text-sm"
               />
             </div>
+            <div className="w-[120px]">
+              <InlineSearchSelect
+                options={[
+                  { value: "all", label: tr("statusFilterAll") },
+                  { value: "active", label: tr("active") },
+                  { value: "inactive", label: tr("inactive") },
+                ]}
+                value={statusFilter}
+                onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
+                placeholder={tr("statusFilterAll")}
+              />
+            </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="h-8 rounded-lg border-border/80">
@@ -368,11 +414,19 @@ export default function AdminAgentsPage() {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
-              <TableHead>{tr("name")}</TableHead>
+              <TableHead>
+                <button type="button" onClick={() => toggleSort("name")} className="flex items-center gap-1 hover:text-foreground">
+                  {tr("name")} <ArrowUpDown className={`h-3 w-3 ${sortBy === "name" ? "text-primary" : "opacity-50"}`} />
+                </button>
+              </TableHead>
               <TableHead>{tr("superAgent")}</TableHead>
               <TableHead>{tr("region")}</TableHead>
               <TableHead>{tr("commission")}</TableHead>
-              <TableHead>{tr("joined")}</TableHead>
+              <TableHead>
+                <button type="button" onClick={() => toggleSort("createdAt")} className="flex items-center gap-1 hover:text-foreground">
+                  {tr("joined")} <ArrowUpDown className={`h-3 w-3 ${sortBy === "createdAt" ? "text-primary" : "opacity-50"}`} />
+                </button>
+              </TableHead>
               {(can("agents", "update") || can("agents", "delete")) && (
                 <TableHead>{tr("actions")}</TableHead>
               )}
@@ -439,11 +493,15 @@ export default function AdminAgentsPage() {
                           <Pencil className="h-3.5 w-3.5 text-primary" />
                         </Button>
                       )}
-                      {can("agents", "delete") && (
+                      {can("agents", "delete") && (agent.isActive !== false ? (
                         <Button variant="ghost" size="xs" onClick={() => handleDelete(agent._id)} title={tr("deactivate")}>
                           <Ban className="h-3.5 w-3.5 text-amber-500" />
                         </Button>
-                      )}
+                      ) : (
+                        <Button variant="ghost" size="xs" onClick={() => handleActivate(agent._id)} title={tr("activate")}>
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                        </Button>
+                      ))}
                       {can("agents", "delete") && (
                         <Button variant="ghost" size="xs" onClick={() => handlePermanentDelete(agent._id)} title={tr("deletePermanently")}>
                           <Trash2 className="h-3.5 w-3.5 text-destructive" />

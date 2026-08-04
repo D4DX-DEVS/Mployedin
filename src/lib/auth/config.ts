@@ -73,6 +73,7 @@ export const authConfig: NextAuthConfig = {
           logActivity({
             action: "login.failed",
             resource: "auth",
+            ipAddress: ip,
             meta: { email: parsed.data.email, reason: user ? "no_password" : "user_not_found" },
           });
           if (!ipCheck.allowed) throw new LoginRateLimitedError();
@@ -86,6 +87,7 @@ export const authConfig: NextAuthConfig = {
             actorRole: user.role,
             action: "login.failed",
             resource: "auth",
+            ipAddress: ip,
             meta: { email: parsed.data.email, reason: "account_locked" },
           });
           throw new AccountLockedError();
@@ -98,6 +100,7 @@ export const authConfig: NextAuthConfig = {
             actorRole: user.role,
             action: "login.failed",
             resource: "auth",
+            ipAddress: ip,
             meta: { email: parsed.data.email, reason: "account_inactive" },
           });
           return null;
@@ -116,6 +119,7 @@ export const authConfig: NextAuthConfig = {
               actorRole: user.role,
               action: "login.failed",
               resource: "auth",
+              ipAddress: ip,
               meta: { email: user.email, ip, reason: "ip_rate_limited" },
             });
             throw new LoginRateLimitedError();
@@ -137,6 +141,7 @@ export const authConfig: NextAuthConfig = {
               actorRole: user.role,
               action: "account.locked",
               resource: "auth",
+              ipAddress: ip,
               meta: { email: user.email, ip, failedAttempts: attempts, lockMinutes: LOCK_DURATION_MS / 60000 },
             });
             const appUrl =
@@ -158,6 +163,7 @@ export const authConfig: NextAuthConfig = {
             actorRole: user.role,
             action: "login.failed",
             resource: "auth",
+            ipAddress: ip,
             meta: {
               email: parsed.data.email,
               reason: nowLocked ? "account_locked" : "invalid_password",
@@ -185,6 +191,7 @@ export const authConfig: NextAuthConfig = {
               actorRole: user.role,
               action: "login.failed",
               resource: "auth",
+              ipAddress: ip,
               meta: { email: user.email, reason: "2fa_rate_limited" },
             });
             throw new TwoFactorInvalidError();
@@ -206,6 +213,7 @@ export const authConfig: NextAuthConfig = {
                 actorRole: user.role,
                 action: "2fa.recovery_code_used",
                 resource: "auth",
+                ipAddress: ip,
                 meta: { email: user.email },
               });
             }
@@ -217,6 +225,7 @@ export const authConfig: NextAuthConfig = {
               actorRole: user.role,
               action: "login.failed",
               resource: "auth",
+              ipAddress: ip,
               meta: { email: user.email, reason: "2fa_invalid" },
             });
             throw new TwoFactorInvalidError();
@@ -238,6 +247,7 @@ export const authConfig: NextAuthConfig = {
           actorRole: user.role,
           action: "login.success",
           resource: "auth",
+          ipAddress: ip,
           meta: { email: user.email, provider: "credentials" },
         });
 

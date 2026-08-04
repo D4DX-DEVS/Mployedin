@@ -7,6 +7,13 @@ if (!process.env.ENCRYPTION_KEY) {
   process.env.ENCRYPTION_KEY = "0".repeat(64);
 }
 
+// Tests must never talk to the real Upstash rate-limit store: the bucket is
+// shared and persistent, so repeated local runs saturate it and rate-limited
+// routes start returning 429 in unrelated tests. Blank creds force the
+// limiter's in-memory fallback, which resets per process.
+process.env.UPSTASH_REDIS_REST_URL = "";
+process.env.UPSTASH_REDIS_REST_TOKEN = "";
+
 // jsdom does not implement ResizeObserver, which several UI components rely on.
 // Provide a no-op polyfill so component tests don't crash with "ResizeObserver is not defined".
 if (typeof globalThis.ResizeObserver === "undefined") {

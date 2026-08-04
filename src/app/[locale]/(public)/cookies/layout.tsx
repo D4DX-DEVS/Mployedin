@@ -9,7 +9,7 @@ export async function generateMetadata({
   await params;
   const t = await getTranslations("landing");
   return {
-    title: `${t("cookiesHeading")} | MPLOYEDIN`,
+    title: t("cookiesHeading"),
     description: t("cookiesPreparing"),
     robots: { index: false, follow: true },
   };

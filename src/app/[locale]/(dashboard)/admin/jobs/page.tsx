@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { MarkdownRenderer } from "@/components/shared/MarkdownRenderer";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
 import { Input } from "@/components/ui/input";
@@ -734,7 +735,7 @@ export default function AdminJobsPage() {
                   {selectedJob.description && (
                     <section>
                       <SectionHeading>{t("description")}</SectionHeading>
-                      <p className="text-sm leading-relaxed text-foreground/90">{selectedJob.description}</p>
+                      <div className="text-sm leading-relaxed text-foreground/90"><MarkdownRenderer content={selectedJob.description} /></div>
                     </section>
                   )}
 

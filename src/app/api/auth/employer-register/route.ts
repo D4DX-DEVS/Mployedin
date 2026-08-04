@@ -17,6 +17,7 @@ import { hashOtp } from "@/lib/auth/emailVerification";
 import logger from "@/lib/logger";
 import { getClientIp } from "@/lib/security/clientIp";
 import { strongPasswordSchema } from "@/lib/security/passwordPolicy";
+import { z } from "zod";
 
 export const runtime = "nodejs";
 
@@ -49,7 +50,10 @@ export async function POST(req: NextRequest) {
     const companyName = get("companyName");
     const industry = get("industry");
     const size = get("size");
-    const website = get("website");
+    const website = get("website").trim();
+    if (website && !z.string().url().max(2048).safeParse(website).success) {
+      return NextResponse.json({ message: "Please enter a valid website URL (e.g. https://example.com)." }, { status: 400 });
+    }
     const country = get("country");
     const city = get("city");
 

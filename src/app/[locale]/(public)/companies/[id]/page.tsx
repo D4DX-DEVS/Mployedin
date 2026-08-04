@@ -17,8 +17,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { id } = await params;
   await connectDB();
   const emp = await Employer.findById(id).select("companyName description industry").lean().catch(() => null);
-  if (!emp) return { title: "Company Not Found | mployedin" };
-  const title = `${(emp as Record<string, unknown>).companyName} | mployedin`;
+  if (!emp) return { title: "Company Not Found" };
+  const title = `${(emp as Record<string, unknown>).companyName}`;
   const description = ((emp as Record<string, unknown>).description as string)?.slice(0, 160) ?? `View ${(emp as Record<string, unknown>).companyName} profile and open jobs on mployedin`;
   return {
     title,

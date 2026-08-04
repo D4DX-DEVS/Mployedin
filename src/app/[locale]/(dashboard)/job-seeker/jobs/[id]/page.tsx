@@ -39,10 +39,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     .lean()
     .catch(() => null);
 
-  if (!job) return { title: "Job Not Found | mployedin" };
+  if (!job) return { title: "Job Not Found" };
 
   const employer = job.employerId as PopulatedEmployer | null;
-  const title = `${job.title} at ${employer?.companyName ?? "Company"} | mployedin`;
+  const title = `${job.title} at ${employer?.companyName ?? "Company"}`;
 
   return {
     title,

@@ -61,7 +61,11 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const query: Record<string, any> = {};
-  if (role && isValidRole(role)) query.role = role;
+  if (role === "unknown") {
+    // Legacy/malformed accounts whose role isn't one of the known values —
+    // surfaced on the dashboard's "Users by Role" but otherwise unreachable.
+    query.role = { $nin: ["admin", "super_agent", "agent", "employer", "job_seeker"] };
+  } else if (role && isValidRole(role)) query.role = role;
   if (isActive !== "") query.isActive = isActive === "true";
   if (search) {
     const safe = escapeRegex(search);

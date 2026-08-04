@@ -130,7 +130,8 @@ export default function AgentPlacementsPage() {
         ]}
       />
 
-      <section className="workspace-panel-surface rounded-[28px] p-3.5 sm:p-4">
+      {/* data-table-toolbar opts into the shared mobile filter rules (globals.css). */}
+      <section className="workspace-panel-surface rounded-[28px] p-3.5 sm:p-4" data-table-toolbar="simple">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("filterLabel")}</p>
@@ -143,7 +144,7 @@ export default function AgentPlacementsPage() {
           )}
         </div>
 
-        <div className="relative mt-5 max-w-md">
+        <div className="relative toolbar-search-field mt-5 max-w-md">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
