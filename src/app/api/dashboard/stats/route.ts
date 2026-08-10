@@ -32,6 +32,10 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
     return NextResponse.json({ error: "Profile not found" }, { status: 404 });
   }
   const seekerObjId = seeker._id;
+  // ProfileView is keyed by the User id, unlike every other collection here, and
+  // its field is `jobSeekerId` — the `viewedUserId` these queries used does not
+  // exist on the schema, so every view counter was permanently 0.
+  const viewerScopeId = seeker.userId;
 
   // ── Parallel queries (current + previous week) ───────────────────────────
   const [
@@ -63,14 +67,14 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
       { $match: { jobSeekerId: seekerObjId, aiMatchScore: { $exists: true, $ne: null } } },
       { $group: { _id: null, avg: { $avg: "$aiMatchScore" } } },
     ]),
-    ProfileView.countDocuments({ viewedUserId: seekerObjId, viewedAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } }),
-    ProfileView.countDocuments({ viewedUserId: seekerObjId, viewedAt: { $gte: startOfWeek } }),
-    ProfileView.countDocuments({ viewedUserId: seekerObjId, viewedAt: { $gte: startOfPrevWeek, $lt: startOfWeek } }),
+    ProfileView.countDocuments({ jobSeekerId: viewerScopeId, viewedAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } }),
+    ProfileView.countDocuments({ jobSeekerId: viewerScopeId, viewedAt: { $gte: startOfWeek } }),
+    ProfileView.countDocuments({ jobSeekerId: viewerScopeId, viewedAt: { $gte: startOfPrevWeek, $lt: startOfWeek } }),
     // Daily view counts for the last 7 days (Mon–Sun)
     ProfileView.aggregate([
       {
         $match: {
-          viewedUserId: seekerObjId,
+          jobSeekerId: viewerScopeId,
           viewedAt: {
             $gte: new Date(startOfWeek.getTime() - 7 * 24 * 60 * 60 * 1000),
           },

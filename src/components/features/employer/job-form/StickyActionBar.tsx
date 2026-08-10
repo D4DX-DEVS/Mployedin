@@ -40,7 +40,10 @@ export function StickyActionBar({
 
   return (
     <div className="z-40 shrink-0 border-t border-border/80 bg-background/95 backdrop-blur-md" role="toolbar" aria-label={t("toolbarLabel")}>
-      <div className="mx-auto max-w-5xl px-3 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-3.5">
+      {/* pe-* keeps Next/Post Job clear of the floating Copilot FAB (fixed
+          right-4, 48px wide, lg:bottom-4). Without it the FAB sat on top of
+          this bar's primary action and swallowed the click entirely. */}
+      <div className="mx-auto max-w-5xl px-3 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-3.5 lg:pe-20">
         <div className="mb-2.5 flex items-center justify-between gap-3 sm:hidden">
           <div className="inline-flex items-center rounded-full border border-border/70 bg-muted/40 px-3 py-1 text-xs font-medium text-muted-foreground">
             {t("stepOf", { current: currentStep, total: totalSteps })}

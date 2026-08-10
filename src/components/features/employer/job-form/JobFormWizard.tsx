@@ -43,6 +43,14 @@ const STEP_FIELDS: Record<number, (keyof JobFormValues)[]> = {
   5: ["screeningQuestions"],
 };
 
+/** Server validation `details[].path` root → wizard step, so a rejected submit
+ *  lands the user on the step that owns the bad field. */
+const STEP_FOR_PATH: Record<string, number> = Object.fromEntries(
+  Object.entries(STEP_FIELDS).flatMap(([step, fields]) =>
+    fields.map((f) => [f as string, Number(step)])
+  )
+);
+
 interface JobTemplateData {
   _id: string;
   name: string;
@@ -405,8 +413,20 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
         });
         router.push(`/${locale}/${basePath}/jobs/${jobId}`);
       } else {
-        const err = (await res.json()) as { error?: string };
-        setSubmitError(err.error ?? t("postFailed"));
+        const err = (await res.json()) as {
+          error?: string;
+          details?: { path: string; message: string }[];
+        };
+        // The API already returns the offending field + reason; showing only
+        // the generic "Validation failed" left the user with nothing to act on.
+        const detail = err.details?.[0];
+        if (detail) {
+          setSubmitError(`${detail.path}: ${detail.message}`);
+          const step = STEP_FOR_PATH[detail.path.split(".")[0]];
+          if (step) setCurrentStep(step);
+        } else {
+          setSubmitError(err.error ?? t("postFailed"));
+        }
       }
     } catch {
       setSubmitError(t("networkError"));

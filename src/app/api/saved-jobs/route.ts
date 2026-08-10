@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import SavedJob from "@/models/SavedJob";
+import JobSeeker from "@/models/JobSeeker";
 import { z } from "zod";
 import { validateBody } from "@/lib/validators";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
@@ -26,14 +27,22 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const limit = Math.min(50, Math.max(1, Number(searchParams.get("limit")) || 20));
   const skip = (page - 1) * limit;
 
+  // SavedJob.jobSeekerId holds the JobSeeker profile _id (that is what
+  // POST /api/jobs/[id]/save writes), not the User id — querying by ctx.userId
+  // silently matched nothing and this endpoint always returned an empty list.
+  const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select("_id").lean();
+  if (!seeker) {
+    return NextResponse.json({ items: [], total: 0, page, totalPages: 0 });
+  }
+
   const [items, total] = await Promise.all([
-    SavedJob.find({ jobSeekerId: ctx.userId })
+    SavedJob.find({ jobSeekerId: seeker._id })
       .sort({ savedAt: -1 })
       .skip(skip)
       .limit(limit)
       .populate("jobId", "title salary location status employerId tags")
       .lean(),
-    SavedJob.countDocuments({ jobSeekerId: ctx.userId }),
+    SavedJob.countDocuments({ jobSeekerId: seeker._id }),
   ]);
 
   return NextResponse.json({
@@ -55,10 +64,17 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   const body = await validateBody(req, saveJobSchema);
   await connectDB();
 
+  // Must key on the JobSeeker profile _id so this stays consistent with
+  // POST /api/jobs/[id]/save, the dashboard counters and the saved-jobs list.
+  const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select("_id").lean();
+  if (!seeker) {
+    return NextResponse.json({ error: "Job seeker profile not found" }, { status: 404 });
+  }
+
   let saved;
   try {
     saved = await SavedJob.create({
-      jobSeekerId: ctx.userId,
+      jobSeekerId: seeker._id,
       jobId: body.jobId,
       notes: body.notes,
     });

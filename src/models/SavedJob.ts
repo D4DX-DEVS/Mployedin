@@ -12,7 +12,8 @@ export interface ISavedJob extends Document {
 
 const SavedJobSchema = new Schema<ISavedJob>(
   {
-    jobSeekerId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    // Holds JobSeeker._id (see POST /api/jobs/[id]/save), not a User id.
+    jobSeekerId: { type: Schema.Types.ObjectId, ref: "JobSeeker", required: true },
     jobId: { type: Schema.Types.ObjectId, ref: "Job", required: true },
     notes: { type: String, maxlength: 500 },
     savedAt: { type: Date, default: Date.now },

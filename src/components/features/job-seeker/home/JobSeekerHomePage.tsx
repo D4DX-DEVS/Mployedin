@@ -528,7 +528,7 @@ export function JobSeekerHomePage({
     },
     {
       label: t("quickAccess.savedJobs"),
-      href: `/${locale}/job-seeker/jobs`,
+      href: `/${locale}/job-seeker/saved-jobs`,
       icon: Bookmark,
       value: formatNumber(stats?.savedJobs?.count ?? 0),
     },

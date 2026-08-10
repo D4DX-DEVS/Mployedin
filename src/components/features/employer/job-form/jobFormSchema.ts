@@ -126,7 +126,12 @@ export const jobFormSchema = z.object({
   category: z.string().max(100).optional(),
   location: z.object({
     country: z.string().min(1, "Country is required"),
-    city: z.string().min(1, "City is required"),
+    // A city is never all digits — this rejects "12345" style junk while still
+    // allowing any script (Arabic included) and names with digits in them.
+    city: z
+      .string()
+      .min(1, "City is required")
+      .regex(/\p{L}/u, "Enter a valid city name"),
     isRemote: z.boolean().default(false),
   }),
 
@@ -138,13 +143,20 @@ export const jobFormSchema = z.object({
     .trim(),
 
   // Step 3 — Requirements
-  requirements: z.object({
-    skills: z.array(z.string().max(100)).max(50).default([]),
-    preferredSkills: z.array(z.string().max(100)).max(30).default([]),
-    experienceMin: z.number().int().min(0).max(50).default(0),
-    experienceMax: z.number().int().min(0).max(50).default(10),
-    education: z.string().max(200).optional(),
-  }),
+  requirements: z
+    .object({
+      skills: z.array(z.string().max(100)).max(50).default([]),
+      preferredSkills: z.array(z.string().max(100)).max(30).default([]),
+      experienceMin: z.number().int().min(0).max(50).default(0),
+      experienceMax: z.number().int().min(0).max(50).default(10),
+      education: z.string().max(200).optional(),
+    })
+    // The API enforces the same rule (lib/validators/jobs.ts). Without it here
+    // the wizard let min > max reach the final submit and failed there instead.
+    .refine((r) => r.experienceMax >= r.experienceMin, {
+      message: "Maximum years must be greater than or equal to minimum",
+      path: ["experienceMax"],
+    }),
 
   // New optional fields
   employmentType: z.enum(["full_time", "part_time", "contract", "internship", "freelance"]).optional(),
@@ -158,14 +170,15 @@ export const jobFormSchema = z.object({
   // Step 4 — Salary & Settings
   salary: z
     .object({
-      min: z.number().min(0).default(0),
-      max: z.number().min(0).default(0),
+      min: z.number().min(0, "Salary cannot be negative").default(0),
+      max: z.number().min(0, "Salary cannot be negative").default(0),
       currency: z.string().length(3).default("USD"),
       isNegotiable: z.boolean().default(false),
       period: z.enum(["monthly", "yearly", "lpa"]).default("monthly"),
     })
     .refine((s) => s.max === 0 || s.max >= s.min, {
       message: "Maximum salary must be greater than or equal to minimum",
+      path: ["max"],
     }),
 
   // Advanced settings

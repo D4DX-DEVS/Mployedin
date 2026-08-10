@@ -160,7 +160,9 @@ export async function POST(req: NextRequest) {
               .limit(5)
               .populate("jobId", "title")
               .lean(),
-            SavedJob.find({ jobSeekerId: session.user.id }).distinct("jobId"),
+            // Saved jobs are keyed by the JobSeeker profile _id, like the sibling
+            // queries above — session.user.id is a User id and matched nothing.
+            SavedJob.find({ jobSeekerId: profile._id }).distinct("jobId"),
             Offer.find({
               jobSeekerId: profile._id,
               status: { $in: ["pending", "countered"] },

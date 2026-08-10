@@ -869,6 +869,9 @@ export default function EmployerInterviewsPage() {
         page={page}
         totalPages={totalPages}
         total={total}
+        // Rounds are collapsed into one row per application, so the raw page
+        // size would over-report what is actually on screen.
+        shown={deduplicatedInterviews.length}
         limit={limit}
         onPageChange={setPage}
         onLimitChange={(l) => { setLimit(l); setPage(1); }}

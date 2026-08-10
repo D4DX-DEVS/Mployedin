@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
+import mongoose from "mongoose";
 import ProfileView from "@/models/ProfileView";
 import Employer from "@/models/Employer";
 import User from "@/models/User";
@@ -19,17 +20,21 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
+  // find()/countDocuments() cast a string id automatically, but aggregate()'s
+  // $match does not — the breakdowns below matched nothing until this cast.
+  const seekerUserId = new mongoose.Types.ObjectId(ctx.userId);
+
   const [totalViews, last7Days, last30Days, bySource, byRole, recentViews] = await Promise.all([
     ProfileView.countDocuments({ jobSeekerId: ctx.userId }),
     ProfileView.countDocuments({ jobSeekerId: ctx.userId, viewedAt: { $gte: sevenDaysAgo } }),
     ProfileView.countDocuments({ jobSeekerId: ctx.userId, viewedAt: { $gte: thirtyDaysAgo } }),
     ProfileView.aggregate([
-      { $match: { jobSeekerId: ctx.userId } },
+      { $match: { jobSeekerId: seekerUserId } },
       { $group: { _id: "$source", count: { $sum: 1 } } },
       { $sort: { count: -1 } },
     ]),
     ProfileView.aggregate([
-      { $match: { jobSeekerId: ctx.userId } },
+      { $match: { jobSeekerId: seekerUserId } },
       { $group: { _id: "$viewerRole", count: { $sum: 1 } } },
       { $sort: { count: -1 } },
     ]),

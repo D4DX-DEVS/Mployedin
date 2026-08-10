@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
+import { publicOrigin } from "@/lib/http/publicOrigin";
 import User from "@/models/User";
 import type { UserRole } from "@/models/User";
 
@@ -12,7 +13,7 @@ function newToken(): string {
 }
 
 function feedUrl(req: NextRequest, token: string): string {
-  return `${new URL(req.url).origin}/api/calendar/feed/${token}`;
+  return `${publicOrigin(req)}/api/calendar/feed/${token}`;
 }
 
 /** Return the user's calendar feed URL, creating the token on first request. */

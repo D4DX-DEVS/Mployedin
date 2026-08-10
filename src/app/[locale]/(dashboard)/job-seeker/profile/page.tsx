@@ -41,7 +41,9 @@ function getCsrfToken(): string {
 interface Skill { name: string; level: string; yearsOfExperience: number; }
 interface Experience { jobTitle: string; company: string; location: string; from: string; to: string; current: boolean; description: string; }
 interface Education { degree: string; field: string; institution: string; country: string; from: string; to: string; }
-interface Language { language: string; level: string; canRead?: boolean; canWrite?: boolean; canSpeak?: boolean; }
+// Schema field is `proficiency`; `level` only exists on docs written before that
+// rename, so read it as a fallback instead of rendering an empty cell.
+interface Language { language: string; proficiency?: string; level?: string; canRead?: boolean; canWrite?: boolean; canSpeak?: boolean; }
 interface Project { title: string; description?: string; techStack: string[]; projectUrl?: string; repoUrl?: string; startDate?: string; endDate?: string; isCurrent?: boolean; }
 interface Accomplishment { type: string; title: string; url?: string; description?: string; date?: string; }
 interface CareerProfile {
@@ -277,6 +279,8 @@ export default function JobSeekerProfilePage() {
   }
 
   async function handleSaveHeadline() {
+    // An empty submit used to overwrite the saved headline with "" — same guard as name.
+    if (!editHeadline.trim()) return;
     setSavingHeadline(true);
     try {
       await patchProfile({ headline: editHeadline.trim() });
@@ -316,7 +320,10 @@ export default function JobSeekerProfilePage() {
 
   // ── Derived data ──────────────────────────────────────────────────────
 
-  const name      = session?.user?.name  ?? "Job Seeker";
+  // JobSeeker.fullName is the identity employers see on an application (the apply
+  // panel reads it), so it wins here — otherwise the two screens disagree whenever
+  // User.name and JobSeeker.fullName drift apart.
+  const name      = profile?.fullName?.trim() || session?.user?.name || "Job Seeker";
   const email     = session?.user?.email ?? "";
   const displayAvatar = avatarUrl || session?.user?.image || "";
   const initials  = name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase();
@@ -1226,7 +1233,7 @@ export default function JobSeekerProfilePage() {
                           {profile!.languages.map((l, i) => (
                             <tr key={i} className="border-b border-border/20 last:border-0">
                               <td className="py-1.5 font-medium capitalize">{l.language}</td>
-                              <td className="py-1.5 capitalize text-muted-foreground">{l.level}</td>
+                              <td className="py-1.5 capitalize text-muted-foreground">{l.proficiency || l.level || "—"}</td>
                               <td className="py-1.5 text-center">{l.canRead !== false ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 mx-auto" /> : "—"}</td>
                               <td className="py-1.5 text-center">{l.canWrite !== false ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 mx-auto" /> : "—"}</td>
                               <td className="py-1.5 text-center">{l.canSpeak !== false ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 mx-auto" /> : "—"}</td>
@@ -1304,6 +1311,7 @@ export default function JobSeekerProfilePage() {
                 maxLength={200}
                 autoFocus
               />
+              <p className="text-xs text-muted-foreground mt-1">{editName.length}/200 characters</p>
             </div>
           </form>
           <DialogFooter>
@@ -1336,14 +1344,17 @@ export default function JobSeekerProfilePage() {
                 maxLength={200}
                 autoFocus
               />
-              <p className="text-xs text-muted-foreground mt-1">A one-line summary that appears below your name</p>
+              <div className="mt-1 flex items-center justify-between gap-2">
+                <p className="text-xs text-muted-foreground">A one-line summary that appears below your name</p>
+                <p className="shrink-0 text-xs text-muted-foreground">{editHeadline.length}/200 characters</p>
+              </div>
             </div>
           </form>
           <DialogFooter>
             <DialogClose asChild>
               <Button variant="outline" size="sm">Cancel</Button>
             </DialogClose>
-            <Button size="sm" onClick={handleSaveHeadline} disabled={savingHeadline}>
+            <Button size="sm" onClick={handleSaveHeadline} disabled={savingHeadline || !editHeadline.trim()}>
               {savingHeadline ? <Loader2 className="w-4 h-4 animate-spin me-1.5" /> : <Save className="w-4 h-4 me-1.5" />}
               Save
             </Button>

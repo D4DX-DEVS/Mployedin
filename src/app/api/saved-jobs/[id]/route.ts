@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import SavedJob from "@/models/SavedJob";
+import JobSeeker from "@/models/JobSeeker";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { isValidObjectId } from "@/lib/security/sanitize";
 
@@ -16,9 +17,16 @@ export const DELETE = withAuth(async (req: NextRequest, ctx, params) => {
 
   await connectDB();
 
+  // Ownership is recorded as the JobSeeker profile _id, not the User id — scoping
+  // the delete by ctx.userId matched nothing, so every unsave returned 404.
+  const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select("_id").lean();
+  if (!seeker) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const deleted = await SavedJob.findOneAndDelete({
     _id: params?.id,
-    jobSeekerId: ctx.userId,
+    jobSeekerId: seeker._id,
   });
 
   if (!deleted) {

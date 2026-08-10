@@ -181,8 +181,13 @@ export const saveJobTool: CopilotTool<{ jobId: string }> = {
     if (!isValidObjectId(args.jobId)) return { ok: false, message: "That doesn't look like a valid job ID." };
     const job = await Job.findById(args.jobId).select("_id title").lean();
     if (!job) return { ok: false, message: "Job not found." };
+    // SavedJob.jobSeekerId is the JobSeeker profile _id, not the User id — keying
+    // on ctx.userId never matched the existing row, so each save inserted a
+    // duplicate that the saved-jobs list could not see.
+    const seeker = await getSeeker(ctx.userId);
+    if (!seeker) return { ok: false, message: "Complete your profile before saving jobs." };
     await SavedJob.findOneAndUpdate(
-      { jobSeekerId: ctx.userId, jobId: job._id },
+      { jobSeekerId: seeker._id, jobId: job._id },
       { $setOnInsert: { savedAt: new Date() } },
       { upsert: true }
     );
@@ -203,7 +208,10 @@ export const mySavedJobsTool: CopilotTool<{ limit?: number }> = {
   summarize: () => "List my saved jobs",
   execute: async (args, ctx) => {
     await connectDB();
-    const saved = await SavedJob.find({ jobSeekerId: ctx.userId })
+    // Same id space as saveJobTool above: the JobSeeker profile _id.
+    const seeker = await getSeeker(ctx.userId);
+    if (!seeker) return { ok: true, message: "You have 0 saved job(s).", data: [] };
+    const saved = await SavedJob.find({ jobSeekerId: seeker._id })
       .sort({ savedAt: -1 })
       .limit(Math.min(args.limit ?? 10, 25))
       .populate("jobId", "title status location")

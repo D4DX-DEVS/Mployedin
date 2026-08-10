@@ -393,6 +393,8 @@
     "confirmDeleteState": "هل أنت متأكد أنك تريد حذف هذه الولاية؟",
     "reset": "إعادة تعيين",
     "saved": "تم الحفظ",
+    "remote": "عن بعد",
+    "locationFlexible": "الموقع مرن",
     "superAgentWorkspace": "مساحة عمل الوكيل الرئيسي",
     "currency": "العملة",
     "a11yFormProgress": "تقدم النموذج",
@@ -14503,6 +14505,23 @@
     "noRecentActivity": "لا يوجد نشاط حديث",
     "startApplying": "ابدأ في التقديم على الوظائف لمشاهدة نشاطك هنا",
     "recentActivity": "النشاط الحديث"
+  },
+  "jobSeekerSavedJobs": {
+    "title": "الوظائف المحفوظة",
+    "subtitle": "{count, plural, =0 {لم تحفظ أي وظائف بعد} one {وظيفة محفوظة واحدة} other {# وظائف محفوظة}}",
+    "saved": "تم الحفظ",
+    "savedToday": "اليوم",
+    "savedYesterday": "أمس",
+    "savedDaysAgo": "قبل {days} أيام",
+    "unsave": "إزالة",
+    "unsavedSuccess": "تم إزالة الوظيفة من المحفوظات",
+    "unsaveFailed": "فشل في إزالة الوظيفة. يرجى المحاولة مجدداً.",
+    "emptyTitle": "لم تحفظ أي وظائف بعد",
+    "emptyMessage": "ابدأ في حفظ الوظائف لإنشاء مجموعتك. يمكنك مراجعتها في أي وقت.",
+    "browseCta": "تصفح الوظائف",
+    "errorTitle": "تعذر تحميل الوظائف المحفوظة",
+    "errorMessage": "حدث خطأ ما. يرجى المحاولة لاحقاً.",
+    "endOfList": "لا مزيد من الوظائف للتحميل"
   },
   "availabilityCalendar": {
     "yourTimezone": "منطقتك الزمنية",

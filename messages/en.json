@@ -393,6 +393,8 @@
     "confirmDeleteState": "Are you sure you want to delete this state?",
     "reset": "Reset",
     "saved": "Saved",
+    "remote": "Remote",
+    "locationFlexible": "Location flexible",
     "superAgentWorkspace": "Super agent workspace",
     "currency": "Currency",
     "a11yFormProgress": "Form progress",
@@ -14503,6 +14505,23 @@
     "noRecentActivity": "No recent activity",
     "startApplying": "Start applying to jobs to see your activity here",
     "recentActivity": "Recent Activity"
+  },
+  "jobSeekerSavedJobs": {
+    "title": "Saved jobs",
+    "subtitle": "{count, plural, =0 {No saved jobs yet} one {# saved job} other {# saved jobs}}",
+    "saved": "Saved",
+    "savedToday": "today",
+    "savedYesterday": "yesterday",
+    "savedDaysAgo": "{days} days ago",
+    "unsave": "Unsave",
+    "unsavedSuccess": "Job removed from saved",
+    "unsaveFailed": "Failed to remove job. Please try again.",
+    "emptyTitle": "No saved jobs yet",
+    "emptyMessage": "Start saving jobs to build your collection. You can review them anytime.",
+    "browseCta": "Browse jobs",
+    "errorTitle": "Couldn't load saved jobs",
+    "errorMessage": "Something went wrong. Please try again later.",
+    "endOfList": "No more jobs to load"
   },
   "availabilityCalendar": {
     "yourTimezone": "Your Timezone",
