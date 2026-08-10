@@ -167,7 +167,13 @@ export async function sendEmail(payload: EmailPayload): Promise<{ messageId: str
   // Build List-Unsubscribe headers (RFC 8058) if userId is provided
   const headers: Record<string, string> = {};
   if (payload.userId && process.env.NEXTAUTH_SECRET) {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? process.env.NEXTAUTH_URL ?? "https://mployedin.com";
+    // Same precedence as lib/http/publicOrigin.ts and lib/auth/config.ts —
+    // skipping NEXT_PUBLIC_APP_URL sent staging unsubscribe links to production.
+    const baseUrl =
+      process.env.NEXT_PUBLIC_BASE_URL ??
+      process.env.NEXTAUTH_URL ??
+      process.env.NEXT_PUBLIC_APP_URL ??
+      "https://mployedin.com";
     const token = jwt.sign({ userId: payload.userId, action: "unsubscribe" }, process.env.NEXTAUTH_SECRET, { expiresIn: "90d" });
     const unsubUrl = `${baseUrl}/api/unsubscribe?token=${token}`;
     headers["List-Unsubscribe"] = `<${unsubUrl}>`;

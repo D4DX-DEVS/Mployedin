@@ -1383,6 +1383,14 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 descriptionAr: "جدول المقابلات القادمة",
               },
               {
+                title: "Saved Jobs",
+                titleAr: "الوظائف المحفوظة",
+                href: p("/job-seeker/saved-jobs"),
+                icon: "Heart",
+                description: "Your saved jobs",
+                descriptionAr: "وظائفك المحفوظة",
+              },
+              {
                 title: "Offers",
                 titleAr: "العروض",
                 href: p("/job-seeker/offers"),

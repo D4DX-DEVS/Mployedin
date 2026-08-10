@@ -94,8 +94,11 @@ export function DashboardStatCards({
             index % 2 === 1 ? "border-s" : ""
           } ${index >= 2 ? "border-t lg:border-t-0" : ""} ${index > 0 ? "lg:border-s" : ""}`}
         >
-          <div className="flex items-center justify-between gap-2">
-            <span className="truncate text-[10px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
+          <div className="flex items-start justify-between gap-2">
+            {/* Titles like "PENDING APPLICATIONS" lost their tail to `truncate`
+                in a 2-up 375px tile. Wrap to two lines on phones instead; the
+                4-up desktop row has the width to keep them on one. */}
+            <span className="min-w-0 text-[10px] font-semibold uppercase leading-4 tracking-[0.08em] text-muted-foreground sm:tracking-[0.13em] lg:truncate lg:leading-normal">
               {t(labelKey)}
             </span>
             <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg sm:h-8 sm:w-8 ${chip}`}>

@@ -219,9 +219,16 @@ export function Step3Requirements({ suggestedSkills = [] }: Step3RequirementsPro
                 max={50}
                 {...register("requirements.experienceMax", { valueAsNumber: true })}
                 className={cn(errors.requirements?.experienceMax && "border-destructive")}
+                aria-invalid={!!errors.requirements?.experienceMax}
               />
             </div>
           </div>
+
+          {errors.requirements?.experienceMax?.message && (
+            <p role="alert" className="text-xs font-medium text-destructive">
+              {errors.requirements.experienceMax.message}
+            </p>
+          )}
 
           <div className="flex flex-wrap gap-2">
             {EXPERIENCE_PRESETS.map((preset) => (

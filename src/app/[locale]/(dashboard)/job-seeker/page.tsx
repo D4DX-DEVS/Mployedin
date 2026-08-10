@@ -59,8 +59,11 @@ export default async function JobSeekerPage({
       status: { $nin: ["cancelled"] },
     }),
     SavedJob.countDocuments({ jobSeekerId: seekerId }),
+    // ProfileView.jobSeekerId holds the User id (that is what
+    // GET /api/job-seekers/[id] writes), not the JobSeeker profile _id — the
+    // sibling counters correctly use seekerId, this one must not.
     ProfileView.countDocuments({
-      jobSeekerId: seekerId,
+      jobSeekerId: seeker.userId,
       viewedAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
     }),
     Job.find({

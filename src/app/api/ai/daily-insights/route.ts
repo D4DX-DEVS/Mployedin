@@ -203,9 +203,10 @@ Return ONLY a JSON array (no markdown):
       insights = normalizeArabicInsights(insights);
     }
   } catch {
-    insights = isArabic
-      ? arabicFallbackInsights
-      : [{ type: "tip", title: "Get Started", message: text ? text.slice(0, 200) : "Complete your profile to unlock personalized daily insights.", action: "Check your dashboard" }];
+    // Never fall back to "Get Started / complete your profile" — it contradicts the
+    // completeness widget on an already-complete profile, and spilling raw unparsed
+    // model output into the UI is worse than a generic insight.
+    insights = isArabic ? arabicFallbackInsights : englishFallbackInsights;
   }
 
   return NextResponse.json({ insights, generatedAt: new Date().toISOString() });

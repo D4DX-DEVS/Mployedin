@@ -225,8 +225,16 @@ export function Step4SalarySettings() {
                 </motion.div>
               )}
 
+              {/* Every salary problem used to render the "max must be >= min"
+                  string, so a negative minimum was reported as the wrong fault.
+                  Prefer the actual field message. */}
               {errors.salary && (
-                <p className="text-xs text-destructive">{t("salaryError")}</p>
+                <p className="text-xs text-destructive">
+                  {errors.salary.min?.message ??
+                    errors.salary.max?.message ??
+                    errors.salary.message ??
+                    t("salaryError")}
+                </p>
               )}
 
               {presets.length > 0 && (

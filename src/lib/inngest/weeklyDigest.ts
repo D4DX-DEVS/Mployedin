@@ -107,31 +107,33 @@ export const weeklyDigestCron = inngest.createFunction(
 
         for (const user of batch) {
           try {
-            // Gather weekly stats
-            const [appCount, interviewCount, viewCount, seeker] = await Promise.all([
-              Application.countDocuments({
-                jobSeekerId: { $exists: true },
-                appliedAt: { $gte: weekAgo },
-              }).then(async (c) => {
-                // Need to filter by the actual seeker's jobSeekerId
-                const js = await JobSeeker.findOne({ userId: user.userId }).select("_id").lean();
-                if (!js) return 0;
-                return Application.countDocuments({
-                  jobSeekerId: js._id,
-                  appliedAt: { $gte: weekAgo },
-                });
-              }),
-              Interview.countDocuments({
-                userId: user.userId,
-                scheduledAt: { $gte: weekAgo },
-              }).catch(() => 0),
+            // Gather weekly stats. Application/Interview are keyed by the JobSeeker
+            // profile _id, ProfileView by the User id — resolve the profile once and
+            // scope each query to the id space it actually stores.
+            const seeker = await JobSeeker.findOne({ userId: user.userId })
+              .select("skills location preferredSalary experienceLevel")
+              .lean();
+
+            const [appCount, interviewCount, viewCount] = await Promise.all([
+              seeker
+                ? Application.countDocuments({
+                    jobSeekerId: seeker._id,
+                    appliedAt: { $gte: weekAgo },
+                  })
+                : 0,
+              // Was filtering on `userId`, which Interview does not have — always 0.
+              seeker
+                ? Interview.countDocuments({
+                    jobSeekerId: seeker._id,
+                    scheduledAt: { $gte: weekAgo },
+                  }).catch(() => 0)
+                : 0,
+              // Schema fields are `jobSeekerId` (a User id) and `viewedAt`;
+              // `profileUserId` did not exist, so this always counted 0.
               ProfileView.countDocuments({
-                profileUserId: user.userId,
-                createdAt: { $gte: weekAgo },
+                jobSeekerId: user.userId,
+                viewedAt: { $gte: weekAgo },
               }),
-              JobSeeker.findOne({ userId: user.userId })
-                .select("skills location preferredSalary experienceLevel")
-                .lean(),
             ]);
 
             // Match top 3 jobs for the "new matching jobs" section

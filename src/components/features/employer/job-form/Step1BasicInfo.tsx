@@ -382,7 +382,11 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
               className={cn(errors.location?.city && "border-destructive")}
             />
             {errors.location?.city && (
-              <p className="text-xs text-destructive">{t("validation.cityRequired")}</p>
+              // Showing "City is required" for a filled-but-invalid city (e.g.
+              // "12345") told the user the wrong thing. Prefer the real message.
+              <p className="text-xs text-destructive">
+                {errors.location.city.message ?? t("validation.cityRequired")}
+              </p>
             )}
           </div>
         </div>

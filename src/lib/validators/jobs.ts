@@ -21,7 +21,8 @@ const screeningQuestionSchema = z.object({
 
 const locationSchema = z.object({
   country: z.string().min(1).max(100),
-  city: z.string().min(1).max(100),
+  // Must contain at least one letter (any script) — blocks numeric-only junk.
+  city: z.string().min(1).max(100).regex(/\p{L}/u, "Enter a valid city name"),
   isRemote: z.boolean().default(false),
 });
 

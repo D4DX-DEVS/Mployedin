@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { sanitizeAIInput, AI_TOKEN_LIMITS, redactPII } from "@/lib/ai/sanitize";
 import { generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
+import logger from "@/lib/logger";
 
 interface SuggestionsResponse {
   titles: string[];
@@ -70,15 +71,26 @@ Rules:
 - experience: realistic for mid-level hire
 - No extra text, only valid JSON`;
 
-  const raw = redactPII(
-    await generateText(prompt, GEMINI_MODELS.flash, AI_TOKEN_LIMITS.skills_suggest)
-  ).replace(/```json\n?|```/g, "").trim();
+  // Suggestions are a convenience, never a blocker: a provider outage or a reply
+  // we can't parse must degrade quietly instead of logging a 500 per keystroke.
+  let raw: string;
+  try {
+    raw = redactPII(
+      await generateText(prompt, GEMINI_MODELS.flash, AI_TOKEN_LIMITS.skills_suggest)
+    )
+      .replace(/```json\n?|```/g, "")
+      .trim();
+  } catch (err) {
+    logger.warn({ err }, "[Job suggestions] provider call failed");
+    return NextResponse.json({ error: "Suggestions unavailable" }, { status: 503 });
+  }
 
   let suggestions: SuggestionsResponse;
   try {
     suggestions = JSON.parse(raw) as SuggestionsResponse;
   } catch {
-    return NextResponse.json({ error: "AI response could not be parsed. Please try again." }, { status: 500 });
+    logger.warn("[Job suggestions] unparseable AI response");
+    return NextResponse.json({ error: "Suggestions unavailable" }, { status: 503 });
   }
 
   return NextResponse.json({ suggestions });

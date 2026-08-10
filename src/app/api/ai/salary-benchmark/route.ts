@@ -89,7 +89,15 @@ Research the typical market salary ranges for this role and respond with ONLY a 
 
 Base the numbers on real market data for this currency and period. For example if period is monthly and currency is AED, provide typical AED monthly amounts for Dubai market.`;
 
-    const rawText = (await generateText(prompt, GEMINI_MODELS.flash, 400)).trim();
+    // A provider outage here is expected and non-fatal — the widget already
+    // shows "Could not load market data." Report unavailable, not a crash.
+    let rawText: string;
+    try {
+      rawText = (await generateText(prompt, GEMINI_MODELS.flash, 400)).trim();
+    } catch (err) {
+      logger.warn({ err }, "[Salary Benchmark] provider call failed");
+      return NextResponse.json({ error: "Benchmark unavailable" }, { status: 503 });
+    }
 
     let benchmark: unknown;
     try {

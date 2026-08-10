@@ -42,6 +42,10 @@ interface PaginationControlsProps {
   onPageChange: (page: number) => void;
   onLimitChange: (limit: number) => void;
   className?: string;
+  /** Rows actually rendered on this page. Pass it when the list collapses or
+   *  filters rows client-side (e.g. interviews dedupe rounds), otherwise the
+   *  footer claims a range wider than what the user can see. */
+  shown?: number;
 }
 
 export function PaginationControls({
@@ -52,16 +56,24 @@ export function PaginationControls({
   onPageChange,
   onLimitChange,
   className = "",
+  shown,
 }: PaginationControlsProps) {
   const t = useTranslations("employerCommon");
   const { locale } = useParams<{ locale: string }>();
-  const from = total === 0 ? 0 : (page - 1) * limit + 1;
-  const to = Math.min(page * limit, total);
+  const from = total === 0 || shown === 0 ? 0 : (page - 1) * limit + 1;
+  const to =
+    shown === undefined
+      ? Math.min(page * limit, total)
+      : from === 0
+        ? 0
+        : from + shown - 1;
 
   return (
     <div
       className={cn(
-        "flex flex-row items-center justify-between gap-2 text-xs sm:gap-3 sm:text-[13px]",
+        // pb-* keeps the last-page button clear of the floating Copilot FAB
+        // (fixed bottom-20/bottom-4, right-4), which used to sit on top of it.
+        "flex flex-row items-center justify-between gap-2 pb-20 text-xs sm:gap-3 sm:text-[13px] lg:pb-16",
         className
       )}
     >
