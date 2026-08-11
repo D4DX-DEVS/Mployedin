@@ -36,18 +36,31 @@ jest.mock("@/models/ApplicationFeedback", () => ({
   },
 }));
 
+// jobSeekerId is a JobSeeker._id, NOT the User._id in ctx.userId — keep these
+// two ids distinct so the ownership check is exercised the way production sees it.
 jest.mock("@/models/Application", () => ({
   __esModule: true,
   default: {
     findById: jest.fn().mockReturnValue({
       lean: jest.fn().mockResolvedValue({
         _id: "app_001",
-        userId: "user_001",
-        jobSeekerId: "user_001",
+        jobSeekerId: "seeker_001",
         status: "rejected",
         jobId: "job_001",
         employerId: "emp_001",
       }),
+    }),
+  },
+}));
+
+// Resolves User._id → JobSeeker._id. Returning a different _id simulates
+// somebody else's application.
+const mockSeekerLean = jest.fn().mockResolvedValue({ _id: "seeker_001" });
+jest.mock("@/models/JobSeeker", () => ({
+  __esModule: true,
+  default: {
+    findOne: jest.fn().mockReturnValue({
+      select: jest.fn().mockReturnValue({ lean: (...a: unknown[]) => mockSeekerLean(...a) }),
     }),
   },
 }));
@@ -61,6 +74,7 @@ describe("Application Feedback API", () => {
     jest.clearAllMocks();
     (feedbackChainable.lean as jest.Mock).mockResolvedValue(mockFeedback);
     mockFeedbackFindOne.mockReturnValue({ lean: jest.fn().mockResolvedValue(null) });
+    mockSeekerLean.mockResolvedValue({ _id: "seeker_001" });
   });
 
   describe("GET /api/application-feedback", () => {
@@ -101,6 +115,37 @@ describe("Application Feedback API", () => {
         headers: { "Content-Type": "application/json" },
       });
       const ctx = { userId: "user_001", role: "employer" };
+      const res = await (POST as Function)(req, ctx);
+
+      expect(res.status).toBe(403);
+    });
+
+    it("rejects feedback on another job seeker's application (403)", async () => {
+      mockSeekerLean.mockResolvedValue({ _id: "seeker_999" });
+
+      const { POST } = await import("@/app/api/application-feedback/route");
+      const req = new NextRequest("http://localhost/api/application-feedback", {
+        method: "POST",
+        body: JSON.stringify({ applicationId: "app_001", rating: 4 }),
+        headers: { "Content-Type": "application/json" },
+      });
+      const ctx = { userId: "user_001", role: "job_seeker" };
+      const res = await (POST as Function)(req, ctx);
+
+      expect(res.status).toBe(403);
+      expect(mockFeedbackCreate).not.toHaveBeenCalled();
+    });
+
+    it("rejects when the caller has no job seeker profile (403)", async () => {
+      mockSeekerLean.mockResolvedValue(null);
+
+      const { POST } = await import("@/app/api/application-feedback/route");
+      const req = new NextRequest("http://localhost/api/application-feedback", {
+        method: "POST",
+        body: JSON.stringify({ applicationId: "app_001", rating: 4 }),
+        headers: { "Content-Type": "application/json" },
+      });
+      const ctx = { userId: "user_001", role: "job_seeker" };
       const res = await (POST as Function)(req, ctx);
 
       expect(res.status).toBe(403);

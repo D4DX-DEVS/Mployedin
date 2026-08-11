@@ -17,21 +17,29 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
   if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
 
-  const interview = await Interview.findById(params?.id).select("employerId jobSeekerId applicationId").lean();
+  const interview = await Interview.findById(params?.id).select("employerId jobSeekerId applicationId status").lean();
   if (!interview) return NextResponse.json({ error: "Interview not found" }, { status: 404 });
 
-  // Restricit to employer-side roles and the candidate's own interview
+  // Restrict to employer-side roles and the candidate's own interview
+  let isCandidate = false;
   if (ctx.role === "employer") {
     const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
     if (!emp || String(interview.employerId) !== String(emp._id)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
   } else if (ctx.role === "job_seeker") {
-    // Candidates can only view their own scorecard after the interview is completed
-    const scorecard = await Scorecard.findOne({ interviewId: params?.id }).lean();
-    if (!scorecard || String(interview.jobSeekerId) !== ctx.userId) {
+    // Candidates can only view their own scorecard, and only once the interview
+    // is completed. interview.jobSeekerId is a JobSeeker._id, not a User._id —
+    // comparing it to ctx.userId directly 403'd the rightful candidate.
+    const JobSeeker = (await import("@/models/JobSeeker")).default;
+    const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select("_id").lean();
+    if (!seeker || String(interview.jobSeekerId) !== String(seeker._id)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+    if (interview.status !== "completed") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    isCandidate = true;
   } else if (!["agent", "super_agent", "admin"].includes(ctx.role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -39,6 +47,26 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
   const scorecard = await Scorecard.findOne({ interviewId: params?.id })
     .populate("evaluatedBy", "name email")
     .lean();
+
+  // Candidate-facing view: an explicit allow-list, not a strip-list, so any
+  // employer-private field added to the Scorecard model later is withheld by
+  // default rather than leaking until someone remembers to exclude it.
+  // Withheld on purpose: notes, concerns, recommendation, evaluatedBy — the
+  // panel's internal deliberation and hiring verdict.
+  if (isCandidate && scorecard) {
+    const sc = scorecard as Record<string, unknown>;
+    return NextResponse.json({
+      scorecard: {
+        _id: sc._id,
+        interviewId: sc.interviewId,
+        applicationId: sc.applicationId,
+        scores: sc.scores,
+        overallScore: sc.overallScore,
+        strengths: sc.strengths,
+        createdAt: sc.createdAt,
+      },
+    });
+  }
 
   return NextResponse.json({ scorecard: scorecard ?? null });
 }

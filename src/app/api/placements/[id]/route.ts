@@ -93,7 +93,20 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     }
   }
 
-  Object.assign(placement, body);
+  // Commission and attribution belong to the agent/admin side of the placement.
+  // placementUpdateSchema accepts commissionPaid/commissionAmount, so without this
+  // filter an employer who owns the placement could PATCH the agent's earnings to
+  // zero.
+  if (ctx.role === "employer") {
+    const {
+      commissionPaid: _cp,
+      commissionAmount: _ca,
+      ...employerSafe
+    } = body as Record<string, unknown>;
+    Object.assign(placement, employerSafe);
+  } else {
+    Object.assign(placement, body);
+  }
   await placement.save();
 
   await logActivity({

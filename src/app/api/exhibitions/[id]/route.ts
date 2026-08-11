@@ -133,6 +133,30 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
   /*  Super Agent / Admin: status transitions + budget management        */
   /* ------------------------------------------------------------------ */
   if (ctx.role === "super_agent" || ctx.role === "admin") {
+    // Jurisdiction: a super-agent may only review requests from their own team.
+    // The status transitions below were role-gated but never scope-gated, so any
+    // super-agent could approve/reject any agent's request platform-wide. This was
+    // unreachable while the route guard blocked super_agent entirely; it becomes
+    // live now that exhibitions:update is granted, so the check has to exist here.
+    // agentId stores the Agent's User._id, so team profile ids are mapped to userIds
+    // (same mapping as GET /api/exhibitions).
+    if (ctx.role === "super_agent") {
+      const { getSuperAgentScope } = await import("@/lib/auth/agentRestrictions");
+      const Agent = (await import("@/models/Agent")).default;
+      const scope = await getSuperAgentScope(ctx.userId);
+      const teamProfileIds = scope?.effectiveAgentIds ?? [];
+      const teamUserIds = teamProfileIds.length
+        ? (await Agent.find({ _id: { $in: teamProfileIds } }).select("userId").lean())
+            .map((a) => String(a.userId))
+        : [];
+      if (!teamUserIds.includes(item.agentId.toString())) {
+        return NextResponse.json(
+          { error: "Forbidden — this request is not from your team" },
+          { status: 403 },
+        );
+      }
+    }
+
     const {
       status,
       reviewNote,

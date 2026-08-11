@@ -6,6 +6,7 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
 import { commissionUpdateSchema } from "@/lib/validators/commissions";
 import { isValidObjectId } from "@/lib/security/sanitize";
+import { canAccess } from "@/lib/permissions/matrix";
 import { dispatchWebhook } from "@/lib/integrations/webhookDispatcher";
 import { notifyCommissionApproved, notifyCommissionPaid } from "@/lib/notifications/trigger";
 import Agent from "@/models/Agent";
@@ -69,6 +70,29 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   }
 
   const body = await validateBody(req, commissionUpdateSchema);
+
+  // Approval vs financial edit are different privileges. The route guard is
+  // commissions:update, which super_agent does not hold — so its whole commission
+  // approval flow (the super-agent commissions page) used to 403, even though the
+  // matrix grants it commissions:approve and no route consumed that grant.
+  //
+  // Rather than widening super_agent to full update (which would let it rewrite
+  // amount and rate), an approve-only role may move a commission to approved or
+  // disputed and annotate it; changing money, or settling it as paid/clawed_back,
+  // still requires commissions:update.
+  const FINANCIAL_FIELDS = ["amount", "rate", "currency", "type", "paymentRef", "clawbackAmount"] as const;
+  const SETTLEMENT_STATUSES = ["paid", "clawed_back"];
+  const mayUpdate = canAccess(ctx.role, "commissions", "update");
+  if (!mayUpdate) {
+    const touchesMoney = FINANCIAL_FIELDS.some((f) => body[f] !== undefined);
+    const settles = body.status !== undefined && SETTLEMENT_STATUSES.includes(body.status);
+    if (touchesMoney || settles || !canAccess(ctx.role, "commissions", "approve")) {
+      return NextResponse.json(
+        { error: "Forbidden — approving a commission does not permit editing or settling it" },
+        { status: 403 },
+      );
+    }
+  }
 
   // Guard: block financial field edits on finalized (approved/paid) commissions
   const LOCKED_STATUSES = ["approved", "paid"] as const;
@@ -226,5 +250,9 @@ async function deleteHandler(req: NextRequest, ctx: AuthCtx, params?: Record<str
 }
 
 export const GET = withAuth(getHandler, { resource: "commissions", action: "read" });
-export const PATCH = withAuth(patchHandler, { resource: "commissions", action: "update" });
+// Guarded on "read", not "update": approve-only roles (super_agent) must reach the
+// handler, which then splits approval from financial edits. Ownership is enforced
+// by canAccessCommission, and roles without any commissions permission are still
+// rejected by this guard.
+export const PATCH = withAuth(patchHandler, { resource: "commissions", action: "read" });
 export const DELETE = withAuth(deleteHandler, { resource: "commissions", action: "delete" });

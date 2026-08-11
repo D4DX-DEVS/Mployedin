@@ -7,6 +7,7 @@ import JobSeeker from "@/models/JobSeeker";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
 import { bulkActionSchema } from "@/lib/validators/applications";
+import { sanitizeHtml } from "@/lib/security/html";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import Agent from "@/models/Agent";
 import { getSuperAgentEmployerIds } from "@/lib/auth/agentRestrictions";
@@ -191,7 +192,9 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
                 .replace(/\{\{companyName\}\}/g, companyName);
               emailContent = {
                 subject: interpolatedSubject,
-                html: wrapEmailHtml(interpolated),
+                // Employer-authored HTML goes to a candidate's inbox — strip
+                // scripts/handlers/iframes before sending.
+                html: wrapEmailHtml(sanitizeHtml(interpolated)),
               };
             } else {
               // Use default template
@@ -226,7 +229,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
             await sendEmail({
               to: seekerEmail,
               subject,
-              html: wrapEmailHtml(body),
+              html: wrapEmailHtml(sanitizeHtml(body)),
               userId: seekerUserId || undefined,
               source: "bulk-message",
               category: "applications",

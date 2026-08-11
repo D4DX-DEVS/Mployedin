@@ -65,7 +65,11 @@ const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
     reports: ["read", "export"],
     ai_assistant: ["read"],
     subscriptions: ["create", "read", "update"],
-    exhibitions: ["read", "approve"],
+    // "update" is what PATCH /api/exhibitions/[id] guards on, and that route is
+    // the only implementation of the super-agent review flow (status transitions,
+    // budget notes) driven by super-agent/exhibitions/page.tsx:206. Without it the
+    // entire approval workflow 403'd. Team jurisdiction is enforced in-handler.
+    exhibitions: ["read", "update", "approve"],
     resources: ["read"],
     targets: ["create", "read", "update"],
     // Read-only oversight of offers across the portfolio.
@@ -79,7 +83,11 @@ const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
     applications: ["read", "update", "export"],
     interviews: ["create", "read", "update"],
     placements: ["read"],
-    leads: ["create", "read", "update"],
+    // "delete" covers the Trash action on the agent leads page; the route
+    // (leads/[id]:139 via verifyLeadAccess) restricts it to the agent's own
+    // leads. Without it that button 403'd, and POST /api/leads/bulk already
+    // hard-deleted the same rows under its leads:update guard.
+    leads: ["create", "read", "update", "delete"],
     commissions: ["read"],
     employers: ["create", "read", "update"],
     job_seekers: ["read", "update"],
@@ -89,7 +97,11 @@ const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
     ai_match: ["read"],
     ai_assistant: ["read"],
     subscriptions: ["create", "read"],
-    exhibitions: ["create", "read"],
+    // "update"/"delete" are needed for the agent's own exhibition request: PATCH
+    // and DELETE /api/exhibitions/[id] (agent/exhibitions/page.tsx:351,387). The
+    // handler restricts both to item.agentId === self and to draft/submitted/
+    // revision_requested states, so this is not broader than the UI implies.
+    exhibitions: ["create", "read", "update", "delete"],
     resources: ["read"],
     targets: ["read"],
     // Agents create/manage offers on behalf of their assigned employers; the

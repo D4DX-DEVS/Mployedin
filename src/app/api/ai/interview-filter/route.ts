@@ -24,6 +24,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
 
+    // Recruiter-side tool — gate the role explicitly. Do not rely on
+    // enforceFeatureGate for this: it currently returns null unconditionally
+    // while the payment gateway is unimplemented, so it gates nothing.
+    const userRole = (session.user as unknown as { role: string }).role;
+    if (!["employer", "agent", "super_agent", "admin"].includes(userRole)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const __aiQuota = await enforceDailyAiQuota(session.user.id as string, (session.user as { role: string }).role);
     if (__aiQuota) return __aiQuota;
 

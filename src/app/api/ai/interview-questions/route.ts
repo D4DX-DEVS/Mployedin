@@ -24,6 +24,12 @@ export async function POST(req: NextRequest) {
 
     // Subscription feature gate
     const userRole = (session.user as unknown as { role: string }).role;
+    // enforceFeatureGate returns null unconditionally while the payment gateway
+    // is unimplemented, so it cannot be relied on to keep candidates out of
+    // recruiter tooling. Gate the role explicitly.
+    if (!["employer", "agent", "super_agent", "admin"].includes(userRole)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
     const gateErr = await enforceFeatureGate(session.user.id!, userRole, { type: "ai", feature: "ai_interview_questions" });
     if (gateErr) return gateErr;
 
@@ -167,7 +173,31 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "interviewId is required" }, { status: 400 });
     }
 
+    // These are the employer's prepared questions. Without a role + ownership
+    // check any authenticated user could read them by passing an interviewId —
+    // including the candidate who is about to be asked them.
+    const userRole = (session.user as unknown as { role: string }).role;
+    if (!["employer", "agent", "super_agent", "admin"].includes(userRole)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     await connectDB();
+
+    if (userRole === "employer") {
+      const { default: Interview } = await import("@/models/Interview");
+      const { Employer } = await import("@/models/Employer");
+      const interview = await Interview.findById(interviewId).select("employerId").lean();
+      if (!interview) {
+        return NextResponse.json({ error: "Interview not found" }, { status: 404 });
+      }
+      const employer = await Employer.findOne({ userId: session.user.id }).select("_id").lean();
+      if (
+        !employer ||
+        String((interview as { employerId?: unknown }).employerId) !== String(employer._id)
+      ) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    }
 
     const saved = await InterviewQuestion.find({ interviewId })
       .sort({ createdAt: -1 })

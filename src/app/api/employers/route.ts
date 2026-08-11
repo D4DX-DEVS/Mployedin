@@ -218,6 +218,18 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const distinct = searchParams.get("distinct");
 
   const query: Record<string, unknown> = { role: "employer" };
+
+  // Agent and super_agent are scoped above. Without this branch the employer role
+  // falls through to the admin-shaped query and can enumerate every company on
+  // the platform — the profile projection below includes companyEmail, phone,
+  // address, taxId and verificationDocs.
+  if (ctx.role === "employer") {
+    const ownProfile = await Employer.findOne({ userId: ctx.userId }).select("userId").lean();
+    if (!ownProfile) {
+      return NextResponse.json({ error: "Employer profile not found" }, { status: 404 });
+    }
+    query._id = ownProfile.userId;
+  }
   if (status === "active") query.isActive = true;
   else if (status === "inactive") query.isActive = false;
   else query.isActive = true; // default to active

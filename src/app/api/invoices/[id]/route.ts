@@ -67,7 +67,9 @@ async function getHandler(
   const invoice = await Invoice.findById(params?.id)
     .populate("jobId", "title")
     .populate("employerId", "companyName companyEmail phone address country taxId")
-    .populate("agentId", "userId commissionRate")
+    // commissionRate is internal to the agent/admin side — an employer reading
+    // their own recruitment invoice must not receive it.
+    .populate("agentId", ctx.role === "employer" ? "userId" : "userId commissionRate")
     .populate("createdBy", "name role")
     .populate("payments.recordedBy", "name email")
     .lean();

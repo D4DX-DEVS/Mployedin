@@ -582,7 +582,13 @@ export default function AgentLeadsPage() {
   const handleDelete = async (id: string) => {
     const ok = await confirmDialog(t("confirmDeleteLead"));
     if (!ok) return;
-    await fetch(`/api/leads/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/leads/${id}`, { method: "DELETE" });
+    // Was unchecked: a 403 from the permission guard left the row on screen with
+    // no message, reading as a delete that silently did nothing.
+    if (!res.ok) {
+      toast.error(t("failedToDeleteLead"));
+      return;
+    }
     fetchLeads();
   };
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
+import { canAccess } from "@/lib/permissions/matrix";
 import { connectDB } from "@/lib/db/mongoose";
 import Lead from "@/models/Lead";
 import Agent from "@/models/Agent";
@@ -67,6 +68,12 @@ export const POST = withAuth(async (req: NextRequest, ctx: AuthCtx) => {
       break;
     }
     case "delete": {
+      // The route guard is leads:update, so without this the destructive branch
+      // would run for any role holding only update — a hard deleteMany laundered
+      // through a weaker permission.
+      if (!canAccess(ctx.role, "leads", "delete")) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
       const res = await Lead.deleteMany(filter);
       result.deleted = res.deletedCount;
       break;

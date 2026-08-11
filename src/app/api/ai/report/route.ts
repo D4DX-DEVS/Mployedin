@@ -166,7 +166,9 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     Application.countDocuments({ createdAt: { $gte: startOfMonth } }),
     Application.countDocuments({ createdAt: { $gte: startOfLastMonth, $lt: startOfMonth } }),
     Application.countDocuments({ status: "hired" }),
-    Application.countDocuments({ status: "interview" }),
+    // "interview" is not in the Application.status enum — this counted nothing and
+    // always reported 0. The stored value is "interview_scheduled".
+    Application.countDocuments({ status: "interview_scheduled" }),
     Application.countDocuments({ status: "offer" }),
   ]);
 

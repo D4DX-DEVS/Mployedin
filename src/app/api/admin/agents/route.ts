@@ -356,6 +356,30 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
     }
   }
 
+  // Team membership is stored twice — Agent.superAgentId and SuperAgent.agentIds[] —
+  // and only the creation paths maintained the array ($addToSet at :259, admin/users:295,
+  // super-agent/agents:242). Reassigning here used to write superAgentId alone, so:
+  //   • the previous super-agent kept the agent in agentIds forever (no $pull anywhere),
+  //     retaining team-level access to their leads, commissions and even
+  //     PATCH /api/super-agent/agents/[id] (commissionRate, isActive), and
+  //   • the new super-agent never gained them in teamAgentIds, so scope-based routes
+  //     stayed blind while reverse-lookup ones (invoices/uninvoiced-placements:51)
+  //     already showed them.
+  // Keep both sides in step whenever the owning super-agent changes.
+  if (superAgentId !== undefined) {
+    const current = await Agent.findOne({ userId }).select("_id superAgentId").lean();
+    const previousSaId = current?.superAgentId ? String(current.superAgentId) : null;
+    const nextSaId = superAgentId ? String(superAgentId) : null;
+    if (current?._id && previousSaId !== nextSaId) {
+      if (previousSaId) {
+        await SuperAgent.findByIdAndUpdate(previousSaId, { $pull: { agentIds: current._id } });
+      }
+      if (nextSaId) {
+        await SuperAgent.findByIdAndUpdate(nextSaId, { $addToSet: { agentIds: current._id } });
+      }
+    }
+  }
+
   if (Object.keys(profileUpdate).length > 0) {
     await Agent.findOneAndUpdate(
       { userId },

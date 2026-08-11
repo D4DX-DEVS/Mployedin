@@ -53,6 +53,11 @@ async function deleteHandler(req: NextRequest, ctx: AuthContext, params?: Record
   if (roleErr) return roleErr;
   await connectDB();
   const id = params?.id;
+  // Same check PATCH does — without it a malformed id reached Mongoose and threw
+  // CastError, surfacing as a 500 instead of a 400.
+  if (!id || !mongoose.isValidObjectId(id)) {
+    return NextResponse.json({ error: "Invalid task ID" }, { status: 400 });
+  }
 
   const result = await AgentTask.deleteOne({ _id: id, userId: ctx.userId });
   if (result.deletedCount === 0) {

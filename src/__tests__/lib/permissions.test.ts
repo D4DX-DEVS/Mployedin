@@ -64,6 +64,18 @@ describe("RBAC Permission Matrix", () => {
     it("should NOT be able to delete users", () => {
       expect(canAccess("agent", "users", "delete")).toBe(false);
     });
+
+    // These back UI actions that shipped without the matching permission and
+    // therefore 403'd: the Trash button on the leads page, and edit/delete of the
+    // agent's own exhibition request. Ownership is enforced in the route handlers.
+    it("should be able to delete its own leads", () => {
+      expect(canAccess("agent", "leads", "delete")).toBe(true);
+    });
+
+    it("should be able to edit and delete its own exhibition requests", () => {
+      expect(canAccess("agent", "exhibitions", "update")).toBe(true);
+      expect(canAccess("agent", "exhibitions", "delete")).toBe(true);
+    });
   });
 
   describe("Super Agent role", () => {
@@ -74,6 +86,14 @@ describe("RBAC Permission Matrix", () => {
 
     it("should be able to read agents", () => {
       expect(canAccess("super_agent", "agents", "read")).toBe(true);
+    });
+
+    // PATCH /api/exhibitions/[id] guards on exhibitions:update, and that route is
+    // the only implementation of the super-agent review/approve flow — without this
+    // the whole approval workflow 403'd.
+    it("should be able to review exhibition requests", () => {
+      expect(canAccess("super_agent", "exhibitions", "update")).toBe(true);
+      expect(canAccess("super_agent", "exhibitions", "approve")).toBe(true);
     });
 
     it("should NOT be able to impersonate users", () => {
