@@ -776,7 +776,7 @@ export function JobSeekerHomePage({
                       const statusLabel =
                         app.status === "selected"
                           ? t("statuses.selected")
-                          : app.status === "interview"
+                          : app.status === "interview_scheduled"
                           ? t("statuses.interview")
                           : app.status === "rejected"
                           ? t("statuses.rejected")
@@ -784,7 +784,7 @@ export function JobSeekerHomePage({
                       const statusClass =
                         app.status === "selected"
                           ? "text-[hsl(var(--status-selected))] bg-[hsl(var(--status-selected-bg))] border-[hsl(var(--status-selected)/0.2)]"
-                          : app.status === "interview"
+                          : app.status === "interview_scheduled"
                           ? "text-[hsl(var(--status-interview))] bg-[hsl(var(--status-interview-bg))] border-[hsl(var(--status-interview)/0.2)]"
                           : app.status === "rejected"
                           ? "text-[hsl(var(--status-rejected))] bg-[hsl(var(--status-rejected-bg))] border-[hsl(var(--status-rejected)/0.2)]"

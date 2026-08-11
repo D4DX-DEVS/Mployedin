@@ -29,6 +29,10 @@ interface UserRow {
 interface ImpersonateResult {
   success: boolean;
   target?: { id: string; name: string; email: string; role: string };
+  /** Employer whose workspace the admin has entered */
+  companyName?: string;
+  /** Where to go to actually work inside that account */
+  redirectTo?: string;
   error?: string;
 }
 
@@ -75,7 +79,16 @@ export default function AdminUserImpersonatePage() {
       const data = await res.json();
       if (res.ok && data.success) {
         setImpersonateResult(data);
-        toast.success("Impersonation session started");
+        toast.success(
+          data.companyName
+            ? `Now working inside ${data.companyName}`
+            : "Impersonation session started"
+        );
+        // The session only takes effect once we navigate into the employer
+        // workspace — withAuth swaps identity per request from the signed cookie.
+        // A full document load (not the client router) so the cookie is sent and
+        // the server re-resolves identity instead of reusing admin-rendered RSC.
+        if (data.redirectTo) window.location.href = data.redirectTo;
       } else {
         toast.error(data.error || "Failed to start impersonation");
       }

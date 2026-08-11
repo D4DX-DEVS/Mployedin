@@ -125,5 +125,8 @@ async function deleteHandler(req: NextRequest, ctx: { userId: string; role: stri
 }
 
 export const GET = withAuth(getHandler);
-export const PATCH = withAuth(patchHandler);
-export const DELETE = withAuth(deleteHandler);
+// See talent-pools/route.ts: employers:update stands in for a talent_pools resource
+// the matrix does not define, and declaring it is what activates withAuth's
+// read-only sub-role enforcement.
+export const PATCH = withAuth(patchHandler, { resource: "employers", action: "update" });
+export const DELETE = withAuth(deleteHandler, { resource: "employers", action: "update" });

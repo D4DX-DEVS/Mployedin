@@ -14,7 +14,11 @@ interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
 const bulkActionSchema = z.object({
   leadIds: z.array(z.string()).min(1).max(50),
-  action: z.enum(["move_status", "delete", "assign"]),
+  // "assign" was accepted here but had no case in the switch below, so it fell to
+  // default and returned 400 "Unknown action" — advertising an action that does not
+  // exist. Dropped until lead reassignment is actually implemented (who may reassign,
+  // and whether the new owner is notified, are open questions).
+  action: z.enum(["move_status", "delete"]),
   params: z.object({
     status: z.enum(["new", "contacted", "interested", "negotiating", "converted", "lost"]).optional(),
     lostReason: z.string().max(500).optional(),

@@ -101,5 +101,7 @@ async function deleteHandler(req: NextRequest, ctx: AuthCtx) {
   return NextResponse.json({ success: true });
 }
 
-export const POST = withAuth(postHandler);
-export const DELETE = withAuth(deleteHandler);
+// Writes Employer.logo, so it declares the matching permission — which is also what
+// makes withAuth apply its read-only sub-role check (withAuth.ts:270).
+export const POST = withAuth(postHandler, { resource: "employers", action: "update" });
+export const DELETE = withAuth(deleteHandler, { resource: "employers", action: "update" });

@@ -55,4 +55,8 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
 }
 
 export const GET = withAuth(getHandler);
-export const POST = withAuth(postHandler);
+// Guarded so withAuth's read-only sub-role check applies (withAuth.ts:270 skips it
+// when no resource/action is declared). There is no talent_pools resource in the
+// matrix; talent pools are employer-owned data, and employers:update is held by
+// employer, agent and admin — the only roles with a UI path here.
+export const POST = withAuth(postHandler, { resource: "employers", action: "update" });

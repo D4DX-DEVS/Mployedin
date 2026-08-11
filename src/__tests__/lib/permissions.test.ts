@@ -78,6 +78,41 @@ describe("RBAC Permission Matrix", () => {
     });
   });
 
+  // A custom permission map is a restriction on the role, not a replacement for it.
+  // Before this, canAccess returned from the custom map alone and never consulted the
+  // role, so a job_seeker could be granted employer/admin actions — and live accounts
+  // were provisioned that way.
+  describe("Custom permissions", () => {
+    const custom = (customPermissions: Record<string, string[]>) => ({
+      permissionMode: "custom" as const,
+      customPermissions: customPermissions as never,
+    });
+
+    it("cannot grant a job seeker actions the role never has", () => {
+      const opts = custom({ jobs: ["create", "read", "update", "delete"], employers: ["update"] });
+      expect(canAccess("job_seeker", "jobs", "create", opts)).toBe(false);
+      expect(canAccess("job_seeker", "jobs", "delete", opts)).toBe(false);
+      expect(canAccess("job_seeker", "employers", "update", opts)).toBe(false);
+    });
+
+    it("still narrows within the role", () => {
+      // employer's default is applications: ["read", "update"]
+      const opts = custom({ applications: ["read"] });
+      expect(canAccess("employer", "applications", "read", opts)).toBe(true);
+      expect(canAccess("employer", "applications", "update", opts)).toBe(false);
+    });
+
+    it("keeps an action the role and the custom map agree on", () => {
+      const opts = custom({ jobs: ["read"] });
+      expect(canAccess("job_seeker", "jobs", "read", opts)).toBe(true);
+    });
+
+    it("denies a resource absent from the custom map even when the role allows it", () => {
+      const opts = custom({ jobs: ["read"] });
+      expect(canAccess("employer", "applications", "read", opts)).toBe(false);
+    });
+  });
+
   describe("Super Agent role", () => {
     it("should be able to manage commissions", () => {
       expect(canAccess("super_agent", "commissions", "read")).toBe(true);
