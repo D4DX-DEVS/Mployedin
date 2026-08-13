@@ -68,7 +68,7 @@ jest.mock("@/models/Employer", () => ({
 }));
 
 const mockCreateCompanyUser = jest.fn().mockResolvedValue(undefined);
-const mockGetDefaultPermissions = jest.fn(() => ({
+const mockGetDefaultPermissions = jest.fn((..._args: unknown[]) => ({
   canCreateJobs: true,
   canManageTeam: true,
   canViewAnalytics: true,

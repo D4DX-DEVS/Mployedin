@@ -33,7 +33,7 @@ export default async function JobSeekerPage({
     .select(
       "_id userId skills preferredCountries preferredRoles preferredSalary preferredJobType " +
         "experience education languages summary profileCompleteness cvFileUrl cv " +
-        "nationality currentLocation linkedin socialLinks"
+        "nationality currentLocation preferredLocations linkedin socialLinks"
     )
     .lean();
 

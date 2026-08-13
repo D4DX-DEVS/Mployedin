@@ -33,7 +33,9 @@ describe("employer admin schemas accept blank optional fields", () => {
       location: "",
       phone: "",
     });
-    expect(r.success).toBe(false);
+    // Throw rather than expect(false) so TS narrows the safeParse union and
+    // r.error is known to exist below.
+    if (r.success) throw new Error("expected a short password to fail validation");
     expect(r.error.issues.some((issue) => issue.path.includes("password"))).toBe(true);
   });
 

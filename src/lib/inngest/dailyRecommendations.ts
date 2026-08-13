@@ -24,6 +24,7 @@ import {
   calculateMatchScore,
   seekerProfileFromDoc,
   jobProfileFromDoc,
+  SEEKER_MATCH_FIELDS,
   type JobProfile,
 } from "@/lib/matchScore";
 import { isCronEnabled, updateCronRunStatus } from "@/models/SystemConfig";
@@ -157,9 +158,7 @@ export const dailyRecommendationsCron = inngest.createFunction(
             try {
               // Fetch seeker profile
               const seeker = await JobSeeker.findOne({ userId })
-                .select(
-                  "skills preferredCountries preferredRoles preferredSalary preferredJobType experience",
-                )
+                .select(SEEKER_MATCH_FIELDS)
                 .lean();
 
               if (!seeker) continue;

@@ -8,6 +8,7 @@ import {
   calculateMatchScore,
   jobProfileFromDoc,
   getMatchedSkills,
+  SEEKER_MATCH_FIELDS,
 } from "@/lib/matchScore";
 import { effectiveSeekerProfile } from "@/lib/effectiveSeekerProfile";
 
@@ -28,7 +29,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const itemLimit = Number.isFinite(limitParam) ? Math.max(1, Math.min(30, Math.round(limitParam))) : 5;
 
   const seeker = await JobSeeker.findOne({ userId: ctx.userId })
-    .select("skills preferredCountries preferredRoles preferredSalary preferredJobType experience education")
+    .select(SEEKER_MATCH_FIELDS)
     .lean();
 
   if (!seeker) {

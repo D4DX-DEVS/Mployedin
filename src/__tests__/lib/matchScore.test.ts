@@ -76,12 +76,20 @@ describe("calculateMatchScore", () => {
     expect(result).toBeGreaterThanOrEqual(80);
   });
 
-  it("no seeker salary expectation returns full salary score", () => {
+  it("treats an unstated salary expectation as neutral, not a free full score", () => {
     const result = calculateMatchScore(
       { ...baseSeeker, salaryExpectation: 0 },
       { ...baseJob }
     );
-    expect(result).toBe(100);
+    // Unknown → 0.5 × 20 = 10. Previously this returned 1.0, which meant filling
+    // in a salary preference could only ever lower a seeker's match scores.
+    expect(result).toBe(90);
+  });
+
+  it("scores an unstated expectation below a stated one that actually fits", () => {
+    const unknown = calculateMatchScore({ ...baseSeeker, salaryExpectation: 0 }, baseJob);
+    const fits = calculateMatchScore(baseSeeker, baseJob); // 10000 vs 9000-11000
+    expect(fits).toBeGreaterThan(unknown);
   });
 
   it("experience below minimum gets partial score", () => {
@@ -193,6 +201,141 @@ describe("calculateMatchScore", () => {
       { ...baseJob, requiredEducationLevel: 3 } // bachelor
     );
     expect(result).toBe(100);
+  });
+
+  describe("required vs preferred skills", () => {
+    it("costs only a little to miss the nice-to-have skills", () => {
+      const result = calculateMatchScore(baseSeeker, {
+        ...baseJob,
+        preferredSkills: ["AWS", "Docker"],
+      });
+      // required 1.0 × 0.85 + preferred 0 × 0.15 = 0.85 → 34 + 20 + 20 + 20 = 94
+      expect(result).toBe(94);
+    });
+
+    it("ranks a candidate with the required skills far above one with only the extras", () => {
+      const job = { ...baseJob, preferredSkills: ["AWS", "Docker"] };
+      const hasRequired = calculateMatchScore(baseSeeker, job);
+      const hasOnlyPreferred = calculateMatchScore(
+        { ...baseSeeker, skills: ["AWS", "Docker"] },
+        job
+      );
+      // The whole point of the split: optional extras must never outweigh must-haves.
+      expect(hasRequired).toBeGreaterThan(hasOnlyPreferred);
+      expect(hasOnlyPreferred).toBe(66); // 0.15 × 40 = 6, + 20 + 20 + 20
+    });
+
+    it("falls back to preferred skills when a job lists no required ones", () => {
+      const result = calculateMatchScore(baseSeeker, {
+        ...baseJob,
+        skills: [],
+        preferredSkills: ["React", "TypeScript", "Node.js"],
+      });
+      // Better evidence than the 0.15 no-skills floor, so it must score higher.
+      expect(result).toBe(100);
+    });
+  });
+
+  describe("CV text as skill evidence", () => {
+    const job = { ...baseJob, skills: ["React", "TypeScript", "Node.js"] };
+
+    it("credits a required skill proven by the CV but absent from the skills list", () => {
+      const declaredOnly = calculateMatchScore({ ...baseSeeker, skills: ["React"] }, job);
+      const withCv = calculateMatchScore(
+        {
+          ...baseSeeker,
+          skills: ["React"],
+          cvText: "Built payment services with Node.js and TypeScript at Acme.",
+        },
+        job
+      );
+      expect(withCv).toBeGreaterThan(declaredOnly);
+      expect(withCv).toBe(93); // (1 + 0.75 + 0.75)/3 × 40 = 33.3 + 60
+    });
+
+    it("does not match a skill on a substring of an unrelated word", () => {
+      const result = calculateMatchScore(
+        { ...baseSeeker, skills: [], cvText: "Strong JavaScript background." },
+        { ...baseJob, skills: ["Java"] }
+      );
+      // "java" must not be found inside "javascript" — whole-token test only.
+      // Java is grouped with Spring, not JS, so there is no related credit either.
+      expect(result).toBe(60); // 0 skills + 20 + 20 + 20
+    });
+  });
+
+  describe("city-level location", () => {
+    const seeker = { ...baseSeeker, location: "india", locations: ["india"] };
+    const job = { ...baseJob, location: "india", remote: false };
+
+    it("gives full credit when the city matches", () => {
+      expect(calculateMatchScore({ ...seeker, cities: ["kochi"] }, { ...job, city: "kochi" })).toBe(100);
+    });
+
+    it("discounts an onsite job in a different city of the same country", () => {
+      const result = calculateMatchScore({ ...seeker, cities: ["kochi"] }, { ...job, city: "bangalore" });
+      expect(result).toBe(92); // location 0.6 × 20 = 12
+    });
+
+    it("does not punish a city mismatch when either side is unknown", () => {
+      expect(calculateMatchScore({ ...seeker, cities: [] }, { ...job, city: "bangalore" })).toBe(100);
+      expect(calculateMatchScore({ ...seeker, cities: ["kochi"] }, { ...job, city: "" })).toBe(100);
+    });
+
+    it("still ignores location entirely for remote jobs", () => {
+      const result = calculateMatchScore(
+        { ...seeker, cities: ["kochi"] },
+        { ...job, city: "bangalore", remote: true }
+      );
+      expect(result).toBe(100);
+    });
+  });
+
+  describe("relevant vs raw experience", () => {
+    const job = { ...baseJob, title: "senior react developer", minExp: 8, maxExp: 12 };
+
+    it("counts years in related roles toward the requirement", () => {
+      const result = calculateMatchScore(
+        {
+          ...baseSeeker,
+          experienceYears: 10,
+          roleHistory: [{ title: "React Developer", years: 10 }],
+        },
+        job
+      );
+      expect(result).toBe(100); // 10 relevant years lands inside 8-12
+    });
+
+    it("discounts a long career spent in unrelated roles", () => {
+      const result = calculateMatchScore(
+        {
+          ...baseSeeker,
+          experienceYears: 10,
+          roleHistory: [{ title: "Retail Cashier", years: 10 }],
+        },
+        job
+      );
+      // 0 relevant years, floored at half of 10 = 5 → 3 short of the minimum → 0.3
+      expect(result).toBe(86);
+    });
+
+    it("never zeroes out a real career on a title-wording mismatch", () => {
+      // minExp 6 so the half-of-total floor (5 yrs) lands in a different band
+      // than a genuinely empty career — with job's 8-12 range both saturate at 0.3.
+      const nearJob = { ...job, minExp: 6 };
+      const unrelated = calculateMatchScore(
+        { ...baseSeeker, experienceYears: 10, roleHistory: [{ title: "Retail Cashier", years: 10 }] },
+        nearJob
+      );
+      const noHistory = calculateMatchScore({ ...baseSeeker, experienceYears: 0 }, nearJob);
+      expect(unrelated).toBe(94); // floored at 5 yrs → 1 short of min → 0.7
+      expect(noHistory).toBe(86); // 0 yrs → 6 short → 0.3
+    });
+
+    it("falls back to total years when there is no role history", () => {
+      const result = calculateMatchScore({ ...baseSeeker, experienceYears: 10 }, job);
+      expect(result).toBe(100);
+    });
   });
 
   it("does not penalize when job or seeker education level is unknown", () => {
