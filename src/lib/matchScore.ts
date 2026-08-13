@@ -25,12 +25,32 @@ export interface SeekerProfile {
   preferredRoles?: string[];
   /** Highest attained education level (1-5, 0 = unknown). See educationRank(). */
   educationLevel?: number;
+  /** Primary preferred city (lower-cased). "" if unknown. */
+  city?: string;
+  /** All preferred cities (lower-cased). Falls back to [city] when omitted. */
+  cities?: string[];
+  /**
+   * Raw CV text (JobSeeker.cv.rawText). Secondary evidence for a required skill
+   * the seeker never added to their skills list — the same keyword-coverage
+   * signal the ATS report shows, folded into the score instead of discarded.
+   */
+  cvText?: string;
+  /**
+   * Past/current roles with their duration, used to weigh *relevant* experience
+   * over raw total years. Omit to fall back to experienceYears alone.
+   */
+  roleHistory?: Array<{ title: string; years: number }>;
 }
 
 export interface JobProfile {
+  /** Hard requirements — missing these costs the full skill weight. */
   skills: string[];
+  /** Nice-to-have skills. Missing these costs far less than missing a required one. */
+  preferredSkills?: string[];
   /** Job country (lower-cased). */
   location: string;
+  /** Job city (lower-cased). "" if unknown. */
+  city?: string;
   remote: boolean;
   salaryMin: number;
   salaryMax: number;
@@ -157,6 +177,82 @@ const RELATED_SKILLS_MAP: Map<string, Set<string>> = (() => {
   return map;
 })();
 
+/**
+ * Flattens free text to space-separated alphanumeric tokens so a skill can be
+ * located inside it regardless of punctuation: "Node.js, React" and "node js
+ * react" both become " node js react ". Wrapped in spaces so `includes(" x ")`
+ * is a whole-token test rather than a substring one ("java" ∉ "javascript").
+ */
+function flattenText(s: string): string {
+  return ` ${s.toLowerCase().replace(/[^a-z0-9+#]+/g, " ").trim()} `;
+}
+
+/**
+ * Evidence strength that a seeker has one required skill, best source first:
+ *   1.00 — declared on the profile (exact after normalization)
+ *   0.75 — found in the CV text but never added to the profile
+ *   0.50 — declared a related skill from the same SKILL_GROUPS family
+ *   0    — no evidence
+ */
+function skillCredit(jSkill: string, seekerSkills: string[], cvHaystack: string): number {
+  if (seekerSkills.includes(jSkill)) return 1;
+  if (cvHaystack && cvHaystack.includes(flattenText(jSkill))) return 0.75;
+  const related = RELATED_SKILLS_MAP.get(jSkill);
+  if (related && seekerSkills.some((s) => related.has(s))) return 0.5;
+  return 0;
+}
+
+/** Mean credit across a skill list. Returns null for an empty list. */
+function averageSkillCredit(
+  jobSkills: string[],
+  seekerSkills: string[],
+  cvHaystack: string,
+): number | null {
+  if (jobSkills.length === 0) return null;
+  const total = jobSkills.reduce((sum, s) => sum + skillCredit(s, seekerSkills, cvHaystack), 0);
+  return total / jobSkills.length;
+}
+
+/** Title words too generic to prove two roles are related. */
+const TITLE_STOPWORDS = new Set([
+  "senior", "junior", "lead", "principal", "staff", "chief", "head", "assistant",
+  "associate", "executive", "officer", "specialist", "trainee", "intern", "level",
+  "and", "the", "for", "with",
+]);
+
+function titleTokens(title: string): Set<string> {
+  return new Set(
+    flattenText(title)
+      .split(" ")
+      .filter((w) => w.length >= 3 && !TITLE_STOPWORDS.has(w)),
+  );
+}
+
+/**
+ * Years of experience in roles actually related to this job, by title-token
+ * overlap. Returns null when there is no role history to judge — callers then
+ * fall back to raw total years.
+ *
+ * ponytail: token overlap, not semantics — "Software Engineer" vs "Backend
+ * Developer" shares nothing and scores 0 relevant years. The caller floors the
+ * result at half the seeker's total so a wording mismatch can't zero them out;
+ * swap in embedding similarity here if that floor proves too blunt.
+ */
+function relevantExperienceYears(seeker: SeekerProfile, job: JobProfile): number | null {
+  if (!seeker.roleHistory?.length) return null;
+  const target = titleTokens(job.title ?? "");
+  for (const role of seeker.preferredRoles ?? []) {
+    for (const t of titleTokens(role)) target.add(t);
+  }
+  if (target.size === 0) return null;
+
+  return seeker.roleHistory.reduce((sum, role) => {
+    const tokens = titleTokens(role.title);
+    const overlaps = [...tokens].some((t) => target.has(t));
+    return overlaps ? sum + Math.max(0, role.years) : sum;
+  }, 0);
+}
+
 export function getMatchedSkills(seekerSkills: string[], jobSkills: string[]): string[] {
   const jobSet = new Set(jobSkills.flatMap(tokenizeSkill));
   return seekerSkills.filter((s) => tokenizeSkill(s).some((t) => jobSet.has(t)));
@@ -185,29 +281,30 @@ export function skillsOverlap(seekerSkills: string[], jobSkills: string[]): bool
 
 export function calculateMatchScore(seeker: SeekerProfile, job: JobProfile): number {
   // ── Skills (40%) ────────────────────────────────────────────────────
+  // Required skills carry almost all of the weight; preferred ("nice to have")
+  // skills only top up the last 15% of it. Without this split a candidate who
+  // has every optional extra but none of the must-haves could outrank one who
+  // meets the actual requirements.
+  const REQUIRED_SHARE = 0.85;
   const jobSkills = job.skills.map(normalizeSkill);
+  const jobPreferred = (job.preferredSkills ?? []).map(normalizeSkill);
   const seekerSkills = seeker.skills.flatMap(tokenizeSkill);
+  const cvHaystack = seeker.cvText ? flattenText(seeker.cvText) : "";
+
+  const requiredScore = averageSkillCredit(jobSkills, seekerSkills, cvHaystack);
+  const preferredScore = averageSkillCredit(jobPreferred, seekerSkills, cvHaystack);
 
   let skillsScore: number;
-  if (jobSkills.length === 0) {
+  if (requiredScore === null) {
     // Job lists no structured skill requirements — there is no evidence of skill
     // fit, so award only a small floor. (A higher neutral value previously let
     // skill-less, off-target jobs outrank genuine matches with partial overlap.)
-    skillsScore = 0.15;
+    // Preferred skills, when present, are the only signal available.
+    skillsScore = preferredScore ?? 0.15;
+  } else if (preferredScore === null) {
+    skillsScore = requiredScore;
   } else {
-    let totalCredit = 0;
-    for (const jSkill of jobSkills) {
-      if (seekerSkills.includes(jSkill)) {
-        totalCredit += 1; // exact match
-      } else {
-        // Check related skills — partial credit (0.5)
-        const related = RELATED_SKILLS_MAP.get(jSkill);
-        if (related && seekerSkills.some((s) => related.has(s))) {
-          totalCredit += 0.5;
-        }
-      }
-    }
-    skillsScore = totalCredit / jobSkills.length;
+    skillsScore = requiredScore * REQUIRED_SHARE + preferredScore * (1 - REQUIRED_SHARE);
   }
 
   // ── Location (20%) ───────────────────────────────────────────────────
@@ -219,13 +316,29 @@ export function calculateMatchScore(seeker: SeekerProfile, job: JobProfile): num
       .filter(Boolean);
     if (seekerLocations.length === 0) return 0.5; // partial when unknown
     const jobLocation = job.location.toLowerCase().trim();
-    return seekerLocations.includes(jobLocation) ? 1 : 0;
+    if (!seekerLocations.includes(jobLocation)) return 0;
+
+    // Right country — refine by city when both sides actually stated one, so an
+    // onsite role 2000km away stops scoring the same as one down the road.
+    const jobCity = (job.city ?? "").toLowerCase().trim();
+    const seekerCities = (seeker.cities?.length ? seeker.cities : [seeker.city ?? ""])
+      .map((c) => c.toLowerCase().trim())
+      .filter(Boolean);
+    if (!jobCity || seekerCities.length === 0) return 1; // unknown → don't punish
+    return seekerCities.includes(jobCity) ? 1 : 0.6;
   })();
 
   // ── Experience (20%) ─────────────────────────────────────────────────
   const experienceScore = (() => {
     const { minExp, maxExp } = job;
-    const yrs = seeker.experienceYears;
+    // Prefer years spent in *related* roles over raw career length, floored at
+    // half the total so a differently-worded job title can't wipe out a real
+    // career. Falls back to total years when there's no role history.
+    const relevant = relevantExperienceYears(seeker, job);
+    const yrs =
+      relevant === null
+        ? seeker.experienceYears
+        : Math.max(relevant, seeker.experienceYears * 0.5);
     if (yrs >= minExp && yrs <= maxExp) return 1;
     const gapMin = Math.abs(yrs - minExp);
     const gapMax = Math.abs(yrs - maxExp);
@@ -236,7 +349,10 @@ export function calculateMatchScore(seeker: SeekerProfile, job: JobProfile): num
 
   // ── Salary (20%) ─────────────────────────────────────────────────────
   const salaryScore = (() => {
-    if (seeker.salaryExpectation <= 0) return 1; // no expectation → full score
+    // Unknown expectation is unknown — neutral, not a free full score. Awarding
+    // 1.0 here used to mean filling in your salary preference could only ever
+    // lower your match percentages.
+    if (seeker.salaryExpectation <= 0) return 0.5;
     // Different currencies can't be compared numerically — treat salary as
     // neutral rather than producing a garbage 0/1 score.
     const seekerCur = (seeker.salaryCurrency ?? "").toUpperCase().trim();
@@ -306,6 +422,16 @@ export function blendBehaviorScore(
 }
 
 /**
+ * Mongo projection covering every field seekerProfileFromDoc() reads. Use it at
+ * every call site — a missing field here doesn't error, it silently drops a
+ * whole scoring signal (several callers were already omitting `education`, so
+ * the qualification penalty never fired for them).
+ */
+export const SEEKER_MATCH_FIELDS =
+  "skills preferredCountries preferredRoles preferredSalary preferredJobType " +
+  "experience education preferredLocations currentLocation cv.rawText";
+
+/**
  * Build a SeekerProfile from a Mongoose JobSeeker lean document.
  * experienceYears is computed from work experience date ranges.
  */
@@ -315,7 +441,11 @@ export function seekerProfileFromDoc(seeker: {
   preferredSalary?: { min?: number; max?: number; currency?: string };
   preferredJobType?: string;
   preferredRoles?: string[];
+  preferredLocations?: string[];
+  currentLocation?: string;
+  cv?: { rawText?: string };
   experience?: Array<{
+    jobTitle?: string;
     startDate?: Date | string;
     endDate?: Date | string;
     isCurrent?: boolean;
@@ -324,15 +454,17 @@ export function seekerProfileFromDoc(seeker: {
 }): SeekerProfile {
   const now = Date.now();
 
-  const experienceYears = (seeker.experience ?? []).reduce((total, exp) => {
+  // Per-role durations, reused for both the career total and relevance scoring.
+  const roleHistory = (seeker.experience ?? []).map((exp) => {
     const start = exp.startDate ? new Date(exp.startDate).getTime() : 0;
-    const end =
-      exp.isCurrent || !exp.endDate
-        ? now
-        : new Date(exp.endDate).getTime();
-    const years = Math.max(0, (end - start) / (1000 * 60 * 60 * 24 * 365.25));
-    return total + years;
-  }, 0);
+    const end = exp.isCurrent || !exp.endDate ? now : new Date(exp.endDate).getTime();
+    return {
+      title: exp.jobTitle ?? "",
+      years: Math.max(0, (end - start) / (1000 * 60 * 60 * 24 * 365.25)),
+    };
+  });
+
+  const experienceYears = roleHistory.reduce((total, role) => total + role.years, 0);
 
   const salMin = seeker.preferredSalary?.min ?? 0;
   const salMax = seeker.preferredSalary?.max ?? 0;
@@ -355,6 +487,12 @@ export function seekerProfileFromDoc(seeker: {
     jobType: seeker.preferredJobType ?? "any",
     preferredRoles: (seeker.preferredRoles ?? []).map((r) => r.toLowerCase()),
     educationLevel,
+    city: seeker.currentLocation?.toLowerCase() ?? "",
+    cities: [...(seeker.preferredLocations ?? []), seeker.currentLocation ?? ""]
+      .map((c) => c.toLowerCase().trim())
+      .filter(Boolean),
+    cvText: seeker.cv?.rawText ?? "",
+    roleHistory: roleHistory.filter((r) => r.title),
   };
 }
 
@@ -362,14 +500,16 @@ export function seekerProfileFromDoc(seeker: {
  * Build a JobProfile from a Mongoose Job lean document.
  */
 export function jobProfileFromDoc(job: {
-  requirements?: { skills?: string[]; experienceMin?: number; experienceMax?: number; education?: string };
+  requirements?: { skills?: string[]; preferredSkills?: string[]; experienceMin?: number; experienceMax?: number; education?: string };
   salary?: { min?: number; max?: number; period?: "monthly" | "yearly" | "lpa"; currency?: string };
-  location?: { country?: string; isRemote?: boolean };
+  location?: { country?: string; city?: string; isRemote?: boolean };
   title?: string;
 }): JobProfile {
   return {
     skills: job.requirements?.skills ?? [],
+    preferredSkills: job.requirements?.preferredSkills ?? [],
     location: job.location?.country?.toLowerCase() ?? "",
+    city: job.location?.city?.toLowerCase() ?? "",
     remote: job.location?.isRemote ?? false,
     salaryMin: job.salary?.min ?? 0,
     salaryMax: job.salary?.max ?? 0,

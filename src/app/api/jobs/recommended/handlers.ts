@@ -3,7 +3,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import Job from "@/models/Job";
 import JobSeeker from "@/models/JobSeeker";
 import Application from "@/models/Application";
-import { calculateMatchScore, jobProfileFromDoc, getMatchedSkills, skillsOverlap, educationRank } from "@/lib/matchScore";
+import { calculateMatchScore, jobProfileFromDoc, getMatchedSkills, skillsOverlap, educationRank, SEEKER_MATCH_FIELDS } from "@/lib/matchScore";
 import { effectiveSeekerProfile } from "@/lib/effectiveSeekerProfile";
 import type { UserRole } from "@/models/User";
 
@@ -42,7 +42,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const poolPage = Number.isFinite(poolPageParam) ? Math.max(1, Math.round(poolPageParam)) : 1;
 
   const seeker = await JobSeeker.findOne({ userId: ctx.userId })
-    .select("skills preferredCountries preferredRoles preferredSalary preferredJobType experience education")
+    .select(SEEKER_MATCH_FIELDS)
     .lean();
 
   if (!seeker) {

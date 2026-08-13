@@ -19,7 +19,7 @@ import Application from "@/models/Application";
 import Interview from "@/models/Interview";
 import ProfileView from "@/models/ProfileView";
 import JobSeeker from "@/models/JobSeeker";
-import { calculateMatchScore, seekerProfileFromDoc, jobProfileFromDoc } from "@/lib/matchScore";
+import { calculateMatchScore, seekerProfileFromDoc, jobProfileFromDoc, SEEKER_MATCH_FIELDS } from "@/lib/matchScore";
 import { sendEmail } from "@/lib/communications/email";
 import { isCronEnabled, updateCronRunStatus } from "@/models/SystemConfig";
 import type { NotificationWeeklyDigestEvent } from "./events";
@@ -111,7 +111,7 @@ export const weeklyDigestCron = inngest.createFunction(
             // profile _id, ProfileView by the User id — resolve the profile once and
             // scope each query to the id space it actually stores.
             const seeker = await JobSeeker.findOne({ userId: user.userId })
-              .select("skills location preferredSalary experienceLevel")
+              .select(SEEKER_MATCH_FIELDS)
               .lean();
 
             const [appCount, interviewCount, viewCount] = await Promise.all([

@@ -5,7 +5,7 @@ import Job from "@/models/Job";
 import Application from "@/models/Application";
 import { ActivityEvent, ACTIVITY_PRIORITY } from "@/models/ActivityEvent";
 import Employer from "@/models/Employer";
-import { calculateMatchScore, seekerProfileFromDoc, jobProfileFromDoc } from "@/lib/matchScore";
+import { calculateMatchScore, seekerProfileFromDoc, jobProfileFromDoc, SEEKER_MATCH_FIELDS } from "@/lib/matchScore";
 import { computeBehaviorSignals } from "@/lib/behaviorSignals";
 
 const AUTO_APPLY_DAILY_LIMIT = 5;
@@ -34,7 +34,7 @@ export const autoApplyFunction = inngest.createFunction(
 
     const seeker = await step.run("fetch-seeker", () =>
       JobSeeker.findOne({ userId })
-        .select("_id userId applicationMode autoApplyCount autoApplyResetAt skills experience preferredCountries preferredRoles preferredSalary preferredJobType profileCompleteness updatedAt")
+        .select(`_id userId applicationMode autoApplyCount autoApplyResetAt profileCompleteness updatedAt ${SEEKER_MATCH_FIELDS}`)
         .lean()
     );
 

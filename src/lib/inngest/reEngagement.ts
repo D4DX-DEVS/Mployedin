@@ -20,6 +20,7 @@ import {
   calculateMatchScore,
   seekerProfileFromDoc,
   jobProfileFromDoc,
+  SEEKER_MATCH_FIELDS,
 } from "@/lib/matchScore";
 import { sendEmail } from "@/lib/communications/email";
 import { isCronEnabled, updateCronRunStatus } from "@/models/SystemConfig";
@@ -121,9 +122,7 @@ export const reEngagementCron = inngest.createFunction(
       try {
         await step.run(`re-engage-${user._id}`, async () => {
           const seeker = await JobSeeker.findOne({ userId: user._id })
-            .select(
-              "skills preferredCountries preferredRoles preferredSalary preferredJobType experience",
-            )
+            .select(SEEKER_MATCH_FIELDS)
             .lean();
 
           if (!seeker) return;
