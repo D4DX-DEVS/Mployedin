@@ -20,6 +20,12 @@ export async function GET(req: NextRequest) {
 
     // Subscription feature gate
     const userRole = (session.user as unknown as { role: string }).role;
+    // Called only from the employer job-form SalaryBenchmarkWidget. Gate the role
+    // explicitly — enforceFeatureGate returns null unconditionally while the
+    // payment gateway is unimplemented, so it gates nothing.
+    if (!["employer", "agent", "super_agent", "admin"].includes(userRole)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
     const gateErr = await enforceFeatureGate(session.user.id!, userRole, { type: "ai", feature: "ai_salary_benchmark" });
     if (gateErr) return gateErr;
 

@@ -41,6 +41,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   if (!job) return { title: "Job Not Found" };
 
+  // The page body and GET /api/jobs/[id] both hide non-active jobs from seekers.
+  // Metadata is generated before those checks, so without this a guessed ID
+  // still leaked a draft/pending job's title and description via the tab title
+  // and OpenGraph tags.
+  if (job.status !== "active") return { title: "Job Not Found" };
+
   const employer = job.employerId as PopulatedEmployer | null;
   const title = `${job.title} at ${employer?.companyName ?? "Company"}`;
 

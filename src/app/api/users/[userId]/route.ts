@@ -12,7 +12,24 @@ import mongoose from "mongoose";
  * Returns public profile info for a user (name, role, avatar, headline/companyName).
  * Used by the messaging UI to render the chat header for pending conversations.
  */
-async function handler(req: NextRequest, ctx: { userId: string }, params?: Record<string, string>) {
+/**
+ * Roles each caller may look up, mirroring the DM permission matrix in
+ * /api/users/search. Without this any authenticated user could walk ObjectIds
+ * and harvest the whole user/role directory, admins included.
+ */
+const LOOKUPABLE_ROLES: Record<string, string[]> = {
+  admin: ["admin", "super_agent", "agent", "employer", "job_seeker"],
+  super_agent: ["admin", "agent", "employer"],
+  agent: ["super_agent", "employer"],
+  employer: ["job_seeker", "agent", "super_agent"],
+  job_seeker: ["employer", "job_seeker"],
+};
+
+async function handler(
+  req: NextRequest,
+  ctx: { userId: string; role?: string },
+  params?: Record<string, string>
+) {
   // Rate-limit per caller to blunt enumeration of the user/role directory.
   const { allowed } = await checkRateLimit(`user-profile:${ctx.userId}`, { limit: 60, windowSec: 60, prefix: "uprof" });
   if (!allowed) {
@@ -29,6 +46,23 @@ async function handler(req: NextRequest, ctx: { userId: string }, params?: Recor
   const user = await User.findById(targetId).select("name role avatar").lean();
   if (!user) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  // Self is always allowed. Otherwise the target's role must be one this caller
+  // may DM, OR the two must already share a conversation — the latter keeps
+  // chat headers working for pairs the role matrix alone would not permit
+  // (e.g. agent ↔ job_seeker with a shared application).
+  if (String(user._id) !== String(ctx.userId)) {
+    const allowedRoles = LOOKUPABLE_ROLES[ctx.role ?? ""] ?? [];
+    if (!allowedRoles.includes(user.role)) {
+      const { default: Conversation } = await import("@/models/Conversation");
+      const shared = await Conversation.exists({
+        participants: { $all: [ctx.userId, targetId] },
+      });
+      if (!shared) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    }
   }
 
   let headline: string | undefined;

@@ -544,6 +544,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
                       isSaved={savedIds.has(job._id)}
                       isApplied={appliedIds.has(job._id)}
                       onSave={() => saveMutation.mutate(job._id)}
+                      savePending={saveMutation.isPending && saveMutation.variables === job._id}
                       onApply={() => handleApply(job)}
                       onHide={() => {
                         setHidden((s) => new Set([...s, job._id]));
@@ -658,6 +659,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
                     isSaved={savedIds.has(job._id)}
                     isApplied={appliedIds.has(job._id)}
                     onSave={() => saveMutation.mutate(job._id)}
+                    savePending={saveMutation.isPending && saveMutation.variables === job._id}
                     onApply={() => handleApply(job)}
                     onHide={() => {
                       setHidden((s) => new Set([...s, job._id]));

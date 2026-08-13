@@ -182,9 +182,17 @@ describe("applicationCreateSchema", () => {
 // ── applicationUpdateSchema ──────────────────────────────────────────────────
 
 describe("applicationUpdateSchema", () => {
-  test("accepts valid status transition", () => {
-    const result = applicationUpdateSchema.safeParse({ status: "screening" });
+  test("accepts a status the Application model can store", () => {
+    const result = applicationUpdateSchema.safeParse({ status: "shortlisted" });
     expect(result.success).toBe(true);
+  });
+
+  test("rejects a status the Application model cannot store", () => {
+    // "screening" and "interview" are absent from the model enum. Accepting them
+    // here meant the write passed validation and then threw at save().
+    for (const status of ["screening", "interview"]) {
+      expect(applicationUpdateSchema.safeParse({ status }).success).toBe(false);
+    }
   });
 
   test("requires rejectionReason when status is rejected", () => {

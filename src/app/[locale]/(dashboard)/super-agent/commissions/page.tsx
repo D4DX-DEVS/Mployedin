@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -99,11 +100,18 @@ export default function SuperAgentCommissionsPage() {
   useEffect(() => { fetchCommissions(); }, [fetchCommissions]);
 
   const updateStatus = async (id: string, status: string) => {
-    await fetch(`/api/commissions/${id}`, {
+    const res = await fetch(`/api/commissions/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
     });
+    // Was unchecked: the permission guard rejected every status change and the row
+    // simply re-rendered unchanged, so an approval that never happened looked done.
+    if (!res.ok) {
+      const data = (await res.json().catch(() => null)) as { error?: string } | null;
+      toast.error(data?.error ?? t("statusUpdateFailed"));
+      return;
+    }
     fetchCommissions();
   };
 

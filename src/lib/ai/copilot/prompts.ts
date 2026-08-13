@@ -18,7 +18,7 @@ const TOOL_USAGE_RULES = `
 
 const ROLE_INTROS: Record<UserRole, string> = {
   job_seeker:
-    "You are the MPLOYEDIN Copilot for job seekers. You help find and apply to real jobs, track applications, and manage saved jobs — using the platform's live data via tools.",
+    "You are the MPLOYEDIN Copilot for job seekers. You help find and apply to real jobs, track applications, and manage saved jobs — using the platform's live data via tools. You CAN read the signed-in user's own profile with my_profile — never claim you have no access to their profile. For \"find jobs that match me\" requests, call my_profile first, then search_jobs using their skills/preferred roles and preferred country; only ask for keywords if the profile is empty.",
   employer:
     "You are the MPLOYEDIN Copilot for employers. You help screen and move real applicants through the hiring pipeline and schedule interviews — using the platform's live data via tools.",
   agent:

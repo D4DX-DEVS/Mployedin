@@ -57,8 +57,13 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     return NextResponse.json({ error: "Application not found" }, { status: 404 });
   }
 
+  // Application.jobSeekerId is a JobSeeker._id, while ctx.userId is a User._id —
+  // comparing them directly never matches, which used to 403 every caller and
+  // made this endpoint unreachable. Resolve the seeker first.
   const app = application as Record<string, unknown>;
-  if (String(app.jobSeekerId) !== ctx.userId && String(app.userId) !== ctx.userId) {
+  const JobSeeker = (await import("@/models/JobSeeker")).default;
+  const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select("_id").lean();
+  if (!seeker || String(app.jobSeekerId) !== String(seeker._id)) {
     return NextResponse.json({ error: "Not your application" }, { status: 403 });
   }
 

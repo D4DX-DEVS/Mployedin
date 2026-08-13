@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { sanitizeHtml } from "@/lib/security/html";
 import { applicationKeys } from "@/hooks/useApplications";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -2927,11 +2928,13 @@ ${rejectionReason ? `<p><em>Reason: ${rejectionReason}</em></p>` : ""}
               <div
                 className="prose prose-sm dark:prose-invert max-w-none"
                 dangerouslySetInnerHTML={{
-                  __html: body
-                    .replace(/\{\{candidateName\}\}/g, "John Doe")
-                    .replace(/\{\{jobTitle\}\}/g, jobTitle)
-                    .replace(/\{\{companyName\}\}/g, "Company")
-                    .replace(/\{\{status\}\}/g, statusLabel.toLowerCase()),
+                  __html: sanitizeHtml(
+                    body
+                      .replace(/\{\{candidateName\}\}/g, "John Doe")
+                      .replace(/\{\{jobTitle\}\}/g, jobTitle)
+                      .replace(/\{\{companyName\}\}/g, "Company")
+                      .replace(/\{\{status\}\}/g, statusLabel.toLowerCase())
+                  ),
                 }}
               />
             </div>

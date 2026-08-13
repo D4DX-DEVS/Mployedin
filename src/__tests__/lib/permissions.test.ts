@@ -64,6 +64,53 @@ describe("RBAC Permission Matrix", () => {
     it("should NOT be able to delete users", () => {
       expect(canAccess("agent", "users", "delete")).toBe(false);
     });
+
+    // These back UI actions that shipped without the matching permission and
+    // therefore 403'd: the Trash button on the leads page, and edit/delete of the
+    // agent's own exhibition request. Ownership is enforced in the route handlers.
+    it("should be able to delete its own leads", () => {
+      expect(canAccess("agent", "leads", "delete")).toBe(true);
+    });
+
+    it("should be able to edit and delete its own exhibition requests", () => {
+      expect(canAccess("agent", "exhibitions", "update")).toBe(true);
+      expect(canAccess("agent", "exhibitions", "delete")).toBe(true);
+    });
+  });
+
+  // A custom permission map is a restriction on the role, not a replacement for it.
+  // Before this, canAccess returned from the custom map alone and never consulted the
+  // role, so a job_seeker could be granted employer/admin actions — and live accounts
+  // were provisioned that way.
+  describe("Custom permissions", () => {
+    const custom = (customPermissions: Record<string, string[]>) => ({
+      permissionMode: "custom" as const,
+      customPermissions: customPermissions as never,
+    });
+
+    it("cannot grant a job seeker actions the role never has", () => {
+      const opts = custom({ jobs: ["create", "read", "update", "delete"], employers: ["update"] });
+      expect(canAccess("job_seeker", "jobs", "create", opts)).toBe(false);
+      expect(canAccess("job_seeker", "jobs", "delete", opts)).toBe(false);
+      expect(canAccess("job_seeker", "employers", "update", opts)).toBe(false);
+    });
+
+    it("still narrows within the role", () => {
+      // employer's default is applications: ["read", "update"]
+      const opts = custom({ applications: ["read"] });
+      expect(canAccess("employer", "applications", "read", opts)).toBe(true);
+      expect(canAccess("employer", "applications", "update", opts)).toBe(false);
+    });
+
+    it("keeps an action the role and the custom map agree on", () => {
+      const opts = custom({ jobs: ["read"] });
+      expect(canAccess("job_seeker", "jobs", "read", opts)).toBe(true);
+    });
+
+    it("denies a resource absent from the custom map even when the role allows it", () => {
+      const opts = custom({ jobs: ["read"] });
+      expect(canAccess("employer", "applications", "read", opts)).toBe(false);
+    });
   });
 
   describe("Super Agent role", () => {
@@ -74,6 +121,14 @@ describe("RBAC Permission Matrix", () => {
 
     it("should be able to read agents", () => {
       expect(canAccess("super_agent", "agents", "read")).toBe(true);
+    });
+
+    // PATCH /api/exhibitions/[id] guards on exhibitions:update, and that route is
+    // the only implementation of the super-agent review/approve flow — without this
+    // the whole approval workflow 403'd.
+    it("should be able to review exhibition requests", () => {
+      expect(canAccess("super_agent", "exhibitions", "update")).toBe(true);
+      expect(canAccess("super_agent", "exhibitions", "approve")).toBe(true);
     });
 
     it("should NOT be able to impersonate users", () => {

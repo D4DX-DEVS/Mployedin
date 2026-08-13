@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth/config";
 import { enforceDailyAiQuota } from "@/lib/ai/dailyQuota";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { routeGenerate, invalidateAICache } from "@/lib/ai/router";
+import { sanitizeAIInput } from "@/lib/ai/sanitize";
 import { connectDB } from "@/lib/db/mongoose";
 import Interview from "@/models/Interview";
 import Job from "@/models/Job";
@@ -59,7 +60,35 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Valid interviewId is required" }, { status: 400 });
     }
 
+    // This brief exposes the candidate's full profile, the employer's private
+    // match analysis (aiMatchScore/strengths/gaps) and the cover letter — it is
+    // a recruiter tool. Without these checks any authenticated user could read
+    // any interview by guessing an ObjectId (candidate-PII IDOR).
+    const userRole = (session.user as unknown as { role: string }).role;
+    if (userRole !== "employer" && userRole !== "admin") {
+      // ponytail: employer/admin only — the sole caller is the employer
+      // interviews page. Add agent/super_agent job-scoping here if that UI grows one.
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     await connectDB();
+
+    // Ownership first, on a light query — the populated read below is expensive
+    // and must not run for a caller with no right to the record.
+    if (userRole === "employer") {
+      const scope = await Interview.findById(interviewId).select("employerId").lean();
+      if (!scope) {
+        return NextResponse.json({ error: "Interview not found" }, { status: 404 });
+      }
+      const { Employer } = await import("@/models/Employer");
+      const employer = await Employer.findOne({ userId }).select("_id").lean();
+      if (
+        !employer ||
+        String((scope as { employerId?: unknown }).employerId) !== String(employer._id)
+      ) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    }
 
     const interview = await Interview.findById(interviewId)
       .populate("jobId", "title requirements salary location description")
@@ -124,9 +153,9 @@ CANDIDATE:
 - Name: ${candidateName}
 - Location: ${iv.jobSeekerId?.currentLocation ?? "Unknown"}
 - Total Experience: ${iv.jobSeekerId?.totalExperienceYears ?? 0} years
-- Skills: ${(iv.jobSeekerId?.skills ?? []).slice(0, 15).join(", ") || "Not listed"}
-- Latest Roles: ${(iv.jobSeekerId?.experience ?? []).slice(0, 3).map((e) => `${e.jobTitle ?? "N/A"} at ${e.company ?? "N/A"}`).join("; ") || "Not listed"}
-- Education: ${(iv.jobSeekerId?.education ?? []).slice(0, 2).map((e) => `${e.degree ?? ""} ${e.field ?? ""} (${e.institution ?? ""})`).join("; ") || "Not listed"}
+- Skills: ${sanitizeAIInput((iv.jobSeekerId?.skills ?? []).slice(0, 15).join(", "), 600) || "Not listed"}
+- Latest Roles: ${sanitizeAIInput((iv.jobSeekerId?.experience ?? []).slice(0, 3).map((e) => `${e.jobTitle ?? "N/A"} at ${e.company ?? "N/A"}`).join("; "), 400) || "Not listed"}
+- Education: ${sanitizeAIInput((iv.jobSeekerId?.education ?? []).slice(0, 2).map((e) => `${e.degree ?? ""} ${e.field ?? ""} (${e.institution ?? ""})`).join("; "), 400) || "Not listed"}
 - Languages: ${(iv.jobSeekerId?.languages ?? []).map((l) => l.language).join(", ") || "Not listed"}
 
 AI MATCH DATA:

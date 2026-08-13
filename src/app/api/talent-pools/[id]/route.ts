@@ -50,6 +50,28 @@ async function patchHandler(req: NextRequest, ctx: { userId: string; role: strin
     const exists = pool.candidates.some((c: any) => c.jobSeekerId.toString() === jobSeekerId);
     if (exists) return NextResponse.json({ error: "Candidate already in pool" }, { status: 409 });
 
+    // The employer must already have a legitimate relationship with this seeker.
+    // Without this check pool membership is self-granted, and because
+    // /api/employers/candidates/[id]/cv authorises on "applied to my job OR in my
+    // talent pool", adding an arbitrary id here would unlock that seeker's CV and
+    // documents — turning this endpoint into an arbitrary-PII read.
+    const [{ default: Application }, { default: JobSeeker }] = await Promise.all([
+      import("@/models/Application"),
+      import("@/models/JobSeeker"),
+    ]);
+    const [hasApplied, alreadyPooled, seeker] = await Promise.all([
+      Application.exists({ jobSeekerId, employerId: employer._id }),
+      TalentPool.exists({ employerId: employer._id, "candidates.jobSeekerId": jobSeekerId }),
+      JobSeeker.findById(jobSeekerId).select("profileVisibility").lean(),
+    ]);
+    if (!seeker) return NextResponse.json({ error: "Candidate not found" }, { status: 404 });
+    if (!hasApplied && !alreadyPooled && seeker.profileVisibility !== "visible") {
+      return NextResponse.json(
+        { error: "Forbidden — candidate has not applied to your jobs and their profile is not public" },
+        { status: 403 }
+      );
+    }
+
     pool.candidates.push({
       jobSeekerId: new mongoose.Types.ObjectId(jobSeekerId),
       addedBy: new mongoose.Types.ObjectId(ctx.userId),
@@ -103,5 +125,8 @@ async function deleteHandler(req: NextRequest, ctx: { userId: string; role: stri
 }
 
 export const GET = withAuth(getHandler);
-export const PATCH = withAuth(patchHandler);
-export const DELETE = withAuth(deleteHandler);
+// See talent-pools/route.ts: employers:update stands in for a talent_pools resource
+// the matrix does not define, and declaring it is what activates withAuth's
+// read-only sub-role enforcement.
+export const PATCH = withAuth(patchHandler, { resource: "employers", action: "update" });
+export const DELETE = withAuth(deleteHandler, { resource: "employers", action: "update" });

@@ -38,8 +38,18 @@ async function cloneHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     effectiveAgentId = source.agentId ?? emp.agentId ?? null;
     approvalStatus = effectiveAgentId ? "pending" : "approved";
   } else if (ctx.role === "agent") {
-    const agent = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
-    if (agent) effectiveAgentId = agent._id;
+    // Clone writes a job into source.employerId's account, so it needs the same
+    // assignment check createHandler does (jobs/handlers.ts:344) — otherwise clone
+    // is a bypass for posting to an employer this agent does not manage.
+    const agent = await Agent.findOne({ userId: ctx.userId }).select("_id assignedEmployerIds").lean();
+    if (!agent) return NextResponse.json({ error: "Agent profile not found" }, { status: 404 });
+    if (!agent.assignedEmployerIds?.map(String).includes(String(source.employerId))) {
+      return NextResponse.json(
+        { error: "Forbidden — you are not assigned to this employer" },
+        { status: 403 }
+      );
+    }
+    effectiveAgentId = agent._id;
     approvalStatus = "pending";
   } else {
     // admin — always approved

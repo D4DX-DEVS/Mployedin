@@ -253,6 +253,18 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     .lean();
   if (!app) return NextResponse.json({ error: "Application not found" }, { status: 404 });
 
+  // applicationId comes straight from the request body, so ownership must be
+  // proven before we schedule anything — otherwise an employer can create
+  // interviews on another company's pipeline and notify their candidates.
+  // Mirrors offers/route.ts:218-221.
+  if (ctx.role === "employer") {
+    const { Employer } = await import("@/models/Employer");
+    const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
+    if (!emp || String(app.employerId) !== String(emp._id)) {
+      return NextResponse.json({ error: "Forbidden: application not owned by employer" }, { status: 403 });
+    }
+  }
+
   // ── Check candidate availability ─────────────────────────────────────────
   const seekerDoc = await JobSeeker.findById(app.jobSeekerId)
     .select("settings userId")

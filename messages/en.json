@@ -12268,6 +12268,7 @@
     }
   },
   "superAgentCommissions": {
+    "statusUpdateFailed": "Failed to update commission status",
     "pageTitle": "Commission Management",
     "pageDescription": "Review payout records, approve commissions, and maintain the regional override rate from one streamlined workspace.",
     "summaryTitle": "Finance lane",
@@ -12528,6 +12529,7 @@
     "fieldFollowUpDate": "Follow-up Date",
     "noneOption": "— None —",
     "failedToMoveLead": "Failed to move lead",
+    "failedToDeleteLead": "Failed to delete lead",
     "aiScore": "AI Score",
     "convertToEmployer": "Convert to Employer",
     "moveToStage": "Move to {stage}",

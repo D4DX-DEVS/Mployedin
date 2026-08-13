@@ -8,7 +8,7 @@ import mongoose from "mongoose";
 export const GET = withAuth(
   async (
     _req,
-    _ctx,
+    ctx,
     params
   ) => {
     const id = params?.id ?? "";
@@ -25,6 +25,24 @@ export const GET = withAuth(
 
     if (!job) {
       return NextResponse.json({ error: "Job not found" }, { status: 404 });
+    }
+
+    // The jobs:read guard is role-level — every employer holds it — so without
+    // an ownership check any employer could read a competitor's pipeline stats
+    // (counts by status, interview/offer rates, daily trends) by job id.
+    if (ctx.role === "employer") {
+      const { Employer } = await import("@/models/Employer");
+      const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
+      if (!emp || String(job.employerId) !== String(emp._id)) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    } else if (ctx.role === "agent") {
+      const { default: Agent } = await import("@/models/Agent");
+      const agent = await Agent.findOne({ userId: ctx.userId }).select("assignedEmployerIds").lean();
+      const assigned = (agent?.assignedEmployerIds ?? []).map(String);
+      if (!assigned.includes(String(job.employerId))) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
     }
 
     // Status breakdown

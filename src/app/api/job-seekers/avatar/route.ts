@@ -8,6 +8,12 @@ import { validateUploadedFile } from "@/lib/security/file-validation";
 
 // POST /api/job-seekers/avatar — upload profile picture
 async function postHandler(req: NextRequest, ctx: { userId: string; role: string; locale: string }) {
+  // Self-service seeker endpoint — the siblings under /api/job-seeker/* all gate
+  // the role, this one did not.
+  if (ctx.role !== "job_seeker") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   await connectDB();
   const user = await User.findById(ctx.userId).select("avatar name");
   if (!user) {
@@ -64,6 +70,10 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
 
 // DELETE /api/job-seekers/avatar — remove profile picture
 async function deleteHandler(req: NextRequest, ctx: { userId: string; role: string; locale: string }) {
+  if (ctx.role !== "job_seeker") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   await connectDB();
   const user = await User.findById(ctx.userId).select("avatar");
   if (!user) {

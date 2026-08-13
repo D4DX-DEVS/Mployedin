@@ -12268,6 +12268,7 @@
     }
   },
   "superAgentCommissions": {
+    "statusUpdateFailed": "فشل تحديث حالة العمولة",
     "pageTitle": "إدارة العمولات",
     "pageDescription": "راجع سجلات المدفوعات وأقرّ العمولات والحافظ على معدل التجاوز الإقليمي من مساحة عمل واحدة مبسطة.",
     "summaryTitle": "ممر التمويل",
@@ -12528,6 +12529,7 @@
     "fieldFollowUpDate": "تاريخ المتابعة",
     "noneOption": "— بدون —",
     "failedToMoveLead": "فشل نقل الفرصة",
+    "failedToDeleteLead": "فشل حذف الفرصة",
     "aiScore": "تقييم ذكي",
     "convertToEmployer": "تحويل إلى جهة توظيف",
     "moveToStage": "انتقل إلى {stage}",

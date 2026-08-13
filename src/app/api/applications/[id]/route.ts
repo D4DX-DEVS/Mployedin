@@ -148,9 +148,13 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     });
   }
 
-  if (rejectionReason !== undefined) application.rejectionReason = rejectionReason;
-  if (employerNotes !== undefined) application.employerNotes = employerNotes;
-  if (agentNotes !== undefined) application.agentNotes = agentNotes;
+  // Staff-only fields. A job seeker holds applications:update (to withdraw) and
+  // passes the ownership check above, so without this gate they could overwrite
+  // the recruiter's private notes via PATCH on their own application.
+  const isStaff = ctx.role !== "job_seeker";
+  if (isStaff && rejectionReason !== undefined) application.rejectionReason = rejectionReason;
+  if (isStaff && employerNotes !== undefined) application.employerNotes = employerNotes;
+  if (isStaff && agentNotes !== undefined) application.agentNotes = agentNotes;
   if (withdrawalReason !== undefined) application.withdrawalReason = withdrawalReason;
   if (withdrawalNote !== undefined) application.withdrawalNote = withdrawalNote;
 

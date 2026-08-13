@@ -15,6 +15,7 @@ import {
   Users,
   Check,
   Zap,
+  Loader2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ShareJob } from "@/components/shared/ShareJob";
@@ -52,6 +53,9 @@ interface JobCardProps {
   onHide: () => void;
   locale: string;
   showMatchScore?: boolean;
+  /** Save request in flight for THIS job — disables the button so a double
+   *  click cannot fire the mutation twice. */
+  savePending?: boolean;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -165,6 +169,7 @@ export const JobFeedCard = memo(function JobFeedCard({
   onHide,
   locale,
   showMatchScore = true,
+  savePending = false,
 }: JobCardProps) {
   const t = useTranslations("jobFeed.card");
   const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
@@ -375,13 +380,16 @@ export const JobFeedCard = memo(function JobFeedCard({
               </button>
               <button
                 onClick={onSave}
-                className={`inline-flex items-center gap-1 rounded-xl border px-2.5 py-1.5 text-xs transition-colors sm:px-3 sm:py-2 ${
+                disabled={savePending}
+                className={`inline-flex items-center gap-1 rounded-xl border px-2.5 py-1.5 text-xs transition-colors disabled:opacity-60 sm:px-3 sm:py-2 ${
                   isSaved
                     ? "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-400"
                     : "border-border bg-secondary/80 text-muted-foreground hover:bg-accent hover:text-foreground"
                 }`}
               >
-                {isSaved ? <BookmarkCheck className="h-3 w-3" /> : <Bookmark className="h-3 w-3" />}
+                {savePending
+                  ? <Loader2 className="h-3 w-3 animate-spin" />
+                  : isSaved ? <BookmarkCheck className="h-3 w-3" /> : <Bookmark className="h-3 w-3" />}
                 <span className="hidden sm:inline">{isSaved ? t("saved") : t("save")}</span>
               </button>
               <button
