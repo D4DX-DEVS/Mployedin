@@ -13,9 +13,50 @@ async function getSeeker(userId: string) {
   return JobSeeker.findOne({ userId }).select("_id skills").lean();
 }
 
+export const myProfileTool: CopilotTool<Record<string, never>> = {
+  name: "my_profile",
+  description:
+    "Read the current user's own job-seeker profile: headline, skills, years of experience, recent job titles, and job preferences (roles, countries, work mode, salary). Call this FIRST whenever the user asks for jobs that match them, instead of asking them to repeat information the profile already holds.",
+  resource: "job_seekers",
+  action: "read",
+  roles: ["job_seeker"],
+  mutates: false,
+  parameters: {},
+  summarize: () => "Read my profile",
+  execute: async (_args, ctx) => {
+    await connectDB();
+    const seeker = await JobSeeker.findOne({ userId: ctx.userId })
+      .select(
+        "headline summary skills totalExperienceYears industry experience preferredRoles preferredCountries preferredLocations preferredJobType preferredSalary availabilityStatus profileCompleteness"
+      )
+      .lean();
+    if (!seeker) return { ok: false, message: "No job seeker profile found for this account." };
+
+    return {
+      ok: true,
+      message: "Loaded your profile.",
+      data: {
+        headline: seeker.headline,
+        summary: seeker.summary,
+        skills: seeker.skills ?? [],
+        yearsOfExperience: seeker.totalExperienceYears,
+        industry: seeker.industry,
+        recentTitles: (seeker.experience ?? []).slice(0, 3).map((e: { title?: string }) => e.title),
+        preferredRoles: seeker.preferredRoles ?? [],
+        preferredCountries: seeker.preferredCountries ?? [],
+        preferredLocations: seeker.preferredLocations ?? [],
+        preferredJobType: seeker.preferredJobType,
+        preferredSalary: seeker.preferredSalary,
+        availability: seeker.availabilityStatus,
+        profileCompleteness: seeker.profileCompleteness,
+      },
+    };
+  },
+};
+
 export const searchJobsTool: CopilotTool<{ query?: string; country?: string; remoteOnly?: boolean; limit?: number }> = {
   name: "search_jobs",
-  description: "Search live, active job postings on MPLOYEDIN by keyword, country, or remote-only. Use this before recommending or applying to a job so you have a real jobId.",
+  description: "Search live, active job postings on MPLOYEDIN by keyword, country, or remote-only. Use this before recommending or applying to a job so you have a real jobId. For \"jobs that match me\" requests, call my_profile first and derive the keyword/country from it.",
   resource: "jobs",
   action: "read",
   roles: ["job_seeker"],
@@ -278,4 +319,4 @@ export const withdrawApplicationTool: CopilotTool<{ applicationId: string; withd
   },
 };
 
-export const jobSeekerTools = [searchJobsTool, myApplicationsTool, applyToJobTool, saveJobTool, mySavedJobsTool, withdrawApplicationTool];
+export const jobSeekerTools = [myProfileTool, searchJobsTool, myApplicationsTool, applyToJobTool, saveJobTool, mySavedJobsTool, withdrawApplicationTool];
