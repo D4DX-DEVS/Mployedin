@@ -113,24 +113,16 @@ export function DraftExtractionsCard({ locale, variant = "card", onCountChange }
   // ── Banner variant (jobs list page) ─────────────────────────────────────
   if (variant === "banner") {
     return (
-      <div className="workspace-glass-panel flex h-full flex-col gap-3 rounded-2xl border border-violet-200/60 p-3 sm:p-4 dark:border-violet-500/30">
+      // Single row, mirrors DraftJobsCard banner — the two sit side-by-side.
+      <div className="workspace-glass-panel flex h-full flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-violet-200/60 p-3 dark:border-violet-500/30">
         {ConfirmDialogNode}
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-600 dark:bg-violet-500/20 dark:text-violet-300">
-            <Wand2 className="h-4 w-4" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-foreground">
-              {t("bannerTitle", { count: drafts.length })}
-            </p>
-            <p className="truncate text-xs text-muted-foreground">
-              {drafts
-                .map((d) => `${d.fileName} · ${t("remaining", { count: d.remainingCount })}`)
-                .join("  •  ")}
-            </p>
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-2">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-600 dark:bg-violet-500/20 dark:text-violet-300">
+          <Wand2 className="h-4 w-4" />
+        </span>
+        <p className="min-w-0 truncate text-sm font-semibold text-foreground">
+          {t("bannerTitle", { count: drafts.length })}
+        </p>
+        <div className="flex min-w-0 flex-wrap gap-2 sm:ms-auto">
           {drafts.slice(0, 3).map((d) => (
             <Button
               key={d._id}
@@ -151,7 +143,7 @@ export function DraftExtractionsCard({ locale, variant = "card", onCountChange }
 
   // ── Card variant (employer dashboard) ───────────────────────────────────
   return (
-    <section className="workspace-panel-surface flex flex-col rounded-[24px] p-3 sm:p-5">
+    <section className="workspace-panel-surface panel-body flex flex-col rounded-[24px]">
       {ConfirmDialogNode}
       <div className="mb-4 flex items-center gap-3">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-600 dark:bg-violet-500/15 dark:text-violet-300">

@@ -367,7 +367,7 @@ export default function AdminSuperAgentsPage() {
   );
 
   return (
-    <div className="page-container space-y-4">
+    <div className="page-container">
       {ConfirmDialogNode}
       <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
         <div className="flex flex-col gap-3 border-b border-border/80 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">

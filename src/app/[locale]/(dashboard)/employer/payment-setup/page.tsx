@@ -89,7 +89,7 @@ export default function EmployerPaymentSetupPage() {
   };
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container">
       {/* Hero */}
       <DashboardPageHeader
         icon={CreditCard}

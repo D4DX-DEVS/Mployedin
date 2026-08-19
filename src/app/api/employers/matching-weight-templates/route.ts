@@ -5,7 +5,7 @@ import MatchingWeightTemplate from "@/models/MatchingWeightTemplate";
 import Employer from "@/models/Employer";
 import { validateBody } from "@/lib/validators";
 import { matchingWeightTemplateSchema } from "@/lib/validators/misc";
-import { logActivity } from "@/lib/audit/log";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { sanitizeMatchingWeights } from "@/lib/ai/matchingWeights";
 import type { UserRole } from "@/types/user";
 
@@ -62,8 +62,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   });
 
   await logActivity({
-    actorId: ctx.userId,
-    actorRole: ctx.role,
+    ...actorFromCtx(ctx),
     action: "matching_weight_template.create",
     resource: "matching_weight_templates",
     resourceId: template._id.toString(),

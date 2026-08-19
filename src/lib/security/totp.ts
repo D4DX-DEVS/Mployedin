@@ -69,10 +69,12 @@ function totpAt(secretBase32: string, counter: number): string {
 
 /**
  * Verify a 6-digit TOTP code against a secret.
- * Accepts ±`window` time steps (default 1 → ±30s) for clock drift.
+ * Accepts ±`window` time steps (default 2 → ±60s) for clock drift — phones with
+ * un-synced clocks were rejecting genuinely valid codes; rate limiting keeps
+ * the wider window safe (5 valid codes per attempt, 8 attempts / 5 min).
  * Constant-time comparison.
  */
-export function verifyTotp(secretBase32: string, code: string, window = 1): boolean {
+export function verifyTotp(secretBase32: string, code: string, window = 2): boolean {
   const normalized = code.replace(/\s/g, "");
   if (!/^\d{6}$/.test(normalized)) return false;
   const counter = Math.floor(Date.now() / 1000 / TOTP_PERIOD_SEC);

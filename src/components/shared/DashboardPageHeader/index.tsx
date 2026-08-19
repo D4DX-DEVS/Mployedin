@@ -14,7 +14,7 @@ export interface DashboardHeaderMetric {
 }
 
 interface DashboardPageHeaderProps {
-  eyebrow: string;
+  eyebrow?: string;
   title: string;
   description?: string;
   icon?: LucideIcon;
@@ -61,22 +61,24 @@ export function DashboardPageHeader({
     >
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0 max-w-3xl">
-          <div className="hidden items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary sm:flex">
-            <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-            <span className="truncate">{eyebrow}</span>
-          </div>
+          {eyebrow && (
+            <div className="hidden items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary sm:flex">
+              <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              <span className="truncate">{eyebrow}</span>
+            </div>
+          )}
           <Heading className="text-xl font-semibold tracking-tight text-foreground sm:mt-1.5 sm:text-[1.625rem]">
             {title}
           </Heading>
           {description && (
-            <p className="mt-1 line-clamp-2 max-w-2xl text-xs leading-4 text-muted-foreground sm:text-sm sm:leading-5">
+            <p className="mt-1 line-clamp-2 max-w-2xl text-xs leading-4 text-muted-foreground sm:line-clamp-1 sm:text-sm sm:leading-5">
               {description}
             </p>
           )}
         </div>
 
         {(summary || actions) && (
-          <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 sm:gap-3 lg:flex-nowrap lg:shrink-0">
+          <div className="flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-2 sm:gap-3 lg:flex-nowrap">
             {summary && (
               <div className="workspace-glass-panel min-w-0 border-s-2 border-primary/30 ps-3">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">

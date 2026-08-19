@@ -79,6 +79,12 @@ CommissionSchema.index({ agentId: 1 });
 CommissionSchema.index({ superAgentId: 1 });
 CommissionSchema.index({ status: 1 });
 CommissionSchema.index({ invoiceId: 1 });
+// Idempotency guard: one commission per (invoice, agent, type) — backs the countDocuments
+// check in commissionRecords.ts against concurrent duplicate creation
+CommissionSchema.index(
+  { invoiceId: 1, agentId: 1, type: 1 },
+  { unique: true, partialFilterExpression: { invoiceId: { $exists: true } } }
+);
 CommissionSchema.index({ placementId: 1 });
 
 export const Commission =

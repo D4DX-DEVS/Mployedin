@@ -1430,7 +1430,7 @@ export default function AgentSettingsPage() {
   const common = useTranslations("agentCommon");
 
   return (
-    <div className="page-container space-y-3 sm:space-y-6">
+    <div className="page-container">
       <PageHero
         icon={Settings}
         eyebrow={common("workspace")}

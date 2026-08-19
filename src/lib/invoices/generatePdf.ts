@@ -57,6 +57,8 @@ type PopulatedInvoice = {
   notes?: string;
 };
 
+type ViewerRole = "admin" | "super_agent" | "agent" | "employer" | "job_seeker" | (string & {});
+
 function safeDate(value?: Date | string | null): string {
   if (!value) return "—";
   const d = new Date(value);
@@ -91,7 +93,7 @@ function getLogoBase64(): string | null {
   return cachedLogoBase64;
 }
 
-export function generateInvoicePdf(invoice: PopulatedInvoice): Buffer {
+export function generateInvoicePdf(invoice: PopulatedInvoice, viewerRole: ViewerRole = "employer"): Buffer {
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth(); // ~595pt
   const pageHeight = doc.internal.pageSize.getHeight(); // ~842pt
@@ -99,6 +101,9 @@ export function generateInvoicePdf(invoice: PopulatedInvoice): Buffer {
   const contentWidth = pageWidth - margin * 2;
   const labelW = 82;
   let y = margin;
+
+  // Rates/amounts are redacted per-row below for non-staff viewers
+  const commissions = invoice.commissions ?? [];
 
   // ── Brand Colors ────────────────────────────────────────────────────────
   const brandBlue: [number, number, number] = [40, 69, 149]; // #284595
@@ -322,7 +327,6 @@ export function generateInvoicePdf(invoice: PopulatedInvoice): Buffer {
   }
 
   // ── Commission Summary ──────────────────────────────────────────────────
-  const commissions = invoice.commissions ?? [];
   if (commissions.length > 0) {
     y += 10;
     doc.setFont("helvetica", "bold");
@@ -335,7 +339,11 @@ export function generateInvoicePdf(invoice: PopulatedInvoice): Buffer {
     doc.setTextColor(50, 50, 50);
     for (const comm of commissions) {
       const roleLabel = comm.role === "agent" ? "Agent" : "Super Agent";
-      doc.text(`${roleLabel}: ${comm.rate}% = ${fmt(comm.amount, currency)}`, margin + 6, y);
+      // Show rates/amounts only if viewer is internal staff
+      const detailStr = ["admin", "super_agent", "agent"].includes(viewerRole)
+        ? `: ${comm.rate}% = ${fmt(comm.amount, currency)}`
+        : "";
+      doc.text(`${roleLabel}${detailStr}`, margin + 6, y);
       y += 11;
     }
   }

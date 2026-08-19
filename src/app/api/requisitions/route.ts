@@ -3,7 +3,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import Requisition from "@/models/Requisition";
 import Employer from "@/models/Employer";
-import { logActivity } from "@/lib/audit/log";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import mongoose from "mongoose";
 
 async function getHandler(req: NextRequest, ctx: { userId: string; role: string }) {
@@ -53,7 +53,7 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
     createdBy: new mongoose.Types.ObjectId(ctx.userId),
   });
 
-  await logActivity({ action: "requisition.created", actorId: ctx.userId, resource: "Requisition", resourceId: requisition._id.toString(), meta: { title } });
+  await logActivity({ action: "requisition.created", ...actorFromCtx(ctx), resource: "Requisition", resourceId: requisition._id.toString(), meta: { title } });
 
   return NextResponse.json({ requisition }, { status: 201 });
 }

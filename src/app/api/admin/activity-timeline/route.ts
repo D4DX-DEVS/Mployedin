@@ -61,12 +61,16 @@ async function handler(req: NextRequest, ctx: AuthContext) {
       .skip((page - 1) * limit)
       .limit(limit)
       .populate("actorId", "name email role")
+      .populate("onBehalfOfId", "name email role")
       .lean(),
     AuditLog.countDocuments(filter),
   ]);
 
   const mapped = items.map((item: Record<string, unknown>) => {
     const actor = item.actorId as Record<string, unknown> | null;
+    // Set when the actor was inside someone else's account (tenant view /
+    // impersonation). Without it "agent Ravi — job.create" is ambiguous.
+    const onBehalfOf = item.onBehalfOfId as Record<string, unknown> | null;
     return {
       _id: String(item._id),
       userId: actor?._id ? String(actor._id) : item.actorId ? String(item.actorId) : "system",
@@ -76,6 +80,9 @@ async function handler(req: NextRequest, ctx: AuthContext) {
       action: item.action ?? "",
       resource: item.resource ?? "",
       resourceId: item.resourceId ? String(item.resourceId) : undefined,
+      onBehalfOfName: onBehalfOf?.name ?? undefined,
+      onBehalfOfEmail: onBehalfOf?.email ?? undefined,
+      onBehalfOfRole: onBehalfOf?.role ?? item.onBehalfOfRole ?? undefined,
       details: item.meta ?? item.changes,
       ipAddress: item.ipAddress,
       createdAt: item.createdAt,

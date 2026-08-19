@@ -400,6 +400,6 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
   return NextResponse.json({ success: true });
 }
 
-export const GET = withAuth(getHandler);
-export const POST = withAuth(postHandler);
-export const PATCH = withAuth(patchHandler);
+export const GET = withAuth(getHandler, { resource: "agents", action: "read" });
+export const POST = withAuth(postHandler, { resource: "agents", action: "create" });
+export const PATCH = withAuth(patchHandler, { resource: "agents", action: "update" });

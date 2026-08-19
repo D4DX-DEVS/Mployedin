@@ -128,7 +128,7 @@ export default function PlacementDetailPage() {
   const candidate = placement.jobSeekerId?.userId;
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container">
       {ConfirmDialogNode}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

@@ -43,19 +43,36 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
     if (!emp) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     empId = String(emp._id);
-  } else if (!["agent", "super_agent", "admin"].includes(ctx.role)) {
+  } else if (["agent", "super_agent"].includes(ctx.role)) {
+    const Agent = (await import("@/models/Agent")).default;
+    const agent = await Agent.findOne({ userId: ctx.userId }).select("_id assignedEmployerIds").lean();
+    if (!agent) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    // For agents, verify all applications belong to their assigned employers or jobs they own
+    // Store agent scope for later validation
+  } else if (ctx.role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const applications = await Application.find({ _id: { $in: ids } })
     .populate("jobSeekerId", "name profilePicture skills experience preferredSalary profileCompleteness")
-    .populate("jobId", "title salaryRange")
+    .populate("jobId", "title salaryRange agentId")
     .lean();
 
-  // Ownership guard: all applications must belong to this employer
+  // Ownership guard: all applications must belong to this employer/agent
   if (empId) {
     const foreign = applications.find((a) => String(a.employerId) !== empId);
     if (foreign) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  } else if (["agent", "super_agent"].includes(ctx.role)) {
+    const Agent = (await import("@/models/Agent")).default;
+    const agent = await Agent.findOne({ userId: ctx.userId }).select("_id assignedEmployerIds").lean();
+    if (!agent) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    for (const app of applications) {
+      const job = app.jobId as unknown as { agentId?: unknown; employerId?: unknown } | null;
+      if (!job) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      const hasAccess = String(job.agentId) === String(agent._id) ||
+        (agent.assignedEmployerIds ?? []).some((id: unknown) => String(id) === String(app.employerId));
+      if (!hasAccess) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
   }
 
   // Compute years of experience from populated jobSeekerId

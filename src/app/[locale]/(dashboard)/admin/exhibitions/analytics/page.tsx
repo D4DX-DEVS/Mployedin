@@ -219,7 +219,7 @@ export default function AdminExhibitionAnalyticsPage() {
 
   if (loading) {
     return (
-      <div className="page-container space-y-6">
+      <div className="page-container">
         <DashboardPageHeader
           eyebrow={t("adminAnalyticsBadge")}
           title={t("pageTitle")}
@@ -253,7 +253,7 @@ export default function AdminExhibitionAnalyticsPage() {
   const strongestMonth = monthly.length > 0 ? [...monthly].sort((left, right) => right.total - left.total)[0] : null;
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container">
       <DashboardPageHeader
         eyebrow={`${t("adminAnalyticsBadge")} · ${t("yearBadge", { year: data.year })}`}
         title={t("pageTitle")}

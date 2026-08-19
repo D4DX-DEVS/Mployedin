@@ -243,7 +243,7 @@ export default function AgentDetailPage() {
 
   if (loading) {
     return (
-      <div className="page-container space-y-3 sm:space-y-4">
+      <div className="page-container">
         <Skeleton className="h-5 w-24" />
         <div className="rounded-2xl border border-border/60 bg-card p-6">
           <div className="flex items-center gap-4">
@@ -273,7 +273,7 @@ export default function AgentDetailPage() {
 
   if (error || !data) {
     return (
-      <div className="page-container space-y-3 sm:space-y-4">
+      <div className="page-container">
         <button onClick={() => router.back()} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="h-4 w-4" /> {t("backToAgents")}
         </button>
@@ -295,7 +295,7 @@ export default function AgentDetailPage() {
   ];
 
   return (
-    <div className="page-container space-y-3 sm:space-y-4">
+    <div className="page-container">
       {/* Back nav */}
       <button onClick={() => router.back()} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
         <ArrowLeft className="h-4 w-4" /> {t("backToAgents")}

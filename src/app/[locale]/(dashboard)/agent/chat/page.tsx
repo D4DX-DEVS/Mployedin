@@ -92,7 +92,7 @@ export default function AgentChatPage() {
   };
 
   return (
-    <div className="page-container flex flex-col space-y-6">
+    <div className="page-container flex flex-col">
       <DashboardPageHeader
         icon={Users}
         eyebrow={t("agentWorkspaceBadge")}

@@ -107,9 +107,22 @@ async function calcFinance(
 ): Promise<number> {
   const { start, end } = getDateRange(year, month);
 
+  // Recognition date = approvedAt ?? paidAt ?? createdAt (ASC-606-style: key on approval event date)
   const matchStage: Record<string, unknown> = {
     status: { $in: ["approved", "paid"] },
-    createdAt: { $gte: start, $lte: end },
+    $expr: {
+      $let: {
+        vars: {
+          recognitionDate: { $ifNull: ["$approvedAt", { $ifNull: ["$paidAt", "$createdAt"] }] }
+        },
+        in: {
+          $and: [
+            { $gte: ["$$recognitionDate", start] },
+            { $lte: ["$$recognitionDate", end] }
+          ]
+        }
+      }
+    }
   };
 
   if (role === "agent") {
@@ -381,7 +394,7 @@ async function batchCalcEmployerByMonth(
   const end = new Date(year, 11, 31, 23, 59, 59, 999);
 
   const results = await Employer.aggregate([
-    { $match: { agentId: { $in: agentDocIds }, createdAt: { $gte: start, $lte: end } } },
+    { $match: { agentId: { $in: agentDocIds.map((id) => new mongoose.Types.ObjectId(id)) }, createdAt: { $gte: start, $lte: end } } },
     { $group: { _id: { agentId: "$agentId", month: { $month: "$createdAt" } }, count: { $sum: 1 } } },
   ]);
 
@@ -402,7 +415,7 @@ async function batchCalcEmployeeByMonth(
   const end = new Date(year, 11, 31, 23, 59, 59, 999);
 
   const results = await Placement.aggregate([
-    { $match: { agentId: { $in: agentDocIds }, createdAt: { $gte: start, $lte: end } } },
+    { $match: { agentId: { $in: agentDocIds.map((id) => new mongoose.Types.ObjectId(id)) }, createdAt: { $gte: start, $lte: end } } },
     { $group: { _id: { agentId: "$agentId", month: { $month: "$createdAt" } }, count: { $sum: 1 } } },
   ]);
 
@@ -423,8 +436,20 @@ async function batchCalcFinanceByMonth(
   const end = new Date(year, 11, 31, 23, 59, 59, 999);
 
   const results = await Commission.aggregate([
-    { $match: { agentId: { $in: agentDocIds }, status: { $in: ["approved", "paid"] }, createdAt: { $gte: start, $lte: end } } },
-    { $group: { _id: { agentId: "$agentId", month: { $month: "$createdAt" } }, total: { $sum: "$amount" } } },
+    // Recognition date keyed on approval event date (ASC-606-style), clawbacks restate
+    {
+      $addFields: {
+        recognitionDate: { $ifNull: ["$approvedAt", { $ifNull: ["$paidAt", "$createdAt"] }] }
+      }
+    },
+    {
+      $match: {
+        agentId: { $in: agentDocIds.map((id) => new mongoose.Types.ObjectId(id)) },
+        status: { $in: ["approved", "paid"] },
+        recognitionDate: { $gte: start, $lte: end }
+      }
+    },
+    { $group: { _id: { agentId: "$agentId", month: { $month: "$recognitionDate" } }, total: { $sum: "$amount" } } },
   ]);
 
   const map = new Map<string, Map<number, number>>();

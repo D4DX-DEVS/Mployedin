@@ -141,8 +141,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
 
   // Log activity
   await logActivity({
-    actorId: ctx.userId,
-    actorRole: ctx.role,
+    ...actorFromCtx(ctx),
     action: "scorecard.create",
     resource: "scorecards",
     resourceId: scorecard._id.toString(),

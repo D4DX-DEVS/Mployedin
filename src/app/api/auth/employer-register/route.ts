@@ -122,7 +122,15 @@ export async function POST(req: NextRequest) {
 
       if (isStaleUnverified) {
         // Remove the stale user and their employer profile to allow re-registration
-        await Employer.deleteOne({ userId: existing._id });
+        const staleEmployer = await Employer.findOne({ userId: existing._id }).lean();
+        if (staleEmployer) {
+          // Decrement usedCount on any ReferralLink that tracked this stale registration
+          await ReferralLink.updateMany(
+            { "registrations.employerId": staleEmployer._id },
+            { $inc: { usedCount: -1 } }
+          );
+          await Employer.deleteOne({ userId: existing._id });
+        }
         await User.deleteOne({ _id: existing._id });
       } else {
         return NextResponse.json(
@@ -180,8 +188,19 @@ export async function POST(req: NextRequest) {
         if (rl.expiresAt && rl.expiresAt < new Date()) {
           return NextResponse.json({ message: "This referral link has expired." }, { status: 400 });
         }
-        // Check max uses
-        if (rl.maxUses > 0 && rl.usedCount >= rl.maxUses) {
+        // Atomically check and increment usedCount within the filter to prevent TOCTOU
+        // This ensures maxUses is never exceeded even with concurrent requests
+        const updateFilter: Record<string, unknown> = { _id: rl._id };
+        if (rl.maxUses > 0) {
+          updateFilter.usedCount = { $lt: rl.maxUses };
+        }
+        const updated = await ReferralLink.findOneAndUpdate(
+          updateFilter,
+          { $inc: { usedCount: 1 } },
+          { new: false }
+        );
+        if (!updated && rl.maxUses > 0) {
+          // The filter didn't match — means we've hit or exceeded maxUses
           return NextResponse.json({ message: "This referral link has reached its maximum usage." }, { status: 400 });
         }
         matchedReferralLink = { _id: rl._id.toString() };
@@ -195,10 +214,14 @@ export async function POST(req: NextRequest) {
             verifiedByAgentId = agentRef.userId.toString();
           }
         } else if (rl.superAgentId) {
-          const saRef = await SuperAgent.findById(rl.superAgentId).select("userId").lean();
+          const saRef = await SuperAgent.findById(rl.superAgentId).select("userId agentIds").lean();
           if (saRef) {
             isAgentVerified = true;
             verifiedByAgentId = saRef.userId.toString();
+            // Assign to the first agent under this SuperAgent, or leave unset if none exist
+            if (saRef.agentIds && saRef.agentIds.length > 0) {
+              referrerAgentId = saRef.agentIds[0].toString();
+            }
           }
         }
       } else {
@@ -212,10 +235,14 @@ export async function POST(req: NextRequest) {
           const fallbackRl = await ReferralLink.findOne({ code: referralCode });
           if (fallbackRl) matchedReferralLink = { _id: fallbackRl._id.toString() };
         } else {
-          const saRef = await SuperAgent.findOne({ referralCode }).select("userId").lean();
+          const saRef = await SuperAgent.findOne({ referralCode }).select("userId agentIds").lean();
           if (saRef) {
             isAgentVerified = true;
             verifiedByAgentId = saRef.userId.toString();
+            // Assign to the first agent under this SuperAgent
+            if (saRef.agentIds && saRef.agentIds.length > 0) {
+              referrerAgentId = saRef.agentIds[0].toString();
+            }
             const fallbackRl = await ReferralLink.findOne({ code: referralCode });
             if (fallbackRl) matchedReferralLink = { _id: fallbackRl._id.toString() };
           }
@@ -241,10 +268,9 @@ export async function POST(req: NextRequest) {
       ...(verifiedByAgentId ? { verifiedByAgentId } : {}),
     });
 
-    // Track referral link usage
+    // Track referral link usage (usedCount already atomically incremented during validation)
     if (matchedReferralLink) {
       await ReferralLink.findByIdAndUpdate(matchedReferralLink._id, {
-        $inc: { usedCount: 1 },
         $push: {
           registrations: {
             employerId: employer._id,

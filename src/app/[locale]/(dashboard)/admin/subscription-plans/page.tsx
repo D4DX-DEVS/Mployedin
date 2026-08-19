@@ -323,7 +323,7 @@ export default function AdminSubscriptionPlansPage() {
 
   if (isLoading) {
     return (
-      <div className="page-container space-y-4">
+      <div className="page-container">
         <PageHeader title={t("pageTitle")} description={t("pageDescription")} />
         {[1, 2, 3].map((i) => (
           <div key={i} className="h-28 animate-pulse rounded-2xl border border-border bg-background/70" />
@@ -333,7 +333,7 @@ export default function AdminSubscriptionPlansPage() {
   }
 
   return (
-    <div className="page-container space-y-3 sm:space-y-4">
+    <div className="page-container">
       <PageHeader
         title={t("pageTitle")}
         description={t("pageDescription")}

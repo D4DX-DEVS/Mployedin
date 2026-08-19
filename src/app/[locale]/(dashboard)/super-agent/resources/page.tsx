@@ -79,7 +79,7 @@ export default function ResourceDownloadsPage() {
   };
 
   return (
-    <div className="page-container space-y-3 sm:space-y-4 pb-6">
+    <div className="page-container pb-6">
       <DashboardPageHeader
         icon={FolderOpen}
         eyebrow={t("heroLabel")}

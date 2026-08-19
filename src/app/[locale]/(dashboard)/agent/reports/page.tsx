@@ -112,7 +112,7 @@ export default function AgentReportsPage() {
   const totalFunnel = analytics ? Object.values(analytics.leadFunnel).reduce((s, v) => s + v, 0) : 0;
 
   return (
-    <div className="page-container space-y-3 sm:space-y-6">
+    <div className="page-container">
       <DashboardPageHeader
         icon={BarChart3}
         eyebrow={t("agentWorkspace")}

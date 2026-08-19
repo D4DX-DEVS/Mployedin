@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { Fragment, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import {
   BriefcaseBusiness,
   Calendar,
@@ -108,7 +108,7 @@ export function InteractivePipeline({
 
   return (
     <section className="workspace-panel-surface overflow-hidden rounded-2xl">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 px-2.5 py-2 sm:px-4 sm:py-3">
+      <div className="panel-head flex-wrap justify-between">
         <div className="flex min-w-0 items-center gap-2">
           <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-foreground sm:gap-2 sm:text-[11px] sm:tracking-[0.14em]">
             <Sparkles className="h-3.5 w-3.5 shrink-0" />
@@ -131,32 +131,30 @@ export function InteractivePipeline({
         </div>
       </div>
 
-      {/* Phones wrap the stages instead of scrolling sideways; the flow chevrons
-          only make sense on the single-line desktop layout. */}
-      <div className="flex flex-wrap items-stretch gap-1.5 p-2 sm:flex-nowrap sm:gap-0 sm:overflow-x-auto">
-        {stages.map((stage, idx) => {
+      {/* Under lg the five stages snap-scroll sideways; at lg they are a plain
+          5-up grid. The old layout went flex-nowrap with `gap-0` from sm up,
+          so on a tablet the "Hired" tile was clipped 30px off the edge with
+          nothing to show the row could scroll. */}
+      <div className="panel-body flex items-stretch gap-[var(--panel-gap)] snap-x overflow-x-auto lg:grid lg:grid-cols-5 lg:overflow-visible">
+        {stages.map((stage) => {
           const Icon = stage.icon;
           return (
-            <Fragment key={stage.labelKey}>
-              <Link
-                href={stage.href}
-                className={`group flex min-w-[86px] flex-1 flex-col rounded-xl border p-2 transition-colors hover:brightness-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 sm:min-w-[132px] sm:p-3 ${stage.surface}`}
-              >
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <Icon className={`h-3 w-3 shrink-0 sm:h-4 sm:w-4 ${stage.accent}`} />
-                  <span className={`truncate text-[11px] font-semibold sm:text-sm ${stage.accent}`}>{t(stage.labelKey)}</span>
-                </div>
-                <div className="mt-1 flex items-baseline justify-between gap-1 sm:mt-2 sm:gap-2">
-                  <AnimatedNumber value={stage.value} className="text-base font-semibold tabular-nums tracking-tight text-foreground sm:text-xl" />
-                  <span className="truncate text-[9px] font-medium text-muted-foreground sm:text-[11px]">
-                    {stage.subCount} {t(stage.subLabelKey).toLowerCase()}
-                  </span>
-                </div>
-              </Link>
-              {idx < stages.length - 1 && (
-                <ChevronRight className="mx-0.5 my-auto hidden h-3.5 w-3.5 shrink-0 text-muted-foreground/50 sm:block" aria-hidden />
-              )}
-            </Fragment>
+            <Link
+              key={stage.labelKey}
+              href={stage.href}
+              className={`group flex min-w-[132px] flex-1 shrink-0 snap-start flex-col rounded-xl border p-3 transition-colors hover:brightness-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${stage.surface}`}
+            >
+              <div className="flex items-center gap-2">
+                <Icon className={`h-4 w-4 shrink-0 ${stage.accent}`} />
+                <span className={`truncate text-[11px] font-semibold sm:text-sm ${stage.accent}`}>{t(stage.labelKey)}</span>
+              </div>
+              <div className="mt-2 flex items-baseline justify-between gap-2">
+                <AnimatedNumber value={stage.value} className="text-base font-semibold tabular-nums tracking-tight text-foreground sm:text-xl" />
+                <span className="truncate text-[9px] font-medium text-muted-foreground sm:text-[11px]">
+                  {stage.subCount} {t(stage.subLabelKey).toLowerCase()}
+                </span>
+              </div>
+            </Link>
           );
         })}
       </div>

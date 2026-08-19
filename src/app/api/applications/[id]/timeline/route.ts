@@ -30,7 +30,20 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
     if (!seeker || String(application.jobSeekerId) !== String(seeker._id)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-  } else if (!["agent", "super_agent", "admin"].includes(ctx.role)) {
+  } else if (["agent", "super_agent"].includes(ctx.role)) {
+    const Job = (await import("@/models/Job")).default;
+    const Agent = (await import("@/models/Agent")).default;
+    const agent = await Agent.findOne({ userId: ctx.userId }).select("_id assignedEmployerIds").lean();
+    const job = await Job.findById(application.jobId).select("agentId employerId").lean();
+    if (!agent || !job) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    const hasAccess = String(job.agentId) === String(agent._id) ||
+      (agent.assignedEmployerIds ?? []).some((id: unknown) => String(id) === String(job.employerId));
+    if (!hasAccess) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  } else if (ctx.role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

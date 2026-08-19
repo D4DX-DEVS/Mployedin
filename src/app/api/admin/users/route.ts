@@ -21,7 +21,22 @@ interface AuthCtx { userId: string; role: UserRole; locale: string; }
  * employer settings, and drafts all 404/403 when Employer/JobSeeker is missing
  * (admin-converted employers previously couldn't post jobs at all).
  */
-async function ensureRoleProfile(user: { _id: unknown; name?: string; email?: string }, role: string): Promise<void> {
+async function ensureRoleProfile(user: { _id: unknown; name?: string; email?: string }, role: string, oldRole?: string): Promise<void> {
+  // Delete old profile if role is changing
+  if (oldRole && oldRole !== role) {
+    if (oldRole === "employer") {
+      const { Employer } = await import("@/models/Employer");
+      await Employer.deleteOne({ userId: user._id });
+    } else if (oldRole === "job_seeker") {
+      const JobSeeker = (await import("@/models/JobSeeker")).default;
+      await JobSeeker.deleteOne({ userId: user._id });
+    } else if (oldRole === "agent") {
+      await Agent.deleteOne({ userId: user._id });
+    } else if (oldRole === "super_agent") {
+      await SuperAgent.deleteOne({ userId: user._id });
+    }
+  }
+
   if (role === "employer") {
     const { Employer } = await import("@/models/Employer");
     const exists = await Employer.exists({ userId: user._id });
@@ -119,7 +134,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
         results.push({ userId: id, status: "skipped", reason: "Invalid ID" });
         continue;
       }
-      if (id === ctx.userId && (action === "deactivate" || action === "delete")) {
+      if (id === ctx.userId && (action === "deactivate" || action === "delete" || action === "setRole")) {
         results.push({ userId: id, status: "skipped", reason: "Cannot act on your own account" });
         continue;
       }
@@ -127,10 +142,19 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
         let modified = false;
         switch (action) {
           case "setRole": {
+            // Prevent removing the last admin
+            const targetUser = await User.findById(id).select("role").lean();
+            if (targetUser?.role === "admin" && role !== "admin") {
+              const adminCount = await User.countDocuments({ role: "admin", isActive: true });
+              if (adminCount <= 1) {
+                results.push({ userId: id, status: "skipped", reason: "Cannot demote the last active admin" });
+                break;
+              }
+            }
             modified = (await User.updateOne({ _id: id }, { $set: { role } })).modifiedCount > 0;
             // Idempotent — also heals accounts converted before this fix existed.
-            const u = await User.findById(id).select("name email").lean();
-            if (u && role) await ensureRoleProfile(u, role);
+            const u = await User.findById(id).select("name email role").lean();
+            if (u && role) await ensureRoleProfile(u, role, targetUser?.role);
             break;
           }
           case "activate":
@@ -139,9 +163,33 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
           case "deactivate":
             modified = (await User.updateOne({ _id: id }, { $set: { isActive: false } })).modifiedCount > 0;
             break;
-          case "delete":
-            modified = (await User.deleteOne({ _id: id })).deletedCount > 0;
+          case "delete": {
+            const targetUser = await User.findById(id);
+            if (targetUser) {
+              const {
+                cascadeDeleteEmployer,
+                cascadeDeleteJobSeeker,
+                cascadeDeleteAgentUser,
+              } = await import("@/lib/db/cascade");
+              if (targetUser.role === "agent") {
+                await cascadeDeleteAgentUser(targetUser._id, "agent");
+                await Agent.findOneAndDelete({ userId: targetUser._id });
+              } else if (targetUser.role === "super_agent") {
+                await cascadeDeleteAgentUser(targetUser._id, "super_agent");
+                await SuperAgent.findOneAndDelete({ userId: targetUser._id });
+              } else if (targetUser.role === "employer") {
+                await cascadeDeleteEmployer(targetUser._id);
+                const { Employer } = await import("@/models/Employer");
+                await Employer.deleteOne({ userId: targetUser._id });
+              } else if (targetUser.role === "job_seeker") {
+                await cascadeDeleteJobSeeker(targetUser._id);
+                const { JobSeeker } = await import("@/models/JobSeeker");
+                await JobSeeker.deleteOne({ userId: targetUser._id });
+              }
+              modified = (await User.deleteOne({ _id: id })).deletedCount > 0;
+            }
             break;
+          }
         }
         if (modified) {
           results.push({ userId: id, status: "updated" });
@@ -172,7 +220,11 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
   if (!userId) return NextResponse.json({ error: "userId is required" }, { status: 400 });
 
   const updateData: Record<string, unknown> = {};
-  if (role) updateData.role = role;
+  if (role) {
+    updateData.role = role;
+    updateData.permissionMode = "role_default";
+    updateData.customPermissions = undefined;
+  }
   if (isActive !== undefined) updateData.isActive = isActive;
   if (name) updateData.name = name;
   if (email) updateData.email = email;
@@ -197,6 +249,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
     }
   }
 
+  const oldUser = await User.findById(userId).select("role").lean();
   const updated = await User.findByIdAndUpdate(
     userId,
     { $set: updateData },
@@ -206,7 +259,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
   if (!updated) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
   if (role) {
-    await ensureRoleProfile(updated as { _id: unknown; name?: string; email?: string }, role as string);
+    await ensureRoleProfile(updated as { _id: unknown; name?: string; email?: string }, role as string, oldUser?.role);
   }
 
   await logActivity({
@@ -384,6 +437,16 @@ async function deleteHandler(req: NextRequest, ctx: AuthCtx) {
 
   user.isActive = false;
   await user.save();
+
+  // When deactivating an employer, close their active jobs
+  if (user.role === "employer") {
+    const { Employer } = await import("@/models/Employer");
+    const employer = await Employer.findOne({ userId: user._id }).select("_id").lean();
+    if (employer) {
+      const Job = (await import("@/models/Job")).default;
+      await Job.updateMany({ employerId: employer._id, status: "active" }, { $set: { status: "closed" } });
+    }
+  }
 
   await logActivity({
     ...actorFromCtx(ctx),

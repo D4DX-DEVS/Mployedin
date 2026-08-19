@@ -10,19 +10,45 @@ import logger from "@/lib/logger";
 
 type IndexSpec = mongoose.mongo.IndexDescription;
 
-/** Create indexes for a single collection, silently skipping conflicts (code 85). */
+/**
+ * Create indexes for a single collection, silently skipping conflicts (code 85).
+ *
+ * createIndexes() is all-or-nothing: one bad spec in the array aborts the whole
+ * command, so a single unbuildable index would take the rest of the collection's
+ * indexes down with it. On failure we retry each spec individually so one bad
+ * apple cannot cost a collection its other indexes.
+ *
+ * A `unique` index that fails to build is reported at error level, not warn: it
+ * is a CONSTRAINT, and a missing one means duplicate rows can be written with
+ * nothing to stop them. That must be alertable, never a line lost in the noise.
+ */
 async function safeCreateIndexes(
   db: mongoose.mongo.Db,
   collection: string,
   indexes: IndexSpec[],
 ) {
+  // 85 = IndexOptionsConflict (same key, different name) — harmless, skip
+  const benign = (err: unknown) => (err as { code?: number }).code === 85;
+
   try {
     await db.collection(collection).createIndexes(indexes);
+    return;
   } catch (err: unknown) {
-    const code = (err as { code?: number }).code;
-    // 85 = IndexOptionsConflict (same key, different name) — harmless, skip
-    if (code !== 85) {
-      logger.warn({ err }, `[DB] Index warning on ${collection}`);
+    if (benign(err)) return;
+  }
+
+  for (const spec of indexes) {
+    try {
+      await db.collection(collection).createIndexes([spec]);
+    } catch (err: unknown) {
+      if (benign(err)) continue;
+      const detail = { err, collection, key: spec.key, event: "index_create_failed" };
+      if (spec.unique) {
+        // 11000 = duplicate key: the data already violates the constraint.
+        logger.error(detail, `[DB] UNIQUE index FAILED on ${collection} — constraint is NOT enforced`);
+      } else {
+        logger.warn(detail, `[DB] Index warning on ${collection}`);
+      }
     }
   }
 }
@@ -194,6 +220,10 @@ export async function ensureIndexes() {
     { key: { resource: 1 } },
     { key: { action: 1 } },
     { key: { createdAt: -1 } },
+    // "what was done inside account X" — the admin audit table and the employer
+    // activity screen both filter on this now. autoIndex is off, so the
+    // AuditLogSchema.index() declaration alone would never reach the database.
+    { key: { onBehalfOfId: 1 } },
   ]);
 
   // ── ConversationThreads ────────────────────────────────────────────────────
@@ -347,6 +377,375 @@ export async function ensureIndexes() {
   await safeCreateIndexes(db, "aidailyusages", [
     { key: { userId: 1, day: 1 }, unique: true },
     { key: { expiresAt: 1 }, expireAfterSeconds: 0 },
+  ]);
+
+  // ── Model-declared indexes ────────────────────────────────────────────────
+  // autoIndex is off, so every Schema.index()/unique:true below existed only in
+  // code until now — none of these were ever created in the database. Generated
+  // from src/models and kept honest by src/__tests__/lib/index-coverage.test.ts,
+  // which fails if a model declares an index this file does not manage.
+  await safeCreateIndexes(db, "activityevents", [
+    { key: { jobSeekerId: 1, createdAt: -1 } },
+    { key: { jobSeekerId: 1, priority: -1, createdAt: -1 } },
+    { key: { priority: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "aicaches", [
+    { key: { expiresAt: 1 }, expireAfterSeconds: 0 },
+    { key: { hash: 1 }, unique: true },
+  ]);
+
+  await safeCreateIndexes(db, "apikeys", [
+    { key: { keyHash: 1 }, unique: true },
+    { key: { employerId: 1 } },
+    { key: { keyPrefix: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "applicationfeedbacks", [
+    { key: { applicationId: 1 }, unique: true },
+    { key: { employerId: 1 } },
+    { key: { userId: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "applicationforms", [
+    { key: { employerId: 1, isDefault: 1 } },
+    { key: { jobId: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "approvalworkflows", [
+    { key: { employerId: 1, status: 1 } },
+    { key: { "approvers.userId": 1, status: 1 } },
+    { key: { resourceId: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "assessmentattempts", [
+    { key: { assessmentId: 1, userId: 1 } },
+    { key: { userId: 1, status: 1 } },
+    { key: { jobId: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "backgroundchecks", [
+    { key: { employerId: 1, createdAt: -1 } },
+    { key: { applicationId: 1 } },
+    { key: { jobSeekerId: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "banners", [
+    { key: { isActive: 1, sortOrder: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "blogposts", [
+    { key: { slug: 1 }, unique: true },
+    { key: { status: 1, publishedAt: -1 } },
+    { key: { isActive: 1 } },
+    { key: { tags: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "broadcasttemplates", [
+    { key: { createdBy: 1 } },
+    { key: { type: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "surveytemplates", [
+    { key: { employerId: 1, trigger: 1 } },
+  ]);
+
+  // CandidateSurvey.ts registers two models; SurveyResponse is the second.
+  await safeCreateIndexes(db, "surveyresponses", [
+    { key: { employerId: 1, trigger: 1 } },
+    { key: { applicationId: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "careerpages", [
+    { key: { slug: 1 }, unique: true },
+    { key: { isPublished: 1 } },
+    { key: { employerId: 1 }, unique: true },
+  ]);
+
+  await safeCreateIndexes(db, "commtemplates", [
+    { key: { employerId: 1 } },
+    { key: { employerId: 1, type: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "companyprofileviews", [
+    { key: { viewerId: 1, employerId: 1 } },
+    { key: { employerId: 1, viewedAt: -1 } },
+  ]);
+
+  await safeCreateIndexes(db, "companyreviews", [
+    { key: { employerId: 1, status: 1, createdAt: -1 } },
+    { key: { userId: 1 } },
+    { key: { employerId: 1, userId: 1 }, unique: true },
+  ]);
+
+  await safeCreateIndexes(db, "companyusers", [
+    { key: { companyId: 1, userId: 1 }, unique: true, sparse: true },
+    { key: { companyId: 1, email: 1 }, unique: true },
+    { key: { companyId: 1, status: 1 } },
+    { key: { inviteToken: 1 }, sparse: true },
+    { key: { userId: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "contactsubmissions", [
+    { key: { isRead: 1, createdAt: -1 } },
+    { key: { createdAt: -1 } },
+  ]);
+
+  await safeCreateIndexes(db, "copilotproposals", [
+    { key: { expiresAt: 1 }, expireAfterSeconds: 0 },
+    { key: { userId: 1 } },
+    { key: { status: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "diversityresponses", [
+    { key: { employerId: 1 } },
+    { key: { jobId: 1 } },
+    { key: { applicationId: 1 }, unique: true },
+  ]);
+
+  await safeCreateIndexes(db, "emaillogs", [
+    { key: { sentAt: -1 } },
+    { key: { status: 1, sentAt: -1 } },
+    { key: { userId: 1, sentAt: -1 } },
+    { key: { source: 1, sentAt: -1 } },
+    { key: { createdAt: 1 }, expireAfterSeconds: 90 * 24 * 60 * 60 },
+    { key: { category: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "emailsequences", [
+    { key: { employerId: 1, status: 1 } },
+    { key: { "recipients.nextSendAt": 1, status: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "referralprograms", [
+    { key: { employerId: 1 } },
+  ]);
+
+  // EmployeeReferral.ts registers two models; EmployeeReferral is the default export.
+  await safeCreateIndexes(db, "employeereferrals", [
+    { key: { employerId: 1, status: 1 } },
+    { key: { referrerId: 1 } },
+    { key: { candidateEmail: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "exhibitionperformances", [
+    { key: { exhibitionId: 1 }, unique: true },
+  ]);
+
+  await safeCreateIndexes(db, "exhibitionrequests", [
+    { key: { status: 1, createdAt: -1 } },
+    { key: { eventCategory: 1 } },
+    { key: { priority: 1 } },
+    { key: { agentId: 1 } },
+    { key: { superAgentId: 1 } },
+    { key: { isDeleted: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "extractiondrafts", [
+    { key: { employerId: 1, status: 1, createdAt: -1 } },
+  ]);
+
+  await safeCreateIndexes(db, "faqs", [
+    { key: { isActive: 1, sortOrder: 1 } },
+    { key: { category: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "genders", [
+    { key: { isActive: 1, sortOrder: 1 } },
+    { key: { slug: 1 }, unique: true },
+  ]);
+
+  await safeCreateIndexes(db, "hiringdecisions", [
+    { key: { applicationId: 1 } },
+    { key: { employerId: 1 } },
+    { key: { interviewId: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "industries", [
+    { key: { isActive: 1, sortOrder: 1 } },
+    { key: { slug: 1 }, unique: true },
+  ]);
+
+  await safeCreateIndexes(db, "interviewquestions", [
+    { key: { interviewId: 1, questionType: 1, createdAt: -1 } },
+    { key: { generatedBy: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "jobskills", [
+    { key: { isActive: 1, sortOrder: 1 } },
+    { key: { name: "text", nameAr: "text" } },
+    { key: { slug: 1 }, unique: true },
+  ]);
+
+  await safeCreateIndexes(db, "jobtemplates", [
+    { key: { employerId: 1 } },
+    { key: { sourceJobId: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "majorsubjects", [
+    { key: { isActive: 1, sortOrder: 1 } },
+    { key: { slug: 1 }, unique: true },
+  ]);
+
+  await safeCreateIndexes(db, "maritalstatuses", [
+    { key: { isActive: 1, sortOrder: 1 } },
+    { key: { slug: 1 }, unique: true },
+  ]);
+
+  await safeCreateIndexes(db, "matchingweighttemplates", [
+    { key: { scope: 1 } },
+    { key: { employerId: 1 } },
+    { key: { scope: 1, isDefault: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "mcpauthorizationcodes", [
+    { key: { codeHash: 1 }, unique: true },
+    { key: { expiresAt: 1 }, expireAfterSeconds: 0 },
+  ]);
+
+  await safeCreateIndexes(db, "mcpclients", [
+    { key: { clientId: 1 }, unique: true },
+  ]);
+
+  await safeCreateIndexes(db, "mcptokens", [
+    { key: { accessTokenHash: 1 }, unique: true },
+    { key: { refreshTokenHash: 1 }, unique: true },
+    { key: { userId: 1 } },
+    { key: { familyId: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "messages", [
+    { key: { channel: 1, createdAt: -1 } },
+    { key: { senderId: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "notificationpreferences", [
+    { key: { userId: 1 }, unique: true },
+    { key: { emailFrequency: 1, unsubscribedAll: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "offerlettertemplates", [
+    { key: { employerId: 1 } },
+  ]);
+
+  // OfferLetter.ts registers two models; OfferLetter is the default export.
+  await safeCreateIndexes(db, "offerletters", [
+    { key: { offerId: 1 } },
+    { key: { employerId: 1 } },
+    { key: { status: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "onboardingchecklists", [
+    { key: { employerId: 1, createdAt: -1 } },
+    { key: { placementId: 1 }, unique: true },
+  ]);
+
+  await safeCreateIndexes(db, "postergenerations", [
+    { key: { employerId: 1, createdAt: -1 } },
+    { key: { shareSlug: 1 }, unique: true },
+    { key: { jobId: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "profileviews", [
+    { key: { jobSeekerId: 1, viewedAt: -1 } },
+    { key: { viewerId: 1, viewedAt: -1 } },
+    { key: { jobSeekerId: 1, viewerId: 1, viewedAt: -1 }, name: "dedup_lookup" },
+  ]);
+
+  await safeCreateIndexes(db, "pushsubscriptions", [
+    { key: { endpoint: 1 }, unique: true },
+    { key: { userId: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "referrallinks", [
+    { key: { createdBy: 1 } },
+    { key: { agentId: 1 } },
+    { key: { superAgentId: 1 } },
+    { key: { expiresAt: 1 } },
+    { key: { code: 1 }, unique: true },
+  ]);
+
+  await safeCreateIndexes(db, "requisitions", [
+    { key: { employerId: 1, status: 1 } },
+    { key: { hiringManagerId: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "resources", [
+    { key: { tags: 1 } },
+    { key: { downloadCount: -1 } },
+    { key: { category: 1 } },
+    { key: { accessLevel: 1 } },
+    { key: { isActive: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "resourcedownloadlogs", [
+    { key: { resourceId: 1, downloadedAt: -1 } },
+    { key: { userId: 1, downloadedAt: -1 } },
+    { key: { downloadedAt: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "scorecards", [
+    { key: { applicationId: 1 } },
+    { key: { employerId: 1 } },
+    { key: { interviewId: 1, evaluatedBy: 1 }, unique: true },
+  ]);
+
+  await safeCreateIndexes(db, "skillassessments", [
+    { key: { employerId: 1, isActive: 1 } },
+    { key: { jobIds: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "skillconfirmations", [
+    { key: { userId: 1, skill: 1 }, unique: true },
+    { key: { userId: 1, status: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "staticpages", [
+    { key: { slug: 1 }, unique: true },
+    { key: { isActive: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "systemconfigs", [
+    { key: { key: 1 }, unique: true },
+  ]);
+
+  await safeCreateIndexes(db, "talentpools", [
+    { key: { employerId: 1 } },
+    { key: { "candidates.jobSeekerId": 1 } },
+    { key: { tags: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "targetprofiles", [
+    { key: { assigneeId: 1, year: 1, assigneeRole: 1 }, unique: true, partialFilterExpression: { status: "active" } },
+    { key: { assignedBy: 1 } },
+    { key: { parentProfileId: 1 } },
+    { key: { status: 1, year: 1 } },
+    { key: { region: 1, year: 1 } },
+    { key: { assigneeRole: 1, year: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "territories", [
+    { key: { name: 1 } },
+    { key: { superAgentId: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "testimonials", [
+    { key: { isActive: 1, sortOrder: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "videos", [
+    { key: { isActive: 1, sortOrder: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "webhooks", [
+    { key: { events: 1, isActive: 1 } },
+    { key: { createdBy: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "workflowtemplates", [
+    { key: { scope: 1 } },
+    { key: { employerId: 1 } },
+    { key: { scope: 1, isDefault: 1 } },
   ]);
 
   logger.info("[DB] Indexes ensured ✅");

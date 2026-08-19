@@ -184,7 +184,8 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       }
       sourceNote = " [Manual override]";
     }
-    const agentAmount = Math.round((billedTotal * finalRate) / 100 * 100) / 100;
+    // Calculate commission on discountedSubtotal only (before tax) — tax is a pass-through liability
+    const agentAmount = Math.round((discountedSubtotal * finalRate) / 100 * 100) / 100;
 
     commissions.push({
       agentId: agentDoc._id,
@@ -230,7 +231,8 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       }
       sourceNote = " [Manual override]";
     }
-    const overrideAmount = Math.round((billedTotal * finalRate) / 100 * 100) / 100;
+    // Calculate commission on discountedSubtotal only (before tax) — tax is a pass-through liability
+    const overrideAmount = Math.round((discountedSubtotal * finalRate) / 100 * 100) / 100;
 
     commissions.push({
       superAgentId: superAgentDoc._id,
@@ -293,7 +295,8 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     throw err;
   }
 
-  if (finalInvoiceStatus === "issued") {
+  // Create commissions for any non-draft, non-pending-approval status that warrants commissions
+  if (!["draft", "pending_approval"].includes(finalInvoiceStatus)) {
     try {
       externalCommissions.push(...await createCommissionRecordsForInvoice({
         invoiceId: invoice._id,

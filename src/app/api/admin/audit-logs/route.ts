@@ -60,6 +60,10 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       .skip((page - 1) * limit)
       .limit(limit)
       .populate("actorId", "name email role")
+      // onBehalfOfId is what distinguishes "agent Ravi created a job" from
+      // "agent Ravi created a job inside employer X's account". Without it the
+      // table shows the two identically.
+      .populate("onBehalfOfId", "name email role")
       .lean(),
     AuditLog.countDocuments(query),
   ]);

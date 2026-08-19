@@ -5,7 +5,7 @@ import WorkflowTemplate from "@/models/WorkflowTemplate";
 import Employer from "@/models/Employer";
 import { validateBody } from "@/lib/validators";
 import { workflowTemplateSchema } from "@/lib/validators/misc";
-import { logActivity } from "@/lib/audit/log";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import mongoose from "mongoose";
 import type { UserRole } from "@/types/user";
 
@@ -71,8 +71,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   }
 
   await logActivity({
-    actorId: ctx.userId,
-    actorRole: ctx.role,
+    ...actorFromCtx(ctx),
     action: "workflow_template.update",
     resource: "workflow_templates",
     resourceId: id,
@@ -110,8 +109,7 @@ async function deleteHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<st
   }
 
   await logActivity({
-    actorId: ctx.userId,
-    actorRole: ctx.role,
+    ...actorFromCtx(ctx),
     action: "workflow_template.delete",
     resource: "workflow_templates",
     resourceId: id,

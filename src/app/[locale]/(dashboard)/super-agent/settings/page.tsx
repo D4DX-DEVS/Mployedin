@@ -1431,7 +1431,7 @@ export default function SuperAgentSettingsPage() {
   const [activeTab, setActiveTab] = useState<TabKey>("profile");
 
   return (
-    <div className="page-container space-y-3 sm:space-y-4">
+    <div className="page-container">
       <SuperAgentPageIntro
         title={t("settingsTitle")}
         description={t("settingsDescription")}

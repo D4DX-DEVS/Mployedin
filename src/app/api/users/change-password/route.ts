@@ -60,6 +60,7 @@ export async function POST(req: NextRequest) {
 
   // Hash new password and save
   user.passwordHash = await bcrypt.hash(newPassword, 12);
+  user.passwordChangedAt = new Date();
   await user.save();
 
   logActivity({

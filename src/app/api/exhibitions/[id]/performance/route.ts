@@ -9,6 +9,37 @@ import ExhibitionRequest from "@/models/ExhibitionRequest";
  */
 async function getHandler(_req: NextRequest, ctx: AuthContext, params?: Record<string, string>) {
   await connectDB();
+
+  // Authorization: admin can read any exhibition's performance; agent/super_agent must own/manage it
+  if (ctx.role !== "admin") {
+    const exhibition = await ExhibitionRequest.findOne({
+      _id: params?.id,
+      isDeleted: { $ne: true },
+    }).lean();
+
+    if (!exhibition) {
+      return NextResponse.json({ error: "Exhibition not found" }, { status: 404 });
+    }
+
+    if (ctx.role === "agent" && exhibition.agentId.toString() !== ctx.userId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    if (ctx.role === "super_agent") {
+      const { getSuperAgentScope } = await import("@/lib/auth/agentRestrictions");
+      const Agent = (await import("@/models/Agent")).default;
+      const scope = await getSuperAgentScope(ctx.userId);
+      const teamProfileIds = scope?.effectiveAgentIds ?? [];
+      const teamUserIds = teamProfileIds.length
+        ? (await Agent.find({ _id: { $in: teamProfileIds } }).select("userId").lean())
+            .map((a) => String(a.userId))
+        : [];
+      if (!teamUserIds.includes(exhibition.agentId.toString())) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    }
+  }
+
   const perf = await ExhibitionPerformance.findOne({ exhibitionId: params?.id })
     .populate("reportedBy", "name")
     .lean();

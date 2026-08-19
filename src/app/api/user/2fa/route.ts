@@ -14,8 +14,8 @@ import {
 import { checkRateLimit } from "@/lib/security/rateLimit";
 import { logActivity } from "@/lib/audit/log";
 
-/** Roles allowed to enroll in TOTP 2FA (high-privilege staff). */
-const TWO_FA_ROLES = new Set(["admin", "super_agent"]);
+/** Roles allowed to enroll in TOTP 2FA — admin only (product decision 2026-08-19). */
+const TWO_FA_ROLES = new Set(["admin"]);
 
 async function rateLimitGuard(ctx: AuthContext): Promise<NextResponse | null> {
   // Tight per-user throttle — TOTP codes are 6 digits, brute force must be impossible.
@@ -69,7 +69,12 @@ async function postHandler(req: NextRequest, ctx: AuthContext) {
     if (user.twoFactorEnabled) {
       return NextResponse.json({ error: "Two-factor authentication is already enabled" }, { status: 409 });
     }
-    const secret = generateTotpSecret();
+    // Reuse an existing pending secret so re-opening the setup dialog shows the
+    // SAME QR — regenerating here made any previously scanned QR silently stale
+    // (authenticator entry could never match → "invalid code" at verify).
+    const secret = user.twoFactorPendingSecretEnc
+      ? decrypt(user.twoFactorPendingSecretEnc)
+      : generateTotpSecret();
     user.twoFactorPendingSecretEnc = encrypt(secret);
     await user.save();
 

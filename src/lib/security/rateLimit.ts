@@ -44,6 +44,9 @@ const DEFAULTS: Record<string, RateLimitConfig> = {
   leads: { limit: 20, windowSec: 60 },
   applications: { limit: 10, windowSec: 60 },
   employers: { limit: 3, windowSec: 60 },
+  // Checkout creates gateway orders and touches billing state. Nobody legitimately
+  // starts a subscription more than a handful of times a minute.
+  checkout: { limit: 5, windowSec: 60 },
 };
 
 // ── In-memory fallback store (per-instance) ─────────────────────────────────
@@ -140,6 +143,11 @@ export async function checkRateLimit(
   const key = `${config.prefix ?? "rl"}:${identifier}`;
 
   const limiter = await getUpstashLimiter(config);
+  if (!limiter && config.failClosed) {
+    logger.error("[rateLimit] Upstash not configured with failClosed=true, denying request");
+    return { allowed: false, remaining: 0, resetAt: Date.now() + config.windowSec * 1000 };
+  }
+
   if (limiter) {
     try {
       const res = await limiter.limit(key);

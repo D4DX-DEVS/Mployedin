@@ -111,6 +111,8 @@ export default async function JobsPage({ params, searchParams }: PageProps) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const query: Record<string, any> = {
     status: "active",
+    // $nin (not equality) so legacy docs without a visibility field stay listed
+    visibility: { $nin: ["private", "invite_only"] },
     $and: [
       { $or: [{ expiresAt: { $exists: false } }, { expiresAt: { $gt: new Date() } }] },
     ],

@@ -4,6 +4,7 @@ import { withAuth } from "@/lib/auth/withAuth";
 import DiversityResponse from "@/models/DiversityResponse";
 import Employer from "@/models/Employer";
 import Application from "@/models/Application";
+import Job from "@/models/Job";
 import JobSeeker from "@/models/JobSeeker";
 import mongoose from "mongoose";
 
@@ -18,7 +19,14 @@ async function getHandler(req: NextRequest, ctx: { userId: string; role: string 
   const jobId = url.searchParams.get("jobId");
 
   const filter: Record<string, unknown> = { employerId: employer._id };
-  if (jobId && mongoose.isValidObjectId(jobId)) filter.jobId = new mongoose.Types.ObjectId(jobId);
+  if (jobId && mongoose.isValidObjectId(jobId)) {
+    // Verify jobId belongs to this employer before using it
+    const job = await Job.findById(jobId).select("employerId").lean();
+    if (!job || String(job.employerId) !== String(employer._id)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    filter.jobId = new mongoose.Types.ObjectId(jobId);
+  }
 
   const responses = await DiversityResponse.find(filter).lean();
   const totalApplications = await Application.countDocuments(

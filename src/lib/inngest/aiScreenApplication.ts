@@ -14,7 +14,7 @@ import Job from "@/models/Job";
 import JobSeeker from "@/models/JobSeeker";
 import { generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
 import { AI_TOKEN_LIMITS, redactPII, sanitizeAIInput } from "@/lib/ai/sanitize";
-import { resolveJobMatchingWeights, formatWeightsForPrompt } from "@/lib/ai/matchingWeights";
+import { calculateMatchScore, seekerProfileFromDoc, jobProfileFromDoc, type MatchScoreWeights } from "@/lib/matchScore";
 
 function sanitizeAiList(values: string[] | undefined, maxItems = 20, maxLength = 80): string {
   const cleaned = (values ?? [])
@@ -51,19 +51,20 @@ export const aiScreenApplication = inngest.createFunction(
 
       const [job, seeker] = await Promise.all([
         Job.findById(application.jobId)
-          .select("title description requirements location employerId matchingWeights")
+          .select("title description requirements location salary")
           .lean(),
         JobSeeker.findById(application.jobSeekerId)
-          .select("skills languages experience totalExperienceYears")
+          .select("skills languages experience totalExperienceYears preferredCountries preferredSalary currentLocation education cv")
           .lean(),
       ]);
       if (!job || !seeker) return { skipped: true, reason: "job or seeker not found" };
 
-      const weights = await resolveJobMatchingWeights({
-        jobWeights: (job as { matchingWeights?: unknown }).matchingWeights,
-        employerId: (job as { employerId?: unknown }).employerId as string | undefined,
-      });
+      // Compute deterministic score using feature-based engine
+      const seekerProfile = seekerProfileFromDoc(seeker as Parameters<typeof seekerProfileFromDoc>[0]);
+      const jobProfile = jobProfileFromDoc(job as Parameters<typeof jobProfileFromDoc>[0]);
+      const deterministicScore = calculateMatchScore(seekerProfile, jobProfile);
 
+      // LLM call for narrative fields only (optional — failures don't block score)
       const jobReqs = job.requirements as { skills?: string[]; experienceMin?: number; experienceMax?: number } | undefined;
       const jobLoc = job.location as { city?: string; country?: string; isRemote?: boolean } | undefined;
       const locationStr = sanitizeAIInput(
@@ -77,7 +78,7 @@ export const aiScreenApplication = inngest.createFunction(
         .filter(Boolean)
         .join(", ") || "N/A";
 
-      const prompt = `You are a recruitment AI. Score the match between this job seeker and job posting.
+      const prompt = `You are a recruitment AI. Provide qualitative feedback on the match between this job seeker and job posting.
 
 JOB:
 Title: ${sanitizeAIInput(String(job.title ?? "N/A"), 120)}
@@ -92,24 +93,34 @@ Skills: ${sanitizeAiList(seeker.skills as string[] | undefined, 25, 60)}
 Years of Experience: ${sanitizeAIInput(String(seeker.totalExperienceYears ?? "N/A"), 20)}
 Languages: ${seekerLangs}
 
-Weight the overall score by the employer's configured scoring priorities:
-${formatWeightsForPrompt(weights)}
+Provide brief qualitative feedback ONLY (no scoring). Return JSON only: {"strengths":[],"gaps":[],"summary":""}`;
 
-Return JSON only: {"score":<0-100>,"breakdown":{"skills":<0-100>,"experience":<0-100>,"location":<0-100>},"strengths":[],"gaps":[]}`;
-
-      const raw = redactPII(
-        await generateText(prompt, GEMINI_MODELS.flash, AI_TOKEN_LIMITS.match)
-      ).replace(/```json\n?|```/g, "").trim();
-
-      const matchData = JSON.parse(raw);
-      application.aiMatchScore = matchData.score;
+      // Use deterministic score (LLM optional for narrative)
+      application.aiMatchScore = deterministicScore;
+      application.scoredVia = 'deterministic';
       application.matchBreakdown = {
-        skills: matchData.breakdown?.skills ?? 0,
-        experience: matchData.breakdown?.experience ?? 0,
-        overall: matchData.score,
+        skills: 0,
+        experience: 0,
+        overall: deterministicScore,
       };
-      application.matchStrengths = matchData.strengths ?? [];
-      application.matchGaps = matchData.gaps ?? [];
+
+      // Try to get narrative from LLM, but failure doesn't block the score
+      let narrativeData = { strengths: [], gaps: [], summary: "" };
+      try {
+        const raw = redactPII(
+          await generateText(prompt, GEMINI_MODELS.flash, AI_TOKEN_LIMITS.match)
+        ).replace(/```json\n?|```/g, "").trim();
+        narrativeData = JSON.parse(raw);
+      } catch {
+        // LLM failure — just use empty narrative
+      }
+
+      application.matchStrengths = Array.isArray(narrativeData?.strengths)
+        ? narrativeData.strengths.map(String).filter(Boolean)
+        : [];
+      application.matchGaps = Array.isArray(narrativeData?.gaps)
+        ? narrativeData.gaps.map(String).filter(Boolean)
+        : [];
 
       // Auto-reject only applications still in "applied" — never override a
       // status the employer has already moved forward.

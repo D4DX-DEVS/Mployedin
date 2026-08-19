@@ -153,7 +153,7 @@ export default function AgentTargetManagementPage() {
   }, [leaderboard, leaderboardCompletionFilter, leaderboardRiskFilter, leaderboardSearch]);
 
   return (
-    <div className="page-container space-y-3 sm:space-y-6">
+    <div className="page-container">
       {/* Header */}
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2">

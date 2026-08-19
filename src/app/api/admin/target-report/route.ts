@@ -90,8 +90,12 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     profileCount: profiles.length,
   });
 
-  const currentSummary = sumMetrics(enrichedCurrent);
-  const prevSummary = sumMetrics(enrichedPrev);
+  // Filter to root profiles only (super_agents) to avoid double-counting agent targets
+  const currentRootProfiles = enrichedCurrent.filter((p) => !p.parentProfileId);
+  const prevRootProfiles = enrichedPrev.filter((p) => !p.parentProfileId);
+
+  const currentSummary = sumMetrics(currentRootProfiles);
+  const prevSummary = sumMetrics(prevRootProfiles);
 
   const yoyGrowth = (curr: number, prev: number) =>
     prev > 0 ? Math.round(((curr - prev) / prev) * 100) : curr > 0 ? 100 : 0;
@@ -131,17 +135,17 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
   const businessVolume = Array.from({ length: 12 }, (_, i) => {
     const month = i + 1;
-    const approved = businessVolumeAgg.find(
+    const approvedRecords = businessVolumeAgg.filter(
       (a) => a._id.month === month && ["approved", "paid"].includes(a._id.status)
     );
-    const pending = businessVolumeAgg.find(
+    const pendingRecords = businessVolumeAgg.filter(
       (a) => a._id.month === month && a._id.status === "pending"
     );
     const all = businessVolumeAgg.filter((a) => a._id.month === month);
     return {
       month,
-      approved: approved?.total ?? 0,
-      pending: pending?.total ?? 0,
+      approved: approvedRecords.reduce((s, a) => s + (a.total ?? 0), 0),
+      pending: pendingRecords.reduce((s, a) => s + (a.total ?? 0), 0),
       total: all.reduce((s, a) => s + (a.total ?? 0), 0),
       count: all.reduce((s, a) => s + (a.count ?? 0), 0),
     };

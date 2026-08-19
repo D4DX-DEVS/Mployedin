@@ -19,7 +19,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
   await CareerPage.updateOne({ _id: page._id }, { $inc: { "analytics.views": 1 } });
 
   // Get active jobs for this employer
-  const jobs = await Job.find({ employerId: page.employerId, status: "published" })
+  const jobs = await Job.find({ employerId: page.employerId, status: "active" })
     .select("title location jobType salary skills createdAt")
     .sort({ createdAt: -1 })
     .limit(50)

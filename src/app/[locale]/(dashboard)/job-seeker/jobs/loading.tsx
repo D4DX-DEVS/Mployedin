@@ -1,6 +1,6 @@
 export default function JobsLoading() {
   return (
-    <div aria-hidden="true" aria-label="Loading" className="page-container space-y-6 animate-pulse">
+    <div aria-hidden="true" aria-label="Loading" className="page-container animate-pulse">
       <div className="space-y-2">
         <div className="h-7 w-36 rounded-lg bg-muted" />
         <div className="h-4 w-56 rounded bg-muted/70" />

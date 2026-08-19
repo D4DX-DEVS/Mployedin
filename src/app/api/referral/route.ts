@@ -16,7 +16,87 @@ function generateReferralCode(): string {
   return `MPL-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
 }
 
-async function handler(req: NextRequest, ctx: AuthCtx) {
+async function getHandler(req: NextRequest, ctx: AuthCtx) {
+  await connectDB();
+
+  const baseUrl =
+    process.env.NEXT_PUBLIC_BASE_URL ??
+    process.env.NEXTAUTH_URL ??
+    "https://mployedin.com";
+
+  if (ctx.role === "agent") {
+    const agent = await Agent.findOne({ userId: ctx.userId }).select(
+      "referralCode _id"
+    );
+    if (!agent || !agent.referralCode) {
+      return NextResponse.json(
+        { error: "No referral code generated yet. Please POST to initialize." },
+        { status: 404 }
+      );
+    }
+
+    const rl = await ReferralLink.findOne({ code: agent.referralCode });
+    if (!rl) {
+      return NextResponse.json(
+        { error: "Referral link not found. Please POST to initialize." },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      referralCode: agent.referralCode,
+      referralLink: `${baseUrl}/en/employer-register?ref=${agent.referralCode}`,
+      linkId: rl._id,
+      isActive: rl.isActive,
+      usedCount: rl.usedCount,
+      maxUses: rl.maxUses,
+      label: rl.label || "",
+      registrations: rl.registrations || [],
+      expiresAt: rl.expiresAt || null,
+      createdAt: rl.createdAt,
+    });
+  }
+
+  if (ctx.role === "super_agent") {
+    const sa = await SuperAgent.findOne({ userId: ctx.userId }).select(
+      "referralCode _id"
+    );
+    if (!sa || !sa.referralCode) {
+      return NextResponse.json(
+        { error: "No referral code generated yet. Please POST to initialize." },
+        { status: 404 }
+      );
+    }
+
+    const rl = await ReferralLink.findOne({ code: sa.referralCode });
+    if (!rl) {
+      return NextResponse.json(
+        { error: "Referral link not found. Please POST to initialize." },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      referralCode: sa.referralCode,
+      referralLink: `${baseUrl}/en/employer-register?ref=${sa.referralCode}`,
+      linkId: rl._id,
+      isActive: rl.isActive,
+      usedCount: rl.usedCount,
+      maxUses: rl.maxUses,
+      label: rl.label || "",
+      registrations: rl.registrations || [],
+      expiresAt: rl.expiresAt || null,
+      createdAt: rl.createdAt,
+    });
+  }
+
+  return NextResponse.json(
+    { error: "Only agents and super-agents can generate referral links" },
+    { status: 403 }
+  );
+}
+
+async function postHandler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
 
   const baseUrl =
@@ -37,7 +117,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       await agent.save();
     }
 
-    // Ensure a ReferralLink document exists so it shows on the Referral Links page
+    // Ensure a ReferralLink document exists
     let rl = await ReferralLink.findOne({ code: agent.referralCode });
     if (!rl || !rl.isActive) {
       // If old link is disabled or doesn't exist, generate a fresh link
@@ -121,7 +201,12 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   );
 }
 
-export const GET = withAuth(handler, {
+export const GET = withAuth(getHandler, {
   resource: "employers",
   action: "read",
+});
+
+export const POST = withAuth(postHandler, {
+  resource: "employers",
+  action: "create",
 });

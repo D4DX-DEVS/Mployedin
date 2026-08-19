@@ -57,6 +57,9 @@ export function SmartHeader({
 
   return (
     <DashboardPageHeader
+      /* ponytail: phones put the CTA inline with the title instead of a
+         full-width row of its own — same treatment as the jobs hero. */
+      className="[&>div:first-child]:flex-row [&>div:first-child]:items-start [&>div:first-child]:justify-between"
       icon={Sparkles}
       eyebrow={t(eyebrowKey)}
       title={`${t("welcomeBack", { userName })} 👋`}
@@ -64,10 +67,11 @@ export function SmartHeader({
       actions={
         <Link
           href={newJobHref}
-          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-sky-600 px-5 text-sm font-semibold text-white shadow-[0_10px_28px_-12px_rgba(2,132,199,0.7)] transition hover:bg-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+          aria-label={t("createJob")}
+          className="inline-flex h-11 w-11 shrink-0 items-center justify-center gap-2 self-start rounded-xl bg-sky-600 text-sm font-semibold text-white shadow-[0_10px_28px_-12px_rgba(2,132,199,0.7)] transition hover:bg-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 sm:w-auto sm:px-5"
         >
           <Sparkles className="h-4 w-4" />
-          {t("createJob")}
+          <span className="hidden sm:inline">{t("createJob")}</span>
         </Link>
       }
       footer={

@@ -119,7 +119,7 @@ export function AIChatDraftsCard({ locale, variant = "card" }: AIChatDraftsCardP
 
   // ── Card variant (employer dashboard) ───────────────────────────────────
   return (
-    <section className="workspace-panel-surface flex flex-col rounded-[24px] p-4">
+    <section className="workspace-panel-surface panel-body flex flex-col rounded-[24px]">
       {ConfirmDialogNode}
       <div className="mb-3 flex items-center gap-2.5">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-500/15 dark:text-sky-300">

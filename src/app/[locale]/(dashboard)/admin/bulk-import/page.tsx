@@ -180,7 +180,7 @@ export default function AdminBulkImportPage() {
   const errorCount = parsedRows.filter((r) => r.status === "error").length;
 
   return (
-    <div className="page-container space-y-3 sm:space-y-4">
+    <div className="page-container">
       <DashboardPageHeader
         icon={Upload}
         eyebrow={t("title")}

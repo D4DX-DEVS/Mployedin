@@ -58,7 +58,14 @@ export function ReferralLinkDialog({ open, onClose }: ReferralLinkDialogProps) {
     if (!open) return;
     setLegacyLoading(true);
     fetch("/api/referral")
-      .then((r) => (r.ok ? r.json() : null))
+      // 404 = no link yet; POST creates it (GET is read-only)
+      .then((r) =>
+        r.ok
+          ? r.json()
+          : r.status === 404
+            ? fetch("/api/referral", { method: "POST" }).then((p) => (p.ok ? p.json() : null))
+            : null
+      )
       .then((data) => {
         if (data) {
           setLegacyLink(data.referralLink);

@@ -279,15 +279,36 @@ export function skillsOverlap(seekerSkills: string[], jobSkills: string[]): bool
   return false;
 }
 
-export function calculateMatchScore(seeker: SeekerProfile, job: JobProfile): number {
-  // ── Skills (40%) ────────────────────────────────────────────────────
+export interface MatchScoreWeights {
+  skills?: number;     // fraction, typically 0.4
+  location?: number;   // fraction, typically 0.2
+  experience?: number; // fraction, typically 0.2
+  salary?: number;     // fraction, typically 0.2
+}
+
+export function calculateMatchScore(seeker: SeekerProfile, job: JobProfile, weights?: MatchScoreWeights): number {
+  // Defaults match industry standard (e.g., LinkedIn)
+  const skillsWeight = weights?.skills ?? 0.4;
+  const locationWeight = weights?.location ?? 0.2;
+  const experienceWeight = weights?.experience ?? 0.2;
+  const salaryWeight = weights?.salary ?? 0.2;
+
+  // Normalize if provided weights don't sum to ~1
+  const total = skillsWeight + locationWeight + experienceWeight + salaryWeight;
+  const normalize = (w: number) => total > 0 ? (w / total) : w;
+  const sW = normalize(skillsWeight);
+  const lW = normalize(locationWeight);
+  const eW = normalize(experienceWeight);
+  const saW = normalize(salaryWeight);
+
+  // ── Skills (default 40%) ────────────────────────────────────────────────────
   // Required skills carry almost all of the weight; preferred ("nice to have")
   // skills only top up the last 15% of it. Without this split a candidate who
   // has every optional extra but none of the must-haves could outrank one who
   // meets the actual requirements.
   const REQUIRED_SHARE = 0.85;
-  const jobSkills = job.skills.map(normalizeSkill);
-  const jobPreferred = (job.preferredSkills ?? []).map(normalizeSkill);
+  const jobSkills = job.skills.flatMap(tokenizeSkill);
+  const jobPreferred = (job.preferredSkills ?? []).flatMap(tokenizeSkill);
   const seekerSkills = seeker.skills.flatMap(tokenizeSkill);
   const cvHaystack = seeker.cvText ? flattenText(seeker.cvText) : "";
 
@@ -307,7 +328,7 @@ export function calculateMatchScore(seeker: SeekerProfile, job: JobProfile): num
     skillsScore = requiredScore * REQUIRED_SHARE + preferredScore * (1 - REQUIRED_SHARE);
   }
 
-  // ── Location (20%) ───────────────────────────────────────────────────
+  // ── Location (default 20%) ───────────────────────────────────────────────────
   const locationScore = (() => {
     if (job.remote) return 1;
     // Consider every preferred country, not just the first.
@@ -328,7 +349,7 @@ export function calculateMatchScore(seeker: SeekerProfile, job: JobProfile): num
     return seekerCities.includes(jobCity) ? 1 : 0.6;
   })();
 
-  // ── Experience (20%) ─────────────────────────────────────────────────
+  // ── Experience (default 20%) ─────────────────────────────────────────────────
   const experienceScore = (() => {
     const { minExp, maxExp } = job;
     // Prefer years spent in *related* roles over raw career length, floored at
@@ -347,7 +368,7 @@ export function calculateMatchScore(seeker: SeekerProfile, job: JobProfile): num
     return 0.3;
   })();
 
-  // ── Salary (20%) ─────────────────────────────────────────────────────
+  // ── Salary (default 20%) ─────────────────────────────────────────────────────
   const salaryScore = (() => {
     // Unknown expectation is unknown — neutral, not a free full score. Awarding
     // 1.0 here used to mean filling in your salary preference could only ever
@@ -377,10 +398,10 @@ export function calculateMatchScore(seeker: SeekerProfile, job: JobProfile): num
   })();
 
   const raw =
-    skillsScore * 0.4 +
-    locationScore * 0.2 +
-    experienceScore * 0.2 +
-    salaryScore * 0.2;
+    skillsScore * sW +
+    locationScore * lW +
+    experienceScore * eW +
+    salaryScore * saW;
 
   let score = Math.round(raw * 100);
 
@@ -456,7 +477,7 @@ export function seekerProfileFromDoc(seeker: {
 
   // Per-role durations, reused for both the career total and relevance scoring.
   const roleHistory = (seeker.experience ?? []).map((exp) => {
-    const start = exp.startDate ? new Date(exp.startDate).getTime() : 0;
+    const start = exp.startDate ? new Date(exp.startDate).getTime() : now;
     const end = exp.isCurrent || !exp.endDate ? now : new Date(exp.endDate).getTime();
     return {
       title: exp.jobTitle ?? "",

@@ -4,7 +4,7 @@
 
 import { z } from "zod";
 import { commonSchemas } from "./index";
-import { INVOICE_UPDATE_STATUSES } from "@/lib/invoices/status";
+import { INVOICE_UPDATE_STATUSES, ACTIVE_RECRUITMENT_INVOICE_STATUSES } from "@/lib/invoices/status";
 
 // ── AI Feature Keys ──────────────────────────────────────────────────────────
 const AI_FEATURE_KEYS = [
@@ -179,8 +179,8 @@ export const recruitmentInvoiceCreateSchema = z.object({
   // Notes
   notes: z.string().max(2000).trim().optional(),
   internalNotes: z.string().max(2000).trim().optional(),
-  // Status
-  status: z.string().max(50).default("issued"),
+  // Status — restrict to valid recruitment invoice statuses only
+  status: z.enum(ACTIVE_RECRUITMENT_INVOICE_STATUSES).default("issued"),
   // Commission overrides (admin/super-agent only, 0-100%)
   overrideAgentRate: z.number().min(0).max(100).optional(),
   overrideSuperAgentRate: z.number().min(0).max(100).optional(),

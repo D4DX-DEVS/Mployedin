@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth/config";
 import { connectDB } from "@/lib/db/mongoose";
 import { ConversationThread } from "@/models/ConversationThread";
 import { isValidObjectId } from "@/lib/security/sanitize";
-import { logActivity } from "@/lib/audit/log";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import type { UserRole } from "@/models/User";
 import logger from "@/lib/logger";
 
@@ -91,8 +91,7 @@ export async function DELETE(
 
   try {
     await logActivity({
-      actorId: ctx.userId,
-      actorRole: ctx.role,
+      ...actorFromCtx(ctx),
       action: "ai_chat_draft.discarded",
       resource: "ai_chat_draft",
       resourceId: String(owned.thread._id),

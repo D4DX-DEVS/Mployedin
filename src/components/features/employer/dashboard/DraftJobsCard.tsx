@@ -100,32 +100,27 @@ export function DraftJobsCard({ locale, variant = "card", onCountChange }: Draft
   // ── Banner variant (jobs list page) ─────────────────────────────────────
   if (variant === "banner") {
     return (
-      <div className="workspace-glass-panel flex h-full flex-col gap-3 rounded-2xl border border-amber-200/60 p-3 sm:p-4 dark:border-amber-500/30">
+      // Single row: title + resume buttons. The stacked two-row layout (plus a
+      // subtitle repeating the button labels) cost ~50px above the job list.
+      <div className="workspace-glass-panel flex h-full flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-amber-200/60 p-3 dark:border-amber-500/30">
         {ConfirmDialogNode}
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300">
-            <FilePenLine className="h-4 w-4" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-foreground">
-              {t("bannerTitle", { count: drafts.length })}
-            </p>
-            <p className="truncate text-xs text-muted-foreground">
-              {drafts.map((d) => d.title).join("  •  ")}
-            </p>
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-2">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300">
+          <FilePenLine className="h-4 w-4" />
+        </span>
+        <p className="min-w-0 truncate text-sm font-semibold text-foreground">
+          {t("bannerTitle", { count: drafts.length })}
+        </p>
+        <div className="-mx-1 flex min-w-0 basis-full gap-2 overflow-x-auto px-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:ms-auto sm:basis-auto sm:flex-wrap sm:overflow-visible">
           {drafts.slice(0, 3).map((d) => (
             <Button
               key={d._id}
               size="sm"
               variant="outline"
-              className="h-8 gap-1.5 rounded-lg border-amber-200 bg-background/70 text-xs text-amber-700 hover:bg-amber-50 dark:border-amber-500/30 dark:text-amber-300 dark:hover:bg-amber-950/40"
+              className="h-7 shrink-0 gap-1 rounded-lg border-amber-200 bg-background/70 px-2 text-[11px] text-amber-700 sm:h-8 sm:gap-1.5 sm:px-3 sm:text-xs hover:bg-amber-50 dark:border-amber-500/30 dark:text-amber-300 dark:hover:bg-amber-950/40"
               onClick={() => router.push(continueHref(d._id))}
             >
               <RotateCcw className="h-3.5 w-3.5" />
-              {d.title.length > 18 ? `${d.title.slice(0, 18)}…` : d.title}
+              <span className="max-w-[7.5rem] truncate sm:max-w-[9rem]">{d.title}</span>
               <ChevronRight className="h-3.5 w-3.5" />
             </Button>
           ))}
@@ -136,7 +131,7 @@ export function DraftJobsCard({ locale, variant = "card", onCountChange }: Draft
 
   // ── Card variant (employer dashboard) ───────────────────────────────────
   return (
-    <section className="workspace-panel-surface flex flex-col rounded-[24px] p-3 sm:p-5">
+    <section className="workspace-panel-surface panel-body flex flex-col rounded-[24px]">
       {ConfirmDialogNode}
       <div className="mb-4 flex items-center gap-3">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300">

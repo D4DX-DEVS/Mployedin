@@ -152,7 +152,7 @@ export default function EmployerOffersPage() {
   }
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container">
       <DashboardPageHeader
         icon={DollarSign}
         eyebrow={t("pending")}

@@ -5,7 +5,7 @@ import Scorecard from "@/models/Scorecard";
 import { Employer } from "@/models/Employer";
 import { validateBody } from "@/lib/validators";
 import { scorecardUpdateSchema } from "@/lib/validators/scorecards";
-import { logActivity } from "@/lib/audit/log";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
 
@@ -98,8 +98,7 @@ async function patchHandler(
 
   // Log activity
   await logActivity({
-    actorId: ctx.userId,
-    actorRole: ctx.role,
+    ...actorFromCtx(ctx),
     action: "scorecard.update",
     resource: "scorecards",
     resourceId: scorecard._id.toString(),

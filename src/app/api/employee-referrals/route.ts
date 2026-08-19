@@ -3,7 +3,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import EmployeeReferral, { ReferralProgram } from "@/models/EmployeeReferral";
 import Employer from "@/models/Employer";
-import { logActivity } from "@/lib/audit/log";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import mongoose from "mongoose";
 
 async function getHandler(req: NextRequest, ctx: { userId: string; role: string }) {
@@ -82,7 +82,7 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
     status: "pending",
   });
 
-  await logActivity({ action: "employee_referral.submitted", actorId: ctx.userId, resource: "EmployeeReferral", resourceId: referral._id.toString(), meta: { candidateEmail } });
+  await logActivity({ action: "employee_referral.submitted", ...actorFromCtx(ctx), resource: "EmployeeReferral", resourceId: referral._id.toString(), meta: { candidateEmail } });
 
   return NextResponse.json({ referral }, { status: 201 });
 }

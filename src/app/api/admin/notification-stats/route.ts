@@ -20,9 +20,27 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
   const day24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const week7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-  const [totalUsers, allPrefs, emailStats24h, emailStats7d] = await Promise.all([
+  const [totalUsers, prefStats, emailStats24h, emailStats7d] = await Promise.all([
     User.countDocuments({ isActive: true }),
-    NotificationPreference.find({}).select("emailFrequency unsubscribedAll").lean(),
+    NotificationPreference.aggregate([
+      {
+        $group: {
+          _id: null,
+          unsubscribed: {
+            $sum: { $cond: ["$unsubscribedAll", 1, 0] },
+          },
+          instantFrequency: {
+            $sum: { $cond: [{ $eq: ["$emailFrequency", "instant"] }, 1, 0] },
+          },
+          dailyFrequency: {
+            $sum: { $cond: [{ $eq: ["$emailFrequency", "daily"] }, 1, 0] },
+          },
+          weeklyFrequency: {
+            $sum: { $cond: [{ $eq: ["$emailFrequency", "weekly"] }, 1, 0] },
+          },
+        },
+      },
+    ]),
     EmailLog.aggregate([
       { $match: { sentAt: { $gte: day24h } } },
       { $group: { _id: "$status", count: { $sum: 1 } } },
@@ -33,28 +51,10 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
     ]),
   ]);
 
-  let unsubscribed = 0;
-  let instantFrequency = 0;
-  let dailyFrequency = 0;
-  let weeklyFrequency = 0;
-
-  for (const p of allPrefs) {
-    if (p.unsubscribedAll) {
-      unsubscribed++;
-      continue;
-    }
-    switch (p.emailFrequency) {
-      case "instant":
-        instantFrequency++;
-        break;
-      case "daily":
-        dailyFrequency++;
-        break;
-      case "weekly":
-        weeklyFrequency++;
-        break;
-    }
-  }
+  const unsubscribed = prefStats.length > 0 ? prefStats[0].unsubscribed : 0;
+  const instantFrequency = prefStats.length > 0 ? prefStats[0].instantFrequency : 0;
+  const dailyFrequency = prefStats.length > 0 ? prefStats[0].dailyFrequency : 0;
+  const weeklyFrequency = prefStats.length > 0 ? prefStats[0].weeklyFrequency : 0;
 
   const emailEnabled = totalUsers - unsubscribed;
 

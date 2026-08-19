@@ -3,7 +3,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import CareerPage from "@/models/CareerPage";
 import Employer from "@/models/Employer";
-import { logActivity } from "@/lib/audit/log";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import mongoose from "mongoose";
 
 async function getHandler(req: NextRequest, ctx: { userId: string; role: string }) {
@@ -53,7 +53,7 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
     createdBy: new mongoose.Types.ObjectId(ctx.userId),
   });
 
-  await logActivity({ action: "career_page.created", actorId: ctx.userId, resource: "CareerPage", resourceId: page._id.toString(), meta: { slug } });
+  await logActivity({ action: "career_page.created", ...actorFromCtx(ctx), resource: "CareerPage", resourceId: page._id.toString(), meta: { slug } });
 
   return NextResponse.json({ page }, { status: 201 });
 }
@@ -94,5 +94,5 @@ async function patchHandler(req: NextRequest, ctx: { userId: string; role: strin
 }
 
 export const GET = withAuth(getHandler);
-export const POST = withAuth(postHandler);
-export const PATCH = withAuth(patchHandler);
+export const POST = withAuth(postHandler, { resource: "employers", action: "update" });
+export const PATCH = withAuth(patchHandler, { resource: "employers", action: "update" });

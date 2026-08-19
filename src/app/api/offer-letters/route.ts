@@ -4,7 +4,7 @@ import { withAuth } from "@/lib/auth/withAuth";
 import OfferLetter, { OfferLetterTemplate } from "@/models/OfferLetter";
 import Employer from "@/models/Employer";
 import Offer from "@/models/Offer";
-import { logActivity } from "@/lib/audit/log";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import mongoose from "mongoose";
 
 // --- Templates ---
@@ -104,7 +104,7 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
     createdBy: new mongoose.Types.ObjectId(ctx.userId),
   });
 
-  await logActivity({ action: "offer_letter.created", actorId: ctx.userId, resource: "OfferLetter", resourceId: letter._id.toString(), meta: { offerId, candidateName } });
+  await logActivity({ action: "offer_letter.created", ...actorFromCtx(ctx), resource: "OfferLetter", resourceId: letter._id.toString(), meta: { offerId, candidateName } });
 
   return NextResponse.json({ letter }, { status: 201 });
 }

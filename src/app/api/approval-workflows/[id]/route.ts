@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import ApprovalWorkflow from "@/models/ApprovalWorkflow";
-import { logActivity } from "@/lib/audit/log";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
 import { approvalWorkflowDecisionSchema } from "@/lib/validators/approval-workflows";
 import mongoose from "mongoose";
@@ -56,7 +56,7 @@ async function patchHandler(req: NextRequest, ctx: { userId: string; role: strin
 
   await logActivity({
     action: `approval_workflow.${decision}`,
-    actorId: ctx.userId,
+    ...actorFromCtx(ctx),
     resource: "ApprovalWorkflow",
     resourceId: id,
     meta: { type: workflow.type, resourceTitle: workflow.resourceTitle },

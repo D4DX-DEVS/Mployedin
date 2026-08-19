@@ -77,6 +77,19 @@ async function getHandler(
     return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
   }
 
+  // Filter commissions based on role — employers must not see rate/amount
+  if (ctx.role === "employer" && invoice.commissions) {
+    invoice.commissions = invoice.commissions.map((comm: { role: string; rate: number; amount: number; notes?: string }) => ({
+      role: comm.role,
+      notes: comm.notes,
+    })) as unknown as typeof invoice.commissions;
+  }
+  // Internal economics/notes never go to the customer
+  if (ctx.role === "employer") {
+    delete (invoice as Record<string, unknown>).internalNotes;
+    delete (invoice as Record<string, unknown>).platformRevenue;
+  }
+
   // Resolve sender context (role label + region for super_agent/agent)
   let senderContext: { name: string; role: string; label: string } | null = null;
   const createdByUser = invoice.createdBy as unknown as { _id: unknown; name?: string; role?: string } | null;
@@ -273,6 +286,10 @@ async function patchHandler(
     commissionsReversed = cancelReversalResult.reversed;
     commissionsAlreadyPaid = cancelReversalResult.alreadyPaid;
   } else if (body.status === "void") {
+    // Prevent voiding of paid invoices — cannot reverse paid commissions
+    if (invoice.status === "paid") {
+      return NextResponse.json({ error: "Cannot void a paid invoice" }, { status: 400 });
+    }
     invoice.status = body.status;
     invoice.voidedBy = ctx.userId as unknown as typeof invoice.voidedBy;
     invoice.voidedAt = new Date();

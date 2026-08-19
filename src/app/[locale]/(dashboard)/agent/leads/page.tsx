@@ -693,7 +693,7 @@ export default function AgentLeadsPage() {
   }, [leads]);
 
   return (
-    <div className="page-container space-y-3 sm:space-y-5">
+    <div className="page-container">
       {ConfirmDialogNode}
 
       {/* ──── Hero Header ──── */}

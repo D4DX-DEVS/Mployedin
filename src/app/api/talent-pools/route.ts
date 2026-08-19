@@ -3,7 +3,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import TalentPool from "@/models/TalentPool";
 import Employer from "@/models/Employer";
-import { logActivity } from "@/lib/audit/log";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import mongoose from "mongoose";
 
 async function getHandler(req: NextRequest, ctx: { userId: string; role: string }) {
@@ -49,7 +49,7 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
     createdBy: new mongoose.Types.ObjectId(ctx.userId),
   });
 
-  await logActivity({ action: "talent_pool.created", actorId: ctx.userId, resource: "TalentPool", resourceId: pool._id.toString(), meta: { name } });
+  await logActivity({ action: "talent_pool.created", ...actorFromCtx(ctx), resource: "TalentPool", resourceId: pool._id.toString(), meta: { name } });
 
   return NextResponse.json({ pool }, { status: 201 });
 }

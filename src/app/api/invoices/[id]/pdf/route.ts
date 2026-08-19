@@ -79,7 +79,7 @@ async function handler(
   }
 
   const pdfInvoice = { ...invoice, issuedByLabel } as Parameters<typeof generateInvoicePdf>[0];
-  const pdfBuffer = generateInvoicePdf(pdfInvoice);
+  const pdfBuffer = generateInvoicePdf(pdfInvoice, ctx.role);
 
   await logActivity({
     ...actorFromCtx(ctx),

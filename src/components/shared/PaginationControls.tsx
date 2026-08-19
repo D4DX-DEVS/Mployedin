@@ -71,9 +71,11 @@ export function PaginationControls({
   return (
     <div
       className={cn(
-        // pb-* keeps the last-page button clear of the floating Copilot FAB
-        // (fixed bottom-20/bottom-4, right-4), which used to sit on top of it.
-        "flex flex-row items-center justify-between gap-2 pb-20 text-xs sm:gap-3 sm:text-[13px] lg:pb-16",
+        // Phones centre the row: it keeps the next-page button away from the
+        // floating Copilot FAB (fixed, bottom-right) without the old pb-20,
+        // which stacked on the scroll container's own nav reserve and left
+        // ~160px of dead space under the last page of every list.
+        "flex flex-row items-center justify-center gap-3 px-1 text-xs sm:justify-between sm:gap-3 sm:px-0 sm:text-[13px]",
         className
       )}
     >

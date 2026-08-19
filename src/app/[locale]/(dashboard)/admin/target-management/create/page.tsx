@@ -298,7 +298,7 @@ export default function CreateTargetProfilePage() {
   };
 
   return (
-    <div className="page-container max-w-6xl mx-auto space-y-5">
+    <div className="page-container max-w-6xl mx-auto">
       {/* Back */}
       <button
         onClick={() => router.push(`/${locale}/admin/target-management`)}

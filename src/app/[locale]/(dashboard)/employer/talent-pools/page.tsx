@@ -167,7 +167,7 @@ export default function EmployerTalentPoolsPage() {
   }, [pools, search, sortBy]);
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container">
       {ConfirmDialogNode}
       <DashboardPageHeader
         icon={Layers}

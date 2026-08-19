@@ -1,6 +1,6 @@
 export default function MessagesLoading() {
   return (
-    <div className="page-container space-y-6 animate-pulse">
+    <div className="page-container animate-pulse">
       <div className="space-y-2">
         <div className="h-7 w-36 rounded-lg bg-muted" />
         <div className="h-4 w-52 rounded bg-muted/70" />

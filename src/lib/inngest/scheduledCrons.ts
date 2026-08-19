@@ -157,6 +157,42 @@ export const agentWeeklyDigestCron = makeScheduledCron({
   path: "/api/cron/agent-weekly-digest",
 });
 
+// ── Additional scheduled crons ──────────────────────────────────────────────
+export const autoApplyCron = makeScheduledCron({
+  id: "scheduled-auto-apply",
+  name: "Auto Apply (hourly)",
+  cron: "0 * * * *",
+  path: "/api/cron/autoapply",
+});
+
+export const invoiceOverdueCron = makeScheduledCron({
+  id: "scheduled-invoice-overdue",
+  name: "Invoice Overdue (daily)",
+  cron: "0 10 * * *",
+  path: "/api/cron/invoice-overdue",
+});
+
+export const npsTriggerCron = makeScheduledCron({
+  id: "scheduled-nps-trigger",
+  name: "NPS Trigger (daily)",
+  cron: "0 12 * * *",
+  path: "/api/cron/nps-trigger",
+});
+
+export const slaAlertsCron = makeScheduledCron({
+  id: "scheduled-sla-alerts",
+  name: "SLA Alerts (hourly)",
+  cron: "0 * * * *",
+  path: "/api/cron/sla-alerts",
+});
+
+export const subscriptionReminderCron = makeScheduledCron({
+  id: "scheduled-subscription-reminder",
+  name: "Subscription Reminder (daily)",
+  cron: "0 6 * * *",
+  path: "/api/cron/subscription-reminder",
+});
+
 /** All scheduled cron functions, for registration in the Inngest serve route. */
 export const scheduledCronFunctions = [
   interviewRemindersCron,
@@ -170,4 +206,9 @@ export const scheduledCronFunctions = [
   invoiceOverdueReminderCron,
   targetRiskCheckCron,
   agentWeeklyDigestCron,
+  autoApplyCron,
+  invoiceOverdueCron,
+  npsTriggerCron,
+  slaAlertsCron,
+  subscriptionReminderCron,
 ];

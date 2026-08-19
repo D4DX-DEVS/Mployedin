@@ -3,7 +3,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import ApplicationForm from "@/models/ApplicationForm";
 import Employer from "@/models/Employer";
-import { logActivity } from "@/lib/audit/log";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
 import { applicationFormCreateSchema } from "@/lib/validators/application-forms";
 import mongoose from "mongoose";
@@ -58,7 +58,7 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
     createdBy: new mongoose.Types.ObjectId(ctx.userId),
   });
 
-  await logActivity({ action: "application_form.created", actorId: ctx.userId, resource: "ApplicationForm", resourceId: form._id.toString(), meta: { name: body.name, fieldCount: fields.length } });
+  await logActivity({ action: "application_form.created", ...actorFromCtx(ctx), resource: "ApplicationForm", resourceId: form._id.toString(), meta: { name: body.name, fieldCount: fields.length } });
 
   return NextResponse.json({ form }, { status: 201 });
 }

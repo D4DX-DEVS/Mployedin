@@ -42,6 +42,8 @@ export interface IUser extends Document {
   /** Secret token for the subscribable iCal feed (/api/calendar/feed/[token]) */
   calendarFeedToken?: string;
   lastLogin?: Date;
+  /** Referral code that brought this user to the platform */
+  referredBy?: string;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -105,6 +107,7 @@ const UserSchema = new Schema<IUser>(
     phone: { type: String },
     calendarFeedToken: { type: String, select: false },
     lastLogin: { type: Date },
+    referredBy: { type: String, index: true },
   },
   {
     timestamps: true,

@@ -13,7 +13,7 @@ import { sendEmail } from "@/lib/communications/email";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { checkRateLimitDual } from "@/lib/security/rateLimit";
 import { inngest } from "@/lib/inngest/client";
-import { logActivity } from "@/lib/audit/log";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { notifyApplicationReceived } from "@/lib/notifications/trigger";
 import type { UserRole } from "@/models/User";
 import logger from "@/lib/logger";
@@ -51,7 +51,7 @@ async function applyHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   await connectDB();
 
   const [job, seeker, seekerUser] = await Promise.all([
-    Job.findOne({ _id: jobId, deletedAt: null }).select("title employerId status screeningQuestions").lean(),
+    Job.findOne({ _id: jobId, deletedAt: null }).select("title employerId status screeningQuestions maxApplicants applicantIds").lean(),
     JobSeeker.findOne({ userId: ctx.userId }).select("_id fullName profileCompleteness updatedAt documents cv.originalUrl").lean(),
     User.findById(ctx.userId).select("email name").lean(),
   ]);
@@ -64,6 +64,12 @@ async function applyHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   }
   if (!seeker) {
     return NextResponse.json({ error: "Job seeker profile not found" }, { status: 404 });
+  }
+
+  // Check maxApplicants limit
+  const jobRecord = job as { maxApplicants?: number; applicantIds?: unknown[] };
+  if (jobRecord.maxApplicants && (jobRecord.applicantIds?.length ?? 0) >= jobRecord.maxApplicants) {
+    return NextResponse.json({ error: "Job has reached maximum number of applicants" }, { status: 422 });
   }
 
   // Duplicate check — withdrawn applications do not block re-applying.
@@ -273,8 +279,7 @@ async function applyHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 
   // Audit log
   logActivity({
-    actorId: ctx.userId,
-    actorRole: ctx.role,
+    ...actorFromCtx(ctx),
     action: "application.create",
     resource: "applications",
     resourceId: String(application._id),

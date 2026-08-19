@@ -42,7 +42,7 @@ interface User {
   permissionMode?: PermissionMode;
   customPermissions?: CustomPermissions;
   createdAt: string;
-  lastLoginAt?: string;
+  lastLogin?: string;
 }
 
 const ROLES = ["admin", "super_agent", "agent", "employer", "job_seeker"];
@@ -81,7 +81,7 @@ export default function AdminUsersPage() {
     { header: t("roleTableHeader"), key: "role" },
     { header: t("statusTableHeader"), key: "isActive", formatter: (v) => v ? t("active") : t("inactive") },
     { header: t("localeTableHeader"), key: "locale" },
-    { header: "Last Login", key: "lastLoginAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
+    { header: "Last Login", key: "lastLogin", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
     { header: t("joinedTableHeader"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
@@ -249,7 +249,7 @@ export default function AdminUsersPage() {
     setSelected(s => s.length === users.length ? [] : users.map(u => u._id));
 
   return (
-    <div className="page-container space-y-4">
+    <div className="page-container">
       <PageHero
         icon={Users}
         eyebrow={t("adminWorkspace")}

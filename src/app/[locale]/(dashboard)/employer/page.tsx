@@ -44,7 +44,7 @@ export default async function EmployerDashboard({ params }: { params: Promise<{ 
   } = await getEmployerDashboardStats(userId);
 
   return (
-    <div className="page-container space-y-3 sm:space-y-4">
+    <div className="page-container">
       <SmartHeader
         userName={userName}
         newApplications={newApplications}

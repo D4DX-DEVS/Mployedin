@@ -3,7 +3,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import EmailSequence from "@/models/EmailSequence";
 import Employer from "@/models/Employer";
-import { logActivity } from "@/lib/audit/log";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { escapeRegex } from "@/lib/security/sanitize";
 import mongoose from "mongoose";
 
@@ -77,7 +77,7 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
     createdBy: new mongoose.Types.ObjectId(ctx.userId),
   });
 
-  await logActivity({ action: "email_sequence.created", actorId: ctx.userId, resource: "EmailSequence", resourceId: sequence._id.toString(), meta: { name } });
+  await logActivity({ action: "email_sequence.created", ...actorFromCtx(ctx), resource: "EmailSequence", resourceId: sequence._id.toString(), meta: { name } });
 
   return NextResponse.json({ sequence }, { status: 201 });
 }

@@ -5,7 +5,7 @@ import { SurveyTemplate, SurveyResponse } from "@/models/CandidateSurvey";
 import Employer from "@/models/Employer";
 import Application from "@/models/Application";
 import JobSeeker from "@/models/JobSeeker";
-import { logActivity } from "@/lib/audit/log";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import mongoose from "mongoose";
 
 // GET: Employer gets templates + aggregated results
@@ -119,7 +119,7 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
     createdBy: new mongoose.Types.ObjectId(ctx.userId),
   });
 
-  await logActivity({ action: "survey_template.created", actorId: ctx.userId, resource: "SurveyTemplate", resourceId: template._id.toString(), meta: { name, trigger } });
+  await logActivity({ action: "survey_template.created", ...actorFromCtx(ctx), resource: "SurveyTemplate", resourceId: template._id.toString(), meta: { name, trigger } });
 
   return NextResponse.json({ template }, { status: 201 });
 }

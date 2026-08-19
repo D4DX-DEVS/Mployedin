@@ -58,13 +58,27 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   // ── Exit tenant view ────────────────────────────────────────────────────
   if (body.exit === true) {
     await connectDB();
+    // Read the session before deleting it: the employer it pointed at is the only
+    // thing that makes this entry findable on that employer's activity screen.
+    const leaving = await TenantViewSession.findOne({ actorId: userId })
+      .select("employerId employerUserId companyName")
+      .lean();
     await TenantViewSession.deleteMany({ actorId: userId });
 
+    // critical: leaving someone else's account must not happen untraceably —
+    // matching impersonation.exit, so both doors are logged with the same guarantee.
     await logActivity({
       ...actorFromCtx(ctx),
+      onBehalfOfId: leaving?.employerUserId?.toString(),
+      onBehalfOfRole: leaving ? "employer" : undefined,
       action: "tenant_view.exit",
       resource: "employers",
+      resourceId: leaving?.employerId?.toString(),
+      meta: leaving
+        ? { employerId: leaving.employerId?.toString(), companyName: leaving.companyName }
+        : undefined,
       req,
+      critical: true,
     });
 
     const res = NextResponse.json({ success: true, message: "Tenant view ended" });
@@ -179,13 +193,18 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     { upsert: true, returnDocument: "after" }
   );
 
+  // critical: entering someone else's account is the action whose only control is
+  // the audit entry — same guarantee impersonation.start already had.
   await logActivity({
     ...actorFromCtx(ctx),
+    onBehalfOfId: employerUserId,
+    onBehalfOfRole: "employer",
     action: "tenant_view.start",
     resource: "employers",
     resourceId: canonicalEmployerId,
-    meta: { companyName, ipAddress },
+    meta: { companyName, ipAddress, employerId: canonicalEmployerId },
     req,
+    critical: true,
   });
 
   // Sign the edge-verifiable cookie

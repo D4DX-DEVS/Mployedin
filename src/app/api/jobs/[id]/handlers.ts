@@ -50,9 +50,10 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     // instead of hard-rejecting — this makes an explicit "Submit for Approval"
     // CTA succeed for unverified employers and matches the POST createHandler
     // behavior. Admins approve via /api/admin/jobs/[id]/approve.
+    // Also check if job is agent-mediated (has agentId) — verified employers still need approval
     const bodyRecord2 = body as Record<string, unknown>;
     const employerVerified = Boolean(emp.verifiedAt) || Boolean(emp.isAgentVerified);
-    if (bodyRecord2.status === "active" && !employerVerified) {
+    if (bodyRecord2.status === "active" && (!employerVerified || job.agentId)) {
       bodyRecord2.status = "pending_approval";
     }
   } else if (ctx.role === "agent") {

@@ -60,15 +60,14 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     if (employerIdParam) filter.employerId = employerIdParam;
   } else if (ctx.role === "super_agent") {
     // Super-agent sees team recruitment invoices + own subscription invoices
-    const sa = await SuperAgent.findOne({ userId: ctx.userId }).select("_id agentIds").lean();
-    if (sa) {
-      filter.$or = [
-        { userId: ctx.userId },
-        { agentId: { $in: sa.agentIds ?? [] } },
-      ];
-    } else {
-      filter.userId = ctx.userId;
-    }
+    // Use getSuperAgentScope to ensure consistency with create handler
+    const { getSuperAgentScope } = await import("@/lib/auth/agentRestrictions");
+    const scope = await getSuperAgentScope(ctx.userId);
+    const scopedAgentIds = (scope?.effectiveAgentIds ?? []).map(String);
+    filter.$or = [
+      { userId: ctx.userId },
+      { agentId: { $in: scopedAgentIds } },
+    ];
   } else if (ctx.role === "agent") {
     // Agent sees own invoices (by agentId for recruitment, userId for subscription)
     const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
@@ -159,6 +158,20 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       .lean(),
     Invoice.countDocuments(filter),
   ]);
+
+  // Internal economics/notes never go to the customer (mirror [id] GET redaction)
+  if (ctx.role === "employer") {
+    for (const inv of invoices as Array<Record<string, unknown>>) {
+      delete inv.internalNotes;
+      delete inv.platformRevenue;
+      if (Array.isArray(inv.commissions)) {
+        inv.commissions = (inv.commissions as Array<{ role: string; notes?: string }>).map((c) => ({
+          role: c.role,
+          notes: c.notes,
+        }));
+      }
+    }
+  }
 
   // Summary aggregation
   // NOTE: Model.aggregate() does NOT auto-cast $match values the way find() does.

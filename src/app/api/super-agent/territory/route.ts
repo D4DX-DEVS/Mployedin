@@ -41,7 +41,8 @@ async function handler(req: NextRequest, ctx: AuthContext) {
       name: c.name as string,
       type: "city" as const,
       agentCount,
-      employerCount: await Employer.countDocuments({ city: c.name }),
+      // ponytail: Employer model lacks city/state fields; schema mismatch prevents accurate counts
+      employerCount: 0,
       jobCount: await Job.countDocuments({ city: c.name, status: "active" }),
       seekerCount: 0,
     });
@@ -55,7 +56,8 @@ async function handler(req: NextRequest, ctx: AuthContext) {
       name: s.name as string,
       type: "state" as const,
       agentCount,
-      employerCount: await Employer.countDocuments({ state: s.name }),
+      // ponytail: Employer model lacks city/state fields; schema mismatch prevents accurate counts
+      employerCount: 0,
       jobCount: await Job.countDocuments({ state: s.name, status: "active" }),
       seekerCount: 0,
     });

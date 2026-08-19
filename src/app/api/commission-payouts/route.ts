@@ -94,8 +94,8 @@ async function postHandler(req: NextRequest, ctx: AuthContext) {
   }
 
   // Summarize only what THIS batch actually paid — the pre-read list may
-  // include commissions grabbed by a concurrent batch
-  const paidCommissions = await Commission.find({ paymentRef: batchRef }).lean();
+  // include commissions grabbed by a concurrent batch. Only count paid commissions.
+  const paidCommissions = await Commission.find({ paymentRef: batchRef, status: "paid" }).lean();
 
   // Build per-user summary
   const userSummary: Record<

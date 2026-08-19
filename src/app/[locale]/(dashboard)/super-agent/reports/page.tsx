@@ -150,7 +150,7 @@ export default function SuperAgentReportsPage() {
   ];
 
   return (
-    <div className="page-container space-y-3 sm:space-y-4">
+    <div className="page-container">
       <SuperAgentPageIntro
         title={t("pageTitle")}
         description={t("pageDescription")}

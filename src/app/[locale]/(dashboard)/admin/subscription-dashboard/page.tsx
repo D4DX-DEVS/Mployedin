@@ -59,7 +59,7 @@ export default function AdminSubscriptionDashboardPage() {
   /* ── Loading skeleton ── */
   if (isLoading) {
     return (
-      <div className="page-container space-y-5">
+      <div className="page-container">
         <div className="h-32 animate-pulse rounded-[28px] bg-background/70" />
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -79,7 +79,7 @@ export default function AdminSubscriptionDashboardPage() {
   /* ── Error state ── */
   if (error || !data) {
     return (
-      <div className="page-container space-y-5">
+      <div className="page-container">
         <SubscriptionHero />
         <div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-6 text-center">
           <AlertTriangle className="h-8 w-8 text-red-500 mx-auto mb-2" />
@@ -92,7 +92,7 @@ export default function AdminSubscriptionDashboardPage() {
   }
 
   return (
-    <div className="page-container space-y-5">
+    <div className="page-container">
       {/* ── Hero with Quick Actions ── */}
       <SubscriptionHero
         onRefresh={() => refetch()}

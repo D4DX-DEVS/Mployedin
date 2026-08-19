@@ -173,9 +173,6 @@ export async function enforceFeatureGate(
   // Admin/agent roles bypass all subscription gates
   if (BYPASS_ROLES.has(role)) return null;
 
-  // All users get platinum-tier access until payment gateway is implemented
-  return null;
-
   /* eslint-disable no-unreachable -- subscription enforcement disabled temporarily */
   // Free-tier AI features bypass subscription gates for all authenticated users
   if (check.type === "ai" && FREE_AI_FEATURES.has(check.feature)) return null;

@@ -5,7 +5,7 @@ import MatchingWeightTemplate from "@/models/MatchingWeightTemplate";
 import Employer from "@/models/Employer";
 import { validateBody } from "@/lib/validators";
 import { matchingWeightTemplateSchema } from "@/lib/validators/misc";
-import { logActivity } from "@/lib/audit/log";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import mongoose from "mongoose";
 import type { UserRole } from "@/types/user";
 
@@ -67,8 +67,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   }
 
   await logActivity({
-    actorId: ctx.userId,
-    actorRole: ctx.role,
+    ...actorFromCtx(ctx),
     action: "matching_weight_template.update",
     resource: "matching_weight_templates",
     resourceId: id,
@@ -106,8 +105,7 @@ async function deleteHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<st
   }
 
   await logActivity({
-    actorId: ctx.userId,
-    actorRole: ctx.role,
+    ...actorFromCtx(ctx),
     action: "matching_weight_template.delete",
     resource: "matching_weight_templates",
     resourceId: id,

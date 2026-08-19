@@ -7,6 +7,7 @@ import connectDB from "@/lib/db/mongoose";
 import { User } from "@/models/User";
 import type { UserRole } from "@/models/User";
 import { Employer } from "@/models/Employer";
+import { CompanyUser } from "@/models/CompanyUser";
 import JobSeeker from "@/models/JobSeeker";
 import { logActivity } from "@/lib/audit/log";
 import { sendEmail, EmailTemplates } from "@/lib/communications/email";
@@ -550,7 +551,7 @@ export const authConfig: NextAuthConfig = {
         }
       }
       // OAuth sign-in: create/find user in DB (LinkedIn OAuth — Firebase handles its own flow in authorize())
-      if (account && account.provider !== "credentials" && account.provider !== "firebase") {
+      if (account && account.provider !== "credentials") {
         await connectDB();
         let dbUser = await User.findOne({ email: token.email });
         const isNewUser = !dbUser;
@@ -746,6 +747,13 @@ export const authConfig: NextAuthConfig = {
             });
             token.companyUserRole = member?.companyRole;
             token.companyId = String(emp._id);
+          } else {
+            // Check for CompanyUser records if no primary Employer found (team member access)
+            const companyUser = await CompanyUser.findOne({ userId: token.id as string }).lean();
+            if (companyUser) {
+              token.companyUserRole = companyUser.companyRole;
+              token.companyId = String(companyUser.companyId);
+            }
           }
         } catch {
           // Non-critical — default to no company role

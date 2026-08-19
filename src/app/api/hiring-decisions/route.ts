@@ -6,7 +6,7 @@ import Scorecard from "@/models/Scorecard";
 import { Employer } from "@/models/Employer";
 import Application from "@/models/Application";
 import { validateBody } from "@/lib/validators";
-import { logActivity } from "@/lib/audit/log";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { z } from "zod";
 import type { UserRole } from "@/models/User";
@@ -150,8 +150,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   await decision.save();
 
   await logActivity({
-    actorId: ctx.userId,
-    actorRole: ctx.role,
+    ...actorFromCtx(ctx),
     action: "hiring_decision.create",
     resource: "hiring_decisions",
     resourceId: decision._id.toString(),

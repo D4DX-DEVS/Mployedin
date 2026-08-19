@@ -4,7 +4,7 @@ import connectDB from "@/lib/db/mongoose";
 import Employer from "@/models/Employer";
 import { validateBody } from "@/lib/validators";
 import { workflowUpdateSchema } from "@/lib/validators/misc";
-import { logActivity } from "@/lib/audit/log";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import type { UserRole } from "@/types/user";
 
 interface AuthCtx { userId: string; role: UserRole; }
@@ -37,8 +37,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
   );
 
   await logActivity({
-    actorId: ctx.userId,
-    actorRole: ctx.role,
+    ...actorFromCtx(ctx),
     action: "employer.update_workflow",
     resource: "employers",
     resourceId: ctx.userId,
@@ -49,4 +48,4 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
 }
 
 export const GET = withAuth(getHandler);
-export const PATCH = withAuth(patchHandler);
+export const PATCH = withAuth(patchHandler, { resource: "employers", action: "update" });

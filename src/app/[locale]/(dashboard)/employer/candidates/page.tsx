@@ -1371,7 +1371,7 @@ export default function EmployerCandidatesPage() {
   }
 
   return (
-    <div className="page-container space-y-4">
+    <div className="page-container">
       {viewingCv && (
         <ResumeViewerModal
           url={viewingCv.url}

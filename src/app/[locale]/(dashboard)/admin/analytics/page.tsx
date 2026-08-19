@@ -227,7 +227,7 @@ export default function AdminAnalyticsPage() {
   };
 
   return (
-    <div className="page-container space-y-3 sm:space-y-4">
+    <div className="page-container">
       <PageHero
         title={t("analyticsTitle")}
         description={t("analyticsDescription")}

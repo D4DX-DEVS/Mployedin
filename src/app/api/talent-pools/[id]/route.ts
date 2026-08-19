@@ -3,7 +3,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import TalentPool from "@/models/TalentPool";
 import Employer from "@/models/Employer";
-import { logActivity } from "@/lib/audit/log";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import mongoose from "mongoose";
 
 async function getHandler(req: NextRequest, ctx: { userId: string; role: string }, params?: Record<string, string>) {
@@ -83,7 +83,7 @@ async function patchHandler(req: NextRequest, ctx: { userId: string; role: strin
     });
     await pool.save();
 
-    await logActivity({ action: "talent_pool.candidate_added", actorId: ctx.userId, resource: "TalentPool", resourceId: id, meta: { jobSeekerId } });
+    await logActivity({ action: "talent_pool.candidate_added", ...actorFromCtx(ctx), resource: "TalentPool", resourceId: id, meta: { jobSeekerId } });
 
     return NextResponse.json({ pool, message: "Candidate added" });
   }

@@ -433,7 +433,7 @@ export default function AIJobExtractPage() {
   const allPosted = postedCount === extractedJobs.length && extractedJobs.length > 0;
 
   return (
-    <div className="page-container space-y-3 sm:space-y-6">
+    <div className="page-container">
       <PageHeader
         title={t("title")}
         description={t("description")}

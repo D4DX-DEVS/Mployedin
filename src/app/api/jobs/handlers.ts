@@ -21,8 +21,11 @@ import { escapeRegex } from "@/lib/security/sanitize";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { validateBody } from "@/lib/validators";
 import { jobCreateSchema } from "@/lib/validators/jobs";
+import type { AuthContext } from "@/lib/auth/withAuth";
 
-interface AuthCtx { userId: string; role: UserRole; locale: string; }
+// The local shape was missing tenantView, so handlers could not tell an admin or
+// agent acting inside an employer's account from the employer themselves.
+type AuthCtx = Pick<AuthContext, "userId" | "role" | "locale" | "tenantView">;
 
 // GET /api/jobs — paginated job search (role-scoped)
 async function getHandler(req: NextRequest, ctx: AuthCtx) {
@@ -101,6 +104,10 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     ) {
       query._id = { $in: teamMember.jobAccess };
     }
+  } else if (myJobs && ctx.role !== "employer") {
+    // Non-employers requesting myJobs must see only active jobs
+    query.status = "active";
+    query.$or = [{ expiresAt: null }, { expiresAt: { $gte: new Date() } }];
   } else if (!myJobs) {
     query.status = "active";
     query.$or = [{ expiresAt: null }, { expiresAt: { $gte: new Date() } }];
@@ -199,10 +206,10 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       .populate("employerId", "companyName country industry logo")
       .populate({
         path: "agentId",
-        select: "commissionRate userId superAgentId",
+        select: ctx.role === "job_seeker" ? "userId" : "commissionRate userId superAgentId",
         populate: [
           { path: "userId", select: "name email" },
-          { path: "superAgentId", select: "overrideRate userId", populate: { path: "userId", select: "name" } },
+          { path: "superAgentId", select: ctx.role === "job_seeker" ? "userId" : "overrideRate userId", populate: { path: "userId", select: "name" } },
         ],
       })
       .lean()
@@ -242,7 +249,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   // scope, not just the current page.
   if (canFilterManagedJobs) {
     const baseQuery = { ...query, ...(status ? { status: { $exists: true } } : {}) };
-    const portfolioJobs = await Job.find(baseQuery).select("_id employerId vacancies").lean();
+    const portfolioJobs = await Job.find(baseQuery).select("_id employerId vacancies").limit(1000).lean();
     const employerSet = new Set(
       portfolioJobs.map((j) => (j.employerId ? String(j.employerId) : null)).filter(Boolean),
     );
@@ -321,6 +328,24 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
       }
       agentId = body.agentId;
     }
+    // T9: inside tenant view ctx.userId is the EMPLOYER's, so without this the
+    // agent actually posting the job is invisible: credit fell through to the
+    // employer's default agent, or to whichever agent autoAssignAgent scored
+    // highest. agentId drives incrementAgentCounter("vacanciesPosted"), the
+    // super-agent approval notification and recruitment invoicing — i.e.
+    // commission. Ranked above Employer.agentId because that field is the
+    // employer's *default* agent, not the human who actually posted this job;
+    // an explicit body.agentId above still wins.
+    else if (ctx.tenantView?.actorRole === "agent") {
+      const actingAgent = await Agent.findOne({ userId: ctx.tenantView.actorId })
+        .select("_id assignedEmployerIds")
+        .lean();
+      if (actingAgent?.assignedEmployerIds?.map(String).includes(employerId)) {
+        agentId = String(actingAgent._id);
+      } else if (emp.agentId) {
+        agentId = String(emp.agentId);
+      }
+    }
     // 8C.4: auto-assign from Employer.agentId if not manually specified
     else if (emp.agentId) {
       agentId = String(emp.agentId);
@@ -381,10 +406,15 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
   let approvalStatus: "pending" | "approved";
   let resolvedStatus: string;
 
-  if (ctx.role === "admin") {
+  // T8: tenant view swaps ctx.role to "employer", so an admin posting inside an
+  // employer's account never matched the admin branch and had to go approve their
+  // own job. The approval decision must follow the real human, not the proxy.
+  const actingRole = ctx.tenantView?.actorRole ?? ctx.role;
+
+  if (actingRole === "admin") {
     approvalStatus = "approved";
     resolvedStatus = status ?? "active";
-  } else if (ctx.role === "agent") {
+  } else if (actingRole === "agent") {
     approvalStatus = "pending";
     resolvedStatus = "pending_approval";
   } else if (ctx.role === "employer" && agentId) {

@@ -5,7 +5,7 @@ import WorkflowTemplate from "@/models/WorkflowTemplate";
 import Employer from "@/models/Employer";
 import { validateBody } from "@/lib/validators";
 import { workflowTemplateSchema } from "@/lib/validators/misc";
-import { logActivity } from "@/lib/audit/log";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import type { UserRole } from "@/types/user";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -59,8 +59,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   });
 
   await logActivity({
-    actorId: ctx.userId,
-    actorRole: ctx.role,
+    ...actorFromCtx(ctx),
     action: "workflow_template.create",
     resource: "workflow_templates",
     resourceId: template._id.toString(),
