@@ -18,10 +18,12 @@ describe("AgentReportsPage", () => {
     jest.restoreAllMocks();
   });
 
-  it("renders report headings and layout without hardcoded white backgrounds", () => {
+  it("renders report headings and layout without hardcoded white backgrounds", async () => {
     const view = render(<AgentReportsPage />);
 
-    expect(screen.getByRole("heading", { name: "Reports & Analytics" })).toBeInTheDocument();
+    // findBy* flushes the analytics fetch inside act() — a sync getBy left the
+    // setAnalyticsLoading(false) update landing after the test ended.
+    expect(await screen.findByRole("heading", { name: "Reports & Analytics" })).toBeInTheDocument();
 
     expect(view.container.innerHTML).not.toContain("bg-white/80");
     expect(view.container.innerHTML).not.toContain("bg-white/95");

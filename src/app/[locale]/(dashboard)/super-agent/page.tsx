@@ -196,6 +196,7 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
     <div className="page-container">
       <DashboardPageHeader
         icon={ShieldCheck}
+        eyebrow={t("hero.eyebrow")}
         title={t("hero.title")}
         description={t("hero.description")}
         actions={
