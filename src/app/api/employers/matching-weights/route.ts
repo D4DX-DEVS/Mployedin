@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { withAuth } from "@/lib/auth/withAuth";
+import { withAuth, type AuthContext } from "@/lib/auth/withAuth";
 import connectDB from "@/lib/db/mongoose";
 import Employer from "@/models/Employer";
 import { validateBody } from "@/lib/validators";
 import { matchingWeightsSchema } from "@/lib/validators/misc";
-import { logActivity } from "@/lib/audit/log";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 
 import { sanitizeMatchingWeights } from "@/lib/ai/matchingWeights";
 
@@ -15,7 +15,7 @@ async function GET(_req: NextRequest, ctx: { userId: string }) {
   return NextResponse.json({ weights: sanitizeMatchingWeights(employer?.matchingWeights) });
 }
 
-async function PATCH(req: NextRequest, ctx: { userId: string }) {
+async function PATCH(req: NextRequest, ctx: AuthContext) {
   await connectDB();
   const { weights } = await validateBody(req, matchingWeightsSchema);
 
@@ -32,8 +32,7 @@ async function PATCH(req: NextRequest, ctx: { userId: string }) {
   );
 
   await logActivity({
-    actorId: ctx.userId,
-    actorRole: "employer",
+    ...actorFromCtx(ctx),
     action: "employer.update_matching_weights",
     resource: "employers",
     resourceId: ctx.userId,

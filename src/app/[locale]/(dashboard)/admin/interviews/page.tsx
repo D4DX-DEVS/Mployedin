@@ -277,7 +277,7 @@ export default function AdminInterviewOversightPage() {
   const noShowCount = serverNoShow ?? interviews.filter((i) => i.outcome === "no_show").length;
 
   return (
-    <div className="page-container space-y-3 sm:space-y-6">
+    <div className="page-container">
 
       {/* ─── Compact page header ──────────────────────────────────────── */}
       <DashboardPageHeader

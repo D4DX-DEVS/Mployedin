@@ -133,7 +133,7 @@ export function AIRecommendedCandidatesCard({
       className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-[28px]"
     >
       {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/60 px-3 py-2.5 sm:px-6 sm:py-4">
+      <div className="panel-head flex-wrap items-start justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-700 dark:border-sky-500/30 dark:bg-sky-500/15 dark:text-sky-300 sm:px-2.5 sm:py-1 sm:text-[11px] sm:tracking-[0.18em]">
@@ -153,7 +153,7 @@ export function AIRecommendedCandidatesCard({
       {/* Band breakdown */}
       {/* One band per row — three bands in a 2-up grid always orphaned the third.
           Each row is a single compact line instead, which is shorter overall. */}
-      <div className="space-y-1.5 px-2.5 py-2.5 sm:space-y-2.5 sm:px-5 sm:py-5">
+      <div className="panel-body panel-stack">
         {bands.map((band) => {
           const Icon = band.icon;
           const bandHref = `${applicationsBase}?scoreMin=${band.scoreMin}&scoreMax=${band.scoreMax}`;
@@ -211,7 +211,7 @@ export function AIRecommendedCandidatesCard({
       </div>
 
       {/* Primary CTA */}
-      <div className="border-t border-border/60 px-2.5 py-2.5 sm:px-5 sm:py-3.5">
+      <div className="panel-foot">
         <Link
           href={`${applicationsBase}?scoreMin=80`}
           className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white transition hover:bg-sky-700 sm:w-auto"

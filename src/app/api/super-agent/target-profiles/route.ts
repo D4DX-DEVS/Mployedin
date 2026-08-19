@@ -63,8 +63,13 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     status: { $ne: "cancelled" },
   }).lean();
 
+  // If SA has no plan, return empty team view
+  if (!ownProfile) {
+    return NextResponse.json({ profiles: [], total: 0, page, limit });
+  }
+
   const agentProfiles = await TargetProfile.find({
-    parentProfileId: ownProfile?._id,
+    parentProfileId: ownProfile._id,
     status: { $ne: "cancelled" },
   }).lean();
 
@@ -74,7 +79,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     year,
     assigneeRole: "agent",
     status: { $ne: "cancelled" },
-    ...(ownProfile ? { parentProfileId: { $ne: ownProfile._id } } : {}),
+    parentProfileId: { $ne: ownProfile._id },
   }).lean();
 
   const allAgentProfiles = [...agentProfiles, ...additionalProfiles];
@@ -232,6 +237,16 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     const allowedAgentUserIds = new Set(scopedAgents.map((agent) => String(agent.userId)));
 
     const requestedAgentIds = body.allocations.map((allocation) => allocation.agentUserId);
+
+    // Validate all allocations BEFORE any writes: check scope for all agents upfront
+    for (const alloc of body.allocations) {
+      if (!allowedAgentUserIds.has(alloc.agentUserId)) {
+        return NextResponse.json(
+          { error: "One or more selected agents are outside your team scope" },
+          { status: 403 }
+        );
+      }
+    }
     const existingProfiles = await TargetProfile.find({
       year: body.year,
       assigneeRole: "agent",
@@ -291,13 +306,6 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
 
     const created = [];
     for (const alloc of body.allocations) {
-      if (!allowedAgentUserIds.has(alloc.agentUserId)) {
-        return NextResponse.json(
-          { error: "One or more selected agents are outside your team scope" },
-          { status: 403 }
-        );
-      }
-
       const annualTargets = {
         employerTarget: alloc.employerTarget,
         employeeTarget: alloc.employeeTarget,

@@ -5149,7 +5149,7 @@
     "hero": {
       "eyebrow": "مساحة مشرف الوكلاء",
       "title": "لوحة تحكم مشرف الوكلاء",
-      "description": "أدر الإشراف الإقليمي ووجّه فريق الوكلاء وأزل عوائق التوظيف من مساحة عمل حديثة واحدة."
+      "description": "أداء التوظيف الإقليمي ونشاط الفريق."
     },
     "control": {
       "lanesEyebrow": "مسارات التحكم",
@@ -5165,17 +5165,28 @@
         "helper": "قائمة فريقك النشطة مع ملكية التنفيذ الحالية."
       },
       "totalEmployers": {
-        "label": "إجمالي أصحاب العمل",
+        "label": "أصحاب العمل",
         "helper": "حسابات أصحاب العمل تحت إدارة وكلائك."
       },
+      "totalJobs": {
+        "label": "الوظائف",
+        "helper": "الوظائف المنشورة في منطقتك."
+      },
       "totalPlacements": {
-        "label": "إجمالي التوظيفات",
+        "label": "التوظيفات",
         "helper": "التوظيفات المؤكدة والنتائج المغلقة عبر فريقك."
       },
       "commissionsEarned": {
-        "label": "العمولات المكتسبة",
+        "label": "العمولات",
         "helper": "أداء العمولات وحالة المدفوعات لمحفظتك."
       }
+    },
+    "kpiNote": {
+      "agents": "{active} نشط · {inactive} غير نشط",
+      "employers": "عبر {agents} وكيلاً",
+      "jobs": "{active} نشطة",
+      "placements": "معدل التوظيف {rate}%",
+      "commission": "{amount} معلقة"
     },
     "secondary": {
       "jobsPosted": "الوظائف المنشورة",
@@ -5196,7 +5207,10 @@
       "jobs": "الوظائف",
       "applications": "الطلبات",
       "placements": "التوظيفات",
-      "placementRate": "معدل التوظيف"
+      "placementRate": "معدل التوظيف",
+      "conversion": "التحويل",
+      "vsPrevious": "مقارنة بالمرحلة السابقة",
+      "noPlacements": "لا توجد توظيفات بعد"
     },
     "leaderboard": {
       "summary": "{leads} عميل محتمل · {jobs} وظيفة منشورة",
@@ -5206,7 +5220,7 @@
     },
     "actions": {
       "agentPerformance": {
-        "label": "مراجعة أداء الوكلاء",
+        "label": "مراجعة الوكلاء",
         "description": "راجع قائمة الفريق والإنتاجية والمساءلة الفردية."
       },
       "leadPipeline": {
@@ -9337,6 +9351,7 @@
     "from": "من",
     "to": "إلى",
     "noAuditLogEntriesFound": "لم يتم العثور على إدخالات سجل تدقيق",
+    "onBehalfOf": "نيابة عن",
     "unknown": "غير معروف"
   },
   "adminCms": {

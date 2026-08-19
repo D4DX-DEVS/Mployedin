@@ -13,6 +13,7 @@ import { aiMatchSchema } from "@/lib/validators/ai";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { calculateMatchScore, seekerProfileFromDoc, jobProfileFromDoc, type MatchScoreWeights } from "@/lib/matchScore";
 
 function sanitizeAiList(values: string[] | undefined, maxItems = 20, maxLength = 80): string {
   const cleaned = (values ?? [])
@@ -43,7 +44,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   }
 
   await connectDB();
-  const { jobId, jobSeekerId: bodyJobSeekerId, applicationId } = await validateBody(req, aiMatchSchema);
+  const { jobId, jobSeekerId: bodyJobSeekerId, applicationId, weights } = await validateBody(req, aiMatchSchema);
 
   if (!jobId) return NextResponse.json({ error: "jobId required" }, { status: 400 });
 
@@ -96,7 +97,20 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     }
   }
 
-  // Safely extract nested fields
+  // Compute deterministic score using feature-based engine
+  const seekerProfile = seekerProfileFromDoc(seeker as Parameters<typeof seekerProfileFromDoc>[0]);
+  const jobProfile = jobProfileFromDoc(job as Parameters<typeof jobProfileFromDoc>[0]);
+
+  const scoreWeights: MatchScoreWeights = {
+    skills: weights?.skills,
+    location: weights?.location,
+    experience: weights?.experience,
+    salary: weights?.salary,
+  };
+
+  const deterministicScore = calculateMatchScore(seekerProfile, jobProfile, scoreWeights);
+
+  // Safely extract nested fields for LLM narrative (optional)
   const jobReqs = job.requirements as { skills?: string[]; experienceMin?: number; experienceMax?: number } | undefined;
   const jobLoc = job.location as { city?: string; country?: string; isRemote?: boolean } | undefined;
   const locationStr = sanitizeAIInput(
@@ -140,35 +154,54 @@ Nationality: ${nationality}
 Languages: ${seekerLangs}
 === END SEEKER DATA ===
 
-Return a JSON object ONLY (no markdown) with this exact structure:
+Provide brief qualitative feedback ONLY (no scoring). Return a JSON object (no markdown) with this exact structure:
 {
-  "score": <integer 0-100>,
-  "breakdown": {
-    "skills": <integer 0-100>,
-    "experience": <integer 0-100>,
-    "location": <integer 0-100>,
-    "language": <integer 0-100>
-  },
   "strengths": [<2-3 short bullet strings>],
   "gaps": [<1-2 short bullet strings>],
   "summary": "<2 sentence match summary>"
 }`;
 
-  const text = redactPII(
-    await generateText(prompt, GEMINI_MODELS.flash, AI_TOKEN_LIMITS.match)
-  ).replace(/```json\n?|```/g, "").trim();
+  let strengths: string[] = [];
+  let gaps: string[] = [];
+  let summary = "";
 
-  let matchData;
   try {
-    matchData = JSON.parse(text);
+    const text = redactPII(
+      await generateText(prompt, GEMINI_MODELS.flash, AI_TOKEN_LIMITS.match)
+    ).replace(/```json\n?|```/g, "").trim();
+
+    const narrativeData = JSON.parse(text);
+    strengths = Array.isArray(narrativeData?.strengths) ? narrativeData.strengths.map(String).filter(Boolean) : [];
+    gaps = Array.isArray(narrativeData?.gaps) ? narrativeData.gaps.map(String).filter(Boolean) : [];
+    summary = String(narrativeData?.summary ?? "");
   } catch {
-    return NextResponse.json({ error: "AI response could not be parsed. Please try again." }, { status: 500 });
+    // LLM failure does not block the response — deterministic score is always available
   }
+
+  const matchData = {
+    score: deterministicScore,
+    breakdown: {
+      skills: 0,
+      experience: 0,
+      location: 0,
+      language: 0,
+    },
+    strengths,
+    gaps,
+    summary,
+  };
 
   // Persist the score back to the Application document if an applicationId was provided
   if (applicationId) {
+    // Verify applicationId belongs to the job being analyzed
+    const app = await Application.findById(applicationId).select("jobId").lean();
+    if (!app || String(app.jobId) !== String(jobId)) {
+      return NextResponse.json({ error: "Application does not match job" }, { status: 400 });
+    }
+
     await Application.findByIdAndUpdate(applicationId, {
       aiMatchScore: matchData.score,
+      scoredVia: 'deterministic',
       matchBreakdown: {
         skills: matchData.breakdown?.skills ?? 0,
         experience: matchData.breakdown?.experience ?? 0,

@@ -122,7 +122,7 @@ export default function ContactSubmissionsPage() {
   const unreadCount = items.filter((i) => !i.isRead).length;
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container">
       {ConfirmDialogNode}
 
       <DashboardPageHeader

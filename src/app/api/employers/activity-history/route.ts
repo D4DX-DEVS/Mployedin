@@ -36,17 +36,23 @@ async function getHandler(req: NextRequest, ctx: { userId: string; role: string 
 
   const employerIdStr = employer._id.toString();
 
+  // Two entry points write into this account: /api/tenant/switch (agent, super_agent)
+  // logs `tenant_view.*`, /api/admin/impersonate logs `impersonation.*`. Matching only
+  // the first hid admins — the most privileged entrant — from the account owner.
+  const ENTRY_PREFIXES = /^(tenant_view|impersonation)\./;
+
   const filter: Record<string, unknown> = {
     $or: [
-      { action: { $regex: /^tenant_view\./ }, resourceId: employerIdStr },
-      { action: { $regex: /^tenant_view\./ }, "meta.employerId": employerIdStr },
+      { action: { $regex: ENTRY_PREFIXES }, resourceId: employerIdStr },
+      { action: { $regex: ENTRY_PREFIXES }, "meta.employerId": employerIdStr },
     ],
   };
 
   if (actionFilter && ["create", "update", "delete", "start", "exit"].includes(actionFilter)) {
+    const actionMatch = { $in: [`tenant_view.${actionFilter}`, `impersonation.${actionFilter}`] };
     filter.$or = [
-      { action: `tenant_view.${actionFilter}`, resourceId: employerIdStr },
-      { action: `tenant_view.${actionFilter}`, "meta.employerId": employerIdStr },
+      { action: actionMatch, resourceId: employerIdStr },
+      { action: actionMatch, "meta.employerId": employerIdStr },
     ];
   }
 
@@ -73,7 +79,11 @@ async function getHandler(req: NextRequest, ctx: { userId: string; role: string 
   const items = entries.map((entry) => {
     const actor = entry.actorId ? actorMap.get(entry.actorId.toString()) : null;
     const meta = (entry.meta ?? {}) as Record<string, unknown>;
-    const action = entry.action.replace("tenant_view.", "");
+    // Strip whichever entry-point prefix the action carries (tenant_view.* from
+    // /api/tenant/switch, impersonation.* from /api/admin/impersonate) so the UI's
+    // action labels stay the same for both doors. The actor role badge already
+    // tells the employer which kind of account came in.
+    const action = entry.action.split(".").slice(1).join(".") || entry.action;
     const path = meta.path ? String(meta.path) : null;
 
     return {

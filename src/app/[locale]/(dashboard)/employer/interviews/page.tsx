@@ -304,7 +304,7 @@ export default function EmployerInterviewsPage() {
   }
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container">
       {ConfirmDialogNode}
       {aiTarget && (
         <AIInterviewQuestionsPanel

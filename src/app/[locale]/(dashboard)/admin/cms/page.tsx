@@ -106,7 +106,7 @@ export default function CmsOverviewPage() {
   ];
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container">
       <DashboardPageHeader
         eyebrow={t("cmsWorkspaceLabel")}
         title={t("pageTitle")}

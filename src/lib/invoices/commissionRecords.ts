@@ -50,6 +50,9 @@ export async function createCommissionRecordsForInvoice({
   const opts = session ? { session } : {};
 
   // Idempotency: check if commission records already exist for this invoice
+  // NOTE: This implementation is protected by a unique compound index on
+  // (invoiceId, agentId, type) in the Commission model schema to prevent race conditions.
+  // Concurrent requests will fail on the second attempt with duplicate key error.
   const existingCount = await Commission.countDocuments({ invoiceId }).session(session ?? null);
   if (existingCount > 0) return [];
 

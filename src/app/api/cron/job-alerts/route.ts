@@ -5,6 +5,7 @@ import Job from "@/models/Job";
 import JobSeeker from "@/models/JobSeeker";
 import User from "@/models/User";
 import { notify } from "@/lib/notifications/trigger";
+import mongoose from "mongoose";
 
 /**
  * GET /api/cron/job-alerts
@@ -12,6 +13,33 @@ import { notify } from "@/lib/notifications/trigger";
  * Runs daily — finds new jobs from last 24h and matches against preferences.
  */
 export const maxDuration = 60;
+
+// Simple state collection for cron cursor tracking
+interface CronState {
+  _id: string;
+  lastId: mongoose.Types.ObjectId | null;
+  updatedAt: Date;
+}
+
+async function getCronState(): Promise<CronState> {
+  const db = mongoose.connection.db;
+  // ponytail: no db (test env) -> start from scratch; cursor is an optimization, not a correctness requirement
+  if (!db) return { _id: "job-alerts", lastId: null, updatedAt: new Date() };
+  const collection = db.collection<CronState>("__cron_state");
+  const doc = await collection.findOne({ _id: "job-alerts" });
+  return doc ?? { _id: "job-alerts", lastId: null, updatedAt: new Date() };
+}
+
+async function setCronState(lastId: mongoose.Types.ObjectId | null): Promise<void> {
+  const db = mongoose.connection.db;
+  if (!db) return;
+  const collection = db.collection<CronState>("__cron_state");
+  await collection.updateOne(
+    { _id: "job-alerts" },
+    { $set: { lastId, updatedAt: new Date() } },
+    { upsert: true }
+  );
+}
 
 export async function GET(req: NextRequest) {
   const authError = verifyCronRequest(req);
@@ -78,9 +106,12 @@ export async function GET(req: NextRequest) {
   let sentCount = 0;
   let seekersChecked = 0;
   const errors: string[] = [];
-  let lastId: unknown = null;
   let truncated = false;
   const startedAt = Date.now();
+
+  // Load cursor state from last run
+  const state = await getCronState();
+  let lastId = state.lastId;
 
   // eslint-disable-next-line no-constant-condition
   while (true) {
@@ -128,8 +159,18 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    if (seekers.length < SEEKER_BATCH) break; // reached the last page
-    if (Date.now() - startedAt > TIME_BUDGET_MS) { truncated = true; break; }
+    if (seekers.length < SEEKER_BATCH) {
+      // Reached end — clear cursor for next run
+      await setCronState(null);
+      break;
+    }
+
+    if (Date.now() - startedAt > TIME_BUDGET_MS) {
+      truncated = true;
+      // Persist cursor so next run resumes from here
+      await setCronState(lastId);
+      break;
+    }
   }
 
   return NextResponse.json({

@@ -58,6 +58,10 @@ export function getClientIp(headers: Headers): string {
     if (realIp) return realIp;
   }
 
+  // Try common proxy headers before falling back to constant
+  const cfIp = validIp(headers.get("cf-connecting-ip"));
+  if (cfIp) return cfIp;
+
   return FALLBACK_CLIENT;
 }
 

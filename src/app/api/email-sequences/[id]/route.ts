@@ -3,7 +3,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import EmailSequence from "@/models/EmailSequence";
 import Employer from "@/models/Employer";
-import { logActivity } from "@/lib/audit/log";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import mongoose from "mongoose";
 
 async function getHandler(req: NextRequest, ctx: { userId: string; role: string }, params?: Record<string, string>) {
@@ -71,7 +71,7 @@ async function patchHandler(req: NextRequest, ctx: { userId: string; role: strin
 
   await sequence.save();
 
-  await logActivity({ action: "email_sequence.updated", actorId: ctx.userId, resource: "EmailSequence", resourceId: id, meta: { status: sequence.status } });
+  await logActivity({ action: "email_sequence.updated", ...actorFromCtx(ctx), resource: "EmailSequence", resourceId: id, meta: { status: sequence.status } });
 
   return NextResponse.json({ sequence });
 }

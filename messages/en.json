@@ -5149,7 +5149,7 @@
     "hero": {
       "eyebrow": "Super agent workspace",
       "title": "Super Agent Dashboard",
-      "description": "Run regional oversight, guide your agent team, and clear hiring blockers from the same modern workspace used across the employer dashboard."
+      "description": "Regional hiring performance and team activity."
     },
     "control": {
       "lanesEyebrow": "Control lanes",
@@ -5165,17 +5165,28 @@
         "helper": "Your live team roster with current delivery ownership."
       },
       "totalEmployers": {
-        "label": "Total Employers",
+        "label": "Employers",
         "helper": "Employer accounts under your agents' management."
       },
+      "totalJobs": {
+        "label": "Jobs",
+        "helper": "Vacancies posted across your region."
+      },
       "totalPlacements": {
-        "label": "Total Placements",
+        "label": "Placements",
         "helper": "Confirmed hires and closed outcomes flowing through your team."
       },
       "commissionsEarned": {
-        "label": "Commissions Earned",
+        "label": "Commission",
         "helper": "Commission performance and payout visibility for your portfolio."
       }
+    },
+    "kpiNote": {
+      "agents": "{active} active · {inactive} inactive",
+      "employers": "Across {agents} agents",
+      "jobs": "{active} active",
+      "placements": "{rate}% placement rate",
+      "commission": "{amount} pending"
     },
     "secondary": {
       "jobsPosted": "Jobs Posted",
@@ -5196,7 +5207,10 @@
       "jobs": "Jobs",
       "applications": "Applications",
       "placements": "Placements",
-      "placementRate": "Placement rate"
+      "placementRate": "Placement rate",
+      "conversion": "Conversion",
+      "vsPrevious": "vs previous step",
+      "noPlacements": "No placements yet"
     },
     "leaderboard": {
       "summary": "{leads} leads · {jobs} jobs posted",
@@ -5206,7 +5220,7 @@
     },
     "actions": {
       "agentPerformance": {
-        "label": "Review Agent Performance",
+        "label": "Review Agents",
         "description": "Review the team roster, throughput, and individual accountability."
       },
       "leadPipeline": {
@@ -9337,6 +9351,7 @@
     "from": "From",
     "to": "To",
     "noAuditLogEntriesFound": "No audit log entries found",
+    "onBehalfOf": "On behalf of",
     "unknown": "Unknown"
   },
   "adminCms": {

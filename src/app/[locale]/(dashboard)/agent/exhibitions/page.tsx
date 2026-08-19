@@ -468,7 +468,7 @@ export default function AgentExhibitionsPage() {
   const approvedCount = items.filter((item) => ["approved", "budget_approved", "resources_assigned"].includes(item.status)).length;
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container">
       {ConfirmDialogNode}
 
       <DashboardPageHeader

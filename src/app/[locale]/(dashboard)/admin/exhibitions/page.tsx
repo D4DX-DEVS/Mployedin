@@ -684,7 +684,7 @@ export default function AdminExhibitionsPage() {
   }, [actionItem, detailItem, handleDetailOpen, nextDetailItem, previousDetailItem]);
 
   return (
-    <div className="page-container space-y-3 sm:space-y-6">
+    <div className="page-container">
       <DashboardPageHeader
         icon={CalendarDays}
         eyebrow={t("adminOperations")}

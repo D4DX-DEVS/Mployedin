@@ -190,7 +190,7 @@ export default function AgentJobSeekersPage() {
   const withTitles = seekers.filter((seeker) => Boolean(getCurrentTitle(seeker))).length;
 
   return (
-    <div className="page-container space-y-3 sm:space-y-6">
+    <div className="page-container">
       {/* Hero */}
       <DashboardPageHeader
         icon={UserRoundSearch}

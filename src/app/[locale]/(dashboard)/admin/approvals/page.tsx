@@ -231,7 +231,7 @@ export default function AdminApprovalsPage() {
   const active = statusCounts.active ?? jobs.filter((j) => j.status === "active").length;
 
   return (
-    <div className="page-container space-y-3 sm:space-y-6">
+    <div className="page-container">
       <DashboardPageHeader
         eyebrow={t("allJobs")}
         title={t("platformJobsOverview")}

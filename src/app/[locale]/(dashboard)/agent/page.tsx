@@ -272,7 +272,7 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
   }
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container">
       <DashboardPageHeader
         icon={Target}
         eyebrow={t("hero.eyebrow")}

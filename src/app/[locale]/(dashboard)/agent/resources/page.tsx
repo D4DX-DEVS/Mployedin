@@ -76,7 +76,7 @@ export default function ResourceDownloadsPage() {
   };
 
   return (
-    <div className="page-container space-y-3 sm:space-y-6 pb-6">
+    <div className="page-container pb-6">
       {/* Hero Section */}
       <DashboardPageHeader
         icon={FolderOpen}

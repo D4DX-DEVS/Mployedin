@@ -177,7 +177,7 @@ export default function LeadDetailPage() {
     : daysSinceCreated;
 
   return (
-    <div className="page-container space-y-5">
+    <div className="page-container">
       {/* Header */}
       <DashboardPageHeader
         icon={Building2}

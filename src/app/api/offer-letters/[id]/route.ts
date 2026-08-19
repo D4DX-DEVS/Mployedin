@@ -4,7 +4,7 @@ import { withAuth } from "@/lib/auth/withAuth";
 import OfferLetter from "@/models/OfferLetter";
 import Employer from "@/models/Employer";
 import { User } from "@/models/User";
-import { logActivity } from "@/lib/audit/log";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import mongoose from "mongoose";
 
 type LetterAccess = { kind: "owner" } | { kind: "candidate" };
@@ -74,7 +74,7 @@ async function patchHandler(req: NextRequest, ctx: { userId: string; role: strin
     letter.status = "sent";
     letter.sentAt = new Date();
     await letter.save();
-    await logActivity({ action: "offer_letter.sent", actorId: ctx.userId, resource: "OfferLetter", resourceId: id, meta: { candidateEmail: letter.candidateEmail } });
+    await logActivity({ action: "offer_letter.sent", ...actorFromCtx(ctx), resource: "OfferLetter", resourceId: id, meta: { candidateEmail: letter.candidateEmail } });
     return NextResponse.json({ letter, message: "Letter sent" });
   }
 
@@ -86,7 +86,7 @@ async function patchHandler(req: NextRequest, ctx: { userId: string; role: strin
     letter.signatureData = body.signatureData || "";
     letter.signatureIp = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "";
     await letter.save();
-    await logActivity({ action: "offer_letter.signed", actorId: ctx.userId, resource: "OfferLetter", resourceId: id, meta: {} });
+    await logActivity({ action: "offer_letter.signed", ...actorFromCtx(ctx), resource: "OfferLetter", resourceId: id, meta: {} });
     return NextResponse.json({ letter, message: "Letter signed" });
   }
 
@@ -132,7 +132,7 @@ async function deleteHandler(req: NextRequest, ctx: { userId: string; role: stri
   if (letter.status !== "draft") return NextResponse.json({ error: "Can only delete draft letters" }, { status: 400 });
 
   await OfferLetter.findByIdAndDelete(id);
-  await logActivity({ action: "offer_letter.deleted", actorId: ctx.userId, resource: "OfferLetter", resourceId: id, meta: {} });
+  await logActivity({ action: "offer_letter.deleted", ...actorFromCtx(ctx), resource: "OfferLetter", resourceId: id, meta: {} });
 
   return NextResponse.json({ message: "Offer letter deleted" });
 }

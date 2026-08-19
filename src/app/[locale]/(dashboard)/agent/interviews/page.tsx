@@ -252,7 +252,7 @@ export default function AgentInterviewsPage() {
   const totalAll = Object.values(statusCounts).reduce((a, b) => a + b, 0);
 
   return (
-    <div className="page-container space-y-3 sm:space-y-6">
+    <div className="page-container">
       <DashboardPageHeader
         icon={CalendarCheck2}
         eyebrow={t("badgeAgentWorkspace")}

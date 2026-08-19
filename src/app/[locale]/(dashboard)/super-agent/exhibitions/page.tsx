@@ -242,7 +242,7 @@ export default function SuperAgentExhibitionsPage() {
     setCategoryFilter("all");
   };
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container">
       <DashboardPageHeader
         icon={CalendarDays}
         eyebrow="Super agent workspace"

@@ -92,7 +92,7 @@ export function TableToolbar({
   const exportMenu = hasExport ? (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="h-9 gap-1.5 rounded-lg">
+        <Button variant="outline" size="sm" className="h-10 w-10 justify-center gap-1.5 rounded-xl p-0 sm:h-9 sm:w-auto sm:px-3">
           <Download className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">{t("export")}</span>
         </Button>

@@ -122,7 +122,7 @@ export default function EmployerMatchingWeightsPage() {
   const saveStateLabel = saveWeights.isPending ? "Saving changes" : saved ? "Weights saved" : "Ready to update";
 
   if (loading) return (
-    <div className="page-container space-y-4">
+    <div className="page-container">
       <div className="h-40 animate-pulse rounded-[28px] border border-border bg-background/70" />
       <div className="grid gap-4 lg:grid-cols-[1.35fr,0.65fr]">
         <div className="h-[28rem] animate-pulse rounded-[28px] border border-border bg-background/70" />
@@ -133,7 +133,7 @@ export default function EmployerMatchingWeightsPage() {
 
   return (
     <FeatureGate feature="matchingWeightCustomization">
-    <div className="page-container space-y-6">
+    <div className="page-container">
       <PageHeader
         title={t("title")}
         description={t("description")}

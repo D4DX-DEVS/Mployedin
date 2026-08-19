@@ -61,7 +61,7 @@ const ACTION_LABELS: Record<Action, string> = {
 const RESOURCE_GROUPS: { label: string; resources: Resource[] }[] = [
   {
     label: "Core Business",
-    resources: ["jobs", "applications", "interviews", "placements", "leads", "commissions", "offers"],
+    resources: ["jobs", "applications", "interviews", "placements", "leads", "commissions", "offers", "exhibitions"],
   },
   {
     label: "People",
@@ -69,7 +69,7 @@ const RESOURCE_GROUPS: { label: string; resources: Resource[] }[] = [
   },
   {
     label: "System",
-    resources: ["notifications", "reports", "audit_logs", "tasks"],
+    resources: ["notifications", "reports", "audit_logs", "tasks", "onboarding"],
   },
   {
     label: "AI & Tools",
@@ -77,7 +77,11 @@ const RESOURCE_GROUPS: { label: string; resources: Resource[] }[] = [
   },
   {
     label: "Content & Config",
-    resources: ["job_attributes", "location_data", "cms", "contact_submissions"],
+    resources: ["job_attributes", "location_data", "cms", "contact_submissions", "resources"],
+  },
+  {
+    label: "Finance & Performance",
+    resources: ["subscriptions", "invoices", "targets"],
   },
 ];
 

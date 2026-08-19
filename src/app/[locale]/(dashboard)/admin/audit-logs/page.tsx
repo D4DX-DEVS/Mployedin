@@ -18,6 +18,11 @@ import type { ExportColumn } from "@/lib/export";
 interface AuditLogEntry {
   _id: string;
   actorId: { name?: string; email?: string; role?: string } | null;
+  // Set when the actor performed this inside someone else's account (tenant view
+  // or admin impersonation). Without it the row is indistinguishable from the
+  // same action taken in the actor's own account.
+  onBehalfOfId?: { name?: string; email?: string; role?: string } | null;
+  onBehalfOfRole?: string;
   action: string;
   resource: string;
   resourceId?: string;
@@ -73,6 +78,7 @@ export default function AuditLogsPage() {
     { header: t("timestamp"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleString() : "—" },
     { header: t("actor"), key: "actorId" as keyof AuditLogEntry, formatter: (_v, r) => (r as unknown as AuditLogEntry).actorId?.name ?? t("system") },
     { header: t("email"), key: "actorId" as keyof AuditLogEntry, formatter: (_v, r) => (r as unknown as AuditLogEntry).actorId?.email ?? "—" },
+    { header: t("onBehalfOf"), key: "onBehalfOfId" as keyof AuditLogEntry, formatter: (_v, r) => (r as unknown as AuditLogEntry).onBehalfOfId?.email ?? "—" },
     { header: t("action"), key: "action" },
     { header: t("resource"), key: "resource" },
     { header: t("ipAddress"), key: "ipAddress" },
@@ -113,7 +119,7 @@ export default function AuditLogsPage() {
   useEffect(() => { fetchLogs(); }, [fetchLogs]);
 
   return (
-    <div className="page-container space-y-3 sm:space-y-4">
+    <div className="page-container">
       <PageHero
         title={t("auditLogs")}
         description={`${total.toLocaleString()} ${t("logEntriesDescription")}`}
@@ -214,6 +220,11 @@ export default function AuditLogsPage() {
                         <div>
                           <p className="font-medium text-foreground">{log.actorId.name ?? t("unknown")}</p>
                           <p className="text-muted-foreground">{log.actorId.email}</p>
+                          {log.onBehalfOfId && (
+                            <p className="text-amber-600 dark:text-amber-500">
+                              ↳ {t("onBehalfOf")} {log.onBehalfOfId.name ?? log.onBehalfOfId.email ?? log.onBehalfOfRole}
+                            </p>
+                          )}
                         </div>
                       ) : (
                         <span className="text-muted-foreground">{t("system")}</span>

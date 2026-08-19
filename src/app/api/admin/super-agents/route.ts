@@ -398,6 +398,14 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
 
     // Sync agent references: set superAgentId on assigned agents, clear on removed ones
     if (agentIds !== undefined) {
+      // Remove newly-assigned agents from other SAs' agentIds arrays
+      if (agentIds.length > 0) {
+        await SuperAgent.updateMany(
+          { _id: { $ne: saDoc._id }, agentIds: { $in: agentIds } },
+          { $pull: { agentIds: { $in: agentIds } } }
+        );
+      }
+
       await Agent.updateMany(
         { _id: { $in: agentIds } },
         { $set: { superAgentId: saDoc._id } }

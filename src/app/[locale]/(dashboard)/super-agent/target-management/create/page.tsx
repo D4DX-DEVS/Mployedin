@@ -278,7 +278,7 @@ export default function SuperAgentCreateTargetPage() {
   };
 
   return (
-    <div className="page-container max-w-6xl mx-auto space-y-3 sm:space-y-4">
+    <div className="page-container max-w-6xl mx-auto">
       {/* Back */}
       <button
         onClick={() => router.push(`/${locale}/super-agent/target-management`)}

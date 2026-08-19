@@ -121,14 +121,14 @@ export async function POST(req: NextRequest) {
       );
       return {
         id: seeker._id.toString(),
-        name: seeker.fullName?.trim() || seeker.userId?.name?.trim() || "Unknown",
-        skills: (seeker.skills ?? []).slice(0, 20),
+        name: sanitizeAIInput(seeker.fullName?.trim() || seeker.userId?.name?.trim() || "Unknown", 120),
+        skills: (seeker.skills ?? []).slice(0, 20).map(s => sanitizeAIInput(s, 60)),
         experienceYears: totalYears,
-        latestRole: seeker.experience?.[0]?.jobTitle ?? "N/A",
-        education: seeker.education?.[0]
+        latestRole: sanitizeAIInput(seeker.experience?.[0]?.jobTitle ?? "N/A", 120),
+        education: sanitizeAIInput(seeker.education?.[0]
           ? `${seeker.education[0].degree ?? ""} in ${seeker.education[0].field ?? ""}`
-          : "N/A",
-        languages: (seeker.languages ?? []).map((l) => l.language ?? "").filter(Boolean),
+          : "N/A", 200),
+        languages: (seeker.languages ?? []).map((l) => sanitizeAIInput(l.language ?? "", 60)).filter(Boolean),
       };
     });
 

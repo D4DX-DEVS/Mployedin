@@ -5,6 +5,7 @@ import JobSeeker from "@/models/JobSeeker";
 import Job from "@/models/Job";
 import Employer from "@/models/Employer";
 import Agent from "@/models/Agent";
+import Application from "@/models/Application";
 import { validateBody } from "@/lib/validators";
 import { aiAtsCheckSchema } from "@/lib/validators/ai";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
@@ -88,6 +89,41 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
   if (!seeker) {
     return NextResponse.json({ error: "Candidate profile not found" }, { status: 404 });
+  }
+
+  // ── Access control for jobSeekerId without jobId ─────────────────────────────
+  // For employer/agent roles requesting jobSeekerId without jobId, verify access
+  if (ctx.role === "employer" && jobSeekerId && !jobId) {
+    const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
+    const hasApplication = emp && await Application.exists({
+      jobSeekerId: seeker._id,
+      employerId: emp._id,
+    });
+    if (!hasApplication) {
+      return NextResponse.json({ error: "Forbidden — seeker not accessible" }, { status: 403 });
+    }
+  } else if (ctx.role === "agent" && jobSeekerId && !jobId) {
+    const agent = await Agent.findOne({ userId: ctx.userId }).select("_id assignedEmployerIds").lean() as
+      { _id: unknown; assignedEmployerIds?: unknown[] } | null;
+    if (!agent) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    // Check if seeker has application to agent's jobs or employer's jobs
+    const jobFilter: Record<string, unknown> = {
+      $or: [
+        { agentId: agent._id },
+        ...(agent.assignedEmployerIds?.length
+          ? [{ employerId: { $in: agent.assignedEmployerIds } }]
+          : []),
+      ],
+    };
+    const hasApplication = await Application.exists({
+      jobSeekerId: seeker._id,
+      jobId: { $in: (await Job.find(jobFilter).select("_id").lean()).map((j) => j._id) },
+    });
+    if (!hasApplication) {
+      return NextResponse.json({ error: "Forbidden — seeker not accessible" }, { status: 403 });
+    }
   }
 
   // ── Locate a CV file ────────────────────────────────────────────────────────

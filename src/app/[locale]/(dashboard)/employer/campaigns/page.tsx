@@ -97,7 +97,7 @@ export default function EmployerCampaignsPage() {
   const totalPages = data?.totalPages ?? 1;
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container">
       <PageHero
         icon={Mail}
         title={t("title")}

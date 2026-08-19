@@ -12,17 +12,16 @@ interface CountCardGridProps {
 }
 
 /**
- * Shared compact count/detail cells used inside dashboard list cards.
+ * Shared compact count/detail row used inside dashboard list cards.
+ * Inline label/value pairs — boxed cells cost ~40px of card height each row
+ * for three tiny values, which capped how many list items fit per viewport.
  */
 export function CountCardGrid({ items, className }: CountCardGridProps) {
   return (
-    <dl className={cn("grid gap-1 sm:gap-1.5 sm:grid-cols-3", className)}>
+    <dl className={cn("flex min-w-0 flex-wrap items-baseline gap-x-4 gap-y-1", className)}>
       {items.map((item, index) => (
-        <div
-          key={index}
-          className="workspace-subtle-surface flex min-w-0 items-center justify-between gap-3 rounded-lg border border-border px-2.5 py-1 sm:block sm:py-1.5"
-        >
-          <dt className="truncate text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+        <div key={index} className="flex min-w-0 items-baseline gap-1.5">
+          <dt className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             {item.label}
           </dt>
           <dd className="truncate text-xs font-semibold text-foreground">

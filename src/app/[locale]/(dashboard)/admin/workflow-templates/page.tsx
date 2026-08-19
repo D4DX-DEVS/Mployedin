@@ -153,7 +153,7 @@ export default function AdminWorkflowTemplatesPage() {
 
   if (isLoading) {
     return (
-      <div className="page-container space-y-4">
+      <div className="page-container">
         <PageHero
           icon={GitBranch}
           eyebrow={tr("adminWorkspaceLabel")}
@@ -168,7 +168,7 @@ export default function AdminWorkflowTemplatesPage() {
   }
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container">
       <PageHero
         icon={GitBranch}
         eyebrow={tr("adminWorkspaceLabel")}

@@ -28,7 +28,20 @@ export async function requireRole(
     // x-tenant-* headers are only present after the middleware verified the
     // signed tenant-view cookie (client-supplied values are stripped first).
     const reqHeaders = await headers();
-    if (reqHeaders.get("x-tenant-employer-id")) return session;
+    const tenantEmployerId = reqHeaders.get("x-tenant-employer-id");
+    if (tenantEmployerId) {
+      // T10: middleware runs on the edge and only proves the cookie is authentic,
+      // not that the actor is still assigned to this employer. Without this check
+      // a de-assigned agent's XHRs 403 (withAuth re-checks) while the page shell
+      // kept rendering the company's dashboard until the 4h cookie expired.
+      const { verifyTenantViewStillEligible } = await import("@/lib/auth/withAuth");
+      const stillEligible = await verifyTenantViewStillEligible(
+        session.user.id ?? "",
+        role,
+        tenantEmployerId
+      );
+      if (stillEligible) return session;
+    }
   }
 
   redirect(getDashboardPath(role, locale));

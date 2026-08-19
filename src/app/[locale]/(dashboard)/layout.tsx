@@ -40,23 +40,11 @@ export default async function DashboardLayout({
   const reqHeaders = await headers();
 
   // ── 2FA enforcement for privileged roles ─────────────────────────────────
-  // Admin / super-agent accounts may not use the console until they enrol in
-  // two-factor auth. Checked against the DB (not the JWT) so enabling 2FA
-  // takes effect immediately; the settings page itself is exempt to avoid a
-  // redirect loop.
-  if (role === "admin" || role === "super_agent") {
-    const requestPath = (reqHeaders.get("x-pathname") ?? "").replace(/^\/(?:en|ar)/, "") || "/";
-    const settingsPath = role === "admin" ? "/admin/settings" : "/super-agent/settings";
-    if (!requestPath.startsWith(settingsPath)) {
-      const { connectDB } = await import("@/lib/db/mongoose");
-      const { default: UserModel } = await import("@/models/User");
-      await connectDB();
-      const dbUser = await UserModel.findById(session.user.id).select("twoFactorEnabled").lean<{ twoFactorEnabled?: boolean }>();
-      if (dbUser && !dbUser.twoFactorEnabled) {
-        redirect(`/${paramLocale}${settingsPath}?setup2fa=1`);
-      }
-    }
-  }
+  // Lives in template.tsx, NOT here: a layout does not re-render on soft
+  // navigation between its child pages (so a layout-level check is bypassable
+  // through sidebar links), and a server redirect() thrown from a shared
+  // segment during soft navigation is replayed by the client router in a loop.
+  // See DashboardTemplate for the measured details.
 
   const tenantEmployerId = reqHeaders.get("x-tenant-employer-id");
   const tenantCompanyName = reqHeaders.get("x-tenant-company-name");

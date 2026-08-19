@@ -144,7 +144,7 @@ export default function AdminSettingsPage() {
   }
 
   return (
-    <div className="page-container space-y-3 sm:space-y-4">
+    <div className="page-container">
       <PageHeader title={t("pageTitle")} description={t("pageDescription")} />
 
       <div className="bg-card rounded-xl shadow-sm border divide-y">

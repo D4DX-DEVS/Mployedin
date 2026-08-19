@@ -57,6 +57,14 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     } else {
       scopeFilter.userId = ctx.userId;
     }
+  } else if (ctx.role !== "admin") {
+    // Employer / job_seeker / any non-privileged role — own invoices only.
+    // The guard is invoices:read (employers hold it to view their own invoices),
+    // so they REACH this handler. Without this branch they fell through to an
+    // empty scopeFilter and received platform-wide totalRevenue, topEmployers
+    // and agentCommissionPayable. Mirrors the ownership scope in the invoices
+    // list route (invoices/route.ts) using Invoice.userId (the customer ref).
+    scopeFilter.userId = ctx.userId;
   }
   // Admin: no scope filter (sees all)
 
@@ -76,8 +84,9 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     // Revenue breakdown by status — feeds the headline KPI tiles, so it is
     // all-time (scope only). Period-scoping this while the overdue tile was
     // all-time made "Total Revenue: 0" sit next to "Overdue: 3,150".
+    // Exclude terminal statuses from revenue calculation
     Invoice.aggregate([
-      { $match: scopeFilter },
+      { $match: { ...scopeFilter, status: { $nin: ["void", "cancelled", "refunded", "credit_note"] } } },
       {
         $group: {
           _id: "$status",

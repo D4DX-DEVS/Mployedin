@@ -162,7 +162,9 @@ export default function AgentEmployersPage() {
     setReferralLoading(true);
     setReferralError("");
     try {
-      const res = await fetch("/api/referral");
+      let res = await fetch("/api/referral");
+      // 404 = no link yet; POST creates it (GET is read-only)
+      if (res.status === 404) res = await fetch("/api/referral", { method: "POST" });
       if (res.ok) {
         const data = await res.json();
         setReferralLink(data.referralLink);
@@ -237,7 +239,7 @@ export default function AgentEmployersPage() {
   });
 
   return (
-    <div className="page-container space-y-3 sm:space-y-6">
+    <div className="page-container">
       {ConfirmDialogNode}
       <DashboardPageHeader
         icon={Building2}

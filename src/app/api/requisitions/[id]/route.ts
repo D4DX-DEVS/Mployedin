@@ -3,7 +3,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import Requisition from "@/models/Requisition";
 import Employer from "@/models/Employer";
-import { logActivity } from "@/lib/audit/log";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import mongoose from "mongoose";
 
 async function getHandler(req: NextRequest, ctx: { userId: string; role: string }, params?: Record<string, string>) {
@@ -74,7 +74,7 @@ async function patchHandler(req: NextRequest, ctx: { userId: string; role: strin
 
   await requisition.save();
 
-  await logActivity({ action: "requisition.updated", actorId: ctx.userId, resource: "Requisition", resourceId: id, meta: { status: requisition.status } });
+  await logActivity({ action: "requisition.updated", ...actorFromCtx(ctx), resource: "Requisition", resourceId: id, meta: { status: requisition.status } });
 
   return NextResponse.json({ requisition });
 }
@@ -90,7 +90,7 @@ async function deleteHandler(req: NextRequest, ctx: { userId: string; role: stri
   const requisition = await Requisition.findOneAndDelete({ _id: id, employerId: employer._id });
   if (!requisition) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  await logActivity({ action: "requisition.deleted", actorId: ctx.userId, resource: "Requisition", resourceId: id, meta: { title: requisition.title } });
+  await logActivity({ action: "requisition.deleted", ...actorFromCtx(ctx), resource: "Requisition", resourceId: id, meta: { title: requisition.title } });
 
   return NextResponse.json({ message: "Requisition deleted" });
 }

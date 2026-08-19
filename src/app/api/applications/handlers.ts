@@ -313,6 +313,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       .sort({ [sortField]: sortOrder })
       .skip(skip)
       .limit(limit)
+      .select(ctx.role === "job_seeker" ? "-employerNotes -matchStrengths -matchGaps -rejectionReason" : "")
       .populate({
         path: "jobId",
         // requirements powers the "matching skills" column in the employer list

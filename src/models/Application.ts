@@ -51,6 +51,8 @@ export interface IApplication extends Document {
   status: ApplicationStatus;
   documents: { name: string; url: string; type: string }[];
   aiMatchScore?: number;
+  /** How the score was calculated: 'deterministic' or 'llm' (legacy). */
+  scoredVia?: string;
   /** Set once the employer notifies this candidate via the AI-match "Notify" action. */
   aiMatchNotifiedAt?: Date;
   /** Set the first time the employer opens this application — drives the "New" badge. */
@@ -116,6 +118,7 @@ const ApplicationSchema = new Schema<IApplication>(
     },
     documents: [ApplicationDocumentSchema],
     aiMatchScore: Number,
+    scoredVia: String,
     aiMatchNotifiedAt: Date,
     viewedByEmployerAt: Date,
     matchBreakdown: {

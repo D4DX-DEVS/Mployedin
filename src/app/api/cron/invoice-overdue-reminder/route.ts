@@ -63,10 +63,10 @@ export async function GET(req: NextRequest) {
 
   const sendEmailTask = async (entry: typeof userGroups[0]) => {
     const [userId, userInvoices] = entry;
-    const user = await User.findById(userId).select("name email isActive").lean();
+    const user = await User.findById(userId).select("name email isActive role").lean();
     if (!user?.email || !user.isActive) return;
 
-    const html = buildInvoiceReminderEmail(user.name ?? "Team", userInvoices, now);
+    const html = buildInvoiceReminderEmail(user.name ?? "Team", userInvoices, now, user.role ?? "agent");
     const overdueCount = userInvoices.filter((i) => new Date(i.dueDate!).getTime() < now.getTime()).length;
     const subject = overdueCount > 0
       ? `💰 ${overdueCount} invoice${overdueCount > 1 ? "s" : ""} overdue — action needed`
@@ -123,7 +123,7 @@ interface InvRow {
   employerId?: { companyName?: string };
 }
 
-function buildInvoiceReminderEmail(name: string, invoices: InvRow[], now: Date): string {
+function buildInvoiceReminderEmail(name: string, invoices: InvRow[], now: Date, userRole: string = "agent"): string {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? process.env.NEXTAUTH_URL ?? "https://mployedin.com";
 
   const overdue = invoices.filter((i) => new Date(i.dueDate!).getTime() < now.getTime());
@@ -193,7 +193,7 @@ function buildInvoiceReminderEmail(name: string, invoices: InvRow[], now: Date):
     </table>` : ""}
 
     <div style="text-align:center;margin:24px 0">
-      <a href="${baseUrl}/en/admin/invoices" style="background:#0D6FD8;color:#fff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px;display:inline-block">View All Invoices</a>
+      <a href="${baseUrl}${userRole === "admin" ? "/en/admin/invoices" : userRole === "super_agent" || userRole === "agent" ? "/en/dashboard/invoices" : "/en/portal/invoices"}" style="background:#0D6FD8;color:#fff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px;display:inline-block">View All Invoices</a>
     </div>
 
     <p style="color:#9ca3af;font-size:12px;margin:20px 0 0;text-align:center">

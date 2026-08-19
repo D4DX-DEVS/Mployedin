@@ -17,6 +17,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
+import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import connectDB from "@/lib/db/mongoose";
 import { getPaymentGateway, isPaymentGatewayEnabled } from "@/lib/payments";
 import SubscriptionPlan from "@/models/SubscriptionPlan";
@@ -26,6 +27,14 @@ import type { UserRole } from "@/types/user";
 interface AuthCtx { userId: string; role: UserRole; locale: string }
 
 async function handler(req: NextRequest, ctx: AuthCtx) {
+  // JS-6: checkout was the one billing entry point with no rate limit. Dual-keyed
+  // so neither a single account nor a single IP can hammer plan lookups and
+  // (once a gateway is live) order creation.
+  const { allowed } = await checkRateLimitDual(req, ctx.userId, RATE_LIMIT_CONFIGS.checkout);
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   const targetRole =
     ctx.role === "employer"
       ? "employer"

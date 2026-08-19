@@ -28,8 +28,11 @@ export function getSecurityHeaders(nonce: string): Record<string, string> {
   return {
     "Content-Security-Policy": [
       "default-src 'self'",
+      // Dev: no strict-dynamic/nonce — Turbopack injects lazy chunks (e.g. the
+      // dashboard template) without the nonce, and strict-dynamic disables the
+      // 'self' allowlist, blanking dashboard pages. Prod keeps the strict policy.
       isDev
-        ? `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-eval'`
+        ? `script-src 'self' 'unsafe-eval' 'unsafe-inline'`
         : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'wasm-unsafe-eval'`,
       // Next.js emits two deterministic framework style blocks without
       // propagating the request nonce. Permit only their exact hashes.

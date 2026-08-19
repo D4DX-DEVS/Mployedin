@@ -170,7 +170,7 @@ export default function EmployerCalendarPage() {
   );
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container">
       {/* Hero */}
       <DashboardPageHeader
         icon={CalendarDays}

@@ -332,7 +332,7 @@ export default function AdminTargetManagementPage() {
   const reassignTarget = profiles.find((profile) => profile._id === reassigningId) ?? null;
 
   return (
-    <div className="page-container space-y-3 sm:space-y-4">
+    <div className="page-container">
       {/* Toolbar */}
       <TableToolbar
         title={t("title")}

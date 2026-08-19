@@ -120,7 +120,7 @@ export default function AdminTargetProfileDetailPage() {
 
   if (loading) {
     return (
-      <div className="page-container space-y-6">
+      <div className="page-container">
         <div className="h-8 w-40 animate-pulse rounded-xl bg-muted" />
         <div className="h-56 animate-pulse rounded-2xl bg-muted/50" />
       </div>
@@ -145,7 +145,7 @@ export default function AdminTargetProfileDetailPage() {
   }
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container">
       {/* Back */}
       <Link
         href={`/${locale}/admin/target-management`}

@@ -3,7 +3,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import ApprovalWorkflow from "@/models/ApprovalWorkflow";
 import Employer from "@/models/Employer";
-import { logActivity } from "@/lib/audit/log";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
 import { approvalWorkflowCreateSchema } from "@/lib/validators/approval-workflows";
 import mongoose from "mongoose";
@@ -61,7 +61,7 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
     notes: body.notes,
   });
 
-  await logActivity({ action: "approval_workflow.created", actorId: ctx.userId, resource: "ApprovalWorkflow", resourceId: workflow._id.toString(), meta: { type: body.type, resourceTitle: body.resourceTitle } });
+  await logActivity({ action: "approval_workflow.created", ...actorFromCtx(ctx), resource: "ApprovalWorkflow", resourceId: workflow._id.toString(), meta: { type: body.type, resourceTitle: body.resourceTitle } });
 
   return NextResponse.json({ workflow }, { status: 201 });
 }

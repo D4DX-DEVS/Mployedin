@@ -467,7 +467,7 @@ export default function CVBuilderPage() {
   /* ── Loading state ── */
   if (loading) {
     return (
-      <div className="page-container space-y-6">
+      <div className="page-container">
         <div className="flex items-center justify-between">
           <div className="space-y-2">
             <Skeleton className="h-7 w-48" />

@@ -45,7 +45,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     : [];
   const teamAgentIds = teamAgentDocs.map((a) => a._id);
 
-  // ── Own override commissions (monthly) ──────────────────────────────
+  // ── Own override commissions (monthly, grouped by currency) ──────────────────────────────
   const overrideMonthlyAgg = await Commission.aggregate([
     {
       $match: {
@@ -55,14 +55,14 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     },
     {
       $group: {
-        _id: { month: { $month: "$createdAt" }, status: "$status" },
+        _id: { month: { $month: "$createdAt" }, status: "$status", currency: "$currency" },
         total: { $sum: "$amount" },
         count: { $sum: 1 },
       },
     },
   ]);
 
-  // ── Team agent commissions (monthly) ────────────────────────────────
+  // ── Team agent commissions (monthly, grouped by currency) ────────────────────────────────
   const teamMonthlyAgg = teamAgentIds.length > 0
     ? await Commission.aggregate([
         {
@@ -73,7 +73,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
         },
         {
           $group: {
-            _id: { month: { $month: "$createdAt" }, status: "$status" },
+            _id: { month: { $month: "$createdAt" }, status: "$status", currency: "$currency" },
             total: { $sum: "$amount" },
             count: { $sum: 1 },
           },
@@ -81,11 +81,172 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       ])
     : [];
 
-  // Build monthly trend merging both
+  // ── Summary (grouped by currency) ─────────────────────────────────────────────────────────
+  const overrideSummaryAgg = await Commission.aggregate([
+    {
+      $match: {
+        superAgentId: saProfileId,
+        createdAt: { $gte: dateFrom, $lte: dateTo },
+      },
+    },
+    {
+      $group: {
+        _id: { status: "$status", currency: "$currency" },
+        total: { $sum: "$amount" },
+        count: { $sum: 1 },
+      },
+    },
+  ]);
+
+  // ── Per-agent breakdown (grouped by currency) ──────────────────────────────────────────────
+  const agentBreakdownAgg =
+    teamAgentIds.length > 0
+      ? await Commission.aggregate([
+          {
+            $match: {
+              agentId: { $in: teamAgentIds },
+              createdAt: { $gte: dateFrom, $lte: dateTo },
+            },
+          },
+          {
+            $group: {
+              _id: { agentId: "$agentId", status: "$status", currency: "$currency" },
+              total: { $sum: "$amount" },
+              count: { $sum: 1 },
+            },
+          },
+        ])
+      : [];
+
+  // Build per-currency override summary (we'll use this to determine dominant currency)
+  interface CurrencySummary {
+    currency: string;
+    overrideTotal: number;
+    overridePending: number;
+    overrideApproved: number;
+    overridePaid: number;
+  }
+  const overrideByCurrency = new Map<string, CurrencySummary>();
+
+  for (const row of overrideSummaryAgg) {
+    const currency = row._id.currency ?? "AED";
+    if (!overrideByCurrency.has(currency)) {
+      overrideByCurrency.set(currency, {
+        currency,
+        overrideTotal: 0,
+        overridePending: 0,
+        overrideApproved: 0,
+        overridePaid: 0,
+      });
+    }
+    const summary = overrideByCurrency.get(currency)!;
+    summary.overrideTotal += row.total;
+    if (row._id.status === "pending") summary.overridePending += row.total;
+    if (row._id.status === "approved") summary.overrideApproved += row.total;
+    if (row._id.status === "paid") summary.overridePaid += row.total;
+  }
+
+  // Build per-currency team summary
+  interface TeamCurrencySummary {
+    currency: string;
+    teamTotal: number;
+    teamPending: number;
+    teamApproved: number;
+    teamPaid: number;
+  }
+  const teamByCurrency = new Map<string, TeamCurrencySummary>();
+
+  for (const row of agentBreakdownAgg) {
+    const currency = row._id.currency ?? "AED";
+    if (!teamByCurrency.has(currency)) {
+      teamByCurrency.set(currency, {
+        currency,
+        teamTotal: 0,
+        teamPending: 0,
+        teamApproved: 0,
+        teamPaid: 0,
+      });
+    }
+    const summary = teamByCurrency.get(currency)!;
+    summary.teamTotal += row.total;
+    if (row._id.status === "pending") summary.teamPending += row.total;
+    if (row._id.status === "approved") summary.teamApproved += row.total;
+    if (row._id.status === "paid") summary.teamPaid += row.total;
+  }
+
+  // Determine dominant currency (highest grand total)
+  const currencySummaries: Array<{
+    currency: string;
+    overrideTotal: number;
+    teamTotal: number;
+    grandTotal: number;
+    overridePending: number;
+    overrideApproved: number;
+    overridePaid: number;
+    teamApproved: number;
+  }> = [];
+
+  const allCurrencies = new Set([
+    ...overrideByCurrency.keys(),
+    ...teamByCurrency.keys(),
+  ]);
+
+  for (const currency of allCurrencies) {
+    const override = overrideByCurrency.get(currency) ?? {
+      currency,
+      overrideTotal: 0,
+      overridePending: 0,
+      overrideApproved: 0,
+      overridePaid: 0,
+    };
+    const team = teamByCurrency.get(currency) ?? {
+      currency,
+      teamTotal: 0,
+      teamPending: 0,
+      teamApproved: 0,
+      teamPaid: 0,
+    };
+    const grandTotal = override.overrideTotal + team.teamTotal;
+
+    currencySummaries.push({
+      currency,
+      overrideTotal: override.overrideTotal,
+      overridePending: override.overridePending,
+      overrideApproved: override.overrideApproved,
+      overridePaid: override.overridePaid,
+      teamTotal: team.teamTotal,
+      teamApproved: team.teamApproved + team.teamPaid,
+      grandTotal,
+    });
+  }
+
+  // Sort by grandTotal descending and pick the first (dominant currency)
+  currencySummaries.sort((a, b) => b.grandTotal - a.grandTotal);
+  const dominantCurrencySummary =
+    currencySummaries[0] ?? {
+      currency: "AED",
+      overrideTotal: 0,
+      overridePending: 0,
+      overrideApproved: 0,
+      overridePaid: 0,
+      teamTotal: 0,
+      teamApproved: 0,
+      grandTotal: 0,
+    };
+
+  // Build monthly trend using dominant currency only
   const monthlyTrend = Array.from({ length: 12 }, (_, i) => {
     const month = i + 1;
-    const ownRows = overrideMonthlyAgg.filter((r) => r._id.month === month);
-    const teamRows = teamMonthlyAgg.filter((r) => r._id.month === month);
+    const ownRows = overrideMonthlyAgg.filter(
+      (r) =>
+        r._id.month === month &&
+        (r._id.currency ?? "AED") === dominantCurrencySummary.currency
+    );
+    const teamRows = teamMonthlyAgg.filter(
+      (r) =>
+        r._id.month === month &&
+        (r._id.currency ?? "AED") === dominantCurrencySummary.currency
+    );
 
     const sumByStatus = (rows: typeof ownRows, s: string) =>
       rows.find((r) => r._id.status === s)?.total ?? 0;
@@ -102,52 +263,12 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     };
   });
 
-  // ── Summary ─────────────────────────────────────────────────────────
-  const overrideSummaryAgg = await Commission.aggregate([
-    {
-      $match: {
-        superAgentId: saProfileId,
-        createdAt: { $gte: dateFrom, $lte: dateTo },
-      },
-    },
-    {
-      $group: {
-        _id: "$status",
-        total: { $sum: "$amount" },
-        count: { $sum: 1 },
-      },
-    },
-  ]);
-
-  const oByStatus = (s: string) =>
-    overrideSummaryAgg.find((r) => r._id === s)?.total ?? 0;
-
   const overviewSummary = {
-    overrideTotal: overrideSummaryAgg.reduce((s, r) => s + r.total, 0),
-    overridePending: oByStatus("pending"),
-    overrideApproved: oByStatus("approved"),
-    overridePaid: oByStatus("paid"),
+    overrideTotal: dominantCurrencySummary.overrideTotal,
+    overridePending: dominantCurrencySummary.overridePending,
+    overrideApproved: dominantCurrencySummary.overrideApproved,
+    overridePaid: dominantCurrencySummary.overridePaid,
   };
-
-  // ── Per-agent breakdown ──────────────────────────────────────────────
-  const agentBreakdownAgg =
-    teamAgentIds.length > 0
-      ? await Commission.aggregate([
-          {
-            $match: {
-              agentId: { $in: teamAgentIds },
-              createdAt: { $gte: dateFrom, $lte: dateTo },
-            },
-          },
-          {
-            $group: {
-              _id: { agentId: "$agentId", status: "$status" },
-              total: { $sum: "$amount" },
-              count: { $sum: 1 },
-            },
-          },
-        ])
-      : [];
 
   // Resolve agent names
   const teamUserIds = teamAgentDocs.map((a) => a.userId);
@@ -165,6 +286,9 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
   for (const row of agentBreakdownAgg) {
     if (!row._id.agentId) continue;
+    // Only include rows from the dominant currency
+    if ((row._id.currency ?? "AED") !== dominantCurrencySummary.currency) continue;
+
     const id = String(row._id.agentId);
     const agentDoc = agentDocMap.get(id);
     if (!agentDoc) continue;
@@ -188,18 +312,22 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
   const agentBreakdown = [...agentMap.values()].sort((a, b) => b.total - a.total);
 
-  const teamTotal = agentBreakdown.reduce((s, a) => s + a.total, 0);
-
   return NextResponse.json({
     year,
     overviewSummary: {
       ...overviewSummary,
-      teamTotal,
-      grandTotal: overviewSummary.overrideTotal + teamTotal,
-      currency: "AED",
+      teamTotal: dominantCurrencySummary.teamTotal,
+      grandTotal: dominantCurrencySummary.grandTotal,
+      currency: dominantCurrencySummary.currency,
     },
     monthlyTrend,
     agentBreakdown,
+    byCurrency: currencySummaries.map((cs) => ({
+      currency: cs.currency,
+      overrideTotal: cs.overrideTotal,
+      teamTotal: cs.teamTotal,
+      grandTotal: cs.grandTotal,
+    })),
   });
 }
 

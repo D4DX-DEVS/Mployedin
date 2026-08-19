@@ -20,7 +20,7 @@ type Action = Parameters<typeof canAccess>[2];
  * super_agent must lose access immediately, not at session expiry. Mirrors the
  * access-control checks in POST /api/tenant/switch exactly.
  */
-async function verifyTenantViewStillEligible(
+export async function verifyTenantViewStillEligible(
   actorId: string,
   actorRole: UserRole,
   employerId: string
@@ -192,17 +192,38 @@ export function withAuth(
       const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
       const isWriteRequest = WRITE_METHODS.has(req.method);
 
+      // T11: this blocks the HTTP verb, not the effect. A PATCH that sets
+      // status:"closed"/"expired" still removes a job from circulation, and an
+      // agent holds jobs:update. The verb rule is a backstop; the real boundary
+      // is the permission matrix, now enforced for the actor's own role below.
+      // Message reworded so it stops claiming more than it does.
       if (isWriteRequest && req.method === "DELETE" && role !== "admin") {
         return NextResponse.json(
-          { error: "Only admins can delete resources in tenant view" },
+          { error: "Only admins can issue DELETE requests in tenant view" },
           { status: 403 }
         );
       }
 
-      // ── Enforce RBAC guard even during tenant view
+      // ── Enforce RBAC guard even during tenant view.
+      //
+      // BOTH must pass:
+      //   1. the proxied employer's permission — tenant view cannot do anything
+      //      the account itself could not do;
+      //   2. the actor's OWN permission, including any custom narrowing applied
+      //      to them — otherwise entering an account silently promotes the actor
+      //      to the employer's full permission set.
+      //
+      // Checking only (1) meant the matrix could not express "this role may enter
+      // an account but may not create jobs in it": super_agent holds
+      // jobs:["read","approve","export"] yet POST /api/jobs inside tenant view was
+      // authorised as employer, who does hold jobs:create.
       if (guard && "resource" in guard && "action" in guard) {
-        const allowed = canAccess("employer" as UserRole, guard.resource, guard.action);
-        if (!allowed) {
+        const employerAllowed = canAccess("employer" as UserRole, guard.resource, guard.action);
+        const actorAllowed = canAccess(role, guard.resource, guard.action, {
+          permissionMode,
+          customPermissions,
+        });
+        if (!employerAllowed || !actorAllowed) {
           return NextResponse.json(
             { error: "Forbidden — insufficient permissions" },
             { status: 403 }
@@ -212,6 +233,10 @@ export function withAuth(
 
       // Build a tenant-view ctx: override userId and role so all employer API
       // lookups (Employer.findOne({ userId: ctx.userId })) work transparently.
+      // permissionMode stays "role_default" deliberately: ctx.role is "employer"
+      // here, and the actor's custom map is keyed to the actor's own role, so
+      // applying it downstream would compare apples to oranges. The actor's
+      // custom narrowing is enforced at the guard above instead.
       const tenantCtx: AuthContext = {
         userId: resolvedTenantEmployerUserId,
         role: "employer" as UserRole,
@@ -243,14 +268,26 @@ export function withAuth(
             PATCH: "update",
             DELETE: "delete",
           };
-          logActivity({
+          // T4: this entry is the only record that a write happened inside someone
+          // else's account. onBehalfOf goes in the real top-level fields (not meta)
+          // so it matches every actorFromCtx() entry and is covered by the
+          // onBehalfOfId index.
+          //
+          // NOT critical, deliberately: the business write at `await handler(...)`
+          // above has ALREADY committed by this point. Rethrowing here would turn a
+          // committed 2xx into a 500, and the client's retry would run the handler a
+          // second time — a duplicate write. A failed audit write is still loud:
+          // logActivity always error-logs `event: "audit_write_failed"` (alert on
+          // that); we just must not corrupt an already-succeeded request to raise it.
+          await logActivity({
             actorId: userId,
             actorRole: role,
+            onBehalfOfId: resolvedTenantEmployerUserId,
+            onBehalfOfRole: "employer",
             action: `tenant_view.${methodToAction[req.method] ?? "write"}`,
             resource,
             resourceId: resolvedTenantEmployerId,
             meta: {
-              onBehalfOf: resolvedTenantEmployerUserId,
               employerId: resolvedTenantEmployerId,
               method: req.method,
               path: pathname,

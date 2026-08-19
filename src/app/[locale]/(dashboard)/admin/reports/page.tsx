@@ -306,7 +306,7 @@ export default function AdminReportsPage() {
   ];
 
   return (
-    <div className="page-container space-y-4">
+    <div className="page-container">
       <PageHero
         eyebrow={t("adminWorkspace")}
         title={t("reportsAndAnalytics")}

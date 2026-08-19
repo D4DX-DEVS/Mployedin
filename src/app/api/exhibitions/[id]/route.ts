@@ -53,6 +53,23 @@ async function getHandler(_req: NextRequest, ctx: AuthContext, params?: Record<s
   if (ctx.role === "agent" && item.agentId?._id?.toString() !== ctx.userId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
+  // Super agent access control: verify team jurisdiction (mirrors PATCH handler pattern)
+  if (ctx.role === "super_agent") {
+    const { getSuperAgentScope } = await import("@/lib/auth/agentRestrictions");
+    const Agent = (await import("@/models/Agent")).default;
+    const scope = await getSuperAgentScope(ctx.userId);
+    const teamProfileIds = scope?.effectiveAgentIds ?? [];
+    const teamUserIds = teamProfileIds.length
+      ? (await Agent.find({ _id: { $in: teamProfileIds } }).select("userId").lean())
+          .map((a) => String(a.userId))
+      : [];
+    if (!teamUserIds.includes(item.agentId.toString())) {
+      return NextResponse.json(
+        { error: "Forbidden — this request is not from your team" },
+        { status: 403 },
+      );
+    }
+  }
   return NextResponse.json(item);
 }
 
@@ -202,7 +219,11 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
         item.budgetApprovedAt = new Date();
         // Lock in approvedBudget at financial approval time
         if (approvedBudget !== undefined) {
-          item.approvedBudget = Number(approvedBudget);
+          const budgetNum = Number(approvedBudget);
+          if (!Number.isFinite(budgetNum)) {
+            return NextResponse.json({ error: "approvedBudget must be a valid number" }, { status: 400 });
+          }
+          item.approvedBudget = budgetNum;
         }
       }
 
@@ -216,9 +237,13 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
       });
     }
 
-    // Budget fields — admin can set approvedBudget before budget_approved stage too
-    if (approvedBudget !== undefined && status !== "budget_approved") {
-      item.approvedBudget = Number(approvedBudget);
+    // Budget fields — only admin can set approvedBudget at any time
+    if (approvedBudget !== undefined && status !== "budget_approved" && ctx.role === "admin") {
+      const budgetNum = Number(approvedBudget);
+      if (!Number.isFinite(budgetNum)) {
+        return NextResponse.json({ error: "approvedBudget must be a valid number" }, { status: 400 });
+      }
+      item.approvedBudget = budgetNum;
     }
     if (actualSpend !== undefined) item.actualSpend = Number(actualSpend);
     if (budgetNotes !== undefined) item.budgetNotes = budgetNotes?.trim();

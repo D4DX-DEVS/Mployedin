@@ -284,7 +284,7 @@ export default function AdminActivityTimelinePage() {
   const grouped = groupByDate(events, locale);
 
   return (
-    <div className="page-container space-y-3 sm:space-y-6">
+    <div className="page-container">
       <PageHero
         icon={Activity}
         title={t("title")}

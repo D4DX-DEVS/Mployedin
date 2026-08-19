@@ -150,5 +150,5 @@ async function deleteHandler(
   return NextResponse.json({ success: true });
 }
 
-export const PATCH = withAuth(patchHandler);
-export const DELETE = withAuth(deleteHandler);
+export const PATCH = withAuth(patchHandler, { resource: "employers", action: "update" });
+export const DELETE = withAuth(deleteHandler, { resource: "employers", action: "delete" });

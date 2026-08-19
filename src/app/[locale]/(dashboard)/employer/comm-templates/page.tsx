@@ -89,7 +89,7 @@ export default function CommTemplatesPage() {
 
   return (
     <FeatureGate feature="commTemplates">
-    <div className="page-container space-y-3 sm:space-y-6">
+    <div className="page-container">
       {ConfirmDialogNode}
       <PageHero
         icon={Mail}

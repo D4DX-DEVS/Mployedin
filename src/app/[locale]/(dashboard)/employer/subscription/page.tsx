@@ -77,7 +77,7 @@ export default function EmployerSubscriptionPage() {
 
   if (isLoading) {
     return (
-      <div className="page-container space-y-3 sm:space-y-4">
+      <div className="page-container">
         <PageHero icon={Crown} title={t("title")} />
         {[1, 2, 3].map((i) => (
           <div key={i} className="h-32 animate-pulse rounded-2xl bg-muted/30" />
@@ -87,7 +87,7 @@ export default function EmployerSubscriptionPage() {
   }
 
   return (
-    <div className="page-container space-y-3 sm:space-y-6">
+    <div className="page-container">
       <PageHero
         icon={Crown}
         title={t("title")}
@@ -151,9 +151,9 @@ function ActiveView({
   const maxTeam = (limits?.maxTeamMembers as number) ?? 0;
 
   const featureList = [
-    { label: t("jobPosting"), detail: maxJobs === -1 ? t("unlimited") : t("jobPostingsDetail", { count: maxJobs }), allowed: true },
-    { label: t("applicantTracking"), detail: t("applicantTrackingDetail", { max: maxApps === -1 ? t("unlimited") : maxApps }), allowed: true },
-    { label: t("teamCollaboration"), detail: t("teamCollaborationDetail", { max: maxTeam === -1 ? t("unlimited") : maxTeam }), allowed: true },
+    { label: t("jobPosting"), detail: maxJobs === -1 ? t("unlimited") : t("jobPostingsDetail", { count: maxJobs }), allowed: features.activeJobs?.allowed ?? true },
+    { label: t("applicantTracking"), detail: t("applicantTrackingDetail", { max: maxApps === -1 ? t("unlimited") : maxApps }), allowed: features.applicationsViewed?.allowed ?? true },
+    { label: t("teamCollaboration"), detail: t("teamCollaborationDetail", { max: maxTeam === -1 ? t("unlimited") : maxTeam }), allowed: features.teamMembers?.allowed ?? true },
     { label: t("dataExport"), allowed: features.dataExport?.allowed ?? false },
     { label: t("analytics"), detail: `${(limits?.analyticsLevel as string) ?? "none"} level`, allowed: (limits?.analyticsLevel as string) !== "none" },
     { label: t("commTemplates"), allowed: features.commTemplates?.allowed ?? false },

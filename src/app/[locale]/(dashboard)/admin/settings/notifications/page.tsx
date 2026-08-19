@@ -136,7 +136,7 @@ export default function AdminNotificationsPage() {
   ];
 
   return (
-    <div className="page-container space-y-4">
+    <div className="page-container">
       <PageHero
         icon={Bell}
         eyebrow={t("adminWorkspaceLabel")}

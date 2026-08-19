@@ -4,7 +4,7 @@ import { withAuth } from "@/lib/auth/withAuth";
 import Application from "@/models/Application";
 import JobSeeker from "@/models/JobSeeker";
 import Employer from "@/models/Employer";
-import { logActivity } from "@/lib/audit/log";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 
 /**
  * POST /api/applications/[id]/parse-resume
@@ -55,7 +55,7 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
 
   await logActivity({
     action: "application.resume_parsed",
-    actorId: ctx.userId,
+    ...actorFromCtx(ctx),
     resource: "Application",
     resourceId: id,
     meta: { skillsCount: parsedProfile.skills.length },

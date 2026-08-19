@@ -50,6 +50,11 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   const body = await validateBody(req, impersonateSchema);
 
   if (body.exit) {
+    // Read the session before deleting it: the employer it pointed at is the only
+    // thing that makes this entry findable on the employer's own activity screen.
+    const leaving = await TenantViewSession.findOne({ actorId: ctx.userId })
+      .select("employerId employerUserId companyName")
+      .lean();
     await TenantViewSession.deleteMany({ actorId: ctx.userId });
 
     // critical: leaving someone else's account must not happen untraceably.
@@ -57,7 +62,13 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       ...actorFromCtx(ctx),
       action: "impersonation.exit",
       resource: "users",
-      resourceId: ctx.userId,
+      resourceId: leaving?.employerUserId?.toString() ?? ctx.userId,
+      meta: leaving
+        ? {
+            employerId: leaving.employerId?.toString(),
+            companyName: leaving.companyName,
+          }
+        : undefined,
       req,
       critical: true,
     });

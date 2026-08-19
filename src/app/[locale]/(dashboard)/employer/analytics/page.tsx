@@ -289,7 +289,7 @@ export default function EmployerAnalyticsPage() {
 
   if (isLoading) {
     return (
-      <div className="page-container space-y-6">
+      <div className="page-container">
         <PageHero title={t("title")} description={t("description")} />
 
         <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
@@ -308,7 +308,7 @@ export default function EmployerAnalyticsPage() {
 
   if (error) {
     return (
-      <div className="page-container space-y-6">
+      <div className="page-container">
         <PageHero title={t("title")} description={t("description")} />
 
         <AnalyticsPanel className="border-red-500/20 bg-red-500/5">
@@ -335,7 +335,7 @@ export default function EmployerAnalyticsPage() {
   }
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container">
       <DashboardPageHeader
         icon={activeTabMeta.icon}
         eyebrow={t(activeTab === "response" ? "responseTime" : activeTab)}

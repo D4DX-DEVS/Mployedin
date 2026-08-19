@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
     emailVerificationExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000),
     country,
     city,
-    referralCode: referralCode || undefined,
+    referredBy: referralCode || undefined,
   });
 
   /* Create agent profile */

@@ -6,7 +6,7 @@ import { Employer } from "@/models/Employer";
 import { validateBody } from "@/lib/validators";
 import { patchExtractionDraftSchema } from "@/lib/validators/extractionDraft";
 import { isValidObjectId } from "@/lib/security/sanitize";
-import { logActivity } from "@/lib/audit/log";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx {
@@ -116,8 +116,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 
   try {
     await logActivity({
-      actorId: ctx.userId,
-      actorRole: ctx.role,
+      ...actorFromCtx(ctx),
       action: "ai_extraction_draft.updated",
       resource: "ai_extraction_draft",
       resourceId: String(owned.draft._id),
@@ -148,8 +147,7 @@ async function deleteHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<st
 
   try {
     await logActivity({
-      actorId: ctx.userId,
-      actorRole: ctx.role,
+      ...actorFromCtx(ctx),
       action: "ai_extraction_draft.discarded",
       resource: "ai_extraction_draft",
       resourceId: String(owned.draft._id),

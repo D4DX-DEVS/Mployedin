@@ -54,7 +54,7 @@ export default function NewStaticPage() {
   };
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container">
       <DashboardPageHeader
         eyebrow={t("workspaceLabel")}
         title={t("pageTitle")}

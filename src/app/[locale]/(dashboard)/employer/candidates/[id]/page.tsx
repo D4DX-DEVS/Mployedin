@@ -139,7 +139,7 @@ export default function UnifiedCandidatePage() {
 
   if (loading) {
     return (
-      <div className="page-container space-y-3 sm:space-y-4">
+      <div className="page-container">
         <div className="h-8 w-48 bg-muted animate-pulse rounded" />
         <div className="h-40 bg-muted animate-pulse rounded-lg" />
         <div className="h-60 bg-muted animate-pulse rounded-lg" />
@@ -192,7 +192,7 @@ export default function UnifiedCandidatePage() {
   ];
 
   return (
-    <div className="page-container space-y-3 sm:space-y-6">
+    <div className="page-container">
       {/* Back + Header */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="sm" onClick={() => router.push(`/${locale}/employer/candidates`)}>

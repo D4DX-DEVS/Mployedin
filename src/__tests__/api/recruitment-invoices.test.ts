@@ -209,7 +209,7 @@ describe("Recruitment invoice creation API", () => {
     expect(Invoice.create).not.toHaveBeenCalled();
   });
 
-  it("calculates agent and super-agent commissions from the billed invoice total", async () => {
+  it("calculates agent and super-agent commissions from the pre-tax discounted subtotal", async () => {
     const { POST } = await import("@/app/api/invoices/recruitment/route");
     const req = new NextRequest("http://localhost:3000/api/invoices/recruitment", {
       method: "POST",
@@ -244,13 +244,13 @@ describe("Recruitment invoice creation API", () => {
     expect(payload.amount).toBe(995);
     expect(payload.commissions).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ role: "agent", rate: 10, amount: 99.5 }),
-        expect.objectContaining({ role: "super_agent", rate: 5, amount: 49.75 }),
+        expect.objectContaining({ role: "agent", rate: 10, amount: 90 }),
+        expect.objectContaining({ role: "super_agent", rate: 5, amount: 45 }),
       ])
     );
 
-    expect(Commission.create).toHaveBeenNthCalledWith(1, [expect.objectContaining({ type: "placement", amount: 99.5 })], {});
-    expect(Commission.create).toHaveBeenNthCalledWith(2, [expect.objectContaining({ type: "override", amount: 49.75 })], {});
+    expect(Commission.create).toHaveBeenNthCalledWith(1, [expect.objectContaining({ type: "placement", amount: 90 })], {});
+    expect(Commission.create).toHaveBeenNthCalledWith(2, [expect.objectContaining({ type: "override", amount: 45 })], {});
   });
 
   it("forces agent-created invoices into pending approval and defers commission records", async () => {

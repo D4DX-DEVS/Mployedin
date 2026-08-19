@@ -3,7 +3,9 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import Job from "@/models/Job";
 import { Employer } from "@/models/Employer";
-import { logActivity } from "@/lib/audit/log";
+import Agent from "@/models/Agent";
+import SuperAgent from "@/models/SuperAgent";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
 import { validateBody } from "@/lib/validators";
@@ -18,8 +20,34 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
   if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
 
-  const job = await Job.findById(params!.id).select("employerId matchingWeights").lean();
+  const job = await Job.findById(params!.id).select("employerId agentId matchingWeights").lean();
   if (!job) return NextResponse.json({ error: "Job not found" }, { status: 404 });
+
+  // Authorization check
+  if (ctx.role === "employer") {
+    const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
+    if (!emp || String(job.employerId) !== String(emp._id)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  } else if (ctx.role === "agent") {
+    const agent = await Agent.findOne({ userId: ctx.userId }).select("_id assignedEmployerIds").lean();
+    const ok = Boolean(
+      agent && (
+        String(job.agentId) === String(agent._id) ||
+        ((agent.assignedEmployerIds as unknown[]) ?? []).some((e) => String(e) === String(job.employerId))
+      )
+    );
+    if (!ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  } else if (ctx.role === "super_agent") {
+    const sa = await SuperAgent.findOne({ userId: ctx.userId }).select("agentIds").lean();
+    const agent = await Agent.findById(job.agentId).select("superAgentId").lean();
+    const ok = Boolean(
+      sa && agent && sa.agentIds?.map(String).includes(String(agent?.superAgentId))
+    );
+    if (!ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  } else if (ctx.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   // If job has its own weights, return them
   if (job.matchingWeights && Object.keys(job.matchingWeights).length > 0) {
@@ -48,7 +76,25 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     if (!emp || String(job.employerId) !== String(emp._id)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-  } else if (!["agent", "super_agent", "admin"].includes(ctx.role)) {
+  } else if (ctx.role === "agent") {
+    // Agents must own the job or be assigned to its employer
+    const agent = await Agent.findOne({ userId: ctx.userId }).select("_id assignedEmployerIds").lean();
+    const ok = Boolean(
+      agent && (
+        String(job.agentId) === String(agent._id) ||
+        ((agent.assignedEmployerIds as unknown[]) ?? []).some((e) => String(e) === String(job.employerId))
+      )
+    );
+    if (!ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  } else if (ctx.role === "super_agent") {
+    // Super agents must be assigned to the job's agent
+    const sa = await SuperAgent.findOne({ userId: ctx.userId }).select("agentIds").lean();
+    const agent = await Agent.findById(job.agentId).select("superAgentId").lean();
+    const ok = Boolean(
+      sa && agent && sa.agentIds?.map(String).includes(String(agent?.superAgentId))
+    );
+    if (!ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  } else if (ctx.role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -65,8 +111,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   await job.save();
 
   await logActivity({
-    actorId: ctx.userId,
-    actorRole: ctx.role,
+    ...actorFromCtx(ctx),
     action: "job.update_matching_weights",
     resource: "jobs",
     resourceId: String(job._id),
