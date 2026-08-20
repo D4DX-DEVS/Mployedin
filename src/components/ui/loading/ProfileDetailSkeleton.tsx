@@ -27,7 +27,7 @@ export function ProfileDetailSkeleton({ tabs = 4, sections = 3 }: ProfileDetailS
       </div>
       <div className="space-y-4">
         {Array.from({ length: sections }).map((_, i) => (
-          <div key={i} className="card-base p-5 space-y-3" style={{ opacity: 1 - i * 0.1 }}>
+          <div key={i} className="card-base space-y-3 panel-body" style={{ opacity: 1 - i * 0.1 }}>
             <Skeleton className="h-4 w-32 bg-muted/50" />
             <Skeleton className="h-4 w-full bg-muted/30" />
             <Skeleton className="h-4 w-5/6 bg-muted/30" />

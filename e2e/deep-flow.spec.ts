@@ -4,7 +4,7 @@ import { test, expect, Page, BrowserContext } from "@playwright/test";
  * Deep business-flow E2E: exercises the full hiring pipeline end to end with
  * real accounts against a running server.
  *
- *   employer creates job → (admin approves if moderated) → job seeker applies
+ *   employer creates job (goes live immediately) → job seeker applies
  *   → agent sees the pipeline → employer schedules interview → employer sends
  *   offer → job seeker accepts → admin records placement → cleanup (close job)
  *
@@ -108,12 +108,8 @@ test.describe("Deep flow: hire pipeline", () => {
         jobId = String(job._id);
         expect(jobId).toBeTruthy();
 
-        // Moderation gate: agent-involved / unverified employer jobs land in
-        // pending_approval — admin approves so the seeker can apply.
-        if (job.status !== "active") {
-          const approve = await api(admin, "POST", `/api/admin/jobs/${jobId}/approve`, { approved: true });
-          expect(approve.status(), await approve.text()).toBe(200);
-        }
+        // No approval queue: an employer publish goes live immediately.
+        expect(job.status).toBe("active");
       });
 
       await test.step("employer sees job in dashboard", async () => {

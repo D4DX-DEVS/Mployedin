@@ -21,7 +21,6 @@ import {
   Send, Ban, Loader2, BookOpen, Search, Filter, ChevronDown, ChevronUp, ChevronRight, X,
 } from "lucide-react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { PageHeader } from "@/components/shared/PageHeader";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePermissions } from "@/hooks/usePermissions";
 import { AIInterviewQuestionsPanel } from "@/components/features/employer/AIInterviewQuestionsPanel";
@@ -36,7 +35,6 @@ import type { ExportColumn } from "@/lib/export";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { formatNumber } from "@/lib/formatNumber";
-import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 
 interface AIQuestionsTarget {
   interviewId: string;
@@ -75,6 +73,7 @@ export default function EmployerInterviewsPage() {
   const searchParams = useSearchParams();
   const t = useTranslations("employerInterviews");
   const tc = useTranslations("employerCommon");
+  const tn = useTranslations("nav");
   const { confirm, ConfirmDialogNode } = useConfirm();
   const [page, setPageState] = useState(() => Number(searchParams.get("page")) || 1);
 
@@ -330,81 +329,87 @@ export default function EmployerInterviewsPage() {
         />
       )}
 
-      {/* ── Hero Section ──────────────────────────────────────────────── */}
-      <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-        <Sparkles className="h-3.5 w-3.5" />
-        {t("title")}
-      </div>
-      <PageHeader
-        title={t("subtitle")}
-        description={t("description")}
-        actions={
-          /* Tile + both buttons share one row on phones too — icon-only
-             button labels on mobile keep them narrow enough that the tile
-             still gets a sane minimum width instead of collapsing. */
-          <div className="grid w-full grid-cols-[minmax(84px,1fr)_auto_auto] items-stretch gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:gap-3">
-            <div className="workspace-glass-panel min-w-0 rounded-2xl px-2.5 py-2 text-left sm:w-auto sm:flex-none sm:px-4 sm:py-3">
-              <p className="truncate text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("currentView")}</p>
-              <p className="mt-1 truncate text-sm font-semibold text-foreground sm:text-lg">{formatNumber(deduplicatedInterviews.length, locale)} {t("active")} · {formatNumber(total, locale)} {t("total")}</p>
-              <p className="hidden text-xs text-muted-foreground sm:block">{t("activeDesc")} {t("totalDesc")}</p>
-            </div>
-            {can("interviews", "create") ? (
-              <Button
-                asChild
-                className="h-11 gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:px-4"
-              >
-                <Link href={`/${locale}/employer/interviews/bulk`} aria-label={t("bulkSchedule")}>
-                  <span className="hidden sm:inline">{t("bulkSchedule")}</span>
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-            ) : null}
+      {/* ── Page header ───────────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">{tn("interviews")}</h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            {formatNumber(deduplicatedInterviews.length, locale)} {t("active")} · {formatNumber(total, locale)} {t("total")}
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {can("interviews", "create") ? (
             <Button
-              variant="outline"
-              aria-label={t("exportCalendar")}
-              className="h-11 gap-2 rounded-xl px-3 text-sm font-semibold sm:px-4"
-              onClick={async () => {
-                try {
-                  const res = await fetch("/api/interviews/export/ical", { credentials: "include" });
-                  if (!res.ok) {
-                    toast.error(t("failedExportCalendar"));
-                    return;
-                  }
-                  const blob = await res.blob();
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = "mployedin-interviews.ics";
-                  document.body.appendChild(a);
-                  a.click();
-                  document.body.removeChild(a);
-                  URL.revokeObjectURL(url);
-                } catch {
-                  toast.error(t("calendarExportFailed"));
-                }
-              }}
+              asChild
+              className="h-10 gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:px-4"
             >
-              <CalendarDays className="h-4 w-4" />
-              <span className="hidden sm:inline">{t("exportCalendar")}</span>
+              <Link href={`/${locale}/employer/interviews/bulk`} aria-label={t("bulkSchedule")}>
+                <span className="hidden sm:inline">{t("bulkSchedule")}</span>
+                <ArrowRight className="h-4 w-4" />
+              </Link>
             </Button>
-          </div>
-        }
-      />
+          ) : null}
+          <Button
+            variant="outline"
+            aria-label={t("exportCalendar")}
+            className="h-10 gap-2 rounded-xl px-3 text-sm font-semibold sm:px-4"
+            onClick={async () => {
+              try {
+                const res = await fetch("/api/interviews/export/ical", { credentials: "include" });
+                if (!res.ok) {
+                  toast.error(t("failedExportCalendar"));
+                  return;
+                }
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "mployedin-interviews.ics";
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+              } catch {
+                toast.error(t("calendarExportFailed"));
+              }
+            }}
+          >
+            <CalendarDays className="h-4 w-4" />
+            <span className="hidden sm:inline">{t("exportCalendar")}</span>
+          </Button>
+        </div>
+      </div>
 
-      <DashboardPageHeader
-        icon={CalendarDays}
-        eyebrow={t("scheduled")}
-        title={t("scheduled")}
-        metrics={[
-          { label: t("scheduled"), value: formatNumber(scheduledTotal, locale), note: t("scheduledDesc"), icon: CalendarDays },
-          { label: t("completed"), value: formatNumber(completedTotal, locale), note: t("completedDesc"), icon: CircleCheckBig },
-          { label: t("needsAttention"), value: formatNumber(attentionTotal, locale), note: t("needsAttentionDesc"), icon: RotateCcw },
-          { label: t("confirmed"), value: formatNumber(confirmedTotal, locale), note: t("confirmedDesc"), icon: Clock3 },
-        ]}
-      />
+      {/* ── Stat row — tap a tile to filter the list by that status ────── */}
+      <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+        {([
+          { key: "scheduled", label: t("scheduled"), value: scheduledTotal, icon: CalendarDays, tone: "text-primary" },
+          { key: "completed", label: t("completed"), value: completedTotal, icon: CircleCheckBig, tone: "text-status-approved" },
+          { key: "cancelled", label: t("needsAttention"), value: attentionTotal, icon: RotateCcw, tone: "text-status-pending" },
+          { key: "confirmed", label: t("confirmed"), value: confirmedTotal, icon: Clock3, tone: "text-muted-foreground" },
+        ] as const).map((s) => {
+          const Icon = s.icon;
+          const active = status === s.key;
+          return (
+            <button
+              key={s.key}
+              type="button"
+              aria-pressed={active}
+              onClick={() => { setStatus(active ? "" : s.key); setPage(1); }}
+              className={`flex flex-col items-center justify-center gap-0.5 rounded-xl border px-1 py-1.5 text-center transition-colors sm:flex-row sm:gap-2 sm:px-3 sm:py-2 sm:text-start ${
+                active ? "border-primary bg-primary/5" : "border-border bg-card hover:bg-secondary/40"
+              }`}
+            >
+              <Icon className={`hidden h-4 w-4 shrink-0 sm:block ${s.tone}`} />
+              <span className="text-base font-semibold leading-none text-foreground">{formatNumber(s.value, locale)}</span>
+              <span className="text-[10px] leading-tight text-muted-foreground sm:text-xs">{s.label}</span>
+            </button>
+          );
+        })}
+      </div>
 
       {/* ── Filter Section ────────────────────────────────────────────── */}
-      <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
+      <section className="workspace-panel-surface rounded-2xl panel-body">
         {/* Search + Toggle — one row at every width; search shrinks, controls stay put */}
         <div className="flex flex-row items-center justify-between gap-2 sm:gap-3">
           <div className="relative min-w-0 flex-1 sm:max-w-md">
@@ -560,7 +565,7 @@ export default function EmployerInterviewsPage() {
 
       {/* ── Error State ───────────────────────────────────────────────── */}
       {error ? (
-        <section className="workspace-panel-surface rounded-[28px] border border-destructive/30 p-6">
+        <section className="workspace-panel-surface rounded-[28px] border border-destructive/30 panel-body">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-rejected">{t("interviewList")}</p>
@@ -576,26 +581,19 @@ export default function EmployerInterviewsPage() {
         </section>
       ) : (
       /* ── Interview Table ──────────────────────────────────────────── */
-      <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
-        <div className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("interviewList")}</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("description")}</h2>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              {t("tableDesc")}
-            </p>
-          </div>
-          <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end sm:gap-2">
-            <p className="text-sm text-muted-foreground">{deduplicatedInterviews.length} {t("interviewsOnPage")}</p>
-            <TableToolbar
-              onExportCsv={handleExportCsv}
-              onExportExcel={handleExportExcel}
-              onExportPdf={handleExportPdf}
-            />
-          </div>
+      <section className="workspace-panel-surface rounded-2xl panel-body">
+        <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
+          <h2 className="text-sm font-semibold text-foreground">
+            {formatNumber(deduplicatedInterviews.length, locale)} {tn("interviews")}
+          </h2>
+          <TableToolbar
+            onExportCsv={handleExportCsv}
+            onExportExcel={handleExportExcel}
+            onExportPdf={handleExportPdf}
+          />
         </div>
 
-        <div className="workspace-subtle-surface mt-5 hidden overflow-x-auto rounded-3xl border border-border sm:block">
+        <div className="workspace-subtle-surface mt-3 hidden overflow-x-auto rounded-xl border border-border sm:block">
           <Table>
             <TableHeader>
               <TableRow className="workspace-subtle-surface hover:bg-secondary/70">

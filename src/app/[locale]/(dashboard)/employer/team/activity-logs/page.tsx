@@ -513,7 +513,7 @@ export default function TeamActivityLogsPage() {
               });
 
               return (
-                <div key={log._id} className="card-base p-4 space-y-2">
+                <div key={log._id} className="card-base space-y-2 panel-body">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
                       {log.actorId && (

@@ -108,17 +108,17 @@ export function JobMatchingWeightsTab({ jobId }: Props) {
 
       {/* Summary cards */}
       <div className="grid gap-3 sm:grid-cols-3">
-        <div className="card-base p-4">
+        <div className="card-base panel-body">
           <Scale className="h-5 w-5 text-sky-600 dark:text-sky-300" />
           <p className="mt-2 text-sm font-semibold text-foreground">{t("totalAt", { total })}</p>
           <p className="mt-1 text-xs text-muted-foreground">{t("mustTotal100PercentBeforeSaving")}</p>
         </div>
-        <div className="card-base p-4">
+        <div className="card-base panel-body">
           <Target className="h-5 w-5 text-sky-600 dark:text-sky-300" />
           <p className="mt-2 text-sm font-semibold text-foreground">{t("top")}: {WEIGHT_LABELS[topPriority]}</p>
           <p className="mt-1 text-xs text-muted-foreground">{t("strongestInfluenceAt", { percent: weights[topPriority] })}</p>
         </div>
-        <div className="card-base p-4">
+        <div className="card-base panel-body">
           <BarChart3 className="h-5 w-5 text-sky-600 dark:text-sky-300" />
           <p className="mt-2 text-sm font-semibold text-foreground">
             {saveWeights.isPending ? t("saving") : saved ? t("weightsSaved") : t("readyToUpdate")}
@@ -129,7 +129,7 @@ export function JobMatchingWeightsTab({ jobId }: Props) {
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.35fr,0.65fr]">
         {/* Weight sliders */}
-        <div className="card-base p-5 space-y-3 sm:space-y-4">
+        <div className="card-base space-y-3 sm:space-y-4 panel-body">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
               <Sliders className="h-4 w-4 text-sky-600" /> {t("weightConfiguration")}
@@ -182,7 +182,7 @@ export function JobMatchingWeightsTab({ jobId }: Props) {
 
         {/* Distribution overview */}
         <div className="space-y-3 sm:space-y-4">
-          <div className="card-base p-5 space-y-3">
+          <div className="card-base space-y-3 panel-body">
             <h3 className="text-sm font-semibold text-foreground">{t("weightDistribution")}</h3>
             {weightKeys.map((key) => (
               <div key={key} className="space-y-1">
@@ -205,7 +205,7 @@ export function JobMatchingWeightsTab({ jobId }: Props) {
             </div>
           </div>
 
-          <div className="card-base p-5">
+          <div className="card-base panel-body">
             <Sparkles className="h-4 w-4 text-sky-600 mb-2" />
             <h4 className="text-sm font-semibold text-foreground">{t("tuningTip")}</h4>
             <p className="mt-1 text-xs text-muted-foreground leading-5">

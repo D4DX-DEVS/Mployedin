@@ -390,16 +390,6 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
         try {
           clearDraft();
         } catch { /* ignore */ }
-        if (data.job.status === "pending_approval") {
-          // Unverified employers: the API reroutes publish to the moderation
-          // queue — say so instead of claiming the job is live.
-          toast.info(t("pendingApprovalTitle"), {
-            description: t("pendingApprovalDescription"),
-            duration: 8000,
-          });
-          router.push(`/${locale}/${basePath}/jobs/${jobId}`);
-          return;
-        }
         toast.success(t("postSuccess"), {
           description: t("postSuccessDescription"),
           action: {
@@ -525,7 +515,7 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
   return (
     <div className="flex h-full flex-col">
     <div className="flex-1 overflow-y-auto">
-    <div className="page-container gap-4 sm:gap-5">
+    <div className="page-container">
       <section className="rounded-2xl border border-border/70 bg-gradient-to-br from-background via-background to-primary/5 p-4 shadow-sm">
         <PageHeader
           title={t("title")}

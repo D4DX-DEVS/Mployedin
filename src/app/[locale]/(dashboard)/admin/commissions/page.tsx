@@ -469,7 +469,7 @@ export default function AdminCommissionsPage() {
       ) : null}
 
       <section className="workspace-panel-surface overflow-hidden rounded-[24px]">
-        <div className="flex flex-col gap-2 border-b border-border/80 px-4 py-4 sm:px-5">
+        <div className="flex flex-col gap-2 border-b border-border/80 panel-head">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("commissionLedgerLabel")}</p>
           <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
             <h3 className="text-lg font-semibold text-foreground">{t("commissionLedgerTitle")}</h3>

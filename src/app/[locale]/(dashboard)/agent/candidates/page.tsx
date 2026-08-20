@@ -326,7 +326,7 @@ export default function AgentCandidatesPage() {
         ]}
       />
 
-      <section className="workspace-panel-surface rounded-[28px] p-3.5 sm:p-4">
+      <section className="workspace-panel-surface rounded-[28px] panel-body">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("filterCandidatesLabel")}</p>
           <h2 className="mt-2 text-lg sm:text-xl font-semibold tracking-tight text-foreground">{t("filterCandidatesTitle")}</h2>
@@ -370,7 +370,7 @@ export default function AgentCandidatesPage() {
         </div>
       </section>
 
-      <section className="workspace-panel-surface rounded-[28px] p-3.5 sm:p-4">
+      <section className="workspace-panel-surface rounded-[28px] panel-body">
         <div className="flex flex-col gap-2 sm:gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("currentResultsLabel")}</p>

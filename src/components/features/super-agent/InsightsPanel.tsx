@@ -103,6 +103,8 @@ export function SuperAgentInsightsPanel() {
     } catch { return new Set(); }
   });
   const [showDismissed, setShowDismissed] = useState(false);
+  // ponytail: mobile collapses to a summary row; no bottom sheet until someone asks
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const persistDismissed = useCallback((ids: Set<string>) => {
     try { localStorage.setItem(DISMISSED_KEY, JSON.stringify([...ids])); } catch { /* noop */ }
@@ -342,8 +344,8 @@ export function SuperAgentInsightsPanel() {
   return (
     <>
       {ConfirmDialogNode}
-      <div className="workspace-glass-panel rounded-xl px-3 py-3 text-left w-full space-y-0 sm:rounded-2xl sm:px-4 sm:py-4">
-      <div className="flex flex-nowrap items-center justify-between gap-2 mb-2.5 sm:mb-3">
+      <div className={cn("text-left w-full space-y-0 sm:workspace-glass-panel sm:rounded-2xl sm:px-4 sm:py-4", mobileOpen && "workspace-glass-panel rounded-xl px-3 py-3")}>
+      <div className={cn("flex-nowrap items-center justify-between gap-2 mb-2.5 sm:mb-3 sm:flex", mobileOpen ? "flex" : "hidden")}>
         <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
           <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary sm:h-4 sm:w-4" />
           <p className="truncate text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">
@@ -370,7 +372,28 @@ export function SuperAgentInsightsPanel() {
         </div>
       </div>
 
-      <div className="grid gap-2 sm:gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {!mobileOpen && visibleInsights.length > 0 && (
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="flex w-full items-center justify-between rounded-lg border border-border/50 bg-background/70 px-3 py-2 text-left sm:hidden"
+        >
+          <span className="text-[13px] font-semibold text-foreground">
+            {visibleInsights.length} {t("aiInsights")}
+          </span>
+          <span className="text-[10px] text-muted-foreground">
+            {(["critical", "warning", "info"] as InsightSeverity[])
+              .map((sv) => [sv, visibleInsights.filter((i) => i.severity === sv).length] as const)
+              .filter(([, n]) => n > 0)
+              .map(([sv, n]) => `${n} ${severityStyles[sv].badgeText.toLowerCase()}`)
+              .join(" · ")} ›
+          </span>
+        </button>
+      )}
+
+      <div className={cn(
+        "gap-2 sm:gap-2.5 sm:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4",
+        mobileOpen ? "grid" : "hidden"
+      )}>
         {visibleInsights.map((insight, idx) => {
           const sev = severityStyles[insight.severity];
           const isVisible = idx < visibleCount;

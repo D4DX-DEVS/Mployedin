@@ -6,7 +6,7 @@ interface CalendarSkeletonProps {
 
 export function CalendarSkeleton({ cells = 35 }: CalendarSkeletonProps) {
   return (
-    <div className="card-base p-4 space-y-4">
+    <div className="card-base space-y-4 panel-body">
       <div className="flex items-center justify-between">
         <Skeleton className="h-6 w-40 bg-muted/60" />
         <div className="flex gap-2">

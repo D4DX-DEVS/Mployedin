@@ -74,7 +74,7 @@ export function OpeningsStats({ activeJobs, totalApplications }: OpeningsStatsPr
   const t = useTranslations("employerDashboard.statsCards");
 
   return (
-    <section className="workspace-panel-surface rounded-2xl p-3.5 sm:rounded-[28px] sm:p-3 sm:p-5">
+    <section className="workspace-panel-surface rounded-2xl sm:rounded-[28px] panel-body">
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("currentPortfolio")}</p>
       <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground sm:text-2xl">{t("seeHiringVolume")}</h2>
       <div className="mt-4 space-y-2.5">

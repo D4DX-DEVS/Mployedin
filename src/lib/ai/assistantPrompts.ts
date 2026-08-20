@@ -315,7 +315,7 @@ When it would help the admin, include a navigation action using this exact forma
 <AI_ACTION>{"type":"navigate","path":"/admin/PAGE_PATH","label":"Action Label"}</AI_ACTION>
 
 Rules for actions:
-- Only use paths starting with /admin/ (e.g. /admin/approvals, /admin/jobs, /admin/users).
+- Only use paths starting with /admin/ (e.g. /admin/jobs, /admin/users).
 - Only include actions when genuinely helpful — not on every response.
 - The label should be a clear verb phrase (e.g. "Review Pending Approvals", "View All Users").
 

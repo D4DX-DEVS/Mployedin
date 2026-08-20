@@ -516,7 +516,7 @@ export function UnifiedMessagesPage({
               {/* Mobile back button */}
               <button
                 onClick={clearConversation}
-                className="md:hidden flex items-center gap-2 px-4 py-3 border-b border-border/40 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                className="md:hidden flex items-center gap-2 border-b border-border/40 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors panel-head"
               >
                 <ChevronLeft className="h-4 w-4" />
                 {t("back")}
@@ -525,7 +525,7 @@ export function UnifiedMessagesPage({
               {supportOnly &&
                 activeConversation.customerCare &&
                 ["resolved", "closed"].includes(activeConversation.customerCare.status) && (
-                  <div className="flex items-center justify-between px-4 py-2.5 bg-muted/60 border-b border-border/40">
+                  <div className="flex items-center justify-between bg-muted/60 border-b border-border/40 panel-head">
                     <p className="text-sm text-muted-foreground">
                       {t("ticketStatus", {
                         status: hasKey(STATUS_KEYS, activeConversation.customerCare.status)

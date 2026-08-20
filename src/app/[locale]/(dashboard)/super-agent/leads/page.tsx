@@ -369,17 +369,18 @@ export default function SuperAgentLeadsPage() {
       >
         {/* ---- Stage Strip ---- */}
         <div className="flex flex-col gap-4">
-          <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-6">
+          {/* Phones: one scrollable chip row. Six stage cards owned a full screen. */}
+          <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-3 sm:overflow-visible sm:px-0 sm:pb-0 xl:grid-cols-6">
             {STAGES.map((s) => (
               <button
                 key={s}
                 type="button"
                 onClick={() => { updateFilter("status", filters.status === s ? "" : s); }}
                 aria-pressed={filters.status === s}
-                className={`rounded-2xl border px-4 py-3 text-left transition-all ${filters.status === s ? "border-primary/35 bg-primary/10 shadow-sm shadow-primary/15" : "border-border/70 bg-background/85 hover:border-border hover:bg-secondary/80"}`}
+                className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-start transition-all sm:block sm:shrink sm:rounded-2xl sm:px-4 sm:py-3 ${filters.status === s ? "border-primary/35 bg-primary/10 shadow-sm shadow-primary/15" : "border-border/70 bg-background/85 hover:border-border hover:bg-secondary/80"}`}
               >
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{s}</p>
-                <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{stageCounts[s]}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground sm:tracking-[0.18em]">{s}</p>
+                <p className="text-[13px] font-semibold tabular-nums tracking-tight text-foreground sm:mt-2 sm:text-2xl">{stageCounts[s]}</p>
               </button>
             ))}
           </div>

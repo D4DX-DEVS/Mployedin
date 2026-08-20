@@ -34,7 +34,7 @@ const stepLinks: Record<string, string> = {
 
 function HeroSkeleton() {
   return (
-    <div className="card-base p-6 animate-pulse">
+    <div className="card-base animate-pulse panel-body">
       <div className="h-4 w-40 rounded bg-muted mb-2" />
       <div className="h-3 w-64 rounded bg-muted mb-4" />
       <div className="h-1.5 rounded bg-muted w-full" />
@@ -126,7 +126,7 @@ export function SmartWelcome({
   const recruitersThisWeek = stats?.recruiterViews?.delta ?? 0;
 
   return (
-    <div className="card-base p-3 sm:p-6">
+    <div className="card-base panel-body">
       {/* Top row: name + auto apply toggle */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">

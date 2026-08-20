@@ -47,7 +47,7 @@ export function DashboardAIHint({ hasJobs, hasApplications, hasInterviews }: Das
   };
 
   return (
-    <div className="card-base p-0 overflow-hidden">
+    <div className="card-base overflow-hidden panel-body">
       <button
         onClick={openAI}
         className="w-full px-3.5 py-3 sm:px-6 sm:py-4 flex items-center gap-4 hover:bg-muted/30 transition-colors text-left group"

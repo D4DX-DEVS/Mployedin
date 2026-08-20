@@ -292,7 +292,7 @@ export default function OffersPage() {
       ) : (
         <div className="space-y-4">
           {offers.map((offer) => (
-            <div key={offer._id} className="card-base p-4 sm:p-6 space-y-3 sm:space-y-4">
+            <div key={offer._id} className="card-base space-y-3 sm:space-y-4 panel-body">
               <div className="flex items-start justify-between gap-2 sm:gap-3">
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-base sm:text-lg truncate">{offer.jobId.title}</h3>

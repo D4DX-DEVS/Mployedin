@@ -91,7 +91,7 @@ export default function CompaniesListPage() {
     <div className="space-y-6">
       <PageHero icon={Building2} title={t("title")} description={t("description")} />
 
-      <section className="workspace-panel-surface rounded-[28px] p-5 space-y-3">
+      <section className="workspace-panel-surface rounded-[28px] space-y-3 panel-body">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -122,7 +122,7 @@ export default function CompaniesListPage() {
         )}
       </section>
 
-      <section className="workspace-panel-surface rounded-[28px] p-5">
+      <section className="workspace-panel-surface rounded-[28px] panel-body">
         {loading ? (
           <ListSkeleton count={6} layout="grid" itemClassName="h-40" />
         ) : loadError ? (

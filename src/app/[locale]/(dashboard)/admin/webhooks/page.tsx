@@ -484,7 +484,7 @@ export default function AdminWebhooksPage() {
         }
       />
 
-      <section className="workspace-panel-surface overflow-hidden rounded-[20px] p-4">
+      <section className="workspace-panel-surface overflow-hidden rounded-[20px] panel-body">
 
         {/* Stats Row */}
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -731,7 +731,7 @@ export default function AdminWebhooksPage() {
           />
           <div className="relative z-10 flex h-full w-full max-w-md flex-col border-l border-border/50 bg-background shadow-2xl animate-in slide-in-from-right duration-300">
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-border/60 bg-muted/20 px-5 py-4">
+            <div className="flex items-center justify-between bg-muted/20 panel-head">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <Activity className="h-4 w-4 text-sky-500 shrink-0" />
@@ -747,7 +747,7 @@ export default function AdminWebhooksPage() {
 
             {/* Summary bar */}
             {!logLoading && logEntries.length > 0 && (
-              <div className="flex items-center gap-4 border-b border-border/40 px-5 py-2.5 text-xs">
+              <div className="flex items-center gap-4 border-b border-border/40 text-xs panel-head">
                 <span className="flex items-center gap-1.5 text-status-selected">
                   <CheckCircle2 className="h-3 w-3" />
                   {logEntries.filter((e) => e.status === "success").length} success

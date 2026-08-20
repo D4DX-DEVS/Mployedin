@@ -358,7 +358,7 @@ export default function EmployerWorkflowPage() {
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.35fr,0.65fr]">
         {/* ─── Pipeline Stages ─── */}
-        <section className="workspace-panel-surface space-y-4 rounded-[28px] p-4 sm:p-6">
+        <section className="workspace-panel-surface space-y-4 rounded-[28px] panel-body">
           <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("workflowBuilder")}</p>
@@ -512,7 +512,7 @@ export default function EmployerWorkflowPage() {
 
         {/* ─── Automation Settings ─── */}
         <div className="space-y-4">
-          <section className="workspace-panel-surface space-y-5 rounded-[28px] p-6">
+          <section className="workspace-panel-surface space-y-5 rounded-[28px] panel-body">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("automation")}</p>
               <h3 className="mt-2 text-lg font-semibold text-foreground">{t("recruitmentRules")}</h3>

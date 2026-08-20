@@ -2447,3 +2447,69 @@ body {
 /* touch: force turbopack css rebuild */
 
 /* rhythm tweak */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Workspace mobile chrome trim
+   ═══════════════════════════════════════════════════════════════════════════
+   Dashboard pages were authored with a decorative header stack: an uppercase
+   eyebrow, then the heading that says the same thing, then a supporting
+   sentence. On a phone that is ~90px of chrome before any data. Desktop keeps
+   it (`max-width: 639px`), and the selectors are structural so nothing that
+   labels a real value is caught:
+
+     • the eyebrow only disappears when a heading follows it directly
+       (form labels are followed by inputs, data labels by their value)
+     • the glass pill variant is label-only by construction
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 639px) {
+  .dashboard-main :is(p, div, span)[class~="tracking-[0.18em]"]:has(+ :is(h1, h2, h3)) {
+    display: none;
+  }
+
+  .dashboard-main .workspace-glass-panel[class~="inline-flex"][class~="uppercase"] {
+    display: none;
+  }
+}
+
+/* ── Marketing prose in workspace panels ──────────────────────────────────
+   Nearly every page repeats the same header shape: heading, then a sentence
+   restating it, then the data. "Review the hires that have already crossed
+   the line." followed by "Candidate identity, job context, placement type…"
+   is two paragraphs of prose the operator already knows. On a phone that is
+   the whole first viewport, so it is dropped there and kept on desktop.
+
+   Structural, not class-based: only a paragraph that IMMEDIATELY follows a
+   heading inside a workspace panel qualifies, so labels, values, empty-state
+   copy and error messages are never caught. */
+@media (max-width: 639px) {
+  .dashboard-main
+    :is(.workspace-panel-surface, .workspace-hero-surface, .page-header-root):not([class*="border-destructive"]):not([role="alert"])
+    :is(h1, h2)
+    + p:not([role="alert"]) {
+    display: none;
+  }
+
+  .dashboard-main .page-header-description {
+    display: none;
+  }
+
+  /* Sentence-length headings are common here; keep them to a readable size
+     instead of three lines of 20px type. */
+  .dashboard-main :is(.workspace-panel-surface, .workspace-hero-surface) h2 {
+    font-size: 1rem;
+    line-height: 1.35;
+  }
+}
+
+/* ponytail: full-width empty/message rows stay centered on phones — the card
+   layout otherwise right-aligns them like a label/value pair. */
+@media (max-width: 639px) {
+  table.responsive-card-table > tbody > tr > td[colspan] {
+    display: block !important;
+    text-align: center !important;
+  }
+  table.responsive-card-table > tbody > tr > td[colspan] > * {
+    justify-self: center !important;
+    margin-inline: auto;
+  }
+}

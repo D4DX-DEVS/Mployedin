@@ -168,7 +168,7 @@ export function RecommendedJobs({ locale }: { locale: string }) {
 
   if (isLoading) {
     return (
-      <div className="card-base p-3 sm:p-6">
+      <div className="card-base panel-body">
         <div className="mb-3 sm:mb-4 flex items-center justify-between">
           <div className="h-4 w-36 rounded bg-muted animate-pulse" />
           <div className="h-8 w-28 rounded bg-muted animate-pulse" />
@@ -184,7 +184,7 @@ export function RecommendedJobs({ locale }: { locale: string }) {
 
   if (error) {
     return (
-      <div className="card-base p-3 sm:p-6 text-center">
+      <div className="card-base text-center panel-body">
         <p className="text-sm text-muted-foreground">{t("failedToLoad")}</p>
       </div>
     );
@@ -192,7 +192,7 @@ export function RecommendedJobs({ locale }: { locale: string }) {
 
   if (allJobs.length === 0) {
     return (
-      <div className="card-base p-3 sm:p-6 text-center">
+      <div className="card-base text-center panel-body">
         <Sparkles className="mx-auto h-8 w-8 text-muted-foreground/40" />
         <p className="mt-2 text-sm font-medium text-muted-foreground">{t("noMatches")}</p>
         <p className="text-xs text-muted-foreground mb-3">
@@ -208,7 +208,7 @@ export function RecommendedJobs({ locale }: { locale: string }) {
   }
 
   return (
-    <div className="card-base p-3 sm:p-6">
+    <div className="card-base panel-body">
       <div className="mb-3 sm:mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />

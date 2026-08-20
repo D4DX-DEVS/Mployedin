@@ -131,7 +131,7 @@ function Section({
 }) {
   return (
     <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
-      <div className="flex items-center gap-3 px-5 py-3.5 border-b border-border/40 bg-muted/30">
+      <div className="flex items-center gap-3 border-b border-border/40 bg-muted/30 panel-head">
         <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
           <Icon className="w-3.5 h-3.5 text-primary" />
         </div>
@@ -199,7 +199,7 @@ function EditListSection({
 }) {
   return (
     <div className="rounded-2xl border border-dashed border-border/60 bg-card overflow-hidden">
-      <div className="flex items-center gap-3 px-5 py-3.5 border-b border-border/40 bg-muted/20">
+      <div className="flex items-center gap-3 border-b border-border/40 bg-muted/20 panel-head">
         <div>
           <p className="text-sm font-semibold">{title}</p>
           <p className="text-xs text-muted-foreground">{subtitle}</p>
@@ -504,22 +504,15 @@ export function SharedJobEditPage({
     if (publish) payload.status = "active";
 
     try {
-      const result = (await updateJob.mutateAsync({ jobId: id, updates: payload })) as { job?: { status?: string } };
+      await updateJob.mutateAsync({ jobId: id, updates: payload });
       setSubmitState("saved");
-      // Unverified employers get rerouted to the moderation queue by the API —
-      // tell them explicitly instead of silently redirecting.
-      if (publish && result?.job?.status === "pending_approval") {
-        toast.info(t("pendingApprovalTitle"), { description: t("pendingApprovalDescription"), duration: 8000 });
-      } else if (publish) {
-        toast.success(t("publishedTitle"));
-      }
+      if (publish) toast.success(t("publishedTitle"));
       setTimeout(() => router.push(afterSaveHref), 900);
     } catch (err) {
       setGlobalError(err instanceof Error ? err.message : "Failed to update job");
       setSubmitState("error");
       setTimeout(() => setSubmitState("idle"), 3000);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [afterSaveHref, form, id, router, updateJob]);
 
   async function generateDescription() {
@@ -561,7 +554,7 @@ export function SharedJobEditPage({
 
   if (loading) {
     return (
-      <div className="page-container max-w-6xl space-y-3 sm:space-y-4">
+      <div className="page-container max-w-6xl">
         {[1, 2, 3].map((i) => (
           <div key={i} className="rounded-2xl border border-border/60 bg-card h-40 animate-pulse" />
         ))}
@@ -1177,7 +1170,7 @@ export function SharedJobEditPage({
         <div className="hidden xl:block">
           <div className="sticky top-6 space-y-3">
             <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
-              <div className="bg-muted/30 border-b border-border/40 px-4 py-3 flex items-center gap-2">
+              <div className="bg-muted/30 border-b border-border/40 flex items-center gap-2 panel-head">
                 <Eye className="w-3.5 h-3.5 text-primary" />
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("livePreview")}</p>
               </div>

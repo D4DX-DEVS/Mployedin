@@ -252,7 +252,7 @@ export default function LeadDetailPage() {
       {/* Main content: 2-column layout */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         {/* Left: Contact & Details */}
-        <section className="workspace-panel-surface space-y-5 rounded-[28px] p-5 sm:p-6 lg:col-span-1">
+        <section className="workspace-panel-surface space-y-5 rounded-[28px] lg:col-span-1 panel-body">
           <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">{t("contactDetails")}</h2>
           <div className="space-y-3 text-sm">
             <InfoRow icon={<User className="h-4 w-4" />} label={t("contactLabel")} value={lead.contactPerson} />
@@ -292,7 +292,7 @@ export default function LeadDetailPage() {
         </section>
 
         {/* Right: Activity Timeline */}
-        <section className="workspace-panel-surface space-y-5 rounded-[28px] p-5 sm:p-6 lg:col-span-2">
+        <section className="workspace-panel-surface space-y-5 rounded-[28px] lg:col-span-2 panel-body">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">{t("activityTimeline")}</h2>
             <Button

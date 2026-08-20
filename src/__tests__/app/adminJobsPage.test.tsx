@@ -148,33 +148,6 @@ describe("AdminJobsPage", () => {
     expect(pushMock).toHaveBeenCalledWith("/en/admin/jobs/job-1/edit");
   });
 
-  it("uses POST for approve and reject actions", async () => {
-    const user = userEvent.setup();
-    render(<AdminJobsPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText("Senior Recruiter")).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByRole("button", { name: /approve/i }));
-    await user.click(screen.getByRole("button", { name: /reject/i }));
-
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/admin/jobs/job-1/approve",
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({ approved: true }),
-      }),
-    );
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/admin/jobs/job-1/approve",
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({ approved: false }),
-      }),
-    );
-  });
-
   it("deletes jobs through the shared jobs endpoint", async () => {
     const user = userEvent.setup();
     render(<AdminJobsPage />);

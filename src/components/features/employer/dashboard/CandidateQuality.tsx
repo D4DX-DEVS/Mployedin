@@ -37,7 +37,7 @@ export function CandidateQuality({
   const dashOffset = circumference - (circumference * percentage) / 100;
 
   return (
-    <div className="card-base p-0 overflow-hidden">
+    <div className="card-base overflow-hidden panel-body">
       <div className="px-5 pt-5 pb-3 sm:px-6 sm:pt-6">
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
           {t("candidateQuality")}

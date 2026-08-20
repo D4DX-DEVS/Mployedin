@@ -150,7 +150,7 @@ export default function PlacementDetailPage() {
         </div>
       </div>
 
-      <div className="card-base p-5 sm:p-6 space-y-5">
+      <div className="card-base space-y-5 panel-body">
         <div>
           <h1 className="text-xl font-bold tracking-tight sm:text-2xl">{candidate?.name ?? t("candidate")}</h1>
           {candidate?.email && <p className="text-sm text-muted-foreground mt-0.5">{candidate.email}</p>}
@@ -189,7 +189,7 @@ export default function PlacementDetailPage() {
 
       <Link
         href={`/${locale}/employer/placements/${id}/onboarding`}
-        className="card-base flex items-center justify-between gap-3 p-5 transition-colors hover:bg-muted/40"
+        className="card-base flex items-center justify-between gap-3 transition-colors hover:bg-muted/40 panel-body"
       >
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">

@@ -256,7 +256,7 @@ export default async function JobSeekerCompanyPage({ params }: PageProps) {
 
           <div className="mt-5 sm:mt-6 grid gap-5 sm:gap-6 lg:grid-cols-[minmax(0,1.7fr)_320px]">
             <div className="space-y-5 sm:space-y-6">
-              <section className="card-base rounded-lg sm:rounded-[28px] p-4 sm:p-6">
+              <section className="card-base rounded-lg sm:rounded-[28px] panel-body">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("aboutSection")}</div>
                 <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">{t("whatCompanyHiring")}</h2>
                 <p className="mt-4 text-sm leading-7 text-muted-foreground">
@@ -264,7 +264,7 @@ export default async function JobSeekerCompanyPage({ params }: PageProps) {
                 </p>
               </section>
 
-              <section className="card-base rounded-lg sm:rounded-[28px] p-4 sm:p-6">
+              <section className="card-base rounded-lg sm:rounded-[28px] panel-body">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("openRoles")}</div>
@@ -326,7 +326,7 @@ export default async function JobSeekerCompanyPage({ params }: PageProps) {
             </div>
 
             <div className="space-y-4 sm:space-y-5 lg:sticky lg:top-6 lg:self-start">
-              <section className="card-base rounded-lg sm:rounded-[28px] p-4 sm:p-5">
+              <section className="card-base rounded-lg sm:rounded-[28px] panel-body">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("trustSignals")}</div>
                 <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">{t("companySnapshot")}</h3>
                 <div className="mt-4 space-y-3 text-sm text-muted-foreground">
@@ -351,7 +351,7 @@ export default async function JobSeekerCompanyPage({ params }: PageProps) {
                 </div>
               </section>
 
-              <section className="card-base rounded-lg sm:rounded-[28px] p-4 sm:p-5">
+              <section className="card-base rounded-lg sm:rounded-[28px] panel-body">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("links")}</div>
                 <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">{t("exploreFurther")}</h3>
                 <div className="mt-4 space-y-3">

@@ -108,7 +108,7 @@ export default function EmployerPlacementsPage() {
         ]}
       />
 
-      <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
+      <section className="workspace-panel-surface rounded-[28px] panel-body">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("filterOutcomes")}</p>
@@ -165,7 +165,7 @@ export default function EmployerPlacementsPage() {
       </section>
 
       {error ? (
-        <section className="workspace-panel-surface rounded-[28px] border border-red-500/20 p-6">
+        <section className="workspace-panel-surface rounded-[28px] border border-red-500/20 panel-body">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-rejected">{t("placementList")}</p>
@@ -180,7 +180,7 @@ export default function EmployerPlacementsPage() {
           </div>
         </section>
       ) : (
-      <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
+      <section className="workspace-panel-surface rounded-[28px] panel-body">
         <div className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("placementList")}</p>

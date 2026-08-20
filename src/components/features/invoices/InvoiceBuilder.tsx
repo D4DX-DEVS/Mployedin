@@ -1368,7 +1368,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                                     key={job._id}
                                     type="button"
                                     onClick={() => setSelectedJobId(job._id)}
-                                    className="flex w-full items-start gap-3 border-b border-border/30 px-3 py-2.5 text-left transition-colors last:border-b-0 hover:bg-accent"
+                                    className="flex w-full items-start gap-3 border-b border-border/30 text-left transition-colors last:border-b-0 hover:bg-accent panel-head"
                                   >
                                     <div className="min-w-0 flex-1">
                                       <p className="truncate text-sm font-medium text-foreground">{job.title}</p>
@@ -1621,7 +1621,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
   
                     {/* Line Items — ERP-style table */}
                     <div className="rounded-lg border border-border/60 bg-card">
-                      <div className="flex items-center justify-between border-b border-border/50 px-4 py-3">
+                      <div className="flex items-center justify-between border-b border-border/50 panel-head">
                         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("itemTable")}</p>
                         <Button variant="outline" size="sm" onClick={addLineItem} className="h-7 gap-1 rounded-lg text-[10px]">
                           <Plus className="h-3 w-3" /> {t("addNewRow")}
@@ -1677,12 +1677,12 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
   
                     {/* Total Summary */}
                     <div className="rounded-lg border border-border/70 bg-card">
-                      <div className="flex items-center justify-between border-b border-border/50 px-4 py-2">
+                      <div className="flex items-center justify-between border-b border-border/50 panel-head">
                         <span className="text-xs text-muted-foreground">{t("subtotal")}</span>
                         <span className="text-sm font-medium">{fmt(subtotal)}</span>
                       </div>
                       {taxType !== "none" && taxPercent > 0 && (
-                        <div className="flex items-center justify-between border-b border-border/50 px-4 py-2">
+                        <div className="flex items-center justify-between border-b border-border/50 panel-head">
                           <span className="text-xs text-muted-foreground">{t("tax")} ({taxType.toUpperCase()} {taxPercent}%)</span>
                           <span className="text-sm font-medium">{fmt(taxAmount)}</span>
                         </div>

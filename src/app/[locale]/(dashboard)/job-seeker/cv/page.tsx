@@ -572,7 +572,7 @@ export default function CVBuilderPage() {
             <TabsContent value="editor">
               <div className="space-y-5">
                 {/* Import from CV */}
-                <div className="card-base p-4">
+                <div className="card-base panel-body">
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                     <div className="flex items-center gap-3 flex-1">
                       <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -938,7 +938,7 @@ export default function CVBuilderPage() {
 
             {/* ──── TAB: TEMPLATES ──── */}
             <TabsContent value="templates">
-              <div className="card-base p-5">
+              <div className="card-base panel-body">
                 <TemplatePicker
                   selected={selectedTemplate}
                   onSelect={setSelectedTemplate}
@@ -949,7 +949,7 @@ export default function CVBuilderPage() {
 
             {/* ──── TAB: FORMATTING ──── */}
             <TabsContent value="formatting">
-              <div className="card-base p-5">
+              <div className="card-base panel-body">
                 <FormattingPanel formatting={formatting} onChange={setFormatting} />
               </div>
             </TabsContent>

@@ -127,7 +127,7 @@ export function AIInsightsPanel({
   const shown = insights.slice(0, 3);
 
   return (
-    <div className="card-base p-0 overflow-hidden">
+    <div className="card-base overflow-hidden panel-body">
       <div className="px-5 pt-5 pb-3 sm:px-6 sm:pt-6 flex items-center gap-2">
         <Bot className="h-4 w-4 text-primary" />
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">

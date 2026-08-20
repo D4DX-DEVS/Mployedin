@@ -858,7 +858,7 @@ export default function EmployerApplicationsPage() {
         <span className="font-medium text-foreground">{isLoading ? "—" : selectedStageCount}</span> {t("selected")}
       </div>
 
-      <section className="workspace-panel-surface rounded-[22px] p-3 sm:p-4">
+      <section className="workspace-panel-surface rounded-[22px] panel-body">
 
           <div className="mb-2 flex items-center gap-2 sm:mb-3">
             <button

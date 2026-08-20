@@ -715,7 +715,7 @@ export default function AgentLeadsPage() {
       />
 
       {/* ──── Toolbar ──── */}
-      <section className="workspace-panel-surface rounded-[28px] p-3.5 sm:p-4">
+      <section className="workspace-panel-surface rounded-[28px] panel-body">
         {/* Opt into the shared mobile toolbar rules (see globals.css). Scoped to
             this row, not the whole section — the stage pills below carry leading
             icons too, and the icon-only rule would strip their labels. */}

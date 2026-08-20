@@ -31,6 +31,16 @@ export default async function AuthLayout({
           <div className="absolute left-[-12%] top-[-12%] h-[360px] w-[360px] rounded-full bg-brand-blue/15 blur-[110px]" />
           <div className="absolute bottom-[-18%] right-[-10%] h-[420px] w-[420px] rounded-full bg-brand-cyan/15 blur-[130px]" />
 
+          <Image
+            src="/login-bg.png"
+            alt=""
+            width={700}
+            height={467}
+            aria-hidden
+            priority
+            className="pointer-events-none hidden xl:block absolute right-[3%] top-[16%] w-[48%] max-w-[560px] select-none object-contain opacity-60"
+          />
+
           <div className="relative z-10 flex h-full flex-col justify-between p-8 xl:p-12">
             <div className="flex items-center justify-between gap-4">
               <Link
@@ -124,7 +134,7 @@ export default async function AuthLayout({
           </div>
         </div>
 
-        <div className="flex min-w-0 flex-1 flex-col bg-background/92 px-3 py-3 sm:px-6 sm:py-4 lg:w-[540px] lg:flex-none xl:w-[580px]">
+        <div className="flex min-w-0 flex-1 flex-col bg-background/92 px-3 py-3 sm:px-6 sm:py-4 lg:w-[480px] lg:flex-none xl:w-[520px]">
           <div className="mx-auto flex w-full max-w-md flex-1 items-center">
             <div className="w-full rounded-2xl border border-border/60 bg-background/86 p-4 shadow-[0_30px_80px_-42px_rgba(15,23,42,0.35)] backdrop-blur dark:shadow-[0_30px_80px_-42px_rgba(0,0,0,0.55)] sm:rounded-[26px] sm:p-5 md:p-6">
               <SessionWrapper disableIdleTimeout>

@@ -369,7 +369,7 @@ export default function AdminAgentsPage() {
       <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
         {/* data-table-toolbar opts this hand-rolled header into the shared
             mobile toolbar rules, same as pages built on <TableToolbar>. */}
-        <div data-table-toolbar="compact-admin" className="flex flex-wrap items-center gap-2 border-b border-border/80 px-3 py-2.5 sm:px-5 sm:py-4">
+        <div data-table-toolbar="compact-admin" className="flex flex-wrap items-center gap-2 border-b border-border/80 panel-head">
             <div className="relative toolbar-search-field">
               <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input

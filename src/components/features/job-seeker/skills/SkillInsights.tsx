@@ -40,7 +40,7 @@ export function SkillInsights({ jobId }: SkillInsightsProps) {
   const matchCount = data.matchedSkills.length + data.confirmedSkills.length;
 
   return (
-    <section className="card-base rounded-xl sm:rounded-[28px] p-4 sm:p-6">
+    <section className="card-base rounded-xl sm:rounded-[28px] panel-body">
       <div className="flex items-center gap-2">
         <Lightbulb className="h-4 w-4 text-amber-500" />
         <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">

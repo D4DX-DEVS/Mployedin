@@ -32,8 +32,8 @@ export default function AgentJobDetailPage() {
     return (
       <div className="page-container">
         <div className="h-9 w-32 bg-muted animate-pulse rounded-lg" />
-        <div className="card-base p-5 sm:p-6 h-52 animate-pulse bg-muted/40" />
-        <div className="card-base p-5 sm:p-6 h-36 animate-pulse bg-muted/40" />
+        <div className="card-base h-52 animate-pulse bg-muted/40 panel-body" />
+        <div className="card-base h-36 animate-pulse bg-muted/40 panel-body" />
       </div>
     );
   }
@@ -80,7 +80,7 @@ export default function AgentJobDetailPage() {
       </div>
 
       {/* Header card */}
-      <div className="card-base p-5 sm:p-6">
+      <div className="card-base panel-body">
         <div className="flex items-start justify-between gap-4 mb-5">
           <div className="min-w-0">
             <h1 className="text-2xl font-bold tracking-tight text-foreground mb-2">{job.title}</h1>
@@ -154,7 +154,7 @@ export default function AgentJobDetailPage() {
       </div>
 
       {/* Description */}
-      <div className="card-base p-5 sm:p-6">
+      <div className="card-base panel-body">
         <h2 className="text-base font-semibold text-foreground mb-3">{t("jobDescription")}</h2>
         <div className="text-sm leading-relaxed text-foreground/80 whitespace-pre-wrap">
           {job.description}
@@ -163,7 +163,7 @@ export default function AgentJobDetailPage() {
 
       {/* Requirements */}
       {job.requirements && (
-        <div className="card-base p-5 sm:p-6">
+        <div className="card-base panel-body">
           <h2 className="text-base font-semibold text-foreground mb-4">{t("requirements")}</h2>
 
           {job.requirements.skills && job.requirements.skills.length > 0 && (
@@ -204,7 +204,7 @@ export default function AgentJobDetailPage() {
 
       {/* Tags */}
       {job.tags && job.tags.length > 0 && (
-        <div className="card-base p-5 sm:p-6">
+        <div className="card-base panel-body">
           <h2 className="text-base font-semibold text-foreground mb-3 flex items-center gap-2">
             <Tag className="w-4 h-4 text-muted-foreground" /> {t("tags")}
           </h2>

@@ -504,7 +504,7 @@ export default function AgentExhibitionsPage() {
         />
       </DashboardPageHeader>
 
-      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
+      <section className="workspace-panel-surface rounded-[28px] panel-body">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Your requests</p>
           <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Request history</h2>

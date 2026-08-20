@@ -294,7 +294,7 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
       />
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,0.94fr)_minmax(0,1.06fr)]">
-        <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
+        <section className="workspace-panel-surface rounded-[28px] panel-body">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sections.funnel.eyebrow")}</p>
@@ -316,7 +316,7 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
           </div>
         </section>
 
-        <section className="order-1 workspace-panel-surface rounded-2xl p-4 sm:p-5 xl:order-2">
+        <section className="order-1 workspace-panel-surface rounded-2xl xl:order-2 panel-body">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sections.quickActions.eyebrow")}</p>
             <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("sections.quickActions.title")}</h2>
@@ -348,7 +348,7 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
         </section>
       </div>
 
-      <section className="workspace-panel-surface rounded-2xl p-4 sm:p-5">
+      <section className="workspace-panel-surface rounded-2xl panel-body">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sections.rolePerformance.eyebrow")}</p>

@@ -22,6 +22,8 @@ interface ChatThreadSummary {
 interface AIChatDraftsCardProps {
   locale: string;
   variant?: "card" | "banner";
+  /** Reports the live draft count so a parent can lay out around an empty card. */
+  onCountChange?: (count: number) => void;
 }
 
 /**
@@ -35,7 +37,7 @@ interface AIChatDraftsCardProps {
  *
  * Self-hides client-side when no drafts exist (zero DOM cost otherwise).
  */
-export function AIChatDraftsCard({ locale, variant = "card" }: AIChatDraftsCardProps) {
+export function AIChatDraftsCard({ locale, variant = "card", onCountChange }: AIChatDraftsCardProps) {
   const t = useTranslations("employerDashboard.aiChatDrafts");
   const router = useRouter();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
@@ -57,6 +59,10 @@ export function AIChatDraftsCard({ locale, variant = "card" }: AIChatDraftsCardP
     })();
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    if (drafts !== null) onCountChange?.(drafts.length);
+  }, [drafts, onCountChange]);
 
   if (!drafts || drafts.length === 0) return null;
 

@@ -52,7 +52,7 @@ export async function RecentActivity({ items }: RecentActivityProps) {
 
   if (items.length === 0) {
     return (
-      <div className="card-base p-3 sm:p-6 text-center">
+      <div className="card-base text-center panel-body">
         <Clock className="mx-auto h-8 w-8 text-muted-foreground/40" />
         <p className="mt-2 text-sm text-muted-foreground">
           {t("noRecentActivity")}
@@ -65,7 +65,7 @@ export async function RecentActivity({ items }: RecentActivityProps) {
   }
 
   return (
-    <div className="card-base p-3 sm:p-6">
+    <div className="card-base panel-body">
       <h3 className="mb-3 sm:mb-4 text-sm font-semibold">{t("recentActivity")}</h3>
       <div className="space-y-2 sm:space-y-3">
         {items.map((item, i) => {

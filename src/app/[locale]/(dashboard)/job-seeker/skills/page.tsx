@@ -541,7 +541,7 @@ export default function JobSeekerSkillsPage() {
           <span className="ml-2 text-sm text-muted-foreground">{t("loadingProfile")}</span>
         </div>
       ) : (
-      <div className="card-base mb-6 p-5 sm:p-7">
+      <div className="card-base mb-6 panel-body">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {/* Role */}
           <div className="space-y-3">
@@ -711,7 +711,7 @@ export default function JobSeekerSkillsPage() {
           className={`space-y-3 sm:space-y-6 ${animateScore ? "animate-in fade-in-0 slide-in-from-bottom-4 duration-500" : ""}`}
         >
           {/* ── HERO SCORE BANNER ── */}
-          <div className="card-base overflow-hidden p-0">
+          <div className="card-base overflow-hidden panel-body">
             <div className="bg-gradient-to-br from-primary/5 via-background to-primary/[0.02] p-4 sm:p-6 md:p-8">
               <div className="flex flex-col items-center gap-4 sm:gap-6 md:gap-10 sm:flex-row">
                 <RadialProgress
@@ -767,7 +767,7 @@ export default function JobSeekerSkillsPage() {
             <div className="space-y-3 sm:space-y-6 lg:col-span-7">
               {/* Gap Visualization Bars */}
               {skillBars.length > 0 && (
-                <div className="card-base p-5 sm:p-6">
+                <div className="card-base panel-body">
                   <h3 className="mb-4 text-sm font-semibold">
                     {t("gapVisualization")}
                   </h3>
@@ -801,7 +801,7 @@ export default function JobSeekerSkillsPage() {
 
               {/* Top 3 Actions — "Do This Next" */}
               {impactSuggestions.length > 0 && (
-                <div className="card-base p-5 sm:p-6">
+                <div className="card-base panel-body">
                   <div className="mb-4 flex items-center gap-2">
                     <Flame className="h-4 w-4 text-orange-500" />
                     <h3 className="text-sm font-semibold">
@@ -875,7 +875,7 @@ export default function JobSeekerSkillsPage() {
 
               {/* Recommendations */}
               {gapResult.recommendations.length > 0 && (
-                <div className="card-base p-5 sm:p-6">
+                <div className="card-base panel-body">
                   <h3 className="mb-3 text-sm font-semibold">
                     {t("recommendations")}
                   </h3>
@@ -897,7 +897,7 @@ export default function JobSeekerSkillsPage() {
             {/* RIGHT COLUMN */}
             <div className="space-y-6 lg:col-span-5">
               {/* Recommended Skills (compact chips) */}
-              <div className="card-base p-5 sm:p-6">
+              <div className="card-base panel-body">
                 <div className="mb-4 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <Sparkles className="h-4 w-4 text-primary" />
@@ -976,7 +976,7 @@ export default function JobSeekerSkillsPage() {
 
               {/* Learning Path (Timeline) */}
               {gapResult.criticalGaps.length > 0 && (
-                <div className="card-base p-5 sm:p-6">
+                <div className="card-base panel-body">
                   <div className="mb-4 flex items-center gap-2">
                     <BookOpen className="h-4 w-4 text-primary" />
                     <h3 className="text-sm font-semibold">
@@ -1015,7 +1015,7 @@ export default function JobSeekerSkillsPage() {
 
               {/* Growth Stats */}
               {progress && (
-                <div className="card-base p-5 sm:p-6">
+                <div className="card-base panel-body">
                   <div className="mb-3 flex items-center gap-2">
                     <TrendingUp className="h-4 w-4 text-primary" />
                     <h3 className="text-sm font-semibold">
@@ -1055,7 +1055,7 @@ export default function JobSeekerSkillsPage() {
               )}
 
               {/* Job Match CTA */}
-              <div className="card-base overflow-hidden p-0">
+              <div className="card-base overflow-hidden panel-body">
                 <div className="bg-gradient-to-r from-primary to-primary/80 p-5 text-primary-foreground sm:p-6">
                   <div className="mb-1 flex items-center gap-2">
                     <Briefcase className="h-5 w-5" />

@@ -41,7 +41,7 @@ export async function UpcomingInterviews({
 
   if (interviews.length === 0) {
     return (
-      <div className="card-base p-3 sm:p-6 text-center">
+      <div className="card-base text-center panel-body">
         <Calendar className="mx-auto h-8 w-8 text-muted-foreground/40" />
         <p className="mt-2 text-sm text-muted-foreground">
           {t("noUpcomingInterviews")}
@@ -54,7 +54,7 @@ export async function UpcomingInterviews({
   }
 
   return (
-    <div className="card-base p-3 sm:p-6">
+    <div className="card-base panel-body">
       <div className="mb-3 sm:mb-4 flex items-center justify-between">
         <h3 className="text-sm font-semibold">{t("upcomingInterviews")}</h3>
         <Link

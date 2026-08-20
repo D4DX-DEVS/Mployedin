@@ -263,7 +263,7 @@ export default function EmployerMatchingWeightsPage() {
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.35fr,0.65fr]">
         {/* Sliders */}
-        <section className="workspace-panel-surface space-y-5 rounded-[28px] p-6">
+        <section className="workspace-panel-surface space-y-5 rounded-[28px] panel-body">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("weightBuilder")}</p>
@@ -330,7 +330,7 @@ export default function EmployerMatchingWeightsPage() {
 
         {/* Visualization */}
         <div className="space-y-5">
-          <section className="workspace-panel-surface space-y-4 rounded-[28px] p-6">
+          <section className="workspace-panel-surface space-y-4 rounded-[28px] panel-body">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("distribution")}</p>
               <h3 className="mt-2 text-lg font-semibold text-foreground">{t("weightOverview")}</h3>

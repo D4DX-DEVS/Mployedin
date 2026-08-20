@@ -78,7 +78,7 @@ export function CurrencySelect({
         }}
       >
         {/* Search */}
-        <div className="flex items-center gap-2 border-b border-border/40 px-3 py-2.5">
+        <div className="flex items-center gap-2 border-b border-border/40 panel-head">
           <Search className="h-4 w-4 shrink-0 text-muted-foreground/60" />
           <input
             ref={inputRef}

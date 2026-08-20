@@ -114,7 +114,7 @@ export default function PortfolioPage() {
       />
 
       {showForm && (
-        <section className="workspace-panel-surface rounded-[28px] p-5 space-y-4">
+        <section className="workspace-panel-surface rounded-[28px] space-y-4 panel-body">
           <h2 className="text-lg font-semibold text-foreground">{t("addProject")}</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             <Input placeholder={t("projectTitlePlaceholder")} value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} />
@@ -137,7 +137,7 @@ export default function PortfolioPage() {
         </section>
       )}
 
-      <section className="workspace-panel-surface rounded-[28px] p-5">
+      <section className="workspace-panel-surface rounded-[28px] panel-body">
         {loading ? (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (

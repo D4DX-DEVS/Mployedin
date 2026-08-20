@@ -140,7 +140,7 @@ export default function ApplicationDetailPage() {
   const isActive = !["rejected", "withdrawn", "hired"].includes(app.status);
 
   return (
-    <div className="page-container max-w-3xl gap-4 pt-3 md:pt-4">
+    <div className="page-container max-w-3xl pt-3 md:pt-4">
       {/* Back Button */}
       <Button
         variant="ghost"
@@ -152,7 +152,7 @@ export default function ApplicationDetailPage() {
       </Button>
 
       {/* ── Header Card ─────────────────────────────────────────── */}
-      <section className="card-base rounded-lg sm:rounded-2xl border p-3 sm:p-5 space-y-3">
+      <section className="card-base rounded-lg sm:rounded-2xl border space-y-3 panel-body">
         <div className="flex items-start gap-2 sm:gap-3">
           <div className="h-12 w-12 rounded-xl border bg-muted/20 flex items-center justify-center shrink-0">
             {employer?.logo ? (
@@ -294,7 +294,7 @@ function InterviewActionCard({ interview: iv, onUpdated }: { interview: Intervie
   }
 
   return (
-    <div className="card-base rounded-xl border p-4 space-y-2.5">
+    <div className="card-base rounded-xl border space-y-2.5 panel-body">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="capitalize text-xs">
@@ -437,7 +437,7 @@ function OfferActionCard({ offer, onUpdated }: { offer: OfferItem; onUpdated: ()
   }
 
   return (
-    <div className="card-base rounded-xl border border-emerald-200/70 bg-emerald-50/30 p-4 space-y-2.5">
+    <div className="card-base rounded-xl border border-emerald-200/70 bg-emerald-50/30 space-y-2.5 panel-body">
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium text-emerald-800">{t("offer")}</span>
         <Badge variant="outline" className={cn(
@@ -610,7 +610,7 @@ function DocumentsSection({
           {documents.map((doc, i) => (
             <div
               key={`${doc.url}-${i}`}
-              className="card-base rounded-xl border p-3 flex items-center gap-3"
+              className="card-base rounded-xl border flex items-center gap-3 panel-body"
             >
               <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
               <div className="flex-1 min-w-0">
@@ -639,14 +639,14 @@ function DocumentsSection({
           ))}
         </div>
       ) : (
-        <div className="card-base rounded-xl border border-dashed p-6 text-center text-muted-foreground text-sm">
+        <div className="card-base rounded-xl border border-dashed text-center text-muted-foreground text-sm panel-body">
           {t("noDocumentsAttached")}
         </div>
       )}
 
       {/* Add Document Form */}
       {showUpload && (
-        <div className="card-base rounded-xl border p-4 space-y-3">
+        <div className="card-base rounded-xl border space-y-3 panel-body">
           <h3 className="text-sm font-medium">{t("addDocument")}</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">

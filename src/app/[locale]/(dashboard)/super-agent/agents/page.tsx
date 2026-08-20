@@ -46,6 +46,17 @@ interface AgentRow {
   avgResponseHours: number;
 }
 
+function aiRowData(a: AgentRow) {
+  return {
+    name: a.name,
+    leads: a.leadsCount,
+    conversions: a.conversions,
+    placements: a.placements,
+    conversionRate: a.conversionRate,
+    avgResponseHours: a.avgResponseHours,
+  };
+}
+
 /* ── Filter types ── */
 interface Filters {
   search: string;
@@ -347,7 +358,7 @@ export default function SuperAgentAgentsPage() {
         description={t("pageDescription")}
       >
         <div className="flex flex-col gap-3 sm:min-w-[160px] xl:min-w-[180px]">
-          <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
+          <div className="hidden workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:block">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("roster")}</p>
             <p className="mt-1 text-lg font-semibold text-foreground">{total} {t("visibleRows")}</p>
             <p className="text-xs text-muted-foreground">{t("paginationSync")}</p>
@@ -531,15 +542,21 @@ export default function SuperAgentAgentsPage() {
                     <div className="flex flex-col gap-1">
                       <span className="font-medium text-foreground">{a.name}</span>
                       <span className="text-xs text-muted-foreground">{a.email}</span>
-                      {badges.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
-                          {badges.map((b) => (
-                            <span key={b.label} className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded-full", b.className)}>
-                              {b.label}
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                      <div className="flex flex-wrap items-center gap-1">
+                        {badges.map((b) => (
+                          <span key={b.label} className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded-full", b.className)}>
+                            {b.label}
+                          </span>
+                        ))}
+                        {/* Phones: inline with the badges instead of a lone icon on its own card row. */}
+                        <span className="sm:hidden" onClick={(e) => e.stopPropagation()}>
+                          <AIExplainButton
+                            rowData={aiRowData(a)}
+                            entityLabel={t("entityLabelAgentPerformance")}
+                            context={t("aiExplainContext")}
+                          />
+                        </span>
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -560,16 +577,9 @@ export default function SuperAgentAgentsPage() {
                       />
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="!hidden sm:!table-cell">
                     <AIExplainButton
-                      rowData={{
-                        name: a.name,
-                        leads: a.leadsCount,
-                        conversions: a.conversions,
-                        placements: a.placements,
-                        conversionRate: a.conversionRate,
-                        avgResponseHours: a.avgResponseHours,
-                      }}
+                      rowData={aiRowData(a)}
                       entityLabel={t("entityLabelAgentPerformance")}
                       context={t("aiExplainContext")}
                     />

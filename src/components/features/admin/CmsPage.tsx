@@ -218,7 +218,7 @@ export default function CmsPage({
   ).length;
 
   return (
-    <div className="page-container admin-cms-page-container space-y-3 sm:space-y-4" data-admin-workspace="cms-page">
+    <div className="page-container admin-cms-page-container" data-admin-workspace="cms-page">
       {ConfirmDialogNode}
 
       <DashboardPageHeader

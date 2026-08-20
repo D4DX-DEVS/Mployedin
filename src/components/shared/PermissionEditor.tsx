@@ -290,7 +290,7 @@ export function PermissionEditor({
             <button
               type="button"
               onClick={() => toggleGroup(group.label)}
-              className="w-full flex items-center gap-2 px-3 py-1.5 bg-muted/20 text-xs font-semibold text-muted-foreground hover:bg-muted/30 transition-colors border-b border-border/20"
+              className="w-full flex items-center gap-2 bg-muted/20 text-xs font-semibold text-muted-foreground hover:bg-muted/30 transition-colors border-b border-border/20 panel-head"
             >
               <span className={`transition-transform ${expandedGroups.has(group.label) ? "rotate-90" : ""}`}>
                 ▸
