@@ -247,7 +247,7 @@ export default function BackgroundChecksPage() {
         </div>
       ) : (
         <>
-          <div className="workspace-panel-surface rounded-2xl p-3.5 sm:rounded-[28px] sm:p-5">
+          <div className="workspace-panel-surface rounded-2xl sm:rounded-[28px] panel-body">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

@@ -202,7 +202,7 @@ export default function UnifiedCandidatePage() {
       </div>
 
       {/* Profile Card */}
-      <div className="card-base p-6">
+      <div className="card-base panel-body">
         <div className="flex flex-col md:flex-row md:items-start gap-6">
           {/* Left — Info */}
           <div className="flex-1 space-y-3">
@@ -312,7 +312,7 @@ export default function UnifiedCandidatePage() {
           {/* Left Column — Structured Profile */}
           <div className="space-y-3 sm:space-y-6">
             {/* Summary */}
-            <div className="card-base p-5 space-y-3">
+            <div className="card-base space-y-3 panel-body">
               <h3 className="font-semibold text-sm flex items-center gap-2">
                 <User className="h-4 w-4 text-primary" /> {t("summary")}
               </h3>
@@ -377,7 +377,7 @@ export default function UnifiedCandidatePage() {
 
             {/* Work History */}
             {candidate.experience && candidate.experience.length > 0 && (
-              <div className="card-base p-5 space-y-3">
+              <div className="card-base space-y-3 panel-body">
                 <h3 className="font-semibold text-sm flex items-center gap-2">
                   <Briefcase className="h-4 w-4 text-primary" /> {t("workHistory")}
                 </h3>
@@ -403,7 +403,7 @@ export default function UnifiedCandidatePage() {
 
             {/* Education */}
             {candidate.education && candidate.education.length > 0 && (
-              <div className="card-base p-5 space-y-3">
+              <div className="card-base space-y-3 panel-body">
                 <h3 className="font-semibold text-sm flex items-center gap-2">
                   <GraduationCap className="h-4 w-4 text-primary" /> {t("education")}
                 </h3>
@@ -424,7 +424,7 @@ export default function UnifiedCandidatePage() {
 
             {/* Languages */}
             {candidate.languages && candidate.languages.length > 0 && (
-              <div className="card-base p-5 space-y-3">
+              <div className="card-base space-y-3 panel-body">
                 <h3 className="font-semibold text-sm flex items-center gap-2">
                   <Languages className="h-4 w-4 text-primary" /> {t("languages")}
                 </h3>
@@ -441,7 +441,7 @@ export default function UnifiedCandidatePage() {
 
             {/* Certifications */}
             {candidate.certifications && candidate.certifications.length > 0 && (
-              <div className="card-base p-5 space-y-3">
+              <div className="card-base space-y-3 panel-body">
                 <h3 className="font-semibold text-sm flex items-center gap-2">
                   <Award className="h-4 w-4 text-primary" /> {t("certifications")}
                 </h3>
@@ -455,7 +455,7 @@ export default function UnifiedCandidatePage() {
 
             {/* Full Skills */}
             {candidate.skills && candidate.skills.length > 0 && (
-              <div className="card-base p-5 space-y-3">
+              <div className="card-base space-y-3 panel-body">
                 <h3 className="font-semibold text-sm flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 text-primary" /> {t("allSkills")}
                 </h3>
@@ -479,7 +479,7 @@ export default function UnifiedCandidatePage() {
               const candidateSkills = candidate.skills ?? [];
               const missingSkills = jobSkills?.filter((s: string) => !candidateSkills.some((cs: string) => cs.toLowerCase() === s.toLowerCase())) ?? [];
               return (
-                <div className="card-base p-5 space-y-3 sm:space-y-4">
+                <div className="card-base space-y-3 sm:space-y-4 panel-body">
                   <h3 className="font-semibold text-sm flex items-center gap-2">
                     <Star className="h-4 w-4 text-amber-500" /> {t("aiMatchInsights")}
                     <span className="text-xs text-muted-foreground ms-auto">for {scoredApp.job?.title}</span>
@@ -658,7 +658,7 @@ export default function UnifiedCandidatePage() {
             <p className="text-sm text-muted-foreground text-center py-8">{t("noInterviews")}</p>
           ) : (
             interviews.map((iv: UnifiedInterview) => (
-              <div key={iv._id} className="card-base p-4 flex items-center justify-between">
+              <div key={iv._id} className="card-base flex items-center justify-between panel-body">
                 <div className="space-y-1">
                   <p className="font-medium text-sm">{iv.jobTitle}</p>
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">
@@ -688,7 +688,7 @@ export default function UnifiedCandidatePage() {
       )}
 
       {activeTab === "timeline" && (
-        <div className="card-base p-4">
+        <div className="card-base panel-body">
           {timeline.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">{t("noActivity")}</p>
           ) : (
@@ -720,7 +720,7 @@ export default function UnifiedCandidatePage() {
             <p className="text-sm text-muted-foreground text-center py-8">{t("noNotes")}</p>
           ) : (
             notes.map((note: NoteEntry) => (
-              <div key={note._id} className="card-base p-4">
+              <div key={note._id} className="card-base panel-body">
                 <div className="flex items-center justify-between mb-1.5">
                   <div className="flex items-center gap-2 text-xs">
                     <MessageSquare className="h-3 w-3 text-muted-foreground" />

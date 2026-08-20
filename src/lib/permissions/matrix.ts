@@ -21,7 +21,7 @@ export const ALL_ACTIONS: Action[] = [
 
 const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
   admin: {
-    jobs: ["create", "read", "update", "delete", "approve", "export"],
+    jobs: ["create", "read", "update", "delete", "export"],
     applications: ["create", "read", "update", "delete", "export"],
     interviews: ["create", "read", "update", "delete"],
     placements: ["create", "read", "update", "delete", "export"],
@@ -52,7 +52,7 @@ const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
     invoices: ["create", "read", "update", "delete", "export"],
   },
   super_agent: {
-    jobs: ["read", "approve", "export"],
+    jobs: ["read", "export"],
     applications: ["read", "export"],
     interviews: ["read"],
     placements: ["read", "export"],
@@ -77,9 +77,7 @@ const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
     invoices: ["create", "read", "update"],
   },
   agent: {
-    // "approve" mirrors POST /api/admin/jobs/[id]/approve — agents may approve
-    // jobs they own or whose employer they manage (route enforces ownership).
-    jobs: ["create", "read", "update", "export", "approve"],
+    jobs: ["create", "read", "update", "export"],
     applications: ["read", "update", "export"],
     interviews: ["create", "read", "update"],
     placements: ["read"],

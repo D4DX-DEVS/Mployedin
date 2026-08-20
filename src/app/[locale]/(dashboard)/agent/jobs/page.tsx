@@ -305,7 +305,7 @@ export default function AgentJobsPage() {
       />
 
         {/* ── Combined Filter Bar ── */}
-        <section className="workspace-panel-surface rounded-[20px] p-4">
+        <section className="workspace-panel-surface rounded-[20px] panel-body">
           {/* Toggle button */}
           <button
             onClick={() => setFiltersOpen((prev) => !prev)}
@@ -466,7 +466,7 @@ export default function AgentJobsPage() {
         </section>
 
       {/* ──────── JOB TABLE ──────── */}
-      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
+      <section className="workspace-panel-surface rounded-[28px] panel-body">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("results.eyebrow")}</p>

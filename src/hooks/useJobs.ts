@@ -59,6 +59,8 @@ interface JobsResponse {
   pagination: { total: number; page: number; limit: number; totalPages: number };
   statusCounts?: Record<string, number>;
   totalVacancies?: number;
+  /** Portfolio-wide totals from the API (ignores the status tab, not page-scoped). */
+  portfolioStats?: { employerCount: number; totalApplicants: number };
 }
 
 export interface JobsFilters {

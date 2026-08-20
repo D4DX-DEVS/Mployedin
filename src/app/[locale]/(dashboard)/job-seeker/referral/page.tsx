@@ -92,7 +92,7 @@ export default function JobSeekerReferralPage() {
         ]}
       />
 
-      <section className="workspace-panel-surface rounded-[28px] p-5 space-y-4">
+      <section className="workspace-panel-surface rounded-[28px] space-y-4 panel-body">
         <h2 className="text-lg font-semibold text-foreground">{t("linkTitle")}</h2>
 
         <div className="flex items-center gap-2">
@@ -127,7 +127,7 @@ export default function JobSeekerReferralPage() {
         )}
       </section>
 
-      <section className="workspace-panel-surface rounded-[28px] p-5">
+      <section className="workspace-panel-surface rounded-[28px] panel-body">
         <h2 className="text-lg font-semibold text-foreground">{t("history")}</h2>
 
         {(!data?.referrals || data.referrals.length === 0) ? (

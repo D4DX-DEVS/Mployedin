@@ -437,7 +437,7 @@ export default function JobSeekerProfilePage() {
     return (
       <div className="px-3 py-4 sm:p-6 max-w-5xl mx-auto space-y-3 sm:space-y-4">
         {[...Array(4)].map((_, i) => (
-          <div key={i} className="card-base p-4 sm:p-5 animate-pulse space-y-3">
+          <div key={i} className="card-base animate-pulse space-y-3 panel-body">
             <div className="h-4 bg-muted rounded w-1/3" />
             <div className="h-16 bg-muted rounded" />
           </div>
@@ -462,7 +462,7 @@ export default function JobSeekerProfilePage() {
       />
 
       <div
-        className="card-base border-primary/15 p-4 sm:p-6"
+        className="card-base border-primary/15 panel-body"
         style={{ background: "linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--accent)) 100%)" }}
       >
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -533,7 +533,7 @@ export default function JobSeekerProfilePage() {
       </button>
 
       {/* ── Profile Header Card ─────────────────────────────────────────── */}
-      <div className="card-base p-4 sm:p-6">
+      <div className="card-base panel-body">
         <div className="flex items-start gap-4">
           {/* Avatar with upload overlay */}
           <div className="relative shrink-0 group">
@@ -761,7 +761,7 @@ export default function JobSeekerProfilePage() {
 
       {/* ── AI Insight Card ───────────────────────────────────────────── */}
       {completeness < 80 && (
-        <div className="card-base p-4 sm:p-6 border-violet-200 dark:border-violet-800/40"
+        <div className="card-base border-violet-200 dark:border-violet-800/40 panel-body"
           style={{ background: "linear-gradient(135deg, hsl(var(--card)) 0%, hsl(270 60% 98%) 100%)" }}>
           <div className="flex items-start gap-4">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/50">
@@ -801,7 +801,7 @@ export default function JobSeekerProfilePage() {
 
       {/* ── Missing Details CTA (Naukri-style) ────────────────────────── */}
       {missingSteps.length > 0 && completeness < 100 && (
-        <div className="card-base p-4 flex items-center justify-between">
+        <div className="card-base flex items-center justify-between panel-body">
           <div className="flex flex-wrap gap-3">
             {missingSteps.map((s) => (
               <button
@@ -830,7 +830,7 @@ export default function JobSeekerProfilePage() {
       <div className="flex gap-4">
         {/* Quick Links Sidebar — desktop only */}
         <div className="hidden lg:block w-48 shrink-0 self-stretch">
-          <div className="card-base p-3 sticky top-24">
+          <div className="card-base sticky top-24 panel-body">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Quick links</p>
             <nav className="space-y-0.5">
               {sectionRefs.map((s) => (
@@ -863,7 +863,7 @@ export default function JobSeekerProfilePage() {
 
           {/* ── Setup Checklist ─────────────────────────────────────────── */}
           {completeness < 100 && (
-            <div className="card-base p-4 sm:p-6">
+            <div className="card-base panel-body">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <Zap className="w-4 h-4 text-amber-500" />
@@ -1277,7 +1277,7 @@ export default function JobSeekerProfilePage() {
       </div>
 
       {/* ── Quick Actions ──────────────────────────────────────────────── */}
-      <div className="card-base p-4 sm:p-6">
+      <div className="card-base panel-body">
         <div className="flex items-center gap-2 mb-4">
           <Zap className="w-4 h-4 text-amber-500" />
           <span className="text-sm font-semibold">{t("quickActions.title")}</span>
@@ -1523,7 +1523,7 @@ function SectionCard({
   const t = useTranslations("jobSeekerExtra.profile");
 
   return (
-    <div className="card-base p-4 sm:p-6">
+    <div className="card-base panel-body">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">

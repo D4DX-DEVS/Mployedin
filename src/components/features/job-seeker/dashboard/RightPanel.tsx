@@ -37,7 +37,7 @@ function RecruiterViews({ stats, t }: { stats?: DashboardStats; t: ReturnType<ty
   const views = stats?.recruiterViews;
   if (!views) {
     return (
-      <div className="card-base p-3 sm:p-4">
+      <div className="card-base panel-body">
         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
           {t("recruiterViews")}
         </h4>
@@ -49,7 +49,7 @@ function RecruiterViews({ stats, t }: { stats?: DashboardStats; t: ReturnType<ty
   const max = Math.max(...views.daily, 1);
 
   return (
-    <div className="card-base p-3 sm:p-4">
+    <div className="card-base panel-body">
       <div className="flex items-center justify-between mb-3">
         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
           {t("recruiterViews")}
@@ -150,7 +150,7 @@ function AICoach({ t }: { t: ReturnType<typeof useTranslations> }) {
     : AI_COACH_FALLBACK;
 
   return (
-    <div className="card-base p-3 sm:p-4">
+    <div className="card-base panel-body">
       <div className="flex items-center gap-2 mb-3">
         <Sparkles className="h-4 w-4 text-violet-500" />
         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
@@ -194,7 +194,7 @@ function NextSteps({ completion, t }: { completion?: ProfileCompletion; t: Retur
   if (!completion || completion.missing.length === 0) return null;
 
   return (
-    <div className="card-base p-3 sm:p-4">
+    <div className="card-base panel-body">
       <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
         {t("nextSteps")}
       </h4>
@@ -235,7 +235,7 @@ function formatRelativeTime(isoString: string) {
 function ActivityFeed({ events, t }: { events?: ActivityEvent[]; t: ReturnType<typeof useTranslations> }) {
   if (!events || events.length === 0) {
     return (
-      <div className="card-base p-3 sm:p-4">
+      <div className="card-base panel-body">
         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
           {t("activity")}
         </h4>
@@ -247,7 +247,7 @@ function ActivityFeed({ events, t }: { events?: ActivityEvent[]; t: ReturnType<t
   }
 
   return (
-    <div className="card-base p-3 sm:p-4">
+    <div className="card-base panel-body">
       <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
         {t("activity")}
       </h4>

@@ -271,7 +271,7 @@ export default function AgentInterviewsPage() {
       {/* data-table-toolbar opts into the shared mobile rules (globals.css):
           two-up filter grid and a shrinkable search field instead of five
           full-width rows. */}
-      <section className="workspace-panel-surface rounded-[28px] p-3.5 sm:p-4" data-table-toolbar="simple">
+      <section className="workspace-panel-surface rounded-[28px] panel-body" data-table-toolbar="simple">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sectionFilterLabel")}</p>
@@ -428,7 +428,7 @@ export default function AgentInterviewsPage() {
       </section>
 
       {/* ── Results Table ──────────────────────────────────────────── */}
-      <section className="workspace-panel-surface rounded-[28px] p-3.5 sm:p-4">
+      <section className="workspace-panel-surface rounded-[28px] panel-body">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sectionResultsLabel")}</p>

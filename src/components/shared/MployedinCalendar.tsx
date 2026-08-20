@@ -1152,7 +1152,7 @@ export default function MployedinCalendar({
         {/* Sidebar */}
         <div className="space-y-4">
           {/* Mini calendar */}
-          <div className="workspace-panel-surface rounded-[20px] p-4">
+          <div className="workspace-panel-surface rounded-[20px] panel-body">
             <MiniCalendar
               currentDate={currentDate}
               selectedDate={selectedDate}
@@ -1168,7 +1168,7 @@ export default function MployedinCalendar({
           </div>
 
           {/* Event detail or upcoming list */}
-          <div className="workspace-panel-surface rounded-[20px] p-4">
+          <div className="workspace-panel-surface rounded-[20px] panel-body">
             {selectedEvent ? (
               <EventDetail
                 event={selectedEvent}

@@ -333,7 +333,7 @@ export default function CreateTargetProfilePage() {
       {/* Filter Toggle + Panel */}
       <div className="workspace-glass-panel rounded-2xl overflow-hidden">
         {/* Filter Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
+        <div className="flex items-center justify-between border-b border-border/50 panel-head">
           <button
             type="button"
             onClick={() => setShowFilters(!showFilters)}

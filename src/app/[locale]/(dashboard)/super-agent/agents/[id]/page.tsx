@@ -126,13 +126,14 @@ function StatusBadge({ status, t }: { status: string; t: ReturnType<typeof useTr
 
 function DetailRow({ icon: Icon, label, value }: { icon: typeof Mail; label: string; value: React.ReactNode }) {
   return (
-    <div className="flex items-start gap-3 py-2.5">
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-muted/60">
+    <div className="flex items-start justify-between gap-3 border-b border-border/40 py-1.5 last:border-b-0 sm:justify-start sm:border-b-0 sm:py-2.5">
+      <div className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-muted/60 sm:flex">
         <Icon className="h-4 w-4 text-muted-foreground" />
       </div>
-      <div className="min-w-0">
-        <p className="text-xs font-medium text-muted-foreground">{label}</p>
-        <p className="mt-0.5 text-sm font-medium text-foreground break-all">{value ?? "—"}</p>
+      <p className="shrink-0 text-xs font-medium text-muted-foreground sm:hidden">{label}</p>
+      <div className="min-w-0 text-end sm:text-start">
+        <p className="hidden text-xs font-medium text-muted-foreground sm:block">{label}</p>
+        <p className="text-sm font-medium text-foreground break-all sm:mt-0.5">{value ?? "—"}</p>
       </div>
     </div>
   );
@@ -290,7 +291,6 @@ export default function AgentDetailPage() {
   const kpis = [
     { label: t("kpiTotalLeads"), value: leads.total, helper: t("kpiTotalLeadsHelper"), icon: <Target className="h-5 w-5" />, toneClassName: "workspace-tone-sky" },
     { label: t("kpiConversions"), value: leads.statusBreakdown.converted ?? 0, helper: t("kpiConversionsHelper", { rate: stats.conversionRate }), icon: <TrendingUp className="h-5 w-5" />, toneClassName: "workspace-tone-emerald" },
-    { label: t("kpiPlacements"), value: perf.placementsCompleted ?? 0, helper: t("kpiPlacementsHelper"), icon: <Briefcase className="h-5 w-5" />, toneClassName: "workspace-tone-indigo" },
     { label: t("kpiReferralSignups"), value: referralLinks.totalRegistrations, helper: t("kpiReferralSignupsHelper", { count: referralLinks.total }), icon: <Link2 className="h-5 w-5" />, toneClassName: "workspace-tone-amber" },
   ];
 
@@ -307,7 +307,7 @@ export default function AgentDetailPage() {
         description={`${user.email} · ${t("joinedLabel")} ${new Date(user.joinedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`}
         eyebrow={t("agentProfile")}
       >
-        <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:min-w-[180px]">
+        <div className="hidden workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:block sm:min-w-[180px]">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tc("status")}</p>
           <div className="mt-1.5 flex items-center gap-2">
             <span className={cn("h-2.5 w-2.5 rounded-full", user.isActive ? "bg-emerald-500" : "bg-rose-400")} />
@@ -366,9 +366,9 @@ export default function AgentDetailPage() {
               [t("perfInterviews"), perf.interviewsScheduled, "workspace-tone-amber"],
               [t("perfPlacements"), perf.placementsCompleted, "workspace-tone-rose"],
             ] as [string, number, string][]).map(([label, value, tone]) => (
-              <div key={label} className="rounded-2xl border border-border/40 p-3 text-center">
-                <p className="text-2xl font-semibold text-foreground">{value ?? 0}</p>
-                <p className="mt-1 text-[11px] font-medium text-muted-foreground">{label}</p>
+              <div key={label} className="flex items-baseline justify-between gap-2 rounded-lg border border-border/40 px-2.5 py-1.5 sm:block sm:rounded-2xl sm:p-3 sm:text-center">
+                <p className="order-2 text-base font-semibold tabular-nums text-foreground sm:order-none sm:text-2xl">{value ?? 0}</p>
+                <p className="order-1 min-w-0 truncate text-[11px] font-medium text-muted-foreground sm:order-none sm:mt-1 sm:truncate-none">{label}</p>
               </div>
             ))}
           </div>
@@ -391,15 +391,15 @@ export default function AgentDetailPage() {
         description={t("pipelineDescription", { total: leads.total })}
       >
         {/* Status pills */}
-        <div className="mb-4 flex flex-wrap gap-2">
+        <div className="-mx-1 mb-3 flex gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:mb-4 sm:flex-wrap sm:gap-2 sm:overflow-visible sm:px-0 sm:pb-0">
           {(["new", "contacted", "interested", "negotiating", "converted", "lost"] as const).map((s) => {
             const statusConfig = getStatusConfig(t);
             return (
-              <div key={s} className="rounded-xl border border-border/40 px-3 py-2 text-center min-w-[100px]">
+              <div key={s} className="flex shrink-0 items-center gap-1.5 rounded-full border border-border/40 px-3 py-1.5 sm:block sm:min-w-[100px] sm:rounded-xl sm:px-3 sm:py-2 sm:text-center">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                   {statusConfig[s]?.label ?? s}
                 </p>
-                <p className="mt-0.5 text-xl font-semibold text-foreground">{leads.statusBreakdown[s] ?? 0}</p>
+                <p className="text-[13px] font-semibold tabular-nums text-foreground sm:mt-0.5 sm:text-xl">{leads.statusBreakdown[s] ?? 0}</p>
               </div>
             );
           })}
@@ -412,9 +412,9 @@ export default function AgentDetailPage() {
                 <TableRow className="bg-background/60 hover:bg-background/60">
                   <TableHead>{t("tableColumnCompany")}</TableHead>
                   <TableHead>{t("tableColumnContact")}</TableHead>
-                  <TableHead>{tc("country")}</TableHead>
-                  <TableHead>{t("tableColumnIndustry")}</TableHead>
-                  <TableHead>{t("tableColumnSource")}</TableHead>
+                  <TableHead className="!hidden sm:!table-cell">{tc("country")}</TableHead>
+                  <TableHead className="!hidden sm:!table-cell">{t("tableColumnIndustry")}</TableHead>
+                  <TableHead className="!hidden sm:!table-cell">{t("tableColumnSource")}</TableHead>
                   <TableHead>{t("tableColumnStage")}</TableHead>
                   <TableHead>{tc("date")}</TableHead>
                 </TableRow>
@@ -424,9 +424,9 @@ export default function AgentDetailPage() {
                   <TableRow key={l._id}>
                     <TableCell className="font-medium">{l.companyName}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{l.contactPerson}</TableCell>
-                    <TableCell className="text-sm">{l.country || "—"}</TableCell>
-                    <TableCell className="text-sm">{l.industry || "—"}</TableCell>
-                    <TableCell className="text-sm">{l.source || "—"}</TableCell>
+                    <TableCell className="text-sm !hidden sm:!table-cell">{l.country || "—"}</TableCell>
+                    <TableCell className="text-sm !hidden sm:!table-cell">{l.industry || "—"}</TableCell>
+                    <TableCell className="text-sm !hidden sm:!table-cell">{l.source || "—"}</TableCell>
                     <TableCell><StatusBadge status={l.status} t={t} /></TableCell>
                     <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                       {new Date(l.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}

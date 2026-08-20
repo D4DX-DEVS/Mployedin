@@ -490,7 +490,7 @@ export function ConversationalAI({
         <button
           onClick={() => setOpen(true)}
           className={cn(
-            "fixed bottom-20 z-[100] flex h-14 w-14 items-center justify-center rounded-full shadow-lg lg:bottom-6",
+            "fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-[100] flex h-14 w-14 items-center justify-center rounded-full shadow-lg lg:bottom-6",
             isRtl ? "left-4 lg:left-6" : "right-4 lg:right-6",
             "bg-primary text-white hover:bg-primary/90 transition-all duration-200 hover:scale-105",
             className

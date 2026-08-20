@@ -188,7 +188,7 @@ export default function HiringPanelPage() {
 
       {/* ── Consensus Summary ─────────────────────────────────────── */}
       {consensus && (
-        <section className="card-base rounded-2xl border p-5 mb-6 space-y-3 sm:space-y-4">
+        <section className="card-base rounded-2xl border mb-6 space-y-3 sm:space-y-4 panel-body">
           <div className="flex items-center gap-2">
             <Users className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-semibold">{t("panelConsensus")}</h2>
@@ -284,7 +284,7 @@ export default function HiringPanelPage() {
               const iconConfig = OUTCOME_ICONS[d.outcome] ?? OUTCOME_ICONS.no_decision;
               const Icon = iconConfig.icon;
               return (
-                <div key={d._id} className="card-base rounded-xl border p-3 flex items-start gap-3">
+                <div key={d._id} className="card-base rounded-xl border flex items-start gap-3 panel-body">
                   <Icon className={cn("h-5 w-5 mt-0.5", iconConfig.color)} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
@@ -309,7 +309,7 @@ export default function HiringPanelPage() {
 
       {/* ── Make Decision ─────────────────────────────────────────── */}
       {!submitted && (
-        <section className="card-base rounded-2xl border p-5 space-y-3 sm:space-y-4">
+        <section className="card-base rounded-2xl border space-y-3 sm:space-y-4 panel-body">
           <h2 className="text-base font-semibold">{t("recordDecision")}</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {(["advance", "hire", "hold", "reject"] as const).map((outcome) => {
@@ -361,7 +361,7 @@ export default function HiringPanelPage() {
       )}
 
       {submitted && (
-        <div className="card-base rounded-2xl border border-emerald-200 bg-emerald-50/50 p-5 text-center">
+        <div className="card-base rounded-2xl border border-emerald-200 bg-emerald-50/50 text-center panel-body">
           <CheckCircle2 className="h-8 w-8 text-emerald-600 mx-auto mb-2" />
           <p className="font-medium text-emerald-700">{t("decisionRecorded")}</p>
           <p className="text-sm text-muted-foreground mt-1">{t("decisionSaved")}</p>
@@ -386,7 +386,7 @@ function EvaluatorCard({ scorecard: sc }: { scorecard: EvaluatorScorecard }) {
   };
 
   return (
-    <div className="card-base rounded-xl border p-4 space-y-3">
+    <div className="card-base rounded-xl border space-y-3 panel-body">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary">

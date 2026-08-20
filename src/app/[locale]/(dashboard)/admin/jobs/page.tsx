@@ -26,7 +26,7 @@ import type { ExportColumn } from "@/lib/export";
 import {
   Search, Inbox, Sparkles, Briefcase, ShieldCheck, FileText, Users, Plus,
   Eye, Building2, MapPin, DollarSign, Clock, Calendar, Globe, UserCheck,
-  Wand2, CheckCircle, ArrowRight, Trash2, XCircle, Edit2, ClipboardList, Filter, ChevronDown, ChevronUp,
+  Wand2, CheckCircle, ArrowRight, Trash2, Edit2, ClipboardList, Filter, ChevronDown, ChevronUp,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -146,7 +146,6 @@ export default function AdminJobsPage() {
   const { locale } = useParams<{ locale: string }>();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
-  const [approvalCounts, setApprovalCounts] = useState<Record<string, number>>({});
   const [serverApplicants, setServerApplicants] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -217,7 +216,6 @@ export default function AdminJobsPage() {
       const data = await res.json();
       setJobs(data.jobs ?? data.items ?? []);
       setStatusCounts(data.statusCounts ?? {});
-      setApprovalCounts(data.approvalCounts ?? {});
       setServerApplicants(typeof data.totalApplicants === "number" ? data.totalApplicants : null);
       updateTotal(data.pagination?.total ?? data.total ?? data.totalCount ?? ((data.totalPages ?? 1) * limit));
     } catch (error: unknown) {
@@ -231,41 +229,6 @@ export default function AdminJobsPage() {
 
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
 
-  const handleApproveJob = async (jobId: string) => {
-    try {
-      const res = await fetch(`/api/admin/jobs/${jobId}/approve`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ approved: true }),
-      });
-      if (!res.ok) {
-        // An incomplete draft cannot be published. Name the missing fields
-        // rather than showing a generic failure the admin cannot act on.
-        const data = await res.json().catch(() => null);
-        if (data?.error === "INCOMPLETE_JOB") {
-          toast.error(t("jobIncompleteForApproval", { fields: (data.fields ?? []).join(", ") }));
-          return;
-        }
-        throw new Error(t("jobApprovalFailed"));
-      }
-      toast.success(t("jobApprovedSuccess"));
-      fetchJobs();
-    } catch { toast.error(t("jobApprovalFailed")); }
-  };
-
-  const handleRejectJob = async (jobId: string) => {
-    try {
-      const res = await fetch(`/api/admin/jobs/${jobId}/approve`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ approved: false }),
-      });
-      if (!res.ok) throw new Error(t("jobRejectionFailed"));
-      toast.success(t("jobRejectedSuccess"));
-      fetchJobs();
-    } catch { toast.error(t("jobRejectionFailed")); }
-  };
-
   const handleDeleteJob = async (jobId: string) => {
     if (!confirm(t("deleteConfirmation"))) return;
     try {
@@ -277,7 +240,8 @@ export default function AdminJobsPage() {
   };
 
   const activeJobs = statusCounts.active ?? jobs.filter((j) => j.status === "active").length;
-  const pendingJobs = approvalCounts.pending ?? statusCounts.pending_approval ?? jobs.filter((j) => j.status === "pending_approval").length;
+  // ponytail: no approval queue — surface unpublished drafts instead.
+  const draftJobs = statusCounts.draft ?? jobs.filter((j) => j.status === "draft").length;
   const totalApplicants = serverApplicants ?? jobs.reduce((sum, j) => sum + (j.applicantsCount ?? 0), 0);
 
   const hasActiveFilters = search || status !== "all" || selectedEmployer !== "all" || selectedAgent !== "all" || workMode !== "all" || employmentType !== "all" || locationFilter || skillsFilter;
@@ -368,7 +332,7 @@ export default function AdminJobsPage() {
         metrics={[
           { label: t("totalJobs"), value: total, note: t("totalJobsNote"), icon: Briefcase, iconClassName: "text-status-applied", iconSurfaceClassName: "bg-status-applied-bg dark:bg-sky-950/30" },
           { label: t("active"), value: activeJobs, note: t("activeNote"), icon: ShieldCheck, iconClassName: "text-status-selected", iconSurfaceClassName: "bg-status-selected-bg dark:bg-emerald-950/30" },
-          { label: t("pendingReview"), value: pendingJobs, note: t("pendingReviewNote"), icon: FileText, iconClassName: "text-status-shortlisted", iconSurfaceClassName: "bg-status-shortlisted-bg dark:bg-amber-950/30" },
+          { label: t("draftJobs"), value: draftJobs, note: t("draftJobsNote"), icon: FileText, iconClassName: "text-status-shortlisted", iconSurfaceClassName: "bg-status-shortlisted-bg dark:bg-amber-950/30" },
           { label: t("applicants"), value: totalApplicants, note: t("applicantsNote"), icon: Users, iconClassName: "text-status-interview", iconSurfaceClassName: "bg-status-interview-bg dark:bg-violet-950/30" },
         ]}
         footer={(
@@ -557,7 +521,7 @@ export default function AdminJobsPage() {
             return (
               <article
                 key={job._id}
-                className="workspace-panel-surface rounded-[22px] p-3 transition-all hover:-translate-y-0.5 hover:border-border"
+                className="workspace-panel-surface rounded-[22px] transition-all hover:-translate-y-0.5 hover:border-border panel-body"
               >
                 <div className="grid gap-2.5 xl:grid-cols-[minmax(0,1fr)_268px] xl:items-start">
                   {/* Left: Job metadata */}
@@ -635,25 +599,6 @@ export default function AdminJobsPage() {
                         {t("viewDetails")}
                         <ArrowRight className="ml-auto h-4 w-4" />
                       </Button>
-                      {(job.poster?.approvalStatus === "pending" || job.status === "draft") && (
-                        <Button
-                          size="sm"
-                          className="h-8 gap-1.5 rounded-lg bg-emerald-600 px-2.5 text-xs font-semibold text-white hover:bg-emerald-700"
-                          onClick={() => handleApproveJob(job._id)}
-                        >
-                          <CheckCircle className="h-3.5 w-3.5" /> {t("approve")}
-                        </Button>
-                      )}
-                      {(job.poster?.approvalStatus === "pending" || job.status === "draft") && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 gap-1.5 rounded-lg border-status-shortlisted/20 px-2.5 text-xs font-semibold text-status-shortlisted hover:bg-status-shortlisted-bg"
-                          onClick={() => handleRejectJob(job._id)}
-                        >
-                          <XCircle className="h-3.5 w-3.5" /> {t("reject")}
-                        </Button>
-                      )}
                       <Button
                         size="sm"
                         variant="outline"

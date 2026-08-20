@@ -30,6 +30,11 @@ interface DashboardPageHeaderProps {
   children?: ReactNode;
   className?: string;
   headingLevel?: 1 | 2;
+  /** Keep title and actions on one row at every width. Only for headers with
+   *  a single short action — several buttons squeeze the title on a phone. */
+  inlineActions?: boolean;
+  /** Phones: drop the explanatory description and the nested summary card. */
+  compactOnMobile?: boolean;
 }
 
 /**
@@ -49,6 +54,8 @@ export function DashboardPageHeader({
   children,
   className,
   headingLevel = 1,
+  inlineActions = false,
+  compactOnMobile = false,
 }: DashboardPageHeaderProps) {
   const Heading = headingLevel === 2 ? "h2" : "h1";
   return (
@@ -59,7 +66,10 @@ export function DashboardPageHeader({
         className
       )}
     >
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+      <div className={cn(
+        "flex gap-3 lg:flex-row lg:items-end lg:justify-between",
+        inlineActions ? "flex-row items-start justify-between" : "flex-col"
+      )}>
         <div className="min-w-0 max-w-3xl">
           {eyebrow && (
             <div className="hidden items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary sm:flex">
@@ -71,7 +81,10 @@ export function DashboardPageHeader({
             {title}
           </Heading>
           {description && (
-            <p className="mt-1 line-clamp-2 max-w-2xl text-xs leading-4 text-muted-foreground sm:line-clamp-1 sm:text-sm sm:leading-5">
+            <p className={cn(
+              "mt-1 line-clamp-2 max-w-2xl text-xs leading-4 text-muted-foreground sm:line-clamp-1 sm:text-sm sm:leading-5",
+              compactOnMobile && "hidden sm:block"
+            )}>
               {description}
             </p>
           )}
@@ -80,7 +93,10 @@ export function DashboardPageHeader({
         {(summary || actions) && (
           <div className="flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-2 sm:gap-3 lg:flex-nowrap">
             {summary && (
-              <div className="workspace-glass-panel min-w-0 border-s-2 border-primary/30 ps-3">
+              <div className={cn(
+                "workspace-glass-panel min-w-0 border-s-2 border-primary/30 ps-3",
+                compactOnMobile && "hidden sm:block"
+              )}>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                   {summary.label}
                 </p>
@@ -91,7 +107,9 @@ export function DashboardPageHeader({
               </div>
             )}
             {actions && (
-              <div className="flex min-w-0 flex-wrap items-center gap-2 [&>*]:shrink-0">
+              /* One horizontally scrollable row on phones. Wrapping turned 3
+                 actions into 3 stacked rows and pushed the list below the fold. */
+              <div className="flex min-w-0 max-w-full items-center gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>*]:shrink-0 sm:flex-wrap sm:overflow-visible">
                 {actions}
               </div>
             )}

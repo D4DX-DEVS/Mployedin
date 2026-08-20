@@ -50,8 +50,7 @@
     "a11yNavigationMenu": "قائمة التنقل",
     "a11yOpenMenu": "فتح القائمة",
     "a11yCloseMenu": "إغلاق القائمة",
-    "a11yHome": "الصفحة الرئيسية لمنصة Mployedin",
-    "more": "المزيد"
+    "a11yHome": "الصفحة الرئيسية لمنصة Mployedin"
   },
   "auth": {
     "login": "تسجيل الدخول",
@@ -754,9 +753,9 @@
       "revise": "تعديل",
       "respondCounter": "الرد",
       "remind": "تذكير",
-      "withdraw": "سحب",
       "downloadLetter": "تنزيل الخطاب",
-      "cancel": "إلغاء"
+      "cancel": "إلغاء",
+      "withdraw": "سحب"
     },
     "table": {
       "candidate": "المرشح",
@@ -960,7 +959,6 @@
     "viewDetails": "عرض تفاصيل {job}",
     "hideDetails": "إخفاء تفاصيل {job}",
     "rateExperience": "قيّم التجربة",
-    "withdraw": "سحب الطلب",
     "details": {
       "interview": "تفاصيل المقابلة",
       "joinMeeting": "انضم للاجتماع",
@@ -1007,7 +1005,8 @@
       "status": "الحالة",
       "matchScore": "نسبة التطابق",
       "appliedDate": "تاريخ التقديم"
-    }
+    },
+    "withdraw": "سحب الطلب"
   },
   "jobSeekerCalendar": {
     "title": "تقويمي",
@@ -3761,6 +3760,8 @@
     "statPausedDescription": "وظائف متوقفة مؤقتًا عن استقبال الطلبات.",
     "statOpeningsLabel": "الشواغر",
     "statOpeningsDescription": "إجمالي الشواغر في النتائج الحالية.",
+    "statApplicationsLabel": "الطلبات",
+    "statApplicationsDescription": "إجمالي الطلبات المستلمة على وظائفك.",
     "browseRolesLabel": "تصفح الوظائف",
     "filterHeading": "صفّي الوظائف التي تريد التعامل معها",
     "filterDescription": "ابحث بالكلمات المفتاحية، أو أضف فلاتر محددة، أو صِف الوظائف التي تحتاجها بلغة طبيعية.",
@@ -3780,7 +3781,6 @@
     "statusLabelClosed": "مغلق",
     "statusLabelExpired": "منتهي",
     "draftHint": "غير منشورة بعد — مرئية لك فقط.",
-    "inReviewHint": "تم الإرسال لمراجعة المسؤول.",
     "allWorkModes": "جميع أنماط العمل",
     "workModeOnsite": "من المقر",
     "workModeHybrid": "هجين",
@@ -3840,16 +3840,6 @@
     "resumingButton": "جارٍ الاستئناف…",
     "deleteButton": "حذف",
     "deletingButton": "جارٍ الحذف…",
-    "submitForApprovalButton": "إرسال للموافقة",
-    "submittingForApprovalButton": "جارٍ الإرسال…",
-    "withdrawButton": "سحب",
-    "withdrawingButton": "جارٍ السحب…",
-    "toastJobSubmitted": "تم إرسال الوظيفة لمراجعة المسؤول.",
-    "toastFailedSubmit": "فشل في إرسال الوظيفة للموافقة.",
-    "toastJobWithdrawn": "تم سحب الوظيفة إلى المسودة.",
-    "toastFailedWithdraw": "فشل في سحب الوظيفة.",
-    "confirmSubmitForApproval": "إرسال هذه الوظيفة لمراجعة المسؤول؟ سيتم مراجعتها قبل النشر.",
-    "confirmWithdraw": "سحب هذه الوظيفة من المراجعة وإعادتها إلى مسودة؟",
     "locationNotSet": "الموقع غير محدد",
     "salaryNotDisclosed": "الراتب غير معلن",
     "salaryNotSet": "الراتب غير محدد",
@@ -3886,7 +3876,12 @@
     "toastFailedDelete": "فشل في حذف الوظيفة",
     "toastAiApplied": "تم تطبيق بحث الذكاء الاصطناعي.",
     "toastAiUnavailable": "بحث الذكاء الاصطناعي غير متاح. تم تطبيق البحث بالكلمات المفتاحية.",
-    "toastAiFallback": "بحث الذكاء الاصطناعي غير متاح. تم تطبيق البحث بالكلمات المفتاحية بدلاً من ذلك."
+    "toastAiFallback": "بحث الذكاء الاصطناعي غير متاح. تم تطبيق البحث بالكلمات المفتاحية بدلاً من ذلك.",
+    "publishButton": "نشر",
+    "publishingButton": "جارٍ النشر…",
+    "toastJobPublished": "تم نشر الوظيفة.",
+    "toastFailedPublish": "فشل نشر الوظيفة.",
+    "confirmPublish": "نشر هذه الوظيفة؟ ستصبح مباشرة على الفور."
   },
   "employerCandidates": {
     "heroTitle": "مطابقة المرشحين",
@@ -5227,13 +5222,12 @@
         "label": "متابعة العملاء المحتملين",
         "description": "تابع المتابعات والتنقيب النشط وتحويل أصحاب العمل."
       },
-      "jobApprovals": {
-        "label": "اعتماد الوظائف",
-        "description": "أنهِ الموافقات المعلقة بسرعة دون مغادرة مساحة الإشراف."
-      },
       "commissionReport": {
         "label": "مراجعة العمولات",
         "description": "تابع أرباح التوظيف وحالة المدفوعات الإقليمية."
+      },
+      "jobOversight": {
+        "label": "الإشراف على الوظائف"
       }
     },
     "focus": {
@@ -6123,7 +6117,6 @@
     "offersMadeDesc": "إجمالي العروض المقدمة",
     "acceptanceRate": "معدل القبول",
     "acceptanceRateDesc": "العروض المقبولة مقابل الإجمالي",
-    "pendingReview": "قيد المراجعة",
     "pendingReviewDesc": "في انتظار رد المرشح",
     "avgSalary": "متوسط الراتب",
     "avgSalaryDesc": "متوسط مبلغ العرض",
@@ -6136,7 +6129,6 @@
     "offerDetails": "تفاصيل العرض",
     "status": "الحالة",
     "actions": "الإجراءات",
-    "withdraw": "سحب",
     "extend": "تمديد",
     "withdrawConfirm": "سحب هذا العرض؟",
     "extendByDays": "أدخل عدد أيام التمديد (1-30):",
@@ -6163,7 +6155,6 @@
     "notDisclosed": "غير معلن",
     "offerAction": "إجراء العرض",
     "withdrawConfirmDesc": "هل أنت متأكد؟ سيتم إخطار المرشح.",
-    "withdrawing": "جارٍ السحب…",
     "withdrawOffer": "سحب العرض",
     "offerDetail": "تفاصيل العرض",
     "offerDetailDesc": "راجع شروط العرض والملاحظات وتفاصيل رد المرشح.",
@@ -6171,7 +6162,10 @@
     "benefitsLabel": "المزايا",
     "notesLabel": "الملاحظات",
     "declineReason": "سبب الرفض",
-    "downloadLetter": "تنزيل خطاب العرض (PDF)"
+    "downloadLetter": "تنزيل خطاب العرض (PDF)",
+    "pendingReview": "قيد المراجعة",
+    "withdraw": "سحب",
+    "withdrawing": "جارٍ السحب…"
   },
   "employerBackgroundChecks": {
     "searchPlaceholder": "ابحث باسم المرشح...",
@@ -6641,8 +6635,6 @@
   "employerJobForm": {
     "title": "نشر وظيفة جديدة",
     "description": "أنشئ إعلانًا وظيفيًا لجذب المرشحين المؤهلين",
-    "pendingApprovalTitle": "تم الإرسال للمراجعة",
-    "pendingApprovalDescription": "شركتك غير موثقة بعد، لذا تحتاج هذه الوظيفة إلى موافقة المشرف قبل نشرها. سيتم إشعارك عند الموافقة.",
     "autoSaves": "يتم الحفظ تلقائيًا أثناء الكتابة",
     "loadTemplate": "تحميل قالب",
     "postSuccess": "تم نشر الوظيفة بنجاح!",
@@ -7939,8 +7931,8 @@
     "filled_status": "مشغول",
     "onHold": "معلق",
     "cancelled": "ملغي",
-    "submitForApproval": "تقديم للموافقة",
-    "linkJob": "ربط بإعلان وظيفة"
+    "linkJob": "ربط بإعلان وظيفة",
+    "submitForApproval": "تقديم للموافقة"
   },
   "applicationForms": {
     "title": "نماذج التقديم المخصصة",
@@ -8365,14 +8357,9 @@
     "activate": "تفعيل",
     "deleteDraft": "حذف المسودة",
     "deleting": "جارٍ الحذف…",
-    "submitForApproval": "إرسال للموافقة",
-    "submittingForApproval": "جارٍ الإرسال…",
-    "withdraw": "سحب إلى مسودة",
-    "withdrawing": "جارٍ السحب…",
     "statusDraft": "مسودة",
     "statusDraftHint": "غير منشورة بعد — مرئية لك فقط.",
     "statusPendingApproval": "في انتظار الموافقة",
-    "statusPendingApprovalHint": "تم الإرسال لمراجعة المسؤول.",
     "statusActive": "نشط",
     "statusPaused": "متوقف مؤقتاً",
     "statusClosed": "مغلق",
@@ -8381,8 +8368,6 @@
     "closeJob": "إغلاق الوظيفة",
     "resume": "استئناف",
     "deleteConfirm": "هل تريد حذف هذه الوظيفة؟ سيتم إزالتها من قائمة وظائفك.",
-    "confirmSubmitForApproval": "إرسال هذه الوظيفة لمراجعة المسؤول؟ سيتم مراجعتها قبل النشر.",
-    "confirmWithdraw": "سحب هذه الوظيفة من المراجعة وإعادتها إلى مسودة؟",
     "posted": "تم النشر {date}",
     "vacancies": "الشواغر",
     "views": "المشاهدات",
@@ -8402,13 +8387,14 @@
     "experience": "الخبرة",
     "yearsRange": "{min}–{max} سنوات",
     "educationLabel": "التعليم",
-    "languagesLabel": "اللغات"
+    "languagesLabel": "اللغات",
+    "publish": "نشر",
+    "publishing": "جارٍ النشر…",
+    "confirmPublish": "نشر هذه الوظيفة؟ ستصبح مباشرة على الفور."
   },
   "employerJobEdit": {
     "title": "تعديل إعلان الوظيفة",
     "description": "التغييرات تُحفظ كمسودة ما لم تنشرها.",
-    "pendingApprovalTitle": "تم الإرسال للمراجعة",
-    "pendingApprovalDescription": "شركتك غير موثقة بعد، لذا تحتاج هذه الوظيفة إلى موافقة المشرف قبل نشرها. سيتم إشعارك عند الموافقة.",
     "publishedTitle": "تم نشر الوظيفة",
     "backToJob": "العودة للوظيفة",
     "saveDraft": "حفظ كمسودة",
@@ -8960,8 +8946,6 @@
     "totalJobsNote": "جميع الإعلانات",
     "active": "نشط",
     "activeNote": "مباشر حالياً",
-    "pendingReview": "قيد المراجعة",
-    "pendingReviewNote": "في انتظار الإشراف",
     "applicants": "المتقدمون",
     "applicantsNote": "إجمالي الطلبات",
     "showFilters": "إظهار المرشحات",
@@ -9044,7 +9028,9 @@
     "categoryLabel": "الفئة",
     "applicantsCountLabel": "المتقدمون",
     "createdLabel": "تم الإنشاء",
-    "exportTitle": "الوظائف"
+    "exportTitle": "الوظائف",
+    "draftJobs": "المسودات",
+    "draftJobsNote": "وظائف غير منشورة بانتظار صاحبها."
   },
   "adminSettings": {
     "pageTitle": "الإعدادات",
@@ -10486,7 +10472,6 @@
     "analytics": "التحليلات",
     "totalRequests": "إجمالي الطلبات",
     "allTime": "في جميع الأوقات",
-    "pendingReview": "قيد المراجعة",
     "needsFirstAction": "يحتاج إلى إجراء أول",
     "financeReview": "مراجعة مالية",
     "inFinanceQueue": "في طابور المالية",
@@ -10735,7 +10720,8 @@
     "businessCards": "بطاقات العمل",
     "boothDesign": "تصميم الجناح",
     "draft": "مسودة",
-    "exhibitionRequestInspector": "مفتش طلب المعرض"
+    "exhibitionRequestInspector": "مفتش طلب المعرض",
+    "pendingReview": "قيد المراجعة"
   },
   "adminExhibitionsAnalytics": {
     "adminAnalyticsBadge": "تحليلات المسؤول",
@@ -13456,7 +13442,7 @@
     "linkUsedError": "هذا الرابط غير صالح أو تم استخدامه بالفعل.",
     "backToSignIn": "العودة إلى تسجيل الدخول",
     "needHelp": "بحاجة إلى مساعدة؟",
-    "contactSupport": "تواصل مع الدعم",
+    "contactSupport": "التواصل مع الدعم",
     "checkEmailTitle": "تحقق من بريدك الإلكتروني",
     "sentCodeToPrefix": "لقد أرسلنا رمز تحقق مكوّنًا من 6 أرقام إلى",
     "yourEmailAddress": "عنوان بريدك الإلكتروني",
@@ -13476,8 +13462,7 @@
     "sendingEllipsis": "جارٍ الإرسال…",
     "resendVerificationEmail": "إعادة إرسال بريد التحقق",
     "resendIn": "إعادة الإرسال خلال {seconds} ث",
-    "changeEmail": "تغيير عنوان البريد الإلكتروني",
-    "contactSupport": "التواصل مع الدعم"
+    "changeEmail": "تغيير عنوان البريد الإلكتروني"
   },
   "confirmEmailChange": {
     "confirmationFailedFallback": "فشل التأكيد. قد يكون الرابط منتهي الصلاحية.",

@@ -13,7 +13,7 @@ export default function SettingsLoading() {
           ))}
         </div>
         {/* Content area */}
-        <div className="flex-1 card-base space-y-4 p-6">
+        <div className="flex-1 card-base space-y-4 panel-body">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="space-y-1.5">
               <div className="h-3.5 w-28 rounded bg-muted/60" />

@@ -89,7 +89,7 @@ export function MyPostersPage() {
   });
 
   return (
-    <div className="page-container space-y-3 sm:space-y-6">
+    <div className="page-container">
       {ConfirmDialogNode}
       <PageHero
         title={t("title")}

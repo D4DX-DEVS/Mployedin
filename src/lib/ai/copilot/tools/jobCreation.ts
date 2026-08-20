@@ -67,13 +67,11 @@ export const createJobTool: CopilotTool<{
 
     let employerId: string | undefined;
     let agentId: string | undefined;
-    let employerVerified = false;
 
     if (ctx.role === "employer") {
-      const emp = await Employer.findOne({ userId: ctx.userId }).select("_id agentId verifiedAt isAgentVerified").lean();
+      const emp = await Employer.findOne({ userId: ctx.userId }).select("_id agentId").lean();
       if (!emp) return { ok: false, message: "No employer profile found for this account." };
       employerId = String(emp._id);
-      employerVerified = Boolean(emp.verifiedAt) || Boolean(emp.isAgentVerified);
       if (emp.agentId) {
         agentId = String(emp.agentId);
       } else {
@@ -102,29 +100,9 @@ export const createJobTool: CopilotTool<{
       }
     }
 
-    let approvalStatus: "pending" | "approved";
-    let resolvedStatus: string;
-    if (ctx.role === "admin") {
-      approvalStatus = "approved";
-      resolvedStatus = args.status ?? "active";
-    } else if (ctx.role === "agent") {
-      approvalStatus = "pending";
-      resolvedStatus = "pending_approval";
-    } else if (ctx.role === "employer" && agentId) {
-      approvalStatus = "pending";
-      resolvedStatus = "pending_approval";
-    } else if (ctx.role === "employer" && !employerVerified) {
-      if (args.status === "draft") {
-        approvalStatus = "pending";
-        resolvedStatus = "draft";
-      } else {
-        approvalStatus = "pending";
-        resolvedStatus = "pending_approval";
-      }
-    } else {
-      approvalStatus = "approved";
-      resolvedStatus = args.status ?? "active";
-    }
+    // ponytail: no approval queue — jobs go live on publish.
+    const approvalStatus: "pending" | "approved" = "approved";
+    const resolvedStatus: string = args.status ?? "active";
 
     const job = await Job.create({
       title: sanitizeAIInput(args.title, 200),
@@ -159,10 +137,7 @@ export const createJobTool: CopilotTool<{
       incrementAgentCounter(String(agentId), "vacanciesPosted");
     }
 
-    const statusNote =
-      resolvedStatus === "draft" ? " Saved as a draft."
-      : approvalStatus === "pending" ? " It's awaiting approval before it goes live."
-      : " It's now live.";
+    const statusNote = resolvedStatus === "draft" ? " Saved as a draft." : " It's now live.";
 
     return { ok: true, message: `Job "${job.title}" created.${statusNote}`, data: { jobId: String(job._id), status: resolvedStatus } };
   },

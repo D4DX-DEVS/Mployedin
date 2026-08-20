@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Sidebar, MobileMenuButton } from "@/components/shared/Sidebar";
 import { CommandMenuTrigger } from "@/components/shared/CommandMenu";
@@ -65,6 +66,7 @@ export function DashboardShell({
   tenantViewData,
 }: DashboardShellProps) {
   const tNav = useTranslations("nav");
+  const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const isJobSeeker = userRole === "job_seeker";
   // Agent/super-agent list pages share the exact same admin-authored
@@ -79,6 +81,14 @@ export function DashboardShell({
     label: tNav(tab.labelKey),
     exact: tab.exact,
   }));
+  // ponytail: phones already get the sidebar via the bottom bar's "More" tab, so
+  // the topbar hamburger is dropped and the whole topbar is hidden everywhere
+  // except each workspace's dashboard root (the tab flagged `exact`).
+  const hasBottomNav = bottomNavTabs.length > 0;
+  const dashboardRoot = (WORKSPACE_BOTTOM_NAV_TABS[userRole as UserRole] ?? []).find((t) => t.exact)?.href;
+  const isDashboardRoot = !dashboardRoot || pathname === `/${locale}${dashboardRoot}`;
+  const hideTopbarOnMobile = hasBottomNav && !isDashboardRoot;
+
   // Defer Radix-based components to avoid SSR/client ID mismatch hydration errors
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
@@ -108,9 +118,29 @@ export function DashboardShell({
           />
         )}
         {/* Topbar */}
-        <header className={`dashboard-topbar border-b border-border/40 bg-background z-30 sticky top-0 transition-all ${usesModernWorkspaceShell ? "dashboard-topbar-workspace h-14 sm:h-16" : isJobSeeker ? "h-14 sm:h-16" : "h-14"}`}>
+        <header className={`dashboard-topbar border-b border-border/40 bg-background z-30 sticky top-0 transition-all ${hideTopbarOnMobile ? "hidden lg:block " : ""}${usesModernWorkspaceShell ? "dashboard-topbar-workspace h-14 sm:h-16" : isJobSeeker ? "h-14 sm:h-16" : "h-14"}`}>
           <div className="flex h-full items-center gap-1.5 px-3 sm:gap-2 sm:px-4 md:gap-3 lg:px-6">
-            {!isJobSeeker && <MobileMenuButton onClick={() => setMobileOpen(true)} />}
+            {!isJobSeeker && !hasBottomNav && <MobileMenuButton onClick={() => setMobileOpen(true)} />}
+
+            {/* ponytail: the hamburger used to hold this slot on phones; the logo
+                fills it now so the topbar is not three controls floating right. */}
+            {!isJobSeeker && hasBottomNav && (
+              <Link
+                href={`/${locale}${dashboardRoot ?? ""}`}
+                className="shrink-0 lg:hidden"
+                aria-label={tNav("a11yHome")}
+              >
+                <Image
+                  src="/logo.png"
+                  alt="Mployedin"
+                  width={100}
+                  height={34}
+                  className="h-auto w-[96px] object-contain"
+                  style={{ height: "auto" }}
+                  priority
+                />
+              </Link>
+            )}
 
             {isJobSeeker && (
               <Link href={`/${locale}/job-seeker`} className="shrink-0" aria-label={tNav("a11yHome")}>

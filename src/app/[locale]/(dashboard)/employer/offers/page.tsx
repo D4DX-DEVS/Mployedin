@@ -165,7 +165,7 @@ export default function EmployerOffersPage() {
         ]}
       />
 
-      <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
+      <section className="workspace-panel-surface rounded-[28px] panel-body">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("filterDecisions")}</p>
@@ -197,7 +197,7 @@ export default function EmployerOffersPage() {
       </section>
 
       {error ? (
-        <section className="workspace-panel-surface rounded-[28px] border border-red-500/20 p-6">
+        <section className="workspace-panel-surface rounded-[28px] border border-red-500/20 panel-body">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-rejected">{t("offerList")}</p>
@@ -212,7 +212,7 @@ export default function EmployerOffersPage() {
           </div>
         </section>
       ) : loading ? (
-        <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
+        <section className="workspace-panel-surface rounded-[28px] panel-body">
           <div className="mb-5 flex items-center justify-between gap-4">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("offerList")}</p>
@@ -226,7 +226,7 @@ export default function EmployerOffersPage() {
           </div>
         </section>
       ) : offers.length === 0 ? (
-        <section className="workspace-panel-surface rounded-[28px] p-6">
+        <section className="workspace-panel-surface rounded-[28px] panel-body">
           <div className="flex flex-col items-center py-14 text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-status-applied-bg text-status-applied">
               <DollarSign className="h-7 w-7" />
@@ -241,7 +241,7 @@ export default function EmployerOffersPage() {
           </div>
         </section>
       ) : (
-        <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
+        <section className="workspace-panel-surface rounded-[28px] panel-body">
           {/* Export sits on the heading row and the filter blurb (already shown
               verbatim in the filter card above) is desktop-only — together they
               cost ~120px of phone height for nothing. */}
@@ -435,7 +435,7 @@ export default function EmployerOffersPage() {
       {detailOffer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-6 backdrop-blur-sm">
           <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[28px] border border-border bg-background shadow-[0_30px_90px_-36px_rgba(15,23,42,0.5)]">
-            <div className="flex items-start justify-between gap-4 border-b border-border/60 px-6 py-5">
+            <div className="flex items-start justify-between gap-4 panel-head">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("offerDetail")}</p>
                 <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{detailOffer.jobId?.title}</h2>

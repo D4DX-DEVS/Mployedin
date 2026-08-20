@@ -178,7 +178,7 @@ export function AgentDetailDialog({ open, onOpenChange, agent, year }: AgentDeta
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[90vh] max-w-3xl flex-col gap-0 overflow-hidden p-0" hideClose>
         {/* Header */}
-        <DialogHeader className="flex-shrink-0 border-b border-border/60 px-6 py-4">
+        <DialogHeader className="flex-shrink-0 panel-head">
           <div className="flex items-start justify-between">
             <div>
               <DialogTitle className="flex items-center gap-2 text-lg">

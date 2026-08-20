@@ -310,15 +310,13 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
 
   let employerId: string | undefined;
   let agentId: string | undefined;
-  let employerVerified = false;
 
   if (ctx.role === "employer") {
     const emp = await Employer.findOne({ userId: ctx.userId })
-      .select("_id agentId verifiedAt isAgentVerified")
+      .select("_id agentId")
       .lean();
     if (!emp) return NextResponse.json({ error: "Employer profile not found" }, { status: 404 });
     employerId = String(emp._id);
-    employerVerified = Boolean(emp.verifiedAt) || Boolean(emp.isAgentVerified);
 
     // 8C.1: employer can assign agentId via body
     if (body.agentId) {
@@ -389,53 +387,11 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
     if (body.agentId) agentId = body.agentId;
   }
 
-  // 8C.2: determine approval status based on role, agent involvement & verification.
-  //
-  // Status resolution rules (matches model enum draft | pending_approval | active | paused | closed | expired):
-  //   - Admin                       → respects explicit status, defaults to "active"
-  //   - Agent (any status)          → always routed to moderation ("pending_approval")
-  //   - Employer + agent involvement → always routed to moderation ("pending_approval")
-  //   - Verified employer           → respects explicit status, defaults to "active"
-  //   - Unverified employer:
-  //       • explicit "draft"        → stays "draft" (drafts are never public, never need approval)
-  //       • anything else ("active"/publish) → routed to moderation ("pending_approval")
-  //
-  // This preserves the moderation gate for unverified employers attempting to publish,
-  // while no longer silently discarding an explicit "Save as Draft" — which previously
-  // stranded drafts in pending_approval and made them undeletable from the UI.
-  let approvalStatus: "pending" | "approved";
-  let resolvedStatus: string;
-
-  // T8: tenant view swaps ctx.role to "employer", so an admin posting inside an
-  // employer's account never matched the admin branch and had to go approve their
-  // own job. The approval decision must follow the real human, not the proxy.
-  const actingRole = ctx.tenantView?.actorRole ?? ctx.role;
-
-  if (actingRole === "admin") {
-    approvalStatus = "approved";
-    resolvedStatus = status ?? "active";
-  } else if (actingRole === "agent") {
-    approvalStatus = "pending";
-    resolvedStatus = "pending_approval";
-  } else if (ctx.role === "employer" && agentId) {
-    // Employer posted with agent involvement → needs approval
-    approvalStatus = "pending";
-    resolvedStatus = "pending_approval";
-  } else if (ctx.role === "employer" && !employerVerified) {
-    // C-3: unverified employer. Drafts are private and never need moderation;
-    // only a publish attempt is routed to the admin approval queue.
-    if (status === "draft") {
-      approvalStatus = "pending";
-      resolvedStatus = "draft";
-    } else {
-      approvalStatus = "pending";
-      resolvedStatus = "pending_approval";
-    }
-  } else {
-    // Verified employer self-posting without agent → auto-approved
-    approvalStatus = "approved";
-    resolvedStatus = status ?? "active";
-  }
+  // No approval queue: employers publish directly. Admins/super-agents oversee
+  // and delete via their job lists. Draft stays private until the poster publishes.
+  // ponytail: single source of truth for job status — nothing routes to moderation.
+  const approvalStatus: "pending" | "approved" = "approved";
+  const resolvedStatus: string = status ?? "active";
 
   const jobDoc = new Job({
     title,

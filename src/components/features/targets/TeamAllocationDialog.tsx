@@ -472,7 +472,7 @@ export function TeamAllocationDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[90vh] max-w-5xl flex-col gap-0 overflow-hidden p-0">
         {/* Header */}
-        <DialogHeader className="flex-shrink-0 border-b border-border/60 px-6 py-4">
+        <DialogHeader className="flex-shrink-0 panel-head">
           <DialogTitle className="flex items-center gap-2 text-lg">
             <SplitSquareVertical className="h-5 w-5 text-sky-600" />
             {t("distributeTargetsToAgents")}

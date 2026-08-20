@@ -1,0 +1,4972 @@
+[
+ {
+  "role": "admin",
+  "route": "/admin",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/activity-timeline",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/agents",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 1
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/analytics",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/applications",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 1
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/approvals",
+  "error": "HTTP 404"
+ },
+ {
+  "role": "admin",
+  "route": "/admin/audit",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/audit-logs",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/bulk-import",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/cms",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/cms/banners",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 1
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/cms/blogs",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 1
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/cms/contact-submissions",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 1
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/cms/faqs",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 1
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/cms/static-pages",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 1
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/cms/static-pages/new",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/cms/testimonials",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 1
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/cms/videos",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 1
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/commissions",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 1
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/commissions-report",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 1
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/communications",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/employers",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 1
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/exhibitions",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 1
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/exhibitions/analytics",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "jsError": "Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenera"
+ },
+ {
+  "role": "admin",
+  "route": "/admin/gdpr",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    12,
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    20,
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    20,
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/impersonate",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [],
+   "padless": 1
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [],
+   "padless": 1
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [],
+   "padless": 1
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/interviews",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 1
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/invoices",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/invoices/new",
+  "mobile": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/job-attributes",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [],
+   "padless": 1
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [],
+   "padless": 1
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [],
+   "padless": 1
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/job-attributes/genders",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [],
+   "padless": 1
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [],
+   "padless": 1
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [],
+   "padless": 1
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/job-attributes/industries",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [],
+   "padless": 1
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [],
+   "padless": 1
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [],
+   "padless": 1
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/job-attributes/job-skills",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [],
+   "padless": 1
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [],
+   "padless": 1
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [],
+   "padless": 1
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/job-attributes/major-subjects",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [],
+   "padless": 1
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [],
+   "padless": 1
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [],
+   "padless": 1
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/job-attributes/marital-statuses",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [],
+   "padless": 1
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [],
+   "padless": 1
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [],
+   "padless": 1
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/job-seekers",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 1
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/jobs",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/jobs/new",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/location-data",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [],
+   "padless": 1
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [],
+   "padless": 1
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [],
+   "padless": 1
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/location-data/cities",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [],
+   "padless": 1
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [],
+   "padless": 1
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [],
+   "padless": 1
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/location-data/countries",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [],
+   "padless": 1
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [],
+   "padless": 1
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [],
+   "padless": 1
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/location-data/states",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [],
+   "padless": 1
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [],
+   "padless": 1
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [],
+   "padless": 1
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/matching-weight-templates",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/messages",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/placements",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 1
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/referral-links",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/reports",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/resources",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/settings",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/settings/notifications",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/subscription-dashboard",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/subscription-plans",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/subscriptions",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/super-agents",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 1
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/system-health",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/target-management",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/target-management/create",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/target-report",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/targets",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/territory",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/users",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 1
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/webhooks",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 1
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/workflow-templates",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "employer",
+  "route": "/employer",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "employer",
+  "route": "/employer/activity-history",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "employer",
+  "route": "/employer/analytics",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 2
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "employer",
+  "route": "/employer/applications",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 1
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  }
+ },
+ {
+  "role": "employer",
+  "route": "/employer/assessments",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "employer",
+  "route": "/employer/background-checks",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "employer",
+  "route": "/employer/calendar",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 1
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  }
+ },
+ {
+  "role": "employer",
+  "route": "/employer/campaigns",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "employer",
+  "route": "/employer/candidates",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "employer",
+  "route": "/employer/comm-templates",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "employer",
+  "route": "/employer/interviews",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "employer",
+  "route": "/employer/interviews/bulk",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "employer",
+  "route": "/employer/invoices",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 1
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  }
+ },
+ {
+  "role": "employer",
+  "route": "/employer/job-templates",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "employer",
+  "route": "/employer/jobs",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "employer",
+  "route": "/employer/jobs/ai-create",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "employer",
+  "route": "/employer/jobs/ai-extract",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "employer",
+  "route": "/employer/jobs/new",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "employer",
+  "route": "/employer/matching-weights",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "employer",
+  "route": "/employer/messages",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "employer",
+  "route": "/employer/my-posters",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "employer",
+  "route": "/employer/offers",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "employer",
+  "route": "/employer/payment-setup",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "employer",
+  "route": "/employer/placements",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "employer",
+  "route": "/employer/scorecards",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "employer",
+  "route": "/employer/screening-analytics",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "employer",
+  "route": "/employer/settings",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "employer",
+  "route": "/employer/subscription",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "employer",
+  "route": "/employer/talent-pools",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "employer",
+  "route": "/employer/team",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "employer",
+  "route": "/employer/team/accept",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [],
+   "padless": 0
+  }
+ },
+ {
+  "role": "employer",
+  "route": "/employer/team/activity-logs",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "employer",
+  "route": "/employer/workflow",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "job-seeker",
+  "route": "/job-seeker",
+  "mobile": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 2
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  }
+ },
+ {
+  "role": "job-seeker",
+  "route": "/job-seeker/applications",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [],
+   "padless": 0
+  }
+ },
+ {
+  "role": "job-seeker",
+  "route": "/job-seeker/calendar",
+  "mobile": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 1
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 1
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 1
+  }
+ },
+ {
+  "role": "job-seeker",
+  "route": "/job-seeker/companies",
+  "mobile": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  }
+ },
+ {
+  "role": "job-seeker",
+  "route": "/job-seeker/courses",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "job-seeker",
+  "route": "/job-seeker/cv",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "job-seeker",
+  "route": "/job-seeker/documents",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "job-seeker",
+  "route": "/job-seeker/experience",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "job-seeker",
+  "route": "/job-seeker/interviews",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16,
+    32,
+    56
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24,
+    40,
+    64
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24,
+    40,
+    64
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "job-seeker",
+  "route": "/job-seeker/jobs",
+  "mobile": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  }
+ },
+ {
+  "role": "job-seeker",
+  "route": "/job-seeker/messages",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "job-seeker",
+  "route": "/job-seeker/offers",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16,
+    32
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24,
+    40
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24,
+    40
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "job-seeker",
+  "route": "/job-seeker/onboarding",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "job-seeker",
+  "route": "/job-seeker/portfolio",
+  "mobile": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  }
+ },
+ {
+  "role": "job-seeker",
+  "route": "/job-seeker/preferences",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "job-seeker",
+  "route": "/job-seeker/profile",
+  "mobile": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  }
+ },
+ {
+  "role": "job-seeker",
+  "route": "/job-seeker/profile-boost",
+  "mobile": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  }
+ },
+ {
+  "role": "job-seeker",
+  "route": "/job-seeker/profile-views",
+  "mobile": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  }
+ },
+ {
+  "role": "job-seeker",
+  "route": "/job-seeker/profile/personal-details",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "job-seeker",
+  "route": "/job-seeker/referral",
+  "mobile": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  }
+ },
+ {
+  "role": "job-seeker",
+  "route": "/job-seeker/saved-jobs",
+  "mobile": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  }
+ },
+ {
+  "role": "job-seeker",
+  "route": "/job-seeker/saved-searches",
+  "mobile": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  }
+ },
+ {
+  "role": "job-seeker",
+  "route": "/job-seeker/search",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "job-seeker",
+  "route": "/job-seeker/settings",
+  "mobile": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  }
+ },
+ {
+  "role": "job-seeker",
+  "route": "/job-seeker/settings/notifications",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    -865,
+    32,
+    40
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    -369,
+    40,
+    48
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    -509,
+    40,
+    48
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "job-seeker",
+  "route": "/job-seeker/skills",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    40,
+    48
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    48,
+    56
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    48,
+    56
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "job-seeker",
+  "route": "/job-seeker/subscription",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "agent",
+  "route": "/agent",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "agent",
+  "route": "/agent/calendar",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 1
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  }
+ },
+ {
+  "role": "agent",
+  "route": "/agent/candidates",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "agent",
+  "route": "/agent/chat",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 1
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  }
+ },
+ {
+  "role": "agent",
+  "route": "/agent/commissions",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "agent",
+  "route": "/agent/commissions-report",
+  "mobile": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  }
+ },
+ {
+  "role": "agent",
+  "route": "/agent/employers",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "agent",
+  "route": "/agent/exhibitions",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 1
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  }
+ },
+ {
+  "role": "agent",
+  "route": "/agent/interviews",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "agent",
+  "route": "/agent/invoices",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 1
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 1
+  }
+ },
+ {
+  "role": "agent",
+  "route": "/agent/job-seekers",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "agent",
+  "route": "/agent/jobs",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "agent",
+  "route": "/agent/jobs/new",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "agent",
+  "route": "/agent/leads",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    -1947,
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    -977,
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    -949,
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "agent",
+  "route": "/agent/leads/new",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "agent",
+  "route": "/agent/messages",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "agent",
+  "route": "/agent/offers",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "agent",
+  "route": "/agent/placements",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "agent",
+  "route": "/agent/referral-links",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "agent",
+  "route": "/agent/reports",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "agent",
+  "route": "/agent/resources",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "agent",
+  "route": "/agent/settings",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "agent",
+  "route": "/agent/target-management",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "agent",
+  "route": "/agent/target-report",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [],
+   "padless": 0
+  }
+ },
+ {
+  "role": "agent",
+  "route": "/agent/targets",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "agent",
+  "route": "/agent/tasks",
+  "mobile": {
+   "overflow": 0,
+   "container": true,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": true,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "padless": 0
+  }
+ },
+ {
+  "role": "public",
+  "route": "/",
+  "mobile": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  }
+ },
+ {
+  "role": "public",
+  "route": "/agent-register",
+  "mobile": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  }
+ },
+ {
+  "role": "public",
+  "route": "/blog",
+  "mobile": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  }
+ },
+ {
+  "role": "public",
+  "route": "/companies",
+  "mobile": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  }
+ },
+ {
+  "role": "public",
+  "route": "/confirm-email-change",
+  "mobile": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  }
+ },
+ {
+  "role": "public",
+  "route": "/contact",
+  "mobile": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  }
+ },
+ {
+  "role": "public",
+  "route": "/cookies",
+  "mobile": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  }
+ },
+ {
+  "role": "public",
+  "route": "/employer-register",
+  "mobile": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  }
+ },
+ {
+  "role": "public",
+  "route": "/faq",
+  "mobile": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  }
+ },
+ {
+  "role": "public",
+  "route": "/forgot-password",
+  "mobile": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  }
+ },
+ {
+  "role": "public",
+  "route": "/gdpr",
+  "mobile": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  }
+ },
+ {
+  "role": "public",
+  "route": "/jobs",
+  "mobile": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  }
+ },
+ {
+  "role": "public",
+  "route": "/login",
+  "error": "auth-redirect"
+ },
+ {
+  "role": "public",
+  "route": "/maintenance",
+  "mobile": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  }
+ },
+ {
+  "role": "public",
+  "route": "/mcp-authorize",
+  "mobile": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  }
+ },
+ {
+  "role": "public",
+  "route": "/notifications",
+  "error": "auth-redirect"
+ },
+ {
+  "role": "public",
+  "route": "/onboarding",
+  "error": "auth-redirect"
+ },
+ {
+  "role": "public",
+  "route": "/privacy",
+  "mobile": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  }
+ },
+ {
+  "role": "public",
+  "route": "/register",
+  "mobile": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  }
+ },
+ {
+  "role": "public",
+  "route": "/reset-password",
+  "mobile": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  }
+ },
+ {
+  "role": "public",
+  "route": "/salary-explorer",
+  "mobile": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  }
+ },
+ {
+  "role": "public",
+  "route": "/terms",
+  "mobile": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  }
+ },
+ {
+  "role": "public",
+  "route": "/verify-email",
+  "mobile": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "tablet": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  },
+  "desktop": {
+   "overflow": 0,
+   "container": false,
+   "gap": "normal",
+   "uniqGaps": [],
+   "padless": 0
+  }
+ },
+ {
+  "role": "public",
+  "route": "/verify-oauth-2fa",
+  "error": "auth-redirect"
+ }
+]

@@ -9,6 +9,7 @@ import { useTranslations } from "next-intl";
 import { ChevronDown, ChevronLeft, ChevronRight, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { NavGroup, NavItem } from "@/lib/nav/menuConfig";
+import { withoutBottomTabItems } from "@/lib/nav/bottomNavTabs";
 import { getIcon } from "@/lib/nav/iconRegistry";
 import { useConversations } from "@/hooks/useConversations";
 
@@ -195,18 +196,6 @@ export function Sidebar({
       descriptionAr: "أداء الفريق والمالية والرؤى",
       children: [
         ...compactChildren(
-          [{
-            title: "Job Approvals",
-            titleAr: "الموافقات على الوظائف",
-            href: `/${locale}/super-agent/approvals`,
-            icon: "CheckCircle",
-            description: "Review jobs waiting for approval",
-            descriptionAr: "مراجعة الوظائف التي تنتظر الموافقة",
-          }],
-          "Action queue",
-          "قائمة الإجراءات"
-        ),
-        ...compactChildren(
           ["Reports", "Targets", "Target Report", "Territory"].map(findSuperOverview),
           "Performance",
           "الأداء"
@@ -240,13 +229,17 @@ export function Sidebar({
   ].filter((item): item is NavItem => Boolean(item));
 
   const navigationMainItems = mobileOpen
-    ? effectiveRole === "admin"
-      ? adminMobileItems
-      : effectiveRole === "agent"
-        ? agentMobileItems
-        : effectiveRole === "super_agent"
-          ? superAgentMobileItems
-          : allMainItems
+    ? withoutBottomTabItems(
+        effectiveRole === "admin"
+          ? adminMobileItems
+          : effectiveRole === "agent"
+            ? agentMobileItems
+            : effectiveRole === "super_agent"
+              ? superAgentMobileItems
+              : allMainItems,
+        effectiveRole,
+        locale
+      )
     : allMainItems;
 
   const getInitialActiveItem = () => {

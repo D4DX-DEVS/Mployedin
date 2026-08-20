@@ -9,9 +9,7 @@ import {
   InteractivePipeline,
   PriorityActions,
   AIRecommendedCandidatesCard,
-  DraftExtractionsCard,
-  DraftJobsCard,
-  AIChatDraftsCard,
+  DashboardInsightsRow,
 } from "@/components/features/employer/dashboard";
 
 export default async function EmployerDashboard({ params }: { params: Promise<{ locale: string }> }) {
@@ -87,20 +85,16 @@ export default async function EmployerDashboard({ params }: { params: Promise<{ 
         locale={locale}
       />
 
-      <AIRecommendedCandidatesCard
-        highMatchCount={highMatchCount}
-        band90PlusCount={band90PlusCount}
-        band80to89Count={band80to89Count}
-        needsReviewCount={needsReviewCount}
-        activeJobCount={activeJobCount}
-        locale={locale}
-      />
-
-      <div className="grid gap-3 sm:gap-4 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
-        <DraftJobsCard locale={locale} />
-        <AIChatDraftsCard locale={locale} />
-        <DraftExtractionsCard locale={locale} />
-      </div>
+      <DashboardInsightsRow locale={locale}>
+        <AIRecommendedCandidatesCard
+          highMatchCount={highMatchCount}
+          band90PlusCount={band90PlusCount}
+          band80to89Count={band80to89Count}
+          needsReviewCount={needsReviewCount}
+          activeJobCount={activeJobCount}
+          locale={locale}
+        />
+      </DashboardInsightsRow>
 
       {/* Setup Guide (conditional — new employers) */}
       <SetupGuide />

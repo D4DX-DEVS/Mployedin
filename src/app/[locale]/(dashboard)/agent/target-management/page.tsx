@@ -441,7 +441,7 @@ export default function AgentTargetManagementPage() {
           )}
 
           <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 px-4 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 panel-head">
               <div>
                 <p className="text-sm font-semibold">Leaderboard</p>
                 <p className="text-xs text-muted-foreground">

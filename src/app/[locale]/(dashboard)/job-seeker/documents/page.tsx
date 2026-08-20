@@ -308,7 +308,7 @@ export default function JobSeekerDocumentsPage() {
 
       <div className="space-y-3 sm:space-y-6">
         {/* ── Category selector ── */}
-        <div className="card-base p-3 sm:p-4">
+        <div className="card-base panel-body">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">{t("type")}</p>
           <div className="flex flex-wrap gap-2 sm:gap-3">
             {DOC_CATEGORIES.map((cat) => {

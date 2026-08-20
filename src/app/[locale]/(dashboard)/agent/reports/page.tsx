@@ -168,7 +168,7 @@ export default function AgentReportsPage() {
           </section>
 
           {/* ─── Lead Funnel ─── */}
-          <section className="workspace-panel-surface rounded-[28px] p-5">
+          <section className="workspace-panel-surface rounded-[28px] panel-body">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("leadFunnel")}</p>
             <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("pipelineStageDistribution")}</h2>
             <div className="mt-5 space-y-3">
@@ -197,7 +197,7 @@ export default function AgentReportsPage() {
           </section>
 
           {/* ─── Commission Summary ─── */}
-          <section className="workspace-panel-surface rounded-[28px] p-5">
+          <section className="workspace-panel-surface rounded-[28px] panel-body">
             <div className="flex items-center gap-2 mb-4">
               <CircleDollarSign className="h-4 w-4 text-primary" />
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("commissionSummary")}</p>
@@ -219,7 +219,7 @@ export default function AgentReportsPage() {
 
           {/* ─── Monthly Trends Table ─── */}
           {analytics.monthlyTrends.length > 0 && (
-            <section className="workspace-panel-surface rounded-[28px] p-5">
+            <section className="workspace-panel-surface rounded-[28px] panel-body">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("monthlyTrends")}</p>
               <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("sixMonthPerformance")}</h2>
               <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
@@ -260,7 +260,7 @@ export default function AgentReportsPage() {
       )}
 
       {/* ─── AI Report Section ─── */}
-      <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
+      <section className="workspace-panel-surface rounded-[28px] panel-body">
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("aiPoweredReports")}</p>
         <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("generateCustomReports")}</h2>
         <p className="mt-1 text-sm text-muted-foreground">{t("reportsFromLiveData")}</p>
@@ -280,7 +280,7 @@ export default function AgentReportsPage() {
         </div>
       </section>
 
-      <section className="workspace-panel-surface space-y-4 rounded-[28px] p-5 sm:p-6">
+      <section className="workspace-panel-surface space-y-4 rounded-[28px] panel-body">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
           <p className="text-sm font-semibold text-foreground">{t("customReport")}</p>
@@ -309,7 +309,7 @@ export default function AgentReportsPage() {
       )}
 
       {result && (
-        <section className="workspace-panel-surface space-y-4 rounded-[28px] p-5 sm:p-6">
+        <section className="workspace-panel-surface space-y-4 rounded-[28px] panel-body">
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-primary">{t("reportGeneratedAt", { time: result.generatedAt })}</p>
             <button

@@ -323,7 +323,7 @@ export default function AdminActivityTimelinePage() {
       />
 
       {/* Timeline */}
-      <section className="workspace-panel-surface rounded-[28px] p-5">
+      <section className="workspace-panel-surface rounded-[28px] panel-body">
         {loading ? (
           <div className="relative ml-4 space-y-3 sm:space-y-6 border-l-2 border-muted pl-6">
             {Array.from({ length: 6 }).map((_, i) => (

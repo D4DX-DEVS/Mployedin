@@ -50,8 +50,7 @@
     "a11yNavigationMenu": "Navigation menu",
     "a11yOpenMenu": "Open menu",
     "a11yCloseMenu": "Close menu",
-    "a11yHome": "Mployedin home",
-    "more": "More"
+    "a11yHome": "Mployedin home"
   },
   "auth": {
     "login": "Login",
@@ -754,9 +753,9 @@
       "revise": "Revise",
       "respondCounter": "Respond",
       "remind": "Remind",
-      "withdraw": "Withdraw",
       "downloadLetter": "Download letter",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "withdraw": "Withdraw"
     },
     "table": {
       "candidate": "Candidate",
@@ -960,7 +959,6 @@
     "viewDetails": "View details for {job}",
     "hideDetails": "Hide details for {job}",
     "rateExperience": "Rate experience",
-    "withdraw": "Withdraw",
     "details": {
       "interview": "Interview Details",
       "joinMeeting": "Join Meeting",
@@ -1007,7 +1005,8 @@
       "status": "Status",
       "matchScore": "Match Score",
       "appliedDate": "Applied Date"
-    }
+    },
+    "withdraw": "Withdraw"
   },
   "jobSeekerCalendar": {
     "title": "My Calendar",
@@ -3761,6 +3760,8 @@
     "statPausedDescription": "Jobs temporarily paused from receiving applications.",
     "statOpeningsLabel": "Openings",
     "statOpeningsDescription": "Combined vacancies across the current results.",
+    "statApplicationsLabel": "Applications",
+    "statApplicationsDescription": "Total applications received across your jobs.",
     "browseRolesLabel": "Browse roles",
     "filterHeading": "Filter the jobs you want to act on next",
     "filterDescription": "Search by keyword, layer on structured filters, or describe the jobs you need in plain English.",
@@ -3780,7 +3781,6 @@
     "statusLabelClosed": "Closed",
     "statusLabelExpired": "Expired",
     "draftHint": "Not yet published — only visible to you.",
-    "inReviewHint": "Submitted for admin review.",
     "allWorkModes": "All work modes",
     "workModeOnsite": "On-site",
     "workModeHybrid": "Hybrid",
@@ -3840,16 +3840,6 @@
     "resumingButton": "Resuming…",
     "deleteButton": "Delete",
     "deletingButton": "Deleting…",
-    "submitForApprovalButton": "Submit for Approval",
-    "submittingForApprovalButton": "Submitting…",
-    "withdrawButton": "Withdraw",
-    "withdrawingButton": "Withdrawing…",
-    "toastJobSubmitted": "Job submitted for admin approval.",
-    "toastFailedSubmit": "Failed to submit job for approval.",
-    "toastJobWithdrawn": "Job withdrawn to draft.",
-    "toastFailedWithdraw": "Failed to withdraw job.",
-    "confirmSubmitForApproval": "Submit this job for admin approval? It will be reviewed before going live.",
-    "confirmWithdraw": "Withdraw this job from review and return it to draft?",
     "locationNotSet": "Location not set",
     "salaryNotDisclosed": "Salary not disclosed",
     "salaryNotSet": "Salary not set",
@@ -3886,7 +3876,12 @@
     "toastFailedDelete": "Failed to delete job",
     "toastAiApplied": "AI search applied.",
     "toastAiUnavailable": "AI search unavailable. Keyword search applied.",
-    "toastAiFallback": "AI search unavailable. Keyword search applied instead."
+    "toastAiFallback": "AI search unavailable. Keyword search applied instead.",
+    "publishButton": "Publish",
+    "publishingButton": "Publishing…",
+    "toastJobPublished": "Job published.",
+    "toastFailedPublish": "Failed to publish job.",
+    "confirmPublish": "Publish this job? It will go live immediately."
   },
   "employerCandidates": {
     "heroTitle": "Candidate Matching",
@@ -5227,13 +5222,12 @@
         "label": "Follow Up Leads",
         "description": "Track follow-ups, active prospecting, and employer conversion flow."
       },
-      "jobApprovals": {
-        "label": "Approve Jobs",
-        "description": "Clear pending approvals quickly without leaving the oversight workspace."
-      },
       "commissionReport": {
         "label": "Check Commissions",
         "description": "Stay on top of placement-driven earnings and regional payout status."
+      },
+      "jobOversight": {
+        "label": "Job Oversight"
       }
     },
     "focus": {
@@ -6123,7 +6117,6 @@
     "offersMadeDesc": "Total extended offers",
     "acceptanceRate": "Acceptance Rate",
     "acceptanceRateDesc": "Offers accepted vs total",
-    "pendingReview": "Pending Review",
     "pendingReviewDesc": "Awaiting candidate response",
     "avgSalary": "Avg. Salary",
     "avgSalaryDesc": "Mean offer amount",
@@ -6136,7 +6129,6 @@
     "offerDetails": "Offer Details",
     "status": "Status",
     "actions": "Actions",
-    "withdraw": "Withdraw",
     "extend": "Extend",
     "withdrawConfirm": "Withdraw this offer?",
     "extendByDays": "Enter days to extend (1-30):",
@@ -6163,7 +6155,6 @@
     "notDisclosed": "Not disclosed",
     "offerAction": "Offer action",
     "withdrawConfirmDesc": "Are you sure? The candidate will be notified.",
-    "withdrawing": "Withdrawing…",
     "withdrawOffer": "Withdraw Offer",
     "offerDetail": "Offer detail",
     "offerDetailDesc": "Review package terms, notes, and candidate response details.",
@@ -6171,7 +6162,10 @@
     "benefitsLabel": "Benefits",
     "notesLabel": "Notes",
     "declineReason": "Decline reason",
-    "downloadLetter": "Download offer letter (PDF)"
+    "downloadLetter": "Download offer letter (PDF)",
+    "pendingReview": "Pending Review",
+    "withdraw": "Withdraw",
+    "withdrawing": "Withdrawing…"
   },
   "employerBackgroundChecks": {
     "searchPlaceholder": "Search by candidate name...",
@@ -6641,8 +6635,6 @@
   "employerJobForm": {
     "title": "Post a New Job",
     "description": "Create a job posting to attract qualified candidates",
-    "pendingApprovalTitle": "Submitted for review",
-    "pendingApprovalDescription": "Your company is not verified yet, so this job needs admin approval before it goes live. You'll be notified once it's approved.",
     "autoSaves": "Auto-saves while you type",
     "loadTemplate": "Load Template",
     "postSuccess": "Job posted successfully!",
@@ -7939,8 +7931,8 @@
     "filled_status": "Filled",
     "onHold": "On Hold",
     "cancelled": "Cancelled",
-    "submitForApproval": "Submit for Approval",
-    "linkJob": "Link to Job Posting"
+    "linkJob": "Link to Job Posting",
+    "submitForApproval": "Submit for Approval"
   },
   "applicationForms": {
     "title": "Custom Application Forms",
@@ -8365,14 +8357,9 @@
     "activate": "Activate",
     "deleteDraft": "Delete Draft",
     "deleting": "Deleting…",
-    "submitForApproval": "Submit for Approval",
-    "submittingForApproval": "Submitting…",
-    "withdraw": "Withdraw to Draft",
-    "withdrawing": "Withdrawing…",
     "statusDraft": "Draft",
     "statusDraftHint": "Not yet published — only visible to you.",
     "statusPendingApproval": "Pending Approval",
-    "statusPendingApprovalHint": "Submitted for admin review.",
     "statusActive": "Active",
     "statusPaused": "Paused",
     "statusClosed": "Closed",
@@ -8381,8 +8368,6 @@
     "closeJob": "Close Job",
     "resume": "Resume",
     "deleteConfirm": "Delete this job? It will be removed from your job list.",
-    "confirmSubmitForApproval": "Submit this job for admin approval? It will be reviewed before going live.",
-    "confirmWithdraw": "Withdraw this job from review and return it to draft?",
     "posted": "Posted {date}",
     "vacancies": "Vacancies",
     "views": "Views",
@@ -8402,13 +8387,14 @@
     "experience": "Experience",
     "yearsRange": "{min}–{max} years",
     "educationLabel": "Education",
-    "languagesLabel": "Languages"
+    "languagesLabel": "Languages",
+    "publish": "Publish",
+    "publishing": "Publishing…",
+    "confirmPublish": "Publish this job? It will go live immediately."
   },
   "employerJobEdit": {
     "title": "Edit Job Posting",
     "description": "Changes save as draft unless you publish.",
-    "pendingApprovalTitle": "Submitted for review",
-    "pendingApprovalDescription": "Your company is not verified yet, so this job needs admin approval before it goes live. You'll be notified once it's approved.",
     "publishedTitle": "Job published",
     "backToJob": "Back to Job",
     "saveDraft": "Save Draft",
@@ -8960,8 +8946,6 @@
     "totalJobsNote": "All postings",
     "active": "Active",
     "activeNote": "Currently live",
-    "pendingReview": "Pending Review",
-    "pendingReviewNote": "Awaiting moderation",
     "applicants": "Applicants",
     "applicantsNote": "Total applications",
     "showFilters": "Show Filters",
@@ -9044,7 +9028,9 @@
     "categoryLabel": "Category",
     "applicantsCountLabel": "Applicants",
     "createdLabel": "Created",
-    "exportTitle": "Jobs"
+    "exportTitle": "Jobs",
+    "draftJobs": "Drafts",
+    "draftJobsNote": "Unpublished jobs waiting on their poster."
   },
   "adminSettings": {
     "pageTitle": "Settings",
@@ -10486,7 +10472,6 @@
     "analytics": "Analytics",
     "totalRequests": "Total Requests",
     "allTime": "All time",
-    "pendingReview": "Pending Review",
     "needsFirstAction": "Needs first action",
     "financeReview": "Finance Review",
     "inFinanceQueue": "In finance queue",
@@ -10735,7 +10720,8 @@
     "businessCards": "Business Cards",
     "boothDesign": "Booth Design",
     "draft": "Draft",
-    "exhibitionRequestInspector": "Exhibition request inspector"
+    "exhibitionRequestInspector": "Exhibition request inspector",
+    "pendingReview": "Pending Review"
   },
   "adminExhibitionsAnalytics": {
     "adminAnalyticsBadge": "Admin Analytics",
@@ -13476,8 +13462,7 @@
     "sendingEllipsis": "Sending…",
     "resendVerificationEmail": "Resend verification email",
     "resendIn": "Resend in {seconds}s",
-    "changeEmail": "Change email address",
-    "contactSupport": "Contact support"
+    "changeEmail": "Change email address"
   },
   "confirmEmailChange": {
     "confirmationFailedFallback": "Confirmation failed. The link may have expired.",

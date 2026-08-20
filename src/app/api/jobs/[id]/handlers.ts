@@ -41,20 +41,9 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 
   // Ownership check
   if (ctx.role === "employer") {
-    const emp = await Employer.findOne({ userId: ctx.userId }).select("_id verifiedAt isAgentVerified").lean();
+    const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
     if (!emp || String(job.employerId) !== String(emp._id)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-    // Domain gate: unverified employers cannot self-publish. Reroute a publish
-    // attempt (status === "active") to the moderation queue ("pending_approval")
-    // instead of hard-rejecting — this makes an explicit "Submit for Approval"
-    // CTA succeed for unverified employers and matches the POST createHandler
-    // behavior. Admins approve via /api/admin/jobs/[id]/approve.
-    // Also check if job is agent-mediated (has agentId) — verified employers still need approval
-    const bodyRecord2 = body as Record<string, unknown>;
-    const employerVerified = Boolean(emp.verifiedAt) || Boolean(emp.isAgentVerified);
-    if (bodyRecord2.status === "active" && (!employerVerified || job.agentId)) {
-      bodyRecord2.status = "pending_approval";
     }
   } else if (ctx.role === "agent") {
     // Scope agent writes to jobs they own or jobs of their assigned employers.
@@ -66,11 +55,6 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
       )
     );
     if (!ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    // Agents cannot directly publish jobs; reroute to moderation queue.
-    const bodyRecord3 = body as Record<string, unknown>;
-    if (bodyRecord3.status === "active") {
-      bodyRecord3.status = "pending_approval";
-    }
   } else if (ctx.role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

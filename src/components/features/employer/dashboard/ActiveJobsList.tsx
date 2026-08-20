@@ -26,7 +26,7 @@ export function ActiveJobsList({ jobs, locale }: ActiveJobsListProps) {
   if (jobs.length === 0) return null;
 
   return (
-    <div className="card-base p-0 overflow-hidden">
+    <div className="card-base overflow-hidden panel-body">
       <div className="px-5 pt-5 pb-2 sm:px-6 sm:pt-6 flex items-center justify-between">
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
           {t("activeJobs")}

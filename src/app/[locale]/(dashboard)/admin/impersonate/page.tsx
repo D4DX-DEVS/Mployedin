@@ -140,7 +140,7 @@ export default function AdminUserImpersonatePage() {
 
       <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
         {/* Compact header row */}
-        <div className="flex flex-col gap-3 border-b border-border/80 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 border-b border-border/80 sm:flex-row sm:items-center sm:justify-between panel-head">
           <PageHeader title={t("title")} description={t("description")} />
           <div className="flex items-center gap-2">
             <div className="relative">

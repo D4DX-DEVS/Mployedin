@@ -6,7 +6,7 @@ import {
   ArrowLeft, Edit2, Copy, CheckCircle, XCircle, Clock, MapPin,
   Briefcase, DollarSign, Users, Eye, Calendar, Tag, Trash2,
   GitBranch, SlidersHorizontal, PauseCircle, PlayCircle, Image as ImageIcon,
-  Send, Undo2,
+  Send,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -51,7 +51,6 @@ interface Job {
 const STATUS_COLORS: Record<string, string> = {
   active: "bg-emerald-100 text-emerald-700 border-emerald-200",
   draft: "bg-amber-100 text-amber-700 border-amber-200",
-  pending_approval: "bg-blue-100 text-blue-700 border-blue-200",
   paused: "bg-sky-100 text-sky-700 border-sky-200",
   closed: "bg-muted text-muted-foreground",
   expired: "bg-red-100 text-red-700 border-red-200",
@@ -61,7 +60,6 @@ const STATUS_COLORS: Record<string, string> = {
 const STATUS_LABEL_KEYS: Record<string, string> = {
   active: "statusActive",
   draft: "statusDraft",
-  pending_approval: "statusPendingApproval",
   paused: "statusPaused",
   closed: "statusClosed",
   expired: "statusExpired",
@@ -80,8 +78,7 @@ export default function JobDetailPage() {
   const deleteMutation = useDeleteJob();
   const [cloning, setCloning] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [withdrawing, setWithdrawing] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [posterOpen, setPosterOpen] = useState(false);
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
 
@@ -105,28 +102,14 @@ export default function JobDetailPage() {
     }
   }
 
-  async function handleSubmitForApproval() {
-    const ok = await confirmDialog(t("confirmSubmitForApproval"));
+  async function handlePublish() {
+    const ok = await confirmDialog(t("confirmPublish"));
     if (!ok) return;
-    setSubmitting(true);
+    setPublishing(true);
     try {
-      // PATCH reroutes status:"active" → "pending_approval" for unverified
-      // employers (see api/jobs/[id]/route.ts) so this succeeds for everyone.
       await updateStatusMutation.mutateAsync({ jobId: id, status: "active" });
     } catch {
-      setSubmitting(false);
-    }
-  }
-
-  async function handleWithdraw() {
-    const ok = await confirmDialog(t("confirmWithdraw"));
-    if (!ok) return;
-    setWithdrawing(true);
-    try {
-      await updateStatusMutation.mutateAsync({ jobId: id, status: "draft" });
-      setWithdrawing(false);
-    } catch {
-      setWithdrawing(false);
+      setPublishing(false);
     }
   }
 
@@ -156,9 +139,9 @@ export default function JobDetailPage() {
     return (
       <div className="page-container">
         <div className="h-9 w-32 bg-muted animate-pulse rounded-lg" />
-        <div className="card-base p-5 sm:p-6 h-52 animate-pulse bg-muted/40" />
-        <div className="card-base p-5 sm:p-6 h-36 animate-pulse bg-muted/40" />
-        <div className="card-base p-5 sm:p-6 h-28 animate-pulse bg-muted/40" />
+        <div className="card-base h-52 animate-pulse bg-muted/40 panel-body" />
+        <div className="card-base h-36 animate-pulse bg-muted/40 panel-body" />
+        <div className="card-base h-28 animate-pulse bg-muted/40 panel-body" />
       </div>
     );
   }
@@ -228,16 +211,11 @@ export default function JobDetailPage() {
             </Button>
           )}
           {can("jobs", "update") && job.status === "draft" && (
-            <Button size="sm" className="gap-1.5 h-9 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => { void handleSubmitForApproval(); }} disabled={submitting}>
-              <Send className="w-3.5 h-3.5" /> {submitting ? t("submittingForApproval") : t("submitForApproval")}
+            <Button size="sm" className="gap-1.5 h-9 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => { void handlePublish(); }} disabled={publishing}>
+              <Send className="w-3.5 h-3.5" /> {publishing ? t("publishing") : t("publish")}
             </Button>
           )}
-          {can("jobs", "update") && job.status === "pending_approval" && (
-            <Button size="sm" variant="outline" className="gap-1.5 h-9 border-amber-200 text-amber-700 hover:bg-amber-50" onClick={() => { void handleWithdraw(); }} disabled={withdrawing}>
-              <Undo2 className="w-3.5 h-3.5" /> {withdrawing ? t("withdrawing") : t("withdraw")}
-            </Button>
-          )}
-          {can("jobs", "delete") && (job.status === "draft" || job.status === "pending_approval") && (
+          {can("jobs", "delete") && job.status === "draft" && (
             <Button size="sm" variant="outline" className="gap-1.5 h-9 border-destructive/20 text-destructive hover:bg-destructive/5"
               onClick={() => { void handleDelete(); }} disabled={deleting}>
               <Trash2 className="w-3.5 h-3.5" /> {deleting ? t("deleting") : t("deleteDraft")}
@@ -267,7 +245,7 @@ export default function JobDetailPage() {
       </div>
 
       {/* Header card */}
-      <div className="card-base p-5 sm:p-6">
+      <div className="card-base panel-body">
         <div className="flex items-start justify-between gap-4 mb-5">
           <div className="min-w-0">
             <h1 className="text-2xl font-bold tracking-tight text-foreground mb-2">{job.title}</h1>
@@ -302,11 +280,6 @@ export default function JobDetailPage() {
         {job.status === "draft" ? (
           <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 dark:border-amber-500/30 dark:bg-amber-950/40 dark:text-amber-200">
             {t("statusDraftHint")}
-          </div>
-        ) : null}
-        {job.status === "pending_approval" ? (
-          <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-800 dark:border-blue-500/30 dark:bg-blue-950/40 dark:text-blue-200">
-            {t("statusPendingApprovalHint")}
           </div>
         ) : null}
 
@@ -360,7 +333,7 @@ export default function JobDetailPage() {
 
         <TabsContent value="overview" className="space-y-3 sm:space-y-5">
       {/* Description */}
-      <div className="card-base p-5 sm:p-6">
+      <div className="card-base panel-body">
         <h2 className="text-base font-semibold text-foreground mb-3">{t("jobDescription")}</h2>
         <div className="text-sm leading-relaxed text-foreground/80 whitespace-pre-wrap">
           {job.description}
@@ -369,7 +342,7 @@ export default function JobDetailPage() {
 
       {/* Responsibilities */}
       {job.responsibilities && job.responsibilities.length > 0 && (
-        <div className="card-base p-5 sm:p-6">
+        <div className="card-base panel-body">
           <h2 className="text-base font-semibold text-foreground mb-3">{t("responsibilities")}</h2>
           <ul className="list-disc list-inside space-y-1.5 text-sm text-foreground/80">
             {job.responsibilities.map((r: string, i: number) => (
@@ -381,7 +354,7 @@ export default function JobDetailPage() {
 
       {/* Qualifications */}
       {job.qualifications && job.qualifications.length > 0 && (
-        <div className="card-base p-5 sm:p-6">
+        <div className="card-base panel-body">
           <h2 className="text-base font-semibold text-foreground mb-3">{t("qualifications")}</h2>
           <ul className="list-disc list-inside space-y-1.5 text-sm text-foreground/80">
             {job.qualifications.map((q: string, i: number) => (
@@ -393,7 +366,7 @@ export default function JobDetailPage() {
 
       {/* Requirements */}
       {job.requirements && (
-        <div className="card-base p-5 sm:p-6">
+        <div className="card-base panel-body">
           <h2 className="text-base font-semibold text-foreground mb-4">{t("requirements")}</h2>
 
           {job.requirements.skills && job.requirements.skills.length > 0 && (
@@ -434,7 +407,7 @@ export default function JobDetailPage() {
 
       {/* Tags */}
       {job.tags && job.tags.length > 0 && (
-        <div className="card-base p-5 sm:p-6">
+        <div className="card-base panel-body">
           <h2 className="text-base font-semibold text-foreground mb-3 flex items-center gap-2">
             <Tag className="w-4 h-4 text-muted-foreground" /> {t("tags")}
           </h2>

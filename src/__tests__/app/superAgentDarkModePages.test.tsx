@@ -6,7 +6,6 @@ import { act } from "react";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
 import SuperAgentAgentsPage from "@/app/[locale]/(dashboard)/super-agent/agents/page";
-import SuperAgentApprovalsPage from "@/app/[locale]/(dashboard)/super-agent/approvals/page";
 import SuperAgentCommissionsPage from "@/app/[locale]/(dashboard)/super-agent/commissions/page";
 import SuperAgentEmployersPage from "@/app/[locale]/(dashboard)/super-agent/employers/page";
 import SuperAgentLeadsPage from "@/app/[locale]/(dashboard)/super-agent/leads/page";
@@ -316,13 +315,6 @@ describe.skip("SuperAgent dark-mode page surfaces", () => {
       content: "Northstar Foods",
     },
     {
-      name: "approvals",
-      page: <SuperAgentApprovalsPage />,
-      endpoint: "/api/super-agent/approvals?status=pending",
-      heading: /regional job approvals/i,
-      content: "Operations Manager",
-    },
-    {
       name: "placements",
       page: <SuperAgentPlacementsPage />,
       endpoint: "/api/placements?page=1&limit=10",
@@ -371,15 +363,6 @@ describe.skip("SuperAgent dark-mode page surfaces", () => {
   });
 
   it("keeps selected super-agent filters exposed with aria-pressed", async () => {
-    const approvalsView = await renderPage(<SuperAgentApprovalsPage />);
-    await screen.findByText("Operations Manager");
-
-    const approvalsSection = screen.getByRole("heading", { name: /process the regional approval queue/i }).closest("section");
-
-    expect(within(approvalsSection as HTMLElement).getByRole("button", { name: /pending/i })).toHaveAttribute("aria-pressed", "true");
-
-    approvalsView!.unmount();
-
     const commissionsView = await renderPage(<SuperAgentCommissionsPage />);
     await screen.findByText("Sahar Ali");
 

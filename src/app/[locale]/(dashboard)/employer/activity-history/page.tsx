@@ -262,7 +262,7 @@ export default function ActivityHistoryPage() {
             return (
               <div
                 key={entry.id}
-                className="workspace-panel-surface flex items-start gap-4 rounded-[20px] p-4 sm:p-5 transition-all hover:shadow-[0_6px_20px_-6px_rgba(15,23,42,0.1)] dark:border-slate-800 dark:bg-[linear-gradient(135deg,_rgba(15,23,42,0.98),_rgba(30,41,59,0.94))]"
+                className="workspace-panel-surface flex items-start gap-4 rounded-[20px] transition-all hover:shadow-[0_6px_20px_-6px_rgba(15,23,42,0.1)] dark:border-slate-800 dark:bg-[linear-gradient(135deg,_rgba(15,23,42,0.98),_rgba(30,41,59,0.94))] panel-body"
               >
                 {/* Action Icon */}
                 <div className={cn(

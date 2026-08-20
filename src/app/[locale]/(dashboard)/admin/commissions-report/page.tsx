@@ -236,7 +236,7 @@ export default function AdminCommissionsReportPage() {
 
       {/* ── Monthly Trend Chart + Type Breakdown ── */}
       <div className="grid gap-4 lg:grid-cols-3">
-        <section className="lg:col-span-2 workspace-panel-surface rounded-[28px] p-5 sm:p-6">
+        <section className="lg:col-span-2 workspace-panel-surface rounded-[28px] panel-body">
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("monthlyTrendTitle", { year: yearFilter })}</h2>
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
@@ -252,7 +252,7 @@ export default function AdminCommissionsReportPage() {
           </ResponsiveContainer>
         </section>
 
-        <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
+        <section className="workspace-panel-surface rounded-[28px] panel-body">
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("byTypeTitle")}</h2>
           {pieData.length > 0 ? (
             <ResponsiveContainer width="100%" height={200}>

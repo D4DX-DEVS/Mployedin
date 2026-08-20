@@ -9,7 +9,7 @@ export function ChartSkeleton({ height = "h-64", bars = 7 }: ChartSkeletonProps)
   const heights = ["h-1/3", "h-2/3", "h-1/2", "h-full", "h-3/4", "h-1/2", "h-2/5"];
 
   return (
-    <div className="card-base p-5 space-y-4">
+    <div className="card-base space-y-4 panel-body">
       <div className="flex items-center justify-between">
         <Skeleton className="h-4 w-32 bg-muted/50" />
         <div className="flex gap-2">

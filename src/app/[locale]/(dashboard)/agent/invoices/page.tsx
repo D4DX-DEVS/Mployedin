@@ -209,7 +209,7 @@ export default function AgentInvoicesPage() {
           {errorMessage && <div className="rounded-2xl border border-rose-200 bg-rose-50/90 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">{errorMessage}</div>}
 
           <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-[24px]">
-            <div className="flex flex-col gap-2 border-b border-border/80 px-4 py-4 sm:px-5">
+            <div className="flex flex-col gap-2 border-b border-border/80 panel-head">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sectionLabel")}</p>
               <h3 className="text-lg font-semibold text-foreground">{t("sectionHeading")}</h3>
             </div>

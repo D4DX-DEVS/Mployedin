@@ -303,7 +303,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
 
           <div className="mt-5 sm:mt-6 grid gap-5 sm:gap-6 lg:grid-cols-[minmax(0,1.7fr)_320px]">
             <div className="space-y-5 sm:space-y-6">
-              <section className="card-base rounded-xl sm:rounded-[28px] p-4 sm:p-6">
+              <section className="card-base rounded-xl sm:rounded-[28px] panel-body">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("overview")}</div>
                 <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">{t("whatThisRoleCovers")}</h2>
                 <div className="mt-4 space-y-2">
@@ -313,7 +313,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
 
               {/* Responsibilities */}
               {job.responsibilities?.length > 0 && (
-                <section className="card-base rounded-xl sm:rounded-[28px] p-4 sm:p-6">
+                <section className="card-base rounded-xl sm:rounded-[28px] panel-body">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("responsibilities")}</div>
                   <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">{t("whatYouWillDo")}</h2>
                   <ul className="mt-4 space-y-2">
@@ -329,7 +329,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
 
               {/* Qualifications */}
               {job.qualifications?.length > 0 && (
-                <section className="card-base rounded-xl sm:rounded-[28px] p-4 sm:p-6">
+                <section className="card-base rounded-xl sm:rounded-[28px] panel-body">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("qualifications")}</div>
                   <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">{t("whatWereLookingFor")}</h2>
                   <ul className="mt-4 space-y-2">
@@ -345,7 +345,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
 
               {/* Benefits */}
               {job.benefits?.length > 0 && (
-                <section className="card-base rounded-xl sm:rounded-[28px] p-4 sm:p-6">
+                <section className="card-base rounded-xl sm:rounded-[28px] panel-body">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("benefits")}</div>
                   <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">{t("whatYouWillGet")}</h2>
                   <ul className="mt-4 space-y-2">
@@ -361,7 +361,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
 
               {/* Learning Outcomes */}
               {job.learningOutcomes?.length > 0 && (
-                <section className="card-base rounded-xl sm:rounded-[28px] p-4 sm:p-6">
+                <section className="card-base rounded-xl sm:rounded-[28px] panel-body">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("learning")}</div>
                   <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">{t("whatYouWillLearn")}</h2>
                   <ul className="mt-4 space-y-2">
@@ -379,7 +379,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
               <SkillInsights jobId={String(job._id)} source="job_view" />
 
               {job.requirements && (
-                <section className="card-base rounded-xl sm:rounded-[28px] p-4 sm:p-6">
+                <section className="card-base rounded-xl sm:rounded-[28px] panel-body">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("requirements")}</div>
                   <h2 className="mt-1 text-lg sm:text-xl font-semibold tracking-tight text-foreground">{t("whatTheEmployerIsLookingFor")}</h2>
 
@@ -444,7 +444,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
               )}
 
               {job.tags?.length > 0 && (
-                <section className="card-base rounded-xl sm:rounded-[28px] p-4 sm:p-6">
+                <section className="card-base rounded-xl sm:rounded-[28px] panel-body">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("searchTerms")}</div>
                   <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">{t("relatedTags")}</h2>
                   <div className="mt-4 flex flex-wrap gap-2">
@@ -486,7 +486,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                 </div>
               </aside>
 
-              <section className="card-base rounded-xl sm:rounded-[28px] p-4 sm:p-5">
+              <section className="card-base rounded-xl sm:rounded-[28px] panel-body">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("employerProfile")}</div>
                 <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">{t("aboutTheEmployer")}</h3>
                 <div className="mt-4 space-y-3 text-sm text-muted-foreground">

@@ -623,7 +623,7 @@ export function JobSeekerHomePage({
 
         <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.72fr)_340px] xl:items-start">
           <div className="min-w-0 space-y-5">
-            <section className="card-base overflow-hidden rounded-xl p-4 max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:p-0 max-sm:shadow-none sm:rounded-[28px] sm:p-6">
+            <section className="card-base overflow-hidden rounded-xl max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:p-0 max-sm:shadow-none sm:rounded-[28px] panel-body">
               <div className="mb-3 flex flex-col gap-3 sm:mb-4 lg:flex-row lg:items-end lg:justify-between">
                 <div className="min-w-0">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("recommendedJobs.eyebrow")}</div>
@@ -818,7 +818,7 @@ export function JobSeekerHomePage({
               )}
             </section>
 
-            <section className="card-base overflow-hidden rounded-xl p-4 max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:p-0 max-sm:shadow-none sm:rounded-[28px] sm:p-6">
+            <section className="card-base overflow-hidden rounded-xl max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:p-0 max-sm:shadow-none sm:rounded-[28px] panel-body">
               <div className="mb-3 flex flex-col gap-3 sm:mb-5 sm:gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("priorityActions.eyebrow")}</div>
@@ -880,7 +880,7 @@ export function JobSeekerHomePage({
           </div>
 
           <aside className="min-w-0 space-y-5 xl:sticky xl:top-24">
-            <section className="card-base overflow-hidden rounded-xl sm:rounded-[28px] p-4 sm:p-5">
+            <section className="card-base overflow-hidden rounded-xl sm:rounded-[28px] panel-body">
               <div className="flex items-start gap-3 sm:gap-4">
                 <Avatar className="h-12 w-12 shrink-0 ring-4 ring-background shadow-sm sm:h-16 sm:w-16">
                   <AvatarImage src={image} alt={name} />
@@ -939,7 +939,7 @@ export function JobSeekerHomePage({
               </div>
             </section>
 
-            <section className="card-base overflow-hidden rounded-xl sm:rounded-[28px] p-4 sm:p-5">
+            <section className="card-base overflow-hidden rounded-xl sm:rounded-[28px] panel-body">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("quickAccess.eyebrow")}</div>
@@ -980,7 +980,7 @@ export function JobSeekerHomePage({
               </Link>
             </section>
 
-            <section className="card-base overflow-hidden rounded-xl sm:rounded-[28px] p-4 sm:p-5">
+            <section className="card-base overflow-hidden rounded-xl sm:rounded-[28px] panel-body">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2 text-primary">
@@ -1068,7 +1068,7 @@ export function JobSeekerHomePage({
               "border-s border-border"
             )}
           >
-            <div className="flex items-center justify-between border-b border-border/60 px-6 py-5">
+            <div className="flex items-center justify-between panel-head">
               <div>
                 <div className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">{t("drawer.eyebrow")}</div>
                 <h2 id="ai-guide-title" className="mt-1 text-2xl font-semibold tracking-tight">{t("drawer.title")}</h2>

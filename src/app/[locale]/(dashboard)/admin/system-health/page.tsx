@@ -122,7 +122,7 @@ export default function AdminSystemHealthPage() {
       />
 
       {loading && !health ? (
-        <section className="workspace-panel-surface rounded-[28px] p-5">
+        <section className="workspace-panel-surface rounded-[28px] panel-body">
           <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="workspace-glass-panel space-y-4 rounded-2xl p-3 sm:p-5">
@@ -141,7 +141,7 @@ export default function AdminSystemHealthPage() {
       ) : health ? (
         <>
           {/* Core Services */}
-          <section className="workspace-panel-surface rounded-[28px] p-5">
+          <section className="workspace-panel-surface rounded-[28px] panel-body">
             <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t("coreServicesHeading")}</h2>
             <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {/* Database */}
@@ -218,7 +218,7 @@ export default function AdminSystemHealthPage() {
           </section>
 
           {/* Platform Metrics */}
-          <section className="workspace-panel-surface rounded-[28px] p-5">
+          <section className="workspace-panel-surface rounded-[28px] panel-body">
             <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t("platformMetricsHeading")}</h2>
             <div className="grid grid-cols-2 gap-2 sm:gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
@@ -265,7 +265,7 @@ export default function AdminSystemHealthPage() {
           </section>
 
           {/* Memory */}
-          <section className="workspace-panel-surface rounded-[28px] p-5">
+          <section className="workspace-panel-surface rounded-[28px] panel-body">
             <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t("memoryHeading")}</h2>
             <div className="workspace-glass-panel rounded-2xl p-5">
               <div className="flex items-center justify-between">

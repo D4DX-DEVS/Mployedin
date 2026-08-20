@@ -572,7 +572,7 @@ function TestEmailTab() {
 function SectionCard({ title, icon: Icon, children }: { title: string; icon: typeof Bell; children: React.ReactNode }) {
   return (
     <div className="rounded-xl border border-border/50 bg-card shadow-sm overflow-hidden">
-      <div className="px-5 py-3.5 border-b border-border/40 flex items-center gap-2.5">
+      <div className="border-b border-border/40 flex items-center gap-2.5 panel-head">
         <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary/10"><Icon className="w-3.5 h-3.5 text-primary" /></div>
         <h3 className="text-sm font-semibold tracking-tight">{title}</h3>
       </div>

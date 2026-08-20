@@ -39,8 +39,6 @@ import {
   Pencil,
   UserPlus,
   X,
-  SlidersHorizontal,
-  ChevronDown,
 } from "lucide-react";
 import {
   useTalentPools,
@@ -121,8 +119,6 @@ export default function EmployerTalentPoolsPage() {
   const [renamingPool, setRenamingPool] = useState<TalentPool | null>(null);
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortKey>("updated");
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const hasActiveFilters = search.trim() !== "" || sortBy !== "updated";
 
   const deletePool = useDeletePool();
   const { confirm, ConfirmDialogNode } = useConfirm();
@@ -170,6 +166,7 @@ export default function EmployerTalentPoolsPage() {
     <div className="page-container">
       {ConfirmDialogNode}
       <DashboardPageHeader
+        inlineActions
         icon={Layers}
         eyebrow={t("title")}
         title={t("title")}
@@ -185,25 +182,10 @@ export default function EmployerTalentPoolsPage() {
           { label: t("statCandidates"), value: stats.totalCandidates, icon: Users },
           { label: t("statAddedThisMonth"), value: stats.addedThisMonth, icon: Plus },
         ] : undefined}
-        footer={pools.length > 0 ? (
-            <button
-              type="button"
-              onClick={() => setFiltersOpen((v) => !v)}
-              aria-expanded={filtersOpen}
-              className="workspace-glass-panel mt-6 flex w-full items-center justify-between gap-3 rounded-2xl px-4 py-3 text-left transition-colors hover:bg-primary/5"
-            >
-              <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                <SlidersHorizontal className="h-4 w-4 text-primary" />
-                {t("searchAndSort")}
-                {hasActiveFilters && <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />}
-              </span>
-              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${filtersOpen ? "rotate-180" : ""}`} />
-            </button>
-        ) : undefined}
       />
 
-      {filtersOpen && pools.length > 0 && (
-        <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
+      {pools.length > 0 && (
+        <section className="workspace-panel-surface rounded-2xl panel-body">
           {/* Search + sort share one row on phones too. */}
           <div className="flex flex-row items-center gap-2 sm:gap-3">
             <div className="relative min-w-0 flex-1">
@@ -211,7 +193,7 @@ export default function EmployerTalentPoolsPage() {
               <Input placeholder={t("searchPools")} value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
             </div>
             <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortKey)}>
-              <SelectTrigger className="w-[7.5rem] shrink-0 sm:w-[200px]" aria-label={t("sortBy")}>
+              <SelectTrigger className="w-[10.5rem] shrink-0 sm:w-[200px]" aria-label={t("sortBy")}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -288,10 +270,9 @@ function PoolCard({
   const t = useTranslations("talentPool");
   const count = pool.candidates?.length ?? 0;
   const color = colorFor(pool._id);
-  const avatarRefs = (pool.candidates ?? []).map(refOf).filter((r): r is PooledCandidateRef => !!r).slice(0, 3);
 
   return (
-    <div className="group relative flex h-full flex-col gap-3 rounded-2xl border border-border bg-card p-5 transition hover:border-sky-300 hover:shadow-md">
+    <div className="group relative flex h-full flex-col gap-2 rounded-2xl border border-border bg-card p-3.5 transition hover:border-sky-300 hover:shadow-md sm:p-4">
       <div className="absolute right-3 top-3 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
         <button
           type="button"
@@ -311,7 +292,7 @@ function PoolCard({
         </button>
       </div>
 
-      <button type="button" onClick={onOpen} className="flex flex-1 flex-col gap-3 text-left focus:outline-none">
+      <button type="button" onClick={onOpen} className="flex flex-1 flex-col gap-2 text-left focus:outline-none">
         <div className="flex items-start gap-3">
           <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${color.bg} ring-4 ${color.ring}`}>
             <Layers className={`h-5 w-5 ${color.text}`} />
@@ -326,38 +307,17 @@ function PoolCard({
           </div>
         </div>
 
-        <div className="mt-auto flex items-center justify-between gap-2 pt-1">
-          <div className="flex items-center">
-            {avatarRefs.length > 0 ? (
-              <div className="flex -space-x-2">
-                {avatarRefs.map((r, i) => <CandidateAvatar key={i} ref={r} size="xs" />)}
-                {count > avatarRefs.length && (
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-background bg-muted text-[10px] font-semibold text-muted-foreground">
-                    +{count - avatarRefs.length}
-                  </span>
-                )}
-              </div>
-            ) : (
-              <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground">
-                <Users className="h-3 w-3" />
-                {count}
-              </span>
-            )}
-          </div>
-          <span className="whitespace-nowrap text-[11px] text-muted-foreground">
-            <RelativeDate date={pool.updatedAt} prefix={t("updatedPrefix")} />
-          </span>
+        <div className="flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap text-xs text-muted-foreground [&>*]:shrink-0">
+          <Users className="h-3.5 w-3.5" aria-hidden />
+          <span className="font-medium text-foreground">{t("candidateCount", { count })}</span>
+          <span aria-hidden>·</span>
+          <RelativeDate date={pool.updatedAt} prefix={t("updatedPrefix")} />
+          {pool.tags?.slice(0, 4).map((tag) => (
+            <Badge key={tag} variant="secondary" className="text-[11px]">
+              {tag}
+            </Badge>
+          ))}
         </div>
-
-        {pool.tags?.length ? (
-          <div className="flex flex-wrap gap-1.5">
-            {pool.tags.slice(0, 4).map((tag) => (
-              <Badge key={tag} variant="secondary" className="text-[11px]">
-                {tag}
-              </Badge>
-            ))}
-          </div>
-        ) : null}
       </button>
     </div>
   );

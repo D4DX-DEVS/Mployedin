@@ -207,7 +207,7 @@ export default function AgentJobSeekersPage() {
       />
 
       {/* Search and Filters */}
-      <section className="workspace-panel-surface rounded-[28px] p-3.5 sm:p-4">
+      <section className="workspace-panel-surface rounded-[28px] panel-body">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("browseProfilesLabel")}</p>
           <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("searchTitle")}</h2>
@@ -370,7 +370,7 @@ export default function AgentJobSeekersPage() {
       </section>
 
       {/* Results table */}
-      <section className="workspace-panel-surface rounded-[28px] p-3.5 sm:p-4">
+      <section className="workspace-panel-surface rounded-[28px] panel-body">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("resultsLabel")}</p>

@@ -198,7 +198,7 @@ export default function AgentTasksPage() {
 
       {/* New Task Form */}
       {showForm && (
-        <section className="workspace-panel-surface rounded-[28px] p-5 space-y-4">
+        <section className="workspace-panel-surface rounded-[28px] space-y-4 panel-body">
           <h2 className="text-lg font-semibold text-foreground">{t("createTaskHeading")}</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             <Input placeholder={t("taskTitlePlaceholder")} value={newTask.title} onChange={(e) => setNewTask((p) => ({ ...p, title: e.target.value }))} className="sm:col-span-2" />
@@ -215,7 +215,7 @@ export default function AgentTasksPage() {
       )}
 
       {/* Filters */}
-      <section className="workspace-panel-surface rounded-[28px] p-5">
+      <section className="workspace-panel-surface rounded-[28px] panel-body">
         {/* Wraps rather than stacks on phones, so the status dropdown and Reset
             share a line with the search box (see [data-table-toolbar] in globals.css). */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-3" data-table-toolbar="simple">
@@ -231,7 +231,7 @@ export default function AgentTasksPage() {
       </section>
 
       {/* Task List */}
-      <section className="workspace-panel-surface rounded-[28px] p-5">
+      <section className="workspace-panel-surface rounded-[28px] panel-body">
         {loading ? (
           <div className="space-y-3">
             {Array.from({ length: 5 }).map((_, i) => (

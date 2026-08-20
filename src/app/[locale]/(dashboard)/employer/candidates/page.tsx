@@ -329,15 +329,16 @@ function CandidateMatchCard({
       }}
     >
       {isSelected ? <span aria-hidden className="absolute inset-y-0 start-0 w-1 bg-primary" /> : null}
-      <div className="flex items-start gap-3 px-4 py-3.5">
-        <span className="flex items-center pt-1" onClick={stopRowClick} onKeyDown={stopRowClick}>
+      <div className="grid grid-cols-[auto_auto_minmax(0,1fr)_auto] items-start gap-2.5 px-3 py-3 sm:gap-3 sm:px-4 sm:py-3.5">
+        <span className="flex h-8 w-5 items-center justify-center" onClick={stopRowClick} onKeyDown={stopRowClick}>
           <Checkbox
+            className="h-5 w-5"
             checked={isInReviewList}
             onCheckedChange={() => onToggleReviewList(candidate._id)}
             aria-label={t("selectCandidate", { name: candidateDisplayName })}
           />
         </span>
-        <Avatar className="h-11 w-11 ring-0">
+        <Avatar className="h-10 w-10 ring-0">
           {candidate.userId?.avatar ? (
             <AvatarImage src={candidate.userId.avatar} alt={candidateDisplayName} />
           ) : null}
@@ -348,7 +349,7 @@ function CandidateMatchCard({
           </AvatarFallback>
         </Avatar>
 
-        <div className="min-w-0 flex-1 space-y-1.5">
+        <div className="min-w-0 space-y-1">
           <div className="flex min-w-0 items-center gap-2">
             <h3 className="truncate text-sm font-semibold text-foreground sm:text-[15px]">{candidateDisplayName}</h3>
             {rank ? (
@@ -362,10 +363,15 @@ function CandidateMatchCard({
                 {t("savedLabel")}
               </span>
             ) : null}
+            <span className={`ms-auto inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${availabilityTone(candidate.availabilityStatus)}`}>
+              {candidate.availabilityStatus === "immediately" ? <Zap className="h-3 w-3" /> : null}
+              {availabilityLabel}
+            </span>
           </div>
           <p className="truncate text-sm text-muted-foreground">{currentRole ?? t("roleNotSpecified")}</p>
           <p className="truncate text-xs text-muted-foreground/90">{primaryMeta || t("locationExpNotSpecified")}</p>
-          <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+          <div className="flex min-w-0 flex-nowrap items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground [&>*]:shrink-0">
+            <span className="flex min-w-0 shrink items-center gap-1.5 overflow-hidden">
             {/* 3rd tag hides on phones and folds into the mobile "+more" count —
                 showing all 3 there wrapped the last tag onto its own orphan line. */}
             {visibleSkills.map((skill, skillIndex) => {
@@ -380,6 +386,7 @@ function CandidateMatchCard({
                 </span>
               );
             })}
+            </span>
             {overflowSkillCount > 0 ? <span className="hidden sm:inline">+{overflowSkillCount} {t("moreSuffix")}</span> : null}
             {visibleSkills.length >= 3 ? (
               <span className="sm:hidden">+{overflowSkillCount + 1} {t("moreSuffix")}</span>
@@ -392,86 +399,66 @@ function CandidateMatchCard({
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-col items-end gap-2" onClick={stopRowClick} onKeyDown={stopRowClick}>
-          {hasAnyScore ? <ScoreRing value={candidate.matchScore} size={50} strokeWidth={5} /> : null}
-          <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${availabilityTone(candidate.availabilityStatus)}`}>
-            {candidate.availabilityStatus === "immediately" ? <Zap className="h-3 w-3" /> : null}
-            {availabilityLabel}
-          </span>
-          <div className="flex items-center gap-1.5">
-            {messageRecipientId ? (
-              <Button
-                size="sm"
-                variant="outline"
-                aria-label={t("messageAction")}
-                className="h-8 w-8 rounded-lg border-border bg-background/80 p-0"
-                onClick={(event) => {
-                  stopRowClick(event);
-                  onStartMessage(messageRecipientId);
-                }}
-              >
-                <MessageSquare className="h-3.5 w-3.5" />
-              </Button>
-            ) : null}
-            <Button
-              size="sm"
-              variant={isInReviewList ? "default" : "outline"}
-              aria-label={isInReviewList ? t("savedForReview") : t("saveForReview")}
-              className={isInReviewList ? "h-8 w-8 rounded-lg bg-primary p-0 text-primary-foreground hover:bg-primary/90" : "h-8 w-8 rounded-lg border-border bg-background/80 p-0"}
-              onClick={(event) => {
-                stopRowClick(event);
-                onToggleReviewList(candidate._id);
-              }}
-            >
-              <Star className={`h-3.5 w-3.5 ${isInReviewList ? "fill-current" : ""}`} />
-            </Button>
-            {hasSecondaryActions ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    aria-label={t("moreActions", { name: candidateDisplayName })}
-                    onClick={stopRowClick}
-                    className="h-8 w-8 rounded-lg border-border bg-background/80 p-0 text-foreground/85"
-                  >
-                    <MoreHorizontal className="h-4 w-4" />
-                    <span className="sr-only">{t("moreLabel")}</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-52 rounded-2xl border-border bg-popover p-1.5">
-                  {candidate.cv?.originalUrl ? (
-                    <DropdownMenuItem className="rounded-xl text-sm" onClick={() => onOpenCv(candidate)}>
-                      <FileText className="mr-2 h-4 w-4" />
-                      {t("viewCv")}
-                    </DropdownMenuItem>
-                  ) : null}
-                  {messageRecipientId ? (
-                    <DropdownMenuItem className="rounded-xl text-sm" onClick={() => onStartMessage(messageRecipientId)}>
-                      <MessageSquare className="mr-2 h-4 w-4" />
-                      {t("messageAction")}
-                    </DropdownMenuItem>
-                  ) : null}
-                  {onInvite ? (
-                    <DropdownMenuItem className="rounded-xl text-sm" onClick={() => onInvite(candidate._id)}>
-                      <Send className="mr-2 h-4 w-4" />
-                      {t("inviteToApply")}
-                    </DropdownMenuItem>
-                  ) : null}
-                  <DropdownMenuItem className="rounded-xl text-sm" onClick={() => onOpenProfile(candidate._id)}>
-                    <Eye className="mr-2 h-4 w-4" />
-                    {t("openProfile")}
+        <div className="flex shrink-0 flex-col items-end gap-1.5" onClick={stopRowClick} onKeyDown={stopRowClick}>
+          {hasAnyScore ? <ScoreRing value={candidate.matchScore} size={44} strokeWidth={5} /> : null}
+          <Button
+            size="sm"
+            variant={isInReviewList ? "default" : "outline"}
+            aria-label={isInReviewList ? t("savedForReview") : t("saveForReview")}
+            className={isInReviewList ? "h-8 w-8 rounded-lg bg-primary p-0 text-primary-foreground hover:bg-primary/90" : "h-8 w-8 rounded-lg border-border bg-background/80 p-0"}
+            onClick={(event) => {
+              stopRowClick(event);
+              onToggleReviewList(candidate._id);
+            }}
+          >
+            <Star className={`h-3.5 w-3.5 ${isInReviewList ? "fill-current" : ""}`} />
+          </Button>
+          {hasSecondaryActions ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  aria-label={t("moreActions", { name: candidateDisplayName })}
+                  onClick={stopRowClick}
+                  className="h-8 w-8 rounded-lg border-border bg-background/80 p-0 text-foreground/85"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                  <span className="sr-only">{t("moreLabel")}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52 rounded-2xl border-border bg-popover p-1.5">
+                {candidate.cv?.originalUrl ? (
+                  <DropdownMenuItem className="rounded-xl text-sm" onClick={() => onOpenCv(candidate)}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    {t("viewCv")}
                   </DropdownMenuItem>
-                  {onSaveToPool ? (
-                    <DropdownMenuItem className="rounded-xl text-sm" onClick={() => onSaveToPool(candidate)}>
-                      <Layers className="mr-2 h-4 w-4" />
-                      {tp("saveToPool")}
-                    </DropdownMenuItem>
-                  ) : null}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : null}
-          </div>
+                ) : null}
+                {messageRecipientId ? (
+                  <DropdownMenuItem className="rounded-xl text-sm" onClick={() => onStartMessage(messageRecipientId)}>
+                    <MessageSquare className="mr-2 h-4 w-4" />
+                    {t("messageAction")}
+                  </DropdownMenuItem>
+                ) : null}
+                {onInvite ? (
+                  <DropdownMenuItem className="rounded-xl text-sm" onClick={() => onInvite(candidate._id)}>
+                    <Send className="mr-2 h-4 w-4" />
+                    {t("inviteToApply")}
+                  </DropdownMenuItem>
+                ) : null}
+                <DropdownMenuItem className="rounded-xl text-sm" onClick={() => onOpenProfile(candidate._id)}>
+                  <Eye className="mr-2 h-4 w-4" />
+                  {t("openProfile")}
+                </DropdownMenuItem>
+                {onSaveToPool ? (
+                  <DropdownMenuItem className="rounded-xl text-sm" onClick={() => onSaveToPool(candidate)}>
+                    <Layers className="mr-2 h-4 w-4" />
+                    {tp("saveToPool")}
+                  </DropdownMenuItem>
+                ) : null}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
         </div>
       </div>
     </article>
@@ -749,7 +736,7 @@ function AIScreeningResultsPanel({ results, jobTitle, totalReviewed, onClose }: 
   const passCount = results.filter((c) => c.recommendation === "pass").length;
 
   return (
-    <section className="workspace-panel-surface rounded-[24px] p-4 sm:p-5 space-y-4">
+    <section className="workspace-panel-surface rounded-[24px] space-y-4 panel-body">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
@@ -1455,15 +1442,19 @@ export default function EmployerCandidatesPage() {
               {matchProgress ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-2 h-3.5 w-3.5" />}
               {matchProgress ? `${t("scoringProgress")} ${matchProgress.done}/${matchProgress.total}` : t("runAiMatch")}
             </Button>
+            {/* Screening only means something once candidates carry a score, so
+                the button stays out of the header until there is something to screen. */}
+            {selectedJob && scoredCount > 0 ? (
             <Button
               onClick={runAIScreening}
-              disabled={!selectedJob || screenMutation.isPending}
+              disabled={screenMutation.isPending}
               variant="outline"
               className="h-9 rounded-xl border-border bg-background/80 px-4 text-sm font-semibold"
             >
               {screenMutation.isPending ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="mr-2 h-3.5 w-3.5" />}
               {screenMutation.isPending ? t("screeningInProgress") : t("screenWithAi")}
             </Button>
+            ) : null}
           </>
         }
         metrics={[
@@ -1528,7 +1519,7 @@ export default function EmployerCandidatesPage() {
 
       {/* Collapsible filter panel — toggled from the hero, full width for breathing room */}
       {filtersExpanded ? (
-          <section className="workspace-panel-surface rounded-[24px] p-4 backdrop-blur">
+          <section className="workspace-panel-surface rounded-[24px] backdrop-blur panel-body">
           <div className="flex items-center justify-between gap-3">
             <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("filterAndActLabel")}</p>
@@ -1774,7 +1765,7 @@ export default function EmployerCandidatesPage() {
         <div className="min-w-0 sticky top-4 flex h-[calc(100vh-1.5rem)] flex-col gap-3">
       {/* Toolbar — Select all (left) + bulk actions + Export (right) on one horizontal section */}
       <TableToolbar
-        className="flex-wrap rounded-[20px] border border-border bg-card px-4 py-2.5"
+        className="flex-wrap rounded-2xl border border-border bg-card px-3 py-1.5 sm:px-4 sm:py-2.5"
         left={
           !loading && filteredCandidates.length > 0 ? (
             <label className="flex cursor-pointer items-center gap-2.5 text-sm">

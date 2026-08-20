@@ -113,7 +113,7 @@ export default function EmployerCampaignsPage() {
       />
 
       {(total > 0 || search || statusFilter) && (
-        <div className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
+        <div className="workspace-panel-surface rounded-[28px] panel-body">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <Input
               placeholder={t("searchPlaceholder") || "Search campaigns..."}

@@ -1,4 +1,5 @@
 import type { UserRole } from "@/types/user";
+import type { NavItem } from "./menuConfig";
 import type { IconName } from "./iconRegistry";
 
 export interface BottomNavTabConfig {
@@ -43,3 +44,22 @@ export const WORKSPACE_BOTTOM_NAV_TABS: Partial<Record<UserRole, BottomNavTabCon
     { key: "commissions", href: "/super-agent/commissions", icon: "DollarSign", labelKey: "commissions" },
   ],
 };
+
+/**
+ * Drops the destinations the phone bottom tab bar already links, so the drawer
+ * does not repeat the footer. Only leaf items go — a parent sharing a tab href
+ * (agent "Hiring" → /agent/jobs) has to stay for its children.
+ */
+export function withoutBottomTabItems(
+  items: NavItem[],
+  role: string | undefined,
+  locale: string
+): NavItem[] {
+  const tabHrefs = new Set(
+    (WORKSPACE_BOTTOM_NAV_TABS[role as UserRole] ?? []).map((tab) => tab.href)
+  );
+  if (!tabHrefs.size) return items;
+  return items.filter(
+    (item) => (item.children?.length ?? 0) > 0 || !tabHrefs.has(item.href.replace(`/${locale}`, ""))
+  );
+}

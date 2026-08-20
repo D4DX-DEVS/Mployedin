@@ -188,10 +188,10 @@ export default function ApplicationsPage() {
   return (
     /* max-sm:px-0 — the job-seeker layout already pads 16px; page-container's own
        24px stacked on top of it and left rows only 304px wide on a 390px screen. */
-    <div className="page-container max-w-[1240px] gap-2 pt-3 max-sm:px-0 md:gap-3 md:pt-4 lg:gap-3 lg:pt-4">
+    <div className="page-container max-w-[1240px] pt-3 max-sm:px-0 md:pt-4 lg:pt-4">
       {/* Flattened below sm — the outer shell around a list of cards read as a
           box-in-box on phones and ate horizontal room from every row. */}
-      <section className="card-base overflow-hidden rounded-[24px] border border-border/70 p-0 shadow-[0_8px_24px_rgba(15,23,42,0.05)] max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:shadow-none">
+      <section className="card-base overflow-hidden rounded-[24px] border border-border/70 shadow-[0_8px_24px_rgba(15,23,42,0.05)] max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:shadow-none panel-body">
         <div className="border-b border-border/60 px-3.5 py-3 max-sm:px-0 sm:px-4 sm:py-3.5 lg:px-5 lg:py-4">
           <div className="flex flex-col gap-2.5">
             <div className="flex flex-col gap-1.5 lg:flex-row lg:items-center lg:justify-between">

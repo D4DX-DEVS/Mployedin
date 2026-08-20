@@ -452,7 +452,7 @@ export default function AdminJobSeekersPage() {
       />
 
       {/* ── AI Search Bar ─────────────────────────────────── */}
-      <section className="workspace-panel-surface rounded-[20px] p-4">
+      <section className="workspace-panel-surface rounded-[20px] panel-body">
         <div className="flex items-center gap-2 mb-3">
           <Sparkles className="h-4 w-4 text-primary" />
           <h2 className="text-sm font-semibold text-foreground">{tr("aiSearchTitle")}</h2>
@@ -521,7 +521,7 @@ export default function AdminJobSeekersPage() {
       {/* ── Main Panel ────────────────────────────────────── */}
       <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
         {/* Header with filters & actions */}
-        <div className="flex flex-col gap-3 border-b border-border/80 px-5 py-4">
+        <div className="flex flex-col gap-3 border-b border-border/80 panel-head">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <PageHeader
               title={tr("mainTitle")}

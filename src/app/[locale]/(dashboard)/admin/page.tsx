@@ -713,7 +713,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
       />
 
       <div className="grid items-stretch gap-4 xl:grid-cols-[1.08fr_0.92fr]">
-        <section className="workspace-panel-surface flex flex-col rounded-2xl p-4 sm:p-5" data-surface="light-panel">
+        <section className="workspace-panel-surface flex flex-col rounded-2xl panel-body" data-surface="light-panel">
           <div>
             <h2 className="text-base font-semibold tracking-tight text-foreground">
               {t("sections.quickActions.title")}
@@ -765,7 +765,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
           </div>
         </section>
 
-        <section className="workspace-panel-surface flex flex-col rounded-2xl p-4 sm:p-5" data-surface="light-panel">
+        <section className="workspace-panel-surface flex flex-col rounded-2xl panel-body" data-surface="light-panel">
           <div>
             <h2 className="text-base font-semibold tracking-tight text-foreground">
               {t("sections.recentActivity.title")}
@@ -783,7 +783,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
                 <Link
                   key={activity.id}
                   href={activity.href}
-                  className="group flex items-start gap-2.5 border-b border-border/50 px-3 py-2.5 transition-colors last:border-b-0 hover:bg-card/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+                  className="group flex items-start gap-2.5 border-b border-border/50 transition-colors last:border-b-0 hover:bg-card/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary panel-head"
                   data-surface="light-card"
                 >
                   <div className={`shrink-0 rounded-lg p-2 ring-1 ring-inset ${activity.toneClassName}`}>
@@ -981,7 +981,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
             {roleDistribution.map((role, index) => (
               <div
                 key={`${role._id ?? "unknown"}-${index}`}
-                className="flex flex-1 items-center gap-3 border-b border-border/50 px-3 py-2.5 last:border-b-0"
+                className="flex flex-1 items-center gap-3 border-b border-border/50 last:border-b-0 panel-head"
                 data-surface="light-card"
               >
                 <div className="min-w-0 flex-1">

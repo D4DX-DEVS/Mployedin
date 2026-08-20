@@ -130,21 +130,23 @@ export function AIRecommendedCandidatesCard({
   return (
     <section
       aria-label={t("sectionLabel")}
-      className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-[28px]"
+      /* ponytail: panel spacing vars are dialled down locally — this card sat
+         next to the drafts list and ran ~200px taller on the same content. */
+      className="workspace-panel-surface flex h-full flex-col overflow-hidden rounded-2xl [--panel-gap:0.5rem] [--panel-pad-y:0.75rem] sm:rounded-[28px]"
     >
       {/* Header */}
       <div className="panel-head flex-wrap items-start justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-700 dark:border-sky-500/30 dark:bg-sky-500/15 dark:text-sky-300 sm:px-2.5 sm:py-1 sm:text-[11px] sm:tracking-[0.18em]">
-              <Sparkles className="h-3.5 w-3.5" />
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-700 dark:border-sky-500/30 dark:bg-sky-500/15 dark:text-sky-300 sm:tracking-[0.16em]">
+              <Sparkles className="h-3 w-3" />
               {t("eyebrow")}
             </span>
           </div>
-          <h2 className="mt-1.5 text-base font-semibold tracking-tight text-foreground sm:mt-2.5 sm:text-2xl">
+          <h2 className="mt-1.5 text-sm font-semibold tracking-tight text-foreground sm:mt-1.5 sm:text-base">
             {t("heading")}
           </h2>
-          <p className="mt-0.5 text-xs leading-5 text-muted-foreground sm:mt-1.5 sm:text-sm sm:leading-6">
+          <p className="mt-0.5 text-xs leading-4 text-muted-foreground sm:mt-1 sm:leading-5">
             {t("subheading", { count: highMatchCount, jobs: activeJobCount })}
           </p>
         </div>
@@ -153,7 +155,7 @@ export function AIRecommendedCandidatesCard({
       {/* Band breakdown */}
       {/* One band per row — three bands in a 2-up grid always orphaned the third.
           Each row is a single compact line instead, which is shorter overall. */}
-      <div className="panel-body panel-stack">
+      <div className="panel-body panel-stack flex-1">
         {bands.map((band) => {
           const Icon = band.icon;
           const bandHref = `${applicationsBase}?scoreMin=${band.scoreMin}&scoreMax=${band.scoreMax}`;
@@ -169,19 +171,19 @@ export function AIRecommendedCandidatesCard({
             >
               <Link
                 href={bandHref}
-                className="flex min-w-0 flex-1 items-center gap-1.5 px-2 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 sm:gap-3 sm:px-4 sm:py-3.5"
+                className="flex min-w-0 flex-1 items-center gap-1.5 px-2 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 sm:gap-2.5 sm:px-3 sm:py-2"
               >
                 <div className="shrink-0">
                   <Icon className="h-4 w-4" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-semibold sm:text-sm">{t(band.labelKey)}</p>
+                  <p className="truncate text-xs font-semibold">{t(band.labelKey)}</p>
                   {/* Description is desktop-only — it wrapped to three lines on phones. */}
-                  <p className="mt-0.5 hidden text-xs text-muted-foreground sm:block">{t(band.descKey)}</p>
+                  <p className="hidden text-[11px] leading-4 text-muted-foreground sm:block">{t(band.descKey)}</p>
                 </div>
                 <span
                   className={cn(
-                    "rounded-full bg-background/80 px-2 py-0.5 text-xs font-bold tabular-nums sm:px-2.5 sm:text-sm",
+                    "rounded-full bg-background/80 px-2 py-0.5 text-xs font-bold tabular-nums",
                     band.emphasize && "text-emerald-600 dark:text-emerald-300"
                   )}
                 >
@@ -194,7 +196,7 @@ export function AIRecommendedCandidatesCard({
                 onClick={() => handleNotify(band.labelKey, band.scoreMin, band.scoreMax)}
                 disabled={isNotifying || isNotified || band.count === 0}
                 title={t("notifyHint")}
-                className="me-1.5 flex shrink-0 items-center gap-1 rounded-full border border-current/25 bg-background/70 px-1.5 py-0.5 text-[10px] font-semibold transition-colors hover:bg-background disabled:cursor-not-allowed disabled:opacity-50 sm:me-3 sm:gap-1.5 sm:px-2.5 sm:py-1 sm:text-xs"
+                className="me-1.5 flex shrink-0 items-center gap-1 rounded-full border border-current/25 bg-background/70 px-1.5 py-0.5 text-[10px] font-semibold transition-colors hover:bg-background disabled:cursor-not-allowed disabled:opacity-50 sm:me-2 sm:gap-1.5 sm:px-2 sm:py-0.5 sm:text-[11px]"
               >
                 {isNotifying ? (
                   <Loader2 className="h-3 w-3 animate-spin" />
@@ -214,7 +216,7 @@ export function AIRecommendedCandidatesCard({
       <div className="panel-foot">
         <Link
           href={`${applicationsBase}?scoreMin=80`}
-          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white transition hover:bg-sky-700 sm:w-auto"
+          className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white transition hover:bg-sky-700 sm:w-auto"
         >
           {t("reviewCandidates")}
           <ChevronRight className="h-4 w-4" />

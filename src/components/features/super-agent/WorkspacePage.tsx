@@ -79,6 +79,7 @@ export function SuperAgentPageIntro({
       description={description}
       summary={headerSummary}
       actions={children}
+      compactOnMobile
     />
   );
 }
@@ -91,16 +92,13 @@ export function SuperAgentMetricsGrid({ items }: { items: SuperAgentMetricItem[]
       style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
     >
       {items.map((item) => (
-        <div key={item.label} className="workspace-glass-panel rounded-lg p-1.5 sm:rounded-2xl sm:p-4">
+        <div key={item.label} className="workspace-glass-panel rounded-lg px-2 py-1.5 sm:rounded-2xl sm:p-4">
           {/* Mobile: all 4 fit one row, so the card goes vertical and tiny —
               icon chip on top, truncated label, small value — instead of the
               horizontal icon+text layout that only had room for 2 per row. */}
-          <div className="flex flex-col items-start gap-1 sm:hidden">
-            <div className={cn("shrink-0 rounded-md p-1", getToneClassName(item.toneClassName))}>
-              {item.icon}
-            </div>
-            <p className="w-full truncate text-[7px] font-semibold uppercase tracking-wide text-muted-foreground">{item.label}</p>
-            <p className="text-sm font-semibold leading-none tracking-tight text-foreground">{item.value}</p>
+          <div className="flex flex-col items-start gap-0.5 sm:hidden">
+            <p className="line-clamp-2 w-full text-[9px] font-semibold uppercase leading-tight tracking-wide text-muted-foreground">{item.label}</p>
+            <p className="w-full truncate text-base font-semibold leading-tight tracking-tight text-foreground">{item.value}</p>
           </div>
 
           <div className="hidden sm:flex sm:items-start sm:justify-between sm:gap-3">
@@ -121,16 +119,21 @@ export function SuperAgentMetricsGrid({ items }: { items: SuperAgentMetricItem[]
 
 export function SuperAgentSection({ eyebrow, title, description, actions, children, className }: SuperAgentSectionProps) {
   return (
-    <section className={cn("workspace-panel-surface rounded-[28px] p-3 sm:p-4 lg:p-5", className)}>
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+    <section className={cn("max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none workspace-panel-surface rounded-[28px] p-3 sm:p-4 lg:p-5", className)}>
+      <div className="flex flex-col gap-2 sm:gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
-          {eyebrow ? <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{eyebrow}</p> : null}
-          <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{title}</h2>
-          {description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}
+          {eyebrow ? (
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{eyebrow}</p>
+          ) : null}
+          <h2 className={cn(
+            "text-[13px] font-semibold tracking-tight text-foreground sm:mt-2 sm:text-xl",
+            eyebrow && "hidden sm:block"
+          )}>{title}</h2>
+          {description ? <p className="mt-1 hidden text-sm text-muted-foreground sm:block">{description}</p> : null}
         </div>
         {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
       </div>
-      <div className="mt-5">{children}</div>
+      <div className="mt-3 sm:mt-5">{children}</div>
     </section>
   );
 }

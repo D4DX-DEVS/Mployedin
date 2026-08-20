@@ -188,7 +188,7 @@ export default function CmsOverviewPage() {
         )}
       </DashboardPageHeader>
 
-      <section className="workspace-panel-surface overflow-hidden rounded-[28px] p-5 sm:p-6">
+      <section className="workspace-panel-surface overflow-hidden rounded-[28px] panel-body">
         <div className="mb-5">
           <h2 className="text-xl font-semibold tracking-tight text-foreground">{t("contentModulesHeading")}</h2>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">

@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Plus, Edit2, Eye, Clock, CheckCircle, FileText, Trash2, Copy, Users, BriefcaseBusiness, ShieldCheck, BookTemplate, Search, Sparkles, ArrowRight, GitBranch, SlidersHorizontal, PauseCircle, PlayCircle, MoreHorizontal, Image as ImageIcon, Send, Undo2, ChevronDown } from "lucide-react";
+import { Plus, Edit2, Eye, Clock, CheckCircle, FileText, Trash2, Copy, Users, BriefcaseBusiness, ShieldCheck, BookTemplate, Search, Sparkles, ArrowRight, GitBranch, SlidersHorizontal, PauseCircle, PlayCircle, MoreHorizontal, Image as ImageIcon, Send } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +20,6 @@ import {
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { PageHero } from "@/components/shared/PageHero";
-import { CountCardGrid } from "@/components/shared/CountCardGrid";
 import { DraftExtractionsCard, DraftJobsCard } from "@/components/features/employer/dashboard";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useTableExport } from "@/hooks/useTableExport";
@@ -31,7 +31,7 @@ import type { ExportColumn } from "@/lib/export";
 const STATUS_COLORS: Record<string, string> = {
   active: "bg-status-selected-bg text-emerald-700 border-status-selected/20 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-500/30",
   draft: "bg-status-shortlisted-bg text-status-shortlisted border-status-shortlisted/20 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-500/30",
-  pending_approval: "bg-status-applied-bg text-status-applied border-status-applied/20 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-500/30",
+  pending_approval: "bg-status-applied-bg text-status-applied border-status-applied/20 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-500/30",
   paused: "bg-status-applied-bg text-status-applied border-border dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-500/30",
   closed: "bg-muted text-muted-foreground",
   expired: "bg-status-rejected-bg text-status-rejected border-status-rejected/20 dark:bg-red-950/40 dark:text-red-300 dark:border-red-500/30",
@@ -51,9 +51,17 @@ function getStatusLabelKey(status: string): string {
   return STATUS_LABEL_KEYS[status] ?? "statusLabelDraft";
 }
 
-const JOB_SUMMARY_MAX_LENGTH = 180;
+// Soft status tint for the card's leading icon tile — same palette as the badge.
+const STATUS_TONES: Record<string, string> = {
+  active: "workspace-tone-emerald",
+  draft: "workspace-tone-amber",
+  pending_approval: "workspace-tone-sky",
+  paused: "workspace-tone-sky",
+  closed: "workspace-muted-pill",
+  expired: "workspace-tone-rose",
+};
 
-type PendingJobAction = "activate" | "deactivate" | "pause" | "delete" | "submit" | "withdraw";
+type PendingJobAction = "activate" | "deactivate" | "pause" | "delete" | "publish";
 
 export default function EmployerJobsPage() {
   const router = useRouter();
@@ -86,9 +94,6 @@ export default function EmployerJobsPage() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [jobDraftsCount, setJobDraftsCount] = useState(0);
   const [aiDraftsCount, setAiDraftsCount] = useState(0);
-  // Phones show one collapsed row per job; tapping the header expands it. Desktop
-  // ignores this entirely (details are always `sm:block`).
-  const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
 
   const [pendingJobAction, setPendingJobAction] = useState<{ jobId: string; action: PendingJobAction } | null>(null);
   const debouncedSearch = useDebounce(search, 300);
@@ -162,6 +167,10 @@ export default function EmployerJobsPage() {
   const draftJobs = data?.statusCounts?.draft ?? jobs.filter((job) => job.status === "draft").length;
   const pausedJobs = data?.statusCounts?.paused ?? jobs.filter((job) => job.status === "paused").length;
   const totalOpenings = data?.totalVacancies ?? jobs.reduce((sum, job) => sum + (job.vacancies ?? 0), 0);
+  // Portfolio-wide, not page-scoped — the API already aggregates it across the
+  // full query. Falls back to the current page only when the aggregate is absent.
+  const totalApplications = data?.portfolioStats?.totalApplicants
+    ?? jobs.reduce((sum, job) => sum + (job.applicationCount ?? 0), 0);
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
     { header: t("exportTitleCol"), key: "title", formatter: (v) => String(v ?? "") },
@@ -271,36 +280,18 @@ export default function EmployerJobsPage() {
     }
   }
 
-  // Submit a draft for admin approval. PATCH reroutes unverified employers'
-  // status:"active" → "pending_approval" on the server (see api/jobs/[id]/route.ts).
-  async function handleSubmitForApproval(job: Job) {
-    const ok = await confirmDialog(t("confirmSubmitForApproval"));
+  // Publish a draft. Jobs go live immediately — there is no approval queue.
+  async function handlePublishJob(job: Job) {
+    const ok = await confirmDialog(t("confirmPublish"));
     if (!ok) return;
 
-    setPendingJobAction({ jobId: job._id, action: "submit" });
+    setPendingJobAction({ jobId: job._id, action: "publish" });
 
     try {
       await updateStatus.mutateAsync({ jobId: job._id, status: "active" });
-      toast.success(t("toastJobSubmitted"));
+      toast.success(t("toastJobPublished"));
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : t("toastFailedSubmit"));
-    } finally {
-      setPendingJobAction((current) => (current?.jobId === job._id ? null : current));
-    }
-  }
-
-  // Withdraw a pending_approval job back to draft so the employer can keep editing.
-  async function handleWithdrawJob(job: Job) {
-    const ok = await confirmDialog(t("confirmWithdraw"));
-    if (!ok) return;
-
-    setPendingJobAction({ jobId: job._id, action: "withdraw" });
-
-    try {
-      await updateStatus.mutateAsync({ jobId: job._id, status: "draft" });
-      toast.success(t("toastJobWithdrawn"));
-    } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : t("toastFailedWithdraw"));
+      toast.error(error instanceof Error ? error.message : t("toastFailedPublish"));
     } finally {
       setPendingJobAction((current) => (current?.jobId === job._id ? null : current));
     }
@@ -406,17 +397,6 @@ export default function EmployerJobsPage() {
     return job.applicationCount ?? job.applicantIds?.length ?? 0;
   }
 
-  function getJobSummary(job: Job): string | null {
-    if (!job.description) return null;
-
-    const parser = new DOMParser();
-    const plainText = parser.parseFromString(job.description, "text/html").body.textContent?.replace(/\s+/g, " ").trim() ?? "";
-    if (!plainText) return null;
-
-    if (plainText.length <= JOB_SUMMARY_MAX_LENGTH) return plainText;
-
-    return `${plainText.slice(0, JOB_SUMMARY_MAX_LENGTH - 3).trimEnd()}...`;
-  }
 
   return (
     <div className="page-container">
@@ -428,82 +408,94 @@ export default function EmployerJobsPage() {
         title={t("heroTitle")}
         description={t("heroSubtitle")}
         eyebrow={t("heroBadge")}
-        actions={can("jobs", "create") && (isLoading || jobs.length > 0 || hasActiveFilters) ? (
+        actions={(
           <>
             {/* Hidden on phones — the same totals sit in the stat grid right below. */}
             {/* Two rows, no description — the third line pushed the whole hero taller. */}
-            <div className="workspace-glass-panel hidden rounded-2xl px-4 py-2 text-left sm:block">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("portfolioLabel")}</p>
-              <p className="mt-0.5 text-lg font-semibold leading-6 text-foreground">{total} {t("totalJobsSuffix")}</p>
-            </div>
+            {/* ponytail: one line, h-9 — stacked label+value made the pill
+                twice the height of every button next to it. */}
+            {can("jobs", "create") && (isLoading || jobs.length > 0 || hasActiveFilters) ? (
+              <div className="workspace-glass-panel hidden h-9 shrink-0 items-center gap-2 self-start rounded-xl px-3 sm:flex">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("portfolioLabel")}</span>
+                <span className="text-sm font-semibold leading-none text-foreground">{total} {t("totalJobsSuffix")}</span>
+              </div>
+            ) : null}
+            {/* ponytail: filter + export ride in the hero as compact controls —
+                they used to own a full-width toolbar card of their own. */}
             <Button
-              onClick={() => router.push(`/${locale}/employer/jobs/ai-create`)}
-              aria-label={t("postAJob")}
-              className="h-11 w-11 shrink-0 gap-2 self-start rounded-xl bg-primary p-0 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:h-11 sm:w-auto sm:px-4"
+              type="button"
+              variant="outline"
+              onClick={() => setFiltersOpen((v) => !v)}
+              aria-expanded={filtersOpen}
+              aria-label={t("filterHeading")}
+              title={t("filterHeading")}
+              className="relative h-9 w-9 shrink-0 self-start rounded-xl border-border bg-background/70 p-0"
             >
-              <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">{t("postAJob")}</span>
+              <SlidersHorizontal className="h-4 w-4 text-primary" />
+              {hasActiveFilters && (
+                <span className="absolute -end-0.5 -top-0.5 h-2 w-2 rounded-full bg-primary" aria-hidden />
+              )}
             </Button>
+            {jobs.length > 0 && (
+              <TableToolbar
+                className="shrink-0 self-start"
+                onExportCsv={handleExportCsv}
+                onExportExcel={handleExportExcel}
+                onExportPdf={handleExportPdf}
+              />
+            )}
+            {/* Always present when the role can create — it is the page's primary
+                CTA. It used to vanish whenever the list came back empty, which is
+                exactly when an employer most needs it. */}
+            {can("jobs", "create") ? (
+              <Button
+                onClick={() => router.push(`/${locale}/employer/jobs/ai-create`)}
+                aria-label={t("postAJob")}
+                className="h-9 w-9 shrink-0 gap-2 self-start rounded-xl bg-primary p-0 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:h-9 sm:w-auto sm:px-4"
+              >
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">{t("postAJob")}</span>
+              </Button>
+            ) : null}
           </>
-        ) : undefined}
+        )}
       />
 
-      <div className="space-y-3">
-        {/* Phones get all four counters on one row: label + number only. Icon and
-            description are desktop-only so each tile survives an ~80px column. */}
-        <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-2 sm:gap-3 xl:grid-cols-4">
+      <div className="space-y-[var(--page-gap)]">
+        {/* One KPI language across all five tiles: uppercase label, big number,
+            one-line description, tinted status icon. Phones drop to two columns
+            and hide the descriptions so the row stays compact.
+            ponytail: no trend deltas — the API returns no period-over-period
+            figures, and a hardcoded "+12% vs last month" is a lie in a UI. */}
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 xl:grid-cols-5">
           {[
             { label: t("statActiveLabel"), value: activeJobs, description: t("statActiveDescription"), Icon: ShieldCheck, tone: "workspace-tone-emerald" },
             { label: t("statDraftsLabel"), value: draftJobs, description: t("statDraftsDescription"), Icon: BriefcaseBusiness, tone: "workspace-tone-amber" },
             { label: t("statPausedLabel"), value: pausedJobs, description: t("statPausedDescription"), Icon: PauseCircle, tone: "workspace-tone-sky" },
-            { label: t("statOpeningsLabel"), value: totalOpenings, description: t("statOpeningsDescription"), Icon: Users, tone: "workspace-tone-sky" },
+            { label: t("statOpeningsLabel"), value: totalOpenings, description: t("statOpeningsDescription"), Icon: Users, tone: "workspace-tone-violet" },
+            { label: t("statApplicationsLabel"), value: totalApplications, description: t("statApplicationsDescription"), Icon: FileText, tone: "workspace-tone-sky" },
           ].map(({ label, value, description, Icon, tone }) => (
-            <div key={label} className="workspace-glass-panel rounded-xl p-2 sm:rounded-2xl sm:p-4">
-              <div className="flex items-start justify-between gap-3">
+            /* Odd tile count leaves a half-width orphan on the 2-col phone grid —
+               stretch it instead of leaving a hole. */
+            <div key={label} className="workspace-glass-panel p-2.5 last:col-span-2 sm:p-4 sm:last:col-span-1">
+              <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="truncate text-[9px] font-semibold uppercase tracking-wide text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">{label}</p>
-                  <p className="mt-0.5 text-lg font-semibold tracking-tight text-foreground sm:mt-1 sm:text-2xl">{value}</p>
-                  <p className="mt-0.5 hidden text-xs text-muted-foreground sm:line-clamp-1">{description}</p>
+                  <p className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">{label}</p>
+                  <p className="mt-1 text-xl font-semibold leading-none tracking-tight text-foreground sm:text-2xl">{value}</p>
+                  <p className="mt-1.5 hidden text-xs leading-4 text-muted-foreground sm:line-clamp-2">{description}</p>
                 </div>
-                <div className={`${tone} hidden rounded-2xl p-2.5 sm:block`}>
-                  <Icon className="h-5 w-5" />
+                <div className={`${tone} flex h-8 w-8 shrink-0 items-center justify-center rounded-lg`}>
+                  <Icon className="h-4 w-4" />
                 </div>
               </div>
             </div>
           ))}
         </div>
 
-        {/* Filter jobs — toggle + filters live in one card and expand in place.
-            Export sits on the same row instead of a standalone toolbar strip. */}
-        <div className="workspace-panel-surface overflow-hidden rounded-2xl">
-          <div className="flex items-center gap-1 pe-2">
-            <button
-              type="button"
-              onClick={() => setFiltersOpen((v) => !v)}
-              aria-expanded={filtersOpen}
-              className="flex min-w-0 flex-1 items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-primary/5"
-            >
-              <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                <SlidersHorizontal className="h-4 w-4 text-primary" />
-                {t("filterHeading")}
-                {hasActiveFilters && (
-                  <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
-                )}
-              </span>
-              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${filtersOpen ? "rotate-180" : ""}`} />
-            </button>
-            {jobs.length > 0 && (
-              <TableToolbar
-                className="shrink-0"
-                onExportCsv={handleExportCsv}
-                onExportExcel={handleExportExcel}
-                onExportPdf={handleExportPdf}
-              />
-            )}
-          </div>
-
-          {filtersOpen && (
-            <div className="border-t border-border/60 p-3 sm:p-5">
+        {/* Filter panel — toggled from the compact hero control above. */}
+        {filtersOpen && (
+          <div className="workspace-panel-surface overflow-hidden rounded-2xl">
+            <div className="p-3 sm:p-5">
               <p className="hidden text-sm text-muted-foreground sm:block">{t("filterDescription")}</p>
 
               {/* Two controls per row on phones — eight stacked full-width inputs
@@ -525,6 +517,7 @@ export default function EmployerJobsPage() {
                     { value: "active", label: t("statusActive") },
                     { value: "paused", label: t("statusPaused") },
                     { value: "draft", label: t("statusDraft") },
+                    { value: "pending_approval", label: t("statusPendingApproval") },
                     { value: "closed", label: t("statusClosed") },
                     { value: "expired", label: t("statusExpired") },
                   ]}
@@ -576,7 +569,7 @@ export default function EmployerJobsPage() {
                     placeholder={t("filterByLocationPlaceholder")}
                     value={locationFilter}
                     onChange={(e) => setLocationFilter(e.target.value)}
-                    className="h-11 rounded-xl border-border bg-background/70 text-sm shadow-none"
+                    className="h-10 rounded-xl border-border bg-background/70 text-sm shadow-none sm:h-11"
                   />
                 </div>
                 <div className="relative min-w-0">
@@ -584,7 +577,7 @@ export default function EmployerJobsPage() {
                     placeholder={t("skillsPlaceholder")}
                     value={skillsFilter}
                     onChange={(e) => setSkillsFilter(e.target.value)}
-                    className="h-11 rounded-xl border-border bg-background/70 text-sm shadow-none"
+                    className="h-10 rounded-xl border-border bg-background/70 text-sm shadow-none sm:h-11"
                   />
                 </div>
                 <div className="relative min-w-0 xl:col-span-2">
@@ -615,7 +608,7 @@ export default function EmployerJobsPage() {
                     type="button"
                     onClick={() => { void handleApplyAiSearch(); }}
                     disabled={!aiQuery.trim() || isApplyingAiSearch}
-                    className="h-11 gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                    className="h-10 gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:h-11"
                   >
                     <Sparkles className="h-4 w-4" />
                     {isApplyingAiSearch ? t("applyingAiSearch") : t("applyAiSearch")}
@@ -625,15 +618,15 @@ export default function EmployerJobsPage() {
                     variant="outline"
                     onClick={resetFilters}
                     disabled={!hasActiveFilters && !aiQuery && !aiSummary}
-                    className="h-11 rounded-xl border-border bg-background/70 px-4 text-sm"
+                    className="h-10 rounded-xl border-border bg-background/70 px-4 text-sm sm:h-11"
                   >
                     {t("clearFilters")}
                   </Button>
                 </div>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* ── Resume unfinished work (banners — self-hide when none) ── */}
@@ -645,24 +638,21 @@ export default function EmployerJobsPage() {
       </div>
 
       {isError ? (
-        <div className="workspace-panel-surface rounded-[28px] px-6 py-12 text-center">
+        <div className="workspace-panel-surface px-6 py-12 text-center">
           <p className="text-sm font-semibold text-destructive">{t("loadError")}</p>
           <Button onClick={() => refetch()} variant="outline" className="mt-4 h-10 rounded-xl px-4 text-sm">
             {t("retry")}
           </Button>
         </div>
       ) : isLoading ? (
-        <div className="space-y-4">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div
-              key={i}
-              className="workspace-panel-surface h-28 animate-pulse rounded-[20px]"
-            />
+        <div className="workspace-panel-surface divide-y divide-border/70 overflow-hidden">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-[78px] animate-pulse bg-secondary/40" />
           ))}
         </div>
       ) : jobs.length === 0 ? (
-        <div className="workspace-panel-surface rounded-[28px] px-6 py-16 text-center">
-          <div className="workspace-tone-sky mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-[24px]">
+        <div className="workspace-panel-surface px-6 py-16 text-center">
+          <div className="workspace-tone-sky mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl">
             <FileText className="h-7 w-7" />
           </div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{hasActiveFilters ? t("emptyFilteredLabel") : t("emptyNoJobsLabel")}</p>
@@ -676,14 +666,14 @@ export default function EmployerJobsPage() {
             <Button
               onClick={resetFilters}
               variant="outline"
-              className="mt-6 h-11 rounded-xl border-border bg-background/70 px-4 text-sm"
+              className="mt-6 h-10 rounded-xl border-border bg-background/70 px-4 text-sm sm:h-11"
             >
               {t("clearFilters")}
             </Button>
           ) : (
             <Button
               onClick={() => router.push(`/${locale}/employer/jobs/ai-create`)}
-              className="mt-6 h-11 gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+              className="mt-6 h-10 gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:h-11"
             >
               <Plus className="h-4 w-4" />
               {t("postAJob")}
@@ -691,213 +681,175 @@ export default function EmployerJobsPage() {
           )}
         </div>
       ) : (
-        <div className="space-y-2 sm:space-y-4">
+        /* One flat, divided list instead of detached cards. Sharing a container
+           border is what lets each row sit at ~80px without reading as cramped. */
+        <div className="workspace-panel-surface divide-y divide-border/70 overflow-hidden">
           {jobs.map((job) => {
             const posted = new Date(job.createdAt).toLocaleDateString(locale === "ar" ? "ar" : "en-US", { month: "short", day: "numeric", year: "numeric" });
-            const expires = job.expiresAt ? new Date(job.expiresAt).toLocaleDateString(locale === "ar" ? "ar" : "en-US", { month: "short", day: "numeric" }) : null;
             const isActivating = pendingJobAction?.jobId === job._id && pendingJobAction.action === "activate";
             const isDeactivating = pendingJobAction?.jobId === job._id && pendingJobAction.action === "deactivate";
             const isPausing = pendingJobAction?.jobId === job._id && pendingJobAction.action === "pause";
             const isDeleting = pendingJobAction?.jobId === job._id && pendingJobAction.action === "delete";
-            const isSubmitting = pendingJobAction?.jobId === job._id && pendingJobAction.action === "submit";
-            const isWithdrawing = pendingJobAction?.jobId === job._id && pendingJobAction.action === "withdraw";
-            const jobSummary = getJobSummary(job);
-            const isUnpublished = job.status === "draft" || job.status === "pending_approval";
-            const isExpanded = expandedJobId === job._id;
-            const collapsible = isExpanded ? "" : "hidden sm:block";
+            const isPublishing = pendingJobAction?.jobId === job._id && pendingJobAction.action === "publish";
+            const isUnpublished = job.status === "draft";
+            const jobHref = `/${locale}/employer/jobs/${job._id}`;
+            const applicants = getFilledSlots(job);
+            // One text line, not six pills. Pills made every metadata item shout
+            // as loudly as the status badge and cost a whole row of height.
+            const metaLine = [formatLocation(job), job.category, formatSalary(job), `${t("postedPrefix")} ${posted}`]
+              .filter(Boolean)
+              .join(" · ");
 
             return (
-              <article
+              /* The row IS the view action. Controls inside stop propagation so
+                 they never fire a navigation the recruiter did not ask for. */
+              <div
                 key={job._id}
-                className="workspace-panel-surface rounded-[20px] p-2 transition-all hover:-translate-y-0.5 hover:border-border sm:p-3.5"
+                onClick={() => router.push(jobHref)}
+                className="group grid min-h-[78px] cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 px-3 py-2.5 transition-colors hover:bg-primary/[0.04] sm:gap-x-4 sm:px-4 sm:py-3 lg:grid-cols-[minmax(0,1fr)_auto_auto]"
               >
-                <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_268px] xl:items-start">
-                  <div className="min-w-0 flex-1">
-                    <button
-                      type="button"
-                      onClick={() => setExpandedJobId(isExpanded ? null : job._id)}
-                      aria-expanded={isExpanded}
-                      className="flex w-full items-center gap-2 text-left sm:pointer-events-none"
-                    >
-                      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-                        <h3 className="min-w-0 truncate text-base font-semibold tracking-tight text-foreground sm:whitespace-normal">{job.title}</h3>
-                        <Badge className={`${STATUS_COLORS[job.status] ?? ""} border px-2 py-0.5 text-[11px] font-medium`}>
-                          {t(getStatusLabelKey(job.status))}
-                        </Badge>
-                        {job.clonedFrom ? <Badge variant="outline" className="border-status-applied/20 bg-status-applied-bg px-2 py-0.5 text-[11px] font-medium text-status-applied dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300"><Copy className="mr-1 h-3 w-3" />{t("clonedBadge")}</Badge> : null}
-                      </div>
-                      <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform sm:hidden ${isExpanded ? "rotate-180" : ""}`} />
-                    </button>
-                    {/* Always-visible meta: location / category / salary / openings /
-                        dates / skills. A collapsed row showing only a title gave no
-                        reason to tap. Heavier content stays behind the toggle. */}
-                    <div className="mt-1.5 -mx-1 flex flex-nowrap gap-1.5 overflow-x-auto px-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:flex-wrap sm:px-0 sm:overflow-visible">
-                      <span className="shrink-0 whitespace-nowrap rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-muted-foreground">{formatLocation(job)}</span>
-                      {job.category ? (
-                        <span className="shrink-0 whitespace-nowrap rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-muted-foreground">{job.category}</span>
-                      ) : null}
-                      <span className="shrink-0 whitespace-nowrap rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-muted-foreground">{formatSalary(job)}</span>
-                      {job.vacancies != null ? (
-                        <span className="shrink-0 whitespace-nowrap rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-muted-foreground">
-                          {job.vacancies} {job.vacancies === 1 ? t("openingSingular") : t("openingPlural")}
-                        </span>
-                      ) : null}
-                      <span className="shrink-0 whitespace-nowrap rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-muted-foreground">{t("postedPrefix")} {posted}</span>
-                      {expires ? (
-                        <span className="shrink-0 whitespace-nowrap rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-muted-foreground">{t("expiresPrefix")} {expires}</span>
-                      ) : null}
-                    </div>
-
-                    {job.requirements?.skills?.length > 0 && (
-                      <div className={`mt-1.5 -mx-1 flex-nowrap gap-1.5 overflow-x-auto px-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:flex sm:flex-wrap sm:px-0 sm:overflow-visible ${isExpanded ? "flex" : "hidden"}`}>
-                        {job.requirements.skills.slice(0, 4).map((s) => (
-                          <Badge key={s} variant="outline" className="shrink-0 whitespace-nowrap rounded-full border-border bg-secondary/65 px-2.5 py-0.5 text-[11px] font-normal text-muted-foreground dark:border-border dark:bg-background/80 dark:text-muted-foreground">{s}</Badge>
-                        ))}
-                      </div>
-                    )}
-
-                    <div className={collapsible}>
-                    {job.status === "draft" ? (
-                      <p className="mt-1 text-[11px] font-medium text-status-shortlisted dark:text-amber-300">{t("draftHint")}</p>
-                    ) : null}
-                    {job.status === "pending_approval" ? (
-                      <p className="mt-1 text-[11px] font-medium text-status-applied dark:text-blue-300">{t("inReviewHint")}</p>
-                    ) : null}
-                    {jobSummary ? (
-                      <p className="mt-1.5 line-clamp-1 max-w-3xl text-xs leading-4 text-muted-foreground">{jobSummary}</p>
-                    ) : null}
-
-                    <CountCardGrid
-                      className="mt-2"
-                      items={[
-                        { label: t("viewsStat"), value: job.views?.toLocaleString() ?? 0 },
-                        { label: t("applicantsStat"), value: getFilledSlots(job) },
-                        { label: t("capacityStat"), value: job.maxApplicants ?? t("capacityOpen") },
-                      ]}
-                    />
-                    </div>
-                  </div>
-
-                  <div aria-label={`Actions for ${job.title}`} role="group" className={`workspace-subtle-surface flex-col gap-1.5 rounded-[16px] border border-border p-2 xl:self-start ${isExpanded ? "flex" : "hidden sm:flex"}`}>
-                    <div className="flex flex-wrap gap-1.5">
-                      <Button
-                        size="sm"
-                        className="w-full h-8 gap-2 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
-                        onClick={() => router.push(`/${locale}/employer/applications?jobId=${job._id}`)}
+                <div className="col-span-2 flex min-w-0 items-center gap-3 lg:col-span-1">
+                  <span className={`${STATUS_TONES[job.status] ?? "workspace-tone-sky"} flex h-9 w-9 shrink-0 items-center justify-center rounded-lg`} aria-hidden>
+                    <BriefcaseBusiness className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <div className="flex min-w-0 items-center gap-2">
+                      {/* A real anchor, not just the row handler: keyboard users,
+                          middle-click and open-in-new-tab all need an href. */}
+                      <Link
+                        href={jobHref}
+                        onClick={(e) => e.stopPropagation()}
+                        className="min-w-0 truncate text-sm font-semibold tracking-tight text-foreground underline-offset-2 group-hover:text-primary group-hover:underline sm:text-[15px]"
                       >
-                        <Users className="h-4 w-4" />
-                        {t("applicationsButton")}
-                        <ArrowRight className="ml-auto h-4 w-4" />
-                      </Button>
-                      <Button size="sm" variant="outline" title={t("viewButton")} className="flex-1 basis-[30%] min-w-0 h-8 gap-2 rounded-lg border-border bg-background/80 px-2 text-xs text-foreground"
-                        onClick={() => router.push(`/${locale}/employer/jobs/${job._id}`)}>
-                        <Eye className="h-4 w-4" /> {t("viewButton")}
-                      </Button>
-                      {can("jobs", "update") ? (
-                        <Button size="sm" variant="outline" title={t("editButton")} className="flex-1 basis-[30%] min-w-0 h-8 gap-2 rounded-lg border-border bg-background/80 px-2 text-xs text-foreground"
-                          onClick={() => router.push(`/${locale}/employer/jobs/${job._id}/edit`)}>
-                          <Edit2 className="h-4 w-4" /> {t("editButton")}
-                        </Button>
+                        {job.title}
+                      </Link>
+                      <Badge className={`${STATUS_COLORS[job.status] ?? ""} shrink-0 border px-1.5 py-0 text-[10px] font-medium`}>
+                        {t(getStatusLabelKey(job.status))}
+                      </Badge>
+                      {job.clonedFrom ? (
+                        <Badge variant="outline" className="inline-flex shrink-0 border-status-applied/20 bg-status-applied-bg px-1.5 py-0 text-[10px] font-medium text-status-applied dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                          <Copy className="me-1 h-2.5 w-2.5" />{t("clonedBadge")}
+                        </Badge>
                       ) : null}
-
-                      {/* Contextual status action stays visible — it is the primary lifecycle control */}
-                      {can("jobs", "update") && job.status === "draft" && (
-                        <Button size="sm" variant="outline" className="flex-1 basis-[60%] min-w-0 h-8 gap-1.5 rounded-lg border-status-selected/20 px-3 text-emerald-700 hover:bg-status-selected-bg dark:border-emerald-500/30 dark:text-emerald-300 dark:hover:bg-emerald-950/40" onClick={() => { void handleSubmitForApproval(job); }} disabled={isSubmitting}>
-                        <Send className="h-3.5 w-3.5" /> {isSubmitting ? t("submittingForApprovalButton") : t("submitForApprovalButton")}
-                        </Button>
-                      )}
-                      {can("jobs", "update") && job.status === "pending_approval" && (
-                        <Button size="sm" variant="outline" className="flex-1 basis-[60%] min-w-0 h-8 gap-1.5 rounded-lg border-status-shortlisted/20 px-3 text-status-shortlisted hover:bg-status-shortlisted-bg dark:border-amber-500/30 dark:text-amber-300 dark:hover:bg-amber-950/40" onClick={() => { void handleWithdrawJob(job); }} disabled={isWithdrawing}>
-                          <Undo2 className="h-3.5 w-3.5" /> {isWithdrawing ? t("withdrawingButton") : t("withdrawButton")}
-                        </Button>
-                      )}
-                      {can("jobs", "update") && job.status === "active" && (
-                        <Button size="sm" variant="outline" className="flex-1 basis-[30%] min-w-0 h-8 gap-2 rounded-lg border-border px-2 text-xs text-status-applied hover:bg-status-applied-bg dark:border-sky-500/30 dark:text-sky-300 dark:hover:bg-sky-950/40" onClick={() => { void handlePauseJob(job); }} disabled={isPausing}>
-                          <PauseCircle className="h-4 w-4" /> {isPausing ? t("pausingButton") : t("pauseButton")}
-                        </Button>
-                      )}
-                      {can("jobs", "update") && job.status === "active" && (
-                        <Button size="sm" variant="outline" className="flex-1 basis-[30%] min-w-0 h-8 gap-2 rounded-lg border-status-shortlisted/20 px-2 text-xs text-status-shortlisted hover:bg-status-shortlisted-bg dark:border-orange-500/30 dark:text-orange-300 dark:hover:bg-orange-950/40" onClick={() => { void handleDeactivateJob(job); }} disabled={isDeactivating}>
-                          <Clock className="h-4 w-4" /> {isDeactivating ? t("deactivatingButton") : t("deactivateButton")}
-                        </Button>
-                      )}
-                      {can("jobs", "update") && job.status === "paused" && (
-                        <Button size="sm" variant="outline" className="flex-1 basis-[30%] min-w-0 h-8 gap-1.5 rounded-lg border-status-selected/20 px-2 text-xs text-emerald-700 hover:bg-status-selected-bg dark:border-emerald-500/30 dark:text-emerald-300 dark:hover:bg-emerald-950/40" onClick={() => { void handleResumeJob(job); }} disabled={isActivating}>
-                          <PlayCircle className="h-3.5 w-3.5" /> {isActivating ? t("resumingButton") : t("resumeButton")}
-                        </Button>
-                      )}
-                      {can("jobs", "update") && job.status === "paused" && (
-                        <Button size="sm" variant="outline" className="flex-1 basis-[30%] min-w-0 h-8 gap-2 rounded-lg border-status-shortlisted/20 px-2 text-xs text-status-shortlisted hover:bg-status-shortlisted-bg dark:border-orange-500/30 dark:text-orange-300 dark:hover:bg-orange-950/40" onClick={() => { void handleDeactivateJob(job); }} disabled={isDeactivating}>
-                          <Clock className="h-4 w-4" /> {isDeactivating ? t("deactivatingButton") : t("deactivateButton")}
-                        </Button>
-                      )}
-
-                      {/* Secondary actions collapsed into a menu to keep each card compact.
-                          Every item is permission-gated — hide the trigger when the menu
-                          would open empty (renders as a bare white sliver otherwise). */}
-                      {((can("jobs", "update") && !isUnpublished) ||
-                        can("jobs", "create") ||
-                        (can("jobs", "delete") && ["draft", "pending_approval", "paused", "closed", "expired"].includes(job.status))) && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button size="sm" variant="outline" title={t("moreActionsButton")} className="flex-1 basis-[30%] min-w-0 h-8 gap-2 rounded-lg border-border bg-background/80 px-2 text-xs text-foreground">
-                            <MoreHorizontal className="h-4 w-4" /> {t("moreActionsButton")}
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-52">
-                          {can("jobs", "update") && !isUnpublished && (
-                            <DropdownMenuItem onClick={() => router.push(`/${locale}/employer/jobs/${job._id}?tab=workflow`)}>
-                              <GitBranch className="h-4 w-4" /> {t("workflowButton")}
-                            </DropdownMenuItem>
-                          )}
-                          {can("jobs", "update") && !isUnpublished && (
-                            <DropdownMenuItem onClick={() => router.push(`/${locale}/employer/jobs/${job._id}?tab=matching-weights`)}>
-                              <SlidersHorizontal className="h-4 w-4" /> {t("weightsButton")}
-                            </DropdownMenuItem>
-                          )}
-                          {can("jobs", "create") && (
-                            <DropdownMenuItem onClick={() => router.push(`/${locale}/employer/jobs/${job._id}/poster`)}>
-                              <ImageIcon className="h-4 w-4" /> {t("posterButton")}
-                            </DropdownMenuItem>
-                          )}
-                          {can("jobs", "create") && (
-                            <DropdownMenuItem onClick={() => { void handleCloneJob(job); }} disabled={cloningJobId === job._id}>
-                              <Copy className="h-4 w-4" /> {cloningJobId === job._id ? t("cloningButton") : t("cloneButton")}
-                            </DropdownMenuItem>
-                          )}
-                          {can("jobs", "create") && (
-                            <DropdownMenuItem
-                              onClick={() => { if (!savedTemplateIds.has(job._id)) void handleSaveAsTemplate(job); }}
-                              disabled={savingTemplateId === job._id || savedTemplateIds.has(job._id)}
-                            >
-                              {savedTemplateIds.has(job._id) ? (
-                                <><CheckCircle className="h-4 w-4 text-status-selected" /> {t("templateSavedButton")}</>
-                              ) : savingTemplateId === job._id ? (
-                                <><BookTemplate className="h-4 w-4" /> {t("templateSavingButton")}</>
-                              ) : (
-                                <><BookTemplate className="h-4 w-4" /> {t("templateButton")}</>
-                              )}
-                            </DropdownMenuItem>
-                          )}
-                          {can("jobs", "delete") && (job.status === "draft" || job.status === "pending_approval" || job.status === "paused" || job.status === "closed" || job.status === "expired") && (
-                            <>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={() => { void handleDeleteJob(job); }}
-                                disabled={isDeleting}
-                                className="text-destructive focus:text-destructive"
-                              >
-                                <Trash2 className="h-4 w-4" /> {isDeleting ? t("deletingButton") : t("deleteButton")}
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                      )}
                     </div>
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground">{metaLine}</p>
                   </div>
                 </div>
-              </article>
+
+                <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 ps-12 text-xs text-muted-foreground lg:shrink-0 lg:ps-0">
+                  <span><span className="font-semibold tabular-nums text-foreground">{job.views?.toLocaleString() ?? 0}</span> {t("viewsStat")}</span>
+                  <span aria-hidden>&middot;</span>
+                  <span><span className="font-semibold tabular-nums text-foreground">{applicants}</span> {t("applicantsStat")}</span>
+                  <span aria-hidden>&middot;</span>
+                  <span>{t("capacityStat")}: <span className="font-semibold text-foreground">{job.maxApplicants ?? t("capacityOpen")}</span></span>
+                </div>
+
+                <div className="flex shrink-0 items-center justify-end gap-1">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={(e) => { e.stopPropagation(); router.push(`/${locale}/employer/applications?jobId=${job._id}`); }}
+                    className="h-7 gap-1.5 rounded-lg bg-primary/10 px-2 text-xs font-semibold text-primary hover:bg-primary/20 hover:text-primary sm:h-8 sm:px-2.5"
+                  >
+                    {t("applicationsButton")}
+                    <span className="tabular-nums">{applicants}</span>
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Button>
+
+                  {/* Every secondary action lives here now. The old panel stacked
+                      up to six buttons and set the row height on its own. */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        title={t("moreActionsButton")}
+                        aria-label={t("moreActionsButton")}
+                        onClick={(e) => e.stopPropagation()}
+                        className="h-7 w-7 shrink-0 rounded-full p-0 text-muted-foreground hover:bg-secondary hover:text-foreground sm:h-8 sm:w-8"
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-52" onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenuItem onClick={() => router.push(jobHref)}>
+                        <Eye className="h-4 w-4" /> {t("viewButton")}
+                      </DropdownMenuItem>
+                      {can("jobs", "update") && (
+                        <DropdownMenuItem onClick={() => router.push(`${jobHref}/edit`)}>
+                          <Edit2 className="h-4 w-4" /> {t("editButton")}
+                        </DropdownMenuItem>
+                      )}
+                      {can("jobs", "update") && job.status === "draft" && (
+                        <DropdownMenuItem onClick={() => { void handlePublishJob(job); }} disabled={isPublishing}>
+                          <Send className="h-4 w-4" /> {isPublishing ? t("publishingButton") : t("publishButton")}
+                        </DropdownMenuItem>
+                      )}
+                      {can("jobs", "update") && job.status === "active" && (
+                        <DropdownMenuItem onClick={() => { void handlePauseJob(job); }} disabled={isPausing}>
+                          <PauseCircle className="h-4 w-4" /> {isPausing ? t("pausingButton") : t("pauseButton")}
+                        </DropdownMenuItem>
+                      )}
+                      {can("jobs", "update") && job.status === "paused" && (
+                        <DropdownMenuItem onClick={() => { void handleResumeJob(job); }} disabled={isActivating}>
+                          <PlayCircle className="h-4 w-4" /> {isActivating ? t("resumingButton") : t("resumeButton")}
+                        </DropdownMenuItem>
+                      )}
+                      {can("jobs", "update") && (job.status === "active" || job.status === "paused") && (
+                        <DropdownMenuItem onClick={() => { void handleDeactivateJob(job); }} disabled={isDeactivating}>
+                          <Clock className="h-4 w-4" /> {isDeactivating ? t("deactivatingButton") : t("deactivateButton")}
+                        </DropdownMenuItem>
+                      )}
+                      {can("jobs", "update") && !isUnpublished && (
+                        <DropdownMenuItem onClick={() => router.push(`${jobHref}?tab=workflow`)}>
+                          <GitBranch className="h-4 w-4" /> {t("workflowButton")}
+                        </DropdownMenuItem>
+                      )}
+                      {can("jobs", "update") && !isUnpublished && (
+                        <DropdownMenuItem onClick={() => router.push(`${jobHref}?tab=matching-weights`)}>
+                          <SlidersHorizontal className="h-4 w-4" /> {t("weightsButton")}
+                        </DropdownMenuItem>
+                      )}
+                      {can("jobs", "create") && (
+                        <DropdownMenuItem onClick={() => router.push(`${jobHref}/poster`)}>
+                          <ImageIcon className="h-4 w-4" /> {t("posterButton")}
+                        </DropdownMenuItem>
+                      )}
+                      {can("jobs", "create") && (
+                        <DropdownMenuItem onClick={() => { void handleCloneJob(job); }} disabled={cloningJobId === job._id}>
+                          <Copy className="h-4 w-4" /> {cloningJobId === job._id ? t("cloningButton") : t("cloneButton")}
+                        </DropdownMenuItem>
+                      )}
+                      {can("jobs", "create") && (
+                        <DropdownMenuItem
+                          onClick={() => { if (!savedTemplateIds.has(job._id)) void handleSaveAsTemplate(job); }}
+                          disabled={savingTemplateId === job._id || savedTemplateIds.has(job._id)}
+                        >
+                          {savedTemplateIds.has(job._id) ? (
+                            <><CheckCircle className="h-4 w-4 text-status-selected" /> {t("templateSavedButton")}</>
+                          ) : savingTemplateId === job._id ? (
+                            <><BookTemplate className="h-4 w-4" /> {t("templateSavingButton")}</>
+                          ) : (
+                            <><BookTemplate className="h-4 w-4" /> {t("templateButton")}</>
+                          )}
+                        </DropdownMenuItem>
+                      )}
+                      {can("jobs", "delete") && ["draft", "paused", "closed", "expired"].includes(job.status) && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => { void handleDeleteJob(job); }}
+                            disabled={isDeleting}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" /> {isDeleting ? t("deletingButton") : t("deleteButton")}
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
             );
           })}
         </div>

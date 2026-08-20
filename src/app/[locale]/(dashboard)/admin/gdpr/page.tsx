@@ -277,7 +277,7 @@ export default function AdminGdprPage() {
       )}
 
       {/* Content */}
-      <section className="workspace-panel-surface rounded-[28px] p-5">
+      <section className="workspace-panel-surface rounded-[28px] panel-body">
         {activeTab === "requests" && (
           <>
             {loading ? (

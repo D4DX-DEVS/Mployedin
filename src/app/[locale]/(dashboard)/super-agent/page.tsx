@@ -17,7 +17,6 @@ import {
   Building2,
   CheckCircle2,
   Briefcase,
-  ClipboardList,
   DollarSign,
   ShieldCheck,
   Target,
@@ -62,10 +61,9 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
         : []),
     ],
   };
-  const [totalJobs, activeJobs, pendingApprovals] = await Promise.all([
+  const [totalJobs, activeJobs] = await Promise.all([
     Job.countDocuments(jobFilter),
     Job.countDocuments({ ...jobFilter, status: "active" }),
-    Job.countDocuments({ ...jobFilter, "poster.approvalStatus": "pending" }),
   ]);
 
   const jobIds = await Job.find(jobFilter).select("_id").lean();
@@ -186,7 +184,7 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
   ];
 
   const actions = [
-    { label: t("actions.jobApprovals.label"), href: `/${locale}/super-agent/approvals`, icon: CheckCircle2 },
+    { label: t("actions.jobOversight.label"), href: `/${locale}/super-agent/jobs`, icon: CheckCircle2 },
     { label: t("actions.agentPerformance.label"), href: `/${locale}/super-agent/agents`, icon: Users2 },
     { label: t("actions.leadPipeline.label"), href: `/${locale}/super-agent/leads`, icon: Target },
     { label: t("actions.commissionReport.label"), href: `/${locale}/super-agent/commissions`, icon: DollarSign },
@@ -228,24 +226,6 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
           );
         })}
       </section>
-
-      {pendingApprovals > 0 && (
-        <Link
-          href={`/${locale}/super-agent/approvals`}
-          className="group flex items-center justify-between gap-4 rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 transition-colors hover:bg-amber-50 dark:border-amber-500/25 dark:bg-amber-950/40"
-        >
-          <div className="flex min-w-0 items-center gap-3">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500 text-white">
-              <ClipboardList className="h-4 w-4" />
-            </span>
-            <p className="truncate text-sm font-semibold text-foreground">{t("approvals.title", { count: pendingApprovals })}</p>
-          </div>
-          <span className="inline-flex shrink-0 items-center gap-1.5 text-sm font-semibold text-amber-700 dark:text-amber-200">
-            {t("approvals.action")}
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-          </span>
-        </Link>
-      )}
 
       <section className="order-2 workspace-panel-surface overflow-hidden rounded-2xl lg:order-1">
         <div className="panel-head justify-between">

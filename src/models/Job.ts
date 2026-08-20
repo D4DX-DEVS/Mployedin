@@ -2,6 +2,9 @@ import mongoose, { Document, Schema } from "mongoose";
 
 export type JobStatus =
   | "draft"
+  // ponytail: legacy — the approval queue is gone; nothing writes this any more.
+  // Kept so pre-migration documents still validate. Run
+  // scripts/migrate-drop-job-approval.mjs --apply, then it can be dropped.
   | "pending_approval"
   | "active"
   | "paused"

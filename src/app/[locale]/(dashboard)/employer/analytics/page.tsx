@@ -483,7 +483,7 @@ export default function EmployerAnalyticsPage() {
 
 function TabLoadingSkeleton() {
   return (
-    <div className="workspace-panel-surface rounded-[28px] p-6 space-y-4 animate-pulse">
+    <div className="workspace-panel-surface rounded-[28px] space-y-4 animate-pulse panel-body">
       <div className="h-5 w-48 bg-muted rounded" />
       <div className="grid gap-3 sm:grid-cols-3">
         {[1, 2, 3].map((i) => (
@@ -598,7 +598,7 @@ function PipelineTab({
       )}
 
       {pipeline.stalledCount > 0 && (
-        <div className="workspace-panel-surface rounded-2xl border-status-shortlisted/20 p-3 sm:rounded-[28px] sm:p-5">
+        <div className="workspace-panel-surface rounded-2xl border-status-shortlisted/20 sm:rounded-[28px] panel-body">
           <div className="flex items-start gap-2.5 sm:gap-4">
             <div className="rounded-xl bg-status-shortlisted-bg p-2 text-status-shortlisted sm:rounded-2xl sm:p-3">
               <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -688,7 +688,7 @@ function PipelineTab({
 
       {jobOptions.length > 0 && (
         <AnalyticsPanel className="overflow-hidden p-0">
-          <div className="flex flex-col gap-2.5 border-b border-border/60 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-6 sm:py-5">
+          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 panel-head">
             <AnalyticsSectionHeader
               title={t("perJobBreakdown")}
               description={t("perJobBreakdownDesc")}

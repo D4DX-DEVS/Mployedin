@@ -49,7 +49,7 @@ export function AIInsightsCard() {
 
   if (insights.length === 0) {
     return (
-      <div className="card-base p-3 sm:p-6 text-center">
+      <div className="card-base text-center panel-body">
         <Sparkles className="mx-auto h-8 w-8 text-muted-foreground/40" />
         <p className="mt-2 text-sm text-muted-foreground">
           {t("noInsightsAvailable")}
@@ -59,7 +59,7 @@ export function AIInsightsCard() {
   }
 
   return (
-    <div className="card-base p-3 sm:p-6">
+    <div className="card-base panel-body">
       <div className="mb-3 sm:mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />

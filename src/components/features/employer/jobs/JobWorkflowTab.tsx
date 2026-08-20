@@ -156,7 +156,7 @@ export function JobWorkflowTab({ jobId }: Props) {
       )}
 
       {/* Pipeline Preview */}
-      <div className="card-base p-5">
+      <div className="card-base panel-body">
         <div className="flex items-center justify-between gap-3 mb-4">
           <div>
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
@@ -189,7 +189,7 @@ export function JobWorkflowTab({ jobId }: Props) {
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.35fr,0.65fr]">
         {/* Stages builder */}
-        <div className="card-base p-5 space-y-3 sm:space-y-4">
+        <div className="card-base space-y-3 sm:space-y-4 panel-body">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
               <Settings2 className="h-4 w-4 text-sky-600" /> {t("pipelineStages")}
@@ -278,7 +278,7 @@ export function JobWorkflowTab({ jobId }: Props) {
         </div>
 
         {/* Automation settings */}
-        <div className="card-base p-5 space-y-3 sm:space-y-5">
+        <div className="card-base space-y-3 sm:space-y-5 panel-body">
           <h3 className="text-sm font-semibold text-foreground">{t("automationRules")}</h3>
 
           <div className="flex items-start gap-3">

@@ -313,7 +313,7 @@ export default function AgentOffersPage() {
       />
 
       {/* Filters */}
-      <section className="workspace-panel-surface rounded-[28px] p-5">
+      <section className="workspace-panel-surface rounded-[28px] panel-body">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -332,7 +332,7 @@ export default function AgentOffersPage() {
       </section>
 
       {/* Table */}
-      <section className="workspace-panel-surface rounded-[28px] p-5">
+      <section className="workspace-panel-surface rounded-[28px] panel-body">
         {!loading && offers.length > 0 && (
           <TableToolbar
             onExportCsv={handleExportCsv}
@@ -484,7 +484,7 @@ export default function AgentOffersPage() {
       {detailOffer && typeof document !== "undefined" && createPortal(
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/45 px-4 py-6 backdrop-blur-sm">
           <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[28px] border border-border bg-background shadow-[0_30px_90px_-36px_rgba(15,23,42,0.5)]">
-            <div className="flex items-start justify-between gap-4 border-b border-border/60 px-6 py-5">
+            <div className="flex items-start justify-between gap-4 panel-head">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("detail.title")}</p>
                 <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{detailOffer.jobTitle}</h2>

@@ -181,7 +181,7 @@ export default function SuperAgentCommissionsReportPage() {
       />
 
       {/* ── Monthly Trend ── */}
-      <section className="workspace-panel-surface rounded-2xl p-3 sm:p-4 sm:rounded-[28px] lg:p-5">
+      <section className="workspace-panel-surface rounded-2xl sm:rounded-[28px] panel-body">
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("monthlyTrendHeading", { year: yearFilter })}</h2>
         <ResponsiveContainer width="100%" height={240}>
           <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
@@ -220,7 +220,7 @@ export default function SuperAgentCommissionsReportPage() {
 
       {/* ── Agent Breakdown Table ── */}
       <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-[28px]">
-        <div className="border-b border-border/60 px-5 py-4 flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-3 panel-head">
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-muted-foreground" />
             <h2 className="text-sm font-semibold">{t("teamBreakdownTitle")}</h2>

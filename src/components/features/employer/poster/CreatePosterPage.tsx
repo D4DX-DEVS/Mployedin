@@ -124,7 +124,7 @@ export function CreatePosterPage({ jobId }: CreatePosterPageProps) {
   const canGenerate = (credits?.remaining ?? 0) > 0 && !poster.isGenerating;
 
   return (
-    <div className="page-container space-y-3 sm:space-y-6">
+    <div className="page-container">
       {/* Header — primary CTA lives here so the default poster is one tap away.
           Generation spends a paid credit, so it stays an explicit button press. */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

@@ -7,12 +7,6 @@ export const sendReminderSchema = z.object({
   message: z.string().max(500).trim().optional(),
 });
 
-/** PATCH /api/super-agent/approvals/[id] */
-export const approvalDecisionSchema = z.object({
-  status: z.enum(["approved", "rejected"]),
-  reason: z.string().max(500).trim().optional(),
-});
-
 /** POST /api/super-agent/actions/assign-leads */
 export const assignLeadsSchema = z.object({
   fromAgentUserId: commonSchemas.objectId,

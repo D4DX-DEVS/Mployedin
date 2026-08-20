@@ -17,5 +17,6 @@ export { AIRecommendedCandidatesCard } from "./AIRecommendedCandidatesCard";
 export { DraftExtractionsCard } from "./DraftExtractionsCard";
 export { DraftJobsCard } from "./DraftJobsCard";
 export { AIChatDraftsCard } from "./AIChatDraftsCard";
+export { DashboardInsightsRow } from "./DashboardInsightsRow";
 export type { ActiveJob } from "./ActiveJobsList";
 export type { EnhancedJob } from "./EnhancedJobsList";

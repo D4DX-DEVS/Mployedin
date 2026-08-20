@@ -155,12 +155,12 @@ export default function CountriesPage() {
   };
 
   return (
-    <div className="page-container space-y-3 sm:space-y-4">
+    <div className="page-container">
       {ConfirmDialogNode}
 
       <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
         {/* Compact header row: mobile stacked, desktop row */}
-        <div className="flex flex-col gap-3 border-b border-border/80 px-4 py-3 sm:px-5 sm:py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 border-b border-border/80 sm:flex-row sm:items-center sm:justify-between panel-head">
           <div className="min-w-0">
             <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-lg">{t("countriesTitle")}</h1>
             <p className="hidden text-xs text-muted-foreground sm:mt-0.5 sm:block">{t("countriesSubtitle")}</p>
@@ -204,7 +204,7 @@ export default function CountriesPage() {
 
         {/* Collapsible filter panel: stacked on mobile */}
         {showFilters && (
-          <div className="grid gap-2 border-b border-border/60 bg-secondary/30 px-4 py-3 sm:px-5 sm:gap-3 sm:flex sm:flex-wrap sm:items-center">
+          <div className="grid gap-2 bg-secondary/30 sm:gap-3 sm:flex sm:flex-wrap sm:items-center panel-head">
             <label htmlFor="admin-countries-status" className="text-xs font-medium text-muted-foreground">{t("status")}</label>
             <SearchableSelect
               id="admin-countries-status"
