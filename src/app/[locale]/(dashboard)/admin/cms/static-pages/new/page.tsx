@@ -47,7 +47,7 @@ export default function NewStaticPage() {
       toast.success(t("successToast"));
       router.push(`/${locale}/admin/cms/static-pages`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("errorGeneric"));
+      setError(t("errorGeneric"));
     } finally {
       setSaving(false);
     }

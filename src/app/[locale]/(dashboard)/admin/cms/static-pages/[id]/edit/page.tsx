@@ -70,7 +70,7 @@ export default function EditStaticPage() {
       toast.success(t("successToast"));
       router.push(`/${locale}/admin/cms/static-pages`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("somethingWentWrong"));
+      setError(t("somethingWentWrong"));
     } finally {
       setSaving(false);
     }

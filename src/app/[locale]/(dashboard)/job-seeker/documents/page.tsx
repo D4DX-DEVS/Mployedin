@@ -193,7 +193,7 @@ export default function JobSeekerDocumentsPage() {
         }
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("uploadGenericFailed"));
+      toast.error(t("uploadGenericFailed"));
     } finally {
       setUploading(false);
     }
@@ -217,7 +217,7 @@ export default function JobSeekerDocumentsPage() {
       setExtracted(data.extracted ?? data);
       toast.success(t("extractedSuccess"));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("extractionFailed"));
+      toast.error(t("extractionFailed"));
     } finally {
       setExtracting(false);
     }

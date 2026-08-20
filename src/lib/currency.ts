@@ -169,14 +169,18 @@ export function convertCurrency(
   return Math.round(inAED * toRate * 100) / 100;
 }
 
-/** Format a number with a currency code, e.g. "INR 12,500" or "$ 3,200" */
-export function formatCurrency(amount: number | string | null | undefined, currencyCode = "AED"): string {
+/** Format a monetary value with either its familiar symbol or explicit code. */
+export function formatCurrency(
+  amount: number | string | null | undefined,
+  currencyCode = "AED",
+  currencyDisplay: "symbol" | "code" = "symbol",
+): string {
   if (amount == null || amount === "") return "—";
   const num = Number(amount);
   if (isNaN(num)) return "—";
   const info = SUPPORTED_CURRENCIES.find((c) => c.code === currencyCode);
-  const symbol = info?.symbol ?? currencyCode;
-  return `${symbol} ${num.toLocaleString()}`;
+  const marker = currencyDisplay === "code" ? currencyCode : (info?.symbol ?? currencyCode);
+  return `${marker} ${num.toLocaleString()}`;
 }
 
 /**

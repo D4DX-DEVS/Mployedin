@@ -133,7 +133,7 @@ export function AIInterviewQuestionsPanel({
         loadHistory();
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("somethingWentWrong"));
+      setError(t("somethingWentWrong"));
     } finally {
       setLoading(false);
     }

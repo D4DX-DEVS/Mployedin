@@ -5,12 +5,10 @@ import { connectDB } from "@/lib/db/mongoose";
 import SuperAgent from "@/models/SuperAgent";
 import Agent from "@/models/Agent";
 import User from "@/models/User";
-import Employer from "@/models/Employer";
 import Job from "@/models/Job";
 import Application from "@/models/Application";
 import Placement from "@/models/Placement";
 import Lead from "@/models/Lead";
-import { formatCurrency } from "@/lib/currency";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import {
   ArrowRight,
@@ -23,6 +21,7 @@ import {
   Users2,
 } from "lucide-react";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { DashboardNextAction, DashboardSignalStrip } from "@/components/shared/DashboardOverview";
 
 export default async function SuperAgentDashboard({ params }: { params: Promise<{ locale: string }> }) {
   const session = await auth();
@@ -127,13 +126,10 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
   ];
   const funnelMax = Math.max(1, ...funnel.map((f) => f.value));
 
-  const commissions = saProfile?.commissions ?? { total: 0, pending: 0, paid: 0 };
-  const currencyCode = saProfile?.currencyCode ?? "AED";
-
   const totalAgents = agentUserIds.length;
   const placementRate = totalApplications > 0
     ? Math.round((totalPlacements / totalApplications) * 100)
-    : 0;
+    : null;
 
   // Step-over-step conversion; raw counts alone never showed where the region stalls.
   const funnelRows = funnel.map((stage, index) => {
@@ -145,44 +141,6 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
     };
   });
 
-  const kpis = [
-    {
-      label: t("kpis.activeAgents.label"),
-      value: String(activeAgents),
-      note: t("kpiNote.agents", { active: activeAgents, inactive: Math.max(0, totalAgents - activeAgents) }),
-      icon: Users2,
-      tone: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800/70 dark:bg-emerald-950/70 dark:text-emerald-200",
-    },
-    {
-      label: t("kpis.totalEmployers.label"),
-      value: String(totalEmployers),
-      note: t("kpiNote.employers", { agents: totalAgents }),
-      icon: Building2,
-      tone: "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-800/70 dark:bg-sky-950/70 dark:text-sky-200",
-    },
-    {
-      label: t("kpis.totalJobs.label"),
-      value: String(totalJobs),
-      note: t("kpiNote.jobs", { active: activeJobs }),
-      icon: Briefcase,
-      tone: "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-800/70 dark:bg-violet-950/70 dark:text-violet-200",
-    },
-    {
-      label: t("kpis.totalPlacements.label"),
-      value: String(totalPlacements),
-      note: t("kpiNote.placements", { rate: placementRate }),
-      icon: ShieldCheck,
-      tone: "border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-800/70 dark:bg-indigo-950/70 dark:text-indigo-200",
-    },
-    {
-      label: t("kpis.commissionsEarned.label"),
-      value: formatCurrency(commissions.total ?? 0, currencyCode),
-      note: t("kpiNote.commission", { amount: formatCurrency(commissions.pending ?? 0, currencyCode) }),
-      icon: DollarSign,
-      tone: "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800/70 dark:bg-amber-950/70 dark:text-amber-200",
-    },
-  ];
-
   const actions = [
     { label: t("actions.jobOversight.label"), href: `/${locale}/super-agent/jobs`, icon: CheckCircle2 },
     { label: t("actions.agentPerformance.label"), href: `/${locale}/super-agent/agents`, icon: Users2 },
@@ -190,57 +148,64 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
     { label: t("actions.commissionReport.label"), href: `/${locale}/super-agent/commissions`, icon: DollarSign },
   ];
 
+  const inactiveAgents = Math.max(0, totalAgents - activeAgents);
+  const nextAction = inactiveAgents > 0
+    ? { title: t("actions.agentPerformance.label"), description: t("actions.agentPerformance.description"), href: `/${locale}/super-agent/agents`, icon: Users2, badge: t("taskFirst.attention") }
+    : totalLeads > totalEmployers
+      ? { title: t("actions.leadPipeline.label"), description: t("actions.leadPipeline.description"), href: `/${locale}/super-agent/leads`, icon: Target, badge: t("taskFirst.followUp") }
+      : { title: t("actions.jobOversight.label"), description: t("taskFirst.jobOversightDescription"), href: `/${locale}/super-agent/jobs`, icon: CheckCircle2, badge: t("taskFirst.review") };
+
+  const signals = [
+    { label: t("kpis.activeAgents.label"), value: activeAgents, href: `/${locale}/super-agent/agents`, icon: Users2 },
+    { label: t("kpis.totalEmployers.label"), value: totalEmployers, href: `/${locale}/super-agent/employers`, icon: Building2 },
+    { label: t("kpis.totalJobs.label"), value: activeJobs, href: `/${locale}/super-agent/jobs`, icon: Briefcase },
+    { label: t("kpis.totalPlacements.label"), value: totalPlacements, href: `/${locale}/super-agent/placements`, icon: ShieldCheck },
+  ];
+
   return (
-    <div className="page-container">
+    <div className="page-container dashboard-overview-page">
       <DashboardPageHeader
         icon={ShieldCheck}
         eyebrow={t("hero.eyebrow")}
         title={t("hero.title")}
         description={t("hero.description")}
-        actions={
-          <Link
-            href={`/${locale}/super-agent/agents`}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-border/60 bg-card px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-secondary/60"
-          >
-            {t("control.teamOversight")}
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-        }
       />
 
-      {/* KPI band sits outside the hero so neither block owns the whole viewport. */}
-      <section className="panel-grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
-        {kpis.map((kpi) => {
-          const Icon = kpi.icon;
-          return (
-            <div key={kpi.label} className="workspace-panel-surface rounded-xl px-4 py-3">
-              <div className="flex items-start justify-between gap-2">
-                <p className="line-clamp-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{kpi.label}</p>
-                <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border ${kpi.tone}`}>
-                  <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-                </span>
-              </div>
-              <p className="mt-2 truncate text-xl font-semibold tabular-nums tracking-tight text-foreground sm:text-2xl">{kpi.value}</p>
-              <p className="mt-1 truncate text-[11px] text-muted-foreground">{kpi.note}</p>
-            </div>
-          );
-        })}
-      </section>
+      <DashboardNextAction
+        headingId="super-agent-next-action"
+        title={t("taskFirst.recommendedNext")}
+        description={t("taskFirst.nextDescription")}
+        actionTitle={nextAction.title}
+        actionDescription={nextAction.description}
+        actionLabel={t("taskFirst.openAction")}
+        href={nextAction.href}
+        icon={nextAction.icon}
+        badge={nextAction.badge}
+      />
+
+      <DashboardSignalStrip headingId="super-agent-signals" title={t("taskFirst.atAGlance")} signals={signals} />
 
       <section className="order-2 workspace-panel-surface overflow-hidden rounded-2xl lg:order-1">
         <div className="panel-head justify-between">
           <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sections.funnel.eyebrow")}</h2>
           <div className="flex shrink-0 items-baseline gap-2">
             <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("funnel.placementRate")}</span>
-            <span className="text-base font-semibold text-primary">{placementRate}%</span>
-            {totalPlacements === 0 && (
+            <span className="text-base font-semibold text-primary">
+              {placementRate === null ? "—" : `${placementRate}%`}
+            </span>
+            {placementRate === null ? (
+              <span className="hidden text-xs font-medium text-muted-foreground sm:inline">{t("funnel.noApplicationData")}</span>
+            ) : totalPlacements === 0 && (
               <span className="hidden text-xs font-medium text-muted-foreground sm:inline">{t("funnel.noPlacements")}</span>
             )}
           </div>
         </div>
 
         <div className="panel-body">
-          {funnelRows.map((stage) => (
+          <p className="mb-3 text-xs leading-5 text-muted-foreground">
+            {t("sections.funnel.description")} {t("funnel.ratioExplanation")}
+          </p>
+          {funnelRows.map((stage, index) => (
             <div key={stage.key} className="flex h-9 items-center gap-3">
               <div className="w-24 shrink-0 truncate text-xs font-medium text-muted-foreground sm:w-32 sm:text-sm">{stage.label}</div>
               <div className="relative h-[22px] flex-1 overflow-hidden rounded-lg bg-secondary/60">
@@ -260,7 +225,13 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
                         ? "text-amber-600 dark:text-amber-400"
                         : "text-rose-600 dark:text-rose-400"
                 }`}
-                title={t("funnel.vsPrevious")}
+                title={stage.conversion === null
+                  ? t("funnel.ratioUnavailable")
+                  : t("funnel.ratioValue", {
+                      value: stage.conversion,
+                      current: stage.label,
+                      previous: funnel[index - 1]?.label ?? "",
+                    })}
               >
                 {stage.conversion === null ? "—" : `${stage.conversion}%`}
               </div>

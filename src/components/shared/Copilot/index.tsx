@@ -100,6 +100,7 @@ export function Copilot({ className }: CopilotProps) {
   const pathname = usePathname();
   const locale = useLocale();
   const isRtl = locale === "ar";
+  const usesInlineEmployerLauncher = /^\/(?:en|ar)\/employer(?:\/jobs)?\/?$/.test(pathname);
   const t = useTranslations("copilot");
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -119,12 +120,19 @@ export function Copilot({ className }: CopilotProps) {
 
   useEffect(() => setMounted(true), []);
 
+  useEffect(() => {
+    const openCopilot = () => setOpen(true);
+    window.addEventListener("mployedin:open-copilot", openCopilot);
+    return () => window.removeEventListener("mployedin:open-copilot", openCopilot);
+  }, []);
+
   const clampFabPos = useCallback((x: number, y: number) => {
     const size = 48;
     const margin = 4;
+    const reservedBottom = window.innerWidth < 1024 ? 72 : margin;
     return {
       x: Math.min(Math.max(x, margin), window.innerWidth - size - margin),
-      y: Math.min(Math.max(y, margin), window.innerHeight - size - margin),
+      y: Math.min(Math.max(y, margin), window.innerHeight - size - reservedBottom),
     };
   }, []);
 
@@ -452,8 +460,7 @@ export function Copilot({ className }: CopilotProps) {
       aria-label={t("title")}
       tabIndex={-1}
       className={cn(
-        "fixed bottom-20 right-4 z-[70] flex h-[min(640px,calc(100vh-2rem))] w-[min(400px,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border border-border bg-background shadow-2xl lg:bottom-4",
-        isRtl && "left-4 right-auto",
+        "copilot-panel fixed z-[70] flex h-[min(640px,calc(100dvh-5.5rem))] w-[min(400px,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border border-border bg-background shadow-2xl lg:h-[min(640px,calc(100vh-2rem))]",
         className
       )}
     >
@@ -633,7 +640,6 @@ export function Copilot({ className }: CopilotProps) {
         <p className="mt-1.5 text-center text-[10px] text-muted-foreground">{t("disclaimer")}</p>
       </div>
     </div>
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   ), [transcript, input, isStreaming, isRtl, hasMessages, t, handleConfirm, handleCancel, suggestions, sendMessage, showHistory, savedChats]);
 
   if (!mounted) return null;
@@ -651,7 +657,8 @@ export function Copilot({ className }: CopilotProps) {
           style={fabPos ? { left: fabPos.x, top: fabPos.y, right: "auto", bottom: "auto" } : undefined}
           className={cn(
             "fixed z-[70] flex h-12 w-12 touch-none items-center justify-center rounded-full bg-white shadow-lg transition-transform hover:scale-105 active:scale-95",
-            !fabPos && cn("bottom-20 right-4 lg:bottom-4", isRtl && "left-4 right-auto")
+            usesInlineEmployerLauncher && "hidden lg:flex",
+            !fabPos && "copilot-fab"
           )}
           aria-label={t("openCopilot")}
         >

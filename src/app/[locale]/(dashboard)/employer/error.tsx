@@ -26,7 +26,7 @@ export default function EmployerError({
         <div className="space-y-2">
           <h3 className="text-lg font-semibold text-destructive">{t("title")}</h3>
           <p className="text-sm text-muted-foreground">
-            {error.message || t("description")}
+            {t("description")}
           </p>
         </div>
         <RecoveryActions reset={reset} />

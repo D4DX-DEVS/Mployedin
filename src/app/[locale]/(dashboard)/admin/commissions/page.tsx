@@ -24,6 +24,7 @@ import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
 import { Inbox } from "lucide-react";
 import { SUPPORTED_CURRENCIES } from "@/lib/currency";
+import { toUserFacingError } from "@/lib/errors/user-facing";
 
 interface Commission {
   _id: string;
@@ -128,7 +129,7 @@ export default function AdminCommissionsPage() {
       updateTotal(data.total ?? data.totalCount ?? data.pagination?.total ?? ((data.totalPages ?? data.pagination?.pages ?? 1) * limit));
       if (data.summary) setSummary(data.summary);
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : t("failedLoadCommissions");
+      const message = toUserFacingError(error, { fallback: t("failedLoadCommissions") }).message;
       setErrorMessage(message);
       toast.error(message);
     } finally {
@@ -179,7 +180,7 @@ export default function AdminCommissionsPage() {
       toast.success(t("commissionDeleted"));
       await fetchCommissions();
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : t("failedDelete"));
+      toast.error(toUserFacingError(error, { fallback: t("failedDelete") }).message);
     }
   };
 
@@ -201,7 +202,7 @@ export default function AdminCommissionsPage() {
       toast.success(successMessage);
       await fetchCommissions();
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : t("failedUpdateStatus"));
+      toast.error(toUserFacingError(error, { fallback: t("failedUpdateStatus") }).message);
     }
   };
 
@@ -218,7 +219,7 @@ export default function AdminCommissionsPage() {
       toast.success(t("markDisputedSuccess"));
       await fetchCommissions();
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : t("failedDispute"));
+      toast.error(toUserFacingError(error, { fallback: t("failedDispute") }).message);
     }
   };
 
@@ -242,7 +243,7 @@ export default function AdminCommissionsPage() {
       toast.success(t("commissionClawbacked"));
       await fetchCommissions();
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : t("failedClawback"));
+      toast.error(toUserFacingError(error, { fallback: t("failedClawback") }).message);
     }
   };
 
@@ -259,7 +260,7 @@ export default function AdminCommissionsPage() {
       toast.success(t("disputeResolved"));
       await fetchCommissions();
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : t("failedResolveDispute"));
+      toast.error(toUserFacingError(error, { fallback: t("failedResolveDispute") }).message);
     }
   };
 

@@ -124,7 +124,7 @@ export default function TeamManagementPage() {
       setShowInviteModal(false);
       setInviteData({ email: "", companyRoles: ["hiring_manager"], jobAccess: [] });
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t("failedToSendInvite"));
+      setError(t("failedToSendInvite"));
     } finally {
       setSaving(false);
     }

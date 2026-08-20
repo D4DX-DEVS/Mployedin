@@ -179,9 +179,9 @@ describe("AdminJobsPage", () => {
     render(<AdminJobsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText(/failed to load jobs\. please try again\./i)).toBeInTheDocument();
+      expect(screen.getByText(/we couldn't load jobs\. please try again\./i)).toBeInTheDocument();
     });
 
-    expect(toastErrorMock).toHaveBeenCalledWith("Failed to load jobs. Please try again.");
+    expect(toastErrorMock).toHaveBeenCalledWith("We couldn't load jobs. Please try again.");
   });
 });

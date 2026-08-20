@@ -81,12 +81,12 @@ export function PaginationControls({
     >
       {/* Left: rows per page — label is desktop-only so phones keep one row */}
       <div className="flex items-center gap-2 text-muted-foreground leading-none">
-        <span className="hidden h-8 whitespace-nowrap sm:flex sm:items-center">{t("rowsPerPage")}</span>
+        <span className="hidden h-11 whitespace-nowrap sm:flex sm:items-center">{t("rowsPerPage")}</span>
         <Select
           value={String(limit)}
           onValueChange={(v) => onLimitChange(Number(v))}
         >
-          <SelectTrigger className="h-8 w-[62px] sm:w-[70px]" aria-label={t("rowsPerPage")}>
+          <SelectTrigger className="h-11 w-[66px] sm:w-[74px]" aria-label={t("rowsPerPage")}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -113,34 +113,34 @@ export function PaginationControls({
         <Button
           variant="outline"
           size="icon"
-          className="hidden h-8 w-8 sm:inline-flex"
+          className="hidden h-11 w-11 lg:inline-flex"
           onClick={() => onPageChange(1)}
           disabled={page <= 1}
           title={t("firstPage")}
           aria-label={t("firstPage")}
         >
-          <ChevronsLeft className="h-4 w-4" />
+          <ChevronsLeft className="h-4 w-4 rtl:rotate-180" />
         </Button>
         <Button
           variant="outline"
           size="icon"
-          className="h-8 w-8"
+          className="h-11 w-11"
           onClick={() => onPageChange(page - 1)}
           disabled={page <= 1}
           title={t("previousPage")}
           aria-label={t("previousPage")}
         >
-          <ChevronLeft className="h-4 w-4" />
+          <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
         </Button>
         {/* Numbered pages (sm+); compact x/y indicator on mobile */}
-        <div className="hidden sm:flex items-center gap-1">
+        <div className="hidden lg:flex items-center gap-1">
           {getPageItems(page, totalPages).map((item) =>
             typeof item === "number" ? (
               <Button
                 key={item}
                 variant={item === page ? "default" : "outline"}
                 size="icon"
-                className="h-8 w-8 tabular-nums"
+                className="h-11 w-11 tabular-nums"
                 onClick={() => onPageChange(item)}
                 aria-current={item === page ? "page" : undefined}
                 aria-label={`${t("page")} ${formatNumber(item, locale)}`}
@@ -154,30 +154,30 @@ export function PaginationControls({
             )
           )}
         </div>
-        <span className="px-1 text-muted-foreground whitespace-nowrap tabular-nums sm:hidden">
+        <span className="px-1 text-muted-foreground whitespace-nowrap tabular-nums lg:hidden">
           {formatNumber(page, locale)} / {formatNumber(totalPages, locale)}
         </span>
         <Button
           variant="outline"
           size="icon"
-          className="h-8 w-8"
+          className="h-11 w-11"
           onClick={() => onPageChange(page + 1)}
           disabled={page >= totalPages}
           title={t("nextPage")}
           aria-label={t("nextPage")}
         >
-          <ChevronRight className="h-4 w-4" />
+          <ChevronRight className="h-4 w-4 rtl:rotate-180" />
         </Button>
         <Button
           variant="outline"
           size="icon"
-          className="hidden h-8 w-8 sm:inline-flex"
+          className="hidden h-11 w-11 lg:inline-flex"
           onClick={() => onPageChange(totalPages)}
           disabled={page >= totalPages}
           title={t("lastPage")}
           aria-label={t("lastPage")}
         >
-          <ChevronsRight className="h-4 w-4" />
+          <ChevronsRight className="h-4 w-4 rtl:rotate-180" />
         </Button>
       </div>
     </div>

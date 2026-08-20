@@ -26,7 +26,7 @@ export default function ApplicationsError({
         <div className="space-y-2">
           <h3 className="text-lg font-semibold text-destructive">{t("failedApplications")}</h3>
           <p className="text-sm text-muted-foreground">
-            {error.message || t("failedApplicationsDescription")}
+            {t("failedApplicationsDescription")}
           </p>
         </div>
         <RecoveryActions reset={reset} />

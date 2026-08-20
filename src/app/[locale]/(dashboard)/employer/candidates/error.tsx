@@ -26,7 +26,7 @@ export default function CandidatesError({
         <div className="space-y-2">
           <h3 className="text-lg font-semibold text-destructive">{t("failedCandidates")}</h3>
           <p className="text-sm text-muted-foreground">
-            {error.message || t("failedCandidatesDescription")}
+            {t("failedCandidatesDescription")}
           </p>
         </div>
         <RecoveryActions reset={reset} />

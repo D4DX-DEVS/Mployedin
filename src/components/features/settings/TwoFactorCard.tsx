@@ -63,7 +63,7 @@ export function TwoFactorCard() {
       setCode("");
       setPhase("setup");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Setup failed");
+      setError("We couldn't start two-factor setup. Your security settings are unchanged. Try again.");
     } finally {
       setBusy(false);
     }
@@ -77,7 +77,7 @@ export function TwoFactorCard() {
       setRecoveryCodes(data.recoveryCodes ?? []);
       setPhase("recovery");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Verification failed");
+      setError("We couldn't verify that code. Two-factor authentication is not enabled yet. Check the code and try again.");
     } finally {
       setBusy(false);
     }
@@ -93,7 +93,7 @@ export function TwoFactorCard() {
       setShowDisable(false);
       setPhase("disabled");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Disable failed");
+      setError("We couldn't disable two-factor authentication. It remains enabled. Try again.");
     } finally {
       setBusy(false);
     }

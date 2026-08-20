@@ -63,7 +63,7 @@ export function AIEmailDraftButton({ applicationId, candidateName, defaultContex
       const data: EmailDraft = await res.json();
       setDraft(data);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("failedToGenerate"));
+      toast.error(t("failedToGenerate"));
     } finally {
       setLoading(false);
     }

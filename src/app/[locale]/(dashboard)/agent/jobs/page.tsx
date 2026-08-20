@@ -14,8 +14,6 @@ import {
   ArrowRight,
   BriefcaseBusiness,
   Building2,
-  Check,
-  ChevronsUpDown,
   ChevronDown,
   Eye,
   Filter,
@@ -23,7 +21,6 @@ import {
   Loader2,
   Plus,
   Search,
-  ShieldCheck,
   Sparkles,
   Users,
   X,
@@ -36,17 +33,8 @@ import type { ExportColumn } from "@/lib/export";
 import { useTranslations } from "next-intl";
 import { TableActionLink } from "@/components/shared/TableActionLink";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
-import { cn } from "@/lib/utils";
+import { StatusFilterStrip } from "@/components/shared/StatusFilterStrip";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -82,8 +70,6 @@ interface AiFilters {
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
 
-const STATUS_TABS = ["", "draft", "active", "closed"] as const;
-
 const AI_SUGGESTION_KEYS = ["activeApplicants", "draftReview", "postedThisWeek", "kochiRoles"] as const;
 
 /* ------------------------------------------------------------------ */
@@ -100,7 +86,6 @@ export default function AgentJobsPage() {
   /* ----- Job list state ----- */
   const [jobs, setJobs] = useState<JobItem[]>([]);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
-  const [portfolioStats, setPortfolioStats] = useState<{ employerCount: number; totalApplicants: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -153,7 +138,6 @@ export default function AgentJobsPage() {
         const data = await res.json();
         setJobs(data.jobs ?? []);
         setStatusCounts(data.statusCounts ?? {});
-        setPortfolioStats(data.portfolioStats ?? null);
         pagination.updateTotal(data.pagination?.total ?? 0);
       }
     } finally {
@@ -241,20 +225,6 @@ export default function AgentJobsPage() {
   const draftJobs = hasStatusCounts
     ? (statusCounts.draft ?? 0)
     : jobs.filter((j) => j.status === "draft").length;
-  const uniqueEmployers = portfolioStats
-    ? portfolioStats.employerCount
-    : new Set(jobs.map((j) => j.employerId?._id ?? j.employerId).filter(Boolean)).size;
-  const totalApplicants = portfolioStats
-    ? portfolioStats.totalApplicants
-    : jobs.reduce((sum, j) => sum + (j.applicationCount ?? j.applicantIds?.length ?? 0), 0);
-
-  const summaryCards = [
-    { label: t("cards.active.label"), value: activeJobs, description: t("cards.active.description"), icon: ShieldCheck, tone: "workspace-tone-emerald" },
-    { label: t("cards.drafts.label"), value: draftJobs, description: t("cards.drafts.description"), icon: BriefcaseBusiness, tone: "workspace-tone-amber" },
-    { label: t("cards.employers.label"), value: uniqueEmployers, description: t("cards.employers.description"), icon: Building2, tone: "workspace-tone-sky" },
-    { label: t("cards.applicants.label"), value: totalApplicants, description: t("cards.applicants.description"), icon: Users, tone: "workspace-tone-indigo" },
-  ];
-
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
     { header: t("table.title"), key: "title" },
     { header: t("table.employer"), key: "employerId", formatter: (_v, row) => (row.employerId as { companyName?: string })?.companyName ?? "" },
@@ -296,19 +266,39 @@ export default function AgentJobsPage() {
               </Button>
             </Link>
         }
-        metrics={summaryCards.map((card) => ({
-          label: card.label,
-          value: card.value,
-          note: card.description,
-          icon: card.icon,
-        }))}
       />
+
+      <section className="workspace-panel-surface p-2 sm:p-3" aria-label={t("filters.title")}>
+        <div className="relative min-w-0">
+          <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={t("filters.searchPlaceholder")}
+            className="h-11 rounded-xl border-border bg-background ps-9 text-sm shadow-none"
+          />
+        </div>
+        <StatusFilterStrip
+          label={t("filters.title")}
+          className="mt-2"
+          selectedId={statusFilter || "all"}
+          onSelect={(value) => setStatusFilter(value === "all" ? "" : value)}
+          items={[
+            { id: "all", label: common("all"), value: pagination.total },
+            { id: "active", label: statusLabels.active, value: activeJobs },
+            { id: "draft", label: statusLabels.draft, value: draftJobs },
+            { id: "closed", label: statusLabels.closed, value: statusCounts.closed ?? 0 },
+          ]}
+        />
+      </section>
 
         {/* ── Combined Filter Bar ── */}
         <section className="workspace-panel-surface rounded-[20px] panel-body">
           {/* Toggle button */}
           <button
             onClick={() => setFiltersOpen((prev) => !prev)}
+            aria-expanded={filtersOpen}
+            aria-controls="agent-job-advanced-filters"
             className="flex w-full items-center justify-between gap-3"
           >
             <div className="flex items-center gap-3">
@@ -332,6 +322,7 @@ export default function AgentJobsPage() {
 
           {/* Expandable filter content */}
           <div
+            id="agent-job-advanced-filters"
             className={`grid transition-all duration-300 ease-in-out ${filtersOpen ? "mt-4 grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
           >
             <div className="overflow-hidden">
@@ -409,40 +400,7 @@ export default function AgentJobsPage() {
               {/* Manual Filters */}
               {/* Wraps on phones so the status tabs and the employer dropdown
                   share a line instead of each claiming a row. */}
-              <div className="flex flex-wrap items-center gap-2 lg:grid lg:gap-3 lg:grid-cols-[minmax(0,1fr)_auto]" data-table-toolbar="simple">
-                {/* Text search */}
-                {/* Keeps its own line — the shared .toolbar-search-field rule
-                    would shrink it into the tab row. */}
-                <div className="relative min-w-0 basis-full lg:basis-auto">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder={t("filters.searchPlaceholder")}
-                    className="h-11 rounded-xl border-border bg-secondary/65 pl-9 text-sm text-foreground shadow-none placeholder:text-muted-foreground"
-                  />
-                </div>
-                {/* Status tabs — share the line with the employer dropdown. */}
-                <div className="flex flex-1 basis-[56%] flex-wrap items-center gap-1.5 sm:basis-auto sm:gap-2">
-                  {STATUS_TABS.map((value) => {
-                    const isSelected = statusFilter === value;
-                    return (
-                      <Button
-                        key={value || "all"}
-                        onClick={() => setStatusFilter(value)}
-                        variant="outline"
-                        size="sm"
-                        className={isSelected
-                          ? "h-11 rounded-xl border-primary/20 bg-primary/10 !px-2 !text-[10px] text-primary hover:bg-primary/15 sm:!px-4 sm:!text-sm"
-                          : "h-11 rounded-xl border-border bg-secondary/65 !px-2 !text-[10px] text-muted-foreground hover:bg-card sm:!px-4 sm:!text-sm"
-                        }
-                      >
-                        {value ? statusLabels[value] ?? value : common("all")}
-                      </Button>
-                    );
-                  })}
-                </div>
-
+              <div className="flex flex-wrap items-center gap-2" data-table-toolbar="simple">
                 {/* Employer filter */}
                 {employers.length > 0 && (
                   <div className="flex min-w-0 max-w-[40%] shrink flex-nowrap items-center gap-1 sm:max-w-none sm:gap-1.5">

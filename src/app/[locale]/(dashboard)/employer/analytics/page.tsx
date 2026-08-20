@@ -318,7 +318,7 @@ export default function EmployerAnalyticsPage() {
                 {tc("somethingWentWrong")}
               </p>
               <p className="mt-2 text-sm leading-6 text-status-rejected dark:text-red-200">
-                Error: {error instanceof Error ? error.message : String(error)}
+                {t("loadError")}
               </p>
             </div>
             <button

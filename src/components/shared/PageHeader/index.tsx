@@ -33,7 +33,7 @@ export function PageHeader({
         )}
       </div>
       {actions && (
-        <div className="page-header-actions flex w-full min-w-0 items-center gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>*]:shrink-0 sm:w-auto sm:shrink-0 sm:flex-wrap sm:overflow-visible">{actions}</div>
+        <div className="page-header-actions flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto sm:shrink-0">{actions}</div>
       )}
     </div>
   );

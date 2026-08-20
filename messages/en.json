@@ -72,7 +72,10 @@
     "hasAccount": "Already have an account?",
     "signUp": "Sign up",
     "signIn": "Sign in",
-    "invalidCredentials": "Invalid email or password",
+    "invalidCredentials": "We couldn't sign you in. Check your email and password, or reset your password.",
+    "authenticationUnavailable": "We couldn't reach the sign-in service. Your details were not submitted. Check your connection and try again.",
+    "resetPasswordAction": "Reset password",
+    "getSignInHelp": "Get sign-in help",
     "twoFactorCode": "Two-factor code",
     "twoFactorPrompt": "Enter the 6-digit code from your authenticator app, or a recovery code.",
     "invalidTwoFactorCode": "Invalid two-factor code. Please try again.",
@@ -81,7 +84,7 @@
     "oauth2faVerify": "Verify & Continue",
     "oauth2faVerifying": "Verifying...",
     "oauth2faInvalid": "Invalid code. Please try again.",
-    "oauth2faGenericError": "Something went wrong. Please sign in again.",
+    "oauth2faGenericError": "We couldn't complete this action. Please sign in again.",
     "oauth2faTooManyAttempts": "Too many attempts. Please try again later.",
     "oauth2faSignOut": "Sign out",
     "oauth2faRecoveryUsed": "Recovery code used — please enroll new codes from your settings when convenient.",
@@ -100,7 +103,7 @@
     "continueWithGoogle": "Continue with Google",
     "secureSignIn": "Secure sign in",
     "googleSignInFailed": "Google sign-in failed. Please try again.",
-    "somethingWentWrong": "Something went wrong. Please try again.",
+    "somethingWentWrong": "We couldn't complete sign in. Your details were not submitted. Please try again.",
     "createAccount": "Create account",
     "postJobsAsEmployer": "Post jobs as employer",
     "showPassword": "Show password",
@@ -165,7 +168,7 @@
     "emailAddress": "Email address",
     "sendResetLink": "Send reset link",
     "backToSignIn": "Back to sign in",
-    "somethingWentWrong": "Something went wrong. Please try again.",
+    "somethingWentWrong": "We couldn't complete this action. Please try again.",
     "tooManyRequests": "Too many requests. Please wait a few minutes and try again.",
     "networkError": "Network error. Please check your connection and try again."
   },
@@ -355,9 +358,10 @@
     "total": "Total",
     "notifications": "Notifications",
     "markAllRead": "Mark all read",
+    "markAsRead": "Mark as read: {title}",
     "noUnreadNotifications": "No unread notifications",
     "tryAgain": "Try Again",
-    "somethingWentWrong": "Something went wrong",
+    "somethingWentWrong": "We couldn't complete this action",
     "noResultsFound": "No results found.",
     "switchToArabic": "العربية",
     "switchToEnglish": "English",
@@ -386,8 +390,8 @@
     "noCitiesFound": "No cities found",
     "stateSelected": "State selected",
     "selectEntireState": "Select entire state",
-    "failedToCreate": "Failed to create",
-    "failedToUpdate": "Failed to update",
+    "failedToCreate": "We couldn't create",
+    "failedToUpdate": "We couldn't update",
     "areYouSure": "Are you sure?",
     "confirmDeleteState": "Are you sure you want to delete this state?",
     "reset": "Reset",
@@ -561,14 +565,14 @@
     "errors": {
       "failed": "Failed",
       "searchFailed": "Search failed. Please try again.",
-      "recommendationsFailed": "Failed to load recommendations. Please try again."
+      "recommendationsFailed": "We couldn't load recommendations. Please try again."
     },
     "toast": {
       "applicationSubmitted": "Application submitted!",
-      "applyFailed": "Failed to apply",
+      "applyFailed": "We couldn't apply",
       "jobSaved": "Job saved",
       "jobUnsaved": "Job unsaved",
-      "savedUpdateFailed": "Failed to update saved jobs",
+      "savedUpdateFailed": "We couldn't update saved jobs",
       "bulkApplied": "Applied to {count} jobs!",
       "bulkApplyFailed": "Bulk apply failed",
       "maxBulk": "You can select up to {count} jobs",
@@ -650,7 +654,7 @@
       "selectCvFirst": "Please select or upload a CV first.",
       "loadFailed": "Could not load your CVs. Please try again.",
       "uploadFailed": "Upload failed. Please try again.",
-      "applyFailed": "Failed to apply. Please try again.",
+      "applyFailed": "We couldn't apply. Please try again.",
       "planLimitReached": "You've reached your plan's application limit. Upgrade your plan to continue applying.",
       "cancel": "Cancel",
       "apply": "Submit Application",
@@ -717,7 +721,7 @@
       "errors": {
         "loadFailed": "Could not load your details. Please try again.",
         "uploadFailed": "Upload failed. Please try again.",
-        "applyFailed": "Failed to apply. Please try again.",
+        "applyFailed": "We couldn't apply. Please try again.",
         "planLimitReached": "You've reached your plan's application limit. Upgrade your plan to continue applying.",
         "selectCv": "Please select or upload a CV first.",
         "requiredQuestion": "Please answer: {label}"
@@ -834,7 +838,7 @@
       "reminded": "Reminder sent to the candidate."
     },
     "errors": {
-      "fetchFailed": "Failed to load offers. Please try again.",
+      "fetchFailed": "We couldn't load offers. Please try again.",
       "withdrawFailed": "Could not withdraw the offer. Please try again.",
       "remindFailed": "Could not send the reminder. Please try again."
     }
@@ -903,9 +907,9 @@
     },
     "errors": {
       "declineReasonRequired": "Please provide a reason for declining",
-      "fetchFailed": "Failed to load offers. Please try again.",
-      "acceptFailed": "Failed to accept offer. Please try again.",
-      "declineFailed": "Failed to decline offer. Please try again.",
+      "fetchFailed": "We couldn't load offers. Please try again.",
+      "acceptFailed": "We couldn't accept offer. Please try again.",
+      "declineFailed": "We couldn't decline offer. Please try again.",
       "signatureRequired": "Please type your full name to sign the offer."
     },
     "export": {
@@ -920,7 +924,7 @@
   },
   "jobSeekerApplications": {
     "documentTitle": "My Applications · MPLOYEDIN",
-    "loadFailed": "Failed to load applications",
+    "loadFailed": "We couldn't load applications",
     "title": "My Applications",
     "summary": {
       "total": "Total:",
@@ -1012,7 +1016,7 @@
     "title": "My Calendar",
     "description": "View all your upcoming interviews in one place",
     "interviewFallback": "Interview",
-    "loadFailed": "Failed to load calendar events"
+    "loadFailed": "We couldn't load calendar events"
   },
   "calendarFeed": {
     "label": "Calendar",
@@ -1036,7 +1040,7 @@
     "empty": "No companies found",
     "openJobs": "{count} open jobs",
     "remote": "Remote",
-    "loadFailed": "Failed to load companies",
+    "loadFailed": "We couldn't load companies",
     "retry": "Try Again"
   },
   "jobSeekerCourses": {
@@ -1087,7 +1091,7 @@
     "round": "Round {round}",
     "documentTitle": "Interviews · MPLOYEDIN",
     "title": "Interviews",
-    "loadFailed": "Failed to load interviews",
+    "loadFailed": "We couldn't load interviews",
     "summary": "{upcoming} upcoming · {past} completed",
     "searchPlaceholder": "Search by job title or company…",
     "emptyTitle": "No interviews scheduled",
@@ -1245,7 +1249,7 @@
       "headlinePlaceholder": "e.g. Senior React Developer | 5+ years | Open to remote",
       "boosting": "Boosting...",
       "boostButton": "Boost My Profile",
-      "failed": "Failed to boost",
+      "failed": "We couldn't boost",
       "network": "Network error"
     },
     "savedSearches": {
@@ -1272,16 +1276,16 @@
       "emailAlertsOn": "Email alerts on",
       "disableAlert": "Disable alert",
       "enableAlert": "Enable alert",
-      "loadFailed": "Failed to load saved searches",
+      "loadFailed": "We couldn't load saved searches",
       "required": "Name and search query are required",
       "created": "Saved search created",
       "duplicate": "You've already saved this search.",
-      "createFailed": "Failed to create saved search",
+      "createFailed": "We couldn't create saved search",
       "deleted": "Search deleted",
-      "deleteFailed": "Failed to delete",
+      "deleteFailed": "We couldn't delete",
       "alertEnabled": "Alert enabled",
       "alertDisabled": "Alert disabled",
-      "updateFailed": "Failed to update",
+      "updateFailed": "We couldn't update",
       "selectFrequency": "Select frequency"
     },
     "referral": {
@@ -1300,9 +1304,9 @@
       "history": "Referral History",
       "empty": "No referrals yet",
       "emptyDescription": "Share your link to start referring friends",
-      "loadFailed": "Failed to load referral data",
+      "loadFailed": "We couldn't load referral data",
       "copied": "Referral link copied!",
-      "copyFailed": "Failed to copy"
+      "copyFailed": "We couldn't copy"
     },
     "portfolio": {
       "title": "Portfolio & Projects",
@@ -1319,12 +1323,12 @@
       "emptyDescription": "Add your first project to showcase your work",
       "present": "Present",
       "view": "View",
-      "loadFailed": "Failed to load portfolio",
+      "loadFailed": "We couldn't load portfolio",
       "required": "Title and description are required",
       "added": "Project added",
-      "addFailed": "Failed to add project",
+      "addFailed": "We couldn't add project",
       "removed": "Project removed",
-      "deleteFailed": "Failed to delete"
+      "deleteFailed": "We couldn't delete"
     },
     "documents": {
       "searchPlaceholder": "Search documents...",
@@ -1351,15 +1355,15 @@
       "documentFallback": "Document",
       "uploaded": "{category} uploaded successfully!",
       "resumeUploaded": "Resume uploaded successfully!",
-      "uploadFailed": "Failed to upload document",
+      "uploadFailed": "We couldn't upload document",
       "uploadGenericFailed": "Upload failed",
       "extractionFailed": "Extraction failed",
       "extractedSuccess": "CV data extracted successfully!",
       "profileUpdated": "Profile updated successfully!",
-      "saveFailed": "Failed to save. Please try manually.",
-      "saveProfileFailed": "Failed to save profile",
+      "saveFailed": "We couldn't save. Please try manually.",
+      "saveProfileFailed": "We couldn't save profile",
       "removed": "Document removed",
-      "removeFailed": "Failed to remove document",
+      "removeFailed": "We couldn't remove document",
       "categories": {
         "resume": "Resume / CV",
         "college_certificate": "College Certificate",
@@ -1445,7 +1449,7 @@
       "noticePeriod": "Notice Period (days)",
       "saving": "Saving…",
       "saved": "Saved",
-      "failed": "Failed to save.",
+      "failed": "We couldn't save.",
       "retry": "Retry",
       "saveChanges": "Save Changes",
       "unsavedChanges": "Unsaved changes",
@@ -1506,7 +1510,7 @@
       "removeLanguage": "Remove language",
       "addLanguage": "Add Language",
       "saved": "Saved successfully",
-      "failed": "Failed to save — please try again",
+      "failed": "We couldn't save — please try again",
       "idle": "Fill in your details and click Save",
       "cancel": "Cancel",
       "save": "Save"
@@ -1621,7 +1625,7 @@
       "fileHint": "JPEG, PNG or WebP · max 2 MB",
       "unsavedChanges": "Unsaved changes",
       "savedToast": "Settings saved successfully",
-      "failedToast": "Failed to save settings. Please try again.",
+      "failedToast": "We couldn't save settings. Please try again.",
       "tabs": {
         "interviews": "Interviews",
         "schedule": "Schedule",
@@ -1831,10 +1835,10 @@
       "supportedFormats": "Supported formats: PDF, JPG, PNG, WEBP",
       "fileSize": "File size must be under 10 MB",
       "importFailed": "Import failed",
-      "generic": "Something went wrong",
-      "saveProfile": "Failed to save profile",
-      "saveFailed": "Failed to save",
-      "pdfFailed": "Failed to generate PDF. Please try again."
+      "generic": "We couldn't complete this action",
+      "saveProfile": "We couldn't save profile",
+      "saveFailed": "We couldn't save",
+      "pdfFailed": "We couldn't generate PDF. Please try again."
     },
     "defaults": {
       "link": "Link"
@@ -2077,10 +2081,25 @@
       "generationFailed": "AI generation failed",
       "generated": "AI content generated!",
       "empty": "AI returned empty result",
-      "failed": "Failed to generate"
+      "failed": "We couldn't generate"
     }
   },
   "jobSeekerHome": {
+    "taskFirst": {
+      "recommendedNext": "Recommended next",
+      "nextDescription": "Focus on the one step most likely to move your job search forward.",
+      "atAGlance": "At a glance",
+      "openAction": "Open",
+      "timeSensitive": "Time-sensitive",
+      "highImpact": "High impact",
+      "keepMoving": "Keep moving",
+      "startHere": "Start here",
+      "interviewTitle": "Prepare for {count} upcoming interview(s)",
+      "interviewDescription": "Review the schedule and prepare focused questions before the conversation.",
+      "trackApplicationsTitle": "Check your application progress",
+      "trackApplicationsDescription": "Review status changes and follow up on applications that need your attention.",
+      "browseDescription": "Explore roles selected from your profile and job preferences."
+    },
     "common": {
       "cancel": "Cancel"
     },
@@ -2088,7 +2107,7 @@
       "jobSeekerName": "Job Seeker"
     },
     "messages": {
-      "genericError": "Something went wrong.",
+      "genericError": "We couldn't complete this action.",
       "networkError": "Network error. Please try again.",
       "homeDataError": "We couldn't refresh your latest dashboard data. Try again in a moment.",
       "aiInsightsUnavailable": "AI insights are temporarily unavailable."
@@ -2288,7 +2307,7 @@
       "inputPlaceholder": "Describe the role, location, skills, and optional salary or openings...",
       "draftReady": "Draft details are ready to review in the form.",
       "draftReadyPanel": "Draft ready — check the Job Preview panel on the right →",
-      "failedOpenForm": "Failed to open the review form. Please try again.",
+      "failedOpenForm": "We couldn't open the review form. Please try again.",
       "toastThreadUnavailable": "This AI conversation draft is no longer available — it may have expired or been discarded.",
       "uploadJobPoster": "Upload Job Poster",
       "uploadJobPosterHint": "Upload a job poster (image/PDF) — AI extracts the details",
@@ -2297,7 +2316,7 @@
       "toastTooLarge": "File is too large. Maximum size is 10 MB.",
       "toastExtractFailed": "Could not extract job details from the file. Please try again.",
       "toastNoJobs": "No jobs could be detected in the uploaded file.",
-      "toastProcessFailed": "Something went wrong while processing the upload.",
+      "toastProcessFailed": "We couldn't complete this action while processing the upload.",
       "toastExtracted": "Extracted {count} job(s) from the file.",
       "untitledJob": "Untitled job",
       "uploadExtractedOne": "Uploaded poster detected as: {title}. Review the draft in the panel on the right →",
@@ -2354,7 +2373,7 @@
     }
   },
   "errors": {
-    "generic": "Something went wrong. Please try again.",
+    "generic": "We couldn't complete this action. Please try again.",
     "notFound": "Page not found",
     "unauthorized": "You don't have permission to access this page",
     "serverError": "Server error. Please try again later."
@@ -2902,7 +2921,7 @@
     "cancel": "Cancel",
     "saving": "Saving…",
     "savedSuccess": "Saved successfully",
-    "saveError": "Failed to save — please try again",
+    "saveError": "We couldn't save — please try again",
     "fillAndSave": "Fill in your details and click Save"
   },
   "setupGuide": {
@@ -3041,7 +3060,7 @@
     "bulkPreview": "Bulk Job Preview ({count} jobs)",
     "createAllDrafts": "Create All {count} Job Drafts",
     "createdProgress": "Created {created} of {total}...",
-    "failedCreate": "Failed to create job draft. Please try again.",
+    "failedCreate": "We couldn't create job draft. Please try again.",
     "bulkSuccess": "All {count} job drafts created successfully!",
     "bulkPartial": "Created {created}/{total} drafts. {failed} failed.",
     "placeholders": {
@@ -3405,11 +3424,11 @@
       "interviewMomentum": "Interview momentum",
       "employerWorkspace": "Employer workspace",
       "readyToLaunch": "Ready to launch",
-      "subtitleReview": "Start hiring smarter with AI-powered candidate recommendations. Fresh matches are waiting in your review queue.",
-      "subtitleInterviews": "Keep the momentum going with scheduled interviews, or let AI surface your next high-match candidate.",
-      "subtitleActive": "Your AI-powered hiring workspace is live. Post a job and discover high-match candidates faster.",
+      "subtitleReview": "{count} new applications are ready for review.",
+      "subtitleInterviews": "{count} upcoming interviews need your attention.",
+      "subtitleActive": "{count} active jobs are currently collecting candidates.",
       "subtitleEmpty": "Start hiring smarter with AI — post your first job to receive AI-powered candidate recommendations.",
-      "subtitleAiMatches": "AI found {count} high-match candidates for your active jobs.",
+      "subtitleAiMatches": "{count} profile match estimates are ready to review.",
       "aiMatchesFound": "AI matches found",
       "welcomeBack": "Welcome back, {userName}",
       "lastActivity": "Last activity {time}",
@@ -3419,15 +3438,17 @@
       "viewAll": "View all",
       "newJobPosting": "New Job Posting",
       "createJob": "Create Job with AI",
+      "createJobShort": "Create job",
       "aiBadge": "AI",
+      "overview": "At a glance",
       "activeRoles": "Active Jobs",
       "activeRolesDesc": "Open roles currently collecting candidates.",
       "needsReview": "New Applications",
       "needsReviewDesc": "Fresh applicants waiting for a recruiter decision.",
       "interviewsSet": "Today's Interviews",
       "interviewsSetDesc": "Interview conversations booked with candidates.",
-      "aiMatches": "AI Recommended Candidates",
-      "aiMatchesDesc": "High-match candidates surfaced by AI for your jobs.",
+      "aiMatches": "Profile Matches",
+      "aiMatchesDesc": "Applications prioritized for complete human review.",
       "aiHiringSummary": "AI Hiring Summary",
       "summaryHighMatch": "{count} great-fit candidates found",
       "summaryReview": "{count} applications require review",
@@ -3449,14 +3470,17 @@
     "aiRecommended": {
       "sectionLabel": "AI recommended candidates",
       "eyebrow": "AI-powered",
-      "heading": "AI Recommended Candidates",
-      "subheading": "{count} high-match candidates found for your active jobs.",
+      "heading": "Profile match estimates",
+      "subheading": "{count} candidates meet the current match threshold across {jobs} active jobs.",
       "band90Plus": "Above 90% match",
-      "band90PlusDesc": "Exceptional fit — review first to avoid losing them.",
+      "band90PlusDesc": "Highest profile-match estimates — review the full application.",
       "band80to89": "80–89% match",
-      "band80to89Desc": "Strong fit — worth a quick look.",
+      "band80to89Desc": "Potential matches — verify experience and requirements.",
       "needsReview": "Needs review",
-      "needsReviewDesc": "Lower-scored candidates worth scanning.",
+      "needsReviewDesc": "Other applications that still require human review.",
+      "emptyTitle": "No match estimates yet",
+      "emptyDescription": "Estimates appear after active jobs receive scored applications.",
+      "assistiveNote": "Match estimates help prioritize review. They do not replace a fair, complete human assessment.",
       "reviewCandidates": "Review Candidates",
       "notify": "Notify",
       "notifying": "Notifying…",
@@ -3545,6 +3569,7 @@
       "postAJob": "Post a Job",
       "viewInsights": "View Insights",
       "viewPipeline": "View Pipeline",
+      "reviewTopMatches": "Review matches",
       "viewInterviews": "View Interviews",
       "messageNow": "Message Now",
       "priorityActionsLabel": "Priority actions",
@@ -3558,7 +3583,7 @@
       "scheduleCountInterviews": "Schedule {count} interviews — review and set up times",
       "postFirstJob": "Post your first job to start receiving applications",
       "improveResponseTime": "Improve response time to increase interview rate",
-      "moveTopMatched": "Move top-matched candidates forward in the pipeline",
+      "moveTopMatched": "Review top profile matches",
       "interviewsComing": "{count} interview coming up — prepare questions",
       "interviewsComingPlural": "{count} interviews coming up — prepare questions",
       "messageCandidates": "Message candidates directly to speed up hiring"
@@ -3567,7 +3592,10 @@
       "hiringPipeline": "Hiring pipeline",
       "trackMovement": "Track candidate movement across the funnel.",
       "stageLinksDesc": "Each stage links into the live employer workflow for quick review and follow-up.",
+      "viewAllApplications": "View all applications",
+      "swipeMore": "Swipe to see every stage",
       "stage": "Stage {number}",
+      "stageAriaLabel": "{stage}: {value, plural, one {# candidate} other {# candidates}}. {detail}",
       "applied": "Applied",
       "new": "New",
       "screening": "Screening",
@@ -3727,7 +3755,7 @@
     "resetTitle": "Reset Password",
     "resetDescription": "A password reset link will be sent to your email address",
     "resetSuccess": "Reset link sent! Check your email.",
-    "resetError": "Something went wrong. Please try again.",
+    "resetError": "We couldn't complete this action. Please try again.",
     "close": "Close",
     "sending": "Sending...",
     "sendResetLink": "Send Reset Link",
@@ -3762,6 +3790,17 @@
     "statOpeningsDescription": "Combined vacancies across the current results.",
     "statApplicationsLabel": "Applications",
     "statApplicationsDescription": "Total applications received across your jobs.",
+    "allStatusesShort": "All",
+    "statusSummaryLabel": "Filter jobs by status",
+    "openingsSummary": "{count, plural, one {# open position across these postings} other {# open positions across these postings}}",
+    "jobListLabel": "Job postings",
+    "jobMetricsLabel": "Job activity",
+    "continueDraftButton": "Continue draft",
+    "resumeJobButton": "Resume job",
+    "reviewApplicantsButton": "Review {count} applicant(s)",
+    "viewJobButton": "View job",
+    "primaryActionForJob": "{action} for {title}",
+    "moreActionsForJob": "More actions for {title}, {status}",
     "browseRolesLabel": "Browse roles",
     "filterHeading": "Filter the jobs you want to act on next",
     "filterDescription": "Search by keyword, layer on structured filters, or describe the jobs you need in plain English.",
@@ -3798,6 +3837,7 @@
     "aiSearchPlaceholder": "AI search: e.g. draft remote React roles in Dubai with hidden salary",
     "needFasterCut": "Need a faster cut?",
     "aiFilterDescription": "Describe the roles you want, and AI will apply the matching filters for you.",
+    "aiSearchFallbackSummary": "AI search is unavailable right now, so keyword results are shown for “{query}”.",
     "applyingAiSearch": "Applying AI search…",
     "applyAiSearch": "Apply AI Search",
     "clearFilters": "Clear filters",
@@ -3856,31 +3896,31 @@
     "exportFileTitle": "Job Postings",
     "toastCloningJob": "Cloning job...",
     "toastJobCloned": "Job cloned successfully",
-    "toastFailedClone": "Failed to clone job",
+    "toastFailedClone": "We couldn't clone job",
     "toastSavedAsTemplate": "saved as template",
-    "toastFailedTemplate": "Failed to save template",
+    "toastFailedTemplate": "We couldn't save template",
     "toastJobActivated": "Job activated successfully!",
-    "toastFailedActivate": "Failed to activate job",
+    "toastFailedActivate": "We couldn't activate job",
     "confirmDeactivate": "Deactivate this job? It will stop accepting new applications, but existing applications stay available.",
-    "toastFailedDeactivate": "Failed to deactivate job",
+    "toastFailedDeactivate": "We couldn't deactivate job",
     "toastJobDeactivated": "Job deactivated",
     "loadError": "Couldn't load your jobs. Check your connection and try again.",
     "retry": "Retry",
     "confirmPause": "Pause this job? It will temporarily stop accepting new applications. You can resume it at any time.",
     "toastJobPaused": "Job paused successfully!",
-    "toastFailedPause": "Failed to pause job",
+    "toastFailedPause": "We couldn't pause job",
     "toastJobResumed": "Job resumed successfully!",
-    "toastFailedResume": "Failed to resume job",
+    "toastFailedResume": "We couldn't resume job",
     "confirmDeleteDraft": "Delete this draft job? This cannot be undone.",
     "confirmDeleteJob": "Permanently delete this job post? All associated data will be removed and this cannot be undone.",
-    "toastFailedDelete": "Failed to delete job",
+    "toastFailedDelete": "We couldn't delete job",
     "toastAiApplied": "AI search applied.",
     "toastAiUnavailable": "AI search unavailable. Keyword search applied.",
     "toastAiFallback": "AI search unavailable. Keyword search applied instead.",
     "publishButton": "Publish",
     "publishingButton": "Publishing…",
     "toastJobPublished": "Job published.",
-    "toastFailedPublish": "Failed to publish job.",
+    "toastFailedPublish": "We couldn't publish job.",
     "confirmPublish": "Publish this job? It will go live immediately."
   },
   "employerCandidates": {
@@ -4105,8 +4145,8 @@
     "tone": "Tone",
     "send": "Send",
     "copiedToClipboard": "Email copied to clipboard",
-    "failedToGenerate": "Failed to generate email draft",
-    "draftFailed": "Email draft failed",
+    "failedToGenerate": "We couldn't generate email draft",
+    "draftFailed": "We couldn't create the email draft. Nothing was sent. Try again.",
     "failed": "Failed",
     "afterApplication": "After Application",
     "afterShortlist": "After Shortlist",
@@ -4154,7 +4194,7 @@
     "back": "Back",
     "confirmBook": "Confirm & Book",
     "booking": "Booking...",
-    "failedBook": "Failed to book interview",
+    "failedBook": "We couldn't book interview",
     "videoCall": "Video Call",
     "inPerson": "In Person",
     "hybrid": "Hybrid",
@@ -4299,10 +4339,10 @@
       "deleteMessage": "This will permanently delete this conversation and all messages. This action cannot be undone.",
       "deleteConfirm": "Delete",
       "errors": {
-        "load": "Failed to load messages.",
-        "send": "Failed to send message.",
-        "clear": "Failed to clear chat.",
-        "delete": "Failed to delete conversation."
+        "load": "We couldn't load messages.",
+        "send": "We couldn't send message.",
+        "clear": "We couldn't clear chat.",
+        "delete": "We couldn't delete conversation."
       }
     }
   },
@@ -4335,7 +4375,7 @@
     "emptyHint": "Create your first AI recruitment poster from any job listing.",
     "deleteConfirm": "Delete this poster? This cannot be undone.",
     "deleteLabel": "Delete poster",
-    "deleteError": "Failed to delete poster. Please try again.",
+    "deleteError": "We couldn't delete poster. Please try again.",
     "untitledJob": "Untitled Job",
     "previous": "Previous",
     "next": "Next",
@@ -4522,7 +4562,7 @@
     "exportAppliedCol": "Applied",
     "exportUntitled": "Untitled",
     "aiMatchGenerated": "AI match score generated",
-    "aiMatchFailed": "Failed to generate AI score",
+    "aiMatchFailed": "We couldn't generate AI score",
     "interviewNoJob": "Unable to determine job for interview scheduling. Please select a job filter.",
     "clearVisible": "Clear Visible",
     "aiScoreRange": "AI Score Range",
@@ -4553,7 +4593,7 @@
     "skipForNow": "Skip for Now",
     "scheduleInterviews": "Schedule Interviews",
     "unableToLoad": "Unable to load applications",
-    "unableToLoadDesc": "Something went wrong while fetching applications. This may be a subscription limit — please check your plan or try refreshing the page.",
+    "unableToLoadDesc": "We couldn't complete this action while fetching applications. This may be a subscription limit — please check your plan or try refreshing the page.",
     "createScorecardTitle": "Create Interview Scorecard",
     "createScorecardDesc": "Evaluate the candidate for this interview",
     "scoringCandidate": "Scoring candidate {done} of {total}",
@@ -4562,6 +4602,7 @@
   "employerAnalytics": {
     "title": "Analytics Command Center",
     "description": "Review funnel health, hiring velocity, job-level performance, and response commitments from one cleaner employer workspace.",
+    "loadError": "We couldn't load analytics. Your hiring data is unchanged. Try again.",
     "pipeline": "Pipeline",
     "historical": "Historical",
     "performance": "Performance",
@@ -4896,7 +4937,7 @@
     "deactivateAccountDesc": "Hides your profile and unpublishes all jobs. Reversible via support.",
     "deactivateConfirm": "Are you sure you want to deactivate your account? All active jobs will be unpublished.",
     "deactivateSuccess": "Your account has been deactivated.",
-    "deactivateFailed": "Failed to deactivate account. Please try again or contact support.",
+    "deactivateFailed": "We couldn't deactivate account. Please try again or contact support.",
     "processing": "Processing…",
     "deactivate": "Deactivate",
     "emailFrequency": "Email Frequency",
@@ -4948,6 +4989,15 @@
     "networkError": "Network error"
   },
   "adminDashboard": {
+    "taskFirst": {
+      "recommendedNext": "Recommended next",
+      "nextDescription": "Resolve the highest-impact platform exception before opening deeper analytics.",
+      "atAGlance": "Platform at a glance",
+      "openAction": "Open workspace",
+      "attention": "Attention",
+      "investigate": "Investigate",
+      "review": "Review"
+    },
     "trend": {
       "vsLastMonth": "vs last month",
       "flat": "No change {suffix}",
@@ -5141,6 +5191,16 @@
     }
   },
   "superAgentDashboard": {
+    "taskFirst": {
+      "recommendedNext": "Recommended next",
+      "nextDescription": "Start with the team or regional issue most likely to slow delivery.",
+      "atAGlance": "Region at a glance",
+      "openAction": "Open workspace",
+      "attention": "Team attention",
+      "followUp": "Follow up",
+      "review": "Review",
+      "jobOversightDescription": "Review live roles, approvals, and delivery blockers across your region."
+    },
     "hero": {
       "eyebrow": "Super agent workspace",
       "title": "Super Agent Dashboard",
@@ -5180,7 +5240,8 @@
       "agents": "{active} active · {inactive} inactive",
       "employers": "Across {agents} agents",
       "jobs": "{active} active",
-      "placements": "{rate}% placement rate",
+      "placements": "{rate}% of applications became placements",
+      "placementsNoData": "No applications yet — rate unavailable",
       "commission": "{amount} pending"
     },
     "secondary": {
@@ -5203,8 +5264,12 @@
       "applications": "Applications",
       "placements": "Placements",
       "placementRate": "Placement rate",
-      "conversion": "Conversion",
-      "vsPrevious": "vs previous step",
+      "conversion": "Stage ratio",
+      "vsPrevious": "compared with the previous stage",
+      "ratioExplanation": "Percentages compare each stage's count with the previous stage; they may exceed 100% because the stages count different record types.",
+      "ratioValue": "{value}% {current} compared with {previous}",
+      "ratioUnavailable": "No previous-stage volume is available for comparison",
+      "noApplicationData": "No applications yet",
       "noPlacements": "No placements yet"
     },
     "leaderboard": {
@@ -5267,6 +5332,15 @@
     }
   },
   "agentDashboard": {
+    "taskFirst": {
+      "recommendedNext": "Recommended next",
+      "nextDescription": "Start with the task most likely to move an employer or candidate forward.",
+      "atAGlance": "Desk at a glance",
+      "openAction": "Open workspace",
+      "attention": "Needs attention",
+      "startHere": "Start here",
+      "keepMoving": "Keep moving"
+    },
     "hero": {
       "eyebrow": "Agent workspace",
       "title": "Agent Dashboard",
@@ -5470,7 +5544,7 @@
     "description": "Create a role for one of your assigned employers without leaving the agent workspace.",
     "toast": {
       "success": "Job submitted for review",
-      "error": "Failed to post job"
+      "error": "We couldn't post job"
     },
     "employer": {
       "title": "Select Employer",
@@ -5575,7 +5649,7 @@
         "fileSize": "Image must be under 2 MB.",
         "uploadFailed": "Upload failed",
         "network": "Network error. Please try again.",
-        "removeFailed": "Failed to remove avatar."
+        "removeFailed": "We couldn't remove avatar."
       }
     },
     "region": {
@@ -5776,7 +5850,7 @@
     "resourcePlaceholder": "Resource",
     "rolePlaceholder": "Role",
     "errors": {
-      "fetchFailed": "Failed to load activity timeline"
+      "fetchFailed": "We couldn't load activity timeline"
     },
     "time": {
       "justNow": "Just now",
@@ -5878,7 +5952,7 @@
     "joined": "Joined",
     "pendingInvite": "Pending Invite",
     "invited": "Invited {date}",
-    "failedToSendInvite": "Failed to send invite",
+    "failedToSendInvite": "We couldn't send invite",
     "pendingInvites": "Pending Invites",
     "accept": {
       "accepting": "Accepting invitation…",
@@ -5889,7 +5963,7 @@
       "errorTitle": "Couldn't accept invitation",
       "errorHint": "Make sure you're signed in with the email address the invitation was sent to, then open the link again.",
       "missingToken": "This invitation link is invalid.",
-      "genericError": "Something went wrong. Please try again."
+      "genericError": "We couldn't complete this action. Please try again."
     },
     "pageTitle": "Team Management · MPLOYEDIN",
     "descriptionActiveOnly": "{activeCount} active members",
@@ -6083,7 +6157,7 @@
     "noEmailAvailable": "No email available",
     "untitledRole": "Untitled role",
     "calendarExportFailed": "Calendar export failed",
-    "failedExportCalendar": "Failed to export calendar",
+    "failedExportCalendar": "We couldn't export calendar",
     "min": "min",
     "pickDateTime": "Pick date & time",
     "thisCandidate": "this candidate",
@@ -6096,6 +6170,7 @@
   "employerOffers": {
     "title": "Offer workspace",
     "description": "Manage candidate offers with a cleaner decision view.",
+    "loadError": "We couldn't load offers. No offer was changed or sent. Try again.",
     "pending": "Pending",
     "accepted": "Accepted",
     "declined": "Declined",
@@ -6222,11 +6297,11 @@
       "backgroundResultsPlaceholder": "Summarise the background verification findings…"
     },
     "errors": {
-      "fetchFailed": "Failed to load checks. Please try again.",
+      "fetchFailed": "We couldn't load checks. Please try again.",
       "selectApplication": "Please select a candidate.",
       "referenceRequired": "Add at least one referee for a reference check.",
-      "createFailed": "Failed to create the check. Please try again.",
-      "updateFailed": "Failed to update the check. Please try again."
+      "createFailed": "We couldn't create the check. Please try again.",
+      "updateFailed": "We couldn't update the check. Please try again."
     },
     "fromDate": "From date",
     "toDate": "To date"
@@ -6244,7 +6319,7 @@
     "confirmComplete": "Mark this placement as completed? This cannot be undone.",
     "confirmTerminate": "Terminate this placement? This cannot be undone.",
     "statusUpdated": "Placement status updated.",
-    "statusUpdateFailed": "Failed to update placement status.",
+    "statusUpdateFailed": "We couldn't update placement status.",
     "jobCol": "Job",
     "salaryCol": "Salary",
     "locationLabel": "Location",
@@ -6286,7 +6361,7 @@
     "visaStamped": "Stamped",
     "placementList": "Placement list",
     "unableToLoad": "Unable to load placements right now",
-    "loadError": "The placement workspace could not load. Try again in a moment.",
+    "loadError": "We couldn't load placements. Your placement records are unchanged. Try again.",
     "tableTitle": "Review the hires that have already crossed the line.",
     "tableDescription": "Candidate identity, job context, placement type, compensation, and status stay visible in one refined results table.",
     "placementsOnPage": "{count} placements on this page",
@@ -6366,8 +6441,8 @@
       "completed": "Completed"
     },
     "errors": {
-      "fetchFailed": "Failed to load onboarding. Please try again.",
-      "updateFailed": "Failed to update onboarding. Please try again."
+      "fetchFailed": "We couldn't load onboarding. Please try again.",
+      "updateFailed": "We couldn't update onboarding. Please try again."
     }
   },
   "jobSeekerOnboarding": {
@@ -6640,7 +6715,7 @@
     "postSuccess": "Job posted successfully!",
     "postSuccessDescription": "Share it as a poster on LinkedIn & social media.",
     "createPoster": "Create Poster",
-    "postFailed": "Failed to post job. Please try again.",
+    "postFailed": "We couldn't post job. Please try again.",
     "employerRequired": "Select the employer this job belongs to.",
     "draftSaveFailed": "Could not save the draft. Please try again.",
     "employerLabel": "Employer",
@@ -7070,7 +7145,7 @@
     "search": "Search",
     "noResults": "No results found",
     "loading": "Loading...",
-    "somethingWentWrong": "Something went wrong",
+    "somethingWentWrong": "We couldn't complete this action",
     "tryAgain": "Try again",
     "displayCurrency": "Display currency:",
     "monthly": "monthly",
@@ -7102,9 +7177,9 @@
     "confirmed": "Confirmed",
     "completed": "Completed",
     "cancelled": "Cancelled",
-    "failedLoadingCalendarEvents": "Failed to load calendar events",
+    "failedLoadingCalendarEvents": "We couldn't load calendar events",
     "interviewBookedSuccessfully": "Interview booked successfully",
-    "bookingFailed": "Failed to book interview"
+    "bookingFailed": "We couldn't book interview"
   },
   "employerScorecards": {
     "title": "Interview Scorecards",
@@ -7169,8 +7244,8 @@
     "errorSelectGateway": "Please select a payment gateway",
     "errorPublicKeyRequired": "Public/Publishable key is required",
     "successConfigured": "Payment gateway configured — ready for activation",
-    "errorSaveFailed": "Failed to save configuration",
-    "errorSaveFailedGeneric": "Failed to save payment configuration",
+    "errorSaveFailed": "We couldn't save configuration",
+    "errorSaveFailedGeneric": "We couldn't save payment configuration",
     "roadmapTitle": "Payment Integration Roadmap",
     "roadmapStep1": "Step 1: Configure gateway keys (this page) ✓",
     "roadmapStep2": "Step 2: Connect to subscription billing (coming soon)",
@@ -7188,13 +7263,13 @@
     "searchPlaceholder": "Search exhibitions...",
     "filterStatus": "Filter by status",
     "noRequests": "No exhibition requests found",
-    "fetchError": "Failed to load exhibition requests",
+    "fetchError": "We couldn't load exhibition requests",
     "requiredFields": "Event name, dates, and participation type are required",
     "created": "Exhibition request submitted",
     "updated": "Exhibition request updated",
     "deleted": "Exhibition request deleted",
-    "submitError": "Failed to submit request",
-    "deleteError": "Failed to delete request",
+    "submitError": "We couldn't submit request",
+    "deleteError": "We couldn't delete request",
     "submitRequest": "Submit Request",
     "eventName": "Event Name",
     "eventNamePlaceholder": "e.g. Dubai Career Expo 2026",
@@ -7226,7 +7301,7 @@
     "confirmReject": "Confirm Reject",
     "approvedSuccess": "Exhibition request approved",
     "rejectedSuccess": "Exhibition request rejected",
-    "reviewError": "Failed to review request",
+    "reviewError": "We couldn't review request",
     "adminSubtitle": "Manage all exhibition requests, approvals, budgets & resources",
     "eventCategory": "Event Category",
     "venue": "Venue",
@@ -7272,7 +7347,7 @@
     "filterCategory": "Filter by category",
     "noResources": "No resources found",
     "noResourcesHint": "Resources uploaded by your team will appear here for download.",
-    "fetchError": "Failed to load resources",
+    "fetchError": "We couldn't load resources",
     "heroLabel": "Resources",
     "clear": "Clear",
     "openInNewTab": "Open in new tab",
@@ -7301,11 +7376,11 @@
     "created": "Resource created",
     "updated": "Resource updated",
     "deleted": "Resource deleted",
-    "createError": "Failed to create resource",
-    "updateError": "Failed to update resource",
-    "deleteError": "Failed to delete resource",
+    "createError": "We couldn't create resource",
+    "updateError": "We couldn't update resource",
+    "deleteError": "We couldn't delete resource",
     "fileRemoved": "File removed",
-    "fileRemoveError": "Failed to remove file",
+    "fileRemoveError": "We couldn't remove file",
     "resourceTitle": "Title",
     "titlePlaceholder": "e.g. Company Brochure 2026",
     "description": "Description",
@@ -7430,22 +7505,22 @@
     "createTargetProfile": "Create Target Profile",
     "profiles": "Profiles",
     "analytics": "Analytics",
-    "failedToLoadProfiles": "Failed to load target profiles",
+    "failedToLoadProfiles": "We couldn't load target profiles",
     "profileCancelled": "Target profile cancelled",
-    "failedToCancel": "Failed to cancel",
-    "failedToClone": "Failed to clone",
+    "failedToCancel": "We couldn't cancel",
+    "failedToClone": "We couldn't clone",
     "profilesCloned": "Cloned {count} profiles from {year}",
     "profileReassigned": "Target profile reassigned",
-    "failedToReassign": "Failed to reassign",
+    "failedToReassign": "We couldn't reassign",
     "csvExported": "CSV exported",
-    "failedToLoadSupervisors": "Failed to load supervisors",
+    "failedToLoadSupervisors": "We couldn't load supervisors",
     "enterTargetsForSupervisors": "Enter targets for at least one supervisor",
-    "failedToCreateProfiles": "Failed to create target profiles",
+    "failedToCreateProfiles": "We couldn't create target profiles",
     "profileNotFound": "Profile not found",
-    "failedToLoadProfile": "Failed to load profile",
-    "failedLoadTargets": "Failed to load targets",
-    "failedLoadTeamTargets": "Failed to load team targets",
-    "failedToLoadReport": "Failed to load report",
+    "failedToLoadProfile": "We couldn't load profile",
+    "failedLoadTargets": "We couldn't load targets",
+    "failedLoadTeamTargets": "We couldn't load team targets",
+    "failedToLoadReport": "We couldn't load report",
     "a11yViewDetails": "View details",
     "a11yCancel": "Cancel",
     "a11yReassign": "Reassign",
@@ -7488,14 +7563,14 @@
     "deleted": "Webhook deleted",
     "secretWarning": "Save this signing secret — it won't be shown again",
     "noWebhooks": "No webhooks configured yet",
-    "loadFailed": "Failed to load webhooks",
+    "loadFailed": "We couldn't load webhooks",
     "saveFailed": "Save failed",
-    "saveWebhookFailed": "Failed to save webhook",
+    "saveWebhookFailed": "We couldn't save webhook",
     "deleteFailed": "Delete failed",
     "toggleFailed": "Toggle failed",
     "testRequestFailed": "Test request failed",
-    "loadLogFailed": "Failed to load delivery log",
-    "rotateSecretFailed": "Failed to rotate secret",
+    "loadLogFailed": "We couldn't load delivery log",
+    "rotateSecretFailed": "We couldn't rotate secret",
     "createdWithSecretWarning": "Webhook created! Copy the secret — it won't be shown again.",
     "disabled": "Webhook disabled",
     "enabled": "Webhook enabled",
@@ -7734,7 +7809,7 @@
     "poolCreated": "Pool created",
     "poolUpdated": "Pool updated",
     "viewProfile": "View profile",
-    "loadError": "Failed to load talent pools",
+    "loadError": "We couldn't load talent pools",
     "candidatesSelected": "{count, plural, one {# candidate selected} other {# candidates selected}}",
     "selectedCount": "{count, plural, one {# selected} other {# selected}}",
     "selectAllOnPage": "Select all on this page",
@@ -7810,7 +7885,7 @@
     "clicked": "Clicked",
     "stepCount": "{count} steps",
     "noSequences": "No email sequences yet. Create one to nurture candidates automatically.",
-    "loadError": "Failed to load email sequences",
+    "loadError": "We couldn't load email sequences",
     "nameRequired": "Sequence name is required",
     "stepRequired": "Add at least one step with a subject and body",
     "emailInvalid": "Enter a valid email and name",
@@ -8041,8 +8116,8 @@
     "sampleResponses": "Sample Responses",
     "noAnalytics": "No analytics available for this job",
     "questionNumber": "Q{number}",
-    "loadJobsFailed": "Failed to load jobs",
-    "loadFailed": "Failed to load analytics"
+    "loadJobsFailed": "We couldn't load jobs",
+    "loadFailed": "We couldn't load analytics"
   },
   "employerAssessments": {
     "title": "Skill Assessments",
@@ -8083,9 +8158,9 @@
     "skillsPlaceholder": "React, TypeScript, Node.js",
     "toastTitleRequired": "Title and at least one question required",
     "toastCreated": "Assessment created!",
-    "toastFailed": "Failed to create",
+    "toastFailed": "We couldn't create",
     "toastNetwork": "Network error",
-    "toastLoadFailed": "Failed to load assessments",
+    "toastLoadFailed": "We couldn't load assessments",
     "questionNumber": "Q{number}",
     "optionPlaceholder": "Option {number}",
     "removeQuestion": "Remove question",
@@ -8126,12 +8201,12 @@
     "noTemplatesDesc": "Create your first template to speed up job posting",
     "usedTimes": "Used {count} times",
     "use": "Use",
-    "toastLoadFailed": "Failed to load templates",
+    "toastLoadFailed": "We couldn't load templates",
     "toastRequired": "Template name and job title are required",
     "toastCreated": "Template created",
-    "toastCreateFailed": "Failed to create template",
+    "toastCreateFailed": "We couldn't create template",
     "toastDeleted": "Template deleted",
-    "toastDeleteFailed": "Failed to delete template",
+    "toastDeleteFailed": "We couldn't delete template",
     "edit": "Edit",
     "deleteAction": "Delete",
     "duplicate": "Duplicate",
@@ -8140,10 +8215,10 @@
     "savedAgoPrefix": "Saved",
     "deleteConfirm": "Delete \"{name}\"? This cannot be undone.",
     "toastUpdated": "Template updated",
-    "toastUpdateFailed": "Failed to update template",
+    "toastUpdateFailed": "We couldn't update template",
     "toastDuplicated": "Template duplicated",
-    "toastDuplicateFailed": "Failed to duplicate template",
-    "toastUseFailed": "Failed to create job from template"
+    "toastDuplicateFailed": "We couldn't duplicate template",
+    "toastUseFailed": "We couldn't create job from template"
   },
   "employerInterviewsBulk": {
     "title": "Bulk Interview Scheduling",
@@ -8325,12 +8400,12 @@
     "toastInvalidType": "Invalid file type. Please upload a PDF, image, or DOCX file.",
     "toastTooLarge": "File too large. Maximum 10MB.",
     "toastExtracted": "Extracted {count} job(s) from the document!",
-    "toastExtractFailed": "Failed to extract job details",
-    "toastProcessFailed": "Failed to process the file. Please try again.",
+    "toastExtractFailed": "We couldn't extract job details",
+    "toastProcessFailed": "We couldn't process the file. Please try again.",
     "toastSelectOne": "Please select at least one job to post",
     "toastPosted": "Successfully posted {count} job(s)!",
     "toastPostFailed": "{count} job(s) failed to post.",
-    "toastSinglePostFailed": "Failed to post \"{title}\": {error}",
+    "toastSinglePostFailed": "We couldn't post \"{title}\": {error}",
     "unknownError": "Unknown error",
     "failed": "Failed",
     "remoteSuffix": " (Remote)",
@@ -8338,7 +8413,7 @@
     "editAndPost": "Edit & Post",
     "quickPost": "Quick Post",
     "viewAllJobs": "View All Jobs",
-    "toastFormFailed": "Failed to open job form",
+    "toastFormFailed": "We couldn't open job form",
     "toastDraftUnavailable": "This extraction draft is no longer available — it may have expired or been discarded."
   },
   "employerJobDetail": {
@@ -8346,7 +8421,7 @@
     "retry": "Retry",
     "confirmCloseJob": "Close this job? Candidates will no longer be able to apply.",
     "statusUpdateSuccess": "Job status updated.",
-    "statusUpdateFailed": "Failed to update job status. Please try again.",
+    "statusUpdateFailed": "We couldn't update job status. Please try again.",
     "notFound": "Job not found",
     "notFoundDesc": "This job may have been removed.",
     "backToJobs": "Back to Jobs",
@@ -8708,17 +8783,17 @@
     "referencePlaceholder": "e.g. TXN-2026051500123 or UTR number",
     "notesPlaceholder": "Any additional details about the payment...",
     "toastPdfDownloaded": "Invoice PDF downloaded",
-    "toastPdfFailed": "Failed to download PDF",
+    "toastPdfFailed": "We couldn't download PDF",
     "toastNotificationSent": "Payment notification sent to admin",
-    "toastNotificationFailed": "Failed to send notification",
+    "toastNotificationFailed": "We couldn't send notification",
     "toastQuerySubmitted": "Billing query submitted. Our team will review it.",
-    "toastQueryFailed": "Failed to submit",
+    "toastQueryFailed": "We couldn't submit",
     "toastOnlineComingSoon": "Online payment coming soon. Please use bank transfer for now.",
-    "toastLoadFailed": "Failed to load invoices",
+    "toastLoadFailed": "We couldn't load invoices",
     "taxIdLabel": "Tax ID: {id}",
     "items": "Items",
     "view": "View",
-    "paymentInitiateFailed": "Failed to initiate payment",
+    "paymentInitiateFailed": "We couldn't initiate payment",
     "toastPaymentFailed": "Payment failed",
     "dateFromPlaceholder": "From date",
     "dateToPlaceholder": "To date"
@@ -8999,15 +9074,15 @@
     "delete": "Delete",
     "deleteConfirmation": "Are you sure you want to delete this job?",
     "jobApprovedSuccess": "Job approved successfully",
-    "jobApprovalFailed": "Failed to approve job",
+    "jobApprovalFailed": "We couldn't approve job",
     "jobIncompleteForApproval": "Cannot publish — this draft is missing: {fields}",
     "expandJobDetails": "Show details for {title}",
     "collapseJobDetails": "Hide details for {title}",
     "jobRejectedSuccess": "Job rejected",
-    "jobRejectionFailed": "Failed to reject job",
+    "jobRejectionFailed": "We couldn't reject job",
     "jobDeletedSuccess": "Job deleted",
-    "jobDeletionFailed": "Failed to delete job",
-    "jobLoadFailed": "Failed to load jobs. Please try again.",
+    "jobDeletionFailed": "We couldn't delete job",
+    "jobLoadFailed": "We couldn't load jobs. Please try again.",
     "aiSearchUnavailable": "AI search unavailable. Keyword search applied.",
     "aiSearchApplied": "AI search applied.",
     "aiSearchFallback": "AI search unavailable. Keyword search applied instead.",
@@ -9070,7 +9145,7 @@
     "testEmailButton": "Send Test Email",
     "testEmailSending": "Sending…",
     "testEmailSuccess": "Test email sent!",
-    "testEmailFailure": "Failed to send",
+    "testEmailFailure": "We couldn't send",
     "networkError": "Network error",
     "saveButton": "Save Changes",
     "savingSaving": "Saving…",
@@ -9486,10 +9561,10 @@
     "updatePageButton": "Update Page",
     "savingButton": "Saving…",
     "successToast": "Static page updated successfully",
-    "failedToLoadPage": "Failed to load page",
-    "failedToLoadStaticPage": "Failed to load static page",
-    "failedToUpdate": "Failed to update",
-    "somethingWentWrong": "Something went wrong"
+    "failedToLoadPage": "We couldn't load page",
+    "failedToLoadStaticPage": "We couldn't load static page",
+    "failedToUpdate": "We couldn't update",
+    "somethingWentWrong": "We couldn't complete this action"
   },
   "adminCmsStaticPagesNew": {
     "workspaceLabel": "CMS workspace",
@@ -9520,7 +9595,7 @@
     "createPageButton": "Create Page",
     "savingButton": "Saving…",
     "successToast": "Static page created successfully",
-    "errorGeneric": "Something went wrong"
+    "errorGeneric": "We couldn't complete this action"
   },
   "adminImpersonate": {
     "sessionStartedFor": "Impersonation session started for {name}",
@@ -9575,7 +9650,7 @@
     "dashPlaceholder": "—"
   },
   "adminSubscriptionDashboard": {
-    "failedToLoadDashboardData": "Failed to load dashboard data. Please try again."
+    "failedToLoadDashboardData": "We couldn't load dashboard data. Please try again."
   },
   "adminSystemHealth": {
     "pageTitle": "System Health",
@@ -9611,7 +9686,7 @@
     "neverLabel": "Never",
     "memoryHeading": "Memory Usage",
     "heapMemoryLabel": "Heap Memory",
-    "errorFetchHealth": "Failed to fetch system health",
+    "errorFetchHealth": "We couldn't fetch system health",
     "errorConnectHealth": "Error connecting to health endpoint"
   },
   "adminTerritory": {
@@ -9643,11 +9718,11 @@
     "deleteDialogDescription": "This will permanently remove the territory. Leads already routed to it will keep their assignment.",
     "deleteButtonLabel": "Delete",
     "toastTerritoryCreated": "Territory created",
-    "toastFailedToCreate": "Failed to create",
+    "toastFailedToCreate": "We couldn't create",
     "toastTerritoryUpdated": "Territory updated",
-    "toastFailedToUpdate": "Failed to update",
+    "toastFailedToUpdate": "We couldn't update",
     "toastTerritoryDeleted": "Territory deleted",
-    "toastFailedToDelete": "Failed to delete",
+    "toastFailedToDelete": "We couldn't delete",
     "superAgentUnassigned": "Unassigned",
     "superAgentAssigned": "Assigned"
   },
@@ -9689,13 +9764,13 @@
     "generatingAnalyticsStatus": "Generating analytics report",
     "noAnalyticsReport": "No analytics report yet",
     "noAnalyticsReportDescription": "Choose one of the prompt templates or write a custom question to generate an AI-ready summary for the admin team.",
-    "exportFailedExcel": "Failed to export analytics as Excel.",
-    "exportFailedPdf": "Failed to export analytics as PDF.",
+    "exportFailedExcel": "We couldn't export analytics as Excel.",
+    "exportFailedPdf": "We couldn't export analytics as PDF.",
     "rateLimitExceeded": "Rate limit exceeded. Please wait and try again.",
     "authenticationRequired": "Authentication required. Please re-login.",
     "insufficientPermissions": "Insufficient permissions for AI analytics.",
-    "serverError": "Server error ({status}). Check AI API key configuration.",
-    "reportGenerationFailed": "Report generation failed: {error}. Verify GEMINI_API_KEY is configured in environment variables.",
+    "serverError": "We couldn't generate the report because the analytics service is unavailable. No report was saved. Try again later.",
+    "reportGenerationFailed": "We couldn't generate this report. No report was saved. Check your connection and try again.",
     "generatedDateLabel": "Generated {date}",
     "a11yAnalyticsTemplates": "Analytics templates",
     "a11yCustomAnalyticsQuery": "Custom analytics query",
@@ -9823,7 +9898,7 @@
     "countTableHeader": "Count",
     "avgRateTableHeader": "Avg Rate (%)",
     "noCommissionData": "No commission data for {year}",
-    "failedToLoadReport": "Failed to load commission report",
+    "failedToLoadReport": "We couldn't load commission report",
     "quarterlyBreakdownCommissionsLabel": "{count} commissions",
     "placementType": "Placement",
     "overrideType": "Override",
@@ -9883,7 +9958,7 @@
     "verifyButtonLoading": "Verifying…",
     "verifyButtonLabel": "Verify Employer",
     "closeButtonLabel": "Close",
-    "switchViewErrorFallback": "Failed to switch to employer view",
+    "switchViewErrorFallback": "We couldn't switch to employer view",
     "switchViewNetworkError": "Network error — please try again",
     "exportColumnCompany": "Company",
     "exportColumnEmail": "Email",
@@ -9944,10 +10019,10 @@
     "lastReviewedColumnHeader": "Last Reviewed",
     "autoDeleteEnabled": "Enabled",
     "autoDeleteManual": "Manual",
-    "failedLoadGdprData": "Failed to load GDPR data",
-    "failedLoadConsentLogs": "Failed to load consent logs",
+    "failedLoadGdprData": "We couldn't load GDPR data",
+    "failedLoadConsentLogs": "We couldn't load consent logs",
     "statusUpdatedSuccess": "Request status updated",
-    "failedUpdateStatus": "Failed to update status",
+    "failedUpdateStatus": "We couldn't update status",
     "errorUpdatingRequest": "Error updating request"
   },
   "adminInterviews": {
@@ -10090,9 +10165,9 @@
     "void": "Void",
     "confirmVoidMessage": "Void this invoice? This cannot be undone.",
     "invoiceStatusUpdated": "Invoice {status}",
-    "failedToLoadInvoices": "Failed to load invoices",
-    "failedToDownloadInvoice": "Failed to download",
-    "failedToDownloadPdf": "Failed to download PDF",
+    "failedToLoadInvoices": "We couldn't load invoices",
+    "failedToDownloadInvoice": "We couldn't download",
+    "failedToDownloadPdf": "We couldn't download PDF",
     "failed": "Failed",
     "oneYear": "1 Year",
     "refreshAnalytics": "Refresh",
@@ -10253,9 +10328,9 @@
     "statusFilterAll": "All statuses",
     "deletePermanently": "Delete permanently",
     "requiredFieldsError": "Name, email, and password are required",
-    "createAgentFailed": "Failed to create agent",
+    "createAgentFailed": "We couldn't create agent",
     "networkError": "Network error",
-    "updateAgentFailed": "Failed to update",
+    "updateAgentFailed": "We couldn't update",
     "deactivateConfirm": "Deactivate this agent? They won't be able to log in.",
     "deleteForeverTitle": "Permanently Delete Agent",
     "deleteForeverConfirm": "This will permanently delete the agent and their profile. This cannot be undone.",
@@ -10358,23 +10433,23 @@
     "fieldCurrencyLabel": "Currency",
     "fieldRateLabel": "Rate (%)",
     "fieldNotesLabel": "Notes",
-    "failedLoadCommissions": "Failed to load commissions. Please try again.",
-    "failedDelete": "Failed to delete commission",
+    "failedLoadCommissions": "We couldn't load commissions. Please try again.",
+    "failedDelete": "We couldn't delete commission",
     "commissionDeleted": "Commission deleted",
     "commissionApproved": "Commission approved",
     "commissionMarkedPaid": "Commission marked as paid",
-    "failedUpdateStatus": "Failed to update commission status",
+    "failedUpdateStatus": "We couldn't update commission status",
     "deleteConfirmation": "Delete this commission?",
     "markDisputedSuccess": "Commission marked as disputed",
     "disputeReasonPrompt": "Enter dispute reason:",
-    "failedDispute": "Failed to dispute commission",
+    "failedDispute": "We couldn't dispute commission",
     "clawbackAmountPrompt": "Clawback amount (full amount:",
     "invalidClawbackAmount": "Invalid clawback amount",
     "commissionClawbacked": "Commission clawed back",
-    "failedClawback": "Failed to clawback commission",
+    "failedClawback": "We couldn't clawback commission",
     "resolveDisputeConfirmation": "Resolve this dispute? The commission will return to its previous approved status.",
     "disputeResolved": "Dispute resolved",
-    "failedResolveDispute": "Failed to resolve dispute"
+    "failedResolveDispute": "We couldn't resolve dispute"
   },
   "adminCommunications": {
     "adminWorkspace": "Admin workspace",
@@ -10440,7 +10515,7 @@
     "deleteButton": "Delete",
     "deleting": "Deleting...",
     "templateDeleted": "Template deleted",
-    "templateDeleteFailed": "Failed to delete template",
+    "templateDeleteFailed": "We couldn't delete template",
     "deleteTemplateConfirm": "Delete{template, select, EMPTY {} other { \"{template}\"}}? This cannot be undone.",
     "broadcastHistoryHead": "Sent broadcasts",
     "recentActivityHeading": "Recent delivery activity",
@@ -10644,9 +10719,9 @@
     "archive": "Archive",
     "requestDeletedConfirm": "Delete {eventName}? This action cannot be undone.",
     "requestDeleted": "Request deleted",
-    "failedToDeleteRequest": "Failed to delete request",
+    "failedToDeleteRequest": "We couldn't delete request",
     "requestMovedTo": "Request moved to {status}",
-    "failedToUpdateRequest": "Failed to update request",
+    "failedToUpdateRequest": "We couldn't update request",
     "selectAtLeastOneRequest": "Select at least one request first",
     "rejectSelectedRequests": "Reject {count} selected request(s)?",
     "bulkActionsCompleted": "{count} request(s) updated",
@@ -10783,9 +10858,9 @@
     "revenueLabel": "Revenue",
     "costLabel": "Cost",
     "teamReachLabel": "Team reach",
-    "errorLoadingSettings": "Failed to load admin settings. Using the default currency.",
+    "errorLoadingSettings": "We couldn't load admin settings. Using the default currency.",
     "errorInvalidYear": "Invalid year selected.",
-    "errorLoadingAnalytics": "Failed to load exhibition analytics."
+    "errorLoadingAnalytics": "We couldn't load exhibition analytics."
   },
   "adminJobSeekers": {
     "heroAdminWorkspace": "Admin workspace",
@@ -10807,7 +10882,7 @@
     "candidatesFound": "{count} candidate{count, plural, one {} other {s}} found",
     "embeddingGenerationStarted": "Generating search embeddings...",
     "embeddingGenerationSuccess": "Embeddings ready: {count} generated",
-    "embeddingGenerationFailed": "Failed to generate embeddings",
+    "embeddingGenerationFailed": "We couldn't generate embeddings",
     "embeddingGenerationError": "Embedding generation failed",
     "indexAiButton": "Index AI",
     "aiSuggestionsToggle": "Example searches",
@@ -10884,7 +10959,7 @@
     "confirmDeleteButton": "Delete Forever",
     "noCvsFound": "No CVs found for this search",
     "cvsDownloadedSuccess": "Downloaded {count} CV{count, plural, one {} other {s}}",
-    "cvsDownloadFailed": "Failed to download CVs",
+    "cvsDownloadFailed": "We couldn't download CVs",
     "editFieldName": "Name",
     "editFieldEmail": "Email",
     "editFieldNationality": "Nationality",
@@ -10961,7 +11036,7 @@
     "demandEfficiencyDescription": "Average applications generated per published role.",
     "commercialYield": "Commercial yield",
     "commercialYieldDescription": "Application-to-placement conversion across the current platform book.",
-    "failedToLoadReports": "Failed to load reports.",
+    "failedToLoadReports": "We couldn't load reports. No report settings were changed. Try again.",
     "a11yApplicationsByStatus": "Applications by status",
     "a11yConversionFunnel": "Conversion funnel",
     "a11yJobsVsApplications": "Jobs versus applications over time",
@@ -11330,7 +11405,7 @@
     "saving": "Saving…",
     "changeRole": "Change role",
     "networkError": "Network error",
-    "failedToCreateUser": "Failed to create user",
+    "failedToCreateUser": "We couldn't create user",
     "unnamed": "Unnamed"
   },
   "superAgentSettings": {
@@ -11339,7 +11414,7 @@
     "avatarTooLarge": "Image must be under 2 MB.",
     "avatarUploadFailed": "Upload failed",
     "networkError": "Network error. Please try again.",
-    "avatarRemoveFailed": "Failed to remove avatar.",
+    "avatarRemoveFailed": "We couldn't remove avatar.",
     "changePhoto": "Change Photo",
     "uploadPhoto": "Upload Photo",
     "avatarFormats": "JPEG, PNG or WebP. Max 2 MB.",
@@ -11551,7 +11626,7 @@
     "responsibilitiesLabel": "Responsibilities",
     "benefitsLabel": "Benefits",
     "jobDetailsUnavailable": "Job details unavailable",
-    "failedToLoadJobDetails": "Failed to load job details."
+    "failedToLoadJobDetails": "We couldn't load job details."
   },
   "superAgentLeads": {
     "pageTitle": "Lead Pipeline",
@@ -11718,7 +11793,7 @@
     "buttonCreateAgent": "Create Agent",
     "validateNameEmailPasswordRequired": "Name, email, and password are required.",
     "validatePasswordMinLength": "Password must be at least 8 characters.",
-    "errorFailedToCreateAgent": "Failed to create agent",
+    "errorFailedToCreateAgent": "We couldn't create agent",
     "toastAgentCreatedNoEmail": "Agent created, but welcome email could not be sent",
     "toastAgentCreatedSuccess": "Agent created successfully",
     "errorNetworkError": "Network error",
@@ -11782,9 +11857,9 @@
     "companyNameLabel": "Company Name",
     "onboardModalTitle": "Onboard New Employer",
     "exportFilename": "super-agent-employers",
-    "switchError": "Failed to switch to employer view",
+    "switchError": "We couldn't switch to employer view",
     "networkError": "Network error — please try again",
-    "onboardError": "Failed to onboard employer"
+    "onboardError": "We couldn't onboard employer"
   },
   "superAgentPlacements": {
     "pageTitle": "Placements",
@@ -11869,8 +11944,8 @@
     "exportPlacedAt": "Placed At"
   },
   "superAgentAgentDetail": {
-    "failedToLoadDetails": "Failed to load agent details",
-    "failedToUpdateAgent": "Failed to update agent",
+    "failedToLoadDetails": "We couldn't load agent details",
+    "failedToUpdateAgent": "We couldn't update agent",
     "networkError": "Network error",
     "backToAgents": "Back to Agents",
     "agentNotFound": "Agent not found",
@@ -12016,7 +12091,7 @@
     "noText": "No"
   },
   "superAgentInvoices": {
-    "failedToLoad": "Failed to load invoices",
+    "failedToLoad": "We couldn't load invoices",
     "pageTitle": "Team Finance · MPLOYEDIN",
     "invoiceNumber": "Invoice #",
     "employer": "Employer",
@@ -12114,7 +12189,7 @@
     "processingEllipsis": "Processing…",
     "approvePublishButtonLabel": "Approve & Publish",
     "jobDetailsUnavailable": "Job details unavailable",
-    "failedToLoadJobDetails": "Failed to load job details."
+    "failedToLoadJobDetails": "We couldn't load job details."
   },
   "superAgentExhibitionsAnalytics": {
     "superAgentAnalytics": "Super Agent Analytics",
@@ -12176,10 +12251,10 @@
     "revenueLabel": "Revenue",
     "costLabel": "Cost",
     "teamReachLabel": "Team reach",
-    "failedToLoadAnalytics": "Failed to load analytics."
+    "failedToLoadAnalytics": "We couldn't load analytics."
   },
   "superAgentInterviews": {
-    "failedToLoadInterviews": "Failed to load interviews",
+    "failedToLoadInterviews": "We couldn't load interviews",
     "totalInterviews": "Total Interviews",
     "acrossAllAgents": "Across all agents",
     "scheduled": "Scheduled",
@@ -12245,7 +12320,7 @@
       "title": "No applications found",
       "subtitle": "Try adjusting your filters"
     },
-    "loadError": "Failed to load applications",
+    "loadError": "We couldn't load applications",
     "metrics": {
       "totalApplications": "Total Applications",
       "allTeamApplications": "All team applications",
@@ -12269,7 +12344,7 @@
     }
   },
   "superAgentCommissions": {
-    "statusUpdateFailed": "Failed to update commission status",
+    "statusUpdateFailed": "We couldn't update commission status",
     "pageTitle": "Commission Management",
     "pageDescription": "Review payout records, approve commissions, and maintain the regional override rate from one streamlined workspace.",
     "summaryTitle": "Finance lane",
@@ -12350,7 +12425,7 @@
     "noJobSeekersFound": "No job seekers found",
     "tryAdjustingFilters": "Try adjusting your filters",
     "yearsAbbr": "yrs",
-    "failedToLoadJobSeekers": "Failed to load job seekers"
+    "failedToLoadJobSeekers": "We couldn't load job seekers"
   },
   "superAgentReports": {
     "teamPerformanceSummary": "Team performance summary",
@@ -12425,7 +12500,7 @@
     "cardEmployers": "Employers",
     "cardJobs": "Jobs",
     "cardCandidates": "Candidates",
-    "loadTerritoryError": "Failed to load territory data"
+    "loadTerritoryError": "We couldn't load territory data"
   },
   "superAgentCommissionsReport": {
     "pageTitle": "Commission Report",
@@ -12466,7 +12541,7 @@
     "tableColumnPaid": "Paid",
     "tableColumnCount": "Count",
     "noTeamDataMessage": "No team commission data for {year}",
-    "failedToLoadReport": "Failed to load commission report"
+    "failedToLoadReport": "We couldn't load commission report"
   },
   "superAgentMarket": {
     "pageTitle": "AI Market Intelligence",
@@ -12487,7 +12562,7 @@
     "recommendationsEyebrow": "Recommendations",
     "recommendationsHeading": "Strategic recommendations",
     "recommendationsCaption": "Use these AI suggestions as prompts for regional hiring and market planning.",
-    "failedToGenerateIntelligence": "Failed to generate market intelligence.",
+    "failedToGenerateIntelligence": "We couldn't generate market intelligence.",
     "networkError": "Network error. Please try again.",
     "query1": "What are the top 5 most in-demand job categories in UAE right now?",
     "query2": "What is the average salary range for software engineers in India?",
@@ -12529,8 +12604,8 @@
     "fieldNotes": "Notes",
     "fieldFollowUpDate": "Follow-up Date",
     "noneOption": "— None —",
-    "failedToMoveLead": "Failed to move lead",
-    "failedToDeleteLead": "Failed to delete lead",
+    "failedToMoveLead": "We couldn't move lead",
+    "failedToDeleteLead": "We couldn't delete lead",
     "aiScore": "AI Score",
     "convertToEmployer": "Convert to Employer",
     "moveToStage": "Move to {stage}",
@@ -12550,13 +12625,13 @@
     "exportFilename": "agent-leads",
     "pageTitle": "Employer Lead Management",
     "scoringFailed": "Scoring failed",
-    "failedToScoreLead": "Failed to score lead",
+    "failedToScoreLead": "We couldn't score lead",
     "leadScored": "Lead scored: {temperature} ({score}/100)",
     "aiScoringFailed": "AI scoring failed",
     "cannotConvertNoEmail": "Cannot convert: lead has no contact email",
     "confirmConvertLead": "Convert \"{company}\" into an employer account? A new account will be created for {email}.",
     "conversionFailed": "Conversion failed",
-    "failedToConvertLead": "Failed to convert lead",
+    "failedToConvertLead": "We couldn't convert lead",
     "leadConvertedSuccess": "\"{company}\" converted to employer successfully",
     "leadConversionFailed": "Lead conversion failed",
     "confirmDeleteLead": "Delete this lead?",
@@ -12853,7 +12928,7 @@
     "referralRegistrationsHeader": "Employers Joined via This Link ({count})",
     "referralNoRegistrations": "No employers have registered through this link yet.",
     "referralCopied": "Copied!",
-    "referralLinkFetchFailed": "Failed to get referral link",
+    "referralLinkFetchFailed": "We couldn't get referral link",
     "referralLinkNetworkError": "Network error — please try again",
     "browseEmployersLabel": "Browse employers",
     "browseEmployersTitle": "Filter the accounts you want to work on next",
@@ -12884,7 +12959,7 @@
     "modalEditEmployerTitle": "Edit Employer",
     "modalOnboardEmployerTitle": "Onboard New Employer",
     "deleteEmployerConfirm": "Delete this employer?",
-    "switchEmployerViewError": "Failed to switch to employer view",
+    "switchEmployerViewError": "We couldn't switch to employer view",
     "switchEmployerNetworkError": "Network error — please try again"
   },
   "agentPlacements": {
@@ -13000,11 +13075,11 @@
     "saveActivity": "Save Activity",
     "noActivitiesYet": "No activities yet. Log your first interaction above.",
     "loadingLead": "Loading lead...",
-    "failedToLoadLead": "Failed to load lead",
+    "failedToLoadLead": "We couldn't load lead",
     "movedToStatus": "Moved to {status}",
-    "failedToUpdateStatus": "Failed to update status",
+    "failedToUpdateStatus": "We couldn't update status",
     "activityLogged": "Activity logged",
-    "failedToAddActivity": "Failed to add activity",
+    "failedToAddActivity": "We couldn't add activity",
     "justNow": "Just now",
     "minutesAgo": "{minutes}m ago",
     "hoursAgo": "{hours}h ago",
@@ -13069,7 +13144,7 @@
     "statusVoid": "Void",
     "emptyStateTitle": "No invoices yet",
     "emptyStateDescription": "Create your first invoice to start tracking commissions.",
-    "errorFailedToLoad": "Failed to load invoices"
+    "errorFailedToLoad": "We couldn't load invoices"
   },
   "agentCommissions": {
     "agentWorkspace": "Agent workspace",
@@ -13157,14 +13232,14 @@
     "resetButton": "Reset",
     "emptyStateTitle": "No tasks yet",
     "emptyStateDescription": "Create your first task to start tracking follow-ups",
-    "loadTasksFailed": "Failed to load tasks",
+    "loadTasksFailed": "We couldn't load tasks",
     "taskTitleRequired": "Task title is required",
     "taskCreatedSuccess": "Task created",
-    "createTaskFailed": "Failed to create task",
+    "createTaskFailed": "We couldn't create task",
     "taskUpdatedSuccess": "Task updated",
-    "updateTaskFailed": "Failed to update task",
+    "updateTaskFailed": "We couldn't update task",
     "taskDeletedSuccess": "Task deleted",
-    "deleteTaskFailed": "Failed to delete task"
+    "deleteTaskFailed": "We couldn't delete task"
   },
   "agentReferralLinks": {
     "pageTitle": "Referral Links",
@@ -13242,7 +13317,7 @@
     "labelNotes": "Notes",
     "savingButton": "Saving…",
     "createLeadButton": "Create Lead",
-    "failedToCreateLead": "Failed to create lead"
+    "failedToCreateLead": "We couldn't create lead"
   },
   "agentJobDetail": {
     "jobNotFound": "Job not found",
@@ -13283,7 +13358,7 @@
   "agentCommissionsReport": {
     "pageTitle": "My Commission Report",
     "pageSubtitle": "Personal earnings breakdown for {year}",
-    "loadReportError": "Failed to load commission report",
+    "loadReportError": "We couldn't load commission report",
     "totalEarned": "Total Earned ({year})",
     "commissionsTotal": "{count} commissions total",
     "statusPending": "Pending",
@@ -13415,7 +13490,7 @@
     "enterHeadline": "Please enter a resume headline.",
     "back": "Back",
     "completeLater": "Complete later",
-    "failedToSkip": "Failed to skip. Please try again.",
+    "failedToSkip": "We couldn't skip. Please try again.",
     "skip": "Skip",
     "saveAndContinue": "Save and continue",
     "submit": "Submit",
@@ -13426,7 +13501,7 @@
   },
   "verifyEmail": {
     "resendSuccess": "Verification email sent! Check your inbox.",
-    "resendFailure": "Failed to resend. Please try again later.",
+    "resendFailure": "We couldn't resend. Please try again later.",
     "networkError": "Network error. Please try again.",
     "otpEmptyError": "Please enter the 6-digit code.",
     "otpNoEmailError": "We couldn't tell which account this code belongs to. Please open the link from your verification email instead.",
@@ -13487,7 +13562,7 @@
     "passwordsDoNotMatch": "Passwords do not match",
     "passwordsDoNotMatchPeriod": "Passwords do not match.",
     "tooManyRequests": "Too many requests. Please wait a few minutes and try again.",
-    "somethingWentWrong": "Something went wrong. Please try again.",
+    "somethingWentWrong": "We couldn't complete this action. Please try again.",
     "networkErrorCheckConnection": "Network error. Please check your connection and try again.",
     "resetSuccessTitle": "Password reset successful",
     "resetSuccessBody": "Your password has been updated. You can now sign in with your new password.",
@@ -14234,10 +14309,10 @@
     "saving": "Saving…",
     "saved": "Saved!",
     "saveWorkflowForThisJob": "Save Workflow for this Job",
-    "failedToSaveWorkflow": "Failed to save workflow"
+    "failedToSaveWorkflow": "We couldn't save workflow"
   },
   "jobMatchingWeightsTab": {
-    "failedToSaveMatchingWeights": "Failed to save matching weights",
+    "failedToSaveMatchingWeights": "We couldn't save matching weights",
     "totalAt": "Total at {total}%",
     "mustTotal100PercentBeforeSaving": "Must total 100% before saving.",
     "top": "Top",
@@ -14258,7 +14333,7 @@
     "tuningTipDescription": "Increase skills for technical roles. Raise relevant experience for senior positions. Lean on education and certifications for regulated or licensed roles."
   },
   "aiInterviewQuestionsPanel": {
-    "somethingWentWrong": "Something went wrong",
+    "somethingWentWrong": "We couldn't complete this action",
     "aiInterviewQuestions": "AI Interview Questions",
     "questions": "Questions",
     "generating": "Generating...",
@@ -14282,7 +14357,7 @@
     "imageMustBeUnder2mb": "Image must be under 2MB.",
     "uploadFailed": "Upload failed",
     "networkErrorTryAgain": "Network error. Please try again.",
-    "failedToRemoveLogo": "Failed to remove logo.",
+    "failedToRemoveLogo": "We couldn't remove logo.",
     "companyLogo": "Company Logo",
     "fileTypesAndSize": "JPEG, PNG or WebP. Max 2MB.",
     "change": "Change",
@@ -14361,11 +14436,11 @@
     "monthlyDistribution": "Monthly Distribution (editable)",
     "sumMismatch": "Sum mismatch — adjust monthly values",
     "month": "Month",
-    "failedToLoadAgents": "Failed to load team agents",
-    "failedLoadTargets": "Failed to load targets",
-    "failedLoadTeamTargets": "Failed to load team targets",
-    "failedCreateAgentTargets": "Failed to create agent targets",
-    "failedLoadReport": "Failed to load report",
+    "failedToLoadAgents": "We couldn't load team agents",
+    "failedLoadTargets": "We couldn't load targets",
+    "failedLoadTeamTargets": "We couldn't load team targets",
+    "failedCreateAgentTargets": "We couldn't create agent targets",
+    "failedLoadReport": "We couldn't load report",
     "enterTargetsForAtLeastOne": "Enter targets for at least one agent",
     "overAllocatedToast": "Over-allocated. Reduce targets to stay within budget."
   },
@@ -14399,7 +14474,7 @@
     "generatingLink": "Generating link…",
     "copied": "Copied",
     "copy": "Copy",
-    "failedToLoad": "Failed to load. Try again.",
+    "failedToLoad": "We couldn't load. Try again.",
     "activeLinks": "Active Links",
     "registrations": "Registrations",
     "verifiedRate": "Verified Rate",
@@ -14427,7 +14502,7 @@
     "aiInsights": "AI Insights",
     "analyzingTeam": "Analyzing your team…",
     "retry": "Retry",
-    "failedToLoadInsights": "Failed to load insights. Try again.",
+    "failedToLoadInsights": "We couldn't load insights. Try again.",
     "noInsightsAvailable": "No insights available right now. Your team data will be analysed as activity grows.",
     "restoreAll": "Restore all",
     "hidden": "hidden",
@@ -14438,8 +14513,8 @@
     "thanks": "Thanks!",
     "noUnderperformingAgent": "No underperforming agent found to reassign leads from.",
     "leadsReassignedSuccessfully": "Leads reassigned successfully.",
-    "failedToReassignLeads": "Failed to reassign leads.",
-    "failedToSendReminder": "Failed to send reminder.",
+    "failedToReassignLeads": "We couldn't reassign leads.",
+    "failedToSendReminder": "We couldn't send reminder.",
     "a11yDismiss": "Dismiss"
   },
   "jobSeekerRightPanel": {
@@ -14453,16 +14528,16 @@
     "activityWillAppear": "Your activity will appear as you apply and explore"
   },
   "recommendedJobs": {
-    "failedToLoad": "Failed to load recommendations",
+    "failedToLoad": "We couldn't load recommendations",
     "noMatches": "No matches right now",
     "expandPreferences": "Set your job preferences or expand your salary range and location",
     "setPreferences": "Set Preferences",
     "remote": "Remote",
     "applicationSubmitted": "Application submitted!",
-    "failedToApply": "Failed to apply",
+    "failedToApply": "We couldn't apply",
     "jobSaved": "Job saved",
     "jobUnsaved": "Job unsaved",
-    "failedToUpdateSaved": "Failed to update saved jobs",
+    "failedToUpdateSaved": "We couldn't update saved jobs",
     "applicationLimitReached": "Application limit reached — upgrade your plan"
   },
   "jobSeekerStatsGrid": {
@@ -14517,12 +14592,12 @@
     "savedDaysAgo": "{days} days ago",
     "unsave": "Unsave",
     "unsavedSuccess": "Job removed from saved",
-    "unsaveFailed": "Failed to remove job. Please try again.",
+    "unsaveFailed": "We couldn't remove job. Please try again.",
     "emptyTitle": "No saved jobs yet",
     "emptyMessage": "Start saving jobs to build your collection. You can review them anytime.",
     "browseCta": "Browse jobs",
     "errorTitle": "Couldn't load saved jobs",
-    "errorMessage": "Something went wrong. Please try again later.",
+    "errorMessage": "We couldn't complete this action. Please try again later.",
     "endOfList": "No more jobs to load"
   },
   "availabilityCalendar": {
@@ -14631,7 +14706,7 @@
     "shareJob": "Share this job",
     "share": "Share",
     "linkCopied": "Link copied!",
-    "failedCopy": "Failed to copy link",
+    "failedCopy": "We couldn't copy link",
     "copyLink": "Copy link",
     "linkCopiedToClipboard": "Link copied to clipboard"
   },
@@ -14771,33 +14846,33 @@
     "aedMrr": "AED MRR"
   },
   "errorBoundary": {
-    "title": "Something went wrong",
-    "description": "An unexpected error occurred while loading this page.",
-    "tryAgain": "Try Again",
-    "reloadPage": "Reload Page",
+    "title": "We couldn't load this page",
+    "description": "Nothing was changed. Try again, or contact support if the problem continues.",
+    "tryAgain": "Try again",
+    "reloadPage": "Reload page",
     "home": "Go to dashboard",
     "support": "Contact support",
     "platformStatus": "Check platform status",
     "errorId": "Error ID: {digest}",
-    "failedApplications": "Failed to load applications",
-    "failedApplicationsDescription": "An unexpected error occurred while loading applications.",
-    "failedAnalytics": "Failed to load analytics",
-    "failedAnalyticsDescription": "An unexpected error occurred while loading analytics.",
-    "failedJobs": "Failed to load jobs",
-    "failedJobsDescription": "An unexpected error occurred while loading jobs.",
-    "failedSettings": "Failed to load settings",
-    "failedSettingsDescription": "An unexpected error occurred while loading settings.",
-    "failedReports": "Failed to load reports",
-    "failedReportsDescription": "An unexpected error occurred while loading the admin reports workspace.",
-    "failedInterviews": "Failed to load interviews",
-    "failedInterviewsDescription": "An unexpected error occurred while loading interviews.",
-    "failedCandidates": "Failed to load candidates",
-    "failedCandidatesDescription": "An unexpected error occurred while loading candidates.",
-    "failedMessages": "Failed to load messages",
-    "failedMessagesDescription": "An unexpected error occurred while loading messages."
+    "failedApplications": "We couldn't load applications",
+    "failedApplicationsDescription": "Nothing was changed. Try again to return to your application list.",
+    "failedAnalytics": "We couldn't load analytics",
+    "failedAnalyticsDescription": "Your data is unchanged. Try again, or check platform status if the problem continues.",
+    "failedJobs": "We couldn't load jobs",
+    "failedJobsDescription": "Nothing was changed. Try again to return to your jobs.",
+    "failedSettings": "We couldn't load settings",
+    "failedSettingsDescription": "Your saved settings are unchanged. Try again.",
+    "failedReports": "We couldn't load reports",
+    "failedReportsDescription": "No report settings were changed. Try again to reopen the reports workspace.",
+    "failedInterviews": "We couldn't load interviews",
+    "failedInterviewsDescription": "Your interview records are unchanged. Try again.",
+    "failedCandidates": "We couldn't load candidates",
+    "failedCandidatesDescription": "Your candidate records are unchanged. Try again.",
+    "failedMessages": "We couldn't load messages",
+    "failedMessagesDescription": "No message was sent. Try again to reopen your conversations."
   },
   "agentCalendar": {
-    "failedLoadingCalendarEvents": "Failed to load calendar events"
+    "failedLoadingCalendarEvents": "We couldn't load calendar events"
   },
   "agentMessages": {
     "title": "Messages",
@@ -14816,6 +14891,7 @@
   "copilot": {
     "title": "MPLOYEDIN Copilot",
     "openCopilot": "Open Copilot",
+    "assistant": "AI Assistant",
     "greeting": "Hi! I'm your Copilot.",
     "howCanIHelp": "Ask me to find, check, or do something — I'll show you what I'm about to do before anything changes.",
     "placeholder": "Ask Copilot to do something...",
@@ -14832,7 +14908,7 @@
     "cancelling": "Cancelling...",
     "actionConfirmed": "Done.",
     "actionCancelled": "Cancelled.",
-    "actionFailed": "Something went wrong.",
+    "actionFailed": "We couldn't complete this action.",
     "actionExpired": "This action expired.",
     "errorMessage": "Sorry, something went wrong. Please try again.",
     "disclaimer": "Copilot can make mistakes. Actions always ask for your confirmation first.",
@@ -14864,7 +14940,7 @@
     "allow": "Allow",
     "deny": "Deny",
     "invalidRequest": "This connection request is invalid or has expired.",
-    "error": "Something went wrong. Please try again.",
+    "error": "We couldn't complete this action. Please try again.",
     "scopeReadJobs": "Search and view job postings",
     "scopeReadApplications": "View your job applications",
     "scopeReadProfile": "View your job seeker profile",

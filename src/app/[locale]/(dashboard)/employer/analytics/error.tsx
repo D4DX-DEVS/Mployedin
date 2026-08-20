@@ -26,7 +26,7 @@ export default function AnalyticsError({
         <div className="space-y-2">
           <h3 className="text-lg font-semibold text-destructive">{t("failedAnalytics")}</h3>
           <p className="text-sm text-muted-foreground">
-            {error.message || t("failedAnalyticsDescription")}
+            {t("failedAnalyticsDescription")}
           </p>
         </div>
         <RecoveryActions reset={reset} />

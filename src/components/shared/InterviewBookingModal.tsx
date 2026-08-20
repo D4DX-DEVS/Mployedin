@@ -236,7 +236,7 @@ export function InterviewBookingModal({
         });
         successCount++;
       } catch (err) {
-        failures.push(`${candidate.candidateName}: ${err instanceof Error ? err.message : "Failed"}`);
+        failures.push(`${candidate.candidateName}: We couldn't book this interview. No invitation was sent.`);
       }
       setBookingProgress({ done: i + 1, total: selectedCandidates.length });
     }

@@ -312,7 +312,7 @@ export default function CVBuilderPage() {
       setTimeout(() => setSuccessMsg(""), 5000);
     } catch (e) {
       clearInterval(tick);
-      setError(e instanceof Error ? e.message : t("errors.generic"));
+      setError(t("errors.generic"));
     } finally {
       setImporting(false);
       setImportProgress(0);
@@ -379,7 +379,7 @@ export default function CVBuilderPage() {
       const data = await res.json();
       setForm((f) => ({ ...f, photo: data.url }));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("errors.saveFailed"));
+      toast.error(t("errors.saveFailed"));
     } finally {
       setPhotoUploading(false);
       if (photoInputRef.current) photoInputRef.current.value = "";
@@ -427,7 +427,7 @@ export default function CVBuilderPage() {
       if (!res.ok) throw new Error(t("errors.saveProfile"));
       toast.success(t("messages.profileSaved"));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("errors.saveFailed"));
+      toast.error(t("errors.saveFailed"));
     } finally {
       setSaving(false);
     }

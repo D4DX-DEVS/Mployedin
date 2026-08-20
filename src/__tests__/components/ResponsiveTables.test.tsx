@@ -1,7 +1,7 @@
 /* global expect */
 
 import { describe, it } from "@jest/globals";
-import { render, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { ResponsiveTables } from "@/components/shared/ResponsiveTables";
 
 describe("ResponsiveTables", () => {
@@ -111,5 +111,54 @@ describe("ResponsiveTables", () => {
       "Custom label"
     );
     expect(tables[1]).not.toHaveClass("responsive-card-table");
+  });
+
+  it("adds an accessible disclosure button for collapsible mobile rows", async () => {
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: (query: string) => ({
+        matches: query === "(max-width: 639px)",
+        media: query,
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+      }),
+    });
+
+    const { container } = render(
+      <>
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Status</th>
+              <th>Email</th>
+              <th>Region</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Ada</td>
+              <td>Active</td>
+              <td>ada@example.com</td>
+              <td>Gulf</td>
+            </tr>
+          </tbody>
+        </table>
+        <ResponsiveTables />
+      </>
+    );
+
+    const disclosure = await screen.findByRole("button", { name: "Show details" });
+    const row = container.querySelector("tbody tr");
+    const controlledIds = disclosure.getAttribute("aria-controls")?.split(" ") ?? [];
+
+    expect(disclosure).toHaveAttribute("aria-expanded", "false");
+    expect(controlledIds).toHaveLength(2);
+    controlledIds.forEach((id) => expect(document.getElementById(id)).toBeTruthy());
+
+    fireEvent.click(disclosure);
+    expect(row).toHaveAttribute("data-mobile-expanded");
+    expect(disclosure).toHaveAttribute("aria-expanded", "true");
+    expect(disclosure).toHaveAccessibleName("Hide details");
   });
 });

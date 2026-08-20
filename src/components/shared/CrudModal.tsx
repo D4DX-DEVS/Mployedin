@@ -70,7 +70,7 @@ export function CrudModal({ open, onClose, title, description, fields, initialVa
       await onSubmit(values);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      setError("We couldn't save your changes. Nothing was changed. Review the fields and try again.");
     } finally {
       setLoading(false);
     }

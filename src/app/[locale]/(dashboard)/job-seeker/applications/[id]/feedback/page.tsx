@@ -74,7 +74,7 @@ export default function ApplicationFeedbackPage() {
       }
       setSubmitted(true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong");
+      setError("We couldn't submit your feedback. Nothing was saved. Review your response and try again.");
     } finally {
       setSubmitting(false);
     }

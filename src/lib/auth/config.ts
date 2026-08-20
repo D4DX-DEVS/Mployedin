@@ -48,6 +48,10 @@ class AccountLockedError extends CredentialsSignin {
 class LoginRateLimitedError extends CredentialsSignin {
   code = "login_rate_limited";
 }
+/** Thrown when credentials could not be checked because the service failed. */
+class AuthenticationUnavailableError extends CredentialsSignin {
+  code = "authentication_unavailable";
+}
 
 export const authConfig: NextAuthConfig = {
   providers: [
@@ -267,7 +271,7 @@ export const authConfig: NextAuthConfig = {
           // Propagate typed 2FA signals to the client (surfaced as result.code).
           if (err instanceof CredentialsSignin) throw err;
           logger.error({ err }, "Credentials authorize error");
-          return null;
+          throw new AuthenticationUnavailableError();
         }
       },
     }),

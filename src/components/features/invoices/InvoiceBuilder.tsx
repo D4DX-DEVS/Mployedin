@@ -800,7 +800,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
       onSuccess();
       onClose();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to create invoice");
+      toast.error("We couldn't create this invoice. No invoice was saved. Review the details and try again.");
     } finally {
       setSubmitting(false);
     }

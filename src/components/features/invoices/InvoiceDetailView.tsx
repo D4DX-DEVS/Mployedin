@@ -169,7 +169,7 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
       setInvoice(data.invoice);
       setSenderContext(data.senderContext ?? null);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to load invoice");
+      toast.error("We couldn't load this invoice. Nothing was changed. Try again.");
     } finally {
       setLoading(false);
     }
@@ -195,7 +195,7 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
       await fetchInvoice();
       onRefresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed");
+      toast.error("We couldn't update this invoice. Its previous status is still in place. Try again.");
     } finally {
       setUpdatingStatus(false);
     }
@@ -236,7 +236,7 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
       await fetchInvoice();
       onRefresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed");
+      toast.error("We couldn't send this invoice. Check its delivery status before trying again.");
     } finally {
       setRecordingPayment(false);
     }
@@ -261,7 +261,7 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
       await fetchInvoice();
       onRefresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed");
+      toast.error("We couldn't complete the payment update. Check the invoice status before trying again.");
     } finally {
       setUpdatingStatus(false);
     }

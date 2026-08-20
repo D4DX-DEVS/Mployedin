@@ -133,7 +133,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
       setPlacements(data.placements ?? []);
       setTotal(data.total ?? 0);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to load data");
+      toast.error("We couldn't load uninvoiced placements. Nothing was changed. Try again.");
     } finally {
       setLoading(false);
     }
@@ -197,7 +197,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
         toast.error(result?.reason ?? "Failed to generate invoice");
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed");
+      toast.error("We couldn't create the invoice. No invoice was saved. Review the placement and try again.");
     } finally {
       setQuickGenerating(null);
     }
@@ -235,7 +235,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
         onInvoicesCreated();
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Bulk generation failed");
+      toast.error("We couldn't create the selected invoices. Check the list before trying again to avoid duplicates.");
     } finally {
       setBulkProcessing(false);
     }

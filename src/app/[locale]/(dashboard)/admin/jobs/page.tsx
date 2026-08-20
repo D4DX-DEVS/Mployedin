@@ -28,6 +28,7 @@ import {
   Eye, Building2, MapPin, DollarSign, Clock, Calendar, Globe, UserCheck,
   Wand2, CheckCircle, ArrowRight, Trash2, Edit2, ClipboardList, Filter, ChevronDown, ChevronUp,
 } from "lucide-react";
+import { toUserFacingError } from "@/lib/errors/user-facing";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -219,7 +220,7 @@ export default function AdminJobsPage() {
       setServerApplicants(typeof data.totalApplicants === "number" ? data.totalApplicants : null);
       updateTotal(data.pagination?.total ?? data.total ?? data.totalCount ?? ((data.totalPages ?? 1) * limit));
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : t("jobLoadFailed");
+      const message = toUserFacingError(error, { fallback: t("jobLoadFailed") }).message;
       setErrorMessage(message);
       toast.error(message);
     } finally {

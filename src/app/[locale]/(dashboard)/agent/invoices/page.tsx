@@ -96,7 +96,7 @@ export default function AgentInvoicesPage() {
       updateTotal(data.total ?? 0);
       if (data.summary) setSummary(data.summary);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : t("errorFailedToLoad");
+      const msg = t("errorFailedToLoad");
       setErrorMessage(msg);
       toast.error(msg);
     } finally {

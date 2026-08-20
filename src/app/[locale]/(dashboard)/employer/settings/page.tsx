@@ -238,7 +238,7 @@ function CompanySettingsPage() {
     try {
       await uploadDocMutation.mutateAsync(file);
     } catch (err) {
-      setDocError(err instanceof Error ? err.message : "Upload failed");
+      setDocError("We couldn't upload this document. Nothing was added. Check the file type and size, then try again.");
     }
   };
 
@@ -357,7 +357,7 @@ function CompanySettingsPage() {
       setTimeout(() => setSuccess(""), 4000);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update settings.");
+      setError("We couldn't update your settings. Your previous settings are still active. Review the fields and try again.");
     }
   }
 

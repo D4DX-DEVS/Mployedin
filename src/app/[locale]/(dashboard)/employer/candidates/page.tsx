@@ -1218,7 +1218,7 @@ export default function EmployerCandidatesPage() {
       setScreeningResults(data);
       toast.success(t("aiScreenedToast", { total: data.totalReviewed, jobTitle: data.jobTitle }));
     } catch (err) {
-      const message = err instanceof Error ? err.message : t("screeningFailed");
+      const message = t("screeningFailed");
       setMatchFeedback({ type: "error", message });
     }
   };
@@ -1270,7 +1270,7 @@ export default function EmployerCandidatesPage() {
       await inviteMutation.mutateAsync({ jobSeekerId: candidateId, jobId: selectedJob });
       toast.success(t("inviteSent"));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("inviteFailed"));
+      toast.error(t("inviteFailed"));
     }
   };
 

@@ -126,7 +126,7 @@ export function PosterPreviewPanel({
       link.href = dataUrl;
       link.click();
     } catch (err: unknown) {
-      setExportError(err instanceof Error ? err.message : "Export failed. Please try again.");
+      setExportError("We couldn't export the poster. No file was downloaded. Try again.");
     } finally {
       setExportingFormat(null);
     }

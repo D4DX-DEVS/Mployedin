@@ -430,7 +430,7 @@ export function TeamAllocationDialog({
       onOpenChange(false);
       await onSuccess();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to distribute");
+      toast.error("We couldn't distribute these targets. Existing assignments are unchanged. Review the allocation and try again.");
     } finally {
       setSaving(false);
     }
@@ -953,4 +953,3 @@ function MonthlyDistributionTable({
     </div>
   );
 }
-

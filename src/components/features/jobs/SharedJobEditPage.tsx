@@ -509,7 +509,7 @@ export function SharedJobEditPage({
       if (publish) toast.success(t("publishedTitle"));
       setTimeout(() => router.push(afterSaveHref), 900);
     } catch (err) {
-      setGlobalError(err instanceof Error ? err.message : "Failed to update job");
+      setGlobalError("We couldn't update this job. Your previous information is still in place. Review the fields and try again.");
       setSubmitState("error");
       setTimeout(() => setSubmitState("idle"), 3000);
     }
@@ -1260,4 +1260,3 @@ export function SharedJobEditPage({
     </div>
   );
 }
-

@@ -296,7 +296,7 @@ export default function EmployerInterviewsPage() {
       const data: PrepBriefResult = await res.json();
       setPrepBrief(data);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Prep brief generation failed. Please retry.");
+      toast.error("We couldn't generate the preparation brief. No brief was saved. Try again.");
     } finally {
       setLoadingPrepBriefId(null);
     }
@@ -571,7 +571,7 @@ export default function EmployerInterviewsPage() {
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-rejected">{t("interviewList")}</p>
               <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{tc("somethingWentWrong")}</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                {error instanceof Error ? error.message : "The interview workspace could not load. Try again in a moment."}
+                {t("unableToLoadDesc")}
               </p>
             </div>
             <Button className="h-11 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90" onClick={() => void refetch()}>
@@ -1261,7 +1261,7 @@ function InterviewActionModal({
       }
       onClose();
     } catch (e) {
-      setSubmitError(e instanceof Error ? e.message : tc("somethingWentWrong"));
+      setSubmitError(tc("somethingWentWrong"));
     } finally {
       setSubmitting(false);
     }

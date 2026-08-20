@@ -171,7 +171,7 @@ export default function EmployerPlacementsPage() {
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-rejected">{t("placementList")}</p>
               <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("unableToLoad")}</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                {error instanceof Error ? error.message : t("loadError")}
+                {t("loadError")}
               </p>
             </div>
             <Button className="h-11 rounded-xl px-4 text-sm font-semibold" onClick={() => void refetch()}>

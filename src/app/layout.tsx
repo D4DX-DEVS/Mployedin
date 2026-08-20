@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type React from "react";
-import { Inter, Noto_Sans_Arabic, Noto_Sans_Malayalam } from "next/font/google";
+import { Manrope, Noto_Sans_Arabic, Noto_Sans_Malayalam } from "next/font/google";
 import { headers } from "next/headers";
 import { ThemeProvider } from "@/components/shared/ThemeProvider";
 import { ServiceWorkerRegistration } from "@/components/shared/ServiceWorkerRegistration";
@@ -8,9 +8,9 @@ import { ResponsiveTables } from "@/components/shared/ResponsiveTables";
 import "@/app/globals.css";
 import { getThemeInitializationScript } from "@/lib/theme";
 
-const inter = Inter({
+const manrope = Manrope({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-manrope",
   display: "swap",
   preload: true,
 });
@@ -104,7 +104,7 @@ export default async function RootLayout({
       </head>
       <body
         suppressHydrationWarning
-        className={`${inter.variable} ${notoArabic.variable} ${notoMalayalam.variable} font-sans antialiased`}
+        className={`${manrope.variable} ${notoArabic.variable} ${notoMalayalam.variable} font-sans antialiased`}
         {...(nonce ? { "data-nonce": nonce } : {})}
       >
         <ThemeProvider>

@@ -25,6 +25,7 @@ import {
   Flame,
 } from "lucide-react";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { toUserFacingError } from "@/lib/errors/user-facing";
 
 /* ── Interfaces ── */
 
@@ -314,11 +315,9 @@ export default function JobSeekerSkillsPage() {
         Array.isArray(data.suggestions) ? data.suggestions : [],
       );
     } catch (error) {
-      setSuggestionsError(
-        error instanceof Error
-          ? error.message
-          : "Unable to load skill suggestions.",
-      );
+      setSuggestionsError(toUserFacingError(error, {
+        fallback: "We couldn't load skill suggestions. Your saved skills are unchanged. Try again.",
+      }).message);
       setSuggestions([]);
     } finally {
       setLoadingSuggestions(false);
@@ -384,11 +383,9 @@ export default function JobSeekerSkillsPage() {
           100,
         );
       } catch (error) {
-        setGapError(
-          error instanceof Error
-            ? error.message
-            : "Unable to analyze your skill gap right now.",
-        );
+        setGapError(toUserFacingError(error, {
+          fallback: "We couldn't analyze your skill gap. Nothing was changed. Try again.",
+        }).message);
         setGapResult(null);
       } finally {
         setLoadingGap(false);

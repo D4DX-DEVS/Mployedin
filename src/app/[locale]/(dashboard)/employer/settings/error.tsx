@@ -26,7 +26,7 @@ export default function SettingsError({
         <div className="space-y-2">
           <h3 className="text-lg font-semibold text-destructive">{t("failedSettings")}</h3>
           <p className="text-sm text-muted-foreground">
-            {error.message || t("failedSettingsDescription")}
+            {t("failedSettingsDescription")}
           </p>
         </div>
         <RecoveryActions reset={reset} />

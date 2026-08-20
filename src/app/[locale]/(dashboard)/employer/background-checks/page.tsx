@@ -176,7 +176,7 @@ export default function BackgroundChecksPage() {
       setCreateOpen(false);
       fetchChecks();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("errors.createFailed"));
+      toast.error(t("errors.createFailed"));
     } finally {
       setSubmitting(false);
     }

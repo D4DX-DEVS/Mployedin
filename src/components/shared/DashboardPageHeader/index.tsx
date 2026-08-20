@@ -82,7 +82,7 @@ export function DashboardPageHeader({
           </Heading>
           {description && (
             <p className={cn(
-              "mt-1 line-clamp-2 max-w-2xl text-xs leading-4 text-muted-foreground sm:line-clamp-1 sm:text-sm sm:leading-5",
+              "mt-1 max-w-2xl text-xs leading-5 text-muted-foreground sm:text-sm",
               compactOnMobile && "hidden sm:block"
             )}>
               {description}
@@ -107,9 +107,7 @@ export function DashboardPageHeader({
               </div>
             )}
             {actions && (
-              /* One horizontally scrollable row on phones. Wrapping turned 3
-                 actions into 3 stacked rows and pushed the list below the fold. */
-              <div className="flex min-w-0 max-w-full items-center gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>*]:shrink-0 sm:flex-wrap sm:overflow-visible">
+              <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2 [&>*]:shrink-0">
                 {actions}
               </div>
             )}
@@ -121,13 +119,11 @@ export function DashboardPageHeader({
         <div
           className={cn(
             "mt-3 grid border-y border-border/60 sm:mt-4",
-            // Always one row, even on phones — value/label text shrinks instead,
-            // so 4-5 stats don't stack into a tall multi-row block.
             metrics.length === 1 && "grid-cols-1",
             metrics.length === 2 && "grid-cols-2",
-            metrics.length === 3 && "grid-cols-3",
-            metrics.length === 4 && "grid-cols-4",
-            metrics.length >= 5 && "grid-cols-5",
+            metrics.length === 3 && "grid-cols-2 sm:grid-cols-3",
+            metrics.length === 4 && "grid-cols-2 md:grid-cols-4",
+            metrics.length >= 5 && "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5",
             metricsClassName
           )}
         >

@@ -93,7 +93,7 @@ export default function SuperAgentInvoicesPage() {
       updateTotal(data.total ?? 0);
       if (data.summary) setSummary(data.summary);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : t("failedToLoad");
+      const msg = t("failedToLoad");
       setErrorMessage(msg);
       toast.error(msg);
     } finally {

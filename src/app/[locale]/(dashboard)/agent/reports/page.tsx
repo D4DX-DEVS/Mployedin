@@ -92,7 +92,7 @@ export default function AgentReportsPage() {
       const data = await res.json();
       setResult({ content: data.report ?? data.content ?? JSON.stringify(data), generatedAt: new Date().toLocaleTimeString() });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to generate report");
+      setError("We couldn't generate this report. No report was saved. Try again.");
     } finally {
       setLoading(false);
     }

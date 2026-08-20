@@ -26,6 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { toUserFacingError } from "@/lib/errors/user-facing";
 
 interface TrendData {
   current: number;
@@ -225,7 +226,7 @@ export default function AdminReportsPage() {
           return;
         }
 
-        setErrorMessage(error instanceof Error ? error.message : t("failedToLoadReports"));
+        setErrorMessage(toUserFacingError(error, { fallback: t("failedToLoadReports") }).message);
       })
       .finally(() => {
         if (isActive) {

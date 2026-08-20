@@ -360,7 +360,7 @@ export default function SuperAgentJobsPage() {
         setDetailError(data?.error ?? `HTTP ${res.status}`);
       }
     } catch (err) {
-      setDetailError(err instanceof Error ? err.message : "Network error");
+      setDetailError("We couldn't load this job. Nothing was changed. Check your connection and try again.");
     } finally {
       setDetailLoading(false);
     }

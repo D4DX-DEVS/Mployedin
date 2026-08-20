@@ -2,7 +2,9 @@
 
 import { useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { AlertTriangle, RefreshCw } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
+import { RecoveryActions } from "@/components/shared/RecoveryActions";
+import { reportError } from "@/lib/observability/report-error";
 
 export default function SuperAgentError({
   error,
@@ -13,7 +15,7 @@ export default function SuperAgentError({
 }) {
   const t = useTranslations("errorBoundary");
   useEffect(() => {
-    console.error("[Super Agent Error]", error);
+    reportError(error, { source: "super-agent-boundary", digest: error.digest });
   }, [error]);
 
   return (
@@ -25,15 +27,10 @@ export default function SuperAgentError({
         <div className="space-y-2">
           <h3 className="text-lg font-semibold text-destructive">{t("title")}</h3>
           <p className="text-sm text-muted-foreground">
-            {error.message || t("description")}
+            {t("description")}
           </p>
         </div>
-        <button
-          onClick={reset}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-        >
-          <RefreshCw className="w-4 h-4" /> {t("tryAgain")}
-        </button>
+        <RecoveryActions reset={reset} />
       </div>
     </div>
   );

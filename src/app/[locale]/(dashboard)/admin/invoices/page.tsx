@@ -167,7 +167,7 @@ export default function AdminInvoicesPage() {
       updateTotal(data.total ?? 0);
       if (data.summary) setSummary(data.summary);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : t("failedToLoadInvoices");
+      const msg = t("failedToLoadInvoices");
       setErrorMessage(msg);
       toast.error(msg);
     } finally {
@@ -190,7 +190,7 @@ export default function AdminInvoicesPage() {
       toast.success(t("invoiceStatusUpdated", { status: newStatus }));
       await fetchInvoices();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("failed"));
+      toast.error(t("failed"));
     }
   };
 

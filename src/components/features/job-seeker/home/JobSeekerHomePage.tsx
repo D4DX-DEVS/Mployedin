@@ -30,6 +30,7 @@ import { Progress } from "@/components/ui/progress";
 import { formatLocalizedLocation, getLocalizedCountryName } from "@/lib/i18n/locations";
 import { cn } from "@/lib/utils";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { DashboardNextAction, DashboardSignalStrip } from "@/components/shared/DashboardOverview";
 
 type FeedJob = {
   _id: string;
@@ -510,9 +511,7 @@ export function JobSeekerHomePage({
     return items.slice(0, 5);
   }, [profile, t]);
   const applicationCount = stats?.applicationsSent?.count ?? 0;
-  const savedJobsCount = stats?.savedJobs?.count ?? 0;
   const interviewCount = stats?.upcomingInterviews?.count ?? 0;
-  const profileViewCount = stats?.recruiterViews?.total ?? 0;
   const quickLinks = [
     {
       label: t("quickAccess.applications"),
@@ -551,10 +550,49 @@ export function JobSeekerHomePage({
     count: suggestions.length,
     countLabel: formatNumber(suggestions.length),
   });
+  const firstSuggestion = suggestions[0];
+  const nextAction = interviewCount > 0
+    ? {
+        title: t("taskFirst.interviewTitle", { count: formatNumber(interviewCount) }),
+        description: t("taskFirst.interviewDescription"),
+        href: `/${locale}/job-seeker/interviews`,
+        icon: CalendarDays,
+        badge: t("taskFirst.timeSensitive"),
+      }
+    : firstSuggestion
+      ? {
+          title: firstSuggestion.title,
+          description: firstSuggestion.body,
+          href: `/${locale}/job-seeker/${firstSuggestion.href}`,
+          icon: Sparkles,
+          badge: t("taskFirst.highImpact"),
+        }
+      : applicationCount > 0
+        ? {
+            title: t("taskFirst.trackApplicationsTitle"),
+            description: t("taskFirst.trackApplicationsDescription"),
+            href: `/${locale}/job-seeker/applications`,
+            icon: FileText,
+            badge: t("taskFirst.keepMoving"),
+          }
+        : {
+            title: t("hero.browseMatchingJobs"),
+            description: t("taskFirst.browseDescription"),
+            href: `/${locale}/job-seeker/jobs`,
+            icon: Search,
+            badge: t("taskFirst.startHere"),
+          };
+
+  const signals = quickLinks.map((item) => ({
+    label: item.label,
+    value: item.value,
+    href: item.href,
+    icon: item.icon,
+  }));
 
   return (
     <>
-      <div className="space-y-4">
+      <div className="page-container dashboard-overview-page">
         <section className="overflow-hidden rounded-xl sm:rounded-[28px] border border-border/70 bg-background px-3 py-4 shadow-[0_8px_24px_rgba(15,23,42,0.04)] sm:px-6 sm:py-5">
           <div className="space-y-4">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -597,29 +635,26 @@ export function JobSeekerHomePage({
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border/60 pt-3 text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">{activeMatchesCountLabel}</span>
-              <span>
-                <span className="font-semibold text-foreground">{formatNumber(applicationCount)}</span> {t("summary.applications")}
-              </span>
-              <span>
-                <span className="font-semibold text-foreground">{formatNumber(savedJobsCount)}</span> {t("summary.savedJobs")}
-              </span>
-              <span>
-                <span className="font-semibold text-foreground">{formatNumber(interviewCount)}</span> {t("summary.interviews")}
-              </span>
-              <span>
-                <span className="font-semibold text-foreground">{formatNumber(profileViewCount)}</span> {t("summary.profileViews")}
-              </span>
-              {suggestions.length > 0 && (
-                <button type="button" onClick={openGuide} className="inline-flex items-center gap-1 font-medium text-primary transition-colors hover:text-primary/80">
-                  {nextStepsLabel}
-                  <ArrowRight className="h-4 w-4" />
-                </button>
-              )}
-            </div>
+            <p className="border-t border-border/60 pt-3 text-sm font-medium text-foreground">
+              {activeMatchesCountLabel}
+              {suggestions.length > 0 && <span className="ms-2 text-muted-foreground">· {nextStepsLabel}</span>}
+            </p>
           </div>
         </section>
+
+        <DashboardNextAction
+          headingId="job-seeker-next-action"
+          title={t("taskFirst.recommendedNext")}
+          description={t("taskFirst.nextDescription")}
+          actionTitle={nextAction.title}
+          actionDescription={nextAction.description}
+          actionLabel={t("taskFirst.openAction")}
+          href={nextAction.href}
+          icon={nextAction.icon}
+          badge={nextAction.badge}
+        />
+
+        <DashboardSignalStrip headingId="job-seeker-signals" title={t("taskFirst.atAGlance")} signals={signals} />
 
         <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.72fr)_340px] xl:items-start">
           <div className="min-w-0 space-y-5">
@@ -937,47 +972,6 @@ export function JobSeekerHomePage({
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </Link>
               </div>
-            </section>
-
-            <section className="card-base overflow-hidden rounded-xl sm:rounded-[28px] panel-body">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("quickAccess.eyebrow")}</div>
-                  <h3 className="mt-1 text-lg font-semibold tracking-tight">{t("quickAccess.title")}</h3>
-                </div>
-                <CalendarDays className="h-4 w-4 text-primary" />
-              </div>
-              {/* Phones get one compact row per stat (icon · label · value) instead of
-                  four tall 2-up tiles; the tile grid returns from sm up. */}
-              <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 sm:gap-2.5">
-                {quickLinks.map((item) => {
-                  const Icon = item.icon;
-
-                  return (
-                    <Link
-                      key={item.label}
-                      href={item.href}
-                      className="group flex flex-row items-center gap-2.5 rounded-xl border border-border/60 bg-background/80 px-3 py-2 transition-colors hover:border-primary/40 hover:bg-muted/30 sm:flex-col sm:items-start sm:gap-2 sm:rounded-[20px] sm:p-3.5"
-                    >
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary sm:h-9 sm:w-9">
-                        <Icon className="h-4 w-4" />
-                      </span>
-                      <span className="order-3 text-base font-semibold leading-none tracking-tight text-foreground sm:order-none sm:text-2xl">{item.value}</span>
-                      <span className="min-w-0 flex-1 truncate text-xs font-medium text-muted-foreground sm:flex-none">{item.label}</span>
-                    </Link>
-                  );
-                })}
-              </div>
-              <Link
-                href={`/${locale}/job-seeker/preferences`}
-                className="mt-3 flex items-center justify-between rounded-[18px] border border-border/60 px-3.5 py-3 text-sm font-medium transition-colors hover:bg-muted/40"
-              >
-                <span className="flex items-center gap-2">
-                  <Target className="h-4 w-4 text-primary" />
-                  {t("quickAccess.managePreferences")}
-                </span>
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              </Link>
             </section>
 
             <section className="card-base overflow-hidden rounded-xl sm:rounded-[28px] panel-body">

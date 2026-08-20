@@ -9,7 +9,6 @@ import {
   Activity,
   ArrowRight,
   Briefcase,
-  CheckCircle2,
   FileText,
   TrendingUp,
   UserPlus,
@@ -29,6 +28,7 @@ import {
   QuickActionHealthBadge,
 } from "./_components/platform-health";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { DashboardNextAction, DashboardSignalStrip } from "@/components/shared/DashboardOverview";
 
 interface UsersByRoleRow {
   _id: string | null;
@@ -487,7 +487,6 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
   const stats = await getFastStats(locale);
   const dominantRole = stats.usersByRole[0];
   const applicationsPerActiveJob = stats.activeJobs > 0 ? stats.totalApplications / stats.activeJobs : 0;
-  const placementRate = stats.totalApplications > 0 ? (stats.totalPlacements / stats.totalApplications) * 100 : 0;
 
   const KNOWN_ROLES = new Set(["admin", "super_agent", "agent", "employer", "job_seeker"]);
   const knownRoles = stats.usersByRole.filter((role) => KNOWN_ROLES.has(String(role._id)));
@@ -690,8 +689,39 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
   ];
   const funnelMax = Math.max(1, ...funnelStages.map((stage) => stage.count));
 
+  const nextAction = stats.inactiveEmployers > 0
+    ? {
+        title: t("quickActions.userManagement.label"),
+        description: t("quickActions.userManagement.desc"),
+        href: `/${locale}/admin/users`,
+        icon: Users,
+        badge: t("taskFirst.attention"),
+      }
+    : stats.totalInterviews === 0 && stats.totalApplications > 0
+      ? {
+          title: t("quickActions.analytics.label"),
+          description: t("kpis.totalInterviews.empty"),
+          href: `/${locale}/admin/analytics`,
+          icon: TrendingUp,
+          badge: t("taskFirst.investigate"),
+        }
+      : {
+          title: t("quickActions.auditLogs.label"),
+          description: t("quickActions.auditLogs.desc"),
+          href: `/${locale}/admin/audit-logs`,
+          icon: Activity,
+          badge: t("taskFirst.review"),
+        };
+
+  const signals = kpis.map((kpi) => ({
+    label: kpi.label,
+    value: kpi.value,
+    href: kpi.href,
+    icon: kpi.icon,
+  }));
+
   return (
-    <div className="page-container pb-6">
+    <div className="page-container dashboard-overview-page pb-6">
       <DashboardPageHeader
         icon={Activity}
         eyebrow={t("hero.eyebrow")}
@@ -702,15 +732,21 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
           value: t("systemWatch.activeJobs", { count: stats.activeJobs }),
           note: t("systemWatch.applications", { count: stats.totalApplications }),
         }}
-        metrics={kpis.map((kpi) => ({
-          label: kpi.label,
-          value: kpi.value,
-          note: kpi.trend.label,
-          icon: kpi.icon,
-          iconClassName: "text-primary",
-          iconSurfaceClassName: "bg-primary/10",
-        }))}
       />
+
+      <DashboardNextAction
+        headingId="admin-next-action"
+        title={t("taskFirst.recommendedNext")}
+        description={t("taskFirst.nextDescription")}
+        actionTitle={nextAction.title}
+        actionDescription={nextAction.description}
+        actionLabel={t("taskFirst.openAction")}
+        href={nextAction.href}
+        icon={nextAction.icon}
+        badge={nextAction.badge}
+      />
+
+      <DashboardSignalStrip headingId="admin-signals" title={t("taskFirst.atAGlance")} signals={signals} />
 
       <div className="grid items-stretch gap-4 xl:grid-cols-[1.08fr_0.92fr]">
         <section className="workspace-panel-surface flex flex-col rounded-2xl panel-body" data-surface="light-panel">
@@ -725,7 +761,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
 
           {/* auto-rows-fr = every card same height; the trailing odd card spans
               both columns instead of leaving a dead half-row gap. */}
-          <div className="mt-3 grid flex-1 auto-rows-fr grid-cols-1 gap-2 sm:grid-cols-2 sm:[&>a:last-child:nth-child(odd)]:col-span-2">
+          <div className="admin-quick-actions-grid mt-3 grid min-w-0 flex-1 auto-rows-fr grid-cols-1 gap-2 sm:grid-cols-2 sm:[&>a:last-child:nth-child(odd)]:col-span-2">
             {quickActions.map((action, idx) => {
               const Icon = action.icon;
 
@@ -733,7 +769,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
                 <Link
                   key={`${action.href}-${idx}`}
                   href={action.href}
-                  className={`${adminInteractiveCardClassName} group flex min-w-0 items-start gap-2.5 p-3`}
+                  className={`${adminInteractiveCardClassName} group flex w-full min-w-0 max-w-full items-start gap-2.5 overflow-hidden p-3`}
                   data-surface="light-card"
                 >
                   <div className={`shrink-0 rounded-lg p-2 ${action.iconClassName}`}>
@@ -753,7 +789,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
                         </span>
                       )}
                     </div>
-                    <p className="mt-1 line-clamp-2 text-xs leading-4 text-muted-foreground">
+                    <p className="mt-1 line-clamp-2 [overflow-wrap:anywhere] text-xs leading-4 text-muted-foreground">
                       {action.desc}
                     </p>
                   </div>

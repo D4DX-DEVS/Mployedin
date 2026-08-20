@@ -162,7 +162,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
       // Redirect to payment gateway checkout
       window.location.href = data.checkoutUrl;
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("toastPaymentFailed"));
+      toast.error(t("toastPaymentFailed"));
     } finally {
       setGatewayLoading(false);
     }
@@ -190,7 +190,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
       setPaymentNotes("");
       onRefresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("toastNotificationFailed"));
+      toast.error(t("toastNotificationFailed"));
     } finally {
       setNotifyLoading(false);
     }
@@ -219,7 +219,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
       setDisputeDesc("");
       setDisputeCategory("other");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("toastQueryFailed"));
+      toast.error(t("toastQueryFailed"));
     } finally {
       setDisputeLoading(false);
     }
@@ -827,7 +827,7 @@ export default function EmployerInvoicesPage() {
       updateTotal(data.total ?? 0);
       if (data.summary) setSummary(prev => ({ ...prev, ...data.summary }));
     } catch (err) {
-      const msg = err instanceof Error ? err.message : t("toastLoadFailed");
+      const msg = t("toastLoadFailed");
       setErrorMessage(msg);
       toast.error(msg);
     } finally {

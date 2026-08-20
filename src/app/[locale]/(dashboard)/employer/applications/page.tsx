@@ -412,7 +412,7 @@ export default function EmployerApplicationsPage() {
       toast.success(t("aiMatchGenerated"));
     } catch (err) {
       console.error("Failed to compute AI match:", err);
-      const message = err instanceof Error ? err.message : t("aiMatchFailed");
+      const message = t("aiMatchFailed");
       toast.error(message);
     }
   }
@@ -501,7 +501,7 @@ export default function EmployerApplicationsPage() {
       // After successful shortlist, prompt user to schedule interviews
       setPostShortlistPrompt({ shortlistedIds: ids, candidateNames: names });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to shortlist candidates");
+      toast.error("We couldn't shortlist the selected candidates. Their current stages are unchanged. Review the selection and try again.");
     }
   }
 
@@ -573,7 +573,7 @@ export default function EmployerApplicationsPage() {
       });
     } catch (err) {
       console.error("Failed to create interview:", err);
-      toast.error(err instanceof Error ? err.message : t("interviewScheduleFailed"));
+      toast.error(t("interviewScheduleFailed"));
     }
   }
 
@@ -698,7 +698,7 @@ export default function EmployerApplicationsPage() {
       setShowRejectPrompt(false);
       setEmailPreviewModal(null);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Bulk action failed");
+      toast.error("We couldn't complete the bulk action. Check the candidate stages before trying again.");
     }
   }
 
@@ -770,7 +770,7 @@ export default function EmployerApplicationsPage() {
       });
     } catch (err) {
       console.error("Bulk interview scheduling failed:", err);
-      toast.error(err instanceof Error ? err.message : t("interviewScheduleFailed"));
+      toast.error(t("interviewScheduleFailed"));
     }
   }
 
@@ -803,7 +803,7 @@ export default function EmployerApplicationsPage() {
       const stageLabel = pipelineStages.find((s) => s.value === nextStatus)?.label ?? nextStatus;
       toast.success(t("stageUpdatedTo", { stage: stageLabel }));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("stageUpdateFailed"));
+      toast.error(t("stageUpdateFailed"));
     }
   }
 
@@ -3390,4 +3390,3 @@ function ActivityTimelinePanel({
   if (!mounted) return null;
   return createPortal(sheet, document.body);
 }
-

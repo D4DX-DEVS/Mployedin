@@ -482,7 +482,7 @@ function ApplicationCard({
       setShowWithdraw(false);
       onWithdrawn();
     } catch (e) {
-      setWithdrawError(e instanceof Error ? e.message : t("withdraw"));
+      setWithdrawError(t("withdraw"));
     } finally {
       setWithdrawing(false);
     }

@@ -66,7 +66,7 @@ export default function CommTemplatesPage() {
       setFormData({ name: "", type: "rejection", subject: "", body: "" });
       setShowForm(false);
     } catch (err: unknown) {
-      toast.error(t("errorCreating", { error: err instanceof Error ? err.message : t("unknownError") }));
+      toast.error(t("errorCreating", { error: t("unknownError") }));
     } finally {
       setSaving(false);
     }

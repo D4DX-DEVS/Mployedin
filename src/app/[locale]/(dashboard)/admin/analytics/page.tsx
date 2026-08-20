@@ -17,6 +17,7 @@ import { MarkdownRenderer } from "@/components/shared/MarkdownRenderer";
 import { BarChart3, Download, FileSpreadsheet, FileText, Loader2, Sparkles, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import { exportExcelRows } from "@/lib/export";
+import { toUserFacingError } from "@/lib/errors/user-facing";
 
 type ReportRow = {
   section: string;
@@ -130,11 +131,10 @@ export default function AdminAnalyticsPage() {
         const data = await res.json();
         setResult(data.report ?? data.content ?? JSON.stringify(data, null, 2));
       } else {
-        const errData = await res.json().catch(() => ({})) as { error?: string };
         const statusMsg = res.status === 429 ? t("rateLimitExceeded")
           : res.status === 401 ? t("authenticationRequired")
           : res.status === 403 ? t("insufficientPermissions")
-          : errData.error ?? t("serverError", { status: res.status });
+          : t("serverError");
         setResult(`⚠️ ${statusMsg}`);
       }
     } catch (error: unknown) {
@@ -142,8 +142,7 @@ export default function AdminAnalyticsPage() {
         return;
       }
 
-      const msg = error instanceof Error ? error.message : "Unknown error";
-      setResult(`⚠️ ${t("reportGenerationFailed", { error: msg })}`);
+      setResult(`⚠️ ${toUserFacingError(error, { fallback: t("reportGenerationFailed") }).message}`);
     } finally {
       if (activeRequestRef.current === controller) {
         activeRequestRef.current = null;

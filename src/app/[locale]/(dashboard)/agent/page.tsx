@@ -18,6 +18,7 @@ import {
   Users,
 } from "lucide-react";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { DashboardNextAction, DashboardSignalStrip } from "@/components/shared/DashboardOverview";
 
 export default async function AgentDashboard({ params }: { params: Promise<{ locale: string }> }) {
   const session = await auth();
@@ -210,37 +211,6 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
     },
   ];
 
-  const heroStats = [
-    {
-      label: t("heroStats.activeEmployers.label"),
-      value: employerCount,
-      description: t("heroStats.activeEmployers.description"),
-      icon: Building2,
-      tone: "workspace-tone-sky",
-    },
-    {
-      label: t("heroStats.activeJobs.label"),
-      value: activeJobs,
-      description: t("heroStats.activeJobs.description"),
-      icon: BriefcaseBusiness,
-      tone: "workspace-tone-emerald",
-    },
-    {
-      label: t("heroStats.applications.label"),
-      value: totalApps,
-      description: t("heroStats.applications.description"),
-      icon: Users,
-      tone: "workspace-tone-indigo",
-    },
-    {
-      label: t("heroStats.placements.label"),
-      value: (perf as Record<string, number>).placementsCompleted ?? 0,
-      description: t("heroStats.placements.description"),
-      icon: CalendarCheck2,
-      tone: "workspace-tone-amber",
-    },
-  ];
-
   function getJobStatusClasses(status: string): string {
     switch (status) {
       case "active":
@@ -271,8 +241,39 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
     }
   }
 
+  const nextAction = totalApps > 0
+    ? {
+        title: t("actions.candidates.label"),
+        description: t("actions.candidates.note"),
+        href: `/${locale}/agent/candidates`,
+        icon: Users,
+        badge: t("taskFirst.attention"),
+      }
+    : activeJobs === 0
+      ? {
+          title: t("actions.postJob.label"),
+          description: t("actions.postJob.note"),
+          href: `/${locale}/agent/jobs/new`,
+          icon: BriefcaseBusiness,
+          badge: t("taskFirst.startHere"),
+        }
+      : {
+          title: t("actions.addEmployerLead.label"),
+          description: t("actions.addEmployerLead.note"),
+          href: `/${locale}/agent/leads/new`,
+          icon: Target,
+          badge: t("taskFirst.keepMoving"),
+        };
+
+  const signals = [
+    { label: t("kpis.activeEmployers"), value: employerCount, href: `/${locale}/agent/employers`, icon: Building2 },
+    { label: t("kpis.activeJobs"), value: activeJobs, href: `/${locale}/agent/jobs`, icon: BriefcaseBusiness },
+    { label: t("kpis.totalApplications"), value: totalApps, href: `/${locale}/agent/candidates`, icon: Users },
+    { label: t("kpis.placements"), value: kpis[3]?.value ?? 0, href: `/${locale}/agent/reports`, icon: CalendarCheck2 },
+  ];
+
   return (
-    <div className="page-container">
+    <div className="page-container dashboard-overview-page">
       <DashboardPageHeader
         icon={Target}
         eyebrow={t("hero.eyebrow")}
@@ -283,14 +284,24 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
           value: t("portfolio.activeAccounts", { count: employerCount }),
           note: t("portfolio.summary", { jobs: activeJobs, applications: totalApps, placements: kpis[3]?.value ?? 0 }),
         }}
-        metrics={heroStats.map((stat) => ({
-          label: stat.label,
-          value: stat.value,
-          note: stat.description,
-          icon: stat.icon,
-          iconClassName: "text-primary",
-          iconSurfaceClassName: "bg-primary/10",
-        }))}
+      />
+
+      <DashboardNextAction
+        headingId="agent-next-action"
+        title={t("taskFirst.recommendedNext")}
+        description={t("taskFirst.nextDescription")}
+        actionTitle={nextAction.title}
+        actionDescription={nextAction.description}
+        actionLabel={t("taskFirst.openAction")}
+        href={nextAction.href}
+        icon={nextAction.icon}
+        badge={nextAction.badge}
+      />
+
+      <DashboardSignalStrip
+        headingId="agent-signals"
+        title={t("taskFirst.atAGlance")}
+        signals={signals}
       />
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,0.94fr)_minmax(0,1.06fr)]">

@@ -635,7 +635,7 @@ export default function AgentLeadsPage() {
       setScoreResult(data);
       toast.success(t("leadScored", { temperature: data.temperature, score: data.score }));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("aiScoringFailed"));
+      toast.error(t("aiScoringFailed"));
     } finally {
       setScoringLeadId(null);
     }
@@ -664,7 +664,7 @@ export default function AgentLeadsPage() {
       toast.success(t("leadConvertedSuccess", { company: lead.companyName }));
       fetchLeads();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("leadConversionFailed"));
+      toast.error(t("leadConversionFailed"));
     } finally {
       setConvertingLeadId(null);
     }

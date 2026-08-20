@@ -93,7 +93,7 @@ export default function PlacementDetailPage() {
       toast.success(t("statusUpdated"));
       await load();
     } catch (e: unknown) {
-      toast.error(e instanceof Error && e.message ? e.message : t("statusUpdateFailed"));
+      toast.error(t("statusUpdateFailed"));
     } finally {
       setTransitioning(false);
     }

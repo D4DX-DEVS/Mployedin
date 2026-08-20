@@ -2,6 +2,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Clock, Sparkles } from "lucide-react";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { CopilotLauncher } from "@/components/shared/CopilotLauncher";
 
 interface SmartHeaderProps {
   userName: string;
@@ -32,21 +33,27 @@ export function SmartHeader({
   // reads coherently.
   let eyebrowKey: string;
   let subtitleKey: string;
-  if (highMatchCount > 0) {
-    eyebrowKey = "aiMatchesFound";
-    subtitleKey = "subtitleAiMatches";
-  } else if (newApplications > 0) {
+  let subtitleCount: number;
+  if (newApplications > 0) {
     eyebrowKey = "reviewQueueActive";
     subtitleKey = "subtitleReview";
+    subtitleCount = newApplications;
+  } else if (highMatchCount > 0) {
+    eyebrowKey = "aiMatchesFound";
+    subtitleKey = "subtitleAiMatches";
+    subtitleCount = highMatchCount;
   } else if (scheduledInterviews > 0) {
     eyebrowKey = "interviewMomentum";
     subtitleKey = "subtitleInterviews";
+    subtitleCount = scheduledInterviews;
   } else if (activeJobCount > 0) {
     eyebrowKey = "employerWorkspace";
     subtitleKey = "subtitleActive";
+    subtitleCount = activeJobCount;
   } else {
     eyebrowKey = "readyToLaunch";
     subtitleKey = "subtitleEmpty";
+    subtitleCount = 0;
   }
 
   const newJobHref = `/${locale}/employer/jobs/ai-create`;
@@ -57,22 +64,23 @@ export function SmartHeader({
 
   return (
     <DashboardPageHeader
-      /* ponytail: phones put the CTA inline with the title instead of a
-         full-width row of its own — same treatment as the jobs hero. */
-      className="[&>div:first-child]:flex-row [&>div:first-child]:items-start [&>div:first-child]:justify-between"
       icon={Sparkles}
       eyebrow={t(eyebrowKey)}
       title={`${t("welcomeBack", { userName })} 👋`}
-      description={t(subtitleKey, { count: highMatchCount })}
+      description={t(subtitleKey, { count: subtitleCount })}
       actions={
-        <Link
-          href={newJobHref}
-          aria-label={t("createJob")}
-          className="inline-flex h-11 w-11 shrink-0 items-center justify-center gap-2 self-start rounded-xl bg-sky-600 text-sm font-semibold text-white shadow-[0_10px_28px_-12px_rgba(2,132,199,0.7)] transition hover:bg-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 sm:w-auto sm:px-5"
-        >
-          <Sparkles className="h-4 w-4" />
-          <span className="hidden sm:inline">{t("createJob")}</span>
-        </Link>
+        <>
+          <Link
+            href={newJobHref}
+            aria-label={t("createJob")}
+            className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 self-start rounded-xl border border-border bg-background/80 px-3 text-sm font-semibold text-foreground transition hover:border-sky-300 hover:bg-sky-50 hover:text-sky-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 dark:hover:border-sky-500/40 dark:hover:bg-sky-500/10 dark:hover:text-sky-200 sm:px-4"
+          >
+            <Sparkles className="h-4 w-4" />
+            <span className="sm:hidden">{t("createJobShort")}</span>
+            <span className="hidden sm:inline">{t("createJob")}</span>
+          </Link>
+          <CopilotLauncher />
+        </>
       }
       footer={
         <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -80,6 +88,9 @@ export function SmartHeader({
           {activityLabel}
         </span>
       }
+      inlineActions
+      compactOnMobile
+      className="!rounded-none !border-0 !bg-transparent !px-0 !py-0 !shadow-none"
     />
   );
 }
