@@ -180,14 +180,14 @@ function EnforcementToggleCard() {
   };
 
   return (
-    <div className="rounded-2xl border border-border bg-background/70 p-5">
+    <div className="rounded-2xl border border-border bg-background/70 panel-body">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3">
           <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${enabled ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
             <ShieldCheck className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-foreground">{t("subscriptionEnforcement")}</h3>
+            <h3 className="heading-label font-semibold text-foreground">{t("subscriptionEnforcement")}</h3>
             <p className="mt-0.5 max-w-xl text-sm text-muted-foreground">
               {enabled
                 ? t("enforcementEnabledDescription")
@@ -210,7 +210,7 @@ function EnforcementToggleCard() {
       </div>
 
       {enabled && (
-        <div className="mt-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+        <div className="mt-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 text-xs text-amber-800 chip-pad">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>{t("enforcementWarning")}</span>
         </div>
@@ -373,9 +373,9 @@ export default function AdminSubscriptionPlansPage() {
 
       {/* ─── Create / Edit Form ─── */}
       {showForm && (
-        <section className="rounded-2xl border border-sky-500/30 bg-sky-500/5 p-6 space-y-5">
+        <section className="rounded-2xl border border-sky-500/30 bg-sky-500/5 space-y-5 panel-body">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-foreground">
+            <h3 className="heading-subsection font-semibold text-foreground">
               {editId ? t("editPlanTitle") : t("createNewPlanTitle")}
             </h3>
             <button onClick={closeForm} className="text-muted-foreground hover:text-foreground">
@@ -674,9 +674,7 @@ export default function AdminSubscriptionPlansPage() {
                 ).map((af, idx) => (
                   <div
                     key={af.feature}
-                    className={`flex items-center gap-3 rounded-xl border p-3 transition-colors ${
-                      af.enabled ? "border-sky-500/30 bg-sky-500/5" : "border-border"
-                    }`}
+                    className={`flex items-center gap-3 rounded-xl border transition-colors ${ af.enabled ? "border-sky-500/30 bg-sky-500/5" : "border-border" } chip-pad`}
                   >
                     <Switch
                       checked={af.enabled}
@@ -724,7 +722,7 @@ export default function AdminSubscriptionPlansPage() {
       {!plans?.length ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border py-16 text-center">
           <Crown className="mb-4 h-12 w-12 text-muted-foreground/40" />
-          <h3 className="text-lg font-semibold text-foreground">{t("noPlanEmptyState")}</h3>
+          <h3 className="heading-subsection font-semibold text-foreground">{t("noPlanEmptyState")}</h3>
           <p className="mt-1 text-sm text-muted-foreground">
             {t("noPlanEmptyDescription", {
               role: activeTab === "employer" ? t("noPlanEmptyDescriptionEmployer") : t("noPlanEmptyDescriptionJobSeeker")
@@ -857,7 +855,7 @@ export default function AdminSubscriptionPlansPage() {
                           ["teamSeatsDetail", p.employerLimits.maxTeamMembers],
                           ["featuredJobsDetail", p.employerLimits.featuredJobListings],
                         ] as [string, number][]).map(([labelKey, val]) => (
-                          <div key={labelKey} className="rounded-xl border border-border bg-background p-3">
+                          <div key={labelKey} className="rounded-xl border border-border bg-background chip-pad">
                             <p className="text-xs text-muted-foreground">{t(labelKey)}</p>
                             <p className="text-lg font-semibold">{val === -1 ? t("unlimitedValue") : val}</p>
                           </div>
@@ -867,7 +865,7 @@ export default function AdminSubscriptionPlansPage() {
 
                     {p.targetRole === "job_seeker" && p.jobSeekerLimits && (
                       <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
-                        <div className="rounded-xl border border-border bg-background p-3">
+                        <div className="rounded-xl border border-border bg-background chip-pad">
                           <p className="text-xs text-muted-foreground">{t("maxApplicationsJobSeekerLabel")}</p>
                           <p className="text-lg font-semibold">
                             {p.jobSeekerLimits.maxApplicationsPerMonth === -1
@@ -917,7 +915,7 @@ export default function AdminSubscriptionPlansPage() {
                             .map((a) => (
                               <div
                                 key={a.feature}
-                                className="flex items-center justify-between rounded-lg border border-sky-500/20 bg-sky-500/5 px-3 py-2"
+                                className="flex items-center justify-between rounded-lg border border-sky-500/20 bg-sky-500/5 chip-pad"
                               >
                                 <span className="text-sm">{AI_FEATURE_LABELS[a.feature] ?? a.feature}</span>
                                 <span className="text-xs font-medium text-muted-foreground">

@@ -390,7 +390,7 @@ function EventDetail({
     : null;
 
   return (
-    <div className="workspace-glass-panel animate-in fade-in-0 zoom-in-95 rounded-2xl border p-4 shadow-lg">
+    <div className="workspace-glass-panel card-pad animate-in fade-in-0 zoom-in-95 rounded-2xl border shadow-lg">
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2.5">
           <div
@@ -593,9 +593,7 @@ function MonthView({
                       ev.stopPropagation();
                       onSelectEvent(e);
                     }}
-                    className={`flex cursor-pointer items-center gap-1 rounded-lg border-s-2 px-1.5 py-0.5 text-[10px] font-medium leading-tight transition-all duration-150 hover:opacity-90 hover:shadow-sm hover:translate-x-0.5 ${
-                      isPast ? "opacity-50" : ""
-                    } ${EVENT_COLORS[e.type] ?? "bg-primary/10 border-primary/40 text-primary"}`}
+                    className={`flex cursor-pointer items-center gap-1 rounded-lg border-s-2 text-[10px] font-medium leading-tight transition-all duration-150 hover:opacity-90 hover:shadow-sm hover:translate-x-0.5 ${ isPast ? "opacity-50" : "" } ${EVENT_COLORS[e.type] ?? "bg-primary/10 border-primary/40 text-primary"} chip-pad`}
                   >
                     <span className="truncate">
                       {formatTime(new Date(e.scheduledAt), locale).replace(/\s?(AM|PM|Øµ|Ù…)/, "").trim()}{" "}
@@ -776,10 +774,7 @@ function TimeGridView({
                       <button
                         key={evt._id}
                         onClick={() => onSelectEvent(evt)}
-                        className={`absolute inset-x-1 z-10 overflow-hidden rounded-xl border-s-[3px] px-2.5 py-1.5 text-start transition-all duration-200 hover:shadow-lg hover:scale-[1.02] hover:z-30 active:scale-[0.98] ${
-                          EVENT_COLORS[evt.type] ??
-                          "bg-primary/10 border-primary/40 text-primary"
-                        }`}
+                        className={`absolute inset-x-1 z-10 overflow-hidden rounded-xl border-s-[3px] text-start transition-all duration-200 hover:shadow-lg hover:scale-[1.02] hover:z-30 active:scale-[0.98] ${ EVENT_COLORS[evt.type] ?? "bg-primary/10 border-primary/40 text-primary" } chip-pad`}
                         style={{
                           top: `${topMin}px`,
                           height: `${Math.max(heightMin, 24)}px`,
@@ -868,10 +863,7 @@ function UpcomingList({
               <button
                 key={e._id}
                 onClick={() => onSelect(e)}
-                className={`w-full rounded-xl border-s-[3px] p-3 text-start transition-colors hover:bg-muted/40 ${
-                  EVENT_COLORS[e.type] ??
-                  "bg-primary/5 border-primary/40 text-primary"
-                }`}
+                className={`w-full rounded-xl border-s-[3px] text-start transition-colors hover:bg-muted/40 ${ EVENT_COLORS[e.type] ?? "bg-primary/5 border-primary/40 text-primary" } chip-pad`}
               >
                 <div className="flex items-center gap-2">
                   {typeIcon(e.type)}
@@ -1067,7 +1059,7 @@ export default function MployedinCalendar({
               <NextIcon className="h-4 w-4" />
             </Button>
           </div>
-          <h2 className="text-base font-semibold tracking-tight text-foreground sm:text-lg">
+          <h2 className="heading-section font-semibold tracking-tight text-foreground">
             {headerTitle}
           </h2>
         </div>
@@ -1095,11 +1087,7 @@ export default function MployedinCalendar({
             <button
               key={key}
               onClick={() => setView(key)}
-              className={`flex items-center gap-1.5 rounded-[10px] px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
-                view === key
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
+              className={`flex items-center gap-1.5 rounded-[10px] text-xs font-medium transition-all duration-200 ${ view === key ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground" } chip-pad`}
             >
               <Icon className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">{t(labelKey)}</span>

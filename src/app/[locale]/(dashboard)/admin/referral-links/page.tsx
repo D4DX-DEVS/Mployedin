@@ -123,19 +123,19 @@ export default function AdminReferralLinksPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border border-border bg-card p-3.5 sm:p-4">
+        <div className="rounded-xl border border-border bg-card card-pad">
           <p className="text-xs font-medium text-muted-foreground">{t("totalLinks")}</p>
           <p className="mt-1 text-xl sm:text-2xl font-bold">{serverTotal}</p>
         </div>
-        <div className="rounded-xl border border-border bg-card p-3.5 sm:p-4">
+        <div className="rounded-xl border border-border bg-card card-pad">
           <p className="text-xs font-medium text-muted-foreground">{t("activeLinks")}</p>
           <p className="mt-1 text-xl sm:text-2xl font-bold text-green-600">{activeLinks}</p>
         </div>
-        <div className="rounded-xl border border-border bg-card p-3.5 sm:p-4">
+        <div className="rounded-xl border border-border bg-card card-pad">
           <p className="text-xs font-medium text-muted-foreground">{t("totalRegistrations")}</p>
           <p className="mt-1 text-xl sm:text-2xl font-bold text-blue-600">{totalRegistrations}</p>
         </div>
-        <div className="rounded-xl border border-border bg-card p-3.5 sm:p-4">
+        <div className="rounded-xl border border-border bg-card card-pad">
           <p className="text-xs font-medium text-muted-foreground">{t("avgRegistrationsPerLink")}</p>
           <p className="mt-1 text-xl sm:text-2xl font-bold">{serverTotal > 0 ? (totalRegistrations / serverTotal).toFixed(1) : "0"}</p>
         </div>
@@ -271,7 +271,7 @@ export default function AdminReferralLinksPage() {
                           ) : (
                             <div className="grid gap-2 sm:grid-cols-2">
                               {link.registrations.map((reg, i) => (
-                                <div key={i} className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
+                                <div key={i} className="flex items-center gap-3 rounded-lg border border-border bg-card chip-pad">
                                   <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-blue-600">
                                     <Building2 className="h-4 w-4" />
                                   </div>

@@ -70,7 +70,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
           className="flex flex-col items-center justify-center gap-4 rounded-lg border border-destructive/20 bg-destructive/5 p-8"
         >
           <div className="text-center space-y-2">
-            <h3 className="text-lg font-semibold text-destructive">
+            <h3 className="heading-subsection font-semibold text-destructive">
               We couldn&apos;t load this section
             </h3>
             <p className="text-sm text-muted-foreground max-w-md">

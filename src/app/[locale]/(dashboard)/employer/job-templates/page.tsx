@@ -143,7 +143,7 @@ export default function EmployerJobTemplatesPage() {
         ) : loading ? (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="workspace-glass-panel rounded-2xl p-5 space-y-3">
+              <div key={i} className="workspace-glass-panel rounded-2xl space-y-3 panel-body">
                 <div className="flex items-start justify-between">
                   <div className="space-y-2">
                     <Skeleton className="h-4 w-32" />
@@ -164,7 +164,7 @@ export default function EmployerJobTemplatesPage() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {templates.map((tmpl) => (
-              <div key={tmpl._id} className="workspace-glass-panel rounded-2xl p-5 space-y-3">
+              <div key={tmpl._id} className="workspace-glass-panel rounded-2xl space-y-3 panel-body">
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-sm font-semibold text-foreground">{tmpl.name}</p>

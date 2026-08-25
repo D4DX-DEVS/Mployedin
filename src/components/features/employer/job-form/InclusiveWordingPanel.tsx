@@ -45,12 +45,12 @@ export function InclusiveWordingPanel({ values }: InclusiveWordingPanelProps) {
   return (
     <section
       aria-labelledby="inclusive-wording-heading"
-      className="space-y-3 rounded-2xl border border-border bg-background p-3 shadow-sm sm:p-4"
+      className="space-y-3 rounded-2xl border border-border bg-background shadow-sm card-pad"
     >
       <div className="min-w-0 space-y-1">
         <h2
           id="inclusive-wording-heading"
-          className="flex items-center gap-1.5 text-sm font-semibold text-foreground"
+          className="heading-label flex items-center gap-1.5 font-semibold text-foreground"
         >
           {clean ? (
             <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-700" aria-hidden="true" />
@@ -85,7 +85,7 @@ export function InclusiveWordingPanel({ values }: InclusiveWordingPanelProps) {
             {findings.map((finding) => (
               <li
                 key={`${finding.characteristic}-${finding.suggestionKey}`}
-                className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-amber-950"
+                className="rounded-xl border border-amber-300 bg-amber-50 text-amber-950 chip-pad"
               >
                 <p className="font-semibold">
                   {tChar(finding.characteristic)}
@@ -97,7 +97,7 @@ export function InclusiveWordingPanel({ values }: InclusiveWordingPanelProps) {
               </li>
             ))}
             {flagsExperienceCap && (
-              <li className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-amber-950">
+              <li className="rounded-xl border border-amber-300 bg-amber-50 text-amber-950 chip-pad">
                 <p className="font-semibold">{t("experienceCapTitle")}</p>
                 <p className="mt-1 leading-5">{t("experienceCapBody")}</p>
               </li>

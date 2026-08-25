@@ -135,7 +135,7 @@ export function RichTextEditor({
                 placeholder="https://..."
                 className="h-8 text-sm"
               />
-              <Button type="button" size="sm" className="h-8 px-2" onClick={applyLink}>
+              <Button type="button" size="dense" className="px-2" onClick={applyLink}>
                 <Check className="h-4 w-4" />
               </Button>
             </div>

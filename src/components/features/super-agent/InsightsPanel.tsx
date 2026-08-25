@@ -375,7 +375,7 @@ export function SuperAgentInsightsPanel() {
       {!mobileOpen && visibleInsights.length > 0 && (
         <button
           onClick={() => setMobileOpen(true)}
-          className="flex w-full items-center justify-between rounded-lg border border-border/50 bg-background/70 px-3 py-2 text-left sm:hidden"
+          className="flex w-full items-center justify-between rounded-lg border border-border/50 bg-background/70 text-left sm:hidden chip-pad"
         >
           <span className="text-[13px] font-semibold text-foreground">
             {visibleInsights.length} {t("aiInsights")}

@@ -140,7 +140,7 @@ export function ReferralLinkDialog({ open, onClose }: ReferralLinkDialogProps) {
                 <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("generatingLink")}
               </div>
             ) : legacyLink ? (
-              <div className="mt-2 flex items-center gap-2 rounded-xl border border-border/60 bg-secondary/40 px-3 py-2.5">
+              <div className="mt-2 flex items-center gap-2 rounded-xl border border-border/60 bg-secondary/40 chip-pad">
                 <code className="flex-1 truncate text-xs text-foreground">{legacyLink}</code>
                 <button
                   onClick={() => handleCopy(legacyLink, "legacy")}
@@ -165,15 +165,15 @@ export function ReferralLinkDialog({ open, onClose }: ReferralLinkDialogProps) {
 
           {/* ── Stats ─────────────────────────────────────────── */}
           <div className="mx-6 mt-5 grid grid-cols-3 gap-3">
-            <div className="rounded-xl border border-border/50 bg-secondary/30 p-3 text-center">
+            <div className="rounded-xl border border-border/50 bg-secondary/30 text-center chip-pad">
               <p className="text-lg font-semibold text-foreground">{advancedLinks.length}</p>
               <p className="text-[10px] text-muted-foreground">{t("activeLinks")}</p>
             </div>
-            <div className="rounded-xl border border-border/50 bg-secondary/30 p-3 text-center">
+            <div className="rounded-xl border border-border/50 bg-secondary/30 text-center chip-pad">
               <p className="text-lg font-semibold text-foreground">{totalRegistrations}</p>
               <p className="text-[10px] text-muted-foreground">{t("registrations")}</p>
             </div>
-            <div className="rounded-xl border border-border/50 bg-secondary/30 p-3 text-center">
+            <div className="rounded-xl border border-border/50 bg-secondary/30 text-center chip-pad">
               <p className="text-lg font-semibold text-emerald-600">
                 {totalRegistrations > 0 ? "100%" : "—"}
               </p>
@@ -276,7 +276,7 @@ export function ReferralLinkDialog({ open, onClose }: ReferralLinkDialogProps) {
                   return (
                     <div
                       key={link._id}
-                      className="flex items-center gap-3 rounded-xl border border-border/50 bg-secondary/20 p-3 transition-colors hover:bg-secondary/40"
+                      className="flex items-center gap-3 rounded-xl border border-border/50 bg-secondary/20 transition-colors hover:bg-secondary/40 chip-pad"
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">

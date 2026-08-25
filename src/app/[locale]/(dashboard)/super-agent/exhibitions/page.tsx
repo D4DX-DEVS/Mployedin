@@ -362,8 +362,8 @@ export default function SuperAgentExhibitionsPage() {
                           <div className="flex flex-wrap items-center justify-end gap-1">
                             <Button
                               variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 rounded-lg text-muted-foreground hover:text-primary"
+                              size="iconDense"
+                              className="rounded-lg text-muted-foreground hover:text-primary"
                               onClick={() => setDetailItem(item)}
                               title={t("viewDetails")}
                               aria-label={t("viewDetails")}
@@ -374,7 +374,7 @@ export default function SuperAgentExhibitionsPage() {
                             {item.status === "under_review" && (<>
                               <Button size="sm" onClick={() => openReview(item, "approved")} className="h-8 rounded-lg bg-emerald-600 text-xs text-white hover:bg-emerald-700"><ThumbsUp className="mr-1 h-3.5 w-3.5" /> Approve</Button>
                               <Button size="sm" variant="outline" onClick={() => openReview(item, "revision_requested")} className="h-8 rounded-lg border-orange-200 text-xs text-orange-700 hover:bg-orange-50"><RotateCcw className="mr-1 h-3.5 w-3.5" /> Revise</Button>
-                              <Button size="sm" variant="destructive" className="h-8 rounded-lg text-xs" onClick={() => openReview(item, "rejected")}><ThumbsDown className="mr-1 h-3.5 w-3.5" /> Reject</Button>
+                              <Button size="dense" variant="destructive" className="rounded-lg text-xs" onClick={() => openReview(item, "rejected")}><ThumbsDown className="mr-1 h-3.5 w-3.5" /> Reject</Button>
                             </>)}
                           </div>
                         </td>

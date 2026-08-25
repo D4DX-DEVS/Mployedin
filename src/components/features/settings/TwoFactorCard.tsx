@@ -112,7 +112,7 @@ export function TwoFactorCard() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("security")}</div>
-          <h2 className="mt-1 text-lg font-semibold tracking-tight text-foreground">{t("twoFactorAuthentication")}</h2>
+          <h2 className="heading-section mt-1 font-semibold tracking-tight text-foreground">{t("twoFactorAuthentication")}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Protect this account with a 6-digit code from an authenticator app (Google Authenticator, Authy, 1Password).
           </p>
@@ -129,7 +129,7 @@ export function TwoFactorCard() {
       </div>
 
       {error && (
-        <div className="mt-4 rounded-lg border border-destructive/20 bg-destructive/10 p-3">
+        <div className="mt-4 rounded-lg border border-destructive/20 bg-destructive/10 chip-pad">
           <p className="text-sm font-medium text-destructive">{error}</p>
         </div>
       )}
@@ -149,7 +149,7 @@ export function TwoFactorCard() {
 
       {phase === "setup" && (
         <div className="mt-5 grid gap-6 sm:grid-cols-[auto_1fr]">
-          <div className="rounded-2xl border border-border/70 bg-white p-3 w-fit">
+          <div className="rounded-2xl border border-border/70 bg-white w-fit chip-pad">
             {qrDataUrl && (
               <Image src={qrDataUrl} alt="2FA QR code" width={200} height={200} unoptimized />
             )}
@@ -163,7 +163,7 @@ export function TwoFactorCard() {
                 {manualKey}
               </code>
             </div>
-            <div className="space-y-2">
+            <div className="field">
               <Label htmlFor="totp-verify">{t("enterCode")}</Label>
               <div className="flex gap-2">
                 <Input
@@ -186,7 +186,7 @@ export function TwoFactorCard() {
 
       {phase === "recovery" && (
         <div className="mt-5 space-y-4">
-          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 card-pad">
             <p className="text-sm font-semibold text-amber-700">
               Save these recovery codes now — they will not be shown again.
             </p>
@@ -222,7 +222,7 @@ export function TwoFactorCard() {
               {t("disableTwoFactor")}
             </Button>
           ) : (
-            <div className="space-y-3 rounded-xl border border-border/70 p-4">
+            <div className="space-y-3 rounded-xl border border-border/70 card-pad">
               <p className="text-sm font-medium text-foreground">Confirm with your password and a current code:</p>
               <div className="grid gap-2 sm:grid-cols-2">
                 <Input

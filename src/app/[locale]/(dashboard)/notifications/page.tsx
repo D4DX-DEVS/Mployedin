@@ -61,7 +61,7 @@ export default function NotificationsPage() {
       {loading ? (
         <div className="space-y-2" aria-busy="true">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="flex gap-3 p-4 rounded-xl border border-border animate-pulse"
+            <div key={i} className="flex gap-3 rounded-xl border border-border animate-pulse card-pad"
               style={{ opacity: 1 - i * 0.12 }}>
               <div className="w-9 h-9 rounded-full bg-muted flex-shrink-0" />
               <div className="flex-1 space-y-2 py-0.5">

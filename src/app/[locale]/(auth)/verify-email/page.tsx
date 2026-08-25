@@ -186,7 +186,7 @@ export default function VerifyEmailPage() {
               {t("verifiedBody")}
             </p>
           </div>
-          <Button asChild className="w-full max-w-xs h-11">
+          <Button size="lg" asChild className="w-full max-w-xs">
             <Link href={`/${locale ?? "en"}/login`}>{t("continueToSignIn")}</Link>
           </Button>
         </div>
@@ -205,7 +205,7 @@ export default function VerifyEmailPage() {
             </p>
           </div>
           <div className="w-full max-w-xs space-y-3">
-            <Button asChild variant="outline" className="w-full h-11">
+            <Button size="lg" asChild variant="outline" className="w-full">
               <Link href={`/${locale ?? "en"}/login`}>{t("backToSignIn")}</Link>
             </Button>
             <p className="text-xs text-muted-foreground">
@@ -238,13 +238,13 @@ export default function VerifyEmailPage() {
           </div>
 
           {linkError && (
-            <div role="alert" className="w-full max-w-xs p-3 rounded-xl bg-destructive/10 border border-destructive/30 text-left">
+            <div role="alert" className="w-full max-w-xs rounded-xl bg-destructive/10 border border-destructive/30 text-left chip-pad">
               <p className="text-xs text-destructive">{linkError}</p>
             </div>
           )}
 
           {emailFailed && (
-            <div className="w-full max-w-xs p-3 rounded-xl bg-amber-50 border border-amber-200 text-left">
+            <div className="w-full max-w-xs rounded-xl bg-amber-50 border border-amber-200 text-left chip-pad">
               <p className="text-xs text-amber-800">
                 {t("troubleSendingBefore")} <strong>{t("resendWord")}</strong>{t("troubleSendingAfter")}
               </p>
@@ -283,8 +283,8 @@ export default function VerifyEmailPage() {
             {otpError && (
               <p role="alert" className="text-sm text-destructive text-center">{otpError}</p>
             )}
-            <Button
-              className="w-full h-11"
+            <Button size="lg"
+              className="w-full"
               onClick={() => void handleSubmitOtp()}
               disabled={verifyingOtp || otp.length !== 6}
             >
@@ -296,7 +296,7 @@ export default function VerifyEmailPage() {
             </Button>
           </div>
 
-          <div id="verification-code-help" className="w-full max-w-xs p-4 rounded-xl bg-muted/50 border text-left space-y-2">
+          <div id="verification-code-help" className="w-full max-w-xs rounded-xl bg-muted/50 border text-left space-y-2 card-pad">
             <p className="text-sm font-medium text-foreground">{t("didntReceive")}</p>
             <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
               <li>{t("checkSpamFolder")}</li>
@@ -312,9 +312,9 @@ export default function VerifyEmailPage() {
           )}
           {emailParam && (
             <div className="w-full max-w-xs space-y-2">
-              <Button
+              <Button size="lg"
                 variant="default"
-                className="w-full h-11"
+                className="w-full"
                 onClick={handleResend}
                 disabled={resending || resendCooldown > 0}
               >
@@ -326,14 +326,14 @@ export default function VerifyEmailPage() {
                   <><RefreshCw className="mr-2 h-4 w-4" />{t("resendVerificationEmail")}</>
                 )}
               </Button>
-              <Button asChild variant="ghost" className="w-full h-11">
+              <Button size="lg" asChild variant="ghost" className="w-full">
                 <Link href={changeEmailHref}>{t("changeEmail")}</Link>
               </Button>
             </div>
           )}
-          <Button
+          <Button size="lg"
             variant="outline"
-            className="w-full max-w-xs h-11"
+            className="w-full max-w-xs"
             onClick={() => signOut({ callbackUrl: `/${locale ?? "en"}/login` })}
           >
             {t("backToSignIn")}

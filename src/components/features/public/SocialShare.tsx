@@ -60,7 +60,7 @@ export default function SocialShare({ url, title, description }: SocialShareProp
     <div className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg hover:bg-accent transition-colors"
+        className="flex items-center gap-2 text-sm border border-border rounded-lg hover:bg-accent transition-colors chip-pad"
         aria-label={t("shareJob")}
       >
         <Share2 className="w-4 h-4" />
@@ -70,7 +70,7 @@ export default function SocialShare({ url, title, description }: SocialShareProp
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-2 z-50 bg-popover border border-border rounded-xl shadow-lg p-2 min-w-[180px]">
+          <div className="absolute right-0 top-full mt-2 z-50 bg-popover border border-border rounded-xl shadow-lg min-w-[180px] chip-pad">
             {shareLinks.map((link) => (
               <a
                 key={link.label}

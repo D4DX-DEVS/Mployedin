@@ -698,7 +698,7 @@ export default function AdminExhibitionsPage() {
         }}
         actions={(
             <a href="exhibitions/analytics" className="self-start">
-              <Button variant="outline" className="h-10 rounded-xl border-border/70 bg-background/90">
+              <Button variant="outline" className="rounded-xl border-border/70 bg-background/90">
                 <BarChart2 className="h-4 w-4" />
                 {t("analytics")}
               </Button>
@@ -722,22 +722,22 @@ export default function AdminExhibitionsPage() {
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("requestQueue")}</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("allExhibitionRequests")}</h2>
+            <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("allExhibitionRequests")}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{t("reviewAssignApproveAndExport")}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" className="h-9 rounded-lg" onClick={resetFilters}>
+            <Button variant="outline" size="sm" className="rounded-lg" onClick={resetFilters}>
               <RotateCcw className="h-4 w-4" />
               {t("resetFilters")}
             </Button>
-            <Button variant="outline" size="sm" className="h-9 rounded-lg" onClick={handleExport}>
+            <Button variant="outline" size="sm" className="rounded-lg" onClick={handleExport}>
               <Download className="h-4 w-4" />
               {t("export")}
             </Button>
           </div>
         </div>
 
-        <div className="mt-5 rounded-2xl border border-border/60 bg-background p-3 shadow-sm shadow-black/[0.03]">
+        <div className="mt-5 rounded-2xl border border-border/60 bg-background shadow-sm shadow-black/[0.03] chip-pad">
           <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-[minmax(240px,1.5fr)_repeat(7,minmax(130px,1fr))]">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -804,22 +804,22 @@ export default function AdminExhibitionsPage() {
         </div>
 
         {selectedItems.length > 0 && (
-          <div className="mt-3 flex flex-col gap-2 rounded-2xl border border-primary/15 bg-primary/5 p-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-3 flex flex-col gap-2 rounded-2xl border border-primary/15 bg-primary/5 sm:flex-row sm:items-center sm:justify-between chip-pad">
             <p className="text-sm font-medium text-foreground">{selectedItems.length} {t("selected")}</p>
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" className="h-8 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700" onClick={() => handleBulkStatus("approved")}>
+              <Button size="dense" className="rounded-lg bg-emerald-600 text-white hover:bg-emerald-700" onClick={() => handleBulkStatus("approved")}>
                 <CheckCheck className="h-4 w-4" />
                 {t("bulkApprove")}
               </Button>
-              <Button size="sm" variant="destructive" className="h-8 rounded-lg" onClick={() => handleBulkStatus("rejected")}>
+              <Button size="dense" variant="destructive" className="rounded-lg" onClick={() => handleBulkStatus("rejected")}>
                 <XCircle className="h-4 w-4" />
                 {t("bulkReject")}
               </Button>
-              <Button size="sm" variant="outline" className="h-8 rounded-lg" onClick={() => toast.info(t("reviewerAssignmentWorkflowQueued"))}>
+              <Button size="dense" variant="outline" className="rounded-lg" onClick={() => toast.info(t("reviewerAssignmentWorkflowQueued"))}>
                 <UserPlus className="h-4 w-4" />
                 {t("assignReviewer")}
               </Button>
-              <Button size="sm" variant="outline" className="h-8 rounded-lg" onClick={handleExport}>
+              <Button size="dense" variant="outline" className="rounded-lg" onClick={handleExport}>
                 <Download className="h-4 w-4" />
                 {t("export")}
               </Button>
@@ -944,7 +944,7 @@ export default function AdminExhibitionsPage() {
                             </div>
                           </td>
                           <td className="px-4 py-4 text-right align-middle">
-                            <Button variant={isSelected ? "default" : "outline"} size="sm" className="h-8 rounded-lg" onClick={() => handleDetailOpen(item)}>
+                            <Button variant={isSelected ? "default" : "outline"} size="dense" className="rounded-lg" onClick={() => handleDetailOpen(item)}>
                               {t("review")}
                               <ArrowRight className="h-4 w-4" />
                             </Button>
@@ -961,13 +961,13 @@ export default function AdminExhibitionsPage() {
                   {t("showing", { start: (page - 1) * pageSize + 1, end: Math.min(page * pageSize, totalItems), total: totalItems })}
                 </p>
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" disabled={page === 1} onClick={() => setPage(Math.max(1, page - 1))}>
+                  <Button variant="outline" size="iconDense" className="rounded-lg" disabled={page === 1} onClick={() => setPage(Math.max(1, page - 1))}>
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
                   <span className="rounded-lg border border-border/60 bg-background px-3 py-1 text-xs font-semibold">
                     {page} / {totalPages}
                   </span>
-                  <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" disabled={page === totalPages} onClick={() => setPage(Math.min(totalPages, page + 1))}>
+                  <Button variant="outline" size="iconDense" className="rounded-lg" disabled={page === totalPages} onClick={() => setPage(Math.min(totalPages, page + 1))}>
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
@@ -1047,7 +1047,7 @@ export default function AdminExhibitionsPage() {
                   />
                 </div>
                 {["rejected", "archived"].includes(actionStatus) && (
-                  <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+                  <div className="rounded-xl border border-red-200 bg-red-50 text-xs text-red-700 chip-pad">
                     {t("thisIsADestructiveWorkflowAction")}
                   </div>
                 )}
@@ -1140,17 +1140,17 @@ function DetailDrawer({
     >
       <div className="border-b bg-background px-6 py-3">
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-border/60 pb-3">
-          <Button variant="ghost" size="sm" className="h-8 justify-self-start rounded-lg px-2 text-primary" disabled={!previousItem} onClick={onPrevious}>
+          <Button variant="ghost" size="dense" className="justify-self-start rounded-lg px-2 text-primary" disabled={!previousItem} onClick={onPrevious}>
             <ChevronLeft className="h-4 w-4" />
             {tr("previous")}
           </Button>
           <p className="truncate text-sm font-semibold text-foreground">{item._id.slice(-12).toUpperCase()}</p>
           <div className="flex items-center justify-end gap-2">
-            <Button variant="ghost" size="sm" className="h-8 rounded-lg px-2 text-primary" disabled={!nextItem} onClick={onNext}>
+            <Button variant="ghost" size="dense" className="rounded-lg px-2 text-primary" disabled={!nextItem} onClick={onNext}>
               {tr("next")}
               <ChevronRight className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={onClose} aria-label={tr("closeInspector")}>
+            <Button variant="ghost" size="iconDense" className="rounded-full" onClick={onClose} aria-label={tr("closeInspector")}>
               <XCircle className="h-4 w-4" />
             </Button>
           </div>
@@ -1158,7 +1158,7 @@ function DetailDrawer({
 
         <div className="pt-3">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <h2 className="truncate text-xl font-semibold tracking-tight text-foreground">{item.eventName}</h2>
+            <h2 className="heading-section truncate font-semibold tracking-tight text-foreground">{item.eventName}</h2>
             <Badge className={`${STATUS_BADGES[item.status]} rounded-md px-2 py-0.5 text-[11px] font-semibold`}>
               {(() => {
                 const statusMap: Record<string, string> = {
@@ -1217,7 +1217,7 @@ function DetailDrawer({
           </SectionBlock>
 
           <SectionBlock title={tr("budget")} tr={tr}>
-            <div className="rounded-2xl border border-border/60 bg-background p-4 shadow-sm shadow-black/[0.03]">
+            <div className="rounded-2xl border border-border/60 bg-background shadow-sm shadow-black/[0.03] card-pad">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-sm font-semibold text-foreground">{tr("financialOverview")}</p>
@@ -1293,7 +1293,7 @@ function DetailDrawer({
                   <FileCard key={resource._id} title={resource.title} subtitle={resource.category?.replace(/_/g, " ")} icon={<FolderOpen className="h-4 w-4" />} actionLabel="Open" onClick={() => resource.files?.[0]?.url && window.open(resource.files[0].url, "_blank")} />
                 ))
               ) : (
-                <div className="rounded-xl border border-dashed bg-muted/10 p-4 text-center text-sm text-muted-foreground">{tr("noMatchingResourcesUploaded")}</div>
+                <div className="rounded-xl border border-dashed bg-muted/10 text-center text-sm text-muted-foreground card-pad">{tr("noMatchingResourcesUploaded")}</div>
               )}
             </div>
           </SectionBlock>
@@ -1318,14 +1318,14 @@ function DetailDrawer({
               <ThreadedComment role={tr("agentRole")} name={item.agentId?.name ?? tr("agentRole")} time={relativeTime(item.createdAt)} text={tr("submitTheExhibitionRequest")} />
               <ThreadedComment role={tr("financeReviewerRole")} name={tr("financeReviewer")} time="1d ago" text={tr("pleaseConfirmWhetherVenue")} />
               <ThreadedComment role={tr("adminOpsRole")} name={tr("adminOps")} time="4h ago" text={tr("resourcesTeamIsChecking")} />
-              <div className="rounded-2xl border border-border/60 p-3">
+              <div className="rounded-2xl border border-border/60 chip-pad">
                 <Textarea rows={3} placeholder={tr("writeAComment")} />
                 <div className="mt-2 flex items-center justify-between">
-                  <Button variant="ghost" size="sm" className="h-8 rounded-lg">
+                  <Button variant="ghost" size="dense" className="rounded-lg">
                     <Paperclip className="h-4 w-4" />
                     {tr("attach")}
                   </Button>
-                  <Button size="sm" className="h-8 rounded-lg">
+                  <Button size="dense" className="rounded-lg">
                     <Send className="h-4 w-4" />
                     {tr("comment")}
                   </Button>
@@ -1342,27 +1342,27 @@ function DetailDrawer({
 
       <div className="border-t bg-background px-4 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.06)]">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <Button className="h-9 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700" onClick={() => onAction(item, item.status === "approved" ? "budget_approved" : "approved")}>
+          <Button size="sm" className="rounded-lg bg-emerald-600 text-white hover:bg-emerald-700" onClick={() => onAction(item, item.status === "approved" ? "budget_approved" : "approved")}>
             <CheckCircle2 className="h-4 w-4" />
             {tr("approveButton")}
           </Button>
-          <Button variant="outline" className="h-9 rounded-lg border-red-200 bg-red-50/40 text-red-700 hover:bg-red-50 hover:text-red-800" onClick={() => onAction(item, "rejected")}>
+          <Button size="sm" variant="outline" className="rounded-lg border-red-200 bg-red-50/40 text-red-700 hover:bg-red-50 hover:text-red-800" onClick={() => onAction(item, "rejected")}>
             <XCircle className="h-4 w-4" />
             {tr("rejectButton")}
           </Button>
-          <Button variant="outline" className="h-9 rounded-lg bg-muted/30" onClick={() => onAction(item, "revision_requested")}>
+          <Button size="sm" variant="outline" className="rounded-lg bg-muted/30" onClick={() => onAction(item, "revision_requested")}>
             <Undo2 className="h-4 w-4" />
             {tr("sendBackButton")}
           </Button>
-          <Button variant="secondary" className="h-9 rounded-lg" onClick={() => toast.info(tr("reviewerAssignmentWorkflowQueued"))}>
+          <Button size="sm" variant="secondary" className="rounded-lg" onClick={() => toast.info(tr("reviewerAssignmentWorkflowQueued"))}>
             <UserPlus className="h-4 w-4" />
             {tr("assignReviewerButton")}
           </Button>
-          <Button variant="ghost" className="h-9 rounded-lg" onClick={() => toast.info(tr("pdfGenerationQueued"))}>
+          <Button size="sm" variant="ghost" className="rounded-lg" onClick={() => toast.info(tr("pdfGenerationQueued"))}>
             <Download className="h-4 w-4" />
             {tr("downloadPdfButton")}
           </Button>
-          <Button variant="ghost" className="h-9 rounded-lg" onClick={() => window.print()}>
+          <Button size="sm" variant="ghost" className="rounded-lg" onClick={() => window.print()}>
             <Printer className="h-4 w-4" />
             {tr("printButton")}
           </Button>
@@ -1398,7 +1398,7 @@ function InfoChip({ icon, label, value }: { icon: React.ReactNode; label: string
 function SectionBlock({ title, children }: { title: string; children: React.ReactNode; tr?: any }) {
   return (
     <section>
-      <h3 className="mb-3 text-sm font-semibold text-foreground">{title}</h3>
+      <h3 className="heading-label mb-3 font-semibold text-foreground">{title}</h3>
       {children}
     </section>
   );
@@ -1417,7 +1417,7 @@ function RequestSummaryCard({ item, tr }: { item: ExhibitionRequest; tr?: any })
     other: t("otherCategory"),
   };
   return (
-    <div className="rounded-2xl border border-border/60 bg-muted/15 p-4">
+    <div className="rounded-2xl border border-border/60 bg-muted/15 card-pad">
       <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-foreground">
         <span>{categoryMap[item.eventCategory] ?? item.eventCategory}</span>
         <span className="text-muted-foreground">·</span>
@@ -1457,7 +1457,7 @@ function DetailCell({ label, value }: { label: string; value: string }) {
 
 function MetricTile({ label, value, accent = "text-foreground" }: { label: string; value: string; accent?: string }) {
   return (
-    <div className="rounded-xl border border-border/60 bg-muted/10 p-3">
+    <div className="rounded-xl border border-border/60 bg-muted/10 chip-pad">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className={`mt-1 text-sm font-semibold ${accent}`}>{value}</p>
     </div>
@@ -1491,7 +1491,7 @@ function BudgetLine({ icon, label, value, total, currency }: { icon: React.React
 
 function FileCard({ title, subtitle, icon, actionLabel, onClick }: { title: string; subtitle: string; icon: React.ReactNode; actionLabel: string; onClick: () => void }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/60 bg-background p-3 shadow-sm shadow-black/[0.02]">
+    <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/60 bg-background shadow-sm shadow-black/[0.02] chip-pad">
       <div className="flex min-w-0 items-center gap-3">
         <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted text-muted-foreground">{icon}</span>
         <div className="min-w-0">
@@ -1499,7 +1499,7 @@ function FileCard({ title, subtitle, icon, actionLabel, onClick }: { title: stri
           <p className="truncate text-xs capitalize text-muted-foreground">{subtitle}</p>
         </div>
       </div>
-      <Button variant="outline" size="sm" className="h-8 rounded-lg" onClick={onClick}>
+      <Button variant="outline" size="dense" className="rounded-lg" onClick={onClick}>
         {actionLabel}
       </Button>
     </div>
@@ -1570,7 +1570,7 @@ function WorkflowTimeline({ item, compact = false, tr }: { item: ExhibitionReque
             <Avatar className={`z-10 h-8 w-8 border ${tone} ring-4 ring-background`}>
               <AvatarFallback className="bg-transparent text-xs font-semibold">{initials(history?.changedBy?.name ?? step.owner)}</AvatarFallback>
             </Avatar>
-            <div className={`min-w-0 flex-1 rounded-2xl border border-border/60 bg-background p-3 ${isCurrent ? "shadow-sm shadow-primary/10" : ""}`}>
+            <div className={`min-w-0 flex-1 rounded-2xl border border-border/60 bg-background ${isCurrent ? "shadow-sm shadow-primary/10" : ""} chip-pad`}>
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-sm font-semibold text-foreground">{step.label}</p>
@@ -1593,7 +1593,7 @@ function WorkflowTimeline({ item, compact = false, tr }: { item: ExhibitionReque
           <Avatar className="z-10 h-8 w-8 border border-red-500 bg-red-50 text-red-600 ring-4 ring-background">
             <AvatarFallback className="bg-transparent text-xs font-semibold">RJ</AvatarFallback>
           </Avatar>
-          <div className="min-w-0 flex-1 rounded-2xl border border-red-200 bg-red-50/60 p-3">
+          <div className="min-w-0 flex-1 rounded-2xl border border-red-200 bg-red-50/60 chip-pad">
             <p className="text-sm font-semibold text-red-700">{t("rejectedStatusLabel")}</p>
             <p className="mt-1 text-xs text-red-600">{item.reviewNote || t("requestRejected")}</p>
           </div>
@@ -1606,7 +1606,7 @@ function WorkflowTimeline({ item, compact = false, tr }: { item: ExhibitionReque
 function ThreadedComment({ role, name, time, text }: { role: string; name: string; time: string; text: string }) {
   const t = useTranslations("adminExhibitions");
   return (
-    <div className="flex gap-3 rounded-2xl border border-border/60 p-3">
+    <div className="flex gap-3 rounded-2xl border border-border/60 chip-pad">
       <Avatar className="h-8 w-8 ring-1 ring-border">
         <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">{initials(name)}</AvatarFallback>
       </Avatar>

@@ -187,9 +187,9 @@ export default function AgentRegisterPage() {
         </div>
 
         {/* Form Card */}
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-lg">
+        <div className="rounded-2xl border border-border bg-card shadow-lg panel-body">
           {error && (
-            <div className="mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+            <div className="mb-4 bg-destructive/10 border border-destructive/20 rounded-lg chip-pad">
               <p className="text-sm text-destructive text-center font-medium">{error}</p>
             </div>
           )}
@@ -197,7 +197,7 @@ export default function AgentRegisterPage() {
           {/* Step 1 */}
           {step === 0 && (
             <div className="space-y-4">
-              <h2 className="text-lg font-semibold">{t("personalInformation")}</h2>
+              <h2 className="heading-section font-semibold">{t("personalInformation")}</h2>
               <FormInput label={t("fullNameLabel")} value={step1.fullName} onChange={(e) => updateStep1("fullName", e.target.value)} placeholder={t("fullNamePlaceholder")} />
               <FormInput label={t("emailAddressLabel")} type="email" value={step1.email} onChange={(e) => updateStep1("email", e.target.value)} placeholder="agent@example.com" />
               <FormInput label={t("phoneNumberLabel")} value={step1.phone} onChange={(e) => updateStep1("phone", e.target.value)} placeholder="+971 50 000 0000" />
@@ -209,7 +209,7 @@ export default function AgentRegisterPage() {
           {/* Step 2 */}
           {step === 1 && (
             <div className="space-y-4">
-              <h2 className="text-lg font-semibold">{t("professionalDetails")}</h2>
+              <h2 className="heading-section font-semibold">{t("professionalDetails")}</h2>
               <FormSelect label={t("countryLabel")} value={step2.country} onChange={(v) => updateStep2("country", v)} options={COUNTRIES} placeholder={t("selectCountryPlaceholder")} />
               <FormInput label={t("cityLabel")} value={step2.city} onChange={(e) => updateStep2("city", e.target.value)} placeholder={t("cityPlaceholder")} />
               <FormSelect label={t("experienceLabel")} value={step2.experience} onChange={(v) => updateStep2("experience", v)} options={EXPERIENCE_OPTIONS} placeholder={t("selectExperiencePlaceholder")} />
@@ -222,7 +222,7 @@ export default function AgentRegisterPage() {
           {step === 2 && (
             <div className="flex flex-col items-center py-8 text-center">
               <CheckCircle className="h-16 w-16 text-emerald-500" />
-              <h2 className="mt-4 text-xl font-semibold text-foreground">{t("registrationCompleteTitle")}</h2>
+              <h2 className="heading-section mt-4 font-semibold text-foreground">{t("registrationCompleteTitle")}</h2>
               <p className="mt-2 text-sm text-muted-foreground">
                 {t("verificationEmailSentPrefix")} <strong>{step1.email}</strong>.
                 {" "}{t("checkInboxToActivate")}

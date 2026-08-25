@@ -352,7 +352,7 @@ export default function AdminSuperAgentsPage() {
   };
 
   const AgentCheckboxList = ({ selected, onToggle }: { selected: string[]; onToggle: (id: string) => void }) => (
-    <div className="border rounded-lg max-h-48 overflow-y-auto p-2 space-y-1">
+    <div className="border rounded-lg max-h-48 overflow-y-auto space-y-1 chip-pad">
       {availableAgents.length === 0 ? (
         <p className="text-sm text-muted-foreground py-2 text-center">{t("noAgentsAvailable")}</p>
       ) : availableAgents.map((agent) => (
@@ -397,7 +397,7 @@ export default function AdminSuperAgentsPage() {
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 rounded-lg border-border/80">
+                <Button variant="outline" size="dense" className="rounded-lg border-border/80">
                   <Download className="h-3.5 w-3.5" /> {t("exportLabel")}
                 </Button>
               </DropdownMenuTrigger>
@@ -534,7 +534,7 @@ export default function AdminSuperAgentsPage() {
 
           <div className="space-y-4">
             {addError && (
-              <div className="flex items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
+              <div className="flex items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/5 text-sm text-destructive chip-pad">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                 <div className="flex flex-col gap-0.5">
                   {addError.split("; ").map((line, i) => <span key={i}>{line}</span>)}
@@ -543,24 +543,24 @@ export default function AdminSuperAgentsPage() {
             )}
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{t("fullNameLabel")} <span className="text-destructive">{t("requiredField")}</span></Label>
                 <Input value={addForm.name} onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))} />
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{t("emailLabel")} <span className="text-destructive">{t("requiredField")}</span></Label>
                 <Input type="email" value={addForm.email} onChange={(e) => setAddForm((f) => ({ ...f, email: e.target.value }))} />
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{t("passwordLabel")} <span className="text-destructive">{t("requiredField")}</span></Label>
                 <Input type="password" value={addForm.password} onChange={(e) => setAddForm((f) => ({ ...f, password: e.target.value }))} placeholder={t("passwordPlaceholder")} />
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{t("overrideCommissionRateLabel")}</Label>
                 <Input type="number" min="0" max="100" value={addForm.overrideCommissionRate} onChange={(e) => setAddForm((f) => ({ ...f, overrideCommissionRate: e.target.value }))} />
                 <p className="text-xs text-muted-foreground">{t("overrideCommissionRateHint")}</p>
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{t("defaultAgentCommissionRateLabel")}</Label>
                 <Input type="number" min="0" max="100" value={addForm.defaultAgentCommissionRate} onChange={(e) => setAddForm((f) => ({ ...f, defaultAgentCommissionRate: e.target.value }))} />
                 <p className="text-xs text-muted-foreground">{t("defaultAgentCommissionRateHint")}</p>
@@ -603,7 +603,7 @@ export default function AdminSuperAgentsPage() {
 
           <div className="space-y-4">
             {editError && (
-              <div className="flex items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
+              <div className="flex items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/5 text-sm text-destructive chip-pad">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                 <div className="flex flex-col gap-0.5">
                   {editError.split("; ").map((line, i) => <span key={i}>{line}</span>)}
@@ -612,15 +612,15 @@ export default function AdminSuperAgentsPage() {
             )}
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{t("fullNameLabel")}</Label>
                 <Input value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} />
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{t("emailLabel")}</Label>
                 <Input type="email" value={editForm.email} onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))} />
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{t("statusLabel")}</Label>
                 <Select value={editForm.isActive} onValueChange={(v) => setEditForm((f) => ({ ...f, isActive: v }))}>
                   <SelectTrigger className="h-10 w-full rounded-md">
@@ -632,12 +632,12 @@ export default function AdminSuperAgentsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{t("overrideCommissionRateLabel")}</Label>
                 <Input type="number" min="0" max="100" value={editForm.overrideCommissionRate} onChange={(e) => setEditForm((f) => ({ ...f, overrideCommissionRate: e.target.value }))} />
                 <p className="text-xs text-muted-foreground">{t("overrideCommissionRateHint")}</p>
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{t("defaultAgentCommissionRateLabel")}</Label>
                 <Input type="number" min="0" max="100" value={editForm.defaultAgentCommissionRate} onChange={(e) => setEditForm((f) => ({ ...f, defaultAgentCommissionRate: e.target.value }))} />
                 <p className="text-xs text-muted-foreground">{t("defaultAgentCommissionRateHintEdit")}</p>

@@ -127,7 +127,7 @@ export function TagAutocomplete({
 
   return (
     <div ref={containerRef} className={cn("relative", className)}>
-      <div className="flex flex-wrap gap-1.5 p-2 sm:gap-2 sm:p-3 rounded-lg border border-border bg-background min-h-[44px] focus-within:border-primary transition-colors">
+      <div className="flex flex-wrap gap-1.5 sm:gap-2 rounded-lg border border-border bg-background min-h-[44px] focus-within:border-primary transition-colors chip-pad">
         {value.map((tag) => (
           <span
             key={tag}

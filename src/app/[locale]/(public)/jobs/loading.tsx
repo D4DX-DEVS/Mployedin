@@ -17,7 +17,7 @@ export default function JobsLoading() {
       {/* Job list */}
       <div className="max-w-5xl mx-auto px-4 py-8 space-y-3">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="bg-card border border-border rounded-xl p-5">
+          <div key={i} className="bg-card border border-border rounded-xl panel-body">
             <div className="h-5 w-1/2 rounded bg-muted mb-2" />
             <div className="h-4 w-32 rounded bg-muted mb-3" />
             <div className="flex flex-wrap gap-x-4 gap-y-1">

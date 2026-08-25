@@ -349,7 +349,7 @@ export default function AdminCommunicationsPage() {
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tr("liveBroadcast")}</p>
-                <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{tr("sendMessageTitle")}</h2>
+                <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{tr("sendMessageTitle")}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">{tr("sendMessageDesc")}</p>
               </div>
               <div className="rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground">
@@ -458,7 +458,7 @@ export default function AdminCommunicationsPage() {
                   tr("messagesStored")
                 )}
               </div>
-              <Button type="submit" disabled={sending} size="lg" className="h-11 gap-2 rounded-xl px-5">
+              <Button type="submit" disabled={sending} size="lg" className="gap-2 rounded-xl px-5">
                 <Send className="h-4 w-4" />
                 {sending ? tr("sending") : tr("sendNow")}
               </Button>
@@ -468,7 +468,7 @@ export default function AdminCommunicationsPage() {
           <div className="space-y-3 sm:space-y-6">
             <aside className={panelClassName}>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tr("deliveryNotes")}</p>
-              <h3 className="mt-2 text-lg font-semibold tracking-tight text-foreground">{tr("keepMessageClear")}</h3>
+              <h3 className="heading-subsection mt-2 font-semibold tracking-tight text-foreground">{tr("keepMessageClear")}</h3>
               <div className="mt-4 space-y-3 text-sm text-muted-foreground">
                 <div className="rounded-2xl border border-border bg-muted/70 px-4 py-3">
                   {tr("deliveryNote1")}
@@ -486,7 +486,7 @@ export default function AdminCommunicationsPage() {
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tr("quickStart")}</p>
-                  <h3 className="mt-2 text-lg font-semibold tracking-tight text-foreground">{tr("recentTemplates")}</h3>
+                  <h3 className="heading-subsection mt-2 font-semibold tracking-tight text-foreground">{tr("recentTemplates")}</h3>
                 </div>
                 <button
                   type="button"
@@ -509,7 +509,7 @@ export default function AdminCommunicationsPage() {
                   </div>
                 ) : (
                   quickTemplates.map((template) => (
-                    <div key={template._id} className="rounded-2xl border border-border bg-muted/60 p-4">
+                    <div key={template._id} className="rounded-2xl border border-border bg-muted/60 card-pad">
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="text-sm font-semibold text-foreground">{template.name}</p>
@@ -539,7 +539,7 @@ export default function AdminCommunicationsPage() {
           <div className={`${panelClassName} flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between`}>
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tr("reusableContent")}</p>
-              <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{tr("templateLibrary")}</h2>
+              <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{tr("templateLibrary")}</h2>
               <p className="mt-1 text-sm text-muted-foreground">{tr("templateLibraryDesc")}</p>
             </div>
             <Button
@@ -562,7 +562,7 @@ export default function AdminCommunicationsPage() {
             <form onSubmit={(e) => handleSaveTemplate(e)} className={`${panelClassName} space-y-5`}>
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tr("createTemplateHeading")}</p>
-                <h3 className="mt-2 text-lg font-semibold tracking-tight text-foreground">{tr("createTemplateSub")}</h3>
+                <h3 className="heading-subsection mt-2 font-semibold tracking-tight text-foreground">{tr("createTemplateSub")}</h3>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
@@ -628,7 +628,7 @@ export default function AdminCommunicationsPage() {
               ) : null}
 
               <div className="flex justify-end">
-                <Button type="submit" disabled={templateSaving} size="lg" className="h-11 rounded-xl px-5">
+                <Button type="submit" disabled={templateSaving} size="lg" className="rounded-xl px-5">
                   {templateSaving ? tr("saving") : tr("saveTemplate")}
                 </Button>
               </div>
@@ -647,11 +647,11 @@ export default function AdminCommunicationsPage() {
               </div>
             ) : (
               templates.map((template) => (
-                <div key={template._id} className="rounded-3xl border border-border bg-muted/50 p-5">
+                <div key={template._id} className="rounded-3xl border border-border bg-muted/50 panel-body">
                   <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                     <div className="space-y-3">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-lg font-semibold tracking-tight text-foreground">{template.name}</h3>
+                        <h3 className="heading-subsection font-semibold tracking-tight text-foreground">{template.name}</h3>
                         <span className="rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                           {formatTemplateType(template.type)}
                         </span>
@@ -694,7 +694,7 @@ export default function AdminCommunicationsPage() {
                   </div>
 
                   {editId === template._id ? (
-                    <form onSubmit={(e) => handleSaveTemplate(e, template._id)} className="mt-5 space-y-4 rounded-2xl border border-border bg-card p-4">
+                    <form onSubmit={(e) => handleSaveTemplate(e, template._id)} className="mt-5 space-y-4 rounded-2xl border border-border bg-card card-pad">
                       <div className="grid gap-4 md:grid-cols-2">
                         <div className="space-y-2">
                           <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tr("nameLabel")}</label>
@@ -768,7 +768,7 @@ export default function AdminCommunicationsPage() {
         <section className={`${panelClassName} space-y-4`}>
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tr("broadcastHistoryHead")}</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{tr("recentActivityHeading")}</h2>
+            <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{tr("recentActivityHeading")}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{tr("recentActivityDesc")}</p>
           </div>
 
@@ -788,11 +788,11 @@ export default function AdminCommunicationsPage() {
             </div>
           ) : (
             history.filter((r) => r.title.toLowerCase().includes(historySearch.toLowerCase()) || r.body?.toLowerCase().includes(historySearch.toLowerCase())).map((record) => (
-              <article key={record._id} className="rounded-3xl border border-border bg-muted/50 p-5">
+              <article key={record._id} className="rounded-3xl border border-border bg-muted/50 panel-body">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-lg font-semibold tracking-tight text-foreground">{record.title}</h3>
+                      <h3 className="heading-subsection font-semibold tracking-tight text-foreground">{record.title}</h3>
                       <span className="rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                         {formatChannelLabel(record.channels?.[0] ?? "in_app")}
                       </span>

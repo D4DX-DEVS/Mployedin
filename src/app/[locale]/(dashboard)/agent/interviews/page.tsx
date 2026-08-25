@@ -276,7 +276,7 @@ export default function AgentInterviewsPage() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sectionFilterLabel")}</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("sectionFilterTitle")}</h2>
+            <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("sectionFilterTitle")}</h2>
           </div>
           {hasActiveFilters && (
             <Button variant="ghost" size="sm" onClick={clearAllFilters} className="gap-1.5 text-xs text-muted-foreground hover:text-foreground">
@@ -433,7 +433,7 @@ export default function AgentInterviewsPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sectionResultsLabel")}</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("sectionResultsTitle")}</h2>
+            <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("sectionResultsTitle")}</h2>
           </div>
           <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">
             <ArrowRight className="h-3.5 w-3.5 text-primary" />{t("paginationSummary", { total: pagination.total, pages: pagination.totalPages, pageWord: pagination.totalPages === 1 ? t("pageWordSingular") : t("pageWordPlural") })}

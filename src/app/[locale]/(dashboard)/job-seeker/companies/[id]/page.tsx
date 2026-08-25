@@ -259,7 +259,7 @@ export default async function JobSeekerCompanyPage({ params }: PageProps) {
             <div className="space-y-5 sm:space-y-6">
               <section className="card-base rounded-lg sm:rounded-3xl panel-body">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("aboutSection")}</div>
-                <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">{t("whatCompanyHiring")}</h2>
+                <h2 className="heading-section mt-1 font-semibold tracking-tight text-foreground">{t("whatCompanyHiring")}</h2>
                 <p className="mt-4 text-sm leading-7 text-muted-foreground">
                   {employer.description?.trim() || `${employer.companyName} is actively hiring on Mployedin. Explore open roles, company details, and trust signals before you apply.`}
                 </p>
@@ -269,7 +269,7 @@ export default async function JobSeekerCompanyPage({ params }: PageProps) {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("openRoles")}</div>
-                    <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">{t("jobsFromCompany", { company: employer.companyName })}</h2>
+                    <h2 className="heading-section mt-1 font-semibold tracking-tight text-foreground">{t("jobsFromCompany", { company: employer.companyName })}</h2>
                   </div>
                   <span className="rounded-full border border-border/60 bg-muted/20 px-3 py-1 text-xs font-medium text-muted-foreground">
                     {activeJobs.length} {activeJobs.length === 1 ? t("activeRolesSingular") : t("activeRolesPlural")}
@@ -288,7 +288,7 @@ export default async function JobSeekerCompanyPage({ params }: PageProps) {
                         <Link
                           key={job._id}
                           href={`/${locale}/job-seeker/jobs/${job._id}`}
-                          className="group rounded-lg sm:rounded-3xl border border-border/70 bg-[linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96))] p-3 sm:p-4 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_20px_45px_-34px_rgba(37,99,235,0.18)]"
+                          className="group rounded-lg sm:rounded-3xl border border-border/70 bg-[linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96))] transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_20px_45px_-34px_rgba(37,99,235,0.18)] card-pad"
                         >
                           <p className="line-clamp-2 text-base font-semibold text-foreground transition-colors group-hover:text-primary">
                             {job.title}
@@ -329,7 +329,7 @@ export default async function JobSeekerCompanyPage({ params }: PageProps) {
             <div className="space-y-4 sm:space-y-5 lg:sticky lg:top-6 lg:self-start">
               <section className="card-base rounded-lg sm:rounded-3xl panel-body">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("trustSignals")}</div>
-                <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">{t("companySnapshot")}</h3>
+                <h3 className="heading-subsection mt-1 font-semibold tracking-tight text-foreground">{t("companySnapshot")}</h3>
                 <div className="mt-4 space-y-3 text-sm text-muted-foreground">
                   <div className="rounded-lg sm:rounded-3xl border border-border/60 bg-muted/20 px-3 sm:px-4 py-2 sm:py-3">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("verification")}</div>
@@ -354,7 +354,7 @@ export default async function JobSeekerCompanyPage({ params }: PageProps) {
 
               <section className="card-base rounded-lg sm:rounded-3xl panel-body">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("links")}</div>
-                <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">{t("exploreFurther")}</h3>
+                <h3 className="heading-subsection mt-1 font-semibold tracking-tight text-foreground">{t("exploreFurther")}</h3>
                 <div className="mt-4 space-y-3">
                   {websiteUrl && (
                     <a

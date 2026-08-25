@@ -80,7 +80,7 @@ export default function ConfirmEmailChangePage() {
               {" "}{t("useItNextTime")}
             </p>
           </div>
-          <Button asChild className="w-full max-w-xs h-11">
+          <Button size="lg" asChild className="w-full max-w-xs">
             <Link href={`/${locale ?? "en"}/login`}>{t("continueToSignIn")}</Link>
           </Button>
         </div>
@@ -95,7 +95,7 @@ export default function ConfirmEmailChangePage() {
             <h1 className="text-2xl font-semibold tracking-tight">{t("confirmationFailedTitle")}</h1>
             <p className="text-base text-muted-foreground font-light">{message}</p>
           </div>
-          <Button asChild variant="outline" className="w-full max-w-xs h-11">
+          <Button size="lg" asChild variant="outline" className="w-full max-w-xs">
             <Link href={`/${locale ?? "en"}/login`}>{t("backToSignIn")}</Link>
           </Button>
         </div>

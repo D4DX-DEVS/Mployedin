@@ -254,7 +254,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
         </DialogHeader>
 
         {/* Quick Actions Bar */}
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/70 bg-secondary/20 p-3">
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/70 bg-secondary/20 chip-pad">
           <Button
             variant="outline" size="sm"
             className="gap-1.5 rounded-lg"
@@ -306,13 +306,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
 
         {/* Due Date Alert */}
         {canPay && balanceDue > 0 && daysUntilDue !== null && (
-          <div className={`flex items-center gap-3 rounded-xl border p-3 text-sm ${
-            daysUntilDue < 0
-              ? "border-status-rejected/20 bg-status-rejected-bg/50"
-              : daysUntilDue <= 7
-                ? "border-status-shortlisted/20 bg-status-shortlisted-bg/50"
-                : "border-status-applied/20 bg-status-applied-bg/50"
-          }`}>
+          <div className={`flex items-center gap-3 rounded-xl border text-sm ${ daysUntilDue < 0 ? "border-status-rejected/20 bg-status-rejected-bg/50" : daysUntilDue <= 7 ? "border-status-shortlisted/20 bg-status-shortlisted-bg/50" : "border-status-applied/20 bg-status-applied-bg/50" } chip-pad`}>
             <Clock className={`h-4 w-4 shrink-0 ${
               daysUntilDue < 0 ? "text-status-rejected" : daysUntilDue <= 7 ? "text-status-shortlisted" : "text-status-applied"
             }`} />
@@ -335,19 +329,19 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
 
         {/* Amount Summary Cards */}
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <div className="rounded-xl border border-border/70 p-3 text-center">
+          <div className="rounded-xl border border-border/70 text-center chip-pad">
             <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{t("summaryTotal")}</p>
             <p className="mt-0.5 text-base font-bold">{fmt(invoice.totalAmount)}</p>
           </div>
-          <div className="rounded-xl border border-status-selected/20 bg-status-selected-bg/30 p-3 text-center">
+          <div className="rounded-xl border border-status-selected/20 bg-status-selected-bg/30 text-center chip-pad">
             <p className="text-[10px] font-medium uppercase tracking-wider text-status-selected">{t("summaryPaid")}</p>
             <p className="mt-0.5 text-base font-bold text-emerald-700">{fmt(invoice.paidAmount ?? 0)}</p>
           </div>
-          <div className="rounded-xl border border-status-shortlisted/20 bg-status-shortlisted-bg/30 p-3 text-center">
+          <div className="rounded-xl border border-status-shortlisted/20 bg-status-shortlisted-bg/30 text-center chip-pad">
             <p className="text-[10px] font-medium uppercase tracking-wider text-status-shortlisted">{t("summaryBalance")}</p>
             <p className="mt-0.5 text-base font-bold text-status-shortlisted">{fmt(balanceDue)}</p>
           </div>
-          <div className="rounded-xl border border-border/70 p-3 text-center">
+          <div className="rounded-xl border border-border/70 text-center chip-pad">
             <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{t("summaryDue")}</p>
             <p className="mt-0.5 text-sm font-semibold">{invoice.dueDate ? formatDate(new Date(invoice.dueDate)) : "—"}</p>
           </div>
@@ -374,7 +368,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
           <TabsContent value="details" className="space-y-4">
             {/* Billing Details */}
             {invoice.billingDetails && (
-              <div className="rounded-xl border border-border/70 p-4">
+              <div className="rounded-xl border border-border/70 card-pad">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("billedTo")}</p>
                 <div className="grid gap-1 text-sm">
                   {invoice.billingDetails.companyName && <p className="font-medium">{invoice.billingDetails.companyName}</p>}
@@ -398,7 +392,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
 
             {/* Issued By */}
             {senderContext && (
-              <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-secondary/20 p-3">
+              <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-secondary/20 chip-pad">
                 <ReceiptText className="h-5 w-5 text-primary" />
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("issuedBy")}</p>
@@ -409,7 +403,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
 
             {/* Line Items */}
             {invoice.lineItems && invoice.lineItems.length > 0 && (
-              <div className="rounded-xl border border-border/70 p-4">
+              <div className="rounded-xl border border-border/70 card-pad">
                 <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("items")}</p>
                 <table className="w-full text-sm">
                   <thead>
@@ -435,7 +429,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
             )}
 
             {/* Totals */}
-            <div className="rounded-xl border border-border/70 bg-secondary/10 p-4">
+            <div className="rounded-xl border border-border/70 bg-secondary/10 card-pad">
               <div className="space-y-1.5 text-sm">
                 <div className="flex justify-between"><span className="text-muted-foreground">{t("subtotal")}</span><span>{fmt(invoice.subtotal)}</span></div>
                 {invoice.discountAmount && invoice.discountAmount > 0 && (
@@ -474,7 +468,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
           {/* ──── Payment Tab ──── */}
           <TabsContent value="pay" className="space-y-4">
             {isPaid ? (
-              <div className="flex flex-col items-center gap-3 rounded-xl border border-status-selected/20 bg-status-selected-bg/50 p-6 text-center">
+              <div className="flex flex-col items-center gap-3 rounded-xl border border-status-selected/20 bg-status-selected-bg/50 text-center panel-body">
                 <CheckCircle2 className="h-10 w-10 text-status-selected" />
                 <div>
                   <p className="text-lg font-semibold text-emerald-700">{t("invoiceFullyPaid")}</p>
@@ -485,7 +479,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                 </Button>
               </div>
             ) : !canPay ? (
-              <div className="flex flex-col items-center gap-3 rounded-xl border border-border/70 bg-secondary/20 p-6 text-center">
+              <div className="flex flex-col items-center gap-3 rounded-xl border border-border/70 bg-secondary/20 text-center panel-body">
                 <Clock className="h-10 w-10 text-muted-foreground" />
                 <div>
                   <p className="text-base font-semibold">{t("invoiceProcessing")}</p>
@@ -495,7 +489,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
             ) : (
               <>
                 {/* Pay Now Section */}
-                <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+                <div className="rounded-xl border border-primary/20 bg-primary/5 card-pad">
                   <div className="mb-3 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Zap className="h-4 w-4 text-primary" />
@@ -510,7 +504,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                   <div className="grid gap-2 sm:grid-cols-2">
                     <button
                       type="button"
-                      className="flex items-center gap-3 rounded-xl border border-border/70 bg-card p-3 text-left text-sm transition-all hover:border-primary/50 hover:shadow-sm disabled:opacity-50"
+                      className="flex items-center gap-3 rounded-xl border border-border/70 bg-card text-left text-sm transition-all hover:border-primary/50 hover:shadow-sm disabled:opacity-50 chip-pad"
                       disabled={!gatewayEnabled}
                       onClick={handlePayNow}
                     >
@@ -524,7 +518,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                     </button>
                     <button
                       type="button"
-                      className="flex items-center gap-3 rounded-xl border border-border/70 bg-card p-3 text-left text-sm transition-all hover:border-primary/50 hover:shadow-sm disabled:opacity-50"
+                      className="flex items-center gap-3 rounded-xl border border-border/70 bg-card text-left text-sm transition-all hover:border-primary/50 hover:shadow-sm disabled:opacity-50 chip-pad"
                       disabled={!gatewayEnabled}
                       onClick={handlePayNow}
                     >
@@ -538,7 +532,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                     </button>
                     <button
                       type="button"
-                      className="flex items-center gap-3 rounded-xl border border-border/70 bg-card p-3 text-left text-sm transition-all hover:border-primary/50 hover:shadow-sm disabled:opacity-50"
+                      className="flex items-center gap-3 rounded-xl border border-border/70 bg-card text-left text-sm transition-all hover:border-primary/50 hover:shadow-sm disabled:opacity-50 chip-pad"
                       disabled={!gatewayEnabled}
                       onClick={handlePayNow}
                     >
@@ -552,7 +546,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                     </button>
                     <button
                       type="button"
-                      className="flex items-center gap-3 rounded-xl border border-border/70 bg-card p-3 text-left text-sm transition-all hover:border-primary/50 hover:shadow-sm disabled:opacity-50"
+                      className="flex items-center gap-3 rounded-xl border border-border/70 bg-card text-left text-sm transition-all hover:border-primary/50 hover:shadow-sm disabled:opacity-50 chip-pad"
                       disabled={!gatewayEnabled}
                       onClick={handlePayNow}
                     >
@@ -568,7 +562,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                 </div>
 
                 {/* Manual / Bank Transfer Section */}
-                <div className="rounded-xl border border-emerald-200/60 bg-status-selected-bg/20 p-4">
+                <div className="rounded-xl border border-emerald-200/60 bg-status-selected-bg/20 card-pad">
                   <div className="mb-3 flex items-center gap-2">
                     <Building2 className="h-4 w-4 text-status-selected" />
                     <p className="text-sm font-semibold">{t("bankTransfer")}</p>
@@ -629,7 +623,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                 </div>
 
                 {/* Balance reminder */}
-                <div className="flex items-center justify-between rounded-xl border border-border/70 bg-secondary/10 p-3 text-sm">
+                <div className="flex items-center justify-between rounded-xl border border-border/70 bg-secondary/10 text-sm chip-pad">
                   <span className="text-muted-foreground">{t("amountToPay")}</span>
                   <span className="text-lg font-bold text-primary">{fmt(balanceDue)}</span>
                 </div>
@@ -643,7 +637,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
               <div className="space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("paymentRecords")}</p>
                 {invoice.payments.map((p, i) => (
-                  <div key={i} className="flex items-center justify-between rounded-xl border border-status-selected/20 bg-status-selected-bg/50 p-3">
+                  <div key={i} className="flex items-center justify-between rounded-xl border border-status-selected/20 bg-status-selected-bg/50 chip-pad">
                     <div>
                       <p className="text-sm font-semibold text-emerald-700">{fmt(p.amount)}</p>
                       <p className="text-xs text-muted-foreground">
@@ -670,7 +664,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
             )}
 
             {/* Invoice timeline */}
-            <div className="rounded-xl border border-border/70 p-4">
+            <div className="rounded-xl border border-border/70 card-pad">
               <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("timeline")}</p>
               <div className="relative space-y-4 pl-4 before:absolute before:left-[5px] before:top-2 before:h-[calc(100%-16px)] before:w-px before:bg-border">
                 <div className="flex items-start gap-3 text-sm">
@@ -717,7 +711,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
           {/* ──── Support Tab ──── */}
           <TabsContent value="support" className="space-y-4">
             {/* Raise Billing Query */}
-            <div className="rounded-xl border border-border/70 p-4">
+            <div className="rounded-xl border border-border/70 card-pad">
               <div className="mb-3 flex items-center gap-2">
                 <MessageSquareWarning className="h-4 w-4 text-primary" />
                 <p className="text-sm font-semibold">{t("raiseBillingQuery")}</p>
@@ -779,7 +773,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
             </div>
 
             {/* Contact Finance */}
-            <div className="rounded-xl border border-border/70 bg-secondary/10 p-4">
+            <div className="rounded-xl border border-border/70 bg-secondary/10 card-pad">
               <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("needHelp")}</p>
               <div className="space-y-2 text-sm">
                 <p className="text-muted-foreground">
@@ -902,19 +896,19 @@ export default function EmployerInvoicesPage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
-        <div className="rounded-2xl border border-border/70 bg-card p-4">
+        <div className="rounded-2xl border border-border/70 bg-card card-pad">
           <p className="text-xs text-muted-foreground">{t("totalBilled")}</p>
           <p className="mt-1 text-xl font-bold">{fmt(summary.totalAmount)}</p>
         </div>
-        <div className="rounded-2xl border border-status-selected/20 bg-status-selected-bg/50 p-4">
+        <div className="rounded-2xl border border-status-selected/20 bg-status-selected-bg/50 card-pad">
           <p className="text-xs text-status-selected">{t("totalPaid")}</p>
           <p className="mt-1 text-xl font-bold text-emerald-700">{fmt(summary.totalPaid)}</p>
         </div>
-        <div className="rounded-2xl border border-status-shortlisted/20 bg-status-shortlisted-bg/50 p-4">
+        <div className="rounded-2xl border border-status-shortlisted/20 bg-status-shortlisted-bg/50 card-pad">
           <p className="text-xs text-status-shortlisted">{t("outstandingBalance")}</p>
           <p className="mt-1 text-xl font-bold text-status-shortlisted">{fmt(summary.totalBalance)}</p>
         </div>
-        <div className="rounded-2xl border border-status-rejected/20 bg-status-rejected-bg/50 p-4">
+        <div className="rounded-2xl border border-status-rejected/20 bg-status-rejected-bg/50 card-pad">
           <p className="text-xs text-status-rejected">{t("overdue")}</p>
           <p className="mt-1 text-xl font-bold text-rose-700">{summary.overdue}</p>
         </div>
@@ -926,12 +920,12 @@ export default function EmployerInvoicesPage() {
       <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-3xl">
         <div className="flex flex-col gap-2 border-b border-border/80 panel-head">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("billingHistory")}</p>
-          <h3 className="text-lg font-semibold text-foreground">{t("yourInvoices")}</h3>
+          <h3 className="heading-subsection font-semibold text-foreground">{t("yourInvoices")}</h3>
         </div>
         {/* Mobile card list (<sm) — 9-column table doesn't fit a phone */}
         <div className="space-y-3 p-4 sm:hidden">
           {loading ? Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="space-y-3 rounded-xl border border-border/70 bg-card p-4">
+            <div key={i} className="space-y-3 rounded-xl border border-border/70 bg-card card-pad">
               {Array.from({ length: 3 }).map((_, j) => <div key={j} className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />)}
             </div>
           )) : invoices.length === 0 ? (
@@ -944,7 +938,7 @@ export default function EmployerInvoicesPage() {
               key={inv._id}
               type="button"
               onClick={() => setSelectedInvoice(inv)}
-              className="w-full space-y-2 rounded-xl border border-border/70 bg-card p-4 text-start active:bg-secondary/30"
+              className="w-full space-y-2 rounded-xl border border-border/70 bg-card text-start active:bg-secondary/30 card-pad"
             >
               <div className="flex items-center justify-between gap-3">
                 <p className="font-mono text-sm font-medium">{inv.invoiceNumber}</p>

@@ -246,7 +246,7 @@ export default function AgentDetailPage() {
     return (
       <div className="page-container">
         <Skeleton className="h-5 w-24" />
-        <div className="rounded-2xl border border-border/60 bg-card p-6">
+        <div className="rounded-2xl border border-border/60 bg-card panel-body">
           <div className="flex items-center gap-4">
             <Skeleton className="h-16 w-16 rounded-full" />
             <div className="flex-1 space-y-2">
@@ -257,7 +257,7 @@ export default function AgentDetailPage() {
         </div>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="rounded-2xl border border-border/60 bg-card p-5 space-y-2">
+            <div key={i} className="rounded-2xl border border-border/60 bg-card space-y-2 panel-body">
               <Skeleton className="h-3 w-20" />
               <Skeleton className="h-7 w-16" />
             </div>
@@ -366,7 +366,7 @@ export default function AgentDetailPage() {
               [t("perfInterviews"), perf.interviewsScheduled, "workspace-tone-amber"],
               [t("perfPlacements"), perf.placementsCompleted, "workspace-tone-rose"],
             ] as [string, number, string][]).map(([label, value, tone]) => (
-              <div key={label} className="flex items-baseline justify-between gap-2 rounded-lg border border-border/40 px-2.5 py-1.5 sm:block sm:rounded-2xl sm:p-3 sm:text-center">
+              <div key={label} className="flex items-baseline justify-between gap-2 rounded-lg border border-border/40 sm:block sm:rounded-2xl sm:text-center chip-pad">
                 <p className="order-2 text-base font-semibold tabular-nums text-foreground sm:order-none sm:text-2xl">{value ?? 0}</p>
                 <p className="order-1 min-w-0 truncate text-[11px] font-medium text-muted-foreground sm:order-none sm:mt-1 sm:truncate-none">{label}</p>
               </div>
@@ -395,7 +395,7 @@ export default function AgentDetailPage() {
           {(["new", "contacted", "interested", "negotiating", "converted", "lost"] as const).map((s) => {
             const statusConfig = getStatusConfig(t);
             return (
-              <div key={s} className="flex shrink-0 items-center gap-1.5 rounded-full border border-border/40 px-3 py-1.5 sm:block sm:min-w-[100px] sm:rounded-xl sm:px-3 sm:py-2 sm:text-center">
+              <div key={s} className="flex shrink-0 items-center gap-1.5 rounded-full border border-border/40 sm:block sm:min-w-[100px] sm:rounded-xl sm:text-center chip-pad">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                   {statusConfig[s]?.label ?? s}
                 </p>
@@ -527,13 +527,13 @@ export default function AgentDetailPage() {
 
           <div className="space-y-4">
             {editError && (
-              <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
+              <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 text-sm text-destructive chip-pad">
                 <AlertCircle className="h-4 w-4 shrink-0" />{editError}
               </div>
             )}
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{t("formLabelCommissionRate")}</Label>
                 <Input
                   type="number"

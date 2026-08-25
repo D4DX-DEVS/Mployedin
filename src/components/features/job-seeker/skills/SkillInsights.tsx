@@ -23,7 +23,7 @@ export function SkillInsights({ jobId }: SkillInsightsProps) {
 
   if (isLoading) {
     return (
-      <div className="animate-pulse space-y-3 rounded-xl sm:rounded-3xl border border-border/60 bg-card p-4 sm:p-6">
+      <div className="animate-pulse space-y-3 rounded-xl sm:rounded-3xl border border-border/60 bg-card panel-body">
         <div className="h-4 w-32 rounded bg-muted" />
         <div className="h-3 w-48 rounded bg-muted" />
         <div className="flex gap-2">

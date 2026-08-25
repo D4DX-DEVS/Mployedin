@@ -318,7 +318,7 @@ export default function AdminExhibitionAnalyticsPage() {
         <div className="workspace-panel-surface min-w-0 rounded-3xl panel-body">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold tracking-tight">{t("monthlyRequestFlowTitle")}</h2>
+              <h2 className="heading-section font-semibold tracking-tight">{t("monthlyRequestFlowTitle")}</h2>
               <p className="text-sm text-muted-foreground">{t("monthlyRequestFlowDescription")}</p>
             </div>
             <Badge variant="outline">{t("monthlyRequestFlowBadge")}</Badge>
@@ -346,14 +346,14 @@ export default function AdminExhibitionAnalyticsPage() {
         <div className="workspace-panel-surface rounded-3xl panel-body">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold tracking-tight">{t("requestPipelineTitle")}</h2>
+              <h2 className="heading-section font-semibold tracking-tight">{t("requestPipelineTitle")}</h2>
               <p className="text-sm text-muted-foreground">{t("requestPipelineDescription")}</p>
             </div>
             <Activity className="h-5 w-5 text-primary" />
           </div>
           <div className="space-y-4">
             {statusBreakdown.map((item) => (
-              <div key={item.key} className="space-y-2 rounded-2xl border bg-muted/25 p-4">
+              <div key={item.key} className="space-y-2 rounded-2xl border bg-muted/25 card-pad">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <span className={`h-2.5 w-2.5 rounded-full ${item.color}`} />
@@ -372,7 +372,7 @@ export default function AdminExhibitionAnalyticsPage() {
         <div className="workspace-panel-surface min-w-0 rounded-3xl panel-body">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold tracking-tight">{t("participationMixTitle")}</h2>
+              <h2 className="heading-section font-semibold tracking-tight">{t("participationMixTitle")}</h2>
               <p className="text-sm text-muted-foreground">{t("participationMixDescription")}</p>
             </div>
             <Target className="h-5 w-5 text-primary" />
@@ -400,7 +400,7 @@ export default function AdminExhibitionAnalyticsPage() {
               </div>
               <div className="mt-4 space-y-3">
                 {participation.map((item, index) => (
-                  <div key={item.type} className="rounded-2xl border bg-muted/20 p-3">
+                  <div key={item.type} className="rounded-2xl border bg-muted/20 chip-pad">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2">
                         <span
@@ -431,7 +431,7 @@ export default function AdminExhibitionAnalyticsPage() {
         <div className="workspace-panel-surface rounded-3xl panel-body">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold tracking-tight">{t("topAgentsTitle")}</h2>
+              <h2 className="heading-section font-semibold tracking-tight">{t("topAgentsTitle")}</h2>
               <p className="text-sm text-muted-foreground">{t("topAgentsDescription")}</p>
             </div>
             <Trophy className="h-5 w-5 text-primary" />
@@ -513,7 +513,7 @@ function MetricCard({
   sub: string;
 }) {
   return (
-    <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-sm">
+    <div className="rounded-2xl border border-border/80 bg-card shadow-sm panel-body">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
@@ -528,7 +528,7 @@ function MetricCard({
 
 function MiniMetric({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-2xl border border-border/60 bg-muted/30 p-3">
+    <div className="rounded-2xl border border-border/60 bg-muted/30 chip-pad">
       <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
       <p className="mt-2 text-lg font-semibold text-foreground">{value}</p>
     </div>
@@ -545,7 +545,7 @@ function MiniSummaryCard({
   icon: ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border bg-muted/20 p-4">
+    <div className="rounded-2xl border bg-muted/20 card-pad">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{label}</p>

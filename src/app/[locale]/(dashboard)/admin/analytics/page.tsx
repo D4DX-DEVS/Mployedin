@@ -237,7 +237,7 @@ export default function AdminAnalyticsPage() {
         <section className="workspace-panel-surface rounded-3xl panel-body" aria-label={t("a11yAnalyticsTemplates")}>
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("promptLibrary")}</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("promptLibraryTitle")}</h2>
+            <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("promptLibraryTitle")}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{t("promptLibraryDescription")}</p>
           </div>
 
@@ -275,7 +275,7 @@ export default function AdminAnalyticsPage() {
             <Sparkles className="h-4 w-4" />
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">{t("composeInsight")}</p>
           </div>
-          <h2 className="mt-3 text-xl font-semibold tracking-tight text-foreground">{t("customAnalyticsQuery")}</h2>
+          <h2 className="heading-section mt-3 font-semibold tracking-tight text-foreground">{t("customAnalyticsQuery")}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{t("customAnalyticsDescription")}</p>
 
           <div className="mt-6 space-y-4">
@@ -329,7 +329,7 @@ export default function AdminAnalyticsPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("reportOutput")}</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("reportOutputTitle")}</h2>
+            <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("reportOutputTitle")}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{t("reportOutputDescription")}</p>
           </div>
           <DropdownMenu>
@@ -359,7 +359,7 @@ export default function AdminAnalyticsPage() {
           </DropdownMenu>
         </div>
 
-        <div className="mt-6 rounded-3xl border border-border/80 bg-card p-4">
+        <div className="mt-6 rounded-3xl border border-border/80 bg-card card-pad">
           {loading ? (
             <div className="space-y-3" aria-label={t("generatingAnalytics")}>
               <div className="sr-only" role="status" aria-live="polite">{t("generatingAnalyticsStatus")}</div>

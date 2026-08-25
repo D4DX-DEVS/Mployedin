@@ -478,7 +478,7 @@ export default function CVBuilderPage() {
         <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
           <div className="space-y-4">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="rounded-2xl border border-border/60 bg-card p-5 space-y-3">
+              <div key={i} className="rounded-2xl border border-border/60 bg-card space-y-3 panel-body">
                 <Skeleton className="h-5 w-32" />
                 <Skeleton className="h-4 w-full" />
                 <Skeleton className="h-4 w-3/4" />
@@ -535,7 +535,7 @@ export default function CVBuilderPage() {
       )}
 
       {successMsg && (
-        <div className="flex items-center gap-2 p-4 rounded-lg bg-emerald-50 text-emerald-700 text-sm border border-emerald-200 mb-4">
+        <div className="flex items-center gap-2 rounded-lg bg-emerald-50 text-emerald-700 text-sm border border-emerald-200 mb-4 card-pad">
           <CheckCircle className="w-4 h-4 flex-shrink-0" />
           {successMsg}
         </div>
@@ -563,7 +563,7 @@ export default function CVBuilderPage() {
                 </TabsTrigger>
               </TabsList>
               <button type="button" onClick={() => openTips("general")}
-                className="inline-flex max-w-full items-center gap-1.5 self-start rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-100 sm:self-auto">
+                className="inline-flex max-w-full items-center gap-1.5 self-start rounded-lg border border-amber-200 bg-amber-50 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-100 sm:self-auto chip-pad">
                 <Lightbulb className="h-3.5 w-3.5" />{t("actions.tips")}
               </button>
             </div>
@@ -665,7 +665,7 @@ export default function CVBuilderPage() {
                       <AutoFormField label={t("fields.currentLocation")} value={form.currentLocation} taxonomy="locations"
                         onChange={(v) => setForm((f) => ({ ...f, currentLocation: v }))} placeholder={t("placeholders.location")} />
                     </div>
-                    <div className="md:col-span-2 space-y-1.5">
+                    <div className="md:col-span-2 field">
                       <Label className="text-xs text-muted-foreground">{t("fields.profileSummary")}</Label>
                       <Textarea
                         value={form.headline}
@@ -721,7 +721,7 @@ export default function CVBuilderPage() {
                     onReorder={(ids) => setForm((f) => ({ ...f, experience: reorderByIds(f.experience, ids) }))}>
                     {form.experience.map((exp, i) => (
                       <SortableItem key={i} id={String(i)} className="group" handleLabel={t("actions.reorder")}>
-                      <div className="p-4 pl-9 rounded-lg border bg-muted/20 space-y-3 relative group">
+                      <div className="pl-9 rounded-lg border bg-muted/20 space-y-3 relative group card-pad">
                         <button onClick={() => removeExperience(i)} className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -739,7 +739,7 @@ export default function CVBuilderPage() {
                               <MonthYearPicker label={t("fields.to")} value={exp.endDate}
                                 onChange={(v) => updateExperience(i, "endDate", v)} />
                             ) : (
-                              <div className="space-y-1.5">
+                              <div className="field">
                                 <Label className="text-xs text-muted-foreground">{t("fields.to")}</Label>
                                 <div className="h-10 flex items-center text-sm text-muted-foreground">{t("fields.present")}</div>
                               </div>
@@ -788,7 +788,7 @@ export default function CVBuilderPage() {
                     onReorder={(ids) => setForm((f) => ({ ...f, education: reorderByIds(f.education, ids) }))}>
                     {form.education.map((edu, i) => (
                       <SortableItem key={i} id={String(i)} className="group" handleLabel={t("actions.reorder")}>
-                      <div className="p-4 pl-9 rounded-lg border bg-muted/20 space-y-3 relative group">
+                      <div className="pl-9 rounded-lg border bg-muted/20 space-y-3 relative group card-pad">
                         <button onClick={() => removeEducation(i)} className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -839,7 +839,7 @@ export default function CVBuilderPage() {
                     onReorder={(ids) => setForm((f) => ({ ...f, projects: reorderByIds(f.projects, ids) }))}>
                     {form.projects.map((proj, i) => (
                       <SortableItem key={i} id={String(i)} className="group" handleLabel={t("actions.reorder")}>
-                      <div className="p-4 pl-9 rounded-lg border bg-muted/20 space-y-3 relative group">
+                      <div className="pl-9 rounded-lg border bg-muted/20 space-y-3 relative group card-pad">
                         <button onClick={() => removeProject(i)} className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -863,7 +863,7 @@ export default function CVBuilderPage() {
                               onResult={(text) => updateProject(i, "description", plainTextToHtml(text))}
                             />
                           </div>
-                          <div className="md:col-span-2 space-y-1.5">
+                          <div className="md:col-span-2 field">
                             <Label className="text-xs text-muted-foreground">{t("fields.techStack")}</Label>
                             <Input value={proj.techStack.join(", ")}
                               onChange={(e) => updateProject(i, "techStack", e.target.value.split(",").map((t) => t.trim()).filter(Boolean))}
@@ -928,7 +928,7 @@ export default function CVBuilderPage() {
                     <Input value={certInput} onChange={(e) => setCertInput(e.target.value)}
                       onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCert(); } }}
                       placeholder={t("placeholders.certification")} className="h-8 text-sm" />
-                    <Button size="sm" variant="outline" onClick={addCert} className="h-8 gap-1 shrink-0">
+                    <Button size="dense" variant="outline" onClick={addCert} className="gap-1 shrink-0">
                       <Plus className="w-3.5 h-3.5" /> {t("actions.add")}
                     </Button>
                   </div>
@@ -1068,7 +1068,7 @@ function SectionCard({
   const t = useTranslations("cvBuilderPage.visibility");
   const [collapsed, setCollapsed] = useState(false);
   return (
-    <div className={`card-base p-4 sm:p-5 space-y-4 ${hidden ? "opacity-50" : ""}`}>
+    <div className={`card-base space-y-4 ${hidden ? "opacity-50" : ""} panel-body`}>
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
         <button
           type="button"
@@ -1114,7 +1114,7 @@ function FormField({
   type?: string;
 }) {
   return (
-    <div className="space-y-1.5">
+    <div className="field">
       <Label className="text-xs text-muted-foreground">{label}</Label>
       <Input
         type={type}

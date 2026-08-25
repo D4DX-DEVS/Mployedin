@@ -260,7 +260,7 @@ export default function AdminEmployersPage() {
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 rounded-lg border-border/80">
+                <Button variant="outline" size="dense" className="rounded-lg border-border/80">
                   <Download className="h-3.5 w-3.5" /> {t("exportLabel")}
                 </Button>
               </DropdownMenuTrigger>
@@ -442,7 +442,7 @@ export default function AdminEmployersPage() {
                         href={url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-xs text-primary p-2.5 rounded-lg border border-border/40 hover:bg-muted/30 transition-colors"
+                        className="flex items-center gap-2 text-xs text-primary rounded-lg border border-border/40 hover:bg-muted/30 transition-colors chip-pad"
                       >
                         <FileText className="w-3.5 h-3.5 shrink-0" />
                         <span className="truncate flex-1">{name}</span>
@@ -456,7 +456,7 @@ export default function AdminEmployersPage() {
 
             {/* Error message */}
             {verifyError && (
-              <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">
+              <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg chip-pad">
                 <ShieldOff className="w-4 h-4 shrink-0" />
                 <span>{verifyError}</span>
               </div>
@@ -464,7 +464,7 @@ export default function AdminEmployersPage() {
 
             {/* KYC override (only when no documents and not yet verified) */}
             {!verifyItem?.domainVerified && (verifyItem?.verificationDocs?.length ?? 0) === 0 && (
-              <div className="space-y-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+              <div className="space-y-2 rounded-lg border border-amber-500/30 bg-amber-500/5 chip-pad">
                 <label className="flex items-start gap-2 text-sm text-foreground">
                   <input
                     type="checkbox"

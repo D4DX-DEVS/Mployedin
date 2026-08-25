@@ -338,15 +338,15 @@ export default function AdminInterviewOversightPage() {
 
         {/* ─── AI Insights inline ─────────────────────────────────────── */}
         {showInsights && (
-          <div className="mt-6 rounded-3xl border border-border/30 bg-background/40 p-5 backdrop-blur-sm">
+          <div className="mt-6 rounded-3xl border border-border/30 bg-background/40 backdrop-blur-sm panel-body">
             <div className="mb-4 flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-sky-500" />
-              <h3 className="text-lg font-semibold">{t("aiInterviewInsights")}</h3>
+              <h3 className="heading-subsection font-semibold">{t("aiInterviewInsights")}</h3>
             </div>
             <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {loading ? (
                 Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="workspace-glass-panel space-y-2 rounded-2xl p-3 sm:p-4">
+                  <div key={i} className="workspace-glass-panel card-pad space-y-2 rounded-2xl">
                     <div className="h-4 w-24 animate-shimmer rounded bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
                     <div className="h-3 w-full animate-shimmer rounded bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
                   </div>
@@ -355,7 +355,7 @@ export default function AdminInterviewOversightPage() {
                 aiInsights.map((insight, i) => {
                   const Icon = INSIGHT_ICONS[insight.icon];
                   return (
-                    <div key={i} className="workspace-glass-panel space-y-1.5 rounded-2xl p-4">
+                    <div key={i} className="workspace-glass-panel card-pad space-y-1.5 rounded-2xl">
                       <div className="flex items-center gap-2">
                         <Icon className={`h-4 w-4 ${insight.color}`} />
                         <span className="text-sm font-semibold text-foreground">{insight.title}</span>
@@ -365,7 +365,7 @@ export default function AdminInterviewOversightPage() {
                   );
                 })
               ) : (
-                <div className="workspace-glass-panel col-span-full rounded-2xl p-4 text-center">
+                <div className="workspace-glass-panel card-pad col-span-full rounded-2xl text-center">
                   <p className="text-sm text-muted-foreground">{t("noInterviewDataYet")}</p>
                 </div>
               )}
@@ -375,7 +375,7 @@ export default function AdminInterviewOversightPage() {
 
         {/* ─── Expandable Filters ─────────────────────────────────────── */}
         {showFilters && (
-          <div className="mt-4 space-y-3 rounded-3xl border border-border/30 bg-background/40 p-4 backdrop-blur-sm">
+          <div className="mt-4 space-y-3 rounded-3xl border border-border/30 bg-background/40 backdrop-blur-sm card-pad">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
@@ -503,7 +503,7 @@ export default function AdminInterviewOversightPage() {
                         </p>
                       </div>
                       {activeFilterCount > 0 && (
-                        <Button variant="outline" size="sm" onClick={clearAllFilters} className="mt-1 h-8 rounded-lg text-xs">
+                        <Button variant="outline" size="dense" onClick={clearAllFilters} className="mt-1 rounded-lg text-xs">
                           {t("clearFilters")}
                         </Button>
                       )}

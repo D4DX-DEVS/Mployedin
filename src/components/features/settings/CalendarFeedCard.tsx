@@ -55,7 +55,7 @@ export function CalendarFeedCard() {
           <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
             {t("label")}
           </div>
-          <h2 className="mt-1 flex items-center gap-2 text-lg font-semibold tracking-tight text-foreground">
+          <h2 className="heading-section mt-1 flex items-center gap-2 font-semibold tracking-tight text-foreground">
             <CalendarDays className="h-4 w-4" />
             {t("title")}
           </h2>
@@ -75,7 +75,7 @@ export function CalendarFeedCard() {
               readOnly
               value={url}
               onFocus={(e) => e.currentTarget.select()}
-              className="min-w-0 flex-1 rounded-xl border border-border/60 bg-muted/20 px-3 py-2 font-mono text-xs text-foreground"
+              className="min-w-0 flex-1 rounded-xl border border-border/60 bg-muted/20 font-mono text-xs text-foreground chip-pad"
               aria-label={t("urlAria")}
             />
             <div className="flex gap-2">

@@ -224,8 +224,8 @@ export default function TeamManagementPage() {
       {!loading && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {stats.map((s) => (
-            <div key={s.label} className={`card-base p-4 flex sm:flex-col gap-3 sm:gap-2 border ${s.bg}`}>
               <div className={`p-2.5 rounded-xl border bg-background/80 shrink-0 self-start sm:self-auto w-fit`} style={{ borderColor: 'inherit' }}>
+              <div className={`rounded-xl border bg-background/80 shrink-0 self-start sm:self-auto w-fit chip-pad`} style={{ borderColor: 'inherit' }}>
                 <s.icon className={`h-5 w-5 ${s.color}`} />
               </div>
               <div className="flex sm:flex-col items-center sm:items-start justify-between sm:justify-start gap-1 flex-1 min-w-0">
@@ -487,7 +487,7 @@ export default function TeamManagementPage() {
             <DialogDescription className="sr-only">{t("inviteModal.description")}</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleInvite} className="space-y-4 pt-1">
-            <div className="space-y-2">
+            <div className="field">
               <Label htmlFor="invite-email">{t("inviteModal.emailLabel")}</Label>
               <Input
                 id="invite-email"

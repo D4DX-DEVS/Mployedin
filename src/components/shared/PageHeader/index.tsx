@@ -25,11 +25,11 @@ export function PageHeader({
       )}
     >
       <div className="min-w-0 space-y-1.5">
-        <Heading className="page-header-title text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+        <Heading className="page-header-title text-xl sm:text-[1.625rem] font-bold tracking-tight text-foreground">
           {title}
         </Heading>
         {description && (
-          <p className="page-header-description text-[15px] font-medium text-muted-foreground/80">{description}</p>
+          <p className="page-header-description text-sm font-medium text-muted-foreground/80">{description}</p>
         )}
       </div>
       {actions && (

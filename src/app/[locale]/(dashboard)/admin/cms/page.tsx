@@ -163,7 +163,7 @@ export default function CmsOverviewPage() {
       >
 
         {showFilters && (
-          <div className="mt-4 space-y-3 rounded-3xl border border-border/30 bg-background/40 p-4 backdrop-blur-sm">
+          <div className="mt-4 space-y-3 rounded-3xl border border-border/30 bg-background/40 backdrop-blur-sm card-pad">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -191,7 +191,7 @@ export default function CmsOverviewPage() {
 
       <section className="workspace-panel-surface overflow-hidden rounded-3xl panel-body">
         <div className="mb-5">
-          <h2 className="text-xl font-semibold tracking-tight text-foreground">{t("contentModulesHeading")}</h2>
+          <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("contentModulesHeading")}</h2>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
             {hasActiveFilters
               ? t("contentModulesFilteredDescription", { count: cards.length, total: allCards.length })
@@ -220,7 +220,7 @@ export default function CmsOverviewPage() {
             <Link
               key={card.label}
               href={card.href}
-              className="workspace-subtle-surface group rounded-2xl p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_20px_44px_-36px_rgba(2,132,199,0.45)]"
+              className="workspace-subtle-surface group rounded-2xl transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_20px_44px_-36px_rgba(2,132,199,0.45)] panel-body"
             >
               <div className="flex items-start justify-between gap-3">
                 <span className={`flex h-12 w-12 items-center justify-center rounded-2xl ${card.chipBg}`}>
@@ -228,7 +228,7 @@ export default function CmsOverviewPage() {
                 </span>
                 <ArrowRight className="h-4 w-4 text-muted-foreground/55 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-primary" />
               </div>
-              <h3 className="mt-4 text-sm font-semibold text-foreground">{card.label}</h3>
+              <h3 className="heading-label mt-4 font-semibold text-foreground">{card.label}</h3>
               <div className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
                 {loading ? <div className="h-8 w-12 animate-pulse rounded bg-muted" /> : formatCount(card.count)}
               </div>

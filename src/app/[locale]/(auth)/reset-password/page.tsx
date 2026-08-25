@@ -107,7 +107,7 @@ export default function ResetPasswordPage() {
         </div>
 
         <Link href={`/${locale}/login`}>
-          <Button className="w-full h-11 text-base font-medium shadow-sm transition-all rounded-lg">
+          <Button size="lg" className="w-full text-base font-medium shadow-sm transition-all rounded-lg">
             {t("signIn")}
           </Button>
         </Link>
@@ -128,7 +128,7 @@ export default function ResetPasswordPage() {
         </div>
 
         <Link href={`/${locale}/forgot-password`}>
-          <Button className="w-full h-11 text-base font-medium shadow-sm transition-all rounded-lg">
+          <Button size="lg" className="w-full text-base font-medium shadow-sm transition-all rounded-lg">
             {t("requestNewLink")}
           </Button>
         </Link>
@@ -158,7 +158,7 @@ export default function ResetPasswordPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        <div className="space-y-2">
+        <div className="field">
           <Label htmlFor="password" className="text-sm font-medium">{t("newPassword")}</Label>
           <div className="relative">
             <Input
@@ -204,7 +204,7 @@ export default function ResetPasswordPage() {
           )}
         </div>
 
-        <div className="space-y-2">
+        <div className="field">
           <Label htmlFor="confirmPassword" className="text-sm font-medium">{t("confirmPassword")}</Label>
           <div className="relative">
             <Input
@@ -233,14 +233,14 @@ export default function ResetPasswordPage() {
         </div>
 
         {error && (
-          <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+          <div className="bg-destructive/10 border border-destructive/20 rounded-lg chip-pad">
             <p className="text-sm text-destructive text-center font-medium">{error}</p>
           </div>
         )}
 
-        <Button
+        <Button size="lg"
           type="submit"
-          className="w-full h-11 text-base font-medium shadow-sm transition-all rounded-lg"
+          className="w-full text-base font-medium shadow-sm transition-all rounded-lg"
           disabled={isSubmitDisabled}
         >
           {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}

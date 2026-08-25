@@ -330,7 +330,7 @@ export default function AgentCandidatesPage() {
       <section className="workspace-panel-surface rounded-3xl panel-body">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("filterCandidatesLabel")}</p>
-          <h2 className="mt-2 text-lg sm:text-xl font-semibold tracking-tight text-foreground">{t("filterCandidatesTitle")}</h2>
+          <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("filterCandidatesTitle")}</h2>
           <p className="mt-1 text-xs sm:text-sm text-muted-foreground">{t("filterCandidatesDesc")}</p>
         </div>
         <div className="relative mt-5 max-w-md">
@@ -375,7 +375,7 @@ export default function AgentCandidatesPage() {
         <div className="flex flex-col gap-2 sm:gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("currentResultsLabel")}</p>
-            <h2 className="mt-2 text-lg sm:text-xl font-semibold tracking-tight text-foreground">{t("currentResultsTitle")}</h2>
+            <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("currentResultsTitle")}</h2>
           </div>
           <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">
             <ArrowRight className="h-3.5 w-3.5 text-primary" />
@@ -461,9 +461,9 @@ export default function AgentCandidatesPage() {
                           <>
                             {NEXT_STAGE_KEYS[app.status] && (
                               <Button
-                                size="sm"
+                                size="dense"
                                 variant="outline"
-                                className="h-8 gap-1 rounded-lg px-2.5 text-xs"
+                                className="gap-1 rounded-lg px-2.5 text-xs"
                                 title={t(`actionLabel_${app.status}`)}
                                 onClick={() => handleStatusUpdate(app._id, NEXT_STAGE_KEYS[app.status])}
                               >
@@ -473,9 +473,9 @@ export default function AgentCandidatesPage() {
                             )}
                             {SCHEDULABLE_STATUSES.has(app.status) && (
                               <Button
-                                size="sm"
+                                size="dense"
                                 variant="ghost"
-                                className="h-8 w-8 rounded-lg p-0 text-status-applied hover:bg-status-applied-bg"
+                                className="w-8 rounded-lg p-0 text-status-applied hover:bg-status-applied-bg"
                                 title={t("scheduleInterviewTooltip")}
                                 aria-label={t("scheduleInterviewTooltip")}
                                 onClick={() => openSchedule(app)}
@@ -485,9 +485,9 @@ export default function AgentCandidatesPage() {
                             )}
                             {app.status === "selected" && (
                               <Button
-                                size="sm"
+                                size="dense"
                                 variant="outline"
-                                className="h-8 gap-1 rounded-lg px-2.5 text-xs text-emerald-700"
+                                className="gap-1 rounded-lg px-2.5 text-xs text-emerald-700"
                                 title={t("makeOfferTooltip")}
                                 onClick={() => openOffer(app)}
                               >
@@ -496,9 +496,9 @@ export default function AgentCandidatesPage() {
                               </Button>
                             )}
                             <Button
-                              size="sm"
+                              size="dense"
                               variant="ghost"
-                              className="h-8 w-8 rounded-lg p-0 text-destructive hover:bg-destructive/10"
+                              className="w-8 rounded-lg p-0 text-destructive hover:bg-destructive/10"
                               title={t("rejectCandidateTooltip")}
                               aria-label={t("rejectCandidateTooltip")}
                               onClick={() => { setRejectError(""); setRejectReason(""); setRejectApp(app); }}
@@ -537,9 +537,9 @@ export default function AgentCandidatesPage() {
           </DialogHeader>
           <div className="space-y-4">
             {scheduleError && (
-              <p className="rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">{scheduleError}</p>
+              <p className="rounded-lg border border-destructive/20 bg-destructive/5 text-sm text-destructive chip-pad">{scheduleError}</p>
             )}
-            <div className="space-y-2">
+            <div className="field">
               <Label htmlFor="iv-when">{t("dateTimeLabel")}</Label>
               <Input
                 id="iv-when"
@@ -549,7 +549,7 @@ export default function AgentCandidatesPage() {
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
+              <div className="field">
                 <Label htmlFor="iv-type">{t("interviewTypeLabel")}</Label>
                 <Select value={scheduleForm.type} onValueChange={(value) => setScheduleForm((f) => ({ ...f, type: value }))}>
                   <SelectTrigger id="iv-type">
@@ -562,7 +562,7 @@ export default function AgentCandidatesPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label htmlFor="iv-dur">{t("durationLabel")}</Label>
                 <Input
                   id="iv-dur"
@@ -574,7 +574,7 @@ export default function AgentCandidatesPage() {
                 />
               </div>
             </div>
-            <div className="space-y-2">
+            <div className="field">
               <Label htmlFor="iv-loc">{scheduleForm.type === "video" ? t("meetingLinkLabel") : t("locationLabel")}</Label>
               {scheduleForm.type === "video" ? (
                 <Input
@@ -614,9 +614,9 @@ export default function AgentCandidatesPage() {
           </DialogHeader>
           <div className="space-y-3">
             {rejectError && (
-              <p className="rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">{rejectError}</p>
+              <p className="rounded-lg border border-destructive/20 bg-destructive/5 text-sm text-destructive chip-pad">{rejectError}</p>
             )}
-            <div className="space-y-2">
+            <div className="field">
               <Label htmlFor="rej-reason">{t("reasonLabel")}</Label>
               <Textarea
                 id="rej-reason"
@@ -648,10 +648,10 @@ export default function AgentCandidatesPage() {
           </DialogHeader>
           <div className="space-y-4">
             {offerError && (
-              <p className="rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">{offerError}</p>
+              <p className="rounded-lg border border-destructive/20 bg-destructive/5 text-sm text-destructive chip-pad">{offerError}</p>
             )}
             <div className="grid grid-cols-3 gap-3">
-              <div className="col-span-2 space-y-2">
+              <div className="col-span-2 field">
                 <Label htmlFor="of-amount">{t("salaryAmountLabel")}</Label>
                 <Input
                   id="of-amount"
@@ -662,7 +662,7 @@ export default function AgentCandidatesPage() {
                   onChange={(e) => setOfferForm((f) => ({ ...f, amount: e.target.value }))}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label htmlFor="of-currency">{t("currencyLabel")}</Label>
                 <Input
                   id="of-currency"
@@ -673,7 +673,7 @@ export default function AgentCandidatesPage() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
+              <div className="field">
                 <Label htmlFor="of-period">{t("payPeriodLabel")}</Label>
                 <Select value={offerForm.period} onValueChange={(value) => setOfferForm((f) => ({ ...f, period: value }))}>
                   <SelectTrigger id="of-period">
@@ -694,7 +694,7 @@ export default function AgentCandidatesPage() {
                 />
               </div>
             </div>
-            <div className="space-y-2">
+            <div className="field">
               <Label htmlFor="of-expires">{t("offerExpiresLabel")}</Label>
               <DateTimePicker
                 mode="date"
@@ -702,7 +702,7 @@ export default function AgentCandidatesPage() {
                 onChange={(value) => setOfferForm((f) => ({ ...f, expiresAt: value }))}
               />
             </div>
-            <div className="space-y-2">
+            <div className="field">
               <Label htmlFor="of-benefits">{t("benefitsLabel")}</Label>
               <Textarea
                 id="of-benefits"
@@ -712,7 +712,7 @@ export default function AgentCandidatesPage() {
                 rows={2}
               />
             </div>
-            <div className="space-y-2">
+            <div className="field">
               <Label htmlFor="of-notes">{t("notesLabel")}</Label>
               <Textarea
                 id="of-notes"

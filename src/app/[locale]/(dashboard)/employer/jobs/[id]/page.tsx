@@ -151,7 +151,7 @@ export default function JobDetailPage() {
     return (
       <div className="page-container">
         <div className="card-base p-8 text-center py-20">
-          <h2 className="text-lg font-semibold mb-2">{t("loadError")}</h2>
+          <h2 className="heading-section font-semibold mb-2">{t("loadError")}</h2>
           <Button variant="outline" onClick={() => refetch()}>{t("retry")}</Button>
         </div>
       </div>
@@ -162,7 +162,7 @@ export default function JobDetailPage() {
     return (
       <div className="page-container">
         <div className="card-base p-8 text-center py-20">
-          <h2 className="text-lg font-semibold mb-2">{t("notFound")}</h2>
+          <h2 className="heading-section font-semibold mb-2">{t("notFound")}</h2>
           <p className="text-sm text-muted-foreground mb-5">{t("notFoundDesc")}</p>
           <Button variant="outline" onClick={() => router.push(`/${locale}/employer/jobs`)}>
             <ArrowLeft className="w-4 h-4 me-2" /> {t("backToJobs")}
@@ -195,10 +195,10 @@ export default function JobDetailPage() {
           <ArrowLeft className="w-4 h-4" /> {t("backToJobs")}
         </Button>
         <div className="flex gap-2 flex-wrap">
-          <Button size="sm" variant="outline" className="gap-1.5 h-9" onClick={() => router.push(`/${locale}/employer/jobs/${job._id}/poster`)}>
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => router.push(`/${locale}/employer/jobs/${job._id}/poster`)}>
             <ImageIcon className="w-3.5 h-3.5" /> {t("createPoster")}
           </Button>
-          <Button size="sm" variant="outline" className="gap-1.5 h-9" onClick={cloneJob} disabled={cloning}>
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={cloneJob} disabled={cloning}>
             <Copy className="w-3.5 h-3.5" /> {cloning ? t("cloning") : t("clone")}
           </Button>
           <SocialShare
@@ -207,38 +207,38 @@ export default function JobDetailPage() {
             description={job.description?.slice(0, 120)}
           />
           {can("jobs", "update") && (
-            <Button size="sm" variant="outline" className="gap-1.5 h-9" onClick={() => router.push(`/${locale}/employer/jobs/${id}/edit`)}>
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => router.push(`/${locale}/employer/jobs/${id}/edit`)}>
               <Edit2 className="w-3.5 h-3.5" /> {t("edit")}
             </Button>
           )}
           {can("jobs", "update") && job.status === "draft" && (
-            <Button size="sm" className="gap-1.5 h-9 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => { void handlePublish(); }} disabled={publishing}>
+            <Button size="sm" className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => { void handlePublish(); }} disabled={publishing}>
               <Send className="w-3.5 h-3.5" /> {publishing ? t("publishing") : t("publish")}
             </Button>
           )}
           {can("jobs", "delete") && job.status === "draft" && (
-            <Button size="sm" variant="outline" className="gap-1.5 h-9 border-destructive/20 text-destructive hover:bg-destructive/5"
+            <Button size="sm" variant="outline" className="gap-1.5 border-destructive/20 text-destructive hover:bg-destructive/5"
               onClick={() => { void handleDelete(); }} disabled={deleting}>
               <Trash2 className="w-3.5 h-3.5" /> {deleting ? t("deleting") : t("deleteDraft")}
             </Button>
           )}
           {can("jobs", "update") && job.status === "active" && (
-            <Button size="sm" variant="outline" className="gap-1.5 h-9 border-sky-200 text-sky-700 hover:bg-sky-50" onClick={() => updateStatus("paused")}>
+            <Button size="sm" variant="outline" className="gap-1.5 border-sky-200 text-sky-700 hover:bg-sky-50" onClick={() => updateStatus("paused")}>
               <PauseCircle className="w-3.5 h-3.5" /> {t("pause")}
             </Button>
           )}
           {can("jobs", "update") && job.status === "active" && (
-            <Button size="sm" variant="destructive" className="gap-1.5 h-9" onClick={() => updateStatus("closed")}>
+            <Button size="sm" variant="destructive" className="gap-1.5" onClick={() => updateStatus("closed")}>
               <XCircle className="w-3.5 h-3.5" /> {t("closeJob")}
             </Button>
           )}
           {can("jobs", "update") && job.status === "paused" && (
-            <Button size="sm" className="gap-1.5 h-9 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => updateStatus("active")}>
+            <Button size="sm" className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => updateStatus("active")}>
               <PlayCircle className="w-3.5 h-3.5" /> {t("resume")}
             </Button>
           )}
           {can("jobs", "update") && job.status === "paused" && (
-            <Button size="sm" variant="destructive" className="gap-1.5 h-9" onClick={() => updateStatus("closed")}>
+            <Button size="sm" variant="destructive" className="gap-1.5" onClick={() => updateStatus("closed")}>
               <XCircle className="w-3.5 h-3.5" /> {t("closeJob")}
             </Button>
           )}
@@ -279,7 +279,7 @@ export default function JobDetailPage() {
 
         {/* Draft / In-review state hint — makes the unpublished status unambiguous */}
         {job.status === "draft" ? (
-          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 text-xs font-medium text-amber-800 chip-pad">
             {t("statusDraftHint")}
           </div>
         ) : null}
@@ -335,7 +335,7 @@ export default function JobDetailPage() {
         <TabsContent value="overview" className="space-y-3 sm:space-y-5">
       {/* Description */}
       <div className="card-base panel-body">
-        <h2 className="text-base font-semibold text-foreground mb-3">{t("jobDescription")}</h2>
+        <h2 className="heading-section font-semibold text-foreground mb-3">{t("jobDescription")}</h2>
         <div className="text-sm leading-relaxed text-foreground/80 whitespace-pre-wrap">
           {job.description}
         </div>
@@ -344,7 +344,7 @@ export default function JobDetailPage() {
       {/* Responsibilities */}
       {job.responsibilities && job.responsibilities.length > 0 && (
         <div className="card-base panel-body">
-          <h2 className="text-base font-semibold text-foreground mb-3">{t("responsibilities")}</h2>
+          <h2 className="heading-section font-semibold text-foreground mb-3">{t("responsibilities")}</h2>
           <ul className="list-disc list-inside space-y-1.5 text-sm text-foreground/80">
             {job.responsibilities.map((r: string, i: number) => (
               <li key={i}>{r}</li>
@@ -356,7 +356,7 @@ export default function JobDetailPage() {
       {/* Qualifications */}
       {job.qualifications && job.qualifications.length > 0 && (
         <div className="card-base panel-body">
-          <h2 className="text-base font-semibold text-foreground mb-3">{t("qualifications")}</h2>
+          <h2 className="heading-section font-semibold text-foreground mb-3">{t("qualifications")}</h2>
           <ul className="list-disc list-inside space-y-1.5 text-sm text-foreground/80">
             {job.qualifications.map((q: string, i: number) => (
               <li key={i}>{q}</li>
@@ -368,7 +368,7 @@ export default function JobDetailPage() {
       {/* Requirements */}
       {job.requirements && (
         <div className="card-base panel-body">
-          <h2 className="text-base font-semibold text-foreground mb-4">{t("requirements")}</h2>
+          <h2 className="heading-section font-semibold text-foreground mb-4">{t("requirements")}</h2>
 
           {job.requirements.skills && job.requirements.skills.length > 0 && (
             <div className="mb-5">
@@ -409,7 +409,7 @@ export default function JobDetailPage() {
       {/* Tags */}
       {job.tags && job.tags.length > 0 && (
         <div className="card-base panel-body">
-          <h2 className="text-base font-semibold text-foreground mb-3 flex items-center gap-2">
+          <h2 className="heading-section font-semibold text-foreground mb-3 flex items-center gap-2">
             <Tag className="w-4 h-4 text-muted-foreground" /> {t("tags")}
           </h2>
           <div className="flex flex-wrap gap-2">

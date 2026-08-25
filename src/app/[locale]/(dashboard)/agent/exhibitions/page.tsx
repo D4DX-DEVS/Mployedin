@@ -477,7 +477,7 @@ export default function AgentExhibitionsPage() {
         title={t("title")}
         description={t("subtitle")}
         actions={
-          <Button onClick={openNewRequest} size="lg" className="h-11 shrink-0 rounded-xl px-5 shadow-sm">
+          <Button onClick={openNewRequest} size="lg" className="shrink-0 rounded-xl px-5 shadow-sm">
             <Plus className="mr-2 h-4 w-4" /> {t("newRequest")}
           </Button>
         }
@@ -507,7 +507,7 @@ export default function AgentExhibitionsPage() {
       <section className="workspace-panel-surface rounded-3xl panel-body">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Your requests</p>
-          <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Request history</h2>
+          <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">Request history</h2>
           <p className="mt-1 text-sm text-muted-foreground">Open details or continue editing drafts from the table below.</p>
         </div>
 
@@ -574,19 +574,19 @@ export default function AgentExhibitionsPage() {
                   </td>
                   <td className="px-4 py-3.5 text-right">
                     <div className="flex items-center justify-end gap-0.5">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-primary" title="View details" onClick={() => setDetailItem(item)}>
+                      <Button variant="ghost" size="iconDense" className="rounded-lg text-muted-foreground hover:text-primary" title="View details" onClick={() => setDetailItem(item)}>
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-primary" title="Duplicate request" onClick={() => handleDuplicate(item)}>
+                      <Button variant="ghost" size="iconDense" className="rounded-lg text-muted-foreground hover:text-primary" title="Duplicate request" onClick={() => handleDuplicate(item)}>
                         <Copy className="h-4 w-4" />
                       </Button>
                       {["draft", "submitted", "revision_requested"].includes(item.status) && (
                         <>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-primary" title="Edit request" onClick={() => startEdit(item)}>
+                          <Button variant="ghost" size="iconDense" className="rounded-lg text-muted-foreground hover:text-primary" title="Edit request" onClick={() => startEdit(item)}>
                             <Edit className="h-4 w-4" />
                           </Button>
                           {["draft", "submitted"].includes(item.status) && (
-                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-destructive" title="Delete request" onClick={() => handleDelete(item._id)}>
+                            <Button variant="ghost" size="iconDense" className="rounded-lg text-muted-foreground hover:text-destructive" title="Delete request" onClick={() => handleDelete(item._id)}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           )}
@@ -629,11 +629,11 @@ export default function AgentExhibitionsPage() {
                     </DialogDescription>
                   </div>
                   <div className="grid grid-cols-2 gap-3 text-sm sm:min-w-[20rem]">
-                    <div className="rounded-xl border bg-background/80 p-3">
+                    <div className="rounded-xl border bg-background/80 chip-pad">
                       <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Budget</p>
                       <p className="mt-1 font-semibold">{formatCurrency(detailItem.estimatedBudget, detailItem.budgetCurrency)}</p>
                     </div>
-                    <div className="rounded-xl border bg-background/80 p-3">
+                    <div className="rounded-xl border bg-background/80 chip-pad">
                       <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Expected Leads</p>
                       <p className="mt-1 font-semibold">{detailItem.expectedLeads ?? "-"}</p>
                     </div>
@@ -642,7 +642,7 @@ export default function AgentExhibitionsPage() {
               </DialogHeader>
               <div className="max-h-[68vh] space-y-6 overflow-y-auto px-6 py-5 text-sm">
                 {detailItem.status === "revision_requested" && detailItem.reviewNote && (
-                  <div className="rounded-lg border border-orange-200 bg-orange-50 p-3">
+                  <div className="rounded-lg border border-orange-200 bg-orange-50 chip-pad">
                     <p className="mb-1 flex items-center gap-1 font-medium text-orange-800">
                       <AlertTriangle className="h-4 w-4" /> Revision Requested
                     </p>
@@ -660,14 +660,14 @@ export default function AgentExhibitionsPage() {
                     { label: "Category", value: labelFor(EVENT_CATEGORIES, detailItem.eventCategory) },
                     { label: "Status", value: STATUS_LABELS[detailItem.status] ?? detailItem.status },
                   ].map((item) => (
-                    <div key={item.label} className="rounded-xl border bg-card p-4">
+                    <div key={item.label} className="rounded-xl border bg-card card-pad">
                       <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{item.label}</p>
                       <p className="mt-2 font-medium text-foreground">{item.value}</p>
                     </div>
                   ))}
                 </div>
                 {detailItem.participationTypes.length > 0 && (
-                  <div className="rounded-xl border bg-card p-4">
+                  <div className="rounded-xl border bg-card card-pad">
                     <p className="mb-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">Participation</p>
                     <div className="flex flex-wrap gap-1">
                       {detailItem.participationTypes.map((participationType) => (
@@ -679,7 +679,7 @@ export default function AgentExhibitionsPage() {
                   </div>
                 )}
                 {detailItem.objectives.length > 0 && (
-                  <div className="rounded-xl border bg-card p-4">
+                  <div className="rounded-xl border bg-card card-pad">
                     <p className="mb-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">Objectives</p>
                     <div className="flex flex-wrap gap-1">
                       {detailItem.objectives.map((objective) => (
@@ -689,7 +689,7 @@ export default function AgentExhibitionsPage() {
                   </div>
                 )}
                 {detailItem.requiredResources.length > 0 && (
-                  <div className="rounded-xl border bg-card p-4">
+                  <div className="rounded-xl border bg-card card-pad">
                     <p className="mb-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">Requirement Tags</p>
                     <div className="flex flex-wrap gap-1">
                       {detailItem.requiredResources.map((resource) => (
@@ -699,7 +699,7 @@ export default function AgentExhibitionsPage() {
                   </div>
                 )}
                 {detailItem.budgetBreakdown && (
-                  <div className="rounded-xl border bg-card p-4">
+                  <div className="rounded-xl border bg-card card-pad">
                     <p className="mb-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">Legacy Budget Breakdown</p>
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                       {Object.entries(detailItem.budgetBreakdown).map(([key, value]) => (
@@ -712,7 +712,7 @@ export default function AgentExhibitionsPage() {
                   </div>
                 )}
                 {detailItem.approvedBudget != null && (
-                  <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 card-pad">
                     <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Approved Budget</p>
                     <p className="mt-2 text-lg font-bold text-emerald-700">{formatCurrency(detailItem.approvedBudget, detailItem.budgetCurrency)}</p>
                     {detailItem.approvedBudget !== detailItem.estimatedBudget && (
@@ -721,13 +721,13 @@ export default function AgentExhibitionsPage() {
                   </div>
                 )}
                 {detailItem.description && (
-                  <div className="rounded-xl border bg-card p-4">
+                  <div className="rounded-xl border bg-card card-pad">
                     <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Description</p>
                     <p className="mt-2 leading-6">{detailItem.description}</p>
                   </div>
                 )}
                 {detailItem.statusHistory && detailItem.statusHistory.length > 0 && (
-                  <div className="rounded-xl border bg-card p-4">
+                  <div className="rounded-xl border bg-card card-pad">
                     <p className="mb-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">Approval History</p>
                     <ApprovalTimeline entries={detailItem.statusHistory} />
                   </div>

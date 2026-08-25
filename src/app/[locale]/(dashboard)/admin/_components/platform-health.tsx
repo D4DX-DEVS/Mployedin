@@ -160,12 +160,12 @@ export async function PlatformInsightsSection({
     <section className="workspace-panel-surface flex flex-col rounded-2xl panel-body" data-surface="light-panel">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div>
-          <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">{t("sections.platformInsights.title")}</h2>
+          <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("sections.platformInsights.title")}</h2>
           <p className="mt-2 max-w-2xl text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6">
             {t("sections.platformInsights.description")}
           </p>
         </div>
-        <div className="shrink-0 self-start rounded-2xl border border-sky-100 bg-sky-50/70 px-3 py-2 text-sky-700 shadow-sm sm:text-right">
+        <div className="shrink-0 self-start rounded-2xl border border-sky-100 bg-sky-50/70 text-sky-700 shadow-sm sm:text-right chip-pad">
           <p className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.16em] sm:text-[11px] sm:tracking-[0.18em]">{t("sections.platformInsights.engine")}</p>
           <p className="mt-1 text-xs font-semibold sm:text-sm">{t("sections.platformInsights.engineDetail")}</p>
         </div>
@@ -210,7 +210,7 @@ export function PlatformInsightsSkeleton() {
       </div>
       <div className="mt-6 grid gap-4 md:grid-cols-3">
         {[0, 1, 2].map((i) => (
-          <div key={i} className="rounded-3xl border border-border/50 p-5 space-y-4">
+          <div key={i} className="rounded-3xl border border-border/50 space-y-4 panel-body">
             <div className="h-5 w-16 rounded-full skeleton-shimmer" />
             <div className="h-6 w-40 rounded skeleton-shimmer" />
             <div className="space-y-1.5">

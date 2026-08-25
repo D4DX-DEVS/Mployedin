@@ -318,7 +318,7 @@ export default function AdminReportsPage() {
       <section className="workspace-panel-surface overflow-hidden rounded-3xl">
         <div className="grid grid-cols-2 gap-3 p-5 sm:grid-cols-2 xl:grid-cols-4">
           {kpis.map((kpi) => (
-            <Link key={kpi.label} href={kpi.href} className="rounded-2xl border border-border/60 bg-card p-4 transition-shadow hover:ring-2 hover:ring-primary/20 hover:shadow-md">
+            <Link key={kpi.label} href={kpi.href} className="rounded-2xl border border-border/60 bg-card transition-shadow hover:ring-2 hover:ring-primary/20 hover:shadow-md card-pad">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2">
@@ -359,7 +359,7 @@ export default function AdminReportsPage() {
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("actionQueue")}</p>
-                  <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("platformAlerts")}</h2>
+                  <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("platformAlerts")}</h2>
                   <p className="mt-1 text-sm text-muted-foreground">{t("platformAlertsDescription")}</p>
                 </div>
                 <div className="workspace-tone-amber rounded-2xl p-2.5">
@@ -399,7 +399,7 @@ export default function AdminReportsPage() {
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("demandTrend")}</p>
-                  <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("jobsVsApplications")}</h2>
+                  <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("jobsVsApplications")}</h2>
                   <p className="mt-1 text-sm text-muted-foreground">{t("jobsVsApplicationsDescription")}</p>
                 </div>
                 <div className="workspace-tone-sky rounded-2xl p-2.5">
@@ -455,7 +455,7 @@ export default function AdminReportsPage() {
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("pipelineMix")}</p>
-                  <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("applicationsByStatus")}</h2>
+                  <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("applicationsByStatus")}</h2>
                   <p className="mt-1 text-sm text-muted-foreground">{t("applicationsByStatusDescription")}</p>
                 </div>
                 <div className="workspace-tone-violet rounded-2xl p-2.5">
@@ -502,7 +502,7 @@ export default function AdminReportsPage() {
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("flowEfficiency")}</p>
-                  <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("conversionFunnel")}</h2>
+                  <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("conversionFunnel")}</h2>
                   <p className="mt-1 text-sm text-muted-foreground">{t("conversionFunnelDescription")}</p>
                 </div>
                 <div className="workspace-tone-emerald rounded-2xl p-2.5">
@@ -516,7 +516,7 @@ export default function AdminReportsPage() {
                   const conversion = previousCount > 0 ? Math.round((stage.count / previousCount) * 100) : 0;
 
                   return (
-                    <div key={stage.key} className="workspace-subtle-surface rounded-3xl px-4 py-4">
+                    <div key={stage.key} className="workspace-subtle-surface rounded-3xl card-pad">
                       <div className="flex items-center justify-between gap-4 text-sm">
                         <div>
                           <p className="font-semibold text-foreground">{stage.label}</p>
@@ -551,7 +551,7 @@ export default function AdminReportsPage() {
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("recentActivity")}</p>
-                  <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("recentJobs")}</h2>
+                  <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("recentJobs")}</h2>
                 </div>
                 <div className="workspace-tone-sky rounded-2xl p-2.5">
                   <Briefcase className="h-5 w-5" />
@@ -598,7 +598,7 @@ export default function AdminReportsPage() {
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("recentActivity")}</p>
-                  <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("recentApplications")}</h2>
+                  <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("recentApplications")}</h2>
                 </div>
                 <div className="workspace-tone-violet rounded-2xl p-2.5">
                   <FileText className="h-5 w-5" />
@@ -645,7 +645,7 @@ export default function AdminReportsPage() {
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("ownership")}</p>
-                  <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("topAgents")}</h2>
+                  <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("topAgents")}</h2>
                 </div>
                 <div className="workspace-tone-emerald rounded-2xl p-2.5">
                   <CheckCircle2 className="h-5 w-5" />
@@ -655,7 +655,7 @@ export default function AdminReportsPage() {
               {stats?.topAgents.length ? (
                 <div className="mt-6 space-y-3">
                   {stats.topAgents.map((agent, index) => (
-                    <div key={agent.id} className="workspace-subtle-surface rounded-3xl px-4 py-4">
+                    <div key={agent.id} className="workspace-subtle-surface rounded-3xl card-pad">
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("rankPrefix", { index: index + 1 })}</p>
@@ -696,13 +696,13 @@ export default function AdminReportsPage() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("decisionSupport")}</p>
-                <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("operationalHighlights")}</h2>
+                <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("operationalHighlights")}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">{t("operationalHighlightsDescription")}</p>
               </div>
             </div>
 
             <div className="mt-6 grid gap-4 md:grid-cols-3">
-              <div className="workspace-subtle-surface rounded-3xl p-4">
+              <div className="workspace-subtle-surface card-pad rounded-3xl">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Clock3 className="h-4 w-4" />
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">{t("agingQueue")}</p>
@@ -710,7 +710,7 @@ export default function AdminReportsPage() {
                 <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{stats?.summary.staleOpenApplications ?? 0}</p>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">{t("agingQueueDescription")}</p>
               </div>
-              <div className="workspace-subtle-surface rounded-3xl p-4">
+              <div className="workspace-subtle-surface card-pad rounded-3xl">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <TrendingUp className="h-4 w-4" />
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">{t("demandEfficiency")}</p>
@@ -718,7 +718,7 @@ export default function AdminReportsPage() {
                 <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{applicationRate.toFixed(1)}</p>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">{t("demandEfficiencyDescription")}</p>
               </div>
-              <div className="workspace-subtle-surface rounded-3xl p-4">
+              <div className="workspace-subtle-surface card-pad rounded-3xl">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Wallet className="h-4 w-4" />
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">{t("commercialYield")}</p>

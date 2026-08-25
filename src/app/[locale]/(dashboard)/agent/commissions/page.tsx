@@ -179,7 +179,7 @@ export default function AgentCommissionsPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("filterLedgerLabel")}</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("filterLedgerHeading")}</h2>
+            <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("filterLedgerHeading")}</h2>
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -196,7 +196,7 @@ export default function AgentCommissionsPage() {
                 variant="outline"
                 size="sm"
                 onClick={clearFilters}
-                className="workspace-muted-pill h-9 rounded-xl px-3 text-xs hover:bg-card"
+                className="workspace-muted-pill rounded-xl px-3 text-xs hover:bg-card"
               >
                 <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
                 {t("clearFiltersButton")}
@@ -245,7 +245,7 @@ export default function AgentCommissionsPage() {
 
         {/* Advanced filters */}
         {showAdvanced && (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 rounded-2xl workspace-subtle-surface p-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 rounded-2xl workspace-subtle-surface card-pad">
             <div>
               <label htmlFor="agent-commissions-type" className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("typeFilterLabel")}</label>
               <SearchableSelect
@@ -292,7 +292,7 @@ export default function AgentCommissionsPage() {
 
       {/* ── Results table ── */}
       <section className="workspace-panel-surface rounded-3xl panel-body">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("resultsLabel")}</p><h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("resultsHeading")}</h2></div><div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium"><ArrowRight className="h-3.5 w-3.5 text-primary" />{t("paginationSummary", { total: pagination.total, pages: pagination.totalPages })}</div></div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("resultsLabel")}</p><h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("resultsHeading")}</h2></div><div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium"><ArrowRight className="h-3.5 w-3.5 text-primary" />{t("paginationSummary", { total: pagination.total, pages: pagination.totalPages })}</div></div>
         <TableToolbar
           onExportCsv={handleExportCsv}
           onExportExcel={handleExportExcel}

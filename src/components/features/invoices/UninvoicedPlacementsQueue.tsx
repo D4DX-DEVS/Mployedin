@@ -271,7 +271,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 className="text-base font-semibold text-foreground">{t("uninvoicedPlacements")}</h3>
+          <h3 className="heading-subsection font-semibold text-foreground">{t("uninvoicedPlacements")}</h3>
           <p className="text-xs text-muted-foreground">
             {t("placementsPending", { count: total })}
           </p>
@@ -496,7 +496,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                       <TableRow key={`${p._id}-detail`} className="border-border/70 bg-secondary/20 hover:bg-secondary/20">
                         <TableCell colSpan={10}>
                           <div className="grid grid-cols-1 gap-2 sm:gap-4 py-2 sm:grid-cols-3">
-                            <div className="rounded-lg border border-border/70 bg-card p-3">
+                            <div className="rounded-lg border border-border/70 bg-card chip-pad">
                               <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                                 {t("invoicePreview")}
                               </p>
@@ -518,7 +518,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                                 </div>
                               </div>
                             </div>
-                            <div className="rounded-lg border border-border/70 bg-card p-3">
+                            <div className="rounded-lg border border-border/70 bg-card chip-pad">
                               <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                                 {t("commissionSplit")}
                               </p>
@@ -542,7 +542,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                                 </div>
                               </div>
                             </div>
-                            <div className="rounded-lg border border-border/70 bg-card p-3">
+                            <div className="rounded-lg border border-border/70 bg-card chip-pad">
                               <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                                 {t("employerBilling")}
                               </p>
@@ -592,7 +592,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
           {!bulkResults ? (
             <div className="space-y-4">
               {/* Preview summary */}
-              <div className="rounded-xl border border-border/70 bg-secondary/30 p-4">
+              <div className="rounded-xl border border-border/70 bg-secondary/30 card-pad">
                 <div className="grid grid-cols-3 gap-4 text-center">
                   <div>
                     <p className="text-2xl font-bold text-foreground">{selected.size}</p>
@@ -697,13 +697,13 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
 
               {/* Actions */}
               <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={closeBulkModal} className="h-9 rounded-lg">
+                <Button size="sm" variant="outline" onClick={closeBulkModal} className="rounded-lg">
                   {tCommon("cancel")}
                 </Button>
-                <Button
+                <Button size="sm"
                   onClick={handleBulkGenerate}
                   disabled={bulkProcessing}
-                  className="h-9 gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-700"
+                  className="gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-700"
                 >
                   {bulkProcessing ? (
                     <><Loader2 className="h-4 w-4 animate-spin" /> {t("processing")}</>
@@ -718,15 +718,15 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
             <div className="space-y-4">
               {/* Summary */}
               <div className="grid grid-cols-3 gap-3">
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-3 text-center">
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 text-center chip-pad">
                   <p className="text-2xl font-bold text-emerald-600">{bulkResults.summary.created}</p>
                   <p className="text-[10px] font-medium uppercase text-emerald-700">{t("created")}</p>
                 </div>
-                <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-3 text-center">
+                <div className="rounded-xl border border-amber-200 bg-amber-50/80 text-center chip-pad">
                   <p className="text-2xl font-bold text-amber-600">{bulkResults.summary.skipped}</p>
                   <p className="text-[10px] font-medium uppercase text-amber-700">{t("skipped")}</p>
                 </div>
-                <div className="rounded-xl border border-rose-200 bg-rose-50/80 p-3 text-center">
+                <div className="rounded-xl border border-rose-200 bg-rose-50/80 text-center chip-pad">
                   <p className="text-2xl font-bold text-rose-600">{bulkResults.summary.errors}</p>
                   <p className="text-[10px] font-medium uppercase text-rose-700">{t("errors")}</p>
                 </div>
@@ -765,7 +765,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
               </div>
 
               <div className="flex justify-end">
-                <Button onClick={closeBulkModal} className="h-9 rounded-lg">
+                <Button size="sm" onClick={closeBulkModal} className="rounded-lg">
                   {t("done")}
                 </Button>
               </div>

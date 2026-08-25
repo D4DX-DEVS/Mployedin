@@ -156,7 +156,7 @@ export default function AdminTargetProfileDetailPage() {
       </Link>
 
       {/* Header */}
-      <div className="workspace-glass-panel rounded-2xl p-6">
+      <div className="workspace-glass-panel rounded-2xl panel-body">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-4">
             <div className="workspace-tone-sky rounded-2xl p-3.5">
@@ -200,7 +200,7 @@ export default function AdminTargetProfileDetailPage() {
       </div>
 
       {/* Progress rings */}
-      <section className="workspace-glass-panel rounded-2xl p-6">
+      <section className="workspace-glass-panel rounded-2xl panel-body">
         <div className="flex flex-wrap items-center justify-center gap-8">
           <ProgressRing
             value={profile.employerProgress}
@@ -241,7 +241,7 @@ export default function AdminTargetProfileDetailPage() {
       {profile.monthlyAchievements.length > 0 && (
         <section className="space-y-4">
           <div>
-            <h2 className="text-lg font-semibold tracking-tight">{t("monthlyBreakdown")}</h2>
+            <h2 className="heading-section font-semibold tracking-tight">{t("monthlyBreakdown")}</h2>
             <p className="text-sm text-muted-foreground">{t("monthlyBreakdownDescription")}</p>
           </div>
           <MonthlyDistributionGrid
@@ -255,7 +255,7 @@ export default function AdminTargetProfileDetailPage() {
       {agentProfiles.length > 0 && (
         <section className="space-y-4">
           <div>
-            <h2 className="text-lg font-semibold tracking-tight">Team Breakdown</h2>
+            <h2 className="heading-section font-semibold tracking-tight">Team Breakdown</h2>
             <p className="text-sm text-muted-foreground">
               Agent target profiles under this supervisor
             </p>

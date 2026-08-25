@@ -59,7 +59,7 @@ export default function JobSeekerCalendarPage() {
   }, [fetchEvents]);
 
   return (
-    <div className="space-y-6">
+    <div className="page-container">
       <PageHero title={t("title")} description={t("description")} />
 
       <MployedinCalendar

@@ -84,7 +84,7 @@ function MoreMenu({ url, displayName }: { url: string; displayName: string }) {
 
   return (
     <div ref={ref} className="relative">
-      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setOpen((o) => !o)} title={t("more")}>
+      <Button variant="ghost" size="iconDense" className="" onClick={() => setOpen((o) => !o)} title={t("more")}>
         <MoreHorizontal className="w-4 h-4" />
       </Button>
       {open && (
@@ -178,7 +178,7 @@ function AtsPanel({ jobSeekerId, jobId }: { jobSeekerId: string; jobId: string }
         )}
 
         {badParse && (
-          <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-2.5 text-[11px] text-amber-600">
+          <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 text-[11px] text-amber-600 chip-pad">
             <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
             <span>{t("notParseable")}</span>
           </div>
@@ -341,8 +341,8 @@ export function ResumeViewerModal({
             {hasActions && !hasRightPanel && (
               <>
                 {currentStatus !== "shortlisted" && currentStatus !== "selected" && (
-                  <Button size="sm" variant="outline"
-                    className="h-8 gap-1.5 text-xs border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                  <Button size="dense" variant="outline"
+                    className="gap-1.5 text-xs border-emerald-300 text-emerald-700 hover:bg-emerald-50"
                     disabled={actionLoading !== null}
                     onClick={() => handleAction("shortlisted")}
                   >
@@ -351,8 +351,8 @@ export function ResumeViewerModal({
                   </Button>
                 )}
                 {currentStatus !== "interview_scheduled" && (
-                  <Button size="sm" variant="outline"
-                    className="h-8 gap-1.5 text-xs border-purple-300 text-purple-700 hover:bg-purple-50"
+                  <Button size="dense" variant="outline"
+                    className="gap-1.5 text-xs border-purple-300 text-purple-700 hover:bg-purple-50"
                     disabled={actionLoading !== null}
                     onClick={() => handleAction("interview_scheduled")}
                   >
@@ -361,8 +361,8 @@ export function ResumeViewerModal({
                   </Button>
                 )}
                 {currentStatus !== "rejected" && (
-                  <Button size="sm" variant="outline"
-                    className="h-8 gap-1.5 text-xs border-red-300 text-red-700 hover:bg-red-50"
+                  <Button size="dense" variant="outline"
+                    className="gap-1.5 text-xs border-red-300 text-red-700 hover:bg-red-50"
                     disabled={actionLoading !== null}
                     onClick={() => handleAction("rejected")}
                   >
@@ -376,15 +376,15 @@ export function ResumeViewerModal({
 
             {!isPdf && (
               <>
-                <Button variant="ghost" size="icon" className="h-8 w-8"
+                <Button variant="ghost" size="iconDense" className=""
                   onClick={() => setImgScale((s) => Math.max(0.5, s - 0.25))} title={t("a11yZoomOut")}>
                   <ZoomOut className="w-4 h-4" />
                 </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8"
+                <Button variant="ghost" size="iconDense" className=""
                   onClick={() => setImgScale((s) => Math.min(3, s + 0.25))} title={t("a11yZoomIn")}>
                   <ZoomIn className="w-4 h-4" />
                 </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8"
+                <Button variant="ghost" size="iconDense" className=""
                   onClick={() => setImgRotation((r) => (r + 90) % 360)} title={t("a11yRotate")}>
                   <RotateCw className="w-4 h-4" />
                 </Button>
@@ -395,8 +395,8 @@ export function ResumeViewerModal({
             <div className="w-px h-5 bg-border" />
             <Button
               variant="ghost"
-              size="icon"
-              className="h-8 w-8"
+              size="iconDense"
+              className=""
               onClick={() => setIsFullscreen((f) => !f)}
               title={isFullscreen ? "Exit full view" : "Full view"}
             >
@@ -404,7 +404,7 @@ export function ResumeViewerModal({
                 ? <Minimize2 className="w-4 h-4" />
                 : <Maximize2 className="w-4 h-4" />}
             </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
+            <Button variant="ghost" size="iconDense" className="" onClick={onClose}>
               <X className="w-4 h-4" />
             </Button>
           </div>

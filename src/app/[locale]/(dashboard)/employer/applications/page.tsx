@@ -808,7 +808,7 @@ export default function EmployerApplicationsPage() {
   }
 
   return (
-    <div className="page-container pb-1">
+    <div className="page-container">
       <PageHeader
         title={selectedJob ? `${selectedJob.title} — ${t("title")}` : t("title")}
         actions={canUpdate ? (
@@ -816,7 +816,7 @@ export default function EmployerApplicationsPage() {
             <Button
               size="sm"
               variant="outline"
-              className="h-9 rounded-xl border-border bg-background/80 px-3 text-xs font-medium"
+              className="rounded-xl border-border bg-background/80 px-3 text-xs font-medium"
               onClick={toggleAll}
               disabled={!filteredApplications.length}
             >
@@ -826,7 +826,7 @@ export default function EmployerApplicationsPage() {
             <Button
               size="sm"
               variant="outline"
-              className="h-9 rounded-xl border-border bg-background/80 px-3 text-xs"
+              className="rounded-xl border-border bg-background/80 px-3 text-xs"
               disabled={bulkAiMatch.isPending || applications.every((a) => a.aiMatchScore != null)}
               onClick={handleBulkAiMatch}
             >
@@ -837,7 +837,7 @@ export default function EmployerApplicationsPage() {
             </Button>
             <Button
               size="sm"
-              className="h-9 rounded-xl bg-emerald-700 px-3 text-xs font-semibold text-white hover:bg-emerald-800"
+              className="rounded-xl bg-emerald-700 px-3 text-xs font-semibold text-white hover:bg-emerald-800"
               disabled={bulkAction.isPending || !filteredApplications.some((a) => a.aiMatchScore != null && a.status === "applied")}
               onClick={handleAutoShortlist}
             >
@@ -869,7 +869,7 @@ export default function EmployerApplicationsPage() {
               type="button"
               onClick={() => setMobileFiltersOpen((v) => !v)}
               aria-expanded={mobileFiltersOpen}
-              className="flex flex-1 items-center justify-between gap-3 rounded-xl border border-border bg-background/70 px-3 py-2 text-left text-sm font-semibold text-foreground sm:hidden"
+              className="flex flex-1 items-center justify-between gap-3 rounded-xl border border-border bg-background/70 text-left text-sm font-semibold text-foreground sm:hidden chip-pad"
             >
               <span className="flex items-center gap-2">
                 <Filter className="h-4 w-4 text-primary" />
@@ -951,7 +951,7 @@ export default function EmployerApplicationsPage() {
 
           {/* Selected job info strip */}
           {selectedJob && (
-            <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-status-applied-bg/40 px-3 py-2 text-xs text-muted-foreground">
+            <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-status-applied-bg/40 text-xs text-muted-foreground chip-pad">
               <BriefcaseBusiness className="h-3.5 w-3.5 text-status-applied" />
               <span className="font-semibold text-foreground">{selectedJob.title}</span>
               <span className="text-border">•</span>
@@ -992,7 +992,7 @@ export default function EmployerApplicationsPage() {
           )}
 
       {showFilters && (
-        <div className="mt-3 grid grid-cols-2 gap-2 rounded-3xl border border-border/60 bg-background/60 p-2.5 sm:gap-4 sm:p-4 lg:grid-cols-4">
+        <div className="mt-3 grid grid-cols-2 gap-2 rounded-3xl border border-border/60 bg-background/60 sm:gap-4 lg:grid-cols-4 card-pad">
           {/* AI Score Range */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("aiScoreRange")}</label>
@@ -1131,7 +1131,7 @@ export default function EmployerApplicationsPage() {
           )}
           {!selectedJob && (
             <div className="flex items-end">
-              <Button size="sm" variant="ghost" className="h-9 rounded-xl px-4 text-sm text-muted-foreground"
+              <Button size="sm" variant="ghost" className="rounded-xl px-4 text-sm text-muted-foreground"
                 onClick={() => { setScoreRange([0, 100]); setDaysFilter(null); setExperienceRange([null, null]); setSkillsFilter([]); }}>
                 {t("reset")}
               </Button>
@@ -1142,7 +1142,7 @@ export default function EmployerApplicationsPage() {
       </section>
 
       {canUpdate && selected.length > 0 && (
-        <div className="flex flex-wrap items-center gap-3 rounded-3xl border border-sky-500/20 bg-sky-500/10 p-4 text-sky-800">
+        <div className="flex flex-wrap items-center gap-3 rounded-3xl border border-sky-500/20 bg-sky-500/10 text-sky-800 card-pad">
           <span className="text-sm font-semibold">{selected.length} {t("bulkActions")}</span>
           <div className="flex gap-2 flex-wrap">
             <Button size="sm" variant="outline" className="h-10 rounded-xl border-border bg-background/80 px-4 text-sm"
@@ -1166,7 +1166,7 @@ export default function EmployerApplicationsPage() {
       )}
 
       {showRejectPrompt && (
-        <div className="flex flex-col gap-3 rounded-3xl border border-destructive/30 bg-destructive/5 p-4">
+        <div className="flex flex-col gap-3 rounded-3xl border border-destructive/30 bg-destructive/5 card-pad">
           <p className="text-sm font-semibold text-destructive">{t("rejectionRequired")}</p>
           <div className="flex gap-2">
             <input
@@ -1187,7 +1187,7 @@ export default function EmployerApplicationsPage() {
 
       {/* Shortlist Top confirmation — user picks how many */}
       {shortlistConfirm && (
-        <div className="flex flex-col gap-4 rounded-3xl border border-emerald-500/20 bg-emerald-500/10 p-5">
+        <div className="flex flex-col gap-4 rounded-3xl border border-emerald-500/20 bg-emerald-500/10 panel-body">
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/20">
               <CheckCheck className="h-5 w-5 text-status-selected" />
@@ -1205,8 +1205,8 @@ export default function EmployerApplicationsPage() {
                 <label className="text-xs font-medium text-foreground">{t("shortlistTop")}</label>
                 <div className="flex items-center gap-1">
                   <Button
-                    type="button" size="sm" variant="outline"
-                    className="h-8 w-8 rounded-lg p-0 text-sm"
+                    type="button" size="dense" variant="outline"
+                    className="w-8 rounded-lg p-0 text-sm"
                     disabled={shortlistCount <= 1}
                     onClick={() => setShortlistCount((c) => Math.max(1, c - 1))}
                   >
@@ -1224,8 +1224,8 @@ export default function EmployerApplicationsPage() {
                     className="h-8 w-14 rounded-lg border border-emerald-200/60 bg-background/80 text-center text-sm font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-400"
                   />
                   <Button
-                    type="button" size="sm" variant="outline"
-                    className="h-8 w-8 rounded-lg p-0 text-sm"
+                    type="button" size="dense" variant="outline"
+                    className="w-8 rounded-lg p-0 text-sm"
                     disabled={shortlistCount >= shortlistConfirm.total}
                     onClick={() => setShortlistCount((c) => Math.min(shortlistConfirm.total, c + 1))}
                   >
@@ -1242,11 +1242,7 @@ export default function EmployerApplicationsPage() {
                   return (
                     <div
                       key={app._id}
-                      className={`flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs transition-opacity ${
-                        included
-                          ? "border-emerald-200/60 bg-background/80"
-                          : "border-border/40 bg-muted/30 opacity-50"
-                      }`}
+                      className={`flex items-center gap-2 rounded-xl border text-xs transition-opacity ${ included ? "border-emerald-200/60 bg-background/80" : "border-border/40 bg-muted/30 opacity-50" } chip-pad`}
                     >
                       <span className="w-4 text-center text-[10px] font-bold text-status-selected">
                         {idx + 1}
@@ -1272,12 +1268,12 @@ export default function EmployerApplicationsPage() {
             </div>
           </div>
           <div className="flex gap-2 justify-end">
-            <Button size="sm" variant="ghost" className="h-9 rounded-xl px-4" onClick={() => setShortlistConfirm(null)}>
+            <Button size="sm" variant="ghost" className="rounded-xl px-4" onClick={() => setShortlistConfirm(null)}>
               {t("cancel")}
             </Button>
             <Button
               size="sm"
-              className="h-9 rounded-xl bg-emerald-700 px-4 text-white hover:bg-emerald-800"
+              className="rounded-xl bg-emerald-700 px-4 text-white hover:bg-emerald-800"
               disabled={bulkAction.isPending || shortlistCount < 1}
               onClick={confirmAutoShortlist}
             >
@@ -1290,7 +1286,7 @@ export default function EmployerApplicationsPage() {
 
       {/* Post-shortlist: prompt to schedule interviews */}
       {postShortlistPrompt && (
-        <div className="flex flex-col gap-3 rounded-3xl border border-violet-500/20 bg-violet-500/10 p-5">
+        <div className="flex flex-col gap-3 rounded-3xl border border-violet-500/20 bg-violet-500/10 panel-body">
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-violet-500/20">
               <Calendar className="h-5 w-5 text-status-interview" />
@@ -1312,12 +1308,12 @@ export default function EmployerApplicationsPage() {
             </div>
           </div>
           <div className="flex gap-2 justify-end">
-            <Button size="sm" variant="ghost" className="h-9 rounded-xl px-4" onClick={() => setPostShortlistPrompt(null)}>
+            <Button size="sm" variant="ghost" className="rounded-xl px-4" onClick={() => setPostShortlistPrompt(null)}>
               {t("skipForNow")}
             </Button>
             <Button
               size="sm"
-              className="h-9 rounded-xl bg-violet-600 px-4 text-white hover:bg-violet-700"
+              className="rounded-xl bg-violet-600 px-4 text-white hover:bg-violet-700"
               onClick={handlePostShortlistInterview}
             >
               <Calendar className="me-2 h-3.5 w-3.5" />
@@ -1337,7 +1333,7 @@ export default function EmployerApplicationsPage() {
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-status-rejected-bg text-rose-500">
                 <Inbox className="h-7 w-7" />
               </div>
-              <h3 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
+              <h3 className="heading-subsection mt-3 font-semibold tracking-tight text-foreground">
                 {t("unableToLoad")}
               </h3>
               <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">
@@ -1405,7 +1401,7 @@ export default function EmployerApplicationsPage() {
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 overflow-y-auto py-8">
           <div className="bg-background rounded-lg border border-border shadow-lg max-w-2xl w-full mx-4">
             <div className="px-6 py-4 border-b border-border">
-              <h2 className="text-lg font-semibold">{t("createScorecardTitle")}</h2>
+              <h2 className="heading-section font-semibold">{t("createScorecardTitle")}</h2>
               <p className="text-sm text-muted-foreground mt-1">
                 {t("createScorecardDesc")}
               </p>
@@ -1717,8 +1713,8 @@ function TableView({
                 {onOpenDetails ? (
                   <Button
                     variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 rounded-lg p-0 text-muted-foreground hover:text-foreground"
+                    size="dense"
+                    className="w-8 rounded-lg p-0 text-muted-foreground hover:text-foreground"
                     onClick={(event) => {
                       event.stopPropagation();
                       onOpenDetails?.(app, event.currentTarget);
@@ -1731,8 +1727,8 @@ function TableView({
                 {app.jobSeekerId?.cv?.originalUrl && onViewCv ? (
                   <Button
                     variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 rounded-lg p-0 text-muted-foreground hover:text-foreground"
+                    size="dense"
+                    className="w-8 rounded-lg p-0 text-muted-foreground hover:text-foreground"
                     onClick={(event) => {
                       event.stopPropagation();
                       onViewCv(app);
@@ -2023,7 +2019,7 @@ function ApplicationDetailsPanel({
                 <p className="text-2xl font-bold leading-none tracking-tight text-foreground">{app.aiMatchScore != null ? `${app.aiMatchScore}%` : "—"}</p>
                 <p className={`mt-1 text-xs font-semibold ${matchLabelColor}`}>{matchLabel}</p>
               </div>
-              <Button ref={closeButtonRef} variant="ghost" size="sm" className="h-8 w-8 rounded-full p-0 text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500" onClick={onClose} aria-label={t("closeCandidateDetails")}>
+              <Button ref={closeButtonRef} variant="ghost" size="dense" className="w-8 rounded-full p-0 text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500" onClick={onClose} aria-label={t("closeCandidateDetails")}>
                 <X className="h-4 w-4" />
               </Button>
             </div>
@@ -2034,7 +2030,7 @@ function ApplicationDetailsPanel({
               <div className="relative">
                 <Button
                   size="sm"
-                  className="h-9 rounded-lg px-3 text-sm"
+                  className="rounded-lg px-3 text-sm"
                   disabled={statusPending}
                   onClick={() => setStageMenuOpen((open) => !open)}
                 >
@@ -2069,7 +2065,7 @@ function ApplicationDetailsPanel({
               </div>
             ) : null}
             {onScheduleInterview ? (
-              <Button variant="outline" size="sm" className="h-9 rounded-lg border-border px-3 text-sm" onClick={() => onScheduleInterview(app)}>
+              <Button variant="outline" size="sm" className="rounded-lg border-border px-3 text-sm" onClick={() => onScheduleInterview(app)}>
                 <Calendar className="me-1.5 h-3.5 w-3.5" />
                 {t("scheduleInterview")}
               </Button>
@@ -2120,7 +2116,7 @@ function ApplicationDetailsPanel({
           <div className="space-y-4">
             {/* Reject confirmation — shown when "Rejected" is picked from Move Stage */}
             {nextStage === "rejected" && onChangeStatus ? (
-              <div className="rounded-2xl border border-rose-500/20 bg-rose-500/5 p-4">
+              <div className="rounded-2xl border border-rose-500/20 bg-rose-500/5 card-pad">
                 <p className="text-xs font-semibold text-status-rejected">{t("rejectAction")}</p>
                 <textarea
                   value={rejectReason}
@@ -2128,13 +2124,13 @@ function ApplicationDetailsPanel({
                   placeholder={t("rejectionReasonRequired")}
                   maxLength={500}
                   autoFocus
-                  className="mt-2 h-16 w-full rounded-xl border border-border bg-background/80 px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-rose-300"
+                  className="mt-2 h-16 w-full rounded-xl border border-border bg-background/80 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-rose-300 chip-pad"
                 />
                 <div className="mt-2 flex justify-end gap-2">
-                  <Button size="sm" variant="ghost" className="h-9 rounded-xl px-4 text-xs" onClick={() => { setNextStage(""); setRejectReason(""); }}>
+                  <Button size="sm" variant="ghost" className="rounded-xl px-4 text-xs" onClick={() => { setNextStage(""); setRejectReason(""); }}>
                     {t("cancel")}
                   </Button>
-                  <Button size="sm" variant="destructive" className="h-9 rounded-xl px-4 text-xs" disabled={!rejectReason.trim() || statusPending} onClick={handleApplyStageChange}>
+                  <Button size="sm" variant="destructive" className="rounded-xl px-4 text-xs" disabled={!rejectReason.trim() || statusPending} onClick={handleApplyStageChange}>
                     {statusPending ? t("updating") : t("rejectAction")}
                   </Button>
                 </div>
@@ -2143,7 +2139,7 @@ function ApplicationDetailsPanel({
 
             {/* Row 1: AI Match Score | Application Overview (2 equal cards) */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
+              <div className="workspace-glass-panel card-pad rounded-2xl">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("aiMatchScore")}</p>
                 {app.aiMatchScore != null ? (
                   <div className="mt-3">
@@ -2171,7 +2167,7 @@ function ApplicationDetailsPanel({
                 ) : (
                   <div className="mt-3">
                     {onGenerateAiMatch ? (
-                      <Button size="sm" variant="ghost" className="h-8 rounded-xl px-3 text-xs text-status-applied hover:bg-sky-500/10" disabled={aiMatchPendingId === app._id} onClick={() => onGenerateAiMatch(app)}>
+                      <Button size="dense" variant="ghost" className="rounded-xl px-3 text-xs text-status-applied hover:bg-sky-500/10" disabled={aiMatchPendingId === app._id} onClick={() => onGenerateAiMatch(app)}>
                         <Sparkles className={`mr-1.5 h-3.5 w-3.5 ${aiMatchPendingId === app._id ? "animate-pulse text-status-applied" : ""}`} />
                         {t("generateScore")}
                       </Button>
@@ -2182,7 +2178,7 @@ function ApplicationDetailsPanel({
                 )}
               </div>
 
-              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
+              <div className="workspace-glass-panel card-pad rounded-2xl">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("applicationOverview")}</p>
                 <div className="mt-3 space-y-2 text-sm">
                   <div className="flex items-center justify-between">
@@ -2191,7 +2187,7 @@ function ApplicationDetailsPanel({
                   </div>
                 </div>
                 {(app.otherApplicationsCount ?? 0) > 0 ? (
-                  <Button variant="outline" size="sm" className="mt-3 h-8 w-full rounded-xl border-border text-[11px]">
+                  <Button variant="outline" size="dense" className="mt-3 w-full rounded-xl border-border text-[11px]">
                     {t("viewAllApplications")}
                   </Button>
                 ) : null}
@@ -2202,7 +2198,7 @@ function ApplicationDetailsPanel({
 
             {/* Row 3: Skills | Experience (2 cards) */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
+              <div className="workspace-glass-panel card-pad rounded-2xl">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("keySkills")}</p>
                 {app.jobSeekerId?.skills?.length ? (
                   <div className="mt-3 flex flex-wrap gap-1.5">
@@ -2217,7 +2213,7 @@ function ApplicationDetailsPanel({
                 )}
               </div>
 
-              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
+              <div className="workspace-glass-panel card-pad rounded-2xl">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("experience")}</p>
                 {app.jobSeekerId?.experience?.length ? (
                   <div className="mt-3 space-y-2">
@@ -2238,7 +2234,7 @@ function ApplicationDetailsPanel({
             {(app.matchStrengths?.length || app.matchGaps?.length) ? (
               <div className="grid grid-cols-2 gap-4">
                 {app.matchStrengths?.length ? (
-                  <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+                  <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 card-pad">
                     <p className="text-xs font-semibold text-emerald-700">{t("strengths")}</p>
                     <ul className="mt-2 space-y-1.5 text-xs text-muted-foreground">
                       {app.matchStrengths.map((s) => (
@@ -2251,7 +2247,7 @@ function ApplicationDetailsPanel({
                   </div>
                 ) : <div />}
                 {app.matchGaps?.length ? (
-                  <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4">
+                  <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 card-pad">
                     <p className="text-xs font-semibold text-status-shortlisted">{t("watchouts")}</p>
                     <ul className="mt-2 space-y-1.5 text-xs text-muted-foreground">
                       {app.matchGaps.map((g) => (
@@ -2267,24 +2263,24 @@ function ApplicationDetailsPanel({
             ) : null}
 
             {/* Row 5: Quick Actions (full width) */}
-            <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
+            <div className="workspace-glass-panel card-pad rounded-2xl">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("quickActions")}</p>
               <div className="mt-3 grid grid-cols-3 gap-2">
-                <Button variant="outline" size="sm" className="h-9 rounded-xl border-border text-[11px]" onClick={() => setActiveTab("notes")}>
+                <Button variant="outline" size="sm" className="rounded-xl border-border text-[11px]" onClick={() => setActiveTab("notes")}>
                   <Plus className="me-1.5 h-3.5 w-3.5" /> {t("addNote")}
                 </Button>
                 {onOpenScorecard ? (
-                  <Button variant="outline" size="sm" className="h-9 rounded-xl border-border text-[11px]" onClick={() => onOpenScorecard({ applicationId: app._id })}>
+                  <Button variant="outline" size="sm" className="rounded-xl border-border text-[11px]" onClick={() => onOpenScorecard({ applicationId: app._id })}>
                     <Award className="me-1.5 h-3.5 w-3.5" /> {t("addScorecard")}
                   </Button>
                 ) : null}
                 {onChangeStatus && app.status === "applied" ? (
-                  <Button variant="outline" size="sm" className="h-9 rounded-xl border-border text-[11px] text-status-applied" disabled={statusPending} onClick={() => handleQuickStageChange("shortlisted")}>
+                  <Button variant="outline" size="sm" className="rounded-xl border-border text-[11px] text-status-applied" disabled={statusPending} onClick={() => handleQuickStageChange("shortlisted")}>
                     <CheckCheck className="me-1.5 h-3.5 w-3.5" /> {t("shortlistAction")}
                   </Button>
                 ) : null}
                 {!(["rejected", "offer"]).includes(app.status) && onChangeStatus ? (
-                  <Button size="sm" variant="ghost" className="h-9 rounded-xl bg-rose-500/10 text-[11px] text-status-rejected hover:bg-rose-500/15" onClick={() => setNextStage("rejected")}>
+                  <Button size="sm" variant="ghost" className="rounded-xl bg-rose-500/10 text-[11px] text-status-rejected hover:bg-rose-500/15" onClick={() => setNextStage("rejected")}>
                     {t("rejectAction")}
                   </Button>
                 ) : null}
@@ -2296,11 +2292,11 @@ function ApplicationDetailsPanel({
 
           {activeTab === "resume" ? (
             <div className="space-y-4">
-              <div className="workspace-glass-panel rounded-3xl p-5">
+              <div className="workspace-glass-panel rounded-3xl panel-body">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("tabResume")}</p>
                 {hasResume ? (
                   <div className="mt-4 space-y-3">
-                    <div className="flex items-center gap-3 rounded-2xl border border-border bg-background/70 p-4">
+                    <div className="flex items-center gap-3 rounded-2xl border border-border bg-background/70 card-pad">
                       <div className="flex h-14 w-11 shrink-0 items-center justify-center rounded-lg bg-rose-500/10 text-rose-500">
                         <FileText className="h-6 w-6" />
                       </div>
@@ -2321,7 +2317,7 @@ function ApplicationDetailsPanel({
           ) : null}
 
           {activeTab === "timeline" ? (
-            <div className="workspace-glass-panel rounded-3xl p-6 text-center">
+            <div className="workspace-glass-panel rounded-3xl text-center panel-body">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500/10 text-status-applied">
                 <History className="h-6 w-6" />
               </div>
@@ -2336,7 +2332,7 @@ function ApplicationDetailsPanel({
           ) : null}
 
           {activeTab === "notes" ? (
-            <div className="workspace-glass-panel rounded-3xl p-5 space-y-3">
+            <div className="workspace-glass-panel rounded-3xl space-y-3 panel-body">
               <div className="flex items-center gap-2">
                 <FileText className="h-4 w-4 text-status-interview" />
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("notes")}</p>
@@ -2347,11 +2343,11 @@ function ApplicationDetailsPanel({
                 onChange={(e) => { setNoteText(e.target.value); setNoteSaved(false); }}
                 placeholder={t("addNote")}
                 maxLength={2000}
-                className="h-28 w-full rounded-xl border border-border bg-background/80 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-sky-300"
+                className="h-28 w-full rounded-xl border border-border bg-background/80 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-sky-300 chip-pad"
               />
               <div className="flex items-center justify-between">
                 {noteSaved ? <span className="text-xs text-emerald-600">Saved</span> : <span />}
-                <Button size="sm" className="h-9 rounded-xl px-4 text-xs" disabled={!noteText.trim() || noteSaving} onClick={handleAddNote}>
+                <Button size="sm" className="rounded-xl px-4 text-xs" disabled={!noteText.trim() || noteSaving} onClick={handleAddNote}>
                   <Plus className="me-1.5 h-3.5 w-3.5" /> {noteSaving ? t("updating") : t("addNote")}
                 </Button>
               </div>
@@ -2361,7 +2357,7 @@ function ApplicationDetailsPanel({
 
 
           {activeTab === "scorecard" ? (
-            <div className="workspace-glass-panel rounded-3xl p-6">
+            <div className="workspace-glass-panel rounded-3xl panel-body">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("scorecard")}</p>
               {scorecard ? (
                 <div className="mt-3">
@@ -2630,7 +2626,7 @@ function BulkInterviewScheduleModal({
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 overflow-y-auto py-8">
       <div className="bg-background rounded-lg border border-border shadow-lg max-w-lg w-full mx-4">
         <div className="px-6 py-4 border-b border-border">
-          <h2 className="text-lg font-semibold flex items-center gap-2">
+          <h2 className="heading-section font-semibold flex items-center gap-2">
             <Calendar className="h-5 w-5 text-status-applied" />
             Bulk Schedule Interviews
           </h2>
@@ -2698,7 +2694,7 @@ function BulkInterviewScheduleModal({
           </div>
 
           {/* Working Hours */}
-          <div className="rounded-lg border border-border p-3 space-y-3">
+          <div className="rounded-lg border border-border space-y-3 chip-pad">
             <p className="text-xs font-medium flex items-center gap-1.5">
               <Clock className="h-3.5 w-3.5 text-muted-foreground" />
               Working Hours
@@ -2769,7 +2765,7 @@ function BulkInterviewScheduleModal({
 
           {/* Time slots preview */}
           {previewItems.length > 0 && (
-            <div className="rounded-xl border border-border/60 bg-status-applied-bg/40 p-4">
+            <div className="rounded-xl border border-border/60 bg-status-applied-bg/40 card-pad">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-status-applied mb-3">
                 Auto-calculated Schedule{dayCount > 1 ? ` · ${dayCount} Days` : ""}
               </p>
@@ -2810,8 +2806,8 @@ function BulkInterviewScheduleModal({
           )}
         </div>
         <div className="px-6 py-4 border-t border-border flex gap-2 justify-end">
-          <Button variant="ghost" onClick={onCancel} className="h-9">Cancel</Button>
-          <Button onClick={handleSubmit} disabled={!scheduledAt || isPast || isLoading} className="h-9 bg-primary text-primary-foreground hover:bg-primary/90">
+          <Button size="sm" variant="ghost" onClick={onCancel} className="">Cancel</Button>
+          <Button size="sm" onClick={handleSubmit} disabled={!scheduledAt || isPast || isLoading} className="bg-primary text-primary-foreground hover:bg-primary/90">
             <Calendar className="w-3.5 h-3.5 me-1" />
             {isLoading ? "Scheduling..." : `Schedule ${candidateCount} Interview${candidateCount > 1 ? "s" : ""}`}
           </Button>
@@ -2888,7 +2884,7 @@ ${rejectionReason ? `<p><em>Reason: ${rejectionReason}</em></p>` : ""}
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 overflow-y-auto py-8">
       <div className="bg-background rounded-lg border border-border shadow-lg max-w-2xl w-full mx-4">
         <div className="px-6 py-4 border-b border-border">
-          <h2 className="text-lg font-semibold flex items-center gap-2">
+          <h2 className="heading-section font-semibold flex items-center gap-2">
             <Mail className="h-5 w-5 text-status-applied" />
             {action === "send_message" ? "Send Bulk Email" : `${statusLabel} — Email Preview`}
           </h2>
@@ -2918,7 +2914,7 @@ ${rejectionReason ? `<p><em>Reason: ${rejectionReason}</em></p>` : ""}
             <textarea
               value={body}
               onChange={(e) => { setBody(e.target.value); setCustomized(true); }}
-              className="w-full h-40 px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-sky-400 resize-none font-mono"
+              className="w-full h-40 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-sky-400 resize-none font-mono chip-pad"
               maxLength={10000}
             />
           </div>
@@ -2926,7 +2922,7 @@ ${rejectionReason ? `<p><em>Reason: ${rejectionReason}</em></p>` : ""}
           {/* Live preview */}
           <div>
             <label className="block text-xs font-medium mb-2">Preview</label>
-            <div className="rounded-xl border border-border bg-card p-4 text-sm">
+            <div className="rounded-xl border border-border bg-card text-sm card-pad">
               <div className="border-b border-border pb-2 mb-3">
                 <p className="text-xs text-muted-foreground">Subject:</p>
                 <p className="font-medium">{subject.replace(/\{\{jobTitle\}\}/g, jobTitle).replace(/\{\{companyName\}\}/g, "Company")}</p>
@@ -2952,7 +2948,7 @@ ${rejectionReason ? `<p><em>Reason: ${rejectionReason}</em></p>` : ""}
             Reset to Default
           </Button>
           <div className="flex gap-2">
-            <Button variant="ghost" onClick={onCancel} className="h-9">Cancel</Button>
+            <Button size="sm" variant="ghost" onClick={onCancel} className="">Cancel</Button>
             {action !== "send_message" && (
               <Button variant="outline" onClick={() => onConfirm()} disabled={isLoading} className="h-9">
                 {isLoading ? "Processing..." : `${statusLabel} Without Email`}
@@ -3011,7 +3007,7 @@ function InterviewScheduleModal({
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 overflow-y-auto py-8">
       <div className="bg-background rounded-lg border border-border shadow-lg max-w-md w-full mx-4">
         <div className="px-6 py-4 border-b border-border">
-          <h2 className="text-lg font-semibold">Schedule Interview</h2>
+          <h2 className="heading-section font-semibold">Schedule Interview</h2>
           <p className="text-sm text-muted-foreground mt-1">Set up the interview details</p>
         </div>
         <div className="px-6 py-4 space-y-4">
@@ -3072,12 +3068,12 @@ function InterviewScheduleModal({
             <textarea value={instructions} onChange={(e) => setInstructions(e.target.value)}
               placeholder="Any special instructions for the candidate..."
               maxLength={500}
-              className="w-full h-16 px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none" />
+              className="w-full h-16 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none chip-pad" />
           </div>
         </div>
         <div className="px-6 py-4 border-t border-border flex gap-2 justify-end">
-          <Button variant="ghost" onClick={onCancel} className="h-9">Cancel</Button>
-          <Button onClick={handleSubmit} disabled={!scheduledAt || submitting} className="h-9">
+          <Button size="sm" variant="ghost" onClick={onCancel} className="">Cancel</Button>
+          <Button size="sm" onClick={handleSubmit} disabled={!scheduledAt || submitting} className="">
             {submitting ? "Scheduling..." : "Schedule Interview"}
           </Button>
         </div>
@@ -3125,7 +3121,7 @@ function OfferCreateModal({
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 overflow-y-auto py-8">
       <div className="bg-background rounded-lg border border-border shadow-lg max-w-md w-full mx-4">
         <div className="px-6 py-4 border-b border-border">
-          <h2 className="text-lg font-semibold">Create Offer</h2>
+          <h2 className="heading-section font-semibold">Create Offer</h2>
           <p className="text-sm text-muted-foreground mt-1">Send an offer to this candidate</p>
         </div>
         <div className="px-6 py-4 space-y-4">
@@ -3174,19 +3170,19 @@ function OfferCreateModal({
             <textarea value={benefits} onChange={(e) => setBenefits(e.target.value)}
               placeholder="Health insurance, PTO, remote work..."
               maxLength={2000}
-              className="w-full h-16 px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none" />
+              className="w-full h-16 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none chip-pad" />
           </div>
           <div>
             <label className="block text-xs font-medium mb-1">Notes</label>
             <textarea value={notes} onChange={(e) => setNotes(e.target.value)}
               placeholder="Additional details for the candidate..."
               maxLength={1000}
-              className="w-full h-16 px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none" />
+              className="w-full h-16 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none chip-pad" />
           </div>
         </div>
         <div className="px-6 py-4 border-t border-border flex gap-2 justify-end">
-          <Button variant="ghost" onClick={onCancel} className="h-9">Cancel</Button>
-          <Button onClick={handleSubmit} disabled={!amount || !startDate || submitting} className="h-9">
+          <Button size="sm" variant="ghost" onClick={onCancel} className="">Cancel</Button>
+          <Button size="sm" onClick={handleSubmit} disabled={!amount || !startDate || submitting} className="">
             <DollarSign className="w-3.5 h-3.5 me-1" />
             {submitting ? "Sending..." : "Send Offer"}
           </Button>
@@ -3281,7 +3277,7 @@ function ActivityTimelinePanel({
                 </div>
                 <div className="min-w-0">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary/80">Application Activity</p>
-                  <h2 className="truncate text-lg font-semibold text-foreground sm:text-xl">{candidateLabel}</h2>
+                  <h2 className="heading-section truncate font-semibold text-foreground">{candidateLabel}</h2>
                   <p className="mt-1 text-xs text-muted-foreground">Recent workflow events for this application</p>
                 </div>
               </div>
@@ -3304,7 +3300,7 @@ function ActivityTimelinePanel({
               </div>
             </div>
 
-            <Button variant="ghost" size="sm" className="h-9 w-9 rounded-full p-0 hover:bg-destructive/10 hover:text-destructive" onClick={onClose} aria-label={t("a11yCloseActivityTimeline")}>
+            <Button variant="ghost" size="sm" className="w-9 rounded-full p-0 hover:bg-destructive/10 hover:text-destructive" onClick={onClose} aria-label={t("a11yCloseActivityTimeline")}>
               <X className="h-4 w-4" />
             </Button>
           </div>
@@ -3314,7 +3310,7 @@ function ActivityTimelinePanel({
           {loading ? (
             <div className="space-y-4">
               {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="rounded-2xl border border-border/50 bg-background/80 p-4 shadow-sm">
+                <div key={i} className="rounded-2xl border border-border/50 bg-background/80 shadow-sm card-pad">
                   <div className="flex gap-3">
                     <div className="mt-1 h-10 w-10 rounded-2xl bg-muted animate-pulse" />
                     <div className="flex-1 space-y-2.5">
@@ -3343,7 +3339,7 @@ function ActivityTimelinePanel({
                   return (
                     <div key={entry.id} className="relative">
                       <div className={`absolute left-[-18px] top-5 h-3.5 w-3.5 rounded-full ${info.color} ring-4 ring-background shadow-sm`} />
-                      <div className="rounded-2xl border border-border/55 bg-background/92 p-3.5 shadow-[0_10px_30px_rgba(15,23,42,0.06)] transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_36px_rgba(15,23,42,0.1)] sm:p-4">
+                      <div className="rounded-2xl border border-border/55 bg-background/92 shadow-[0_10px_30px_rgba(15,23,42,0.06)] transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_36px_rgba(15,23,42,0.1)] card-pad">
                         <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
                           <div className="min-w-0 space-y-2">
                             <div className="flex flex-wrap items-center gap-2">
@@ -3372,11 +3368,11 @@ function ActivityTimelinePanel({
                         </div>
 
                         {entry.changes?.after && Object.keys(entry.changes.after).length > 0 && (
-                          <div className="mt-3 rounded-2xl border border-border/45 bg-secondary/65/80 p-3">
+                          <div className="mt-3 rounded-2xl border border-border/45 bg-secondary/65/80 chip-pad">
                             <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Updated Fields</p>
                             <div className="grid gap-2">
                               {Object.entries(entry.changes.after).map(([key, val]) => (
-                                <div key={key} className="rounded-xl border border-border/35 bg-background/90 px-3 py-2 text-sm shadow-sm">
+                                <div key={key} className="rounded-xl border border-border/35 bg-background/90 text-sm shadow-sm chip-pad">
                                   <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{key.replace(/_/g, " ")}</div>
                                   <div className="mt-1 font-medium text-foreground">{String(val)}</div>
                                 </div>

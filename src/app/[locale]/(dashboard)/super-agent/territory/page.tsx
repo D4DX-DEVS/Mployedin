@@ -107,7 +107,7 @@ export default function SuperAgentTerritoryPage() {
       <SuperAgentMetricsGrid items={metricsItems} />
 
       {/* Coverage Legend — inline bar style */}
-      <div className="workspace-glass-panel rounded-2xl px-5 py-4">
+      <div className="workspace-glass-panel rounded-2xl panel-body">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("coverageDistribution")}</p>
           <div className="flex flex-nowrap items-center gap-2 overflow-x-auto scrollbar-none sm:flex-wrap sm:gap-4 sm:overflow-visible">
@@ -141,7 +141,7 @@ export default function SuperAgentTerritoryPage() {
         {loading ? (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="animate-pulse rounded-2xl border border-border bg-muted/30 p-6">
+              <div key={i} className="animate-pulse rounded-2xl border border-border bg-muted/30 panel-body">
                 <div className="h-5 w-24 rounded bg-muted" />
                 <div className="mt-3 h-3 w-16 rounded bg-muted" />
                 <div className="mt-6 grid grid-cols-2 gap-3">
@@ -159,7 +159,7 @@ export default function SuperAgentTerritoryPage() {
             {regions.map((region) => (
               <div
                 key={region._id}
-                className={`group relative rounded-2xl border p-3 sm:p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg ${getHeatColor(region.agentCount)}`}
+                className={`group relative rounded-2xl border transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg ${getHeatColor(region.agentCount)} panel-body`}
               >
                 {/* Header */}
                 <div className="flex items-start justify-between gap-3">

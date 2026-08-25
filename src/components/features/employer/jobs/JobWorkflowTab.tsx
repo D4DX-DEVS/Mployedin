@@ -159,7 +159,7 @@ export function JobWorkflowTab({ jobId }: Props) {
       <div className="card-base panel-body">
         <div className="flex items-center justify-between gap-3 mb-4">
           <div>
-            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <h3 className="heading-label font-semibold text-foreground flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-sky-600" /> {t("pipelinePreview")}
             </h3>
             <p className="mt-1 text-xs text-muted-foreground">{t("activeCandidatePathForThisJob")}</p>
@@ -191,7 +191,7 @@ export function JobWorkflowTab({ jobId }: Props) {
         {/* Stages builder */}
         <div className="card-base space-y-3 sm:space-y-4 panel-body">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <h3 className="heading-label font-semibold text-foreground flex items-center gap-2">
               <Settings2 className="h-4 w-4 text-sky-600" /> {t("pipelineStages")}
             </h3>
             <Button variant="outline" size="sm" onClick={() => setAddingStage(!addingStage)} disabled={stages.length >= 20} className="gap-1.5 h-8">
@@ -200,7 +200,7 @@ export function JobWorkflowTab({ jobId }: Props) {
           </div>
 
           {addingStage && (
-            <div className="flex flex-col items-stretch gap-2 rounded-xl border border-dashed border-sky-500/30 bg-sky-500/5 p-3 sm:flex-row sm:items-center">
+            <div className="flex flex-col items-stretch gap-2 rounded-xl border border-dashed border-sky-500/30 bg-sky-500/5 sm:flex-row sm:items-center chip-pad">
               <Input
                 value={newStageLabel}
                 onChange={(e) => setNewStageLabel(e.target.value)}
@@ -279,7 +279,7 @@ export function JobWorkflowTab({ jobId }: Props) {
 
         {/* Automation settings */}
         <div className="card-base space-y-3 sm:space-y-5 panel-body">
-          <h3 className="text-sm font-semibold text-foreground">{t("automationRules")}</h3>
+          <h3 className="heading-label font-semibold text-foreground">{t("automationRules")}</h3>
 
           <div className="flex items-start gap-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/10">

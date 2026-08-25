@@ -81,7 +81,7 @@ export default function AdminSubscriptionDashboardPage() {
     return (
       <div className="page-container">
         <SubscriptionHero />
-        <div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-6 text-center">
+        <div className="rounded-2xl border border-red-500/20 bg-red-500/5 text-center panel-body">
           <AlertTriangle className="h-8 w-8 text-red-500 mx-auto mb-2" />
           <p className="text-sm text-muted-foreground">
             {t("failedToLoadDashboardData")}

@@ -555,7 +555,7 @@ export default function SuperAgentLeadsPage() {
                     key={chip.label}
                     type="button"
                     onClick={chip.action}
-                    className="rounded-lg border border-border/60 bg-secondary/50 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-all"
+                    className="rounded-lg border border-border/60 bg-secondary/50 text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-all chip-pad"
                   >
                     {chip.label}
                   </button>

@@ -191,9 +191,10 @@ export default function ApplicationsPage() {
        role layout double-padding this page. That layout now yields its gutter
        to `.page-container` (see globals.css "Job-seeker route frame"), so the
        compensation would leave phones with no gutter at all.
-       max-w-[1240px] is deliberate: a narrower reading column for a single
-       list of application rows. */
-    <div className="page-container max-w-[1240px] pt-3 md:pt-4 lg:pt-4">
+       The max-w-[1240px] that also sat here is gone: it was the only 1240px
+       frame in the app, while every other list route (employer/applications,
+       admin/applications, the agent lists) runs to the shared 1400px. */
+    <div className="page-container">
       {/* Flattened below sm — the outer shell around a list of cards read as a
           box-in-box on phones and ate horizontal room from every row. */}
       <section className="card-base overflow-hidden rounded-3xl border border-border/70 shadow-[0_8px_24px_rgba(15,23,42,0.05)] max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:shadow-none panel-body">
@@ -304,7 +305,7 @@ export default function ApplicationsPage() {
 
           {/* Date Filters Panel */}
           {showFilters && (
-            <div className="mt-2.5 flex flex-col gap-2 rounded-2xl border border-border/60 bg-background p-3 shadow-sm sm:flex-row sm:items-end">
+            <div className="mt-2.5 flex flex-col gap-2 rounded-2xl border border-border/60 bg-background shadow-sm sm:flex-row sm:items-end chip-pad">
               <div className="flex-1 space-y-1.5">
                 <label htmlFor="applications-date-from" className="text-xs font-medium text-muted-foreground">{t("appliedFrom")}</label>
                 <DateTimePicker
@@ -525,7 +526,7 @@ function ApplicationCard({
           <div className="flex min-w-0 flex-1 items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
               <div className="flex min-w-0 items-start gap-2">
-                <h3 className="truncate text-[15px] font-semibold leading-5 text-foreground transition-colors group-hover:text-primary sm:text-base">
+                <h3 className="heading-subsection truncate font-semibold leading-5 text-foreground transition-colors group-hover:text-primary">
                   {jobTitle}
                 </h3>
               </div>
@@ -611,7 +612,7 @@ function ApplicationCard({
         {showDetails && hasExpandableDetails && (
           <div
             id={`application-details-${app._id}`}
-            className="mt-2 space-y-2 rounded-2xl border border-border/60 bg-muted/10 p-2.5"
+            className="mt-2 space-y-2 rounded-2xl border border-border/60 bg-muted/10 chip-pad"
           >
             {recentStatuses.length > 0 && (
               <div className="flex flex-wrap items-center gap-2">
@@ -625,7 +626,7 @@ function ApplicationCard({
             )}
 
             {latestStatusEntry?.note && (
-              <div className="flex items-center gap-1.5 rounded-2xl border border-border/60 bg-background/80 px-3 py-2 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1.5 rounded-2xl border border-border/60 bg-background/80 text-xs text-muted-foreground chip-pad">
                 <Clock className="h-3.5 w-3.5 flex-shrink-0" />
                 {latestStatusEntry.note}
               </div>
@@ -633,7 +634,7 @@ function ApplicationCard({
 
             {/* Interview Details */}
             {app.latestInterview && (
-              <div className="rounded-2xl border border-primary/20 bg-primary/5 px-3 py-2.5 space-y-1.5">
+              <div className="rounded-2xl border border-primary/20 bg-primary/5 space-y-1.5 chip-pad">
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
                   <Video className="h-3.5 w-3.5" />
                   {t("details.interview")}
@@ -693,7 +694,7 @@ function ApplicationCard({
 
             {/* Offer Details */}
             {app.latestOffer && (
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 px-3 py-2.5 space-y-1.5">
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 space-y-1.5 chip-pad">
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
                   <DollarSign className="h-3.5 w-3.5" />
                   {t("details.offer")}
@@ -733,7 +734,7 @@ function ApplicationCard({
 
             {/* Placement Details */}
             {app.placement && (
-              <div className="rounded-2xl border border-blue-200 bg-blue-50/50 px-3 py-2.5 space-y-1.5">
+              <div className="rounded-2xl border border-blue-200 bg-blue-50/50 space-y-1.5 chip-pad">
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-blue-700">
                   <Briefcase className="h-3.5 w-3.5" />
                   {t("details.placement")}
@@ -776,7 +777,7 @@ function ApplicationCard({
             aria-modal="true"
             aria-labelledby={`withdraw-title-${app._id}`}
             aria-describedby={`withdraw-desc-${app._id}`}
-            className="bg-background rounded-2xl shadow-2xl w-full max-w-md p-4 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto"
+            className="bg-background rounded-2xl shadow-2xl w-full max-w-md space-y-4 max-h-[90vh] overflow-y-auto panel-body"
           >
             <div className="flex items-center justify-between">
               <h2 id={`withdraw-title-${app._id}`} className="font-semibold">{t("withdrawal.title")}</h2>

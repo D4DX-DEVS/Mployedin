@@ -39,7 +39,7 @@ export function CandidateQuality({
   return (
     <div className="card-base overflow-hidden panel-body">
       <div className="px-5 pt-5 pb-3 sm:px-6 sm:pt-6">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+        <h2 className="heading-label font-semibold text-muted-foreground uppercase tracking-wide">
           {t("candidateQuality")}
         </h2>
       </div>

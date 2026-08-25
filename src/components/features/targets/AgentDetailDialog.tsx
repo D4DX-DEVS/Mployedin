@@ -235,7 +235,7 @@ export function AgentDetailDialog({ open, onOpenChange, agent, year }: AgentDeta
             {/* Overall Progress Ring + Target Cards */}
             <div className="grid grid-cols-[160px_1fr] gap-4">
               {/* Radial Progress */}
-              <div className="flex flex-col items-center justify-center rounded-xl border border-border/60 bg-muted/20 p-4">
+              <div className="flex flex-col items-center justify-center rounded-xl border border-border/60 bg-muted/20 card-pad">
                 <ResponsiveContainer width={120} height={120}>
                   <RadialBarChart
                     cx="50%"
@@ -265,7 +265,7 @@ export function AgentDetailDialog({ open, onOpenChange, agent, year }: AgentDeta
                 {targetCards.map((card) => (
                   <div
                     key={card.label}
-                    className="rounded-xl border border-border/60 bg-card p-4 space-y-2"
+                    className="rounded-xl border border-border/60 bg-card space-y-2 card-pad"
                   >
                     <div className="flex items-center gap-2 text-muted-foreground">
                       {card.icon}
@@ -304,13 +304,13 @@ export function AgentDetailDialog({ open, onOpenChange, agent, year }: AgentDeta
             {/* Monthly Performance Chart */}
             {monthlyChartData.length > 0 && (
               <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <h3 className="heading-label font-semibold text-foreground flex items-center gap-2">
                   <TrendingUp className="h-4 w-4 text-sky-600" />
                   {t("monthlyPerformance")} — {year}
                 </h3>
 
                 {/* Employers & Employees Bar Chart */}
-                <div className="rounded-xl border border-border/60 bg-card p-4">
+                <div className="rounded-xl border border-border/60 bg-card card-pad">
                   <p className="mb-3 text-xs font-medium text-muted-foreground">{t("employersEmployees")}</p>
                   <ResponsiveContainer width="100%" height={200}>
                     <BarChart data={monthlyChartData} barGap={2} barCategoryGap="20%">
@@ -335,7 +335,7 @@ export function AgentDetailDialog({ open, onOpenChange, agent, year }: AgentDeta
                 </div>
 
                 {/* Revenue Bar Chart */}
-                <div className="rounded-xl border border-border/60 bg-card p-4">
+                <div className="rounded-xl border border-border/60 bg-card card-pad">
                   <p className="mb-3 text-xs font-medium text-muted-foreground">{t("revenue")} ({agent.currency})</p>
                   <ResponsiveContainer width="100%" height={180}>
                     <BarChart data={monthlyChartData} barGap={2} barCategoryGap="20%">

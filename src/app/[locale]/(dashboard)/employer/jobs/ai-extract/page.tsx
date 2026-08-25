@@ -442,7 +442,7 @@ export default function AIJobExtractPage() {
       />
 
       {/* Upload Section */}
-      <section className="overflow-hidden rounded-3xl border border-border/70 bg-gradient-to-br from-background via-background to-primary/5 p-6 shadow-sm">
+      <section className="overflow-hidden rounded-3xl border border-border/70 bg-gradient-to-br from-background via-background to-primary/5 shadow-sm panel-body">
         <div className="flex items-center gap-2 text-sm font-medium text-primary">
           <Sparkles className="h-4 w-4" />
           {t("uploadTitle")}
@@ -519,8 +519,8 @@ export default function AIJobExtractPage() {
           {/* Info & Extract Button */}
           <div className="flex flex-col justify-between space-y-3 sm:space-y-4">
             <div className="space-y-3">
-              <div className="rounded-2xl border border-border/70 bg-background/85 p-4 space-y-3">
-                <h3 className="text-sm font-semibold text-foreground">{t("supports")}</h3>
+              <div className="rounded-2xl border border-border/70 bg-background/85 space-y-3 card-pad">
+                <h3 className="heading-label font-semibold text-foreground">{t("supports")}</h3>
                 <ul className="space-y-2 text-xs text-muted-foreground">
                   <li className="flex items-start gap-2">
                     <FileImage className="mt-0.5 h-3.5 w-3.5 text-primary flex-shrink-0" />
@@ -570,7 +570,7 @@ export default function AIJobExtractPage() {
           {/* Header with bulk actions */}
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
-              <h2 className="text-lg font-semibold text-foreground">
+              <h2 className="heading-section font-semibold text-foreground">
                 {t("extractedJobs", { count: extractedJobs.length })}
               </h2>
               <p className="text-sm text-muted-foreground">
@@ -676,7 +676,7 @@ export default function AIJobExtractPage() {
                   <div className="ml-7 space-y-3">
                     {/* Title */}
                     <div>
-                      <h3 className="text-sm font-semibold text-foreground line-clamp-2">
+                      <h3 className="heading-label font-semibold text-foreground line-clamp-2">
                         {job.title}
                       </h3>
                       {job.category && (

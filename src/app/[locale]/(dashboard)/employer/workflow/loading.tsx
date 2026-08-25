@@ -8,7 +8,7 @@ export default function WorkflowLoading() {
         </div>
         <div className="h-9 w-28 bg-muted/50 rounded-md animate-pulse" />
       </div>
-      <div className="rounded-lg border border-border bg-card p-6 space-y-4">
+      <div className="rounded-lg border border-border bg-card space-y-4 panel-body">
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-muted/50 animate-pulse shrink-0" />

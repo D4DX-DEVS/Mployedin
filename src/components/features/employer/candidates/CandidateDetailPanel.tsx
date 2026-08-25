@@ -261,7 +261,7 @@ export function CandidateDetailPanel({
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
-            <h2 className="line-clamp-2 text-lg font-bold text-foreground">{name}</h2>
+            <h2 className="heading-section line-clamp-2 font-bold text-foreground">{name}</h2>
             <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
               <Briefcase className="h-3.5 w-3.5 shrink-0" />
               <span className="line-clamp-1">{currentRole}</span>
@@ -332,7 +332,7 @@ export function CandidateDetailPanel({
       {/* Scrollable body */}
       <div className="flex-1 space-y-3 sm:space-y-4 overflow-y-auto p-5">
         {/* Quick facts */}
-        <section className="rounded-xl border border-border bg-muted/20 p-4">
+        <section className="rounded-xl border border-border bg-muted/20 card-pad">
           <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("quickFacts")}</h3>
           <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
             <QuickFact icon={<Wallet className="h-3.5 w-3.5" />} label={t("expectedSalary")} value={salaryText} loading={isLoading} />
@@ -355,7 +355,7 @@ export function CandidateDetailPanel({
         </section>
 
         {/* AI match analysis */}
-        <section className="rounded-xl border border-border bg-card p-4">
+        <section className="rounded-xl border border-border bg-card card-pad">
           <h3 className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             <Sparkles className="h-3.5 w-3.5 text-primary" />
             {t("aiMatchAnalysis")}
@@ -410,7 +410,7 @@ export function CandidateDetailPanel({
 
         {/* Top skills */}
         {skills.length > 0 ? (
-          <section className="rounded-xl border border-border bg-card p-4">
+          <section className="rounded-xl border border-border bg-card card-pad">
             <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("keySkills")}</h3>
             <div className="flex flex-wrap gap-1.5">
               {skills.map((skill) => {

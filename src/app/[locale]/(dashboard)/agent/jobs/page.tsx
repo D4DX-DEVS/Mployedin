@@ -260,7 +260,7 @@ export default function AgentJobsPage() {
         }}
         actions={
             <Link href={`/${locale}/agent/jobs/new`}>
-              <Button className="h-11 gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
+              <Button size="lg" className="gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
                 <Plus className="h-4 w-4" />
                 {t("postJob")}
               </Button>
@@ -268,7 +268,7 @@ export default function AgentJobsPage() {
         }
       />
 
-      <section className="workspace-panel-surface p-2 sm:p-3" aria-label={t("filters.title")}>
+      <section className="workspace-panel-surface chip-pad" aria-label={t("filters.title")}>
         <div className="relative min-w-0">
           <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
           <Input
@@ -306,7 +306,7 @@ export default function AgentJobsPage() {
                 <Filter className="h-4 w-4 text-status-interview" />
               </div>
               <div className="text-left">
-                <h2 className="text-sm font-semibold text-foreground">{t("filters.title")}</h2>
+                <h2 className="heading-label font-semibold text-foreground">{t("filters.title")}</h2>
                 <p className="text-xs text-muted-foreground">{t("ai.description")}</p>
               </div>
             </div>
@@ -385,7 +385,7 @@ export default function AgentJobsPage() {
 
                 {/* AI summary banner */}
                 {aiSummary && (
-                  <div className="flex items-center gap-2 rounded-xl border border-status-interview/20 bg-violet-50/60 px-3 py-2">
+                  <div className="flex items-center gap-2 rounded-xl border border-status-interview/20 bg-violet-50/60 chip-pad">
                     <Sparkles className="h-3.5 w-3.5 shrink-0 text-status-interview" />
                     <p className="flex-1 text-xs text-status-interview">{aiSummary}</p>
                     <button onClick={clearAiFilters} className="shrink-0 rounded p-0.5 hover:bg-violet-200/60">
@@ -428,7 +428,7 @@ export default function AgentJobsPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("results.eyebrow")}</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("results.title")}</h2>
+            <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("results.title")}</h2>
           </div>
           {/* Export sits beside the result count. On its own line above the
               table it read as an orphaned button floating in empty space. */}

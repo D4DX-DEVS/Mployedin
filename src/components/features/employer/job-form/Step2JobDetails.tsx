@@ -74,7 +74,7 @@ function ListField({
   }
 
   return (
-    <div className="space-y-3 rounded-2xl border border-dashed border-border/70 bg-background/60 p-4">
+    <div className="space-y-3 rounded-2xl border border-dashed border-border/70 bg-background/60 card-pad">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-foreground">
@@ -111,7 +111,7 @@ function ListField({
           {items.map((item, i) => (
             <li
               key={i}
-              className="flex items-start gap-2 rounded-lg border border-border/50 bg-muted/20 px-3 py-2 text-sm"
+              className="flex items-start gap-2 rounded-lg border border-border/50 bg-muted/20 text-sm chip-pad"
             >
               <span className="mt-0.5 text-xs text-muted-foreground">{i + 1}.</span>
               <span className="flex-1 text-foreground/90">{item}</span>
@@ -222,9 +222,9 @@ export function Step2JobDetails() {
       transition={{ duration: 0.25 }}
       className="space-y-3 sm:space-y-5"
     >
-      <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-muted/20 p-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-muted/20 lg:flex-row lg:items-center lg:justify-between card-pad">
         <div className="space-y-1">
-          <h2 className="text-lg font-semibold text-foreground">{t("title")}</h2>
+          <h2 className="heading-section font-semibold text-foreground">{t("title")}</h2>
           <p className="text-sm text-muted-foreground">
             {t("description")}
           </p>
@@ -243,7 +243,7 @@ export function Step2JobDetails() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(17rem,0.95fr)]">
-        <div className="space-y-3 rounded-2xl border border-border bg-background p-4 shadow-sm">
+        <div className="space-y-3 rounded-2xl border border-border bg-background shadow-sm card-pad">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">
               <Label htmlFor="description" className="text-sm font-medium">
@@ -256,10 +256,10 @@ export function Step2JobDetails() {
             <Button
               type="button"
               variant="outline"
-              size="sm"
+              size="dense"
               onClick={generateDescription}
               disabled={generating}
-              className="h-8 gap-1.5 text-xs"
+              className="gap-1.5 text-xs"
             >
               {generating ? (
                 <>
@@ -275,7 +275,7 @@ export function Step2JobDetails() {
             </Button>
           </div>
 
-          <div className="rounded-xl border border-dashed border-primary/30 bg-primary/[0.02] p-3">
+          <div className="rounded-xl border border-dashed border-primary/30 bg-primary/[0.02] chip-pad">
             <Label htmlFor="ai-prompt" className="text-xs font-medium text-primary">
               {t("aiPromptLabel")}
             </Label>
@@ -313,7 +313,7 @@ export function Step2JobDetails() {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="space-y-2 rounded-xl border border-border bg-muted/30 p-4"
+              className="space-y-2 rounded-xl border border-border bg-muted/30 card-pad"
             >
               {[80, 65, 90, 70, 55].map((w, i) => (
                 <div
@@ -366,16 +366,16 @@ export function Step2JobDetails() {
         </div>
 
         <div className="space-y-3">
-          <div className="rounded-2xl border border-border bg-background p-4 shadow-sm">
+          <div className="rounded-2xl border border-border bg-background shadow-sm card-pad">
             <p className="text-sm font-semibold text-foreground">{t("strongListingsTitle")}</p>
             <div className="mt-3 space-y-3 text-xs text-muted-foreground">
-              <div className="rounded-xl border border-border/70 bg-muted/30 p-3">
+              <div className="rounded-xl border border-border/70 bg-muted/30 chip-pad">
                 {t("strongListings.summary")}
               </div>
-              <div className="rounded-xl border border-border/70 bg-muted/30 p-3">
+              <div className="rounded-xl border border-border/70 bg-muted/30 chip-pad">
                 {t("strongListings.bullets")}
               </div>
-              <div className="rounded-xl border border-border/70 bg-muted/30 p-3">
+              <div className="rounded-xl border border-border/70 bg-muted/30 chip-pad">
                 {t("strongListings.impact")}
               </div>
             </div>
@@ -385,7 +385,7 @@ export function Step2JobDetails() {
             <motion.div
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
-              className="space-y-3 rounded-2xl border border-primary/20 bg-primary/5 p-4 shadow-sm"
+              className="space-y-3 rounded-2xl border border-primary/20 bg-primary/5 shadow-sm card-pad"
             >
               <div className="flex items-center gap-2 text-sm font-medium text-primary">
                 <Sparkles className="w-4 h-4" />
@@ -397,7 +397,7 @@ export function Step2JobDetails() {
                   { label: t("generatedLabels.requirements"), content: generated.requirements },
                   { label: t("generatedLabels.niceToHave"), content: generated.niceToHave },
                 ].map(({ label, content }) => (
-                  <div key={label} className="rounded-xl border border-border/70 bg-background p-3">
+                  <div key={label} className="rounded-xl border border-border/70 bg-background chip-pad">
                     <p className="font-semibold text-foreground">{label}</p>
                     <p className="mt-1 line-clamp-3 text-muted-foreground">{content}</p>
                   </div>
@@ -415,7 +415,7 @@ export function Step2JobDetails() {
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="flex items-center gap-1.5 rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive"
+          className="flex items-center gap-1.5 rounded-xl border border-destructive/20 bg-destructive/5 text-sm text-destructive chip-pad"
         >
           <AlertCircle className="w-4 h-4 shrink-0" />
           {aiError}

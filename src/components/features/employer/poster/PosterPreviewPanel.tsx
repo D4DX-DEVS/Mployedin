@@ -211,7 +211,7 @@ export function PosterPreviewPanel({
 
       {/* Poster editor. No selection → poster-level look. Element selected → inspector. */}
       {selectedId ? (
-        <div className="rounded-lg border p-3 space-y-3">
+        <div className="rounded-lg border space-y-3 chip-pad">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold text-foreground">
               {POSTER_ELEMENTS.find((e) => e.id === selectedId)?.label}
@@ -322,7 +322,7 @@ export function PosterPreviewPanel({
           </div>
         </div>
       ) : (
-        <div className="rounded-lg border p-3 space-y-3">
+        <div className="rounded-lg border space-y-3 chip-pad">
           <p className="text-xs font-semibold text-foreground">Customize look</p>
           <p className="text-[10px] text-muted-foreground -mt-1">Tip: click any text on the poster to edit it (size, weight, color, text).</p>
 
@@ -406,7 +406,7 @@ export function PosterPreviewPanel({
               type="button"
               onClick={() => downloadPng(f)}
               disabled={exportingFormat !== null}
-              className="w-full flex items-center justify-between rounded-lg border px-3 py-2 text-[11px] hover:bg-muted/50 transition-colors disabled:opacity-50"
+              className="w-full flex items-center justify-between rounded-lg border text-[11px] hover:bg-muted/50 transition-colors disabled:opacity-50 chip-pad"
             >
               <span className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-primary" />

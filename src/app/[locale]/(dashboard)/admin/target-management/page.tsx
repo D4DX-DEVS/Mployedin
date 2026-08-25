@@ -358,14 +358,14 @@ export default function AdminTargetManagementPage() {
              actions go icon-only on phones (title carries the name) and the
              primary one keeps its label. Unchanged from `sm:` up. */
           <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
-            <Button variant="outline" size="sm" className="h-9 gap-1 rounded-lg px-2 sm:gap-2 sm:px-3" onClick={handleExport} disabled={profiles.length === 0} title={t("common.export")}>
+            <Button variant="outline" size="sm" className="gap-1 rounded-lg px-2 sm:gap-2 sm:px-3" onClick={handleExport} disabled={profiles.length === 0} title={t("common.export")}>
               <Download className="h-4 w-4" /> <span className="hidden sm:inline">{t("common.export")}</span>
             </Button>
-            <Button variant="outline" size="sm" className="h-9 gap-1 rounded-lg px-2 sm:gap-2 sm:px-3" onClick={handleClone} title={t("cloneYear", { year: yearFilter - 1 })}>
+            <Button variant="outline" size="sm" className="gap-1 rounded-lg px-2 sm:gap-2 sm:px-3" onClick={handleClone} title={t("cloneYear", { year: yearFilter - 1 })}>
               <Copy className="h-4 w-4" /> <span className="hidden sm:inline">{t("cloneYear", { year: yearFilter - 1 })}</span>
             </Button>
             <Link href={`/${locale}/admin/target-management/create`} className="min-w-0">
-              <Button className="h-9 gap-1 rounded-lg bg-primary px-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 sm:gap-2 sm:px-4 sm:text-sm">
+              <Button size="sm" className="gap-1 rounded-lg bg-primary px-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 sm:gap-2 sm:px-4 sm:text-sm">
                 <Plus className="h-4 w-4 shrink-0" /> {t("newTargetProfile")}
               </Button>
             </Link>
@@ -478,7 +478,7 @@ export default function AdminTargetManagementPage() {
           icon={<Activity className="h-5 w-5" />}
           toneClassName="workspace-tone-violet"
         />
-        <div className="workspace-glass-panel flex items-center gap-4 rounded-2xl p-4">
+        <div className="workspace-glass-panel card-pad flex items-center gap-4 rounded-2xl">
           <div className="rounded-2xl bg-red-500/10 p-2.5 text-red-600">
             <ShieldAlert className="h-5 w-5" />
           </div>
@@ -503,7 +503,7 @@ export default function AdminTargetManagementPage() {
       {tab === "dashboard" && (
         <>
           {reassignTarget && (
-            <section className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
+            <section className="workspace-glass-panel card-pad rounded-2xl">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold">Reassign target profile</p>
@@ -692,13 +692,13 @@ export default function AdminTargetManagementPage() {
           {/* Underperformance Alerts */}
           {underperformers.length > 0 && (
             <section className="space-y-3">
-              <h3 className="flex items-center gap-2 text-sm font-semibold">
+              <h3 className="heading-label flex items-center gap-2 font-semibold">
                 <ShieldAlert className="h-4 w-4 text-red-500" />
                 Underperformance Alerts
               </h3>
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {underperformers.slice(0, 6).map((u) => (
-                  <div key={u._id} className="workspace-glass-panel flex items-center gap-3 rounded-xl p-3 border-l-4 border-red-500/40">
+                  <div key={u._id} className="workspace-glass-panel card-pad flex items-center gap-3 rounded-xl border-l-4 border-red-500/40">
                     <div className="rounded-xl bg-red-500/10 p-2 text-red-600">
                       <TrendingUp className="h-4 w-4 rotate-180" />
                     </div>

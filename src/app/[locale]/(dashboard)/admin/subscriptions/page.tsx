@@ -142,7 +142,7 @@ export default function AdminSubscriptionsPage() {
           { label: t("expiringLabel"), value: expiringSoonCount, icon: AlertTriangle, color: "text-amber-500 bg-amber-500/10" },
           { label: t("cancelledLabel"), value: overview?.cancelled ?? 0, icon: XCircle, color: "text-red-500 bg-red-500/10" },
         ].map((kpi) => (
-          <div key={kpi.label} className="rounded-2xl border border-border/60 bg-card p-4 flex items-center gap-3">
+          <div key={kpi.label} className="rounded-2xl border border-border/60 bg-card flex items-center gap-3 card-pad">
             <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${kpi.color}`}>
               <kpi.icon className="h-5 w-5" />
             </div>
@@ -182,8 +182,8 @@ export default function AdminSubscriptionsPage() {
       {/* ── Search & Manage (existing flow) ── */}
       {activeTab === "manage" && (
         <>
-          <section className="rounded-2xl border border-border/60 bg-card p-4 sm:p-6 space-y-4">
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+          <section className="rounded-2xl border border-border/60 bg-card space-y-4 panel-body">
+            <h3 className="heading-label font-semibold text-muted-foreground uppercase tracking-wider">
               {t("searchUserLabel")}
             </h3>
             <TableToolbar
@@ -200,7 +200,7 @@ export default function AdminSubscriptionsPage() {
                   <button
                     key={user._id}
                     onClick={() => { setSelectedUser(user); setSearchQuery(""); }}
-                    className="w-full flex items-center gap-3 rounded-xl border border-border/40 p-3 hover:bg-sky-500/5 hover:border-sky-500/30 transition-colors text-left"
+                    className="w-full flex items-center gap-3 rounded-xl border border-border/40 hover:bg-sky-500/5 hover:border-sky-500/30 transition-colors text-left chip-pad"
                   >
                     <div className="h-9 w-9 rounded-full bg-sky-500/10 flex items-center justify-center text-sky-500">
                       {user.role === "employer" ? <Briefcase className="h-4 w-4" /> : <User className="h-4 w-4" />}
@@ -664,7 +664,7 @@ function ExpandedDetail({ sub }: { sub: AdminSubscriptionItem }) {
                 return (
                   <div key={item._id} className="relative">
                     <div className="absolute -left-[19px] top-1 h-3 w-3 rounded-full border-2 border-background bg-sky-500" />
-                    <div className="rounded-xl border border-border/40 p-3">
+                    <div className="rounded-xl border border-border/40 chip-pad">
                       <div className="flex items-center justify-between mb-1">
                         <Badge variant="outline" className="text-xs">
                           {actionLabel}
@@ -758,7 +758,7 @@ function ExpandedDetail({ sub }: { sub: AdminSubscriptionItem }) {
 
 function DetailCard({ label, value, sub: subtext }: { label: string; value: string; sub: string }) {
   return (
-    <div className="rounded-xl border border-border/40 p-3">
+    <div className="rounded-xl border border-border/40 chip-pad">
       <p className="text-xs text-muted-foreground mb-1">{label}</p>
       <p className="font-medium text-sm">{value}</p>
       <p className="text-xs text-muted-foreground capitalize">{subtext}</p>
@@ -802,14 +802,14 @@ function UserSubscriptionPanel({
   return (
     <div className="space-y-4">
       {/* ── User Header ──────────────────────────────────────── */}
-      <section className="rounded-2xl border border-sky-500/30 bg-sky-500/5 p-4 sm:p-6">
+      <section className="rounded-2xl border border-sky-500/30 bg-sky-500/5 panel-body">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
             <div className="h-12 w-12 rounded-full bg-sky-500/10 flex items-center justify-center text-sky-500">
               {user.role === "employer" ? <Briefcase className="h-5 w-5" /> : <User className="h-5 w-5" />}
             </div>
             <div>
-              <h3 className="text-lg font-semibold">{user.name}</h3>
+              <h3 className="heading-subsection font-semibold">{user.name}</h3>
               <p className="text-sm text-muted-foreground">
                 {user.role === "employer" ? t("employerBadge") : t("jobSeekerBadge")}
                 {user.companyName ? ` · ${user.companyName}` : ""}
@@ -826,7 +826,7 @@ function UserSubscriptionPanel({
       {isLoadingSub ? (
         <div className="h-32 animate-pulse rounded-2xl bg-background/70" />
       ) : subscription && subscription.status === "active" ? (
-        <section className="rounded-2xl border border-border/60 bg-card p-4 sm:p-6 space-y-4">
+        <section className="rounded-2xl border border-border/60 bg-card space-y-4 panel-body">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Crown className="h-5 w-5 text-amber-500" />
@@ -839,7 +839,7 @@ function UserSubscriptionPanel({
           </div>
 
           <div className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-xl border border-border/40 p-4">
+            <div className="rounded-xl border border-border/40 card-pad">
               <p className="text-xs text-muted-foreground mb-1">{t("detailCardPlanLabel")}</p>
               <p className="font-semibold text-lg">{subscription.planSnapshot?.name ?? "Unknown"}</p>
               <p className="text-xs text-muted-foreground">
@@ -847,7 +847,7 @@ function UserSubscriptionPanel({
                 {subscription.planSnapshot?.price ?? 0} {subscription.planSnapshot?.currency ?? "AED"}{t("pricePerLabel")}{subscription.planSnapshot?.billingCycle ?? "monthly"}
               </p>
             </div>
-            <div className="rounded-xl border border-border/40 p-4">
+            <div className="rounded-xl border border-border/40 card-pad">
               <p className="text-xs text-muted-foreground mb-1">{t("detailCardPeriodLabel")}</p>
               <p className="font-medium">{formatDate(subscription.startDate)} — {formatDate(subscription.endDate)}</p>
               <p className="text-xs text-muted-foreground">
@@ -856,7 +856,7 @@ function UserSubscriptionPanel({
                   : t("statusExpired")}
               </p>
             </div>
-            <div className="rounded-xl border border-border/40 p-4">
+            <div className="rounded-xl border border-border/40 card-pad">
               <p className="text-xs text-muted-foreground mb-1">{t("detailCardAutoRenewLabel")}</p>
               <p className="font-medium">{subscription.autoRenew ? t("autoRenewYes") : t("autoRenewNo")}</p>
               <p className="text-xs text-muted-foreground">
@@ -913,7 +913,7 @@ function UserSubscriptionPanel({
 
           {/* ── Cancel Confirm ── */}
           {confirmCancel && (
-            <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-4 space-y-3">
+            <div className="rounded-xl border border-red-500/30 bg-red-500/5 space-y-3 card-pad">
               <p className="text-sm font-medium text-red-400">{t("confirmCancellationTitle")}</p>
               <Input
                 placeholder={t("cancelReasonPlaceholder")}
@@ -956,7 +956,7 @@ function UserSubscriptionPanel({
         </section>
       ) : (
         /* ── No Active Subscription ── */
-        <section className="rounded-2xl border border-border/60 bg-card p-4 sm:p-6 space-y-4">
+        <section className="rounded-2xl border border-border/60 bg-card space-y-4 panel-body">
           <div className="text-center py-6">
             <Crown className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
             <p className="font-medium text-muted-foreground">{t("noActiveSubscriptionMsg")}</p>
@@ -992,7 +992,7 @@ function UserSubscriptionPanel({
 
       {/* ── Mutation Errors ── */}
       {(assignMut.error || changeMut.error || cancelMut.error || renewMut.error) && (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-4">
+        <div className="rounded-xl border border-red-500/30 bg-red-500/5 card-pad">
           <p className="text-sm text-red-400">
             {(assignMut.error ?? changeMut.error ?? cancelMut.error ?? renewMut.error)?.message}
           </p>
@@ -1044,7 +1044,7 @@ function UsageSummary({
           const unlimited = item.max === -1;
           const pct = unlimited ? 10 : item.max > 0 ? Math.min(100, (item.used / item.max) * 100) : 0;
           return (
-            <div key={item.label} className="rounded-xl border border-border/40 p-3">
+            <div key={item.label} className="rounded-xl border border-border/40 chip-pad">
               <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
                 <span>{item.label}</span>
                 <span>{unlimited ? `${item.used} / ${t("unlimitedSymbol")}` : `${item.used} / ${item.max}`}</span>
@@ -1095,7 +1095,7 @@ function AssignPlanForm({
   };
 
   return (
-    <section className="rounded-2xl border border-sky-500/30 bg-sky-500/5 p-4 sm:p-6 space-y-4">
+    <section className="rounded-2xl border border-sky-500/30 bg-sky-500/5 space-y-4 panel-body">
       <div className="flex items-center justify-between">
         <h4 className="font-semibold flex items-center gap-2">
           <CreditCard className="h-4 w-4 text-sky-500" />
@@ -1112,11 +1112,7 @@ function AssignPlanForm({
           <button
             key={plan._id}
             onClick={() => setSelectedPlanId(plan._id)}
-            className={`text-left rounded-xl border p-4 transition-colors ${
-              selectedPlanId === plan._id
-                ? "border-sky-500 bg-sky-500/10"
-                : "border-border/40 hover:border-sky-500/30 hover:bg-sky-500/5"
-            }`}
+            className={`text-left rounded-xl border transition-colors ${ selectedPlanId === plan._id ? "border-sky-500 bg-sky-500/10" : "border-border/40 hover:border-sky-500/30 hover:bg-sky-500/5" } card-pad`}
           >
             <div className="flex items-center justify-between mb-2">
               <span className="font-semibold">{plan.name}</span>
@@ -1199,7 +1195,7 @@ function ChangePlanForm({
   };
 
   return (
-    <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 p-4 space-y-3">
+    <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 space-y-3 card-pad">
       <p className="text-sm font-semibold">{t("changePlanFormLabel")}</p>
       <div className="flex flex-wrap gap-2">
         {otherPlans.map((plan) => (
@@ -1255,7 +1251,7 @@ function HistoryTimeline({ history }: { history: HistoryItem[] }) {
   const t = useTranslations("adminSubscriptions");
   if (!history.length) {
     return (
-      <section className="rounded-2xl border border-border/60 bg-card p-6 text-center">
+      <section className="rounded-2xl border border-border/60 bg-card text-center panel-body">
         <Clock className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
         <p className="text-sm text-muted-foreground">{t("noHistoryYet")}</p>
       </section>
@@ -1263,7 +1259,7 @@ function HistoryTimeline({ history }: { history: HistoryItem[] }) {
   }
 
   return (
-    <section className="rounded-2xl border border-border/60 bg-card p-4 sm:p-6 space-y-4">
+    <section className="rounded-2xl border border-border/60 bg-card space-y-4 panel-body">
       <h4 className="font-semibold flex items-center gap-2">
         <Clock className="h-4 w-4 text-muted-foreground" />
         {t("subscriptionHistoryTitle")}
@@ -1283,7 +1279,7 @@ function HistoryTimeline({ history }: { history: HistoryItem[] }) {
           return (
             <div key={item._id} className="relative">
               <div className="absolute -left-[19px] top-1 h-3 w-3 rounded-full border-2 border-background bg-sky-500" />
-              <div className="rounded-xl border border-border/40 p-3">
+              <div className="rounded-xl border border-border/40 chip-pad">
                 <div className="flex items-center justify-between mb-1">
                   <Badge variant="outline" className="text-xs">
                     {actionLabel}
@@ -1351,7 +1347,7 @@ function BulkAssignSection() {
       >
         <div className="flex items-center gap-2">
           <Users className="h-4 w-4 text-muted-foreground" />
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+          <h3 className="heading-label font-semibold text-muted-foreground uppercase tracking-wider">
             {t("bulkAssignTitle")}
           </h3>
         </div>
@@ -1401,7 +1397,7 @@ function BulkAssignSection() {
               value={userIdsText}
               onChange={(e) => setUserIdsText(e.target.value)}
               rows={4}
-              className="w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-sm font-mono resize-y"
+              className="w-full rounded-xl border border-border/60 bg-background text-sm font-mono resize-y chip-pad"
               placeholder={"60f1b2c3d4e5f6a7b8c9d0e1\n60f1b2c3d4e5f6a7b8c9d0e2"}
             />
             <p className="text-xs text-muted-foreground mt-1">{userIds.length} {t("bulkUserCountLabel")}</p>
@@ -1422,7 +1418,7 @@ function BulkAssignSection() {
 
           {/* Results */}
           {bulkResult && (
-            <div className="rounded-xl border border-border/40 p-4 space-y-2">
+            <div className="rounded-xl border border-border/40 space-y-2 card-pad">
               <p className="text-sm font-medium">
                 {t("bulkResultsLabel")} {bulkResult.assigned}/{bulkResult.total} {t("bulkAssignedLabel")}
               </p>

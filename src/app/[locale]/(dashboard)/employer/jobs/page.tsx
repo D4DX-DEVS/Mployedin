@@ -416,7 +416,7 @@ export default function EmployerJobsPage() {
         </div>
       </header>
 
-      <div className="workspace-panel-surface p-2 sm:p-3">
+      <div className="workspace-panel-surface chip-pad">
         <div className="flex gap-2">
           <div className="relative min-w-0 flex-1">
             <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -556,7 +556,7 @@ export default function EmployerJobsPage() {
                 </div>
               </div>
 
-              <div className="workspace-subtle-surface mt-3 flex flex-col gap-3 rounded-2xl p-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="workspace-subtle-surface card-pad mt-3 flex flex-col gap-3 rounded-2xl sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm font-medium text-foreground">{t("needFasterCut")}</p>
                   <p className="text-sm text-muted-foreground">{t("aiFilterDescription")}</p>
@@ -613,7 +613,7 @@ export default function EmployerJobsPage() {
             <FileText className="h-7 w-7" />
           </div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{hasActiveFilters ? t("emptyFilteredLabel") : t("emptyNoJobsLabel")}</p>
-          <h3 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
+          <h3 className="heading-subsection mt-3 font-semibold tracking-tight text-foreground">
             {hasActiveFilters ? t("emptyFilteredTitle") : t("emptyNoJobsTitle")}
           </h3>
           <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">
@@ -662,7 +662,7 @@ export default function EmployerJobsPage() {
             return (
               <article
                 key={job._id}
-                className="workspace-panel-surface group flex min-w-0 flex-col p-4 transition-colors hover:border-primary/25"
+                className="workspace-panel-surface card-pad group flex min-w-0 flex-col transition-colors hover:border-primary/25"
               >
                 <div className="flex min-w-0 items-start gap-3">
                   <span className={`${STATUS_TONES[job.status] ?? "workspace-tone-sky"} flex h-10 w-10 shrink-0 items-center justify-center rounded-xl`} aria-hidden>

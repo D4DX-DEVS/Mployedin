@@ -296,7 +296,7 @@ export function InterviewBookingModal({
                 <ArrowLeft className="h-4 w-4 text-muted-foreground" />
               </button>
             )}
-            <h3 className="text-base font-semibold text-foreground">
+            <h3 className="heading-subsection font-semibold text-foreground">
               {step === "candidate"
                 ? t("selectCandidate")
                 : step === "details"
@@ -529,7 +529,7 @@ export function InterviewBookingModal({
           <div className="flex-1 overflow-y-auto p-5 space-y-4">
             {/* Selected candidates chip(s) */}
             {selectedCandidates.length > 0 && (
-              <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
+              <div className="rounded-xl border border-primary/20 bg-primary/5 chip-pad">
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                     Candidates ({selectedCandidates.length})
@@ -589,7 +589,7 @@ export function InterviewBookingModal({
               {timeSlots.length === 0 ? (
                 <p className="text-xs text-destructive">{t("noTimeSlots")}</p>
               ) : (
-                <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5 max-h-[140px] overflow-y-auto rounded-xl border border-border/50 bg-muted/20 p-2">
+                <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5 max-h-[140px] overflow-y-auto rounded-xl border border-border/50 bg-muted/20 chip-pad">
                   {timeSlots.map((slot) => {
                     const [sh, sm] = slot.split(":").map(Number);
                     const d = new Date();
@@ -605,11 +605,7 @@ export function InterviewBookingModal({
                         key={slot}
                         type="button"
                         onClick={() => setTime(slot)}
-                        className={`rounded-lg px-2 py-1.5 text-[11px] font-medium transition-all duration-150 ${
-                          isActive
-                            ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
-                            : "bg-background hover:bg-muted text-foreground"
-                        }`}
+                        className={`rounded-lg text-[11px] font-medium transition-all duration-150 ${ isActive ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25" : "bg-background hover:bg-muted text-foreground" } chip-pad`}
                       >
                         {label}
                       </button>
@@ -629,11 +625,7 @@ export function InterviewBookingModal({
                   <button
                     key={d}
                     onClick={() => setDuration(d)}
-                    className={`rounded-lg border px-2 py-1.5 text-xs font-medium transition-colors ${
-                      duration === d
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border text-muted-foreground hover:bg-muted/50"
-                    }`}
+                    className={`rounded-lg border text-xs font-medium transition-colors ${ duration === d ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:bg-muted/50" } chip-pad`}
                   >
                     {t("min", { count: d })}
                   </button>
@@ -651,11 +643,7 @@ export function InterviewBookingModal({
                   <button
                     key={tp}
                     onClick={() => setType(tp)}
-                    className={`flex items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-medium transition-colors ${
-                      type === tp
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border text-muted-foreground hover:bg-muted/50"
-                    }`}
+                    className={`flex items-center justify-center gap-1.5 rounded-lg border text-xs font-medium transition-colors ${ type === tp ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:bg-muted/50" } chip-pad`}
                   >
                     {tp === "video" ? (
                       <Video className="h-3 w-3" />
@@ -680,7 +668,7 @@ export function InterviewBookingModal({
                 onChange={(e) => setNotes(e.target.value)}
                 rows={2}
                 maxLength={500}
-                className="w-full rounded-lg border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full rounded-lg border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 chip-pad"
                 placeholder={t("notesPlaceholder")}
               />
             </div>
@@ -707,7 +695,7 @@ export function InterviewBookingModal({
 
             {/* Conflict warning */}
             {conflicts.length > 0 && (
-              <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3">
+              <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 chip-pad">
                 <AlertCircle className="h-4 w-4 flex-shrink-0 text-destructive mt-0.5" />
                 <div>
                   <p className="text-xs font-medium text-destructive">{t("conflictTitle")}</p>
@@ -720,7 +708,7 @@ export function InterviewBookingModal({
 
             {/* Error */}
             {error && (
-              <div className="flex items-center gap-2 rounded-xl bg-destructive/10 border border-destructive/20 px-3 py-2">
+              <div className="flex items-center gap-2 rounded-xl bg-destructive/10 border border-destructive/20 chip-pad">
                 <AlertCircle className="h-3.5 w-3.5 text-destructive flex-shrink-0" />
                 <p className="text-xs text-destructive">{error}</p>
               </div>
@@ -747,7 +735,7 @@ export function InterviewBookingModal({
         {step === "confirmation" && (
           <div className="flex-1 overflow-y-auto p-5 space-y-4">
             {/* Candidate list */}
-            <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
+            <div className="rounded-xl border border-primary/20 bg-primary/5 chip-pad">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
                 {selectedCandidates.length > 1 ? `${selectedCandidates.length} Interviews` : "Interview"}
               </p>
@@ -823,7 +811,7 @@ export function InterviewBookingModal({
 
             {/* Progress indicator */}
             {bookingProgress && (
-              <div className="rounded-xl bg-primary/5 border border-primary/20 p-3">
+              <div className="rounded-xl bg-primary/5 border border-primary/20 chip-pad">
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-[10px] font-medium text-primary">
                     Booking interviews...
@@ -843,7 +831,7 @@ export function InterviewBookingModal({
 
             {/* Error */}
             {error && (
-              <div className="flex items-center gap-2 rounded-xl bg-destructive/10 border border-destructive/20 px-3 py-2">
+              <div className="flex items-center gap-2 rounded-xl bg-destructive/10 border border-destructive/20 chip-pad">
                 <AlertCircle className="h-3.5 w-3.5 text-destructive flex-shrink-0" />
                 <p className="text-xs text-destructive">{error}</p>
               </div>

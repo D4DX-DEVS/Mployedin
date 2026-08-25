@@ -919,7 +919,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
             >
               {t("saveAsDraft")}
             </Button>
-            <Button onClick={handleSubmit} disabled={submitting} className="h-9 gap-1.5 rounded-lg bg-sky-600 hover:bg-sky-700">
+            <Button size="sm" onClick={handleSubmit} disabled={submitting} className="gap-1.5 rounded-lg bg-sky-600 hover:bg-sky-700">
               {submitting ? <><Loader2 className="h-4 w-4 animate-spin" /> {t("saving")}</> : <><FileCheck className="h-4 w-4" /> {role === "agent" ? t("submitInvoice") : t("saveAndSend")}</>}
             </Button>
           </>
@@ -932,7 +932,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
     <div className="hidden w-[300px] shrink-0 self-start sticky top-[73px] max-h-[calc(100vh-10rem)] overflow-y-auto bg-muted/20 p-4 lg:block">
       <div className="space-y-4">
         {/* Invoice Summary */}
-        <div className="rounded-xl border border-border/70 bg-card p-4">
+        <div className="rounded-xl border border-border/70 bg-card card-pad">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("invoiceSummary")}</p>
           <div className="mt-3 space-y-2 text-xs">
             <div className="flex justify-between">
@@ -958,7 +958,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
         </div>
 
         {/* Payment Terms */}
-        <div className="rounded-xl border border-border/70 bg-card p-4">
+        <div className="rounded-xl border border-border/70 bg-card card-pad">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("paymentTerms")}</p>
           <div className="mt-2 text-xs">
             <p className="font-medium">{allPaymentTerms.find(t => t.value === paymentTerms)?.label ?? paymentTerms}</p>
@@ -967,7 +967,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
         </div>
 
         {/* Commission Preview (Internal) */}
-        <div className={`rounded-xl border p-4 ${combinedRateExceeds ? "border-rose-300 bg-rose-50/50" : "border-amber-200/80 bg-amber-50/50"}`}>
+        <div className={`rounded-xl border ${combinedRateExceeds ? "border-rose-300 bg-rose-50/50" : "border-amber-200/80 bg-amber-50/50"} card-pad`}>
           <div className="flex items-center justify-between">
             <p className={`text-[10px] font-semibold uppercase tracking-wider ${combinedRateExceeds ? "text-rose-700" : "text-amber-700"}`}>{t("commissionSplit")}</p>
             {role === "admin" && (selectedAgent || selectedSuperAgent) && (
@@ -1051,7 +1051,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
         </div>
 
         {/* Notes to Customer */}
-        <div className="rounded-xl border border-border/70 bg-card p-4">
+        <div className="rounded-xl border border-border/70 bg-card card-pad">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("notesForCustomer")}</p>
           <p className="mt-2 text-xs text-muted-foreground whitespace-pre-line">
             {notes || t("defaultCustomerNotes")}
@@ -1059,7 +1059,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
         </div>
 
         {/* Payment Gateway */}
-        <div className="rounded-xl border border-border/70 bg-card p-4">
+        <div className="rounded-xl border border-border/70 bg-card card-pad">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("paymentGateway")}</p>
           <div className="mt-2 flex items-center gap-3">
             <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
@@ -1122,7 +1122,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                         <button
                           type="button"
                           onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                          className="flex w-full items-center gap-1.5 rounded-lg border border-dashed border-sky-300/60 bg-sky-50/50 px-3 py-1.5 text-[11px] font-medium text-sky-600 transition-colors hover:bg-sky-100/60"
+                          className="flex w-full items-center gap-1.5 rounded-lg border border-dashed border-sky-300/60 bg-sky-50/50 text-[11px] font-medium text-sky-600 transition-colors hover:bg-sky-100/60 chip-pad"
                         >
                           <MapPin className="h-3 w-3" />
                           {t("narrowByRegion")}
@@ -1251,7 +1251,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                 )}
   
                 {/* Job select — inline search + results */}
-                <div className="rounded-xl border border-border/60 bg-card/50 p-4">
+                <div className="rounded-xl border border-border/60 bg-card/50 card-pad">
                   <div className="mb-3 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="flex h-5 w-5 items-center justify-center rounded bg-primary/10">
@@ -1270,7 +1270,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
   
                   {/* Selected job chip */}
                   {selectedJobId && selectedJob && (
-                    <div className="mb-3 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
+                    <div className="mb-3 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 chip-pad">
                       <Check className="h-4 w-4 shrink-0 text-emerald-600" />
                       <div className="min-w-0 flex-1">
                         <span className="truncate text-sm font-medium text-emerald-800">
@@ -1546,8 +1546,8 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                               onChange={e => setCustomCategory(e.target.value)}
                               onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addCustomType(); } if (e.key === "Escape") setShowAddType(false); }}
                             />
-                            <Button type="button" size="sm" variant="default" className="h-9 px-3 text-xs" onClick={addCustomType} disabled={!customCategory.trim()}>{t("add")}</Button>
-                            <Button type="button" size="sm" variant="ghost" className="h-9 px-2 text-xs" onClick={() => { setShowAddType(false); setCustomCategory(""); }}>✕</Button>
+                            <Button type="button" size="sm" variant="default" className="px-3 text-xs" onClick={addCustomType} disabled={!customCategory.trim()}>{t("add")}</Button>
+                            <Button type="button" size="sm" variant="ghost" className="px-2 text-xs" onClick={() => { setShowAddType(false); setCustomCategory(""); }}>✕</Button>
                           </div>
                         ) : (
                         <SearchableSelect
@@ -1595,8 +1595,8 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                                 if (e.key === "Escape") setShowAddPaymentTerm(false);
                               }}
                             />
-                            <Button type="button" size="sm" variant="default" className="h-9 px-3 text-xs" onClick={addCustomPaymentTerm} disabled={!customPaymentLabel.trim()}>{t("add")}</Button>
-                            <Button type="button" size="sm" variant="ghost" className="h-9 px-2 text-xs" onClick={() => { setShowAddPaymentTerm(false); setCustomPaymentLabel(""); }}>✕</Button>
+                            <Button type="button" size="sm" variant="default" className="px-3 text-xs" onClick={addCustomPaymentTerm} disabled={!customPaymentLabel.trim()}>{t("add")}</Button>
+                            <Button type="button" size="sm" variant="ghost" className="px-2 text-xs" onClick={() => { setShowAddPaymentTerm(false); setCustomPaymentLabel(""); }}>✕</Button>
                           </div>
                         ) : (
                         <SearchableSelect
@@ -1718,7 +1718,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                 ═══════════════════════════════════════════════════════════════════ */}
             {step === 2 && (
               <div className="space-y-4">
-                <div className="rounded-xl border border-border bg-card p-5">
+                <div className="rounded-xl border border-border bg-card panel-body">
                   {/* Header */}
                   <div className="flex items-start justify-between border-b border-border/70 pb-3">
                     <div>
@@ -1854,7 +1854,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
 
   // ── Commission summary for dialog mode (agent view) ──────────────────────
   const dialogCommissionSummary = (selectedAgent || selectedSuperAgent || agentRate > 0 || superAgentRate > 0) && totalAmount > 0 && (
-    <div className={`mt-4 rounded-xl border p-4 ${combinedRateExceeds ? "border-rose-300 bg-rose-50/50" : "border-amber-200/80 bg-amber-50/50"}`}>
+    <div className={`mt-4 rounded-xl border ${combinedRateExceeds ? "border-rose-300 bg-rose-50/50" : "border-amber-200/80 bg-amber-50/50"} card-pad`}>
       <p className={`text-[10px] font-semibold uppercase tracking-wider ${combinedRateExceeds ? "text-rose-700" : "text-amber-700"}`}>
         {role === "agent" ? t("yourCommission") : t("commissionSplit")}
       </p>

@@ -3,7 +3,7 @@ import { test, expect, type Page } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
 
-const WIDTHS = [360, 390, 430, 768, 900, 1024, 1280, 1440];
+const WIDTHS = [360, 390, 430, 640, 700, 768, 1024, 1280, 1440];
 
 const ROLES: Record<string, { email: string; pass: string; landing: RegExp; routes: string[] }> = {
   employer: {

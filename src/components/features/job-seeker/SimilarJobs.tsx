@@ -30,7 +30,7 @@ export function SimilarJobs({ jobId, locale }: { jobId: string; locale: string }
   if (isLoading) {
     return (
       <div className="mt-8 border-t border-border pt-8 space-y-4">
-        <h2 className="text-lg font-semibold text-foreground">{t("similarJobs")}</h2>
+        <h2 className="heading-section font-semibold text-foreground">{t("similarJobs")}</h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-36 animate-pulse rounded-lg sm:rounded-3xl bg-muted" />
@@ -46,14 +46,14 @@ export function SimilarJobs({ jobId, locale }: { jobId: string; locale: string }
     <div className="mt-8 border-t border-border pt-8 space-y-4">
       <div>
         <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("keepExploring")}</div>
-        <h2 className="mt-1 text-lg font-semibold tracking-tight text-foreground">{t("similarJobs")}</h2>
+        <h2 className="heading-section mt-1 font-semibold tracking-tight text-foreground">{t("similarJobs")}</h2>
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {jobs.map((job) => (
           <Link
             key={job._id}
             href={`/${locale}/job-seeker/jobs/${job._id}`}
-            className="group block rounded-lg sm:rounded-3xl border border-border/70 bg-card p-3 sm:p-4 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_20px_45px_-34px_rgba(37,99,235,0.18)]"
+            className="group block rounded-lg sm:rounded-3xl border border-border/70 bg-card transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_20px_45px_-34px_rgba(37,99,235,0.18)] card-pad"
           >
             <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               {job.overlap} matching skill{job.overlap !== 1 ? "s" : ""}

@@ -115,7 +115,7 @@ export default function PortfolioPage() {
 
       {showForm && (
         <section className="workspace-panel-surface rounded-3xl space-y-4 panel-body">
-          <h2 className="text-lg font-semibold text-foreground">{t("addProject")}</h2>
+          <h2 className="heading-section font-semibold text-foreground">{t("addProject")}</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             <Input placeholder={t("projectTitlePlaceholder")} value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} />
             <Input placeholder={t("urlPlaceholder")} value={form.url} onChange={(e) => setForm((p) => ({ ...p, url: e.target.value }))} />

@@ -42,7 +42,7 @@ export function QuickInsights({ avgMatchScore, highMatchCount }: QuickInsightsPr
 
       <div className="grid flex-1 grid-cols-2 gap-4 p-4 sm:p-5">
         {items.map(({ labelKey, value, stroke, points }) => (
-          <div key={labelKey} className="flex flex-col rounded-2xl border border-border/60 bg-background/60 p-4">
+          <div key={labelKey} className="flex flex-col rounded-2xl border border-border/60 bg-background/60 card-pad">
             <div className="text-xs text-muted-foreground">{t(labelKey)}</div>
             <div className="mt-1 text-2xl font-semibold tracking-tight text-foreground">{value}</div>
             <svg viewBox="0 0 110 30" preserveAspectRatio="none" className="mt-auto h-10 w-full pt-3" aria-hidden>

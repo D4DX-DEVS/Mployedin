@@ -13,7 +13,7 @@ export function SubscriptionFAQ() {
   const [open, setOpen] = useState<string | null>(null);
 
   return (
-    <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-3">
+    <section className="rounded-2xl border border-border/60 bg-card space-y-3 panel-body">
       <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
         <HelpCircle className="h-4 w-4" /> {t("faqTitle")}
       </h4>

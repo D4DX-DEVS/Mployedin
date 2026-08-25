@@ -154,7 +154,7 @@ export default function VerifyOAuth2faPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="w-full space-y-4">
-        <div className="space-y-2">
+        <div className="field">
           <Label htmlFor="oauth-2fa-code" className="text-sm font-medium">
             {t("twoFactorCode")}
           </Label>
@@ -184,10 +184,10 @@ export default function VerifyOAuth2faPage() {
           </p>
         )}
 
-        <Button
+        <Button size="lg"
           type="submit"
           disabled={loading || code.trim().length < 6}
-          className="h-12 w-full rounded-xl text-base font-medium"
+          className="w-full rounded-xl text-base font-medium"
         >
           {loading ? (
             <>

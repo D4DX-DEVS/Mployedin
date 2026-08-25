@@ -653,9 +653,9 @@ export default function JobSeekerSkillsPage() {
 
         {/* Analyze button */}
         <div className="mt-6">
-          <Button
+          <Button size="lg"
             type="button"
-            className="h-12 w-full text-base font-semibold"
+            className="w-full text-base font-semibold"
             onClick={() => analyzeGap()}
             disabled={!targetRole.trim() || loadingGap}
           >
@@ -718,7 +718,7 @@ export default function JobSeekerSkillsPage() {
 
                 <div className="flex-1 space-y-3 text-center sm:text-left">
                   <div>
-                    <h2 className="text-xl font-bold">
+                    <h2 className="heading-section font-bold">
                       {targetRole} {t("readinessScore")}
                     </h2>
                     <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
@@ -765,7 +765,7 @@ export default function JobSeekerSkillsPage() {
               {/* Gap Visualization Bars */}
               {skillBars.length > 0 && (
                 <div className="card-base panel-body">
-                  <h3 className="mb-4 text-sm font-semibold">
+                  <h3 className="heading-label mb-4 font-semibold">
                     {t("gapVisualization")}
                   </h3>
                   <div className="space-y-3">
@@ -801,7 +801,7 @@ export default function JobSeekerSkillsPage() {
                 <div className="card-base panel-body">
                   <div className="mb-4 flex items-center gap-2">
                     <Flame className="h-4 w-4 text-orange-500" />
-                    <h3 className="text-sm font-semibold">
+                    <h3 className="heading-label font-semibold">
                       {t("doThisNext")}
                     </h3>
                   </div>
@@ -809,7 +809,7 @@ export default function JobSeekerSkillsPage() {
                     {impactSuggestions.map((action, idx) => (
                       <div
                         key={action.skill}
-                        className="group relative rounded-xl border border-border/60 bg-background p-4 transition-all hover:border-primary/30 hover:shadow-sm"
+                        className="group relative rounded-xl border border-border/60 bg-background transition-all hover:border-primary/30 hover:shadow-sm card-pad"
                       >
                         <div className="flex items-start gap-3">
                           <div
@@ -873,7 +873,7 @@ export default function JobSeekerSkillsPage() {
               {/* Recommendations */}
               {gapResult.recommendations.length > 0 && (
                 <div className="card-base panel-body">
-                  <h3 className="mb-3 text-sm font-semibold">
+                  <h3 className="heading-label mb-3 font-semibold">
                     {t("recommendations")}
                   </h3>
                   <ul className="space-y-2">
@@ -898,7 +898,7 @@ export default function JobSeekerSkillsPage() {
                 <div className="mb-4 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <Sparkles className="h-4 w-4 text-primary" />
-                    <h3 className="text-sm font-semibold">
+                    <h3 className="heading-label font-semibold">
                       {t("recommendedForYou")}
                     </h3>
                   </div>
@@ -976,7 +976,7 @@ export default function JobSeekerSkillsPage() {
                 <div className="card-base panel-body">
                   <div className="mb-4 flex items-center gap-2">
                     <BookOpen className="h-4 w-4 text-primary" />
-                    <h3 className="text-sm font-semibold">
+                    <h3 className="heading-label font-semibold">
                       {t("learningPath")}
                     </h3>
                   </div>
@@ -1015,7 +1015,7 @@ export default function JobSeekerSkillsPage() {
                 <div className="card-base panel-body">
                   <div className="mb-3 flex items-center gap-2">
                     <TrendingUp className="h-4 w-4 text-primary" />
-                    <h3 className="text-sm font-semibold">
+                    <h3 className="heading-label font-semibold">
                       {t("growthTracking")}
                     </h3>
                   </div>
@@ -1056,7 +1056,7 @@ export default function JobSeekerSkillsPage() {
                 <div className="bg-gradient-to-r from-primary to-primary/80 p-5 text-primary-foreground sm:p-6">
                   <div className="mb-1 flex items-center gap-2">
                     <Briefcase className="h-5 w-5" />
-                    <h3 className="text-base font-bold">
+                    <h3 className="heading-subsection font-bold">
                       {t("matchingJobs")}
                     </h3>
                   </div>
@@ -1068,10 +1068,10 @@ export default function JobSeekerSkillsPage() {
                         : t("totalMatches", { count: matchingJobsCount })}
                   </p>
                   <Link href={`/${locale}/job-seeker/jobs`}>
-                    <Button
+                    <Button size="lg"
                       type="button"
                       variant="secondary"
-                      className="h-11 w-full justify-between text-sm font-semibold"
+                      className="w-full justify-between text-sm font-semibold"
                     >
                       <span>{t("viewMatchingJobs")}</span>
                       <ArrowUpRight className="h-4 w-4" />

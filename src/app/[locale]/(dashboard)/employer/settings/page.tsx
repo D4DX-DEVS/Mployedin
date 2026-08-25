@@ -136,7 +136,7 @@ function SectionHeader({ icon: Icon, title, description }: { icon: typeof Buildi
           <Icon className="w-4 h-4 text-primary" />
         </div>
         <div>
-          <h3 className="text-sm font-semibold tracking-tight">{title}</h3>
+          <h3 className="heading-label font-semibold tracking-tight">{title}</h3>
           {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
         </div>
       </div>
@@ -369,7 +369,7 @@ function CompanySettingsPage() {
           <div className="h-7 w-48 bg-muted animate-pulse rounded-lg" />
           <div className="h-4 w-72 bg-muted/50 animate-pulse rounded" />
         </div>
-        <div className="rounded-xl border border-border/50 bg-card p-6 animate-pulse">
+        <div className="rounded-xl border border-border/50 bg-card animate-pulse panel-body">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-xl bg-muted" />
             <div className="space-y-2 flex-1">
@@ -433,7 +433,7 @@ function CompanySettingsPage() {
             {/* Info */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2.5 flex-wrap">
-                <h2 className="text-lg font-semibold truncate">{company?.companyName}</h2>
+                <h2 className="heading-section font-semibold truncate">{company?.companyName}</h2>
                 <Badge variant="outline" className={`${vBadge.color} text-[11px] font-medium px-2 py-0.5 border inline-flex items-center leading-none`}>
                   <VBadgeIcon className="w-3 h-3 me-1 shrink-0" />
                   <span>{vBadge.label}</span>
@@ -888,7 +888,7 @@ function CompanySettingsPage() {
                 <SectionCard>
                   <SectionHeader icon={Shield} title={t("verificationTrust")} description={t("verificationTrustDesc")} />
                   <div className="p-6 space-y-3 sm:space-y-4">
-                    <div className="flex items-start gap-4 p-4 rounded-xl bg-muted/30 border border-border/30">
+                    <div className="flex items-start gap-4 rounded-xl bg-muted/30 border border-border/30 card-pad">
                       <div className={`flex items-center justify-center w-10 h-10 rounded-xl shrink-0 ${
                         company?.verificationLevel === "basic" ? "bg-slate-100" : "bg-emerald-50"
                       }`}>
@@ -946,7 +946,7 @@ function CompanySettingsPage() {
                 <SectionCard>
                   <SectionHeader icon={FileText} title={t("verificationDocuments")} description={t("verificationDocumentsDesc")} />
                   <div className="p-6 space-y-3 sm:space-y-4">
-                    <p className="text-xs text-muted-foreground bg-muted/30 border border-border/30 rounded-lg px-3 py-2 leading-relaxed">
+                    <p className="text-xs text-muted-foreground bg-muted/30 border border-border/30 rounded-lg leading-relaxed chip-pad">
                       {t("verificationProcessNote")}
                     </p>
                     {docError && (
@@ -956,7 +956,7 @@ function CompanySettingsPage() {
                       {(company?.verificationDocs ?? []).map((url) => {
                         const name = url.split("/").pop() ?? url;
                         return (
-                          <div key={url} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-border/40 bg-muted/20">
+                          <div key={url} className="flex items-center justify-between gap-3 rounded-lg border border-border/40 bg-muted/20 chip-pad">
                             <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline truncate flex-1">{name}</a>
                             <Button
                               type="button"
@@ -1006,19 +1006,19 @@ function CompanySettingsPage() {
             <CalendarFeedCard />
 
                 {/* Danger Zone */}
-                <div className="rounded-xl border-2 border-dashed border-destructive/25 bg-destructive/[0.02] p-6 space-y-3 sm:space-y-4">
+                <div className="rounded-xl border-2 border-dashed border-destructive/25 bg-destructive/[0.02] space-y-3 sm:space-y-4 panel-body">
                   <div className="flex items-center gap-2.5">
                     <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-destructive/10">
                       <AlertTriangle className="w-4 h-4 text-destructive" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-semibold text-destructive">{t("dangerZone")}</h3>
+                      <h3 className="heading-label font-semibold text-destructive">{t("dangerZone")}</h3>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {t("dangerZoneDesc")}
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between p-4 rounded-lg border border-destructive/15 bg-background">
+                  <div className="flex items-center justify-between rounded-lg border border-destructive/15 bg-background card-pad">
                     <div>
                       <p className="text-sm font-medium">{t("deactivateAccount")}</p>
                       <p className="text-xs text-muted-foreground mt-0.5">
@@ -1208,11 +1208,7 @@ function EmployerNotificationsTab() {
               key={opt.value}
               type="button"
               onClick={() => setPrefs((p) => ({ ...p, emailFrequency: opt.value }))}
-              className={`p-3 rounded-lg border-2 text-left transition-all ${
-                prefs.emailFrequency === opt.value
-                  ? "border-primary bg-primary/5"
-                  : "border-border/50 hover:border-border"
-              }`}
+              className={`rounded-lg border-2 text-left transition-all ${ prefs.emailFrequency === opt.value ? "border-primary bg-primary/5" : "border-border/50 hover:border-border" } chip-pad`}
             >
               <div className="text-sm font-medium">{t(opt.labelKey)}</div>
               <div className="text-[11px] text-muted-foreground mt-1">{t(opt.descKey)}</div>
@@ -1398,7 +1394,7 @@ function EmployerSmtpOverride({ isPremium }: { isPremium: boolean }) {
       <SectionCard>
         <SectionHeader icon={Mail} title={t("customEmailSmtp")} description={t("customEmailSmtpNonPremiumDesc")} />
         <div className="p-6">
-          <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200">
+          <div className="flex items-center gap-3 rounded-xl bg-amber-50 border border-amber-200 card-pad">
             <Sparkles className="w-5 h-5 text-amber-600 shrink-0" />
             <div>
               <p className="text-sm font-medium text-amber-800">{t("premiumFeature")}</p>

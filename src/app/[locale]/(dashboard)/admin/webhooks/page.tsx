@@ -321,9 +321,9 @@ export default function AdminWebhooksPage() {
           <>
             <Dialog open={infoOpen} onOpenChange={setInfoOpen}>
               <DialogTrigger asChild>
-                <Button
+                <Button size="lg"
                   variant="outline"
-                  className="h-11 w-11 rounded-xl p-0"
+                  className="w-11 rounded-xl p-0"
                   title="How webhooks work"
                   aria-label="How webhooks work"
                 >
@@ -383,9 +383,9 @@ export default function AdminWebhooksPage() {
             </Dialog>
             <Dialog open={dialogOpen} onOpenChange={(v) => { if (!v) resetForm(); setDialogOpen(v); }}>
               <DialogTrigger asChild>
-                <Button
+                <Button size="lg"
                   onClick={openCreate}
-                  className="h-11 gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90 border-0"
+                  className="gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90 border-0"
                 >
                   <Plus className="h-4 w-4" />
                   Add Webhook
@@ -398,7 +398,7 @@ export default function AdminWebhooksPage() {
 
                 {/* Secret display (only on create success) */}
                 {newSecret && (
-                  <div className="rounded-lg border border-status-shortlisted/20 bg-status-shortlisted-bg p-4 mb-4">
+                  <div className="rounded-lg border border-status-shortlisted/20 bg-status-shortlisted-bg mb-4 card-pad">
                     <p className="text-sm font-medium text-status-shortlisted mb-2">
                       <AlertCircle className="h-4 w-4 inline mr-1" />
                       Save this signing secret — it won&apos;t be shown again:
@@ -423,7 +423,7 @@ export default function AdminWebhooksPage() {
 
                 {!newSecret && (
                   <div className="space-y-4 mt-2">
-                    <div className="space-y-1.5">
+                    <div className="field">
                       <Label>Name</Label>
                       <Input
                         value={form.name}
@@ -431,7 +431,7 @@ export default function AdminWebhooksPage() {
                         placeholder="e.g. QuickBooks Integration"
                       />
                     </div>
-                    <div className="space-y-1.5">
+                    <div className="field">
                       <Label>Endpoint URL</Label>
                       <Input
                         value={form.url}
@@ -454,7 +454,7 @@ export default function AdminWebhooksPage() {
                         ))}
                       </div>
                     </div>
-                    <div className="space-y-1.5">
+                    <div className="field">
                       <Label>Retry Count</Label>
                       <Input
                         type="number"
@@ -495,7 +495,7 @@ export default function AdminWebhooksPage() {
             { label: "Healthy", value: healthyCount, note: "Last delivery OK", icon: Activity, tone: "text-status-applied", chip: "bg-status-applied-bg" },
             { label: "Failed", value: failedCount, note: "Needs attention", icon: AlertCircle, tone: "text-red-500", chip: "bg-status-rejected-bg" },
           ] as const).map(({ label, value, note, icon: Icon, tone, chip }) => (
-            <div key={label} className="workspace-glass-panel rounded-2xl p-4">
+            <div key={label} className="workspace-glass-panel card-pad rounded-2xl">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
@@ -538,7 +538,7 @@ export default function AdminWebhooksPage() {
 
         {/* ─── Expandable Filters ─────────────────────────────────────── */}
         {showFilters && (
-          <div className="mt-4 space-y-3 rounded-3xl border border-border/30 bg-background/40 p-4 backdrop-blur-sm">
+          <div className="mt-4 space-y-3 rounded-3xl border border-border/30 bg-background/40 backdrop-blur-sm card-pad">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
@@ -617,7 +617,7 @@ export default function AdminWebhooksPage() {
                         </p>
                       </div>
                       {activeFilterCount > 0 && (
-                        <Button variant="outline" size="sm" onClick={clearAllFilters} className="mt-1 h-8 rounded-lg text-xs">
+                        <Button variant="outline" size="dense" onClick={clearAllFilters} className="mt-1 rounded-lg text-xs">
                           Clear filters
                         </Button>
                       )}
@@ -736,7 +736,7 @@ export default function AdminWebhooksPage() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <Activity className="h-4 w-4 text-sky-500 shrink-0" />
-                  <h2 className="text-base font-semibold truncate">Delivery Log</h2>
+                  <h2 className="heading-section font-semibold truncate">Delivery Log</h2>
                 </div>
                 <p className="mt-0.5 truncate text-xs text-muted-foreground">{logWebhook?.name}</p>
                 <p className="truncate text-[10px] font-mono text-muted-foreground">{logWebhook?.url}</p>

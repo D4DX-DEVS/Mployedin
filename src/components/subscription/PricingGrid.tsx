@@ -169,13 +169,7 @@ export function PricingGrid({
           return (
             <div
               key={plan._id}
-              className={`relative rounded-2xl border p-5 flex flex-col transition-all hover:shadow-md ${
-                isActive
-                  ? "border-sky-500/40 bg-card"
-                  : isMostPopular
-                    ? "border-2 border-sky-500 bg-sky-500/[0.05] shadow-lg shadow-sky-500/10 sm:scale-[1.03] z-10"
-                    : "border-border/60 bg-card"
-              }`}
+              className={`relative rounded-2xl border flex flex-col transition-all hover:shadow-md ${ isActive ? "border-sky-500/40 bg-card" : isMostPopular ? "border-2 border-sky-500 bg-sky-500/[0.05] shadow-lg shadow-sky-500/10 sm:scale-[1.03] z-10" : "border-border/60 bg-card" } panel-body`}
             >
               {isMostPopular && !isActive && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">

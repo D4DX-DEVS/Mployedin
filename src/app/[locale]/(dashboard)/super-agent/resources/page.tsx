@@ -80,7 +80,7 @@ export default function ResourceDownloadsPage() {
   };
 
   return (
-    <div className="page-container pb-6">
+    <div className="page-container">
       <DashboardPageHeader
         icon={FolderOpen}
         eyebrow={t("heroLabel")}
@@ -111,10 +111,10 @@ export default function ResourceDownloadsPage() {
       ) : items.length === 0 ? (
         <section className="workspace-panel-surface rounded-3xl p-10 sm:p-14 text-center">
           <div className="flex flex-col items-center">
-            <div className="workspace-glass-panel rounded-2xl p-4 mb-5">
+            <div className="workspace-glass-panel card-pad rounded-2xl mb-5">
               <Inbox className="h-8 w-8 text-muted-foreground/50" />
             </div>
-            <h3 className="text-lg font-semibold text-foreground">{t("noResources")}</h3>
+            <h3 className="heading-subsection font-semibold text-foreground">{t("noResources")}</h3>
             <p className="mt-2 text-sm text-muted-foreground max-w-sm">
               {t("noResourcesHint")}
             </p>
@@ -128,11 +128,11 @@ export default function ResourceDownloadsPage() {
               <article key={item._id} className="workspace-glass-panel rounded-2xl overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_24px_50px_-38px_rgba(2,132,199,0.38)]">
                 <div className="p-3 sm:p-5 space-y-4">
                   <div className="flex items-start gap-3">
-                    <div className="rounded-2xl p-2 ring-1 ring-inset ring-border/60 bg-background/80 shrink-0">
+                    <div className="rounded-2xl ring-1 ring-inset ring-border/60 bg-background/80 shrink-0 chip-pad">
                       <CatIcon className="h-4 w-4 text-muted-foreground" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h3 className="text-[15px] font-semibold text-foreground truncate">{item.title}</h3>
+                      <h3 className="heading-subsection font-semibold text-foreground truncate">{item.title}</h3>
                       <p className="text-xs text-muted-foreground">{CATEGORY_KEYS.includes(item.category) ? t(`categories.${item.category}`) : item.category}</p>
                     </div>
                   </div>
@@ -155,7 +155,7 @@ export default function ResourceDownloadsPage() {
 
                   <div className="space-y-2">
                     {item.files.map((file) => (
-                      <div key={file.key} className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-background/60 px-3 py-2.5 text-xs">
+                      <div key={file.key} className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-background/60 text-xs chip-pad">
                         <span className="truncate font-medium text-foreground">{file.fileName} <span className="text-muted-foreground">({formatFileSize(file.size)})</span></span>
                         <div className="flex gap-1 shrink-0">
                           {(file.contentType?.startsWith("image/") || file.contentType === "application/pdf") && (

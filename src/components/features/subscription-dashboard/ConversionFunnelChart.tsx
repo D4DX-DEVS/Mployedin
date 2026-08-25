@@ -23,7 +23,7 @@ export function ConversionFunnelChart({ data }: Props) {
   const maxValue = Math.max(...stages.map((s) => s.value), 1);
 
   return (
-    <section className="rounded-2xl border border-border/60 bg-card p-6">
+    <section className="rounded-2xl border border-border/60 bg-card panel-body">
       <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2 mb-5">
         <Filter className="h-4 w-4" /> {t("subscriptionConversionFunnel")}
       </h4>

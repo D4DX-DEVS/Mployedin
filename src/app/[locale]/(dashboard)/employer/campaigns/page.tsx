@@ -144,7 +144,7 @@ export default function EmployerCampaignsPage() {
       {isLoading ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-5">
+            <div key={i} className="flex flex-col gap-3 rounded-2xl border border-border bg-card panel-body">
               <div className="flex items-start justify-between gap-3">
                 <Skeleton className="h-5 w-32" />
                 <Skeleton className="h-5 w-16 rounded-full" />
@@ -216,10 +216,10 @@ function SequenceCard({ sequence, onOpen }: { sequence: EmailSequence; onOpen: (
     <button
       type="button"
       onClick={onOpen}
-      className="flex h-full flex-col gap-3 rounded-2xl border border-border bg-card p-5 text-left transition hover:border-sky-300 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+      className="flex h-full flex-col gap-3 rounded-2xl border border-border bg-card text-left transition hover:border-sky-300 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 panel-body"
     >
       <div className="flex items-start justify-between gap-3">
-        <h3 className="line-clamp-1 text-base font-semibold text-foreground">{sequence.name}</h3>
+        <h3 className="heading-subsection line-clamp-1 font-semibold text-foreground">{sequence.name}</h3>
         <StatusBadge status={sequence.status} />
       </div>
       {sequence.description ? (
@@ -322,7 +322,7 @@ function CreateSequenceDialog({ open, onOpenChange }: { open: boolean; onOpenCha
         </DialogHeader>
 
         <div className="max-h-[62vh] space-y-4 overflow-y-auto px-6 py-4">
-          <div className="space-y-1.5">
+          <div className="field">
             <Label htmlFor="seq-name">{t("name")}</Label>
             <Input
               id="seq-name"
@@ -332,7 +332,7 @@ function CreateSequenceDialog({ open, onOpenChange }: { open: boolean; onOpenCha
               maxLength={100}
             />
           </div>
-          <div className="space-y-1.5">
+          <div className="field">
             <Label htmlFor="seq-description">{t("description")}</Label>
             <Textarea
               id="seq-description"
@@ -344,7 +344,7 @@ function CreateSequenceDialog({ open, onOpenChange }: { open: boolean; onOpenCha
             />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
+            <div className="field">
               <Label htmlFor="seq-from-name">{t("fromName")}</Label>
               <Input
                 id="seq-from-name"
@@ -354,7 +354,7 @@ function CreateSequenceDialog({ open, onOpenChange }: { open: boolean; onOpenCha
                 maxLength={100}
               />
             </div>
-            <div className="space-y-1.5">
+            <div className="field">
               <Label htmlFor="seq-from-email">{t("fromEmail")}</Label>
               <Input
                 id="seq-from-email"
@@ -382,7 +382,7 @@ function CreateSequenceDialog({ open, onOpenChange }: { open: boolean; onOpenCha
               </Button>
             </div>
             {steps.map((step, i) => (
-              <div key={i} className="space-y-2 rounded-2xl border border-border bg-background p-4">
+              <div key={i} className="space-y-2 rounded-2xl border border-border bg-background card-pad">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-muted-foreground">
                     {t("stepLabel", { number: i + 1 })}
@@ -591,7 +591,7 @@ function SequenceDetailDialog({ sequenceId, onClose }: { sequenceId: string | nu
                   </p>
                   <ol className="space-y-2">
                     {sequence.steps.map((s, i) => (
-                      <li key={s._id ?? i} className="rounded-2xl border border-border bg-background p-4">
+                      <li key={s._id ?? i} className="rounded-2xl border border-border bg-background card-pad">
                         <div className="flex items-center justify-between gap-2">
                           <span className="text-xs font-semibold text-muted-foreground">
                             {t("stepLabel", { number: i + 1 })}
@@ -613,7 +613,7 @@ function SequenceDetailDialog({ sequenceId, onClose }: { sequenceId: string | nu
                   <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     {t("recipientCount", { count: sequence.recipients?.length ?? 0 })}
                   </p>
-                  <div className="flex flex-col gap-2 rounded-2xl border border-border bg-background p-3 sm:flex-row">
+                  <div className="flex flex-col gap-2 rounded-2xl border border-border bg-background sm:flex-row chip-pad">
                     <Input
                       value={recName}
                       onChange={(e) => setRecName(e.target.value)}
@@ -648,7 +648,7 @@ function SequenceDetailDialog({ sequenceId, onClose }: { sequenceId: string | nu
                       {sequence.recipients.map((r, i) => (
                         <li
                           key={r._id ?? i}
-                          className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-background p-3"
+                          className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-background chip-pad"
                         >
                           <div className="min-w-0">
                             <p className="truncate text-sm font-semibold text-foreground">{r.name}</p>

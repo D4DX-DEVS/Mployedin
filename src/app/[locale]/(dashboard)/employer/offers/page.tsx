@@ -177,7 +177,7 @@ export default function EmployerOffersPage() {
               list below the fold (jobs page hides the same copy on mobile). */}
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("filterDecisions")}</p>
-            <h2 className="mt-2 hidden text-xl font-semibold tracking-tight text-foreground sm:block">{t("filterTitle")}</h2>
+            <h2 className="heading-section mt-2 hidden font-semibold tracking-tight text-foreground sm:block">{t("filterTitle")}</h2>
             <p className="mt-2 hidden max-w-2xl text-sm leading-6 text-muted-foreground sm:block">
               {t("filterDescription")}
             </p>
@@ -209,12 +209,12 @@ export default function EmployerOffersPage() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-rejected">{t("offerList")}</p>
-              <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{tc("somethingWentWrong")}</h2>
+              <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{tc("somethingWentWrong")}</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
                 {t("loadError")}
               </p>
             </div>
-            <Button className="h-11 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90" onClick={() => void refetch()}>
+            <Button size="lg" className="rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90" onClick={() => void refetch()}>
               {tc("tryAgain")}
             </Button>
           </div>
@@ -224,7 +224,7 @@ export default function EmployerOffersPage() {
           <div className="mb-5 flex items-center justify-between gap-4">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("offerList")}</p>
-              <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{tc("loading")}</h2>
+              <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{tc("loading")}</h2>
             </div>
           </div>
           <div className="space-y-3">
@@ -239,11 +239,11 @@ export default function EmployerOffersPage() {
             <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-status-applied-bg text-status-applied">
               <DollarSign className="h-7 w-7" />
             </div>
-            <h2 className="mt-5 text-2xl font-semibold tracking-tight text-foreground">{t("noOffers")}</h2>
+            <h2 className="heading-section mt-5 font-semibold tracking-tight text-foreground">{t("noOffers")}</h2>
             <p className="mt-3 max-w-md text-sm leading-6 text-muted-foreground">
               {t("noOffersDesc")}
             </p>
-            <Button asChild className="mt-6 h-11 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
+            <Button size="lg" asChild className="mt-6 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
               <Link href={`/${locale}/employer/applications`}>{t("openPipeline")}</Link>
             </Button>
           </div>
@@ -256,7 +256,7 @@ export default function EmployerOffersPage() {
           <div className="flex flex-row items-start justify-between gap-3 border-b border-border pb-3 sm:items-end sm:pb-5">
             <div className="min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("offerList")}</p>
-              <h2 className="mt-1 text-base font-semibold tracking-tight text-foreground sm:mt-2 sm:text-xl">{t("offerListDesc")}</h2>
+              <h2 className="heading-section mt-1 font-semibold tracking-tight text-foreground sm:mt-2">{t("offerListDesc")}</h2>
               <p className="mt-2 hidden text-sm leading-6 text-muted-foreground sm:block">
                 {t("filterDescription")}
               </p>
@@ -311,14 +311,14 @@ export default function EmployerOffersPage() {
                         <dd className="text-end text-foreground">{formatDate(offer.createdAt)}</dd>
                       </dl>
                       <div className="mt-2 flex gap-2">
-                        <Button size="sm" variant="outline" className="h-8 flex-1 rounded-lg text-[11px] font-semibold"
+                        <Button size="dense" variant="outline" className="flex-1 rounded-lg text-[11px] font-semibold"
                           onClick={() => setDetailOffer(offer)}>
                           <Eye className="me-1 h-3.5 w-3.5" />
                           {tc("view")}
                         </Button>
                         {offer.status === "pending" && !isExpired(offer) ? (
-                          <Button size="sm" variant="outline"
-                            className="h-8 flex-1 rounded-lg text-[11px] font-semibold text-status-rejected"
+                          <Button size="dense" variant="outline"
+                            className="flex-1 rounded-lg text-[11px] font-semibold text-status-rejected"
                             onClick={() => setWithdrawingId(offer._id)}>
                             <X className="me-1 h-3.5 w-3.5" />
                             {t("withdraw")}
@@ -388,14 +388,14 @@ export default function EmployerOffersPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-2">
-                        <Button size="sm" variant="ghost" className="h-8 rounded-xl px-3 text-xs font-semibold"
+                        <Button size="dense" variant="ghost" className="rounded-xl px-3 text-xs font-semibold"
                           onClick={() => setDetailOffer(offer)}>
                           <Eye className="me-1 h-3.5 w-3.5" />
                           {tc("view")}
                         </Button>
                         {offer.status === "pending" && !isExpired(offer) ? (
-                          <Button size="sm" variant="ghost"
-                            className="h-8 rounded-xl px-3 text-xs font-semibold text-status-rejected hover:bg-status-rejected-bg hover:text-status-rejected"
+                          <Button size="dense" variant="ghost"
+                            className="rounded-xl px-3 text-xs font-semibold text-status-rejected hover:bg-status-rejected-bg hover:text-status-rejected"
                             onClick={() => setWithdrawingId(offer._id)}>
                             <X className="me-1 h-3.5 w-3.5" />
                             {t("withdraw")}
@@ -427,7 +427,7 @@ export default function EmployerOffersPage() {
           <div className="w-full max-w-md overflow-hidden rounded-3xl border border-border bg-background shadow-[0_30px_90px_-36px_rgba(15,23,42,0.5)]">
             <div className="border-b border-border/60 px-6 py-5">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("offerAction")}</p>
-              <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("withdrawConfirm")}</h2>
+              <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("withdrawConfirm")}</h2>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 {t("withdrawConfirmDesc")}
               </p>
@@ -448,10 +448,10 @@ export default function EmployerOffersPage() {
             <div className="flex items-start justify-between gap-4 panel-head">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("offerDetail")}</p>
-                <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{detailOffer.jobId?.title}</h2>
+                <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{detailOffer.jobId?.title}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">{t("offerDetailDesc")}</p>
               </div>
-              <Button size="sm" variant="ghost" className="h-9 w-9 rounded-full p-0" onClick={() => setDetailOffer(null)}>
+              <Button size="sm" variant="ghost" className="w-9 rounded-full p-0" onClick={() => setDetailOffer(null)}>
                 <X className="w-4 h-4" />
               </Button>
             </div>
@@ -489,13 +489,13 @@ export default function EmployerOffersPage() {
                 </div>
               </div>
               {detailOffer.benefits && (
-                <div className="rounded-2xl border border-border bg-background/60 px-4 py-4">
+                <div className="rounded-2xl border border-border bg-background/60 card-pad">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("benefitsLabel")}</p>
                   <p className="mt-2 text-sm leading-6 text-foreground/85">{detailOffer.benefits}</p>
                 </div>
               )}
               {detailOffer.notes && (
-                <div className="rounded-2xl border border-border bg-background/60 px-4 py-4">
+                <div className="rounded-2xl border border-border bg-background/60 card-pad">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("notesLabel")}</p>
                   <p className="mt-2 text-sm leading-6 text-foreground/85">{detailOffer.notes}</p>
                 </div>
@@ -507,7 +507,7 @@ export default function EmployerOffersPage() {
                 </div>
               )}
               {detailOffer.declineReason && (
-                <div className="rounded-2xl border border-status-rejected/20 bg-status-rejected-bg px-4 py-4">
+                <div className="rounded-2xl border border-status-rejected/20 bg-status-rejected-bg card-pad">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-rejected">{t("declineReason")}</p>
                   <p className="mt-2 text-sm leading-6 text-status-rejected">{detailOffer.declineReason}</p>
                 </div>

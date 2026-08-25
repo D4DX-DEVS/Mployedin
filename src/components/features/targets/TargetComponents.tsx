@@ -204,7 +204,7 @@ export function KpiCard({
   trend, trendValue,
 }: KpiCardProps) {
   return (
-    <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
+    <div className="workspace-glass-panel card-pad rounded-2xl">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
@@ -271,7 +271,7 @@ export function TargetSummaryCard({
           isFinance ? `${currency} ${formatCount(v)}` : formatCount(v);
 
         return (
-          <div key={type} className="workspace-glass-panel rounded-xl p-4">
+          <div key={type} className="workspace-glass-panel card-pad rounded-xl">
             <div className="flex items-center gap-2 mb-3">
               <TargetTypeIcon type={type} size="sm" />
               <span className="text-sm font-semibold capitalize">{type}</span>
@@ -413,9 +413,7 @@ export function MonthlyDistributionGrid({
         return (
           <div
             key={m.month}
-            className={`workspace-glass-panel rounded-xl p-3 transition-all ${
-              isCurrent ? "ring-2 ring-primary/30" : ""
-            } ${isPast && m.overallProgress < 50 ? "border-red-500/20" : ""}`}
+            className={`workspace-glass-panel rounded-xl transition-all ${ isCurrent ? "ring-2 ring-primary/30" : "" } ${isPast && m.overallProgress < 50 ? "border-red-500/20" : ""} chip-pad`}
           >
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs font-semibold text-muted-foreground">
@@ -513,7 +511,7 @@ export function QuarterlyBreakdownGrid({
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {quarters.map((q) => (
-        <div key={q.label} className="workspace-glass-panel rounded-xl p-4">
+        <div key={q.label} className="workspace-glass-panel card-pad rounded-xl">
           <p className="text-sm font-semibold text-primary mb-3">{q.label}</p>
           <div className="space-y-2 text-sm">
             <div className="flex items-center justify-between">

@@ -353,7 +353,7 @@ function CandidateMatchCard({
 
         <div className="min-w-0 space-y-1">
           <div className="flex min-w-0 items-center gap-2">
-            <h2 className="truncate text-sm font-semibold text-foreground sm:text-[15px]">{candidateDisplayName}</h2>
+            <h2 className="heading-label truncate font-semibold text-foreground">{candidateDisplayName}</h2>
             {rank ? (
               <span className="hidden items-center gap-1 rounded-full border border-border bg-background/80 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground lg:inline-flex">
                 <Trophy className="h-3 w-3 text-amber-500" />
@@ -430,7 +430,7 @@ function CandidateMatchCard({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
-                  size="sm"
+                  size="dense"
                   variant="outline"
                   aria-label={t("moreActions", { name: candidateDisplayName })}
                   onClick={stopRowClick}
@@ -572,7 +572,7 @@ function CandidateInsightsDialog({
 
           <div className="space-y-5 px-6 py-6 sm:px-8">
             <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
-              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
+              <div className="workspace-glass-panel card-pad rounded-2xl">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("availability")}</p>
                 <p className="mt-2 text-sm font-semibold text-foreground">
                   {candidate.availabilityStatus === "immediately"
@@ -586,15 +586,15 @@ function CandidateInsightsDialog({
                           : t("unknown")}
                 </p>
               </div>
-              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
+              <div className="workspace-glass-panel card-pad rounded-2xl">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("profileQuality")}</p>
                 <p className="mt-2 text-sm font-semibold text-foreground">{candidate.profileCompleteness != null ? t("percentComplete", { percent: candidate.profileCompleteness }) : t("awaitingSignals")}</p>
               </div>
-              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
+              <div className="workspace-glass-panel card-pad rounded-2xl">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{selectedJobData ? t("matchedSkills") : t("keySkills")}</p>
                 <p className="mt-2 text-sm font-semibold text-foreground">{selectedJobData ? matchedSkills.length : (candidate.skills?.length ?? 0)}</p>
               </div>
-              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
+              <div className="workspace-glass-panel card-pad rounded-2xl">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("missingSignals")}</p>
                 <p className="mt-2 text-sm font-semibold text-foreground">{selectedJobData ? missingSkills.length : "—"}</p>
               </div>
@@ -604,14 +604,14 @@ function CandidateInsightsDialog({
               {hasInsights ? (
                 <div className="space-y-4">
                   {candidate.matchSummary ? (
-                    <div className="workspace-glass-panel rounded-3xl p-5">
+                    <div className="workspace-glass-panel rounded-3xl panel-body">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("aiSummary")}</p>
                       <p className="mt-3 text-sm leading-7 text-muted-foreground">{candidate.matchSummary}</p>
                     </div>
                   ) : null}
 
                   {candidate.matchBreakdown ? (
-                    <div className="workspace-glass-panel rounded-3xl p-5">
+                    <div className="workspace-glass-panel rounded-3xl panel-body">
                       <div className="mb-4 flex items-center gap-2">
                         <BarChart3 className="h-4 w-4 text-status-applied" />
                         <p className="text-sm font-semibold text-foreground">{t("scoreBreakdown")}</p>
@@ -638,7 +638,7 @@ function CandidateInsightsDialog({
               ) : null}
 
               <div className="space-y-4">
-                <div className="rounded-3xl border border-border bg-card p-5">
+                <div className="rounded-3xl border border-border bg-card panel-body">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("keySkills")}</p>
                   <div className="mt-4 flex flex-wrap gap-2">
                     {(candidate.skills ?? []).map((skill) => {
@@ -657,7 +657,7 @@ function CandidateInsightsDialog({
                 </div>
 
                 {candidate.strengths?.length ? (
-                  <div className="rounded-3xl border border-status-selected/20 bg-status-selected-bg p-5">
+                  <div className="rounded-3xl border border-status-selected/20 bg-status-selected-bg panel-body">
                     <p className="text-sm font-semibold text-status-selected">{t("strengths")}</p>
                     <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
                       {candidate.strengths.map((strength) => (
@@ -671,7 +671,7 @@ function CandidateInsightsDialog({
                 ) : null}
 
                 {(candidate.gaps?.length || selectedJobData) ? (
-                  <div className="rounded-3xl border border-border bg-card p-5">
+                  <div className="rounded-3xl border border-border bg-card panel-body">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("roleContext")}</p>
                     {selectedJobData ? (
                       <div className="mt-3 space-y-3 text-sm text-muted-foreground">
@@ -754,13 +754,13 @@ function AIScreeningResultsPanel({ results, jobTitle, totalReviewed, onClose }: 
         <div>
           <div className="flex items-center gap-2">
             <ShieldCheck className="h-5 w-5 text-status-applied" />
-            <h2 className="text-lg font-semibold text-foreground">{t("aiScreeningResults")}</h2>
+            <h2 className="heading-section font-semibold text-foreground">{t("aiScreeningResults")}</h2>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
             {t("screenedCandidates")} <span className="font-semibold text-foreground">{totalReviewed}</span> {t("candidatesFor")} <span className="font-semibold text-foreground">{jobTitle}</span>
           </p>
         </div>
-        <Button size="sm" variant="outline" className="h-9 rounded-xl border-border bg-background/80 px-3 text-xs" onClick={onClose}>
+        <Button size="sm" variant="outline" className="rounded-xl border-border bg-background/80 px-3 text-xs" onClick={onClose}>
           <XCircle className="mr-2 h-3.5 w-3.5" />
           {t("dismiss")}
         </Button>
@@ -772,15 +772,15 @@ function AIScreeningResultsPanel({ results, jobTitle, totalReviewed, onClose }: 
       <CandidateDataNotice variant="aiScore" />
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <div className="workspace-glass-panel rounded-2xl p-3 text-center">
+        <div className="workspace-glass-panel card-pad rounded-2xl text-center">
           <p className="text-2xl font-semibold text-status-selected">{shortlistCount}</p>
           <p className="text-xs font-medium text-muted-foreground">{t("shortlist")}</p>
         </div>
-        <div className="workspace-glass-panel rounded-2xl p-3 text-center">
+        <div className="workspace-glass-panel card-pad rounded-2xl text-center">
           <p className="text-2xl font-semibold text-status-shortlisted">{considerCount}</p>
           <p className="text-xs font-medium text-muted-foreground">{t("consider")}</p>
         </div>
-        <div className="workspace-glass-panel rounded-2xl p-3 text-center">
+        <div className="workspace-glass-panel card-pad rounded-2xl text-center">
           <p className="text-2xl font-semibold text-status-rejected">{passCount}</p>
           <p className="text-xs font-medium text-muted-foreground">{t("pass")}</p>
         </div>
@@ -1452,10 +1452,10 @@ export default function EmployerCandidatesPage() {
                 </span>
               ) : null}
             </Button>
-            <Button
+            <Button size="sm"
               onClick={runAIMatch}
               disabled={!selectedJob || !!matchProgress || structuredCandidates.length === 0}
-              className="h-9 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+              className="rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
             >
               {matchProgress ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-2 h-3.5 w-3.5" />}
               {matchProgress ? `${t("scoringProgress")} ${matchProgress.done}/${matchProgress.total}` : t("runAiMatch")}
@@ -1463,11 +1463,11 @@ export default function EmployerCandidatesPage() {
             {/* Screening only means something once candidates carry a score, so
                 the button stays out of the header until there is something to screen. */}
             {selectedJob && scoredCount > 0 ? (
-            <Button
+            <Button size="sm"
               onClick={runAIScreening}
               disabled={screenMutation.isPending}
               variant="outline"
-              className="h-9 rounded-xl border-border bg-background/80 px-4 text-sm font-semibold"
+              className="rounded-xl border-border bg-background/80 px-4 text-sm font-semibold"
             >
               {screenMutation.isPending ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="mr-2 h-3.5 w-3.5" />}
               {screenMutation.isPending ? t("screeningInProgress") : t("screenWithAi")}
@@ -1497,7 +1497,7 @@ export default function EmployerCandidatesPage() {
       )}
 
       {hasLoadError && (
-        <div className="rounded-3xl border border-destructive/20 bg-destructive/5 p-4 shadow-[0_16px_40px_-36px_rgba(220,38,38,0.45)]">
+        <div className="rounded-3xl border border-destructive/20 bg-destructive/5 shadow-[0_16px_40px_-36px_rgba(220,38,38,0.45)] card-pad">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
@@ -1528,7 +1528,7 @@ export default function EmployerCandidatesPage() {
       )}
 
       {!jobsLoading && !hasJobsError && jobs.length === 0 && (
-          <div className="rounded-3xl border border-amber-500/20 bg-amber-500/10 p-4 text-amber-900 shadow-[0_16px_40px_-36px_rgba(245,158,11,0.45)]">
+          <div className="rounded-3xl border border-amber-500/20 bg-amber-500/10 text-amber-900 shadow-[0_16px_40px_-36px_rgba(245,158,11,0.45)] card-pad">
             <div className="flex items-start gap-3">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-status-shortlisted" />
           <div className="space-y-1">
@@ -1550,7 +1550,7 @@ export default function EmployerCandidatesPage() {
             <Button
               size="sm"
               variant="outline"
-                className="h-9 rounded-xl border-border bg-background/80 px-3 text-xs font-semibold text-foreground/85"
+                className="rounded-xl border-border bg-background/80 px-3 text-xs font-semibold text-foreground/85"
               onClick={() => setShowAdvancedFilters((current) => !current)}
             >
               <SlidersHorizontal className="mr-2 h-3.5 w-3.5" />
@@ -1672,7 +1672,7 @@ export default function EmployerCandidatesPage() {
             </div>
 
             {aiSummary ? (
-              <div className="mt-3 rounded-2xl border border-sky-500/20 bg-sky-500/10 px-3 py-2 text-sm text-sky-800">{aiSummary}</div>
+              <div className="mt-3 rounded-2xl border border-sky-500/20 bg-sky-500/10 text-sm text-sky-800 chip-pad">{aiSummary}</div>
             ) : null}
 
             {hasAnyScore ? (
@@ -1692,7 +1692,7 @@ export default function EmployerCandidatesPage() {
             ) : null}
 
             {showAdvancedFilters ? (
-              <div className="mt-3 space-y-3 rounded-3xl border border-border bg-background/60 p-3">
+              <div className="mt-3 space-y-3 rounded-3xl border border-border bg-background/60 chip-pad">
                 <div className="grid gap-2">
                   <Input
                     value={skillsFilter}
@@ -1727,9 +1727,9 @@ export default function EmployerCandidatesPage() {
                   </div>
                   {reviewCount > 0 ? (
                     <Button
-                      size="sm"
+                      size="dense"
                       variant="ghost"
-                      className="h-8 rounded-lg px-3 text-xs text-muted-foreground hover:bg-background/80"
+                      className="rounded-lg px-3 text-xs text-muted-foreground hover:bg-background/80"
                       onClick={() => setReviewListIds(new Set())}
                     >
                       Clear review list
@@ -1809,7 +1809,7 @@ export default function EmployerCandidatesPage() {
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 size="sm"
-                className="h-9 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                className="rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
                 onClick={() => setBulkPoolOpen(true)}
               >
                 <Layers className="mr-2 h-4 w-4" />
@@ -1818,7 +1818,7 @@ export default function EmployerCandidatesPage() {
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-9 rounded-xl px-3 text-sm text-muted-foreground hover:bg-background/80"
+                className="rounded-xl px-3 text-sm text-muted-foreground hover:bg-background/80"
                 onClick={() => setReviewListIds(new Set())}
               >
                 {tp("clearSelection")}

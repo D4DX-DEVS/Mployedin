@@ -175,7 +175,7 @@ export default function EmployerAssessmentsPage() {
 
 function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string | number }) {
   return (
-    <div className="p-4 bg-card border border-border rounded-xl flex items-center gap-3">
+    <div className="bg-card border border-border rounded-xl flex items-center gap-3 card-pad">
       <div className="p-2 bg-muted rounded-lg">{icon}</div>
       <div>
         <p className="text-lg font-bold text-foreground">{value}</p>
@@ -254,30 +254,30 @@ function CreateAssessmentModal({ onClose, onCreated }: { onClose: () => void; on
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-background border border-border rounded-xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
-        <h2 className="text-xl font-bold text-foreground mb-4">{t("createTitle")}</h2>
+      <div className="bg-background border border-border rounded-xl max-w-2xl w-full max-h-[85vh] overflow-y-auto panel-body" onClick={e => e.stopPropagation()}>
+        <h2 className="heading-section font-bold text-foreground mb-4">{t("createTitle")}</h2>
         <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
           <div>
             <label className="text-sm font-medium text-foreground">{t("titleLabel")}</label>
-            <input type="text" value={title} onChange={e => setTitle(e.target.value)} className="w-full mt-1 px-3 py-2 border border-border rounded-lg bg-background" placeholder={t("titlePlaceholder")} required />
+            <input type="text" value={title} onChange={e => setTitle(e.target.value)} className="w-full mt-1 border border-border rounded-lg bg-background chip-pad" placeholder={t("titlePlaceholder")} required />
           </div>
           <div>
             <label className="text-sm font-medium text-foreground">{t("descriptionLabel")}</label>
-            <textarea value={description} onChange={e => setDescription(e.target.value)} className="w-full mt-1 px-3 py-2 border border-border rounded-lg bg-background" rows={2} placeholder={t("descPlaceholder")} />
+            <textarea value={description} onChange={e => setDescription(e.target.value)} className="w-full mt-1 border border-border rounded-lg bg-background chip-pad" rows={2} placeholder={t("descPlaceholder")} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-sm font-medium text-foreground">{t("skillsLabel")}</label>
-              <input type="text" value={skills} onChange={e => setSkills(e.target.value)} className="w-full mt-1 px-3 py-2 border border-border rounded-lg bg-background" placeholder={t("skillsPlaceholder")} />
+              <input type="text" value={skills} onChange={e => setSkills(e.target.value)} className="w-full mt-1 border border-border rounded-lg bg-background chip-pad" placeholder={t("skillsPlaceholder")} />
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-sm font-medium text-foreground">{t("timeLabel")}</label>
-                <input type="number" value={timeLimit} onChange={e => setTimeLimit(+e.target.value)} className="w-full mt-1 px-3 py-2 border border-border rounded-lg bg-background" min={5} max={180} />
+                <input type="number" value={timeLimit} onChange={e => setTimeLimit(+e.target.value)} className="w-full mt-1 border border-border rounded-lg bg-background chip-pad" min={5} max={180} />
               </div>
               <div>
                 <label className="text-sm font-medium text-foreground">{t("passLabel")}</label>
-                <input type="number" value={passingScore} onChange={e => setPassingScore(+e.target.value)} className="w-full mt-1 px-3 py-2 border border-border rounded-lg bg-background" min={1} max={100} />
+                <input type="number" value={passingScore} onChange={e => setPassingScore(+e.target.value)} className="w-full mt-1 border border-border rounded-lg bg-background chip-pad" min={1} max={100} />
               </div>
             </div>
           </div>
@@ -292,7 +292,7 @@ function CreateAssessmentModal({ onClose, onCreated }: { onClose: () => void; on
             </div>
             <div className="space-y-3 max-h-[300px] overflow-y-auto">
               {questions.map((q, idx) => (
-                <div key={q.id} className="p-3 border border-border rounded-lg bg-muted/30">
+                <div key={q.id} className="border border-border rounded-lg bg-muted/30 chip-pad">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-xs font-medium text-muted-foreground">{t("questionNumber", { number: idx + 1 })}</span>
                     <Select value={q.type} onValueChange={v => updateQuestion(idx, { type: v })}>

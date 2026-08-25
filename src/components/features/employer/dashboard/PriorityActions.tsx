@@ -156,7 +156,7 @@ export function PriorityActions({
     <section aria-labelledby="employer-next-action" className="workspace-panel-surface overflow-hidden rounded-2xl">
       <div className="flex flex-wrap items-start justify-between gap-2 px-4 pb-2 pt-3 sm:px-5 sm:pb-3 sm:pt-4">
         <div>
-          <h2 id="employer-next-action" className="text-sm font-semibold tracking-tight text-foreground sm:text-base">
+          <h2 id="employer-next-action" className="heading-label font-semibold tracking-tight text-foreground">
             {t("recommendedNext")}
           </h2>
           <p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">{t("focusNextMove")}</p>

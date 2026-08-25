@@ -329,7 +329,7 @@ export default function AdminActivityTimelinePage() {
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="relative">
                 <Skeleton className="absolute -left-[31px] h-6 w-6 rounded-full" />
-                <div className="workspace-glass-panel space-y-2 rounded-xl p-3">
+                <div className="workspace-glass-panel card-pad space-y-2 rounded-xl">
                   <Skeleton className="h-4 w-1/3" />
                   <Skeleton className="h-3 w-2/3" />
                 </div>
@@ -358,7 +358,7 @@ export default function AdminActivityTimelinePage() {
                       </div>
 
                       {/* Event card */}
-                      <div className="workspace-glass-panel rounded-xl p-3">
+                      <div className="workspace-glass-panel card-pad rounded-xl">
                         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                           <div className="flex items-center gap-2">
                             <User className="h-3.5 w-3.5 text-muted-foreground" />

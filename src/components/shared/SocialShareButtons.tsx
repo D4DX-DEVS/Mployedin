@@ -84,7 +84,7 @@ export function SocialShareButtons({ url, title, description, className }: Socia
           {link.name}
         </a>
       ))}
-      <Button variant="outline" size="sm" onClick={copyToClipboard} className="h-8">
+      <Button variant="outline" size="dense" onClick={copyToClipboard} className="">
         <Copy className="mr-1 h-3.5 w-3.5" /> Copy Link
       </Button>
     </div>

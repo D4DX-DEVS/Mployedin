@@ -322,7 +322,7 @@ export default function AdminInvoicesPage() {
                 <button key={p} onClick={() => setAnalyticsPeriod(p)} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${analyticsPeriod === p ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}>{p === "1y" ? t("oneYear") : p}</button>
               ))}
             </div>
-            <Button variant="outline" size="sm" onClick={refreshAnalytics} className="h-8 gap-1.5 rounded-lg text-xs">
+            <Button variant="outline" size="dense" onClick={refreshAnalytics} className="gap-1.5 rounded-lg text-xs">
               <RefreshCw className="h-3.5 w-3.5" /> {t("refreshAnalytics")}
             </Button>
           </div>
@@ -342,7 +342,7 @@ export default function AdminInvoicesPage() {
             <div className="flex flex-col gap-2 border-b border-border/80 panel-head">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("invoiceLedger")}</p>
               <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                <h3 className="text-lg font-semibold text-foreground">{t("allInvoices")}</h3>
+                <h3 className="heading-subsection font-semibold text-foreground">{t("allInvoices")}</h3>
                 <p className="text-sm text-muted-foreground">{t("recordsCount", { shown: invoices.length, total: formatCount(total) })}</p>
               </div>
             </div>

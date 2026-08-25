@@ -93,7 +93,7 @@ export function AIChatDraftsCard({ locale, variant = "card", onCountChange }: AI
   // ── Banner variant ──────────────────────────────────────────────────────
   if (variant === "banner") {
     return (
-      <div className="rounded-2xl border border-sky-200 bg-sky-50/80 p-4">
+      <div className="rounded-2xl border border-sky-200 bg-sky-50/80 card-pad">
         {ConfirmDialogNode}
         <div className="flex flex-wrap items-center gap-3">
           <Bot className="h-5 w-5 flex-shrink-0 text-sky-600" />
@@ -132,7 +132,7 @@ export function AIChatDraftsCard({ locale, variant = "card", onCountChange }: AI
           <Bot className="h-4 w-4" />
         </span>
         <div className="min-w-0">
-          <h3 className="text-sm font-semibold text-foreground">{t("cardTitle")}</h3>
+          <h3 className="heading-label font-semibold text-foreground">{t("cardTitle")}</h3>
           <p className="truncate text-xs text-muted-foreground">{t("cardSubtitle")}</p>
         </div>
       </div>
@@ -143,7 +143,7 @@ export function AIChatDraftsCard({ locale, variant = "card", onCountChange }: AI
         {drafts.slice(0, 3).map((d) => (
           <li
             key={d._id}
-            className="group flex items-center gap-1.5 rounded-xl border border-border/60 bg-background/70 px-2 py-1 transition-all hover:border-sky-400/40 hover:shadow-sm sm:gap-2 sm:px-2.5 sm:py-1.5"
+            className="group flex items-center gap-1.5 rounded-xl border border-border/60 bg-background/70 transition-all hover:border-sky-400/40 hover:shadow-sm sm:gap-2 chip-pad"
           >
             <Link href={continueHref(d._id)} className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2.5">
               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-sky-100 text-sky-600 sm:h-7 sm:w-7">

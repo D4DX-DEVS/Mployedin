@@ -646,7 +646,7 @@ export default function EmployerAIJobCreatePage() {
                         <div className="prose-sm prose-p:my-0 prose-li:my-0">
                           {renderMarkdown(displayText)}
                           {hasJobData && !isStreaming && (
-                            <div className="mt-3 flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-green-800 text-xs">
+                            <div className="mt-3 flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 text-green-800 text-xs chip-pad">
                               <Sparkles className="h-3.5 w-3.5 flex-shrink-0" />
                               <span className="font-medium">{t("jobCreator.draftReadyPanel")}</span>
                             </div>
@@ -701,7 +701,7 @@ export default function EmployerAIJobCreatePage() {
                     type="button"
                     variant="outline"
                     onClick={cancelRecording}
-                    className="h-10 rounded-xl border-border/60 px-3 text-muted-foreground hover:text-foreground"
+                    className="rounded-xl border-border/60 px-3 text-muted-foreground hover:text-foreground"
                     aria-label={t("cancelVoiceInput")}
                   >
                     <X className="mr-1.5 h-4 w-4" /> {t("cancel")}
@@ -743,7 +743,7 @@ export default function EmployerAIJobCreatePage() {
                   <Button
                     type="button"
                     onClick={submitRecording}
-                    className="h-10 rounded-xl px-4"
+                    className="rounded-xl px-4"
                     aria-label={t("sendVoiceInput")}
                   >
                     <Send className="mr-1.5 h-4 w-4" /> {t("send")}
@@ -861,19 +861,19 @@ export default function EmployerAIJobCreatePage() {
 
         {/* Extracted job preview */}
         <div className="space-y-3">
-          <div className={`card-base p-5 space-y-3 transition-all ${extractedJob ? "border-green-300 bg-green-50/30" : ""}`}>
+          <div className={`card-base space-y-3 transition-all ${extractedJob ? "border-green-300 bg-green-50/30" : ""} panel-body`}>
             <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-primary" />
-              <h2 className="text-sm font-semibold">{t("jobCreator.jobPreview")}</h2>
+              <h2 className="heading-label font-semibold">{t("jobCreator.jobPreview")}</h2>
             </div>
             {!extractedJob && extractedBulkJobs.length === 0 && (
               <div className="space-y-3 text-xs text-muted-foreground">
                 <p>{t("jobCreator.aiWillAsk")}</p>
                 <div className="grid gap-2">
-                  <div className="rounded-xl border border-dashed border-border px-3 py-2">{t("jobCreator.roleAndTeam")}</div>
-                  <div className="rounded-xl border border-dashed border-border px-3 py-2">{t("jobCreator.locationAndWork")}</div>
-                  <div className="rounded-xl border border-dashed border-border px-3 py-2">{t("jobCreator.keySkills")}</div>
-                  <div className="rounded-xl border border-dashed border-border px-3 py-2">{t("jobCreator.optionalSalary")}</div>
+                  <div className="rounded-xl border border-dashed border-border chip-pad">{t("jobCreator.roleAndTeam")}</div>
+                  <div className="rounded-xl border border-dashed border-border chip-pad">{t("jobCreator.locationAndWork")}</div>
+                  <div className="rounded-xl border border-dashed border-border chip-pad">{t("jobCreator.keySkills")}</div>
+                  <div className="rounded-xl border border-dashed border-border chip-pad">{t("jobCreator.optionalSalary")}</div>
                 </div>
               </div>
             )}
@@ -932,7 +932,7 @@ export default function EmployerAIJobCreatePage() {
               <div className="space-y-3 text-xs">
                 <p className="font-medium text-sm">{t("bulkPreview", { count: extractedBulkJobs.length })}</p>
                 {extractedBulkJobs.map((job, idx) => (
-                  <div key={idx} className="rounded-lg border border-border/60 p-3 space-y-1">
+                  <div key={idx} className="rounded-lg border border-border/60 space-y-1 chip-pad">
                     <p className="font-semibold text-foreground">{job.title ?? "Untitled"}</p>
                     <p className="text-muted-foreground">{typeof job.location === "string" ? job.location : [job.location?.city, job.location?.country].filter(Boolean).join(", ") || "—"}</p>
                     <p className="text-muted-foreground">{job.employmentType ? job.employmentType.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : "—"} · {job.workMode ? job.workMode.replace(/\b\w/g, (c) => c.toUpperCase()) : "—"}</p>

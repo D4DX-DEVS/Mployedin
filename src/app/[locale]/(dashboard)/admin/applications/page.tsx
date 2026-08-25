@@ -438,11 +438,11 @@ export default function AdminApplicationsPage() {
 
         {/* ─── AI Insights inline ─────────────────────────────────────── */}
         {showAiPanel && (
-          <div className="mt-6 rounded-3xl border border-border/30 bg-background/40 p-5 space-y-4 backdrop-blur-sm">
+          <div className="mt-6 rounded-3xl border border-border/30 bg-background/40 space-y-4 backdrop-blur-sm panel-body">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-sky-500" />
-                <h3 className="text-lg font-semibold">{t("aiPipelineInsights")}</h3>
+                <h3 className="heading-subsection font-semibold">{t("aiPipelineInsights")}</h3>
               </div>
               <Button variant="ghost" size="sm" onClick={fetchAiInsights} disabled={aiLoading} className="gap-1.5">
                 <RefreshCw className={`h-3.5 w-3.5 ${aiLoading ? "animate-spin" : ""}`} />
@@ -477,7 +477,7 @@ export default function AdminApplicationsPage() {
                 {aiInsights.insights.length > 0 && (
                   <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                     {aiInsights.insights.map((insight, i) => (
-                      <div key={i} className="flex gap-2.5 rounded-xl border border-border/50 bg-background/50 p-3">
+                      <div key={i} className="flex gap-2.5 rounded-xl border border-border/50 bg-background/50 chip-pad">
                         <InsightIcon type={insight.type} />
                         <div className="min-w-0">
                           <p className="text-sm font-medium">{insight.title}</p>
@@ -489,7 +489,7 @@ export default function AdminApplicationsPage() {
                 )}
 
                 {aiInsights.recommendations.length > 0 && (
-                  <div className="rounded-xl border border-sky-200/50 bg-sky-50/50 p-3 space-y-1.5">
+                  <div className="rounded-xl border border-sky-200/50 bg-sky-50/50 space-y-1.5 chip-pad">
                     <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-status-applied">
                       <Zap className="h-3.5 w-3.5" /> {t("recommendations")}
                     </p>
@@ -501,7 +501,7 @@ export default function AdminApplicationsPage() {
 
                 <div className="grid gap-3 sm:grid-cols-2">
                   {aiInsights.data.topJobs.length > 0 && (
-                    <div className="rounded-xl border border-border/50 p-3">
+                    <div className="rounded-xl border border-border/50 chip-pad">
                       <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("topJobs30d")}</p>
                       <div className="space-y-2">
                         {aiInsights.data.topJobs.map((j, i) => (
@@ -520,7 +520,7 @@ export default function AdminApplicationsPage() {
                     </div>
                   )}
                   {aiInsights.data.avgDaysInPipeline > 0 && (
-                    <div className="rounded-xl border border-border/50 p-3">
+                    <div className="rounded-xl border border-border/50 chip-pad">
                       <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("pipelineMetrics")}</p>
                       <div className="space-y-2">
                         <div className="flex items-center justify-between text-sm">
@@ -546,7 +546,7 @@ export default function AdminApplicationsPage() {
 
         {/* ─── Expandable Filters ─────────────────────────────────────── */}
         {showFilters && (
-          <div className="mt-4 space-y-3 rounded-3xl border border-border/30 bg-background/40 p-4 backdrop-blur-sm">
+          <div className="mt-4 space-y-3 rounded-3xl border border-border/30 bg-background/40 backdrop-blur-sm card-pad">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -681,7 +681,7 @@ export default function AdminApplicationsPage() {
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             {activeFilters ? t("noMatchingApplications") : t("noApplicationsYet")}
           </p>
-          <h3 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
+          <h3 className="heading-subsection mt-3 font-semibold tracking-tight text-foreground">
             {activeFilters ? t("noApplicationsMatchFilters") : t("noApplicationsFound")}
           </h3>
           <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">
@@ -690,7 +690,7 @@ export default function AdminApplicationsPage() {
               : t("applicationsAppearHere")}
           </p>
           {activeFilters > 0 && (
-            <Button onClick={clearAllFilters} variant="outline" className="mt-6 h-11 rounded-xl border-border bg-background/70 px-4 text-sm">
+            <Button size="lg" onClick={clearAllFilters} variant="outline" className="mt-6 rounded-xl border-border bg-background/70 px-4 text-sm">
               {t("clearFilters")}
             </Button>
           )}
@@ -734,7 +734,7 @@ export default function AdminApplicationsPage() {
                   className="grid gap-1 bg-transparent px-3 py-2 transition-all duration-200 hover:bg-background/70 sm:gap-3 sm:px-5 sm:py-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] sm:items-center"
                 >
                   {/* Candidate */}
-                  <div className="flex min-w-0 items-center gap-2 sm:gap-3.5">
+                  <div className="flex min-w-0 items-center gap-2 sm:gap-4">
                     <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-status-applied shadow-inner sm:h-10 sm:w-10 sm:rounded-xl">
                       <User className="h-3.5 w-3.5 sm:h-5 sm:w-5" />
                     </div>

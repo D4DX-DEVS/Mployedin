@@ -394,7 +394,7 @@ export default function AdminAgentsPage() {
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 rounded-lg border-border/80">
+                <Button variant="outline" size="dense" className="rounded-lg border-border/80">
                   <Download className="h-3.5 w-3.5" /> {tr("export")}
                 </Button>
               </DropdownMenuTrigger>
@@ -529,25 +529,25 @@ export default function AdminAgentsPage() {
 
           <div className="space-y-4">
             {addError && (
-              <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
+              <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 text-sm text-destructive chip-pad">
                 <AlertCircle className="h-4 w-4 shrink-0" />{addError}
               </div>
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{tr("fullName")} <span className="text-destructive">*</span></Label>
                 <Input value={addForm.name} onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))} />
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{tr("email")} <span className="text-destructive">*</span></Label>
                 <Input type="email" value={addForm.email} onChange={(e) => setAddForm((f) => ({ ...f, email: e.target.value }))} />
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{tr("password")} <span className="text-destructive">*</span></Label>
                 <Input type="text" value={addForm.password} onChange={(e) => setAddForm((f) => ({ ...f, password: e.target.value }))} placeholder={tr("passwordPlaceholder")} />
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{tr("commissionRate")}</Label>
                 <Input type="number" min="0" max="100" value={addForm.commissionRate} onChange={(e) => setAddForm((f) => ({ ...f, commissionRate: e.target.value }))} />
                 <p className="text-xs text-muted-foreground">{tr("commissionRateHelp")}</p>
@@ -610,21 +610,21 @@ export default function AdminAgentsPage() {
 
           <div className="space-y-4">
             {editError && (
-              <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
+              <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 text-sm text-destructive chip-pad">
                 <AlertCircle className="h-4 w-4 shrink-0" />{editError}
               </div>
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{tr("fullName")}</Label>
                 <Input value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} />
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{tr("email")}</Label>
                 <Input type="email" value={editForm.email} onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))} />
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{tr("status")}</Label>
                 <InlineSearchSelect
                   options={[
@@ -635,7 +635,7 @@ export default function AdminAgentsPage() {
                   onValueChange={(v) => setEditForm((f) => ({ ...f, isActive: v }))}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{tr("commissionRate")}</Label>
                 <Input type="number" min="0" max="100" value={editForm.commissionRate} onChange={(e) => setEditForm((f) => ({ ...f, commissionRate: e.target.value }))} />
                 <p className="text-xs text-muted-foreground">{tr("commissionRateEditHelp")}</p>

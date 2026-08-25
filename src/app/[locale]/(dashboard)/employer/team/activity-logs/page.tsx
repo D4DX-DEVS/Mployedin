@@ -261,10 +261,10 @@ export default function TeamActivityLogsPage() {
           ].map((s) => (
             <div
               key={s.label}
-              className={`card-base p-4 flex sm:flex-col gap-3 sm:gap-2 border ${s.bg}`}
+              className={`card-base card-pad flex sm:flex-col gap-3 sm:gap-2 border ${s.bg}`}
             >
               <div
-                className="p-2 rounded-xl border bg-background/80 shrink-0 self-start sm:self-auto w-fit"
+                className="rounded-xl border bg-background/80 shrink-0 self-start sm:self-auto w-fit chip-pad"
                 style={{ borderColor: "inherit" }}
               >
                 <s.icon className={`h-5 w-5 ${s.color}`} />

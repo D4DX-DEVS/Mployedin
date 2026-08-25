@@ -124,7 +124,7 @@ export default async function PublicCompanyDetailPage({ params }: PageProps) {
       {/* Open Jobs */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
+          <h2 className="heading-section font-semibold text-foreground flex items-center gap-2">
             <Briefcase className="w-5 h-5" />
             {t("openPositionsCount", { count: jobCount })}
           </h2>
@@ -144,7 +144,7 @@ export default async function PublicCompanyDetailPage({ params }: PageProps) {
                 <Link
                   key={String(job._id)}
                   href={`/${locale}/jobs/${String(job._id)}`}
-                  className="block p-4 bg-card border border-border rounded-xl hover:shadow-sm hover:border-primary/30 transition-all"
+                  className="block bg-card border border-border rounded-xl hover:shadow-sm hover:border-primary/30 transition-all card-pad"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div>

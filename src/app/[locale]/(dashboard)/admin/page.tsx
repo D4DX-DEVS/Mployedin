@@ -722,7 +722,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
   }));
 
   return (
-    <div className="page-container dashboard-overview-page pb-6">
+    <div className="page-container dashboard-overview-page">
       <DashboardPageHeader
         icon={Activity}
         eyebrow={t("hero.eyebrow")}
@@ -752,7 +752,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
       <div className="grid items-stretch gap-4 xl:grid-cols-[1.08fr_0.92fr]">
         <section className="workspace-panel-surface flex flex-col rounded-2xl panel-body" data-surface="light-panel">
           <div>
-            <h2 className="text-base font-semibold tracking-tight text-foreground">
+            <h2 className="heading-section font-semibold tracking-tight text-foreground">
               {t("sections.quickActions.title")}
             </h2>
             <p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">
@@ -804,7 +804,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
 
         <section className="workspace-panel-surface flex flex-col rounded-2xl panel-body" data-surface="light-panel">
           <div>
-            <h2 className="text-base font-semibold tracking-tight text-foreground">
+            <h2 className="heading-section font-semibold tracking-tight text-foreground">
               {t("sections.recentActivity.title")}
             </h2>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">
@@ -859,12 +859,12 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
         <section className={`${adminPanelClassName} flex flex-col`} data-surface="light-panel">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
             <div>
-              <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">{t("sections.hiringFunnel.title")}</h2>
+              <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("sections.hiringFunnel.title")}</h2>
               <p className="mt-2 text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6">
                 {t("sections.hiringFunnel.description")}
               </p>
             </div>
-            <div className="shrink-0 self-start rounded-2xl border border-emerald-100 bg-emerald-50/80 px-3 py-2 text-emerald-700 shadow-sm">
+            <div className="shrink-0 self-start rounded-2xl border border-emerald-100 bg-emerald-50/80 text-emerald-700 shadow-sm chip-pad">
               <p className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.16em] sm:text-[11px] sm:tracking-[0.18em]">{t("funnel.placements")}</p>
               <p className="mt-1 text-xs font-semibold sm:text-sm">{t("sections.hiringFunnel.closed", { count: stats.totalPlacements })}</p>
             </div>
@@ -882,7 +882,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
                 <div
                   key={stage.label}
                   aria-label={t("sections.hiringFunnel.stageAria", { label: stage.label, count: stage.count })}
-                  className="workspace-glass-panel flex flex-col rounded-xl p-3"
+                  className="workspace-glass-panel card-pad flex flex-col rounded-xl"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <span className="text-xs font-semibold text-muted-foreground">{stage.label}</span>
@@ -912,7 +912,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
         <section className={`${adminPanelClassName} flex flex-col`} data-surface="light-panel">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h2 className="text-xl font-semibold tracking-tight text-foreground">{t("sections.trends.title")}</h2>
+              <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("sections.trends.title")}</h2>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 {t("sections.trends.description")}
               </p>
@@ -929,7 +929,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
 
           {/* Chart takes the slack so this panel matches its taller neighbour
               instead of ending in dead whitespace. */}
-          <div className="mt-4 flex flex-1 rounded-2xl border border-border/70 bg-card/95 p-3 shadow-sm backdrop-blur-sm">
+          <div className="mt-4 flex flex-1 rounded-2xl border border-border/70 bg-card/95 shadow-sm backdrop-blur-sm chip-pad">
             <svg
               viewBox={`0 0 ${chartWidth} ${chartHeight}`}
               role="img"
@@ -997,13 +997,13 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
         <section className={`${adminPanelClassName} flex flex-col`} data-surface="light-panel">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
             <div>
-              <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">{t("sections.usersByRole.title")}</h2>
+              <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("sections.usersByRole.title")}</h2>
               <p className="mt-2 text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6">
                 {t("sections.usersByRole.description")}
               </p>
             </div>
             {dominantRole ? (
-              <div className="shrink-0 self-start rounded-2xl border border-sky-100 bg-sky-50/70 px-3 py-2 text-sky-700 shadow-sm sm:text-right">
+              <div className="shrink-0 self-start rounded-2xl border border-sky-100 bg-sky-50/70 text-sky-700 shadow-sm sm:text-right chip-pad">
                 <p className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.16em] text-sky-700 sm:text-[11px] sm:tracking-[0.18em]">{t("roleInsights.dominant")}</p>
                 <p className="mt-1 text-xs font-semibold text-sky-700 sm:text-sm">{formatRoleLabel(dominantRole._id, t)}</p>
               </div>

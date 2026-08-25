@@ -130,7 +130,7 @@ export function SmartWelcome({
       {/* Top row: name + auto apply toggle */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h2 className="text-lg font-bold text-foreground sm:text-xl">
+          <h2 className="heading-section font-bold text-foreground">
             {allDone ? `Great job, ${name}!` : `Welcome back, ${name}`}
           </h2>
           {/* Recruiter insight — spec-compliant phrasing */}

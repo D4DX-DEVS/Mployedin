@@ -263,7 +263,7 @@ export function AIInterviewQuestionsPanel({
           <div>
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-primary" />
-              <h2 className="font-semibold text-sm">{t("aiInterviewQuestions")}</h2>
+              <h2 className="heading-label font-semibold">{t("aiInterviewQuestions")}</h2>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
               {jobTitle}{candidateName ? ` · ${candidateName}` : ""}

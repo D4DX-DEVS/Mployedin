@@ -187,7 +187,7 @@ export default function ContactSubmissionsPage() {
                       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                         {hasActiveFilters ? t("emptyStateNoMatchingLabel") : t("emptyStateNoMessagesLabel")}
                       </p>
-                      <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">
+                      <h3 className="heading-subsection mt-1 font-semibold tracking-tight text-foreground">
                         {hasActiveFilters ? t("emptyStateNoMatchingTitle") : t("emptyStateNoContactsTitle")}
                       </h3>
                       <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-muted-foreground">
@@ -196,10 +196,10 @@ export default function ContactSubmissionsPage() {
                           : t("emptyStateNoContactsDesc")}
                       </p>
                       {hasActiveFilters && (
-                        <Button
+                        <Button size="sm"
                           onClick={resetFilters}
                           variant="outline"
-                          className="mt-4 h-9 rounded-xl border-border bg-background/70 px-4 text-sm"
+                          className="mt-4 rounded-xl border-border bg-background/70 px-4 text-sm"
                         >
                           {t("clearFiltersButton")}
                         </Button>
@@ -284,7 +284,7 @@ export default function ContactSubmissionsPage() {
               </div>
               <div>
                 <p className="font-medium text-muted-foreground text-sm">{t("fieldMessage")}</p>
-                <div className="mt-1 rounded-lg border bg-muted/50 p-4 text-sm whitespace-pre-wrap">
+                <div className="mt-1 rounded-lg border bg-muted/50 text-sm whitespace-pre-wrap card-pad">
                   {viewItem.message}
                 </div>
               </div>

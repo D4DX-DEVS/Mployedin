@@ -124,7 +124,7 @@ export function SuggestedActions({
     <div className="card-base overflow-hidden panel-body">
       <div className="px-5 pt-5 pb-2 sm:px-6 sm:pt-6 flex items-center gap-2">
         <AlertCircle className="h-4 w-4 text-amber-500" />
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+        <h2 className="heading-label font-semibold text-muted-foreground uppercase tracking-wide">
           {t("title")}
         </h2>
       </div>

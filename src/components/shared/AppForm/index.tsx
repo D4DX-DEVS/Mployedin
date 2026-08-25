@@ -91,9 +91,7 @@ export function FormTextarea({ label, error, hint, className = "", id, required,
         required={required}
         aria-invalid={error ? true : ariaInvalid}
         aria-describedby={joinIds(ariaDescribedBy, error ? errorId : hint ? hintId : undefined)}
-        className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none disabled:opacity-50 ${
-          error ? "border-destructive" : ""
-        } ${className}`}
+        className={`w-full rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none disabled:opacity-50 ${ error ? "border-destructive" : "" } ${className} chip-pad`}
         {...props}
       />
       <FieldFeedback hint={hint} error={error} hintId={hintId} errorId={errorId} />
@@ -261,9 +259,7 @@ export function FormMultiSelect({ label, error, hint, placeholder, options, valu
         </label>
       )}
       <div
-        className={`min-h-10 rounded-lg border px-3 py-1.5 text-sm flex flex-wrap items-center gap-1 ${
-          error ? "border-destructive" : ""
-        }`}
+        className={`min-h-10 rounded-lg border text-sm flex flex-wrap items-center gap-1 ${ error ? "border-destructive" : "" } chip-pad`}
       >
         {value.map((v) => {
           const selectedLabel = allOptionsMap.get(v) ?? v;
@@ -536,9 +532,7 @@ export function FormFileDrop({ label, error, hint, accept, maxSizeMB = 10, value
         htmlFor={controlId}
         onDrop={handleDrop}
         onDragOver={(e) => e.preventDefault()}
-        className={`block border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:border-primary/60 hover:bg-primary/5 transition-all peer-focus-visible:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-primary/40 ${
-          displayedError ? "border-destructive" : ""
-        }`}
+        className={`block border-2 border-dashed rounded-lg text-center cursor-pointer hover:border-primary/60 hover:bg-primary/5 transition-all peer-focus-visible:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-primary/40 ${ displayedError ? "border-destructive" : "" } card-pad`}
       >
         {value ? (
           <div className="space-y-2">

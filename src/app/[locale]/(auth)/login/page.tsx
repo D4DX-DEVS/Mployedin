@@ -225,10 +225,10 @@ export default function LoginPage() {
         </p>
       </div>
 
-      <Button
+      <Button size="lg"
         variant="outline"
         type="button"
-        className="h-11 w-full rounded-xl border-border bg-card font-semibold shadow-sm transition-all hover:border-primary/30 hover:bg-primary/[0.04]"
+        className="w-full rounded-xl border-border bg-card font-semibold shadow-sm transition-all hover:border-primary/30 hover:bg-primary/[0.04]"
         onClick={handleGoogleSignIn}
         disabled={anyLoading}
       >
@@ -255,7 +255,7 @@ export default function LoginPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-3">
-        <div className="space-y-1.5">
+        <div className="field">
           <Label htmlFor="email" className="text-sm font-medium">{t("emailAddress")}</Label>
           <Input
             id="email"
@@ -303,7 +303,7 @@ export default function LoginPage() {
         </div>
 
         {requires2fa && (
-          <div className="space-y-2 rounded-xl border border-primary/20 bg-primary/[0.04] p-4">
+          <div className="field rounded-xl border border-primary/20 bg-primary/[0.04] card-pad">
             <Label htmlFor="totp-code" className="text-sm font-medium">{t("twoFactorCode")}</Label>
             <p className="text-xs text-muted-foreground">{t("twoFactorPrompt")}</p>
             <Input
@@ -370,9 +370,9 @@ export default function LoginPage() {
           </div>
         )}
 
-        <Button
+        <Button size="lg"
           type="submit"
-          className="h-11 w-full rounded-xl text-sm font-semibold shadow-lg shadow-primary/20 transition-all hover:-translate-y-0.5"
+          className="w-full rounded-xl text-sm font-semibold shadow-lg shadow-primary/20 transition-all hover:-translate-y-0.5"
           disabled={anyLoading}
         >
           {loading ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : <ArrowRight className="me-2 h-4 w-4" />}
@@ -381,10 +381,10 @@ export default function LoginPage() {
       </form>
 
       <div className="grid grid-cols-2 gap-3">
-        <Button
+        <Button size="lg"
           variant="outline"
           type="button"
-          className="h-11 rounded-xl border-border/70 bg-background/60 text-sm font-medium transition-colors hover:bg-muted/60"
+          className="rounded-xl border-border/70 bg-background/60 text-sm font-medium transition-colors hover:bg-muted/60"
           onClick={() => { setAppleLoading(true); setError(null); signIn("apple", { callbackUrl: getOAuthRedirectUrl(locale) }); }}
           disabled={anyLoading}
         >
@@ -397,10 +397,10 @@ export default function LoginPage() {
           )}
           Apple
         </Button>
-        <Button
+        <Button size="lg"
           variant="outline"
           type="button"
-          className="h-11 rounded-xl border-border/70 bg-background/60 text-sm font-medium transition-colors hover:bg-muted/60"
+          className="rounded-xl border-border/70 bg-background/60 text-sm font-medium transition-colors hover:bg-muted/60"
           onClick={() => { setLinkedInLoading(true); setError(null); signIn("linkedin", { callbackUrl: getOAuthRedirectUrl(locale) }); }}
           disabled={anyLoading}
         >

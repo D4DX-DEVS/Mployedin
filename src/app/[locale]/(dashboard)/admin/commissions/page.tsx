@@ -414,7 +414,7 @@ export default function AdminCommissionsPage() {
       />
 
       <section className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
+          <div className="workspace-glass-panel card-pad rounded-2xl">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("visibleRecordsLabel")}</p>
@@ -426,7 +426,7 @@ export default function AdminCommissionsPage() {
               </div>
             </div>
           </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
+          <div className="workspace-glass-panel card-pad rounded-2xl">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("pendingReviewLabel")}</p>
@@ -438,7 +438,7 @@ export default function AdminCommissionsPage() {
               </div>
             </div>
           </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
+          <div className="workspace-glass-panel card-pad rounded-2xl">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("approvedLabel")}</p>
@@ -450,7 +450,7 @@ export default function AdminCommissionsPage() {
               </div>
             </div>
           </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
+          <div className="workspace-glass-panel card-pad rounded-2xl">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("paidOutLabel")}</p>
@@ -474,7 +474,7 @@ export default function AdminCommissionsPage() {
         <div className="flex flex-col gap-2 border-b border-border/80 panel-head">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("commissionLedgerLabel")}</p>
           <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-            <h3 className="text-lg font-semibold text-foreground">{t("commissionLedgerTitle")}</h3>
+            <h3 className="heading-subsection font-semibold text-foreground">{t("commissionLedgerTitle")}</h3>
             <p className="text-sm text-muted-foreground">{t("recordsShowing")} {formatCount(visibleCommissions)} {visibleCommissions === 1 ? t("record") : t("records")} {t("onThisPage")}</p>
           </div>
         </div>

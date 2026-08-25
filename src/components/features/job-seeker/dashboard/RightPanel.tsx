@@ -162,7 +162,7 @@ function AICoach({ t }: { t: ReturnType<typeof useTranslations> }) {
       </div>
       <div className="space-y-2 sm:space-y-3">
         {items.map((item) => (
-          <div key={item.action} className="rounded-lg bg-violet-50 border border-violet-100 p-3 transition-all duration-150 hover:border-violet-200 hover:shadow-sm">
+          <div key={item.action} className="rounded-lg bg-violet-50 border border-violet-100 transition-all duration-150 hover:border-violet-200 hover:shadow-sm chip-pad">
             <p className="text-xs text-violet-900">{item.suggestion}</p>
             <Link
               href={item.href}

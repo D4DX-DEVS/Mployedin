@@ -11,7 +11,7 @@ export function PaymentTrustStrip() {
   const t = useTranslations("jobSeekerExtra.subscription");
 
   return (
-    <section className="rounded-2xl border border-border/60 bg-card p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+    <section className="rounded-2xl border border-border/60 bg-card flex flex-col sm:flex-row items-center justify-between gap-4 panel-body">
       <div className="flex items-center gap-2 text-sm font-medium">
         <Lock className="h-4 w-4 text-muted-foreground" />
         {t("securePayments")}

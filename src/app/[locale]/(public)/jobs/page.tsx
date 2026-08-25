@@ -218,7 +218,7 @@ export default async function JobsPage({ params, searchParams }: PageProps) {
         {jobs.length === 0 ? (
           <div className="text-center py-20">
             <Briefcase className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
-            <h2 className="text-lg font-medium text-foreground mb-2">{t("noJobsFound")}</h2>
+            <h2 className="heading-section font-medium text-foreground mb-2">{t("noJobsFound")}</h2>
             <p className="text-muted-foreground text-sm">{t("adjustSearch")}</p>
             <a href={`/${locale}/jobs`} className="mt-4 inline-block text-sm text-primary hover:underline">{t("clearFilters")}</a>
           </div>
@@ -234,12 +234,12 @@ export default async function JobsPage({ params, searchParams }: PageProps) {
                 <Link
                   key={String(job._id)}
                   href={`/${locale}/jobs/${job._id}`}
-                  className="block bg-card border border-border rounded-xl p-5 hover:border-primary/40 hover:shadow-sm transition-all group"
+                  className="block bg-card border border-border rounded-xl hover:border-primary/40 hover:shadow-sm transition-all group panel-body"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <h2 className="text-base font-semibold text-foreground group-hover:text-primary transition-colors truncate">
+                        <h2 className="heading-section font-semibold text-foreground group-hover:text-primary transition-colors truncate">
                           {job.title}
                         </h2>
                         {(employer?.domainVerified || employer?.isAgentVerified) && (

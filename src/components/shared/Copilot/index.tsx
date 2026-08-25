@@ -547,7 +547,7 @@ export function Copilot({ className }: CopilotProps) {
                   key={s}
                   type="button"
                   onClick={() => sendMessage(s)}
-                  className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-start text-xs text-foreground transition-colors hover:bg-muted"
+                  className="rounded-lg border border-border bg-muted/40 text-start text-xs text-foreground transition-colors hover:bg-muted chip-pad"
                 >
                   {s}
                 </button>
@@ -618,7 +618,7 @@ export function Copilot({ className }: CopilotProps) {
 
       {/* Input */}
       <div className="border-t border-border p-2.5">
-        <div className="flex items-end gap-2 rounded-lg border border-input bg-background px-2 py-1.5 focus-within:ring-1 focus-within:ring-ring">
+        <div className="flex items-end gap-2 rounded-lg border border-input bg-background focus-within:ring-1 focus-within:ring-ring chip-pad">
           <Textarea
             ref={textareaRef}
             value={input}
@@ -629,8 +629,8 @@ export function Copilot({ className }: CopilotProps) {
             className="min-h-8 flex-1 resize-none border-0 bg-transparent p-1 text-sm shadow-none focus-visible:ring-0"
           />
           <Button
-            size="icon"
-            className="h-8 w-8 shrink-0"
+            size="iconDense"
+            className="shrink-0"
             disabled={!input.trim() || isStreaming}
             onClick={() => sendMessage()}
             aria-label={t("send")}

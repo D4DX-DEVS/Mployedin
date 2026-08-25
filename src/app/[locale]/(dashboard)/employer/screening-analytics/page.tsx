@@ -74,7 +74,7 @@ export default function ScreeningAnalyticsPage() {
       <PageHero icon={FileQuestion} title={t("title")} description={t("description")} />
 
       {/* Job Selector */}
-      <div className="bg-card border border-border rounded-xl p-4">
+      <div className="bg-card border border-border rounded-xl card-pad">
         <label className="text-sm font-medium text-foreground mb-2 block">{t("selectJob")}</label>
         <div className="max-w-md">
           <SearchableSelect
@@ -95,7 +95,7 @@ export default function ScreeningAnalyticsPage() {
       {data && !loading && (
         <div className="space-y-3 sm:space-y-4">
           {/* Summary */}
-          <div className="p-4 bg-card border border-border rounded-xl flex items-center gap-4">
+          <div className="bg-card border border-border rounded-xl flex items-center gap-4 card-pad">
             <div className="p-2 bg-primary/10 rounded-lg">
               <BarChart3 className="w-5 h-5 text-primary" />
             </div>
@@ -107,7 +107,7 @@ export default function ScreeningAnalyticsPage() {
 
           {/* Per-Question Analytics */}
           {data.questions.map((q, idx) => (
-            <div key={q.questionId} className="bg-card border border-border rounded-xl p-5">
+            <div key={q.questionId} className="bg-card border border-border rounded-xl panel-body">
               <div className="flex items-start gap-3 mb-4">
                 <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-1 rounded">{t("questionNumber", { number: idx + 1 })}</span>
                 <div>

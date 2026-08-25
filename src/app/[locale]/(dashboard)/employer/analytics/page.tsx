@@ -840,7 +840,7 @@ function PipelineTab({
                 <button
                   onClick={() => setPerJobPage(Math.max(1, perJobPage - 1))}
                   disabled={perJobMeta.page <= 1}
-                  className="inline-flex items-center gap-1 rounded-lg border border-border bg-background/80 px-2 py-1 text-[10px] font-semibold text-foreground transition hover:border-sky-500/25 hover:text-status-applied disabled:cursor-not-allowed disabled:opacity-50 sm:rounded-xl sm:px-3 sm:py-1.5 sm:text-xs"
+                  className="inline-flex items-center gap-1 rounded-lg border border-border bg-background/80 text-[10px] font-semibold text-foreground transition hover:border-sky-500/25 hover:text-status-applied disabled:cursor-not-allowed disabled:opacity-50 sm:rounded-xl sm:text-xs chip-pad"
                 >
                   <ChevronLeft className="h-3 w-3 rtl:rotate-180 sm:h-3.5 sm:w-3.5" />
                   <span className="hidden sm:inline">{t("previousPage")}</span>
@@ -851,7 +851,7 @@ function PipelineTab({
                 <button
                   onClick={() => setPerJobPage(Math.min(perJobMeta.totalPages, perJobPage + 1))}
                   disabled={perJobMeta.page >= perJobMeta.totalPages}
-                  className="inline-flex items-center gap-1 rounded-lg border border-border bg-background/80 px-2 py-1 text-[10px] font-semibold text-foreground transition hover:border-sky-500/25 hover:text-status-applied disabled:cursor-not-allowed disabled:opacity-50 sm:rounded-xl sm:px-3 sm:py-1.5 sm:text-xs"
+                  className="inline-flex items-center gap-1 rounded-lg border border-border bg-background/80 text-[10px] font-semibold text-foreground transition hover:border-sky-500/25 hover:text-status-applied disabled:cursor-not-allowed disabled:opacity-50 sm:rounded-xl sm:text-xs chip-pad"
                 >
                   <span className="hidden sm:inline">{t("nextPage")}</span>
                   <ChevronRight className="h-3 w-3 rtl:rotate-180 sm:h-3.5 sm:w-3.5" />
@@ -1398,11 +1398,7 @@ function PerformanceTab({ performance }: { performance: PerformanceData }) {
               .map((job) => (
                 <div
                   key={job.jobId}
-                  className={`flex items-start gap-3 p-3 rounded-lg ${
-                    job.insight?.includes("Excellent")
-                      ? "border border-status-selected/20 bg-status-selected-bg"
-                      : "border border-status-shortlisted/20 bg-status-shortlisted-bg"
-                  }`}
+                  className={`flex items-start gap-3 rounded-lg ${ job.insight?.includes("Excellent") ? "border border-status-selected/20 bg-status-selected-bg" : "border border-status-shortlisted/20 bg-status-shortlisted-bg" } chip-pad`}
                 >
                   <div className="flex-1">
                     <p className="text-sm font-medium text-foreground">{job.title}</p>
@@ -1824,7 +1820,7 @@ function AnalyticsSectionHeader({
             {eyebrow}
           </p>
         )}
-        <h2 className="mt-1 text-sm font-semibold tracking-tight text-foreground sm:text-lg">{title}</h2>
+        <h2 className="heading-section mt-1 font-semibold tracking-tight text-foreground">{title}</h2>
         <p className="mt-1 text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6">{description}</p>
       </div>
     </div>

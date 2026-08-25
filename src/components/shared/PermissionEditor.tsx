@@ -200,7 +200,7 @@ export function PermissionEditor({
   return (
     <div className="space-y-4">
       {/* Mode toggle */}
-      <div className="flex items-center justify-between rounded-lg border border-border/50 bg-muted/20 p-3">
+      <div className="flex items-center justify-between rounded-lg border border-border/50 bg-muted/20 chip-pad">
         <div className="flex items-center gap-3">
           {isCustom ? (
             <ShieldCheck className="h-5 w-5 text-primary" />

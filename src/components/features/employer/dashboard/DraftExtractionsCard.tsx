@@ -114,7 +114,7 @@ export function DraftExtractionsCard({ locale, variant = "card", onCountChange }
   if (variant === "banner") {
     return (
       // Single row, mirrors DraftJobsCard banner — the two sit side-by-side.
-      <div className="workspace-glass-panel flex h-full flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-violet-200/60 p-3">
+      <div className="workspace-glass-panel card-pad flex h-full flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-violet-200/60">
         {ConfirmDialogNode}
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-600">
           <Wand2 className="h-4 w-4" />
@@ -126,9 +126,9 @@ export function DraftExtractionsCard({ locale, variant = "card", onCountChange }
           {drafts.slice(0, 3).map((d) => (
             <Button
               key={d._id}
-              size="sm"
+              size="dense"
               variant="outline"
-              className="h-8 gap-1.5 rounded-lg border-violet-200 bg-background/70 text-xs text-violet-700 hover:bg-violet-50"
+              className="gap-1.5 rounded-lg border-violet-200 bg-background/70 text-xs text-violet-700 hover:bg-violet-50"
               onClick={() => router.push(continueHref(d._id))}
             >
               <RotateCcw className="h-3.5 w-3.5" />
@@ -150,7 +150,7 @@ export function DraftExtractionsCard({ locale, variant = "card", onCountChange }
           <Wand2 className="h-4 w-4" />
         </span>
         <div className="min-w-0">
-          <h3 className="text-sm font-semibold text-foreground">{t("cardTitle")}</h3>
+          <h3 className="heading-label font-semibold text-foreground">{t("cardTitle")}</h3>
           <p className="truncate text-xs text-muted-foreground">{t("cardSubtitle")}</p>
         </div>
       </div>
@@ -159,7 +159,7 @@ export function DraftExtractionsCard({ locale, variant = "card", onCountChange }
         {drafts.slice(0, 5).map((d) => (
           <li
             key={d._id}
-            className="group flex items-center gap-2 rounded-2xl border border-border/60 bg-background/70 p-2.5 transition-all hover:-translate-y-px hover:border-violet-400/40 hover:shadow-sm"
+            className="group flex items-center gap-2 rounded-2xl border border-border/60 bg-background/70 transition-all hover:-translate-y-px hover:border-violet-400/40 hover:shadow-sm chip-pad"
           >
             <Link href={continueHref(d._id)} className="flex min-w-0 flex-1 items-center gap-3">
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-600">

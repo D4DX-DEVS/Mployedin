@@ -297,7 +297,7 @@ export default function AdminUsersPage() {
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" aria-label={t("export")} className="h-8 shrink-0 rounded-lg border-border/80 px-2 text-xs sm:px-3 sm:text-sm">
+                <Button variant="outline" size="dense" aria-label={t("export")} className="shrink-0 rounded-lg border-border/80 px-2 text-xs sm:px-3 sm:text-sm">
                   <Download className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">{t("export")}</span>
                 </Button>
@@ -484,14 +484,14 @@ export default function AdminUsersPage() {
 
           <div className="space-y-4">
             {createError && (
-              <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
+              <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 text-sm text-destructive chip-pad">
                 <AlertCircle className="h-4 w-4 shrink-0" />
                 {createError}
               </div>
             )}
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
+              <div className="field">
                 <Label htmlFor="create-name">{t("fullName")} <span className="text-destructive">*</span></Label>
                 <Input
                   id="create-name"
@@ -500,7 +500,7 @@ export default function AdminUsersPage() {
                   placeholder={t("johnDoe")}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label htmlFor="create-email">{t("email")} <span className="text-destructive">*</span></Label>
                 <Input
                   id="create-email"
@@ -510,7 +510,7 @@ export default function AdminUsersPage() {
                   placeholder={t("johnAtExample")}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label htmlFor="create-password">{t("password")} <span className="text-destructive">*</span></Label>
                 <Input
                   id="create-password"

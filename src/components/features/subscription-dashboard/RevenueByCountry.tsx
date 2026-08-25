@@ -31,7 +31,7 @@ export function RevenueByCountry({ data }: RevenueByCountryProps) {
   const totalMarkets = data.length;
 
   return (
-    <section className="rounded-2xl border border-border/60 bg-card p-6">
+    <section className="rounded-2xl border border-border/60 bg-card panel-body">
       <div className="flex items-center justify-between mb-5">
         <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
           <Globe className="h-4 w-4" /> Revenue by Country

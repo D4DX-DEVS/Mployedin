@@ -309,7 +309,7 @@ export default function CreateTargetProfilePage() {
       </button>
 
       {/* Header */}
-      <div className="workspace-glass-panel rounded-2xl p-5">
+      <div className="workspace-glass-panel rounded-2xl panel-body">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
             <div className="workspace-tone-sky rounded-xl p-2.5">
@@ -365,7 +365,7 @@ export default function CreateTargetProfilePage() {
           <div className="px-4 py-3 bg-muted/20 border-b border-border/50">
             <div className="grid gap-3 sm:grid-cols-3">
               {/* Name Search */}
-              <div className="space-y-1">
+              <div className="field">
                 <Label className="text-[11px] font-medium text-muted-foreground">Name / Email</Label>
                 <div className="relative">
                   <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -618,8 +618,8 @@ function SupervisorTargetRow({
           <Button
             type="button"
             variant={row.showMonthly ? "default" : "outline"}
-            size="sm"
-            className="rounded-lg h-8 text-xs gap-1"
+            size="dense"
+            className="rounded-lg text-xs gap-1"
             onClick={() => onToggleMonthly(supervisor.id)}
             disabled={!hasTarget}
           >

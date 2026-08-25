@@ -95,7 +95,7 @@ export function CandidateQualityChart({
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("qualitySignal")}</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground sm:text-2xl">{t("candidateQuality")}</h2>
+            <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("candidateQuality")}</h2>
             <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
               {t("matchTrendsDesc")}
             </p>
@@ -166,7 +166,7 @@ export function CandidateQualityChart({
           {statCards.map((stat) => (
             <div
               key={stat.label}
-              className={`overflow-hidden rounded-2xl border px-2.5 py-2.5 text-center sm:px-3 sm:py-3 ${stat.borderClass} ${stat.surfaceClass}`}
+              className={`overflow-hidden rounded-2xl border text-center ${stat.borderClass} ${stat.surfaceClass} chip-pad`}
             >
               <p className="truncate text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground sm:tracking-[0.18em]">{stat.label}</p>
               <p className={`mt-1.5 text-lg font-semibold tracking-tight sm:text-xl ${stat.valueClass}`}>{stat.value}</p>

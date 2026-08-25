@@ -547,7 +547,9 @@ body {
     background-color: hsl(var(--card));
     border: 1px solid hsl(var(--border) / 0.6);
     border-radius: var(--radius);
-    padding: 0.875rem 0.875rem;
+    /* Was a hand-rolled 14/14 against --panel-pad-*'s 14/16, so two cards on
+       one phone screen disagreed by 2px on the x-axis. Measured 2026-08-25. */
+    padding: var(--panel-pad-y) var(--panel-pad-x);
     box-shadow: 0 4px 20px -2px rgb(0 0 0 / 0.05);
     transition: all 0.2s ease-in-out;
     isolation: isolate;
@@ -555,11 +557,7 @@ body {
     box-sizing: border-box;
   }
 
-  @media (min-width: 640px) {
-    .card-base {
-      padding: 1.25rem 1.5rem;
-    }
-  }
+
 
   .card-base:hover {
     box-shadow: 0 12px 24px -4px rgb(0 0 0 / 0.08);
@@ -680,7 +678,10 @@ body {
 
   .dashboard-shell-workspace .page-header-root {
     gap: 0.625rem;
-    padding: 0.875rem 1rem;
+    /* Same tokens as .panel-body. The header used to sit at 14/16 while every
+       panel beneath it was 20/24, so the page's own title card read tighter
+       than its content. Measured 2026-08-25. */
+    padding: var(--panel-pad-y) var(--panel-pad-x);
     border: 1px solid hsl(var(--border) / 0.82);
     border-radius: 1rem;
     background: hsl(var(--card));
@@ -689,7 +690,13 @@ body {
 
   .dashboard-shell-workspace .page-header-title {
     color: hsl(var(--foreground));
-    font-size: clamp(1.35rem, 1.8vw, 1.625rem);
+    /* Was clamp(1.35rem, 1.8vw, 1.625rem). Fluid type meant the page title was
+       a different size at every viewport — measured 20px at 1024, 23.04px at
+       1280, 25.92px at 1440, reaching its 26px ceiling only at ~1444px — and
+       it silently beat the `sm:text-[1.625rem]` the header components declare,
+       making that utility dead. Now the same two-step scale as everything else.
+       Measured 2026-08-25. */
+    font-size: var(--text-page-title);
     line-height: 1.2;
     letter-spacing: -0.04em;
   }
@@ -702,7 +709,7 @@ body {
   }
 
   .dashboard-shell-admin .page-header-root {
-    padding: 0.875rem 1rem;
+    padding: var(--panel-pad-y) var(--panel-pad-x);
     border: 1px solid hsl(var(--border) / 0.82);
     border-radius: 1rem;
     background:
@@ -716,7 +723,7 @@ body {
   }
 
   .dashboard-shell-admin .page-header-title {
-    font-size: clamp(1.35rem, 1.8vw, 1.625rem);
+    font-size: var(--text-page-title);
   }
 
   .dashboard-shell-admin .page-header-description {
@@ -780,7 +787,7 @@ body {
   .dashboard-main .page-container > :nth-child(-n + 3) > div > div > h1,
   .dashboard-main .card-base > h1,
   .dashboard-main .card-base > div > h1 {
-    font-size: clamp(1.25rem, 1.8vw, 1.625rem) !important;
+    font-size: var(--text-page-title) !important;
     line-height: 1.2 !important;
     letter-spacing: -0.025em;
   }
@@ -1272,11 +1279,145 @@ body {
   --panel-pad-y: 0.875rem;
   --panel-gap: 0.75rem;
 }
-@media (min-width: 640px) {
+/* Steps at 768 to match --page-gutter. It used to step at 640, so between
+   640-767px a panel was padded 24px inside a page gutter of 16px — the inside
+   of the card was more generous than the page around it. */
+@media (min-width: 768px) {
   :root {
     --panel-pad-x: 1.5rem;
     --panel-pad-y: 1.25rem;
     --panel-gap: 1rem;
+  }
+}
+
+/* ── HEADING SCALE ────────────────────────────────────────────────────────
+   468 headings across the dashboard routes carry 30+ different size combos.
+   Measured at 1440px: h2 spans 11-26px and h3 spans 12-20px, so the two tiers
+   overlap each other and h1 — `<h2 class="text-sm">` (14px, 28 sites) renders
+   smaller than `<h3 class="text-lg">` (18px, 57 sites).
+   Four steps, defined once — .heading-page / -section / -subsection / -label.
+   Deliberately small headings (uppercase eyebrows at text-[11px], hero/empty
+   states at text-3xl) are left off the scale on purpose. Measured 2026-08-25. */
+:root {
+  --text-page-title: 1.25rem;
+  --text-section: 1rem;
+  --text-subsection: 0.875rem;
+}
+@media (min-width: 768px) {
+  :root {
+    --text-page-title: 1.625rem;
+    --text-section: 1.125rem;
+    --text-subsection: 1rem;
+  }
+}
+
+@layer components {
+  .heading-page {
+    font-size: var(--text-page-title);
+    line-height: 1.2;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .heading-section {
+    font-size: var(--text-section);
+    line-height: 1.3;
+    font-weight: 600;
+  }
+  .heading-subsection {
+    font-size: var(--text-subsection);
+    line-height: 1.4;
+    font-weight: 600;
+  }
+  /* Fourth tier: the title of a dense list row or a small card. 97 headings
+     were already `text-sm` here and they were right — a 16px title inside a
+     56px list row is too loud. Flat 14px, no step. */
+  .heading-label {
+    font-size: 0.875rem;
+    line-height: 1.35;
+    font-weight: 600;
+  }
+}
+
+/* ── THE TWO SPACING SCALES ───────────────────────────────────────────────
+   6,065 rhythm utilities are in use and 1,068 of them (18%) sit on 2px
+   half-steps — `gap-1.5` alone accounts for 674. That reads like a broken 4px
+   grid, but it is not: almost all of it is *intra-component* spacing, an icon
+   next to its label inside a button or chip, where 8px is visibly too much.
+
+   So there are deliberately two scales, and they do not mix:
+
+     LAYOUT  (4px grid)  page gutters, section gaps, card padding, form fields.
+                         Use the tokens: --page-gutter/--page-gap,
+                         --panel-pad-*, --card-pad-*, --field-gap.
+     MICRO   (2px grid)  inside a single control: icon-to-label, badge
+                         internals, chip rows. gap-0.5 / gap-1 / gap-1.5 /
+                         gap-2 are fine here and nowhere else.
+
+   A half-step on a layout container is the bug. A half-step inside a button is
+   correct. Mass-converting gap-1.5 to gap-2 would loosen every icon-label pair
+   in the product and fix nothing anyone can see. Counted 2026-08-25. */
+
+/* ── FIELD RHYTHM (label -> control) ──────────────────────────────────────
+   163 form-field wrappers expressed one intent three ways: `space-y-2` (107),
+   `space-y-1.5` (54), `space-y-1` (2). Measured label->input gaps came out at
+   6px on employer forms and 2px on job-seeker ones. Sibling margins rather
+   than flex+gap, so .field is a drop-in for the space-y-* it replaces. */
+:root {
+  --field-gap: 0.5rem;
+}
+
+@layer components {
+  .field > * + * {
+    margin-top: var(--field-gap);
+  }
+}
+
+/* ── CARD RHYTHM (item cards) ─────────────────────────────────────────────
+   Third tier, between the page rhythm and the panel rhythm. `--panel-pad-*`
+   sizes a full-width *section* panel; this sizes an *item* card — the things
+   inside a grid or list (job cards, invoice rows, stat tiles). They were never
+   given a token, so 182 surfaces carried 36 different padding combos and 116
+   of those expressed this one intent four different ways: `p-4` (58), `p-3
+   sm:p-4` (25), `p-3` (19), `p-5` (14) — i.e. 12/12, 16/16 and 20/20 side by
+   side in the same grid. Employer was the worst case: flat `p-4` at every
+   width, so its cards never responded at all.
+   Measured 2026-08-25 across employer/super-agent/admin at 1440px.
+   Use .card-pad, not raw p-* utilities, on any surface class. */
+:root {
+  --card-pad-x: 0.75rem;
+  --card-pad-y: 0.75rem;
+}
+@media (min-width: 768px) {
+  :root {
+    --card-pad-x: 1rem;
+    --card-pad-y: 1rem;
+  }
+}
+
+@layer components {
+  .card-pad {
+    padding: var(--card-pad-y) var(--card-pad-x);
+  }
+}
+
+/* Third and last tier: a compact row or chip — a filter pill, a stat strip, a
+   selectable list line. Measured surfaces in this tier used p-2 (8/8),
+   px-3 py-2.5 (10/12), px-2 py-1.5, p-1.5 and p-2.5, i.e. five values for one
+   thing. Anything smaller than this is not a surface, it is a control. */
+:root {
+  --chip-pad-x: 0.625rem;
+  --chip-pad-y: 0.5rem;
+}
+@media (min-width: 768px) {
+  :root {
+    --chip-pad-x: 0.75rem;
+    --chip-pad-y: 0.625rem;
+  }
+}
+
+@layer components {
+  .chip-pad {
+    padding: var(--chip-pad-y) var(--chip-pad-x);
   }
 }
 
@@ -1323,6 +1464,17 @@ body {
   min-width: 0;
 }
 
+/* A component that renders `<div></div>` when it has nothing to show is still
+   a flex item, so the container's gap is allocated on BOTH sides of it and the
+   section boundary silently doubles. employer/jobs measured 48px between the
+   filter panel and the results grid where every other boundary on that page
+   was 24px. `display: contents` takes the empty wrapper out of the flex
+   formatting context without hiding anything it may later portal in.
+   Measured 2026-08-25. */
+.page-container > div:empty:not([class]) {
+  display: contents;
+}
+
 /* Task-first dashboards keep closely related operational sections within one
    viewport on phones and tablets. Role dashboards can opt into this rhythm
    without adding competing `space-y-*` utilities to `.page-container`. */
@@ -1330,7 +1482,10 @@ body {
   --page-gap: 0.875rem;
 }
 
-@media (min-width: 1024px) {
+/* Steps at 768 to match --page-gutter. It used to step at 1024, so between
+   768-1023 every role dashboard rendered 24px gutters against 14px section
+   gaps. Measured on all 5 dashboards, 2026-08-25. */
+@media (min-width: 768px) {
   .page-container.dashboard-overview-page {
     --page-gap: 1.25rem;
   }
@@ -1389,11 +1544,9 @@ body {
 
   .dashboard-shell-workspace .page-header-root {
     gap: 0.625rem;
-    padding: 0.75rem;
   }
 
   .dashboard-shell-admin .page-header-root {
-    padding: 0.75rem;
     border-radius: 1rem;
   }
 
@@ -2666,3 +2819,5 @@ table.workspace-list-table tbody tr:focus-visible {
 }
 
 /* rhythm pass: 1787649926 */
+
+/* rebuild-nudge */

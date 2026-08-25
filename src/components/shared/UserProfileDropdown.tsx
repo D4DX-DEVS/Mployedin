@@ -404,7 +404,7 @@ export function UserProfileDropdown({
           </DialogHeader>
 
           <div className="space-y-4 py-2">
-            <div className="flex items-center gap-3 rounded-lg border border-border/60 bg-muted/30 p-3">
+            <div className="flex items-center gap-3 rounded-lg border border-border/60 bg-muted/30 chip-pad">
               <Mail className="h-5 w-5 text-muted-foreground shrink-0" />
               <p className="text-sm text-foreground truncate">{userEmail}</p>
             </div>

@@ -105,7 +105,7 @@ export function StatsGrid({ stats: propStats }: StatsGridProps) {
     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-4 lg:gap-4">
       {cards.map((card) => (
         <div key={card.label} className="card-base flex items-start gap-3 sm:gap-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md panel-body">
-          <div className={`rounded-lg border p-2 sm:p-2.5 ${card.tone}`}>
+          <div className={`rounded-lg border ${card.tone} chip-pad`}>
             <card.icon className="h-5 w-5" />
           </div>
           <div className="min-w-0 flex-1">
@@ -174,12 +174,12 @@ export function CareerInsights({
 
   return (
     <div className="card-base panel-body">
-      <h3 className="mb-3 sm:mb-4 text-sm font-semibold">{t("careerInsights")}</h3>
+      <h3 className="heading-label mb-3 sm:mb-4 font-semibold">{t("careerInsights")}</h3>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-4">
         {insights.map((insight) => (
           <div
             key={insight.label}
-            className="flex items-start gap-3 rounded-lg border border-border p-3 sm:p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-md"
+            className="flex items-start gap-3 rounded-lg border border-border transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-md card-pad"
           >
             <div className="rounded-lg bg-primary/10 p-2">
               <insight.icon className="h-4 w-4 text-primary" />

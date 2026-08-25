@@ -128,7 +128,7 @@ export default function EmployerBulkInterviewPage() {
           {loading ? (
             <div className="space-y-2">
               {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-3 p-2.5 rounded-lg border border-border">
+                <div key={i} className="flex items-center gap-3 rounded-lg border border-border chip-pad">
                   <Skeleton className="h-4 w-4 rounded" />
                   <div className="flex-1 space-y-1.5">
                     <Skeleton className="h-4 w-32" />
@@ -151,9 +151,7 @@ export default function EmployerBulkInterviewPage() {
               </div>
               <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
                 {filteredCandidates.map(c => (
-                  <label key={c.applicationId ?? c._id} className={`flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-all ${
-                    c.selected ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"
-                  }`}>
+                  <label key={c.applicationId ?? c._id} className={`flex items-center gap-3 rounded-lg border cursor-pointer transition-all ${ c.selected ? "border-primary bg-primary/5" : "border-border hover:border-primary/30" } chip-pad`}>
                     <input type="checkbox" checked={c.selected} onChange={() => toggleSelect(c.applicationId ?? c._id)}
                       className="accent-primary shrink-0" />
                     <div className="flex-1 min-w-0">
@@ -174,7 +172,7 @@ export default function EmployerBulkInterviewPage() {
 
         {/* Slot Configuration */}
         <div className="card-base space-y-3 sm:space-y-4 panel-body">
-          <h3 className="text-sm font-semibold flex items-center gap-2">
+          <h3 className="heading-label font-semibold flex items-center gap-2">
             <Calendar className="h-4 w-4 text-primary" /> {t("interviewDetails")}
           </h3>
 

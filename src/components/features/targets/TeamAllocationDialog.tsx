@@ -487,7 +487,7 @@ export function TeamAllocationDialog({
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
           <div className="space-y-4">
             {/* Budget summary — horizontal cards */}
-            <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5">
+            <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/20 chip-pad">
               {budgetCards.map((c, idx) => {
                 const status =
                   c.total === 0
@@ -701,17 +701,17 @@ export function TeamAllocationDialog({
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
-              size="sm"
-              className="h-8"
+              size="dense"
+              className=""
               onClick={() => onOpenChange(false)}
             >
               {t("cancel")}
             </Button>
             <Button
-              size="sm"
+              size="dense"
               onClick={handleSubmit}
               disabled={saving || validRows.length === 0 || !supervisorProfile}
-              className="h-8 gap-1.5 bg-sky-600 text-white hover:bg-sky-700"
+              className="gap-1.5 bg-sky-600 text-white hover:bg-sky-700"
             >
               <Target className="h-3.5 w-3.5" />
               {saving
@@ -812,8 +812,8 @@ function AgentTargetRow({
           <Button
             type="button"
             variant={row.showMonthly ? "default" : "outline"}
-            size="sm"
-            className="rounded-lg h-8 text-xs gap-1"
+            size="dense"
+            className="rounded-lg text-xs gap-1"
             onClick={() => onToggleMonthly(agent._id)}
             disabled={!hasTarget}
           >

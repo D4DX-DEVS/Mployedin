@@ -92,7 +92,7 @@ export function SuperAgentMetricsGrid({ items }: { items: SuperAgentMetricItem[]
       style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
     >
       {items.map((item) => (
-        <div key={item.label} className="workspace-glass-panel rounded-lg px-2 py-1.5 sm:rounded-2xl sm:p-4">
+        <div key={item.label} className="workspace-glass-panel rounded-lg sm:rounded-2xl card-pad">
           {/* Mobile: all 4 fit one row, so the card goes vertical and tiny —
               icon chip on top, truncated label, small value — instead of the
               horizontal icon+text layout that only had room for 2 per row. */}

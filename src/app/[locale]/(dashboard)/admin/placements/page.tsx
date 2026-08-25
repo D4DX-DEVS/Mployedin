@@ -276,7 +276,7 @@ export default function AdminPlacementsPage() {
           <Button
             onClick={fetchAiInsights}
             disabled={aiLoading}
-            className="h-10 gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+            className="gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
           >
             {aiLoading ? <RotateCcw className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
             {aiLoading ? t("analyzing") : t("generateInsights")}
@@ -319,7 +319,7 @@ export default function AdminPlacementsPage() {
 
         {/* AI Insights inline panel */}
         {aiInsights && (
-          <div className="mt-4 rounded-3xl border border-sky-200/50 bg-sky-50/50 p-4">
+          <div className="mt-4 rounded-3xl border border-sky-200/50 bg-sky-50/50 card-pad">
             <div className="mb-2 flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-status-applied" />
               <span className="text-sm font-semibold text-sky-800">{t("aiPlacementInsights")}</span>
@@ -330,7 +330,7 @@ export default function AdminPlacementsPage() {
 
         {/* ─── Expandable Filters ─────────────────────────────────────── */}
         {showFilters && (
-          <div className="mt-4 space-y-3 rounded-3xl border border-border/30 bg-background/40 p-4 backdrop-blur-sm">
+          <div className="mt-4 space-y-3 rounded-3xl border border-border/30 bg-background/40 backdrop-blur-sm card-pad">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -474,7 +474,7 @@ export default function AdminPlacementsPage() {
                         </p>
                       </div>
                       {activeFilterCount > 0 && (
-                        <Button variant="outline" size="sm" onClick={clearFilters} className="mt-1 h-8 rounded-lg text-xs">
+                        <Button variant="outline" size="dense" onClick={clearFilters} className="mt-1 rounded-lg text-xs">
                           {t("clearFilters")}
                         </Button>
                       )}

@@ -143,7 +143,7 @@ export default function JobSeekerCoursesPage() {
             {courses.map((course) => (
           <div
             key={course.id}
-            className="bg-card rounded-xl border shadow-sm p-3 sm:p-5 flex flex-col gap-2 sm:gap-3 hover:shadow-md transition-shadow"
+            className="bg-card rounded-xl border shadow-sm flex flex-col gap-2 sm:gap-3 hover:shadow-md transition-shadow panel-body"
           >
             <div className="flex items-start justify-between gap-2">
               <span
@@ -161,7 +161,7 @@ export default function JobSeekerCoursesPage() {
             </div>
 
             <div>
-              <h3 className="text-sm font-semibold text-foreground leading-snug sm:text-base">{t(`courses.${course.titleKey}`)}</h3>
+              <h3 className="heading-subsection font-semibold text-foreground leading-snug">{t(`courses.${course.titleKey}`)}</h3>
               <p className="text-xs text-muted-foreground mt-1 sm:text-sm">{course.provider}</p>
             </div>
 
@@ -182,8 +182,8 @@ export default function JobSeekerCoursesPage() {
             ))}
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 sm:p-5">
-            <h3 className="text-base font-semibold text-blue-800 sm:text-lg">{t("recommendationsTitle")}</h3>
+          <div className="bg-blue-50 border border-blue-200 rounded-xl panel-body">
+            <h3 className="heading-subsection font-semibold text-blue-800">{t("recommendationsTitle")}</h3>
             <p className="text-xs text-blue-600 mt-1 sm:text-sm">
               {t("recommendationsDescription")}
             </p>

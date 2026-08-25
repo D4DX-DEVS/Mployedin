@@ -33,7 +33,7 @@ export function DashboardSection({
     >
       <div className="flex flex-wrap items-center justify-between gap-2 px-4 pb-2 pt-3 sm:px-5 sm:pb-3 sm:pt-4">
         <div className="min-w-0">
-          <h2 id={headingId} className="text-sm font-semibold tracking-tight text-foreground sm:text-base">
+          <h2 id={headingId} className="heading-label font-semibold tracking-tight text-foreground">
             {title}
           </h2>
           {description && (
@@ -90,7 +90,7 @@ export function DashboardNextAction({
     >
       <div className="flex flex-wrap items-start justify-between gap-2 px-4 pb-2 pt-3 sm:px-5 sm:pb-3 sm:pt-4">
         <div className="min-w-0">
-          <h2 id={headingId} className="text-sm font-semibold tracking-tight text-foreground sm:text-base">
+          <h2 id={headingId} className="heading-label font-semibold tracking-tight text-foreground">
             {title}
           </h2>
           <p className="mt-0.5 text-xs leading-5 text-muted-foreground sm:text-sm">{description}</p>
@@ -142,7 +142,7 @@ export function DashboardSignalStrip({
     >
       <h2
         id={headingId}
-        className="border-b border-border/60 px-4 py-2.5 text-sm font-semibold tracking-tight text-foreground sm:px-5"
+        className="heading-label border-b border-border/60 px-4 py-2.5 font-semibold tracking-tight text-foreground sm:px-5"
       >
         {title}
       </h2>

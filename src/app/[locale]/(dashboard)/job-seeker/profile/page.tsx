@@ -435,7 +435,7 @@ export default function JobSeekerProfilePage() {
 
   if (loading) {
     return (
-      <div className="px-3 py-4 sm:p-6 max-w-5xl mx-auto space-y-3 sm:space-y-4">
+      <div className="page-container max-w-5xl">
         {[...Array(4)].map((_, i) => (
           <div key={i} className="card-base animate-pulse space-y-3 panel-body">
             <div className="h-4 bg-muted rounded w-1/3" />
@@ -447,7 +447,7 @@ export default function JobSeekerProfilePage() {
   }
 
   return (
-    <div className="px-3 py-4 sm:p-6 max-w-5xl mx-auto space-y-3 sm:space-y-4">
+    <div className="page-container max-w-5xl">
 
       {/* ── Page Header ────────────────────────────────────────────────── */}
       <PageHeader
@@ -471,7 +471,7 @@ export default function JobSeekerProfilePage() {
               <Sparkles className="h-3.5 w-3.5" />
               {t("aiTools")}
             </div>
-            <h2 className="mt-2 text-base font-semibold text-foreground sm:mt-3 sm:text-xl">{t("aiTitle")}</h2>
+            <h2 className="heading-section mt-2 font-semibold text-foreground sm:mt-3">{t("aiTitle")}</h2>
             {/* Four lines of explainer above the fold on a phone — kept from sm up. */}
             <p className="mt-1.5 hidden text-sm leading-relaxed text-muted-foreground sm:block">
               {t("aiDescription")}
@@ -482,7 +482,7 @@ export default function JobSeekerProfilePage() {
             <button
               onClick={() => router.push("./cv")}
               aria-label={aiExtracted ? t("refreshCvAi") : t("uploadCvAi")}
-              className="group w-full rounded-2xl border border-border/60 bg-background/90 p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
+              className="group w-full rounded-2xl border border-border/60 bg-background/90 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md card-pad"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -574,7 +574,7 @@ export default function JobSeekerProfilePage() {
           {/* Name + meta */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-lg sm:text-xl font-bold">{name}</h2>
+              <h2 className="heading-section font-bold">{name}</h2>
               <button
                 onClick={() => { setEditName(name); setShowNameModal(true); }}
                 className="p-1 rounded-md hover:bg-muted transition-colors"

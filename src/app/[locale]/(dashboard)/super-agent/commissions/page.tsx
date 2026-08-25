@@ -186,7 +186,7 @@ export default function SuperAgentCommissionsPage() {
             to one short line (label + rate + ⓘ); the "set by admin" note and the
             contact-admin sentence only appear when the ⓘ is tapped. */}
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/70 bg-secondary/50 p-2.5 sm:gap-3 sm:rounded-2xl sm:p-4">
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/70 bg-secondary/50 sm:gap-3 sm:rounded-2xl card-pad">
             <div className="flex items-center gap-2">
               <Settings2 className="h-4 w-4 shrink-0 text-muted-foreground" />
               <Label className="whitespace-nowrap text-xs font-medium text-foreground sm:text-sm">

@@ -122,7 +122,7 @@ export default function RegisterPage() {
           <button
             type="button"
             onClick={() => setRoleSelected(true)}
-            className="flex min-h-24 w-full items-center gap-4 rounded-2xl border border-primary/30 bg-primary/[0.06] p-4 text-start transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+            className="flex min-h-24 w-full items-center gap-4 rounded-2xl border border-primary/30 bg-primary/[0.06] text-start transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 card-pad"
           >
             <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
               <UserRoundSearch className="h-6 w-6" />
@@ -135,7 +135,7 @@ export default function RegisterPage() {
 
           <Link
             href={`/${locale}/employer-register`}
-            className="flex min-h-24 w-full items-center gap-4 rounded-2xl border border-border bg-card p-4 text-start transition-colors hover:border-primary/30 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+            className="flex min-h-24 w-full items-center gap-4 rounded-2xl border border-border bg-card text-start transition-colors hover:border-primary/30 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 card-pad"
           >
             <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-secondary text-secondary-foreground">
               <BriefcaseBusiness className="h-6 w-6" />
@@ -181,7 +181,7 @@ export default function RegisterPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-2">
+        <div className="field">
           <Label htmlFor="name" className="text-sm font-medium">{t("fullName")}</Label>
           <Input
             id="name"
@@ -195,7 +195,7 @@ export default function RegisterPage() {
           />
         </div>
 
-        <div className="space-y-2">
+        <div className="field">
           <Label htmlFor="email" className="text-sm font-medium">{t("emailAddressLabel")}</Label>
           <Input
             id="email"
@@ -209,7 +209,7 @@ export default function RegisterPage() {
           />
         </div>
 
-        <div className="space-y-2">
+        <div className="field">
           <Label htmlFor="password" className="text-sm font-medium">{t("password")}</Label>
           <Input
             id="password"
@@ -223,7 +223,7 @@ export default function RegisterPage() {
           />
         </div>
 
-        <div className="space-y-2">
+        <div className="field">
           <Label htmlFor="confirmPassword" className="text-sm font-medium">{t("confirmPassword")}</Label>
           <Input
             id="confirmPassword"
@@ -258,14 +258,14 @@ export default function RegisterPage() {
         </div>
 
         {error && (
-          <div role="alert" className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+          <div role="alert" className="bg-destructive/10 border border-destructive/20 rounded-lg chip-pad">
             <p className="text-sm text-destructive text-center font-medium">{error}</p>
           </div>
         )}
 
-        <Button
+        <Button size="lg"
           type="submit"
-          className="h-12 w-full rounded-xl text-base font-medium shadow-lg shadow-primary/20 transition-all hover:-translate-y-0.5"
+          className="w-full rounded-xl text-base font-medium shadow-lg shadow-primary/20 transition-all hover:-translate-y-0.5"
           disabled={loading}
         >
           {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
@@ -283,10 +283,10 @@ export default function RegisterPage() {
       </div>
 
       <div className="grid grid-cols-3 gap-3">
-        <Button
+        <Button size="lg"
           variant="outline"
           type="button"
-          className="h-12 rounded-xl border-border/70 bg-background/60 font-medium transition-colors hover:bg-muted/60"
+          className="rounded-xl border-border/70 bg-background/60 font-medium transition-colors hover:bg-muted/60"
           onClick={handleGoogleSignIn}
           disabled={googleLoading}
         >
@@ -302,10 +302,10 @@ export default function RegisterPage() {
           )}
           Google
         </Button>
-        <Button
+        <Button size="lg"
           variant="outline"
           type="button"
-          className="h-12 rounded-xl border-border/70 bg-background/60 font-medium transition-colors hover:bg-muted/60"
+          className="rounded-xl border-border/70 bg-background/60 font-medium transition-colors hover:bg-muted/60"
           onClick={() => { setAppleLoading(true); setError(""); signIn("apple", { callbackUrl: "/api/auth/post-login-redirect" }); }}
           disabled={appleLoading}
         >
@@ -318,10 +318,10 @@ export default function RegisterPage() {
           )}
           Apple
         </Button>
-        <Button
+        <Button size="lg"
           variant="outline"
           type="button"
-          className="h-12 rounded-xl border-border/70 bg-background/60 font-medium transition-colors hover:bg-muted/60"
+          className="rounded-xl border-border/70 bg-background/60 font-medium transition-colors hover:bg-muted/60"
           onClick={() => { setLinkedInLoading(true); setError(""); signIn("linkedin", { callbackUrl: "/api/auth/post-login-redirect" }); }}
           disabled={linkedInLoading}
         >

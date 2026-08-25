@@ -199,7 +199,7 @@ export default async function JobDetailPage({ params }: PageProps) {
             {/* Main content */}
             <div className="lg:col-span-2 space-y-5 sm:space-y-6">
               {/* Header */}
-              <div className="bg-card border border-border rounded-xl p-5 sm:p-6">
+              <div className="bg-card border border-border rounded-xl panel-body">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4 mb-3">
                   <h1 className="text-xl sm:text-2xl font-semibold text-foreground">{job.title}</h1>
                   <div className="flex items-center gap-2 shrink-0">
@@ -256,8 +256,8 @@ export default async function JobDetailPage({ params }: PageProps) {
               </div>
 
               {/* Description */}
-              <div className="bg-card border border-border rounded-xl p-5 sm:p-6">
-                <h2 className="text-base font-semibold text-foreground mb-3">{t("jobDescription")}</h2>
+              <div className="bg-card border border-border rounded-xl panel-body">
+                <h2 className="heading-section font-semibold text-foreground mb-3">{t("jobDescription")}</h2>
                 <div className="text-justify">
                   <MarkdownRenderer content={job.description ?? ""} />
                 </div>
@@ -265,8 +265,8 @@ export default async function JobDetailPage({ params }: PageProps) {
 
               {/* Requirements — hidden entirely when every sub-field is empty */}
               {job.requirements && (job.requirements.skills?.length > 0 || job.requirements.education || job.requirements.languages?.length > 0) && (
-                <div className="bg-card border border-border rounded-xl p-5 sm:p-6 space-y-4">
-                  <h2 className="text-base font-semibold text-foreground">{t("requirements")}</h2>
+                <div className="bg-card border border-border rounded-xl space-y-4 panel-body">
+                  <h2 className="heading-section font-semibold text-foreground">{t("requirements")}</h2>
 
                   {job.requirements.skills?.length > 0 && (
                     <div>
@@ -305,8 +305,8 @@ export default async function JobDetailPage({ params }: PageProps) {
 
               {/* Tags */}
               {job.tags?.filter((tag: string) => !/^seed-/i.test(tag)).length > 0 && (
-                <div className="bg-card border border-border rounded-xl p-5 sm:p-6">
-                  <h2 className="text-base font-semibold text-foreground mb-3">{t("tags")}</h2>
+                <div className="bg-card border border-border rounded-xl panel-body">
+                  <h2 className="heading-section font-semibold text-foreground mb-3">{t("tags")}</h2>
                   <div className="flex flex-wrap gap-2">
                     {job.tags.filter((t: string) => !/^seed-/i.test(t)).map((t: string) => (
                       <Link
@@ -325,7 +325,7 @@ export default async function JobDetailPage({ params }: PageProps) {
             {/* Sidebar */}
             <div className="space-y-4 lg:self-start">
               {/* Apply card */}
-              <div className="bg-card border border-border rounded-xl p-5">
+              <div className="bg-card border border-border rounded-xl panel-body">
                 <div className="mb-4">
                   <p className="text-sm font-semibold text-foreground">{job.title}</p>
                   <p className="text-xs text-muted-foreground">{employer?.companyName}</p>
@@ -344,8 +344,8 @@ export default async function JobDetailPage({ params }: PageProps) {
               </div>
 
               {/* Employer info */}
-              <div className="bg-card border border-border rounded-xl p-5 space-y-3">
-                <h3 className="text-sm font-semibold text-foreground">{t("aboutTheEmployer")}</h3>
+              <div className="bg-card border border-border rounded-xl space-y-3 panel-body">
+                <h3 className="heading-label font-semibold text-foreground">{t("aboutTheEmployer")}</h3>
                 <div className="space-y-2 text-sm text-muted-foreground">
                   <p className="font-medium text-foreground">{employer?.companyName}</p>
                   {employer?.industry && <p>{t("industry")}: {employer.industry}</p>}

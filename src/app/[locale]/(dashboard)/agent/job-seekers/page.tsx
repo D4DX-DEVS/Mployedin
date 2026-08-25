@@ -215,7 +215,7 @@ export default function AgentJobSeekersPage() {
       <section className="workspace-panel-surface rounded-3xl panel-body">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("browseProfilesLabel")}</p>
-          <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("searchTitle")}</h2>
+          <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("searchTitle")}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{t("searchDescription")}</p>
         </div>
 
@@ -257,7 +257,7 @@ export default function AgentJobSeekersPage() {
         {/* data-table-toolbar opts this panel into the shared mobile filter
             rules (globals.css): two-up instead of seven full-width rows. */}
         {showFilters && (
-          <div data-table-toolbar="simple" className="mt-4 grid gap-3 rounded-2xl border border-border/50 bg-background/50 p-3 sm:p-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div data-table-toolbar="simple" className="mt-4 grid gap-3 rounded-2xl border border-border/50 bg-background/50 sm:grid-cols-2 lg:grid-cols-4 card-pad">
             {/* Availability */}
             <div className="space-y-1.5">
               <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("filterAvailabilityLabel")}</label>
@@ -348,7 +348,7 @@ export default function AgentJobSeekersPage() {
               <Button
                 variant={hasCV ? "default" : "outline"}
                 size="sm"
-                className="h-9 gap-2 rounded-xl px-4 text-sm"
+                className="gap-2 rounded-xl px-4 text-sm"
                 onClick={() => setHasCV((v) => !v)}
               >
                 <FileText className="h-3.5 w-3.5" />
@@ -379,7 +379,7 @@ export default function AgentJobSeekersPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("resultsLabel")}</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("resultsTitle")}</h2>
+            <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("resultsTitle")}</h2>
           </div>
           <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium"><ArrowRight className="h-3.5 w-3.5 text-primary" />{t("resultsPagination", { total: pagination.total, pages: pagination.totalPages })}</div>
         </div>

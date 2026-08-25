@@ -347,7 +347,7 @@ export default function EmployerInterviewsPage() {
           {can("interviews", "create") ? (
             <Button
               asChild
-              className="h-10 gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:px-4"
+              className="gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:px-4"
             >
               <Link href={`/${locale}/employer/interviews/bulk`} aria-label={t("bulkSchedule")}>
                 <span className="hidden sm:inline">{t("bulkSchedule")}</span>
@@ -358,7 +358,7 @@ export default function EmployerInterviewsPage() {
           <Button
             variant="outline"
             aria-label={t("exportCalendar")}
-            className="h-10 gap-2 rounded-xl px-3 text-sm font-semibold sm:px-4"
+            className="gap-2 rounded-xl px-3 text-sm font-semibold sm:px-4"
             onClick={async () => {
               try {
                 const res = await fetch("/api/interviews/export/ical", { credentials: "include" });
@@ -406,9 +406,7 @@ export default function EmployerInterviewsPage() {
               type="button"
               aria-pressed={active}
               onClick={() => { setStatus(active ? "" : s.key); setPage(1); }}
-              className={`flex flex-col items-center justify-center gap-0.5 rounded-xl border px-1 py-1.5 text-center transition-colors sm:flex-row sm:gap-2 sm:px-3 sm:py-2 sm:text-start ${
-                active ? "border-primary bg-primary/5" : "border-border bg-card hover:bg-secondary/40"
-              }`}
+              className={`flex flex-col items-center justify-center gap-0.5 rounded-xl border text-center transition-colors sm:flex-row sm:gap-2 sm:text-start ${ active ? "border-primary bg-primary/5" : "border-border bg-card hover:bg-secondary/40" } chip-pad`}
             >
               <Icon className={`hidden h-4 w-4 shrink-0 sm:block ${s.tone}`} />
               <span className="text-base font-semibold leading-none text-foreground">{formatNumber(s.value, locale)}</span>
@@ -440,7 +438,7 @@ export default function EmployerInterviewsPage() {
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {activeFilterCount > 0 && (
-              <Button variant="ghost" size="sm" className="h-8 px-2 text-xs text-muted-foreground hover:text-destructive"
+              <Button variant="ghost" size="dense" className="px-2 text-xs text-muted-foreground hover:text-destructive"
                 onClick={() => { setStatus(""); setTypeFilter(""); setOutcomeFilter(""); setDateFrom(""); setDateTo(""); setPage(1); }}>
                 <X className="h-3 w-3 sm:me-1" /> <span className="hidden sm:inline">{tc("clearFilters")}</span>
               </Button>
@@ -448,7 +446,7 @@ export default function EmployerInterviewsPage() {
             <Button
               variant="outline"
               size="sm"
-              className="h-9 gap-1.5 rounded-xl text-xs font-medium"
+              className="gap-1.5 rounded-xl text-xs font-medium"
               onClick={() => setFiltersOpen(!filtersOpen)}
             >
               <Filter className="h-3.5 w-3.5" />
@@ -580,12 +578,12 @@ export default function EmployerInterviewsPage() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-rejected">{t("interviewList")}</p>
-              <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{tc("somethingWentWrong")}</h2>
+              <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{tc("somethingWentWrong")}</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
                 {t("unableToLoadDesc")}
               </p>
             </div>
-            <Button className="h-11 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90" onClick={() => void refetch()}>
+            <Button size="lg" className="rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90" onClick={() => void refetch()}>
               {tc("tryAgain")}
             </Button>
           </div>
@@ -594,7 +592,7 @@ export default function EmployerInterviewsPage() {
       /* ── Interview Table ──────────────────────────────────────────── */
       <section className="workspace-panel-surface rounded-2xl panel-body">
         <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
-          <h2 className="text-sm font-semibold text-foreground">
+          <h2 className="heading-label font-semibold text-foreground">
             {formatNumber(deduplicatedInterviews.length, locale)} {tn("interviews")}
           </h2>
           <TableToolbar
@@ -720,8 +718,8 @@ export default function EmployerInterviewsPage() {
                       <div className="flex flex-col gap-1">
                         <Button
                           variant="ghost"
-                          size="sm"
-                          className="h-8 rounded-xl px-3 text-xs font-semibold text-status-applied hover:bg-status-applied-bg hover:text-sky-800"
+                          size="dense"
+                          className="rounded-xl px-3 text-xs font-semibold text-status-applied hover:bg-status-applied-bg hover:text-sky-800"
                           onClick={() => openAIQuestions(iv)}
                           title="Generate AI interview questions"
                         >
@@ -730,8 +728,8 @@ export default function EmployerInterviewsPage() {
                         </Button>
                         <Button
                           variant="ghost"
-                          size="sm"
-                          className="h-8 rounded-xl px-3 text-xs font-semibold text-status-interview hover:bg-status-interview-bg hover:text-violet-800"
+                          size="dense"
+                          className="rounded-xl px-3 text-xs font-semibold text-status-interview hover:bg-status-interview-bg hover:text-violet-800"
                           onClick={() => generatePrepBrief(iv._id)}
                           disabled={loadingPrepBriefId === iv._id}
                           title={t("prepBrief")}
@@ -853,7 +851,7 @@ export default function EmployerInterviewsPage() {
                     setDetailInterview(iv);
                   }
                 }}
-                className="workspace-subtle-surface flex w-full cursor-pointer items-center gap-3 rounded-2xl border border-border p-3 text-left transition-colors hover:bg-secondary/40 focus:outline-none focus:ring-2 focus:ring-sky-500/60"
+                className="workspace-subtle-surface card-pad flex w-full cursor-pointer items-center gap-3 rounded-2xl border border-border text-left transition-colors hover:bg-secondary/40 focus:outline-none focus:ring-2 focus:ring-sky-500/60"
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary/75 text-sm font-semibold text-foreground">
                   {(iv.jobSeekerId?.fullName ?? "?").charAt(0).toUpperCase()}
@@ -977,7 +975,7 @@ export default function EmployerInterviewsPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-9 flex-1 rounded-xl text-xs font-semibold text-status-applied"
+                      className="flex-1 rounded-xl text-xs font-semibold text-status-applied"
                       onClick={() => { openAIQuestions(iv); setDetailInterview(null); }}
                     >
                       <Sparkles className="me-1.5 h-3.5 w-3.5" />
@@ -986,7 +984,7 @@ export default function EmployerInterviewsPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-9 flex-1 rounded-xl text-xs font-semibold text-status-interview"
+                      className="flex-1 rounded-xl text-xs font-semibold text-status-interview"
                       disabled={loadingPrepBriefId === iv._id}
                       onClick={() => generatePrepBrief(iv._id)}
                     >
@@ -1003,17 +1001,17 @@ export default function EmployerInterviewsPage() {
                     <div className="flex flex-wrap gap-2 border-t border-border pt-4">
                       {isScheduled && (
                         <>
-                          <Button size="sm" className="h-9 rounded-xl bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+                          <Button size="sm" className="rounded-xl bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
                             onClick={() => { setModal({ kind: "complete", interview: iv }); setDetailInterview(null); }}>
                             <CheckCircle2 className="me-1.5 h-3.5 w-3.5" />
                             {t("complete")}
                           </Button>
-                          <Button variant="outline" size="sm" className="h-9 rounded-xl px-3 text-xs font-semibold"
+                          <Button variant="outline" size="sm" className="rounded-xl px-3 text-xs font-semibold"
                             onClick={() => { setModal({ kind: "reschedule", interview: iv }); setDetailInterview(null); }}>
                             <CalendarClock className="me-1.5 h-3.5 w-3.5" />
                             {t("reschedule")}
                           </Button>
-                          <Button variant="outline" size="sm" className="h-9 rounded-xl border-destructive/30 px-3 text-xs font-semibold text-destructive"
+                          <Button variant="outline" size="sm" className="rounded-xl border-destructive/30 px-3 text-xs font-semibold text-destructive"
                             onClick={async () => {
                               const ok = await confirm({
                                 title: t("cancelAction"),
@@ -1033,12 +1031,12 @@ export default function EmployerInterviewsPage() {
                       )}
                       {isPassed && (
                         <>
-                          <Button size="sm" className="h-9 rounded-xl bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+                          <Button size="sm" className="rounded-xl bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
                             onClick={() => { setModal({ kind: "next-round", interview: iv }); setDetailInterview(null); }}>
                             <Forward className="me-1.5 h-3.5 w-3.5" />
                             {t("nextRound")}
                           </Button>
-                          <Button variant="outline" size="sm" className="h-9 rounded-xl px-3 text-xs font-semibold"
+                          <Button variant="outline" size="sm" className="rounded-xl px-3 text-xs font-semibold"
                             onClick={() => { setModal({ kind: "offer", interview: iv }); setDetailInterview(null); }}>
                             <FileText className="me-1.5 h-3.5 w-3.5" />
                             {t("makeOffer")}
@@ -1046,7 +1044,7 @@ export default function EmployerInterviewsPage() {
                         </>
                       )}
                       {isCompleted && !iv.outcome && (
-                        <Button size="sm" className="h-9 rounded-xl bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+                        <Button size="sm" className="rounded-xl bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
                           onClick={() => { setModal({ kind: "complete", interview: iv }); setDetailInterview(null); }}>
                           <AlertTriangle className="me-1.5 h-3.5 w-3.5" />
                           {t("setOutcome")}
@@ -1077,20 +1075,20 @@ export default function EmployerInterviewsPage() {
               </DialogHeader>
               <div className="flex-1 space-y-4 overflow-y-auto px-6 py-5">
                 {/* Candidate Summary */}
-                <div className="workspace-glass-panel rounded-2xl p-4">
+                <div className="workspace-glass-panel card-pad rounded-2xl">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("candidateSummary")}</p>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">{prepBrief.candidateSummary}</p>
                 </div>
 
                 {/* Strategy */}
-                <div className="workspace-glass-panel rounded-2xl p-4">
+                <div className="workspace-glass-panel card-pad rounded-2xl">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("interviewStrategy")}</p>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">{prepBrief.interviewStrategy}</p>
                 </div>
 
                 {/* Time Allocation */}
                 {prepBrief.timeAllocation && (
-                  <div className="workspace-glass-panel rounded-2xl p-4">
+                  <div className="workspace-glass-panel card-pad rounded-2xl">
                     <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("timeAllocation")} ({prepBrief.duration} {t("min")})</p>
                     <div className="mt-3 flex gap-1.5">
                       {Object.entries(prepBrief.timeAllocation).map(([key, mins]) => (
@@ -1109,7 +1107,7 @@ export default function EmployerInterviewsPage() {
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   {/* Key Strengths */}
-                  <div className="rounded-2xl border border-status-selected/20 bg-status-selected-bg/60 p-4">
+                  <div className="rounded-2xl border border-status-selected/20 bg-status-selected-bg/60 card-pad">
                     <p className="text-xs font-semibold text-emerald-700">{t("keyStrengths")}</p>
                     <ul className="mt-2 space-y-1.5">
                       {prepBrief.keyStrengths.map((s) => (
@@ -1122,7 +1120,7 @@ export default function EmployerInterviewsPage() {
                   </div>
 
                   {/* Areas to Probe */}
-                  <div className="rounded-2xl border border-status-shortlisted/20 bg-status-shortlisted-bg/60 p-4">
+                  <div className="rounded-2xl border border-status-shortlisted/20 bg-status-shortlisted-bg/60 card-pad">
                     <p className="text-xs font-semibold text-status-shortlisted">{t("areasToProbe")}</p>
                     <ul className="mt-2 space-y-1.5">
                       {prepBrief.areasToProbe.map((a) => (
@@ -1136,11 +1134,11 @@ export default function EmployerInterviewsPage() {
                 </div>
 
                 {/* Suggested Questions */}
-                <div className="workspace-glass-panel rounded-2xl p-4">
+                <div className="workspace-glass-panel card-pad rounded-2xl">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("suggestedQuestions")}</p>
                   <div className="mt-3 space-y-3">
                     {prepBrief.suggestedQuestions.map((q, i) => (
-                      <div key={i} className="rounded-xl border border-border bg-background/60 p-3">
+                      <div key={i} className="rounded-xl border border-border bg-background/60 chip-pad">
                         <p className="text-sm font-medium text-foreground">{i + 1}. {q.question}</p>
                         <p className="mt-1 text-xs text-muted-foreground"><span className="font-semibold">Purpose:</span> {q.purpose}</p>
                         <p className="text-xs text-muted-foreground"><span className="font-semibold">Follow-up:</span> {q.followUp}</p>
@@ -1151,7 +1149,7 @@ export default function EmployerInterviewsPage() {
 
                 {/* Red Flags */}
                 {prepBrief.redFlags.length > 0 && (
-                  <div className="rounded-2xl border border-status-rejected/20 bg-status-rejected-bg/60 p-4">
+                  <div className="rounded-2xl border border-status-rejected/20 bg-status-rejected-bg/60 card-pad">
                     <p className="text-xs font-semibold text-rose-700">{t("redFlags")}</p>
                     <ul className="mt-2 space-y-1.5">
                       {prepBrief.redFlags.map((r) => (
@@ -1318,7 +1316,7 @@ function InterviewActionModal({
         onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
         <div className="mx-4 w-full max-w-2xl rounded-2xl border border-border bg-background shadow-2xl">
           <div className="border-b border-border px-6 py-4">
-            <h3 className="text-lg font-semibold text-foreground">{t("scorecardStepTitle")}</h3>
+            <h3 className="heading-subsection font-semibold text-foreground">{t("scorecardStepTitle")}</h3>
             <p className="mt-1 text-sm text-muted-foreground">
               {iv.jobSeekerId?.fullName ?? t("candidate")} · {iv.jobId?.title ?? t("role")} · {t("round")} {iv.interviewRound ?? 1}
             </p>
@@ -1329,7 +1327,7 @@ function InterviewActionModal({
               fallback={
                 <div className="flex flex-col items-center gap-3 py-6 text-center">
                   <p className="text-sm text-muted-foreground">{t("scorecardSkipNote")}</p>
-                  <Button onClick={onClose} className="h-10 rounded-xl px-5 text-sm">{tc("done")}</Button>
+                  <Button onClick={onClose} className="rounded-xl px-5 text-sm">{tc("done")}</Button>
                 </div>
               }
             >
@@ -1349,9 +1347,9 @@ function InterviewActionModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="w-full max-w-lg rounded-2xl border border-border bg-background p-6 shadow-2xl">
+      <div className="w-full max-w-lg rounded-2xl border border-border bg-background shadow-2xl panel-body">
         <div className="mb-5">
-          <h3 className="text-lg font-semibold text-foreground">{title}</h3>
+          <h3 className="heading-subsection font-semibold text-foreground">{title}</h3>
           <p className="mt-1 text-sm text-muted-foreground">
             {iv.jobSeekerId?.fullName ?? t("candidate")} · {iv.jobId?.title ?? t("role")} · {t("round")} {iv.interviewRound ?? 1}
           </p>
@@ -1372,8 +1370,7 @@ function InterviewActionModal({
                   ].map(({ value, label, icon: Icon, color }) => (
                     <button key={value}
                       onClick={() => setOutcome(value)}
-                      className={`flex items-center gap-2 rounded-xl border-2 px-3 py-2.5 text-left text-sm font-medium transition-all
-                        ${outcome === value ? color : "border-border bg-background text-muted-foreground hover:border-primary/30"}`}>
+                      className={`flex items-center gap-2 rounded-xl border-2 text-left text-sm font-medium transition-all ${outcome === value ? color : "border-border bg-background text-muted-foreground hover:border-primary/30"} chip-pad`}>
                       <Icon className="h-4 w-4 shrink-0" />
                       {label}
                     </button>
@@ -1387,7 +1384,7 @@ function InterviewActionModal({
                   onChange={(e) => setFeedback(e.target.value)}
                   rows={3}
                   maxLength={5000}
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full rounded-xl border border-border bg-background text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary chip-pad"
                   placeholder={t("feedbackPlaceholder")}
                 />
               </div>
@@ -1438,7 +1435,7 @@ function InterviewActionModal({
                   type="text"
                   value={type === "video" ? meetLink : location}
                   onChange={(e) => type === "video" ? setMeetLink(e.target.value) : setLocation(e.target.value)}
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full rounded-xl border border-border bg-background text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary chip-pad"
                   placeholder={type === "video" ? t("meetLinkPlaceholder") : t("officePlaceholder")}
                 />
                 {(type === "video" || type === "hybrid") && (
@@ -1464,7 +1461,7 @@ function InterviewActionModal({
                 <div className="col-span-1">
                   <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("salary")}</label>
                   <input type="number" value={salaryAmount} onChange={(e) => setSalaryAmount(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                    className="w-full rounded-xl border border-border bg-background text-sm focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 chip-pad"
                     placeholder={t("salaryPlaceholder")} min="0" />
                 </div>
                 <div>
@@ -1506,13 +1503,13 @@ function InterviewActionModal({
               <div>
                 <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("benefitsOptional")}</label>
                 <textarea value={benefits} onChange={(e) => setBenefits(e.target.value)} rows={2} maxLength={2000}
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                  className="w-full rounded-xl border border-border bg-background text-sm focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 chip-pad"
                   placeholder={t("benefitsPlaceholder")} />
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("notesOptional")}</label>
                 <textarea value={offerNotes} onChange={(e) => setOfferNotes(e.target.value)} rows={2} maxLength={1000}
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                  className="w-full rounded-xl border border-border bg-background text-sm focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 chip-pad"
                   placeholder={t("notesPlaceholder")} />
               </div>
             </>
@@ -1527,13 +1524,13 @@ function InterviewActionModal({
         </div>
 
         <div className="mt-6 flex items-center justify-end gap-3">
-          <Button variant="ghost" onClick={onClose} className="h-10 rounded-xl px-4 text-sm">
+          <Button variant="ghost" onClick={onClose} className="rounded-xl px-4 text-sm">
             {tc("cancel")}
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={submitting}
-            className="h-10 gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+            className="gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
           >
             {submitting ? (
               <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />

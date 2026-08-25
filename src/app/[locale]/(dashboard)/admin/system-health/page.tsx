@@ -126,7 +126,7 @@ export default function AdminSystemHealthPage() {
         <section className="workspace-panel-surface rounded-3xl panel-body">
           <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="workspace-glass-panel space-y-4 rounded-2xl p-3 sm:p-5">
+              <div key={i} className="workspace-glass-panel space-y-4 rounded-2xl panel-body">
                 <div className="flex items-center justify-between">
                   <Skeleton className="h-5 w-28" />
                   <Skeleton className="h-5 w-5 rounded-full" />
@@ -143,10 +143,10 @@ export default function AdminSystemHealthPage() {
         <>
           {/* Core Services */}
           <section className="workspace-panel-surface rounded-3xl panel-body">
-            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t("coreServicesHeading")}</h2>
+            <h2 className="heading-label mb-4 font-semibold uppercase tracking-wider text-muted-foreground">{t("coreServicesHeading")}</h2>
             <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {/* Database */}
-              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-5">
+              <div className="workspace-glass-panel rounded-2xl panel-body">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Database className="h-5 w-5 text-indigo-500" />
@@ -167,7 +167,7 @@ export default function AdminSystemHealthPage() {
               </div>
 
               {/* API */}
-              <div className="workspace-glass-panel rounded-2xl p-5">
+              <div className="workspace-glass-panel rounded-2xl panel-body">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Globe className="h-5 w-5 text-sky-500" />
@@ -192,7 +192,7 @@ export default function AdminSystemHealthPage() {
               </div>
 
               {/* Storage */}
-              <div className="workspace-glass-panel rounded-2xl p-5">
+              <div className="workspace-glass-panel rounded-2xl panel-body">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <HardDrive className="h-5 w-5 text-violet-500" />
@@ -220,9 +220,9 @@ export default function AdminSystemHealthPage() {
 
           {/* Platform Metrics */}
           <section className="workspace-panel-surface rounded-3xl panel-body">
-            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t("platformMetricsHeading")}</h2>
+            <h2 className="heading-label mb-4 font-semibold uppercase tracking-wider text-muted-foreground">{t("platformMetricsHeading")}</h2>
             <div className="grid grid-cols-2 gap-2 sm:gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
+              <div className="workspace-glass-panel card-pad rounded-2xl">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Users className="h-4 w-4" />
                   <span className="text-xs font-semibold uppercase tracking-wider">{t("activeUsersLabel")}</span>
@@ -231,7 +231,7 @@ export default function AdminSystemHealthPage() {
                 <p className="text-xs text-muted-foreground">{health.users.online} {t("onlineNowLabel")}</p>
               </div>
 
-              <div className="workspace-glass-panel rounded-2xl p-4">
+              <div className="workspace-glass-panel card-pad rounded-2xl">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Zap className="h-4 w-4" />
                   <span className="text-xs font-semibold uppercase tracking-wider">{t("activeJobsLabel")}</span>
@@ -240,7 +240,7 @@ export default function AdminSystemHealthPage() {
                 <p className="text-xs text-muted-foreground">{health.jobs.applicationsToday} {t("applicationsTodayLabel")}</p>
               </div>
 
-              <div className="workspace-glass-panel rounded-2xl p-4">
+              <div className="workspace-glass-panel card-pad rounded-2xl">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <TrendingUp className="h-4 w-4" />
                   <span className="text-xs font-semibold uppercase tracking-wider">{t("uptimeLabel")}</span>
@@ -251,7 +251,7 @@ export default function AdminSystemHealthPage() {
                 </p>
               </div>
 
-              <div className="workspace-glass-panel rounded-2xl p-4">
+              <div className="workspace-glass-panel card-pad rounded-2xl">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <BarChart3 className="h-4 w-4" />
                   <span className="text-xs font-semibold uppercase tracking-wider">{t("cronJobsLabel")}</span>
@@ -267,8 +267,8 @@ export default function AdminSystemHealthPage() {
 
           {/* Memory */}
           <section className="workspace-panel-surface rounded-3xl panel-body">
-            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t("memoryHeading")}</h2>
-            <div className="workspace-glass-panel rounded-2xl p-5">
+            <h2 className="heading-label mb-4 font-semibold uppercase tracking-wider text-muted-foreground">{t("memoryHeading")}</h2>
+            <div className="workspace-glass-panel rounded-2xl panel-body">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Cpu className="h-5 w-5 text-amber-500" />

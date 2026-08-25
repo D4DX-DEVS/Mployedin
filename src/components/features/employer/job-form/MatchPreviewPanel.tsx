@@ -89,7 +89,7 @@ export function MatchPreviewPanel({
   ].filter(Boolean) as string[];
 
   return (
-    <div className="space-y-3 rounded-2xl border border-border bg-gradient-to-br from-background via-background to-secondary/60 p-3 sm:p-4 shadow-sm">
+    <div className="space-y-3 rounded-2xl border border-border bg-gradient-to-br from-background via-background to-secondary/60 shadow-sm card-pad">
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-1.5 text-sm font-semibold">

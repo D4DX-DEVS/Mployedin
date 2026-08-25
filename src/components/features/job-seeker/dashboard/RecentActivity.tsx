@@ -67,7 +67,7 @@ export async function RecentActivity({ items }: RecentActivityProps) {
 
   return (
     <div className="card-base panel-body">
-      <h3 className="mb-3 sm:mb-4 text-sm font-semibold">{t("recentActivity")}</h3>
+      <h3 className="heading-label mb-3 sm:mb-4 font-semibold">{t("recentActivity")}</h3>
       <div className="space-y-2 sm:space-y-3">
         {items.map((item, i) => {
           if (item.type === "application") {

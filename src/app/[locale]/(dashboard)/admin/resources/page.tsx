@@ -208,7 +208,7 @@ export default function AdminResourcesPage() {
   const categoryCounts = items.reduce<Record<string, number>>((acc, i) => { acc[i.category] = (acc[i.category] ?? 0) + 1; return acc; }, {});
 
   return (
-    <div className="page-container pb-6">
+    <div className="page-container">
       <DashboardPageHeader
         icon={FolderOpen}
         eyebrow="Resource Center"
@@ -248,10 +248,10 @@ export default function AdminResourcesPage() {
       ) : items.length === 0 ? (
         <section className="workspace-panel-surface rounded-3xl p-10 sm:p-14 text-center">
           <div className="flex flex-col items-center">
-            <div className="workspace-glass-panel rounded-2xl p-4 mb-5">
+            <div className="workspace-glass-panel card-pad rounded-2xl mb-5">
               <Inbox className="h-8 w-8 text-muted-foreground/50" />
             </div>
-            <h3 className="text-lg font-semibold text-foreground">No resources found</h3>
+            <h3 className="heading-subsection font-semibold text-foreground">No resources found</h3>
             <p className="mt-2 text-sm text-muted-foreground max-w-sm">Upload your first exhibition material, document, or branding asset to get started.</p>
             <Button onClick={() => { resetForm(); setShowForm(true); }} variant="outline" className="mt-6 gap-2">
               <Plus className="h-4 w-4" /> Add Your First Resource
@@ -267,7 +267,7 @@ export default function AdminResourcesPage() {
                 <div className="p-5 space-y-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 min-w-0">
-                      <div className="rounded-2xl p-2 ring-1 ring-inset ring-border/60 bg-background/80 shrink-0">
+                      <div className="rounded-2xl ring-1 ring-inset ring-border/60 bg-background/80 shrink-0 chip-pad">
                         <CatIcon className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <div className="min-w-0">
@@ -299,7 +299,7 @@ export default function AdminResourcesPage() {
                   </div>
 
                   {item.files?.slice(0, 2).map((f) => (
-                    <div key={f.key} className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-background/60 px-3 py-2 text-xs">
+                    <div key={f.key} className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-background/60 text-xs chip-pad">
                       <span className="truncate font-medium text-foreground">{f.fileName}</span>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <span className="text-muted-foreground text-[10px]">{formatFileSize(f.size)}</span>
@@ -315,7 +315,7 @@ export default function AdminResourcesPage() {
                   <div className="flex items-center gap-1.5 pt-3 border-t border-border/40">
                     <Button variant="ghost" size="sm" onClick={() => openEdit(item)} className="flex-1 h-8 text-xs"><Edit className="h-3.5 w-3.5 mr-1.5" /> Edit</Button>
                     <Button variant="ghost" size="sm" onClick={() => fetchDownloadLogs(item._id)} className="h-8 w-8 p-0" title={t("a11yDownloadHistory")}><Users className="h-3.5 w-3.5" /></Button>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => handleDelete(item._id)} title={t("a11yDelete")}><Trash2 className="h-3.5 w-3.5" /></Button>
+                    <Button variant="ghost" size="dense" className="w-8 p-0 text-destructive hover:text-destructive" onClick={() => handleDelete(item._id)} title={t("a11yDelete")}><Trash2 className="h-3.5 w-3.5" /></Button>
                   </div>
                 </div>
               </article>
@@ -347,15 +347,15 @@ export default function AdminResourcesPage() {
                 </div>
               )}
               <div className="grid grid-cols-3 gap-3">
-                <div className="workspace-glass-panel rounded-2xl p-3 text-center"><p className="text-xl font-semibold text-foreground">{detailItem.downloadCount}</p><p className="text-[10px] text-muted-foreground font-medium mt-0.5">Downloads</p></div>
-                <div className="workspace-glass-panel rounded-2xl p-3 text-center"><p className="text-xl font-semibold text-foreground">{detailItem.files?.length}</p><p className="text-[10px] text-muted-foreground font-medium mt-0.5">Files</p></div>
-                <div className="workspace-glass-panel rounded-2xl p-3 text-center"><p className="text-xl font-semibold text-foreground">{detailItem.version}</p><p className="text-[10px] text-muted-foreground font-medium mt-0.5">Version</p></div>
+                <div className="workspace-glass-panel card-pad rounded-2xl text-center"><p className="text-xl font-semibold text-foreground">{detailItem.downloadCount}</p><p className="text-[10px] text-muted-foreground font-medium mt-0.5">Downloads</p></div>
+                <div className="workspace-glass-panel card-pad rounded-2xl text-center"><p className="text-xl font-semibold text-foreground">{detailItem.files?.length}</p><p className="text-[10px] text-muted-foreground font-medium mt-0.5">Files</p></div>
+                <div className="workspace-glass-panel card-pad rounded-2xl text-center"><p className="text-xl font-semibold text-foreground">{detailItem.version}</p><p className="text-[10px] text-muted-foreground font-medium mt-0.5">Version</p></div>
               </div>
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-2">Files</p>
                 <div className="space-y-2">
                   {detailItem.files?.map((f) => (
-                    <div key={f.key} className="flex items-center justify-between gap-2 rounded-xl border border-border/60 p-3">
+                    <div key={f.key} className="flex items-center justify-between gap-2 rounded-xl border border-border/60 chip-pad">
                       <span className="truncate text-xs font-medium">{f.fileName} <span className="text-muted-foreground">({formatFileSize(f.size)})</span></span>
                       <Button variant="outline" size="sm" onClick={() => handleDownloadTrack(detailItem, f)} className="h-7 text-xs shrink-0"><Download className="h-3 w-3 mr-1" /> Download</Button>
                     </div>
@@ -403,13 +403,13 @@ export default function AdminResourcesPage() {
           </DialogHeader>
           {downloadLogs.length === 0 ? (
             <div className="flex flex-col items-center py-8">
-              <div className="workspace-glass-panel rounded-2xl p-4 mb-3"><Download className="h-5 w-5 text-muted-foreground/50" /></div>
+              <div className="workspace-glass-panel card-pad rounded-2xl mb-3"><Download className="h-5 w-5 text-muted-foreground/50" /></div>
               <p className="text-sm text-muted-foreground">No downloads recorded yet</p>
             </div>
           ) : (
             <div className="space-y-2">
               {downloadLogs.map((log) => (
-                <div key={log._id} className="flex items-center justify-between gap-2 rounded-xl border border-border/60 p-3 text-xs">
+                <div key={log._id} className="flex items-center justify-between gap-2 rounded-xl border border-border/60 text-xs chip-pad">
                   <div className="min-w-0">
                     <p className="font-medium truncate">{log.userId?.name ?? "Unknown user"}</p>
                     {log.userId?.email && <p className="text-muted-foreground truncate">{log.userId.email}</p>}
@@ -445,16 +445,16 @@ export default function AdminResourcesPage() {
 
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
             <div className="space-y-5">
-              <div className="space-y-1.5">
+              <div className="field">
                 <Label className="text-sm font-medium">Title <span className="text-destructive">*</span></Label>
                 <Input value={formTitle} onChange={(e) => setFormTitle(e.target.value)} placeholder="e.g., GCC Career Fair Brochure 2026" className="h-10" />
               </div>
-              <div className="space-y-1.5">
+              <div className="field">
                 <Label className="text-sm font-medium">Description</Label>
                 <Textarea value={formDesc} onChange={(e) => setFormDesc(e.target.value)} placeholder="Brief description..." rows={3} className="resize-none" />
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
+                <div className="field">
                   <Label className="text-sm font-medium">Category</Label>
                   {showNewCategory ? (
                     <div className="flex gap-2">
@@ -469,18 +469,18 @@ export default function AdminResourcesPage() {
                     </div>
                   )}
                 </div>
-                <div className="space-y-1.5">
+                <div className="field">
                   <Label className="text-sm font-medium">Access Level</Label>
                   <SearchableSelect options={ACCESS_LEVELS} value={formAccessLevel} onValueChange={setFormAccessLevel} placeholder="Who can access" container={formDialogContainer} modal />
                 </div>
               </div>
-              <div className="space-y-1.5">
+              <div className="field">
                 <Label className="text-sm font-medium">Tags</Label>
                 <Input value={formTags} onChange={(e) => setFormTags(e.target.value)} placeholder="e.g. gcc, 2026, branding, dubai" className="h-10" />
                 <p className="text-[11px] text-muted-foreground">Separate multiple tags with commas</p>
               </div>
               {editingId && (
-                <div className="space-y-1.5">
+                <div className="field">
                   <Label className="text-sm font-medium">Version Notes</Label>
                   <Input value={formVersionNotes} onChange={(e) => setFormVersionNotes(e.target.value)} placeholder="What changed..." className="h-10" />
                 </div>

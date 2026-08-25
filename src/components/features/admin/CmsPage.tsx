@@ -296,7 +296,7 @@ export default function CmsPage({
                       <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">
                         {hasActiveFilters ? t("noMatchingItems") : t("noItemsYet")}
                       </p>
-                      <h3 className="mt-1 text-base font-semibold tracking-tight text-foreground sm:text-lg">
+                      <h3 className="heading-subsection mt-1 font-semibold tracking-tight text-foreground">
                         {hasActiveFilters
                           ? t("noItemsMatchFilters")
                           : t("noFoundTitle", { title: title.toLowerCase() })}
@@ -307,10 +307,10 @@ export default function CmsPage({
                           : t("clickAddNewMsg")}
                       </p>
                       {hasActiveFilters && (
-                        <Button
+                        <Button size="sm"
                           onClick={resetFilters}
                           variant="outline"
-                          className="mt-3 h-9 rounded-xl border-border bg-background/70 px-3 text-xs sm:mt-4 sm:px-4 sm:text-sm"
+                          className="mt-3 rounded-xl border-border bg-background/70 px-3 text-xs sm:mt-4 sm:px-4 sm:text-sm"
                         >
                           {t("clearFilters")}
                         </Button>

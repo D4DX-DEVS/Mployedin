@@ -233,7 +233,7 @@ export default function LeadDetailPage() {
             <button
               onClick={() => updateStatus("lost")}
               disabled={updatingStatus}
-              className="ml-2 inline-flex items-center gap-1 rounded-lg border border-status-rejected/20 px-2.5 py-1.5 text-[11px] font-semibold text-status-rejected transition hover:bg-status-rejected-bg"
+              className="ml-2 inline-flex items-center gap-1 rounded-lg border border-status-rejected/20 text-[11px] font-semibold text-status-rejected transition hover:bg-status-rejected-bg chip-pad"
             >
               <XCircle className="h-3.5 w-3.5" />{t("markLost")}
             </button>
@@ -242,7 +242,7 @@ export default function LeadDetailPage() {
             <button
               onClick={() => updateStatus("new")}
               disabled={updatingStatus}
-              className="ml-2 inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-[11px] font-semibold text-status-applied transition hover:bg-status-applied-bg"
+              className="ml-2 inline-flex items-center gap-1 rounded-lg border border-border text-[11px] font-semibold text-status-applied transition hover:bg-status-applied-bg chip-pad"
             >
               <Sparkles className="h-3.5 w-3.5" />{t("reopen")}
             </button>
@@ -254,7 +254,7 @@ export default function LeadDetailPage() {
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         {/* Left: Contact & Details */}
         <section className="workspace-panel-surface space-y-5 rounded-3xl lg:col-span-1 panel-body">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">{t("contactDetails")}</h2>
+          <h2 className="heading-label font-bold uppercase tracking-wider text-muted-foreground">{t("contactDetails")}</h2>
           <div className="space-y-3 text-sm">
             <InfoRow icon={<User className="h-4 w-4" />} label={t("contactLabel")} value={lead.contactPerson} />
             <InfoRow icon={<Mail className="h-4 w-4" />} label={tc("email")} value={lead.contactEmail} isLink />
@@ -285,7 +285,7 @@ export default function LeadDetailPage() {
 
           {/* Lost reason */}
           {lead.lostReason && lead.status === "lost" && (
-            <div className="mt-4 rounded-xl border border-status-rejected/20 bg-status-rejected-bg p-3">
+            <div className="mt-4 rounded-xl border border-status-rejected/20 bg-status-rejected-bg chip-pad">
               <h3 className="text-xs font-bold uppercase tracking-wider text-rose-700">{t("lostReasonLabel")}</h3>
               <p className="mt-1 text-sm text-rose-800">{lead.lostReason}</p>
             </div>
@@ -295,7 +295,7 @@ export default function LeadDetailPage() {
         {/* Right: Activity Timeline */}
         <section className="workspace-panel-surface space-y-5 rounded-3xl lg:col-span-2 panel-body">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">{t("activityTimeline")}</h2>
+            <h2 className="heading-label font-bold uppercase tracking-wider text-muted-foreground">{t("activityTimeline")}</h2>
             <Button
               size="sm"
               onClick={() => setShowActivityForm(!showActivityForm)}
@@ -307,17 +307,13 @@ export default function LeadDetailPage() {
 
           {/* Add Activity Form */}
           {showActivityForm && (
-            <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+            <div className="rounded-2xl border border-primary/20 bg-primary/5 card-pad">
               <div className="flex flex-wrap gap-2">
                 {ACTIVITY_TYPES.map((activityType) => (
                   <button
                     key={activityType.value}
                     onClick={() => setActivityForm((f) => ({ ...f, action: activityType.value }))}
-                    className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition ${
-                      activityForm.action === activityType.value
-                        ? "bg-primary text-primary-foreground shadow-sm"
-                        : "bg-background border border-border text-muted-foreground hover:text-foreground"
-                    }`}
+                    className={`inline-flex items-center gap-1.5 rounded-lg text-xs font-medium transition ${ activityForm.action === activityType.value ? "bg-primary text-primary-foreground shadow-sm" : "bg-background border border-border text-muted-foreground hover:text-foreground" } chip-pad`}
                   >
                     {activityType.icon}{activityType.label}
                   </button>
@@ -331,7 +327,7 @@ export default function LeadDetailPage() {
                 className="mt-3 w-full rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20"
               />
               <div className="mt-3 flex gap-2">
-                <Button size="sm" onClick={addActivity} disabled={addingActivity} className="h-8 rounded-lg px-4 text-xs">
+                <Button size="dense" onClick={addActivity} disabled={addingActivity} className="rounded-lg px-4 text-xs">
                   {addingActivity ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}
                   {t("saveActivity")}
                 </Button>
@@ -362,7 +358,7 @@ export default function LeadDetailPage() {
                       <div className="z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-background text-muted-foreground">
                         {icon}
                       </div>
-                      <div className="min-w-0 flex-1 rounded-xl border border-border/50 bg-background p-3">
+                      <div className="min-w-0 flex-1 rounded-xl border border-border/50 bg-background chip-pad">
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-semibold capitalize text-foreground">
                             {activity.action.replace(/_/g, " ")}

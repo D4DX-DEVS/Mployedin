@@ -229,7 +229,7 @@ export default function AdminBulkImportPage() {
             </div>
 
             {/* Template download */}
-            <div className="workspace-glass-panel rounded-2xl p-4">
+            <div className="workspace-glass-panel card-pad rounded-2xl">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-foreground">{t("labelDownloadTemplate")}</p>
@@ -269,7 +269,7 @@ export default function AdminBulkImportPage() {
         <section className="workspace-panel-surface rounded-3xl space-y-4 panel-body">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-foreground">{t("headingReviewData")}</h2>
+              <h2 className="heading-section font-semibold text-foreground">{t("headingReviewData")}</h2>
               <p className="text-sm text-muted-foreground">{file?.name} · {parsedRows.length} {t("labelRowsFound")}</p>
             </div>
             <div className="flex items-center gap-3">
@@ -334,17 +334,17 @@ export default function AdminBulkImportPage() {
         <section className="workspace-panel-surface rounded-3xl panel-body">
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <CheckCircle2 className="h-16 w-16 text-emerald-500" />
-            <h2 className="mt-4 text-xl font-semibold text-foreground">{t("headingImportComplete")}</h2>
+            <h2 className="heading-section mt-4 font-semibold text-foreground">{t("headingImportComplete")}</h2>
             <p className="mt-2 text-sm text-muted-foreground">
               {t("messageImportSuccess", { success: result.success, failed: result.failed })}
             </p>
 
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              <div className="workspace-glass-panel rounded-2xl p-4 text-center">
+              <div className="workspace-glass-panel card-pad rounded-2xl text-center">
                 <p className="text-2xl font-semibold text-emerald-600">{result.success}</p>
                 <p className="text-xs text-muted-foreground">{t("labelImported")}</p>
               </div>
-              <div className="workspace-glass-panel rounded-2xl p-4 text-center">
+              <div className="workspace-glass-panel card-pad rounded-2xl text-center">
                 <p className="text-2xl font-semibold text-red-600">{result.failed}</p>
                 <p className="text-xs text-muted-foreground">{t("labelFailed")}</p>
               </div>

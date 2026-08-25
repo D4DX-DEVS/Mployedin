@@ -32,7 +32,7 @@ export function ToolProposalCard({
   const isBusy = item.status === "confirming" || item.status === "cancelling";
 
   return (
-    <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
+    <div className="rounded-lg border border-primary/30 bg-primary/5 text-sm chip-pad">
       <div className="flex items-center gap-2 font-medium text-foreground">
         <StatusIcon status={item.status} />
         <span>{item.summary}</span>

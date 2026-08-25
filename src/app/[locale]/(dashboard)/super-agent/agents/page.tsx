@@ -486,7 +486,7 @@ export default function SuperAgentAgentsPage() {
                     key={chip.label}
                     type="button"
                     onClick={chip.action}
-                    className="rounded-lg border border-border/60 bg-secondary/50 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-all"
+                    className="rounded-lg border border-border/60 bg-secondary/50 text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-all chip-pad"
                   >
                     {chip.label}
                   </button>
@@ -608,13 +608,13 @@ export default function SuperAgentAgentsPage() {
 
           <div className="space-y-4">
             {createError && (
-              <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
+              <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 text-sm text-destructive chip-pad">
                 <AlertCircle className="h-4 w-4 shrink-0" />{createError}
               </div>
             )}
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{t("formLabelFullName")} <span className="text-destructive">*</span></Label>
                 <Input
                   value={createForm.name}
@@ -622,7 +622,7 @@ export default function SuperAgentAgentsPage() {
                   placeholder={t("formPlaceholderAgentFullName")}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{tc("email")} <span className="text-destructive">*</span></Label>
                 <Input
                   type="email"
@@ -631,7 +631,7 @@ export default function SuperAgentAgentsPage() {
                   placeholder={t("formPlaceholderEmail")}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{t("formLabelPassword")} <span className="text-destructive">*</span></Label>
                 <Input
                   type="password"
@@ -640,7 +640,7 @@ export default function SuperAgentAgentsPage() {
                   placeholder={t("formPlaceholderPassword")}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{t("formLabelCommissionRate")}</Label>
                 <Input
                   type="number"

@@ -460,7 +460,7 @@ export default function AdminJobSeekersPage() {
       <section className="workspace-panel-surface rounded-3xl panel-body">
         <div className="flex items-center gap-2 mb-3">
           <Sparkles className="h-4 w-4 text-primary" />
-          <h2 className="text-sm font-semibold text-foreground">{tr("aiSearchTitle")}</h2>
+          <h2 className="heading-label font-semibold text-foreground">{tr("aiSearchTitle")}</h2>
         </div>
 
         <div className="flex gap-2">
@@ -516,7 +516,7 @@ export default function AdminJobSeekersPage() {
 
         {/* AI Summary */}
         {aiSummary && (
-          <div className="mt-3 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
+          <div className="mt-3 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 chip-pad">
             <Sparkles className="h-3.5 w-3.5 text-primary flex-shrink-0" />
             <p className="text-xs text-primary">{tr("aiSummarySuffix", { summary: aiSummary })}</p>
           </div>
@@ -539,8 +539,8 @@ export default function AdminJobSeekersPage() {
               {/* Generate Embeddings (admin only) */}
               <Button
                 variant="ghost"
-                size="sm"
-                className="h-8 text-xs text-muted-foreground hover:text-primary"
+                size="dense"
+                className="text-xs text-muted-foreground hover:text-primary"
                 onClick={async () => {
                   toast.info(tr("embeddingGenerationStarted"));
                   try {
@@ -592,10 +592,10 @@ export default function AdminJobSeekersPage() {
               {/* CV Download */}
               <Button
                 variant="outline"
-                size="sm"
+                size="dense"
                 onClick={handleBulkCvDownload}
                 disabled={cvDownloading}
-                className="h-8 rounded-lg border-border/80"
+                className="rounded-lg border-border/80"
               >
                 {cvDownloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />}
                 {tr("downloadCvsButton")}
@@ -604,7 +604,7 @@ export default function AdminJobSeekersPage() {
               {/* Export Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8 rounded-lg border-border/80">
+                  <Button variant="outline" size="dense" className="rounded-lg border-border/80">
                     <Download className="h-3.5 w-3.5" /> {tr("exportButton")}
                   </Button>
                 </DropdownMenuTrigger>

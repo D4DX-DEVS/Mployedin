@@ -203,7 +203,7 @@ export function DataTable<TData, TValue>({
             />
           </div>
           {onFiltersChange && (
-            <Button variant="outline" size="sm" className="h-9 gap-1.5">
+            <Button variant="outline" size="sm" className="gap-1.5">
               <SlidersHorizontal className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">{t("filters")}</span>
             </Button>
@@ -214,7 +214,7 @@ export function DataTable<TData, TValue>({
           {hasExport && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9 gap-1.5">
+                <Button variant="outline" size="sm" className="gap-1.5">
                   <Download className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">{t("export")}</span>
                 </Button>
@@ -251,7 +251,7 @@ export function DataTable<TData, TValue>({
       <div className="space-y-3 sm:hidden" aria-busy={isLoading || undefined}>
         {isLoading ? (
           Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="rounded-xl border border-border/50 bg-card p-4 shadow-sm space-y-3">
+            <div key={i} className="rounded-xl border border-border/50 bg-card shadow-sm space-y-3 card-pad">
               {Array.from({ length: 3 }).map((_, j) => (
                 <div key={j} className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
               ))}

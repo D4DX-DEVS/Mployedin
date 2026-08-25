@@ -114,7 +114,7 @@ export default function PlacementDetailPage() {
     return (
       <div className="page-container">
         <div className="card-base min-w-0 p-5 py-10 text-center sm:p-8 sm:py-16">
-          <h2 className="text-lg font-semibold mb-4">{t("detailLoadError")}</h2>
+          <h2 className="heading-section font-semibold mb-4">{t("detailLoadError")}</h2>
           <div className="flex min-w-0 flex-col justify-center gap-3 sm:flex-row">
             <Button className="max-w-full" variant="outline" onClick={() => void load()}>{t("retry")}</Button>
             <Button className="max-w-full whitespace-normal" variant="outline" onClick={() => router.push(`/${locale}/employer/placements`)}>
@@ -182,7 +182,7 @@ export default function PlacementDetailPage() {
         </div>
 
         {placement.notes && (
-          <div className="rounded-xl border border-border/60 bg-muted/30 p-4">
+          <div className="rounded-xl border border-border/60 bg-muted/30 card-pad">
             <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               <StickyNote className="h-3.5 w-3.5" /> {t("notesLabel")}
             </p>

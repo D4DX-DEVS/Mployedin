@@ -217,7 +217,7 @@ export default function ActivityHistoryPage() {
             <Button
               variant="outline"
               size="sm"
-              className="rounded-xl h-9 ml-auto"
+              className="rounded-xl ml-auto"
               onClick={handleRefresh}
               disabled={refreshing}
             >
@@ -248,7 +248,7 @@ export default function ActivityHistoryPage() {
         ) : entries.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-border py-20 text-center">
             <History className="h-14 w-14 text-muted-foreground/30 mb-5" />
-            <h3 className="text-lg font-semibold text-foreground">{t("noActivity")}</h3>
+            <h3 className="heading-subsection font-semibold text-foreground">{t("noActivity")}</h3>
             <p className="text-sm text-muted-foreground mt-2 max-w-md">{t("noActivityDescription")}</p>
           </div>
         ) : (
@@ -335,8 +335,8 @@ export default function ActivityHistoryPage() {
           <div className="flex items-center gap-1.5">
             <Button
               variant="outline"
-              size="sm"
-              className="rounded-xl h-8 w-8 p-0"
+              size="dense"
+              className="rounded-xl w-8 p-0"
               disabled={!pagination.hasPrev}
               onClick={() => handlePageChange(pagination.page - 1)}
             >
@@ -364,8 +364,8 @@ export default function ActivityHistoryPage() {
 
             <Button
               variant="outline"
-              size="sm"
-              className="rounded-xl h-8 w-8 p-0"
+              size="dense"
+              className="rounded-xl w-8 p-0"
               disabled={!pagination.hasNext}
               onClick={() => handlePageChange(pagination.page + 1)}
             >

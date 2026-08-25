@@ -102,7 +102,7 @@ export function ShareJob({ jobId, jobTitle, companyName, locale, variant = "full
       <div className="relative">
         <button
           onClick={handleNativeShare}
-          className="inline-flex items-center justify-center rounded-xl border border-border bg-secondary/80 p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="inline-flex items-center justify-center rounded-xl border border-border bg-secondary/80 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground chip-pad"
           aria-label={t("share")}
         >
           <Share2 className="h-3.5 w-3.5" />
@@ -112,7 +112,7 @@ export function ShareJob({ jobId, jobTitle, companyName, locale, variant = "full
           <>
             {/* Backdrop */}
             <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-            <div className="absolute right-0 top-full z-50 mt-1 w-48 rounded-xl border border-border bg-popover p-2 shadow-lg">
+            <div className="absolute right-0 top-full z-50 mt-1 w-48 rounded-xl border border-border bg-popover shadow-lg chip-pad">
               <ShareOptions
                 t={t}
                 onWhatsApp={shareWhatsApp}
@@ -144,7 +144,7 @@ export function ShareJob({ jobId, jobTitle, companyName, locale, variant = "full
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-full z-50 mt-2 w-56 rounded-2xl border border-border bg-popover p-3 shadow-xl">
+          <div className="absolute left-0 top-full z-50 mt-2 w-56 rounded-2xl border border-border bg-popover shadow-xl chip-pad">
             <div className="mb-2 flex items-center justify-between">
               <span className="text-sm font-semibold text-foreground">{t("shareThisJob")}</span>
               <button

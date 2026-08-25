@@ -181,7 +181,7 @@ export default function AgentReferralLinksPage() {
       {createOpen && (
         <section className="workspace-panel-surface rounded-2xl sm:rounded-3xl panel-body">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground">{t("createModalTitle")}</h2>
+            <h2 className="heading-section font-semibold text-foreground">{t("createModalTitle")}</h2>
             <button onClick={() => setCreateOpen(false)} className="rounded-lg p-1 hover:bg-secondary/80"><X className="h-4 w-4" /></button>
           </div>
           <div className="mt-4 grid gap-4 sm:grid-cols-3">

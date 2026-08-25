@@ -43,7 +43,7 @@ export default function AgentJobDetailPage() {
     return (
       <div className="page-container">
         <div className="card-base p-8 text-center py-20">
-          <h2 className="text-lg font-semibold mb-2">{t("jobNotFound")}</h2>
+          <h2 className="heading-section font-semibold mb-2">{t("jobNotFound")}</h2>
           <p className="text-sm text-muted-foreground mb-5">{t("jobMayHaveBeenRemoved")}</p>
           <Button variant="outline" onClick={() => router.push(`/${locale}/agent/jobs`)}>
             <ArrowLeft className="w-4 h-4 me-2" /> {t("backToJobs")}
@@ -74,7 +74,7 @@ export default function AgentJobDetailPage() {
           <ArrowLeft className="w-4 h-4" /> {t("backToJobs")}
         </Button>
         <Link href={`/${locale}/agent/candidates?jobId=${id}`}>
-          <Button size="sm" variant="outline" className="gap-1.5 h-9">
+          <Button size="sm" variant="outline" className="gap-1.5">
             <Users className="w-3.5 h-3.5" /> {t("viewCandidates")}
           </Button>
         </Link>
@@ -156,7 +156,7 @@ export default function AgentJobDetailPage() {
 
       {/* Description */}
       <div className="card-base panel-body">
-        <h2 className="text-base font-semibold text-foreground mb-3">{t("jobDescription")}</h2>
+        <h2 className="heading-section font-semibold text-foreground mb-3">{t("jobDescription")}</h2>
         <div className="text-sm leading-relaxed text-foreground/80 whitespace-pre-wrap">
           {job.description}
         </div>
@@ -165,7 +165,7 @@ export default function AgentJobDetailPage() {
       {/* Requirements */}
       {job.requirements && (
         <div className="card-base panel-body">
-          <h2 className="text-base font-semibold text-foreground mb-4">{t("requirements")}</h2>
+          <h2 className="heading-section font-semibold text-foreground mb-4">{t("requirements")}</h2>
 
           {job.requirements.skills && job.requirements.skills.length > 0 && (
             <div className="mb-5">
@@ -206,7 +206,7 @@ export default function AgentJobDetailPage() {
       {/* Tags */}
       {job.tags && job.tags.length > 0 && (
         <div className="card-base panel-body">
-          <h2 className="text-base font-semibold text-foreground mb-3 flex items-center gap-2">
+          <h2 className="heading-section font-semibold text-foreground mb-3 flex items-center gap-2">
             <Tag className="w-4 h-4 text-muted-foreground" /> {t("tags")}
           </h2>
           <div className="flex flex-wrap gap-2">

@@ -240,7 +240,7 @@ function LeadCard({
 
   return (
     <div
-      className="group relative cursor-pointer rounded-2xl border border-border/60 bg-background p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-all hover:border-border hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)]"
+      className="group relative cursor-pointer rounded-2xl border border-border/60 bg-background shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-all hover:border-border hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)] card-pad"
       onClick={() => onEdit(lead)}
     >
       {/* Drag handle */}
@@ -704,7 +704,7 @@ export default function AgentLeadsPage() {
         title={t("pageTitle")}
         description={t("heroDescription")}
         actions={can("leads", "create") ? (
-          <Button onClick={openAdd} className="h-11 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90">
+          <Button size="lg" onClick={openAdd} className="rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90">
             <Plus className="mr-1.5 h-4 w-4" />{t("newLead")}
           </Button>
         ) : null}
@@ -725,21 +725,13 @@ export default function AgentLeadsPage() {
           <div className="inline-flex items-center rounded-xl border border-border bg-muted/50 p-1">
             <button
               onClick={() => setViewMode("board")}
-              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition ${
-                viewMode === "board"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
+              className={`inline-flex items-center gap-1.5 rounded-lg text-xs font-semibold transition ${ viewMode === "board" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground" } chip-pad`}
             >
               <LayoutGrid className="h-3.5 w-3.5" />{t("viewBoard")}
             </button>
             <button
               onClick={() => setViewMode("table")}
-              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition ${
-                viewMode === "table"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
+              className={`inline-flex items-center gap-1.5 rounded-lg text-xs font-semibold transition ${ viewMode === "table" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground" } chip-pad`}
             >
               <List className="h-3.5 w-3.5" />{t("viewTable")}
             </button>
@@ -862,7 +854,7 @@ export default function AgentLeadsPage() {
           </section>
           <DragOverlay>
             {activeDragLead ? (
-              <div className="w-[280px] rotate-2 rounded-2xl border border-primary/50 bg-background p-4 shadow-xl">
+              <div className="w-[280px] rotate-2 rounded-2xl border border-primary/50 bg-background shadow-xl card-pad">
                 <h4 className="truncate text-sm font-semibold text-foreground">{activeDragLead.companyName}</h4>
                 <p className="mt-1 text-xs text-muted-foreground">{activeDragLead.contactPerson}</p>
               </div>
@@ -1212,7 +1204,7 @@ export default function AgentLeadsPage() {
           }, 500);
         }}
         warningNode={duplicates.length > 0 ? (
-          <div className="flex items-start gap-2 rounded-lg border border-status-shortlisted/20 bg-status-shortlisted-bg px-3 py-2.5 text-sm text-status-shortlisted">
+          <div className="flex items-start gap-2 rounded-lg border border-status-shortlisted/20 bg-status-shortlisted-bg text-sm text-status-shortlisted chip-pad">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <div>
               <p className="font-semibold">{t("duplicatesFoundWarning")}</p>
@@ -1252,23 +1244,23 @@ export default function AgentLeadsPage() {
                 <p className="mt-1 text-sm text-muted-foreground">{scoreResult.reasoning}</p>
               </DialogHeader>
               <div className="space-y-4 px-6 py-5">
-                <div className="workspace-glass-panel rounded-2xl p-4">
+                <div className="workspace-glass-panel card-pad rounded-2xl">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("recommendedNextAction")}</p>
                   <p className="mt-2 text-sm font-medium text-foreground">{scoreResult.nextAction}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {t("followUpIn", { days: scoreResult.suggestedFollowUpDays })}
                   </p>
                 </div>
-                <div className="workspace-glass-panel rounded-2xl p-4">
+                <div className="workspace-glass-panel card-pad rounded-2xl">
                   <div className="flex items-center gap-2">
                     <MessageSquare className="h-4 w-4 text-sky-500" />
                     <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("draftFollowUpMessage")}</p>
                   </div>
                   <p className="mt-2 text-sm text-muted-foreground leading-6">{scoreResult.draftMessage}</p>
                   <Button
-                    size="sm"
+                    size="dense"
                     variant="outline"
-                    className="mt-3 h-8 rounded-lg text-xs"
+                    className="mt-3 rounded-lg text-xs"
                     onClick={() => {
                       navigator.clipboard.writeText(scoreResult.draftMessage);
                       toast.success(t("messageCopied"));
@@ -1278,7 +1270,7 @@ export default function AgentLeadsPage() {
                   </Button>
                 </div>
                 {scoreResult.riskFactors.length > 0 && (
-                  <div className="workspace-glass-panel rounded-2xl p-4">
+                  <div className="workspace-glass-panel card-pad rounded-2xl">
                     <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("riskFactors")}</p>
                     <ul className="mt-2 space-y-1.5">
                       {scoreResult.riskFactors.map((risk) => (

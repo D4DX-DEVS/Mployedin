@@ -276,7 +276,7 @@ export default function AgentEmployersPage() {
 
       {/* Referral link display — immediately visible after clicking "Get Referral Link" */}
       {referralError && (
-        <section className="rounded-3xl border border-status-rejected/20 bg-status-rejected-bg p-4">
+        <section className="rounded-3xl border border-status-rejected/20 bg-status-rejected-bg card-pad">
           <p className="text-sm text-status-rejected">{referralError}</p>
         </section>
       )}
@@ -317,15 +317,15 @@ export default function AgentEmployersPage() {
 
           {/* Stats row */}
           <div className="grid grid-cols-3 gap-3">
-            <div className="rounded-xl border border-border/50 bg-secondary/30 p-3 text-center">
+            <div className="rounded-xl border border-border/50 bg-secondary/30 text-center chip-pad">
               <p className="text-lg font-semibold text-foreground">{referralData.usedCount}</p>
               <p className="text-[10px] text-muted-foreground">{t("referralStatsRegistrations")}</p>
             </div>
-            <div className="rounded-xl border border-border/50 bg-secondary/30 p-3 text-center">
+            <div className="rounded-xl border border-border/50 bg-secondary/30 text-center chip-pad">
               <p className="text-lg font-semibold text-foreground">{referralData.maxUses || "∞"}</p>
               <p className="text-[10px] text-muted-foreground">{t("referralStatsMaxUses")}</p>
             </div>
-            <div className="rounded-xl border border-border/50 bg-secondary/30 p-3 text-center">
+            <div className="rounded-xl border border-border/50 bg-secondary/30 text-center chip-pad">
               <p className="text-lg font-semibold text-foreground font-mono">{referralData.referralCode}</p>
               <p className="text-[10px] text-muted-foreground">{t("referralStatsCode")}</p>
             </div>
@@ -398,7 +398,7 @@ export default function AgentEmployersPage() {
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("browseEmployersLabel")}</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("browseEmployersTitle")}</h2>
+            <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("browseEmployersTitle")}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{t("browseEmployersDescription")}</p>
           </div>
         </div>
@@ -482,7 +482,7 @@ export default function AgentEmployersPage() {
                     <TooltipTrigger asChild>
                       <Link
                         href={`/${locale}/agent/jobs?employer=${em._id}`}
-                        className="inline-flex items-center justify-center rounded-xl border border-border px-3 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:border-primary/20 hover:text-primary"
+                        className="inline-flex items-center justify-center rounded-xl border border-border text-xs font-semibold text-muted-foreground transition-colors hover:border-primary/20 hover:text-primary chip-pad"
                         aria-label={t("cardViewJobsAriaLabel", { company: em.companyName ?? em.name })}
                       >
                         <ArrowRight className="h-3.5 w-3.5" />
@@ -495,7 +495,7 @@ export default function AgentEmployersPage() {
                       <button
                         onClick={() => handleSwitchToEmployerView(em._id)}
                         disabled={switchingEmployerId === em._id || !em.isActive}
-                        className="inline-flex items-center justify-center gap-1 rounded-xl border border-sky-400/50 bg-status-applied-bg px-3 py-2 text-xs font-semibold text-status-applied transition-colors hover:bg-status-applied-bg disabled:opacity-50"
+                        className="inline-flex items-center justify-center gap-1 rounded-xl border border-sky-400/50 bg-status-applied-bg text-xs font-semibold text-status-applied transition-colors hover:bg-status-applied-bg disabled:opacity-50 chip-pad"
                         aria-label={t("cardSwitchWorkspaceAriaLabel", { company: em.companyName ?? em.name })}
                       >
                         {switchingEmployerId === em._id ? (

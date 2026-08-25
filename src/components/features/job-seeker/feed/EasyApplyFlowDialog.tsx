@@ -535,7 +535,7 @@ function CvStep({
   return (
     <div className="space-y-3">
       <div>
-        <h3 className="text-sm font-semibold text-foreground">{t("cv.heading")}</h3>
+        <h3 className="heading-label font-semibold text-foreground">{t("cv.heading")}</h3>
         <p className="text-xs text-muted-foreground">{t("cv.subtitle")}</p>
       </div>
 
@@ -568,10 +568,10 @@ function CvStep({
       <Button
         type="button"
         variant="outline"
-        size="sm"
+        size="dense"
         disabled={uploading}
         onClick={onUploadClick}
-        className="h-8 gap-1.5 rounded-xl text-xs"
+        className="gap-1.5 rounded-xl text-xs"
       >
         {uploading ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -642,7 +642,7 @@ function SkillsStep({
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-sm font-semibold text-foreground">{t("skills.heading")}</h3>
+        <h3 className="heading-label font-semibold text-foreground">{t("skills.heading")}</h3>
         <p className="text-xs text-muted-foreground">{t("skills.subtitle")}</p>
       </div>
 
@@ -716,7 +716,7 @@ function QuestionsStep({
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-sm font-semibold text-foreground">{t("questions.heading")}</h3>
+        <h3 className="heading-label font-semibold text-foreground">{t("questions.heading")}</h3>
         <p className="text-xs text-muted-foreground">{t("questions.subtitle")}</p>
       </div>
 
@@ -739,7 +739,7 @@ function QuestionsStep({
 
           {q.type === "textarea" && (
             <textarea
-              className="textarea-field min-h-[80px] w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+              className="textarea-field min-h-[80px] w-full rounded-xl border border-border bg-background text-sm chip-pad"
               placeholder={q.placeholder || ""}
               value={(answers[q.id] as string) ?? ""}
               onChange={(e) => onSet(q.id, e.target.value)}
@@ -860,7 +860,7 @@ function ReviewStep({
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-sm font-semibold text-foreground">{t("review.heading")}</h3>
+        <h3 className="heading-label font-semibold text-foreground">{t("review.heading")}</h3>
         {typeof matchScore === "number" && (
           <p className="text-xs text-muted-foreground">
             {t("review.matchSummary", { score: matchScore })}

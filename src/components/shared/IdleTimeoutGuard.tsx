@@ -32,7 +32,7 @@ export function IdleTimeoutGuard() {
   return (
     <div
       role="alert"
-      className="fixed bottom-4 right-4 z-[9999] max-w-sm rounded-lg border border-yellow-300 bg-yellow-50 p-4 shadow-lg"
+      className="fixed bottom-4 right-4 z-[9999] max-w-sm rounded-lg border border-yellow-300 bg-yellow-50 shadow-lg card-pad"
     >
       <p className="text-sm font-medium text-yellow-800">
         You will be logged out in 5 minutes due to inactivity.

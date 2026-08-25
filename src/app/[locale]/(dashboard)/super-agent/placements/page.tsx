@@ -485,7 +485,7 @@ export default function SuperAgentPlacementsPage() {
                   { label: t("quickFilterVisaApproved"), action: () => updateFilter("visaStatus", "approved") },
                   { label: t("quickFilterStamped"), action: () => updateFilter("visaStatus", "stamped") },
                 ].map((chip) => (
-                  <button key={chip.label} type="button" onClick={chip.action} className="rounded-lg border border-border/60 bg-secondary/50 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-all">
+                  <button key={chip.label} type="button" onClick={chip.action} className="rounded-lg border border-border/60 bg-secondary/50 text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-all chip-pad">
                     {chip.label}
                   </button>
                 ))}

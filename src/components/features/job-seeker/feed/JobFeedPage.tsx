@@ -155,7 +155,7 @@ async function fetchSearchJobs(q: string, page: number, employerId?: string): Pr
 function CardSkeleton() {
   return (
     <div className="card-base animate-pulse">
-      <div className="flex gap-3.5">
+      <div className="flex gap-4">
         <div className="pt-0.5">
           <div className="h-4 w-4 rounded bg-muted" />
         </div>
@@ -361,7 +361,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
 
   return (
     <div className="space-y-5">
-      <section className="overflow-hidden rounded-xl sm:rounded-3xl border border-border/60 bg-gradient-to-br from-card via-card to-primary/[0.05] px-4 py-4 shadow-[0_20px_60px_rgba(15,23,42,0.06)] sm:px-5 sm:py-5 lg:px-6 lg:py-6">
+      <section className="overflow-hidden rounded-xl sm:rounded-3xl border border-border/60 bg-gradient-to-br from-card via-card to-primary/[0.05] shadow-[0_20px_60px_rgba(15,23,42,0.06)] panel-body">
         <div className="space-y-3 sm:space-y-5">
             <div className="space-y-2 sm:space-y-3">
               {/* Badge is decorative — dropped on phones so the hero is title +
@@ -371,7 +371,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
                 {t("hero.badge")}
               </div>
               <div>
-                <h1 className="text-lg font-semibold tracking-tight text-foreground sm:text-2xl lg:text-3xl">
+                <h1 className="heading-page text-foreground">
                   {t("hero.title")}
                 </h1>
                 <p className="mt-2 hidden max-w-2xl text-sm leading-6 text-muted-foreground sm:block sm:text-[15px]">
@@ -467,7 +467,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
         <div className="space-y-3 sm:space-y-4">
           {isSearchMode ? (
             <>
-              <div className="rounded-lg sm:rounded-3xl border border-border/60 bg-card px-3 py-3 shadow-[0_16px_40px_rgba(15,23,42,0.04)] sm:px-4 sm:py-4 lg:px-5">
+              <div className="rounded-lg sm:rounded-3xl border border-border/60 bg-card shadow-[0_16px_40px_rgba(15,23,42,0.04)] card-pad">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
@@ -560,7 +560,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
                   <button
                     onClick={() => setSearchPage((p) => Math.max(1, p - 1))}
                     disabled={searchPage <= 1}
-                    className="inline-flex items-center gap-1 rounded-lg border border-border bg-secondary/80 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                    className="inline-flex items-center gap-1 rounded-lg border border-border bg-secondary/80 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 chip-pad"
                   >
                     <ChevronLeft className="h-3.5 w-3.5" />
                     {t("pagination.previous")}
@@ -571,7 +571,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
                   <button
                     onClick={() => setSearchPage((p) => Math.min(searchData.pages, p + 1))}
                     disabled={searchPage >= searchData.pages}
-                    className="inline-flex items-center gap-1 rounded-lg border border-border bg-secondary/80 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                    className="inline-flex items-center gap-1 rounded-lg border border-border bg-secondary/80 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 chip-pad"
                   >
                     {t("pagination.next")}
                     <ChevronRight className="h-3.5 w-3.5" />
@@ -695,7 +695,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
 
               {/* Pool page navigation — shown when infinite scroll within pool is exhausted */}
               {!hasNextPage && visibleJobs.length > 0 && !isLoading && (
-                <div className="rounded-3xl border border-border/60 bg-card px-4 py-5 shadow-[0_16px_40px_rgba(15,23,42,0.04)] sm:px-5">
+                <div className="rounded-3xl border border-border/60 bg-card shadow-[0_16px_40px_rgba(15,23,42,0.04)] panel-body">
                   {hasMorePoolPages ? (
                     <div className="space-y-4">
                       <p className="text-center text-sm text-muted-foreground">

@@ -51,7 +51,7 @@ export function InvoiceHealthCards({ data }: InvoiceHealthCardsProps) {
   ];
 
   return (
-    <section className="rounded-2xl border border-border/60 bg-card p-6">
+    <section className="rounded-2xl border border-border/60 bg-card panel-body">
       <div className="flex items-center justify-between mb-5">
         <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
           <Receipt className="h-4 w-4" /> {t("invoices")}
@@ -66,7 +66,7 @@ export function InvoiceHealthCards({ data }: InvoiceHealthCardsProps) {
           <Link
             key={c.label}
             href={c.href}
-            className={`rounded-xl ${c.bg} p-4 text-center transition-all hover:shadow-md hover:-translate-y-0.5`}
+            className={`rounded-xl ${c.bg} text-center transition-all hover:shadow-md hover:-translate-y-0.5 card-pad`}
           >
             <p className={`text-2xl font-bold ${c.textColor}`}>{c.value}</p>
             <p className="text-[10px] text-muted-foreground mt-1">{c.label}</p>

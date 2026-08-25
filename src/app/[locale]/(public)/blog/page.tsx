@@ -110,7 +110,7 @@ export default function BlogListingPage() {
                       </div>
                     )}
                     <div className="p-5 flex-1 flex flex-col">
-                      <h2 className="font-semibold text-lg group-hover:text-primary transition-colors line-clamp-2">
+                      <h2 className="heading-section font-semibold group-hover:text-primary transition-colors line-clamp-2">
                         {isAr ? post.titleAr || post.title : post.title}
                       </h2>
                       <p className="mt-2 text-sm text-muted-foreground line-clamp-3 flex-1">

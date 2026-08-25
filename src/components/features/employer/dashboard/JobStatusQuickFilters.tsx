@@ -83,7 +83,7 @@ export function JobStatusQuickFilters({
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             {t("eyebrow")}
           </p>
-          <h2 className="mt-1.5 text-base font-semibold tracking-tight text-foreground sm:text-lg">
+          <h2 className="heading-section mt-1.5 font-semibold tracking-tight text-foreground">
             {t("heading")}
           </h2>
         </div>

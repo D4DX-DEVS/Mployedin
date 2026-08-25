@@ -89,7 +89,7 @@ export default function ProfileViewsPage() {
 
       {/* KPI Cards */}
       <div className="grid gap-3 sm:gap-4 sm:grid-cols-3">
-        <div className="p-3 sm:p-5 bg-card border border-border rounded-xl">
+        <div className="bg-card border border-border rounded-xl panel-body">
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="p-1.5 sm:p-2 bg-primary/10 rounded-lg">
               <Eye className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
@@ -100,7 +100,7 @@ export default function ProfileViewsPage() {
             </div>
           </div>
         </div>
-        <div className="p-3 sm:p-5 bg-card border border-border rounded-xl">
+        <div className="bg-card border border-border rounded-xl panel-body">
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="p-1.5 sm:p-2 bg-green-500/10 rounded-lg">
               <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
@@ -111,7 +111,7 @@ export default function ProfileViewsPage() {
             </div>
           </div>
         </div>
-        <div className="p-3 sm:p-5 bg-card border border-border rounded-xl">
+        <div className="bg-card border border-border rounded-xl panel-body">
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="p-1.5 sm:p-2 bg-blue-500/10 rounded-lg">
               <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
@@ -126,7 +126,7 @@ export default function ProfileViewsPage() {
 
       {/* View Source Breakdown */}
       {stats.bySource.length > 0 && (
-        <div className="bg-card border border-border rounded-xl p-5">
+        <div className="bg-card border border-border rounded-xl panel-body">
           <h3 className="font-semibold text-foreground mb-3">{t("bySource")}</h3>
           <div className="flex gap-4 flex-wrap">
             {stats.bySource.map((s) => (

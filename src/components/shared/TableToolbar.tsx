@@ -130,7 +130,7 @@ export function TableToolbar({
       >
         <div className="flex flex-col gap-3 px-3 py-3 sm:px-4 sm:py-4 xl:flex-row xl:items-start xl:justify-between">
           <div className="min-w-0 xl:max-w-2xl">
-            {title && <h2 className="text-lg font-semibold text-foreground">{title}</h2>}
+            {title && <h2 className="heading-section font-semibold text-foreground">{title}</h2>}
             {description && <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>}
             {left && <div className="mt-3">{left}</div>}
           </div>

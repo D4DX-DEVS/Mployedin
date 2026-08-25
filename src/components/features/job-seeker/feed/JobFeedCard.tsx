@@ -193,7 +193,7 @@ export const JobFeedCard = memo(function JobFeedCard({
     <div
       className="card-base group relative overflow-hidden rounded-lg sm:rounded-3xl border border-border/70 bg-[linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96))] transition-all duration-200 shadow-[0_18px_48px_-38px_rgba(15,23,42,0.35)] hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_24px_60px_-38px_rgba(37,99,235,0.18)]"
     >
-      <div className="flex gap-2 sm:gap-3.5">
+      <div className="flex gap-2 sm:gap-4">
         {/* Card body */}
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 flex-col gap-3 min-[420px]:flex-row min-[420px]:items-start min-[420px]:justify-between">
@@ -373,7 +373,7 @@ export const JobFeedCard = memo(function JobFeedCard({
               />
               <button
                 onClick={onHide}
-                className="inline-flex items-center gap-1 rounded-xl border border-border bg-secondary/80 px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground sm:px-3 sm:py-2"
+                className="inline-flex items-center gap-1 rounded-xl border border-border bg-secondary/80 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground chip-pad"
               >
                 <EyeOff className="h-3 w-3" />
                 <span className="hidden sm:inline">{t("hide")}</span>
@@ -381,11 +381,7 @@ export const JobFeedCard = memo(function JobFeedCard({
               <button
                 onClick={onSave}
                 disabled={savePending}
-                className={`inline-flex items-center gap-1 rounded-xl border px-2.5 py-1.5 text-xs transition-colors disabled:opacity-60 sm:px-3 sm:py-2 ${
-                  isSaved
-                    ? "border-amber-300 bg-amber-50 text-amber-700"
-                    : "border-border bg-secondary/80 text-muted-foreground hover:bg-accent hover:text-foreground"
-                }`}
+                className={`inline-flex items-center gap-1 rounded-xl border text-xs transition-colors disabled:opacity-60 ${ isSaved ? "border-amber-300 bg-amber-50 text-amber-700" : "border-border bg-secondary/80 text-muted-foreground hover:bg-accent hover:text-foreground" } chip-pad`}
               >
                 {savePending
                   ? <Loader2 className="h-3 w-3 animate-spin" />

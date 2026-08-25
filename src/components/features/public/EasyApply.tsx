@@ -156,7 +156,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
 
   if (status === "loading" || fetchingProfile || (isJobSeeker && checkingApplied && !applied)) {
     return (
-      <Button disabled className="h-12 w-full rounded-2xl text-base">
+      <Button size="lg" disabled className="w-full rounded-2xl text-base">
         <Loader2 className="h-4 w-4 animate-spin mr-2" />
         {t("loading")}
       </Button>
@@ -214,7 +214,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
 
   if (!session) {
     return (
-      <div className="space-y-3 rounded-3xl border border-border/70 bg-muted/10 px-4 py-4">
+      <div className="space-y-3 rounded-3xl border border-border/70 bg-muted/10 card-pad">
         <p className="text-sm font-semibold text-foreground">{t("quickApplyTitle")}</p>
         <p className="text-xs text-muted-foreground">{t("quickApplyHint")}</p>
 
@@ -228,10 +228,10 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
             e.target.value = "";
           }}
         />
-        <Button
+        <Button size="lg"
           type="button"
           variant="outline"
-          className="h-11 w-full justify-start gap-2 rounded-xl text-sm"
+          className="w-full justify-start gap-2 rounded-xl text-sm"
           onClick={() => anonCvInputRef.current?.click()}
           disabled={anonPhase !== "idle"}
         >
@@ -239,8 +239,8 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
           <span className="truncate">{anonCvFile ? anonCvFile.name : t("uploadYourCv")}</span>
         </Button>
 
-        <Button
-          className="h-12 w-full rounded-2xl text-base font-medium gap-2"
+        <Button size="lg"
+          className="w-full rounded-2xl text-base font-medium gap-2"
           onClick={handleAnonGoogleApply}
           disabled={anonPhase !== "idle"}
         >
@@ -274,7 +274,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
 
   if (!isJobSeeker) {
     return (
-      <Button variant="outline" className="h-12 w-full rounded-2xl text-base" disabled>
+      <Button size="lg" variant="outline" className="w-full rounded-2xl text-base" disabled>
         {t("jobSeekersOnly")}
       </Button>
     );
@@ -282,7 +282,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
 
   if (applied) {
     return (
-      <div className="w-full rounded-3xl border border-green-500/30 bg-green-500/10 px-4 py-4 text-center">
+      <div className="w-full rounded-3xl border border-green-500/30 bg-green-500/10 text-center card-pad">
         <p className="text-sm font-semibold text-green-600">✓ {t("applicationSubmitted")}</p>
         <p className="mt-1 text-xs text-muted-foreground">
           {t("sentProfile")}
@@ -431,7 +431,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
   return (
     <div className="space-y-4">
       {profile && (
-        <div className="space-y-2 rounded-3xl border border-border/70 bg-muted/20 px-4 py-4 shadow-[0_12px_28px_rgba(15,23,42,0.04)]">
+        <div className="space-y-2 rounded-3xl border border-border/70 bg-muted/20 shadow-[0_12px_28px_rgba(15,23,42,0.04)] card-pad">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             {t("applyingAs")}
           </p>
@@ -463,7 +463,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
 
       {/* CV / Resume — choose saved or upload a modified version */}
       {profile && (
-        <div className="space-y-2 rounded-3xl border border-border/70 bg-muted/10 px-4 py-4">
+        <div className="space-y-2 rounded-3xl border border-border/70 bg-muted/10 card-pad">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             {t("profileCv")}
           </p>
@@ -523,7 +523,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
 
       {/* Additional documents (certificates, portfolio files, etc.) */}
       {profile && (
-        <div className="space-y-2 rounded-3xl border border-border/70 bg-muted/10 px-4 py-4">
+        <div className="space-y-2 rounded-3xl border border-border/70 bg-muted/10 card-pad">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             {t("additionalDocuments")}
           </p>
@@ -566,7 +566,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
             {uploadingDoc ? t("uploading") : t("addDocument")}
           </Button>
 
-          <div className="space-y-1.5 pt-1">
+          <div className="field pt-1">
             <Label htmlFor="portfolio-url" className="flex items-center gap-1.5 text-xs font-medium text-foreground">
               <Link2 className="h-3.5 w-3.5 text-muted-foreground" />
               {t("portfolioLink")}
@@ -587,7 +587,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
 
       {/* Screening Questions */}
       {hasQuestions && (
-        <div className="space-y-3 rounded-3xl border border-border/70 bg-muted/10 px-4 py-4">
+        <div className="space-y-3 rounded-3xl border border-border/70 bg-muted/10 card-pad">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             {t("screeningQuestions")}
           </p>
@@ -610,7 +610,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
 
               {q.type === "textarea" && (
                 <textarea
-                  className="textarea-field min-h-[80px] w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                  className="textarea-field min-h-[80px] w-full rounded-xl border border-border bg-background text-sm chip-pad"
                   placeholder={q.placeholder || ""}
                   value={(answers[q.id] as string) ?? ""}
                   onChange={(e) => setAnswer(q.id, e.target.value)}
@@ -737,10 +737,10 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
         )}
       </div>
 
-      <Button
+      <Button size="lg"
         onClick={handleApply}
         disabled={loading}
-        className="h-12 w-full rounded-2xl text-base font-medium gap-2"
+        className="w-full rounded-2xl text-base font-medium gap-2"
       >
         {loading ? (
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -828,7 +828,7 @@ function EasyApplySkillConfirm({ jobId }: { jobId: string }) {
   const remaining = skills.length - index;
 
   return (
-    <div className="space-y-3 rounded-3xl border border-border/70 bg-muted/20 px-4 py-4 shadow-[0_12px_28px_rgba(15,23,42,0.04)]">
+    <div className="space-y-3 rounded-3xl border border-border/70 bg-muted/20 shadow-[0_12px_28px_rgba(15,23,42,0.04)] card-pad">
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
         {t("confirmSkills")}
       </p>

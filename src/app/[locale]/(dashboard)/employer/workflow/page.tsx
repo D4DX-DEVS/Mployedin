@@ -248,10 +248,10 @@ export default function EmployerWorkflowPage() {
 
       {/* ─── Template Selector ─── */}
       {showTemplateSelector && (
-        <section className="rounded-2xl border border-sky-500/30 bg-sky-500/5 p-5 space-y-3">
+        <section className="rounded-2xl border border-sky-500/30 bg-sky-500/5 space-y-3 panel-body">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-semibold text-foreground">{t("loadFromTemplate")}</h3>
+              <h3 className="heading-label font-semibold text-foreground">{t("loadFromTemplate")}</h3>
               <p className="mt-1 text-xs text-muted-foreground">{t("loadFromTemplateDesc")}</p>
             </div>
             <button onClick={() => setShowTemplateSelector(false)} className="text-muted-foreground hover:text-foreground text-lg">✕</button>
@@ -264,7 +264,7 @@ export default function EmployerWorkflowPage() {
                 <button
                   key={tpl._id}
                   onClick={() => applyTemplate(tpl)}
-                  className="rounded-xl border border-border bg-background/80 p-3 text-left transition-all hover:border-sky-500/40 hover:bg-sky-500/5"
+                  className="rounded-xl border border-border bg-background/80 text-left transition-all hover:border-sky-500/40 hover:bg-sky-500/5 chip-pad"
                 >
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-foreground">{tpl.name}</span>
@@ -284,7 +284,7 @@ export default function EmployerWorkflowPage() {
               ))}
             </div>
           ) : (
-            <p className="rounded-xl border border-dashed border-border bg-background/60 p-4 text-center text-sm text-muted-foreground">
+            <p className="rounded-xl border border-dashed border-border bg-background/60 text-center text-sm text-muted-foreground card-pad">
               {t("noTemplates")}
             </p>
           )}
@@ -293,7 +293,7 @@ export default function EmployerWorkflowPage() {
 
       {/* ─── Save as Template ─── */}
       {showSaveAsTemplate && (
-        <section className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-5">
+        <section className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 panel-body">
           <div className="flex min-w-0 flex-col items-stretch gap-3 sm:flex-row sm:items-center">
             <Input
               value={templateName}
@@ -363,7 +363,7 @@ export default function EmployerWorkflowPage() {
           <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("workflowBuilder")}</p>
-              <h3 className="mt-2 flex items-center gap-2 text-lg font-semibold text-foreground">
+              <h3 className="heading-subsection mt-2 flex items-center gap-2 font-semibold text-foreground">
                 <Settings2 className="h-4 w-4 text-status-applied" /> {t("pipelineStages")}
               </h3>
               <p className="mt-1 text-sm text-muted-foreground">
@@ -383,7 +383,7 @@ export default function EmployerWorkflowPage() {
 
           {/* Add stage input */}
           {addingStage && (
-            <div className="flex flex-col items-stretch gap-2 rounded-3xl border border-dashed border-sky-500/30 bg-sky-500/10 p-4 sm:flex-row sm:items-center">
+            <div className="flex flex-col items-stretch gap-2 rounded-3xl border border-dashed border-sky-500/30 bg-sky-500/10 sm:flex-row sm:items-center card-pad">
               <Input
                 value={newStageLabel}
                 onChange={(e) => setNewStageLabel(e.target.value)}
@@ -435,11 +435,7 @@ export default function EmployerWorkflowPage() {
               {sortedStages.map((stage, i) => (
                   <div
                     key={stage.id}
-                    className={`group rounded-3xl border p-3 transition-all sm:p-4 ${
-                      stage.enabled
-                        ? "border-border bg-background/80 shadow-[0_20px_45px_-40px_rgba(15,23,42,0.45)] hover:border-sky-500/25"
-                        : "border-border/80 bg-background/55 opacity-70"
-                    }`}
+                    className={`group rounded-3xl border transition-all ${ stage.enabled ? "border-border bg-background/80 shadow-[0_20px_45px_-40px_rgba(15,23,42,0.45)] hover:border-sky-500/25" : "border-border/80 bg-background/55 opacity-70" } card-pad`}
                   >
                     <div className="flex items-start gap-3">
                       <div className="flex flex-col gap-0.5 pt-1 text-muted-foreground">
@@ -520,7 +516,7 @@ export default function EmployerWorkflowPage() {
           <section className="workspace-panel-surface space-y-5 rounded-3xl panel-body">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("automation")}</p>
-              <h3 className="mt-2 text-lg font-semibold text-foreground">{t("recruitmentRules")}</h3>
+              <h3 className="heading-subsection mt-2 font-semibold text-foreground">{t("recruitmentRules")}</h3>
               <p className="mt-1 text-sm text-muted-foreground">{t("rulesDesc")}</p>
             </div>
 
@@ -619,7 +615,7 @@ export default function EmployerWorkflowPage() {
               </div>
             </div>
 
-            <div className="rounded-3xl border border-border bg-background/60 p-4">
+            <div className="rounded-3xl border border-border bg-background/60 card-pad">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("guidance")}</p>
               <p className="mt-2 text-sm font-semibold text-foreground">{t("guidanceTitle")}</p>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">

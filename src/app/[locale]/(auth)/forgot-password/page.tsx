@@ -74,7 +74,7 @@ export default function ForgotPasswordPage() {
         </div>
 
         <Link href={`/${locale}/login`}>
-          <Button variant="outline" className="w-full h-11 font-medium rounded-lg">
+          <Button size="lg" variant="outline" className="w-full font-medium rounded-lg">
             <BackIcon className="w-4 h-4 me-2" />
             {t("backToSignIn")}
           </Button>
@@ -107,7 +107,7 @@ export default function ForgotPasswordPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        <div className="space-y-2">
+        <div className="field">
           <Label htmlFor="email" className="text-sm font-medium">{t("emailAddress")}</Label>
           <Input
             id="email"
@@ -122,14 +122,14 @@ export default function ForgotPasswordPage() {
         </div>
 
         {error && (
-          <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+          <div className="bg-destructive/10 border border-destructive/20 rounded-lg chip-pad">
             <p className="text-sm text-destructive text-center font-medium">{error}</p>
           </div>
         )}
 
-        <Button
+        <Button size="lg"
           type="submit"
-          className="h-12 w-full rounded-xl text-base font-medium shadow-lg shadow-primary/20 transition-all hover:-translate-y-0.5"
+          className="w-full rounded-xl text-base font-medium shadow-lg shadow-primary/20 transition-all hover:-translate-y-0.5"
           disabled={loading}
         >
           {loading && <Loader2 className="h-4 w-4 animate-spin me-2" />}

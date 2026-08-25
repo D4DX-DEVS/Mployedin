@@ -178,7 +178,7 @@ export default function SuperAgentExhibitionAnalyticsPage() {
         <DashboardPageHeader icon={BarChart3} eyebrow={t("superAgentAnalytics")} title={t("heroTitle")} description={t("heroDescription")} />
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="rounded-2xl border border-border/60 bg-card p-5 space-y-2">
+            <div key={i} className="rounded-2xl border border-border/60 bg-card space-y-2 panel-body">
               <Skeleton className="h-3 w-20" />
               <Skeleton className="h-7 w-16" />
             </div>
@@ -253,10 +253,10 @@ export default function SuperAgentExhibitionAnalyticsPage() {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.4fr_0.8fr]">
-        <div className="rounded-3xl border bg-card p-3 sm:p-4 lg:p-5 shadow-sm">
+        <div className="rounded-3xl border bg-card shadow-sm card-pad">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold tracking-tight">{t("monthlyRequestFlowTitle")}</h2>
+              <h2 className="heading-section font-semibold tracking-tight">{t("monthlyRequestFlowTitle")}</h2>
               <p className="text-sm text-muted-foreground">{t("monthlyRequestFlowDescription")}</p>
             </div>
             <Badge variant="outline">{t("monthsBadge")}</Badge>
@@ -281,17 +281,17 @@ export default function SuperAgentExhibitionAnalyticsPage() {
           </div>
         </div>
 
-        <div className="rounded-3xl border bg-card p-3 sm:p-4 lg:p-5 shadow-sm">
+        <div className="rounded-3xl border bg-card shadow-sm card-pad">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold tracking-tight">{t("requestPipelineTitle")}</h2>
+              <h2 className="heading-section font-semibold tracking-tight">{t("requestPipelineTitle")}</h2>
               <p className="text-sm text-muted-foreground">{t("requestPipelineDescription")}</p>
             </div>
             <Activity className="h-5 w-5 text-primary" />
           </div>
           <div className="space-y-4">
             {statusBreakdown.map((item) => (
-              <div key={item.key} className="space-y-2 rounded-2xl border bg-muted/25 p-4">
+              <div key={item.key} className="space-y-2 rounded-2xl border bg-muted/25 card-pad">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <span className={`h-2.5 w-2.5 rounded-full ${item.color}`} />
@@ -307,10 +307,10 @@ export default function SuperAgentExhibitionAnalyticsPage() {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <div className="rounded-3xl border bg-card p-3 sm:p-4 lg:p-5 shadow-sm">
+        <div className="rounded-3xl border bg-card shadow-sm card-pad">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold tracking-tight">{t("participationMixTitle")}</h2>
+              <h2 className="heading-section font-semibold tracking-tight">{t("participationMixTitle")}</h2>
               <p className="text-sm text-muted-foreground">{t("participationMixDescription")}</p>
             </div>
             <Target className="h-5 w-5 text-primary" />
@@ -338,7 +338,7 @@ export default function SuperAgentExhibitionAnalyticsPage() {
               </div>
               <div className="mt-4 space-y-3">
                 {participation.map((item, index) => (
-                  <div key={item.type} className="rounded-2xl border bg-muted/20 p-3">
+                  <div key={item.type} className="rounded-2xl border bg-muted/20 chip-pad">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2">
                         <span
@@ -366,10 +366,10 @@ export default function SuperAgentExhibitionAnalyticsPage() {
           )}
         </div>
 
-        <div className="rounded-3xl border bg-card p-3 sm:p-4 lg:p-5 shadow-sm">
+        <div className="rounded-3xl border bg-card shadow-sm card-pad">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold tracking-tight">{t("topAgentsTitle")}</h2>
+              <h2 className="heading-section font-semibold tracking-tight">{t("topAgentsTitle")}</h2>
               <p className="text-sm text-muted-foreground">{t("topAgentsDescription")}</p>
             </div>
             <Trophy className="h-5 w-5 text-primary" />
@@ -451,7 +451,7 @@ function MetricCard({
   sub: string;
 }) {
   return (
-    <div className="rounded-3xl border bg-card p-3 sm:p-4 lg:p-5 shadow-sm">
+    <div className="rounded-3xl border bg-card shadow-sm card-pad">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
@@ -474,7 +474,7 @@ function MiniSummaryCard({
   icon: ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border bg-muted/20 p-3 sm:p-4">
+    <div className="rounded-2xl border bg-muted/20 card-pad">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{label}</p>

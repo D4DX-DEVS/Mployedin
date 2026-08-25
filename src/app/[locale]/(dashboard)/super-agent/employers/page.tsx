@@ -444,7 +444,7 @@ export default function SuperAgentEmployersPage() {
                     key={chip.label}
                     type="button"
                     onClick={chip.action}
-                    className="rounded-lg border border-border/60 bg-secondary/50 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-all"
+                    className="rounded-lg border border-border/60 bg-secondary/50 text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-all chip-pad"
                   >
                     {chip.label}
                   </button>
@@ -510,7 +510,7 @@ export default function SuperAgentEmployersPage() {
                     <button
                       onClick={() => handleSwitchToEmployerView(em._id)}
                       disabled={switchingEmployerId === em._id || !em.isActive}
-                      className="inline-flex items-center gap-1 rounded-lg border border-sky-400/50 bg-sky-50 px-2.5 py-1.5 text-xs font-semibold text-sky-700 transition-colors hover:bg-sky-100 disabled:opacity-50"
+                      className="inline-flex items-center gap-1 rounded-lg border border-sky-400/50 bg-sky-50 text-xs font-semibold text-sky-700 transition-colors hover:bg-sky-100 disabled:opacity-50 chip-pad"
                       title={t("switchButtonTitle")}
                       aria-label={t("switchButtonAriaLabel", { company: em.companyName ?? em.name })}
                     >

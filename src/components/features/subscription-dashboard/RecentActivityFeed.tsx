@@ -55,7 +55,7 @@ export function RecentActivityFeed({ data }: RecentActivityFeedProps) {
   const filterOptions = getFilterOptions(t);
 
   return (
-    <section className="rounded-2xl border border-border/60 bg-card p-6">
+    <section className="rounded-2xl border border-border/60 bg-card panel-body">
       <div className="flex items-center justify-between mb-4">
         <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
           <Activity className="h-4 w-4" /> {t("recentActivity")}
@@ -90,7 +90,7 @@ export function RecentActivityFeed({ data }: RecentActivityFeedProps) {
             return (
               <div
                 key={a.id}
-                className="flex items-center gap-3 rounded-xl border border-border/40 p-3"
+                className="flex items-center gap-3 rounded-xl border border-border/40 chip-pad"
               >
                 <div className={`mt-0.5 shrink-0 ${cfg.color}`}>
                   <Icon className="h-4 w-4" />

@@ -311,19 +311,19 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
                 <div className="space-y-5">
                   {/* KPI Row */}
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                    <div className="rounded-xl border border-border/70 bg-secondary/30 p-3">
+                    <div className="rounded-xl border border-border/70 bg-secondary/30 chip-pad">
                       <p className="text-[10px] font-semibold uppercase text-muted-foreground">{t("total")}</p>
                       <p className="mt-1 text-lg font-bold text-primary">{fmt(invoice.totalAmount)}</p>
                     </div>
-                    <div className="rounded-xl border border-border/70 bg-secondary/30 p-3">
+                    <div className="rounded-xl border border-border/70 bg-secondary/30 chip-pad">
                       <p className="text-[10px] font-semibold uppercase text-muted-foreground">{t("paid")}</p>
                       <p className="mt-1 text-lg font-bold text-emerald-600">{fmt(invoice.paidAmount)}</p>
                     </div>
-                    <div className="rounded-xl border border-border/70 bg-secondary/30 p-3">
+                    <div className="rounded-xl border border-border/70 bg-secondary/30 chip-pad">
                       <p className="text-[10px] font-semibold uppercase text-muted-foreground">{t("balanceDue")}</p>
                       <p className="mt-1 text-lg font-bold text-amber-600">{fmt(invoice.balanceDue)}</p>
                     </div>
-                    <div className="rounded-xl border border-border/70 bg-secondary/30 p-3">
+                    <div className="rounded-xl border border-border/70 bg-secondary/30 chip-pad">
                       <p className="text-[10px] font-semibold uppercase text-muted-foreground">{t("platformRevenue")}</p>
                       <p className="mt-1 text-lg font-bold">{fmt(invoice.platformRevenue)}</p>
                     </div>
@@ -331,7 +331,7 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
 
                   {/* Issued By */}
                   {senderContext && (
-                    <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-secondary/20 p-3">
+                    <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-secondary/20 chip-pad">
                       <UserCircle2 className="h-5 w-5 text-primary" />
                       <div>
                         <p className="text-xs font-semibold uppercase text-muted-foreground">{t("issuedBy")}</p>
@@ -342,7 +342,7 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
 
                   {/* Billing Info */}
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="rounded-xl border border-border/70 p-4">
+                    <div className="rounded-xl border border-border/70 card-pad">
                       <div className="flex items-center gap-2"><Building2 className="h-4 w-4 text-muted-foreground" /><p className="text-xs font-semibold uppercase text-muted-foreground">{t("billTo")}</p></div>
                       <div className="mt-2 space-y-0.5 text-sm">
                         <p className="font-medium">{invoice.billingDetails?.companyName || invoice.employerId?.companyName || "—"}</p>
@@ -353,7 +353,7 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
                         {invoice.billingDetails?.taxId && <p className="text-muted-foreground">Tax ID: {invoice.billingDetails.taxId}</p>}
                       </div>
                     </div>
-                    <div className="rounded-xl border border-border/70 p-4">
+                    <div className="rounded-xl border border-border/70 card-pad">
                       <div className="flex items-center gap-2"><CreditCard className="h-4 w-4 text-muted-foreground" /><p className="text-xs font-semibold uppercase text-muted-foreground">{t("invoiceDetailsLabel")}</p></div>
                       <div className="mt-2 space-y-0.5 text-sm">
                         <p>{t("job")}: <span className="font-medium">{invoice.jobId?.title || "—"}</span></p>
@@ -369,7 +369,7 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
                   </div>
 
                   {/* Delivery */}
-                  <div className="rounded-xl border border-border/70 p-4">
+                  <div className="rounded-xl border border-border/70 card-pad">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2"><Send className="h-4 w-4 text-muted-foreground" /><p className="text-xs font-semibold uppercase text-muted-foreground">{t("delivery")}</p></div>
                       <span className={`rounded-full border px-2.5 py-1 text-xs font-medium ${DELIVERY_STATE_STYLES[deliveryState]}`}>
@@ -444,7 +444,7 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
 
                   {/* Payment form */}
                   {showPaymentForm && (
-                    <div className="rounded-xl border border-sky-200 bg-sky-50/50 p-4">
+                    <div className="rounded-xl border border-sky-200 bg-sky-50/50 card-pad">
                       <p className="mb-3 text-xs font-semibold text-sky-700">{t("recordNewPayment", { balance: fmt(invoice.balanceDue) })}</p>
                       <div className="grid gap-3 sm:grid-cols-2">
                         <div><Label className="text-xs">{t("amount")} *</Label><Input type="number" min={0.01} max={invoice.balanceDue} step="0.01" className="mt-1 h-9 rounded-lg" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} /></div>
@@ -455,7 +455,7 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
                       <div className="mt-2"><Label className="text-xs">{t("notes")}</Label><Textarea className="mt-1 rounded-lg" rows={2} value={paymentNotes} onChange={e => setPaymentNotes(e.target.value)} /></div>
                       <div className="mt-3 flex justify-end gap-2">
                         <Button variant="outline" size="sm" onClick={() => setShowPaymentForm(false)} className="h-8 rounded-lg">{tCommon("cancel")}</Button>
-                        <Button size="sm" onClick={handleRecordPayment} disabled={recordingPayment || !paymentAmount} className="h-8 rounded-lg bg-emerald-600 hover:bg-emerald-700">
+                        <Button size="dense" onClick={handleRecordPayment} disabled={recordingPayment || !paymentAmount} className="rounded-lg bg-emerald-600 hover:bg-emerald-700">
                           {recordingPayment ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : t("record")}
                         </Button>
                       </div>
@@ -466,7 +466,7 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
                   {invoice.payments?.length > 0 ? (
                     <div className="space-y-2">
                       {invoice.payments.map((p, i) => (
-                        <div key={p._id || i} className="flex items-center justify-between rounded-lg border border-border/70 bg-secondary/20 p-3">
+                        <div key={p._id || i} className="flex items-center justify-between rounded-lg border border-border/70 bg-secondary/20 chip-pad">
                           <div>
                             <p className="text-sm font-medium">{fmt(p.amount)}</p>
                             <p className="text-xs text-muted-foreground">{p.paymentMethod?.replace(/_/g, " ")} {p.referenceNumber ? `• ${p.referenceNumber}` : ""}</p>
@@ -489,7 +489,7 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
                   {invoice.commissions?.length > 0 ? (
                     <div className="space-y-2">
                       {invoice.commissions.map((c, i) => (
-                        <div key={i} className="flex items-center justify-between rounded-lg border border-border/70 bg-secondary/20 p-3">
+                        <div key={i} className="flex items-center justify-between rounded-lg border border-border/70 bg-secondary/20 chip-pad">
                           <div>
                             <p className="text-sm font-medium capitalize">{c.role?.replace(/_/g, " ")} — {c.rate}%</p>
                             <p className="text-xs text-muted-foreground">{c.notes}</p>
@@ -504,7 +504,7 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
                   ) : (
                     <div className="py-8 text-center text-sm text-muted-foreground">{t("noCommissionsOnInvoice")}</div>
                   )}
-                  <div className="rounded-xl border border-border/70 bg-secondary/30 p-4">
+                  <div className="rounded-xl border border-border/70 bg-secondary/30 card-pad">
                     <div className="space-y-1 text-sm">
                       <div className="flex justify-between"><span className="text-muted-foreground">{t("totalCommissions")}</span><span className="font-medium">{fmt(invoice.commissions?.reduce((s, c) => s + c.amount, 0) ?? 0)}</span></div>
                       <div className="flex justify-between"><span className="text-muted-foreground">{t("platformRevenue")}</span><span className="font-bold text-emerald-600">{fmt(invoice.platformRevenue)}</span></div>
@@ -518,7 +518,7 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
             {canManage && (
               <div className="space-y-3 border-t border-border/80 px-6 py-3">
                 {invoice.status === "pending_approval" && showRejectForm && (
-                  <div className="rounded-xl border border-rose-200 bg-rose-50/70 p-3">
+                  <div className="rounded-xl border border-rose-200 bg-rose-50/70 chip-pad">
                     <Label className="text-xs text-rose-700">{t("rejectionReason")}</Label>
                     <Textarea className="mt-1 rounded-lg" rows={2} value={rejectionReason} onChange={e => setRejectionReason(e.target.value)} placeholder={t("rejectionReasonPlaceholder")} />
                   </div>
@@ -531,7 +531,7 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
                         <CheckCircle2 className="h-3.5 w-3.5" /> {t("approveAndIssue")}
                       </Button>
                       {showRejectForm ? (
-                        <Button size="sm" variant="outline" onClick={handleRejectInvoice} disabled={updatingStatus} className="h-8 gap-1.5 rounded-lg text-xs text-rose-600 hover:bg-rose-50">
+                        <Button size="dense" variant="outline" onClick={handleRejectInvoice} disabled={updatingStatus} className="gap-1.5 rounded-lg text-xs text-rose-600 hover:bg-rose-50">
                           <XCircle className="h-3.5 w-3.5" /> {t("confirmReject")}
                         </Button>
                       ) : (
@@ -567,7 +567,7 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
                     </Button>
                   )}
                   </div>
-                  <Button variant="outline" size="sm" onClick={onClose} className="h-8 rounded-lg text-xs">{tCommon("close")}</Button>
+                  <Button variant="outline" size="dense" onClick={onClose} className="rounded-lg text-xs">{tCommon("close")}</Button>
                 </div>
               </div>
             )}

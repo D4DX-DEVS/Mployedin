@@ -86,7 +86,7 @@ export function SetupGuide() {
             <Sparkles className="h-3 w-3" />
             {t("setupGuide")}
           </div>
-          <h3 className="mt-3 text-sm font-bold leading-snug text-white">{t("title")}</h3>
+          <h3 className="heading-label mt-3 font-bold leading-snug text-white">{t("title")}</h3>
           <p className="mt-1 text-xs leading-snug text-white/75">
             {t("subtitle")}
           </p>

@@ -164,7 +164,7 @@ export default function SuperAgentCommissionsReportPage() {
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline" size="icon" onClick={fetchReport} disabled={loading} className="h-10 w-10 rounded-xl border-border/70 bg-background/90">
+          <Button variant="outline" size="icon" onClick={fetchReport} disabled={loading} className="rounded-xl border-border/70 bg-background/90">
             <RotateCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </Button>
         </div>
@@ -183,7 +183,7 @@ export default function SuperAgentCommissionsReportPage() {
 
       {/* ── Monthly Trend ── */}
       <section className="workspace-panel-surface rounded-2xl sm:rounded-3xl panel-body">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("monthlyTrendHeading", { year: yearFilter })}</h2>
+        <h2 className="heading-label mb-4 font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("monthlyTrendHeading", { year: yearFilter })}</h2>
         <ResponsiveContainer width="100%" height={240}>
           <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -206,7 +206,7 @@ export default function SuperAgentCommissionsReportPage() {
             { label: t("breakdownOverridePaid"), value: s ? fmt(s.overridePaid, s.currency) : "—", icon: Wallet, color: "text-emerald-600", chip: "bg-emerald-50" },
             { label: t("breakdownTeamTotalEarned"), value: s ? fmt(s.teamTotal, s.currency) : "—", icon: Users, color: "text-sky-600", chip: "bg-sky-50" },
           ].map(({ label, value, icon: Icon, color, chip }) => (
-            <div key={label} className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
+            <div key={label} className="workspace-glass-panel card-pad rounded-2xl">
               <div className="flex items-center gap-2">
                 <span className={`flex h-8 w-8 items-center justify-center rounded-xl ${chip}`}>
                   <Icon className={`h-4 w-4 ${color}`} />
@@ -224,7 +224,7 @@ export default function SuperAgentCommissionsReportPage() {
         <div className="flex items-center justify-between gap-3 panel-head">
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-sm font-semibold">{t("teamBreakdownTitle")}</h2>
+            <h2 className="heading-label font-semibold">{t("teamBreakdownTitle")}</h2>
             {data && <Badge variant="secondary">{t("agentsCount", { count: data.agentBreakdown.length })}</Badge>}
           </div>
           <TableToolbar

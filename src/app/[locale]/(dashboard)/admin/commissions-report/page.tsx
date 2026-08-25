@@ -221,7 +221,7 @@ export default function AdminCommissionsReportPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Button variant="outline" size="icon" onClick={fetchReport} disabled={loading} className="h-10 w-10 rounded-xl border-border/70 bg-background/90">
+            <Button variant="outline" size="icon" onClick={fetchReport} disabled={loading} className="rounded-xl border-border/70 bg-background/90">
               <RotateCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             </Button>
           </>
@@ -238,7 +238,7 @@ export default function AdminCommissionsReportPage() {
       {/* ── Monthly Trend Chart + Type Breakdown ── */}
       <div className="grid gap-4 lg:grid-cols-3">
         <section className="lg:col-span-2 workspace-panel-surface rounded-3xl panel-body">
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("monthlyTrendTitle", { year: yearFilter })}</h2>
+          <h2 className="heading-label mb-4 font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("monthlyTrendTitle", { year: yearFilter })}</h2>
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -254,7 +254,7 @@ export default function AdminCommissionsReportPage() {
         </section>
 
         <section className="workspace-panel-surface rounded-3xl panel-body">
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("byTypeTitle")}</h2>
+          <h2 className="heading-label mb-4 font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("byTypeTitle")}</h2>
           {pieData.length > 0 ? (
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
@@ -291,7 +291,7 @@ export default function AdminCommissionsReportPage() {
       {data && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {data.quarterlyBreakdown.map((q) => (
-            <div key={q.label} className="workspace-glass-panel rounded-2xl p-4">
+            <div key={q.label} className="workspace-glass-panel card-pad rounded-2xl">
               <p className="text-xs font-semibold text-muted-foreground">{q.label}</p>
               <p className="mt-1 text-lg font-bold">{fmt(q.total, data.summary.currency)}</p>
               <div className="mt-1 flex gap-2 text-xs text-muted-foreground">
@@ -311,7 +311,7 @@ export default function AdminCommissionsReportPage() {
         <div className="border-b px-4 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-sm font-semibold">{t("agentBreakdownTitle")}</h2>
+            <h2 className="heading-label font-semibold">{t("agentBreakdownTitle")}</h2>
             {data && <Badge variant="secondary">{t("agentsCount", { count: data.agentBreakdown.length })}</Badge>}
           </div>
           <TableToolbar

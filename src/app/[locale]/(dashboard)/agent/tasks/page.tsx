@@ -200,7 +200,7 @@ export default function AgentTasksPage() {
       {/* New Task Form */}
       {showForm && (
         <section className="workspace-panel-surface rounded-3xl space-y-4 panel-body">
-          <h2 className="text-lg font-semibold text-foreground">{t("createTaskHeading")}</h2>
+          <h2 className="heading-section font-semibold text-foreground">{t("createTaskHeading")}</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             <Input placeholder={t("taskTitlePlaceholder")} value={newTask.title} onChange={(e) => setNewTask((p) => ({ ...p, title: e.target.value }))} className="sm:col-span-2" />
             <Input placeholder={t("taskDescriptionPlaceholder")} value={newTask.description} onChange={(e) => setNewTask((p) => ({ ...p, description: e.target.value }))} className="sm:col-span-2" />
@@ -236,7 +236,7 @@ export default function AgentTasksPage() {
         {loading ? (
           <div className="space-y-3">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="workspace-glass-panel rounded-2xl p-4">
+              <div key={i} className="workspace-glass-panel card-pad rounded-2xl">
                 <div className="flex items-start gap-3">
                   <Skeleton className="mt-0.5 h-5 w-5 rounded" />
                   <div className="flex-1 space-y-2">
@@ -258,9 +258,7 @@ export default function AgentTasksPage() {
             {tasks.map((task) => (
               <div
                 key={task._id}
-                className={`workspace-glass-panel rounded-2xl p-4 transition-all ${
-                  task.status === "completed" ? "opacity-60" : ""
-                }`}
+                className={`workspace-glass-panel rounded-2xl transition-all ${ task.status === "completed" ? "opacity-60" : "" } card-pad`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3">

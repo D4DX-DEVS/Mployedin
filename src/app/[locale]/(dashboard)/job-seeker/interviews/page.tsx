@@ -166,13 +166,13 @@ export default function InterviewsPage() {
         <>
           {upcoming.length > 0 && (
             <section className="space-y-3">
-              <h2 className="text-sm font-semibold text-foreground">{t("upcoming")}</h2>
+              <h2 className="heading-label font-semibold text-foreground">{t("upcoming")}</h2>
               {upcoming.map((iv) => <InterviewCard key={iv._id} interview={iv} upcoming onRefresh={fetchInterviews} />)}
             </section>
           )}
           {past.length > 0 && (
             <section className="space-y-3 mt-6">
-              <h2 className="text-sm font-semibold text-muted-foreground">{t("past")}</h2>
+              <h2 className="heading-label font-semibold text-muted-foreground">{t("past")}</h2>
               {past.map((iv) => <InterviewCard key={iv._id} interview={iv} upcoming={false} onRefresh={fetchInterviews} />)}
             </section>
           )}
@@ -331,7 +331,7 @@ function InterviewCard({ interview: iv, upcoming, onRefresh }: { interview: Inte
             <div className="mt-3 pt-3 border-t border-border space-y-2">
               <label className="text-xs font-medium">{t("rescheduleReasonLabel")}</label>
               <textarea
-                className="w-full h-16 px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none"
+                className="w-full h-16 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none chip-pad"
                 placeholder={t("reschedulePlaceholder")}
                 value={rescheduleNote}
                 onChange={(e) => setRescheduleNote(e.target.value)}

@@ -318,11 +318,7 @@ export default function JobSeekerDocumentsPage() {
                 <button
                   key={cat.value}
                   onClick={() => setCategory(cat.value)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all border ${
-                    isActive
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border hover:border-primary/40 text-muted-foreground hover:text-foreground"
-                  }`}
+                  className={`flex items-center gap-2 rounded-lg text-sm font-medium transition-all border ${ isActive ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-primary/40 text-muted-foreground hover:text-foreground" } chip-pad`}
                 >
                   <Icon className="h-4 w-4" />
                   {getCategoryLabel(cat.value)}

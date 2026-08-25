@@ -25,7 +25,7 @@ export default function AdminReportsError({
           <AlertTriangle className="h-6 w-6" />
         </div>
         <div className="space-y-2">
-          <h2 className="text-xl font-semibold text-foreground">{t("failedReports")}</h2>
+          <h2 className="heading-section font-semibold text-foreground">{t("failedReports")}</h2>
           <p className="text-sm leading-6 text-muted-foreground">
             {t("failedReportsDescription")}
           </p>

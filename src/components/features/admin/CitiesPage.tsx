@@ -242,7 +242,7 @@ export default function CitiesPage() {
         {/* Compact header row: mobile stacked, desktop row */}
         <div className="flex flex-col gap-3 border-b border-border/80 sm:flex-row sm:items-center sm:justify-between panel-head">
           <div className="min-w-0">
-            <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-lg">{t("citiesTitle")}</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-[1.625rem]">{t("citiesTitle")}</h1>
             <p className="hidden text-xs text-muted-foreground sm:mt-0.5 sm:block">{t("citiesSubtitle")}</p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">

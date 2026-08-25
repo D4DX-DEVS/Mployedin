@@ -25,7 +25,7 @@ export default function CompanyDetailLoading() {
       <div className="h-5 w-32 rounded bg-muted mb-4" />
       <div className="space-y-3">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="bg-card border border-border rounded-xl p-5">
+          <div key={i} className="bg-card border border-border rounded-xl panel-body">
             <div className="h-5 w-1/2 rounded bg-muted mb-2" />
             <div className="flex flex-wrap gap-3">
               <div className="h-3 w-24 rounded bg-muted" />

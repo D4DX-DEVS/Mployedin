@@ -163,10 +163,10 @@ export default function EmployerMatchingWeightsPage() {
 
       {/* ─── Template Selector ─── */}
       {showTemplateSelector && (
-        <section className="rounded-2xl border border-sky-500/30 bg-sky-500/5 p-5 space-y-3">
+        <section className="rounded-2xl border border-sky-500/30 bg-sky-500/5 space-y-3 panel-body">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-semibold text-foreground">Load from Template</h3>
+              <h3 className="heading-label font-semibold text-foreground">Load from Template</h3>
               <p className="mt-1 text-xs text-muted-foreground">Select a matching weight preset to apply</p>
             </div>
             <button onClick={() => setShowTemplateSelector(false)} className="text-muted-foreground hover:text-foreground text-lg">✕</button>
@@ -182,7 +182,7 @@ export default function EmployerMatchingWeightsPage() {
                   <button
                     key={tpl._id}
                     onClick={() => applyTemplate(tpl)}
-                    className="rounded-xl border border-border bg-background/80 p-3 text-left transition-all hover:border-sky-500/40 hover:bg-sky-500/5"
+                    className="rounded-xl border border-border bg-background/80 text-left transition-all hover:border-sky-500/40 hover:bg-sky-500/5 chip-pad"
                   >
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-semibold text-foreground">{tpl.name}</span>
@@ -199,7 +199,7 @@ export default function EmployerMatchingWeightsPage() {
               })}
             </div>
           ) : (
-            <p className="rounded-xl border border-dashed border-border bg-background/60 p-4 text-center text-sm text-muted-foreground">
+            <p className="rounded-xl border border-dashed border-border bg-background/60 text-center text-sm text-muted-foreground card-pad">
               No matching weight templates available yet.
             </p>
           )}
@@ -208,7 +208,7 @@ export default function EmployerMatchingWeightsPage() {
 
       {/* ─── Save as Template ─── */}
       {showSaveAsTemplate && (
-        <section className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-5">
+        <section className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 panel-body">
           <div className="flex items-center gap-3">
             <Input
               value={templateName}
@@ -268,7 +268,7 @@ export default function EmployerMatchingWeightsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("weightBuilder")}</p>
-              <h3 className="mt-2 flex items-center gap-2 text-lg font-semibold text-foreground">
+              <h3 className="heading-subsection mt-2 flex items-center gap-2 font-semibold text-foreground">
                 <Sliders className="h-4 w-4 text-status-applied" /> {t("weightConfig")}
               </h3>
               <p className="mt-1 text-sm text-muted-foreground">{t("adjustPercentages")}</p>
@@ -279,7 +279,7 @@ export default function EmployerMatchingWeightsPage() {
           </div>
 
           {weightKeys.map((key) => (
-            <div key={key} className="rounded-3xl border border-border bg-background/60 p-3 sm:p-4">
+            <div key={key} className="rounded-3xl border border-border bg-background/60 card-pad">
               <div className="max-w-2xl">
                 <label htmlFor={`weight-${key}`} className="text-sm font-semibold text-foreground">{t(WEIGHT_LABEL_KEYS[key])}</label>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">{t(WEIGHT_DESC_KEYS[key])}</p>
@@ -336,7 +336,7 @@ export default function EmployerMatchingWeightsPage() {
           <section className="workspace-panel-surface space-y-4 rounded-3xl panel-body">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("distribution")}</p>
-              <h3 className="mt-2 text-lg font-semibold text-foreground">{t("weightOverview")}</h3>
+              <h3 className="heading-subsection mt-2 font-semibold text-foreground">{t("weightOverview")}</h3>
             </div>
             <div className="space-y-3">
               {weightKeys.map((key) => (
@@ -365,9 +365,9 @@ export default function EmployerMatchingWeightsPage() {
             </div>
           </section>
 
-          <section className="rounded-3xl border border-border bg-background/60 p-6 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.28)]">
+          <section className="rounded-3xl border border-border bg-background/60 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.28)] panel-body">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("tuningGuidance")}</p>
-            <h3 className="mt-2 text-lg font-semibold text-foreground">{t("tuningTitle")}</h3>
+            <h3 className="heading-subsection mt-2 font-semibold text-foreground">{t("tuningTitle")}</h3>
             <p className="mt-3 text-sm leading-6 text-muted-foreground">
               {t("tuningBody")}
             </p>

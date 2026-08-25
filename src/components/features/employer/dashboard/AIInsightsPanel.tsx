@@ -130,7 +130,7 @@ export function AIInsightsPanel({
     <div className="card-base overflow-hidden panel-body">
       <div className="px-5 pt-5 pb-3 sm:px-6 sm:pt-6 flex items-center gap-2">
         <Bot className="h-4 w-4 text-primary" />
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+        <h2 className="heading-label font-semibold text-muted-foreground uppercase tracking-wide">
           {t("title")}
         </h2>
         <span className="ml-auto text-[10px] font-medium text-muted-foreground/60 uppercase tracking-wider">

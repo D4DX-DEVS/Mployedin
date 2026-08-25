@@ -118,7 +118,7 @@ export default function EmployerPlacementsPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("filterOutcomes")}</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("filterTitle")}</h2>
+            <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("filterTitle")}</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
               {t("filterDescription")}
             </p>
@@ -175,12 +175,12 @@ export default function EmployerPlacementsPage() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-rejected">{t("placementList")}</p>
-              <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("unableToLoad")}</h2>
+              <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("unableToLoad")}</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
                 {t("loadError")}
               </p>
             </div>
-            <Button className="h-11 rounded-xl px-4 text-sm font-semibold" onClick={() => void refetch()}>
+            <Button size="lg" className="rounded-xl px-4 text-sm font-semibold" onClick={() => void refetch()}>
               {t("retry")}
             </Button>
           </div>
@@ -190,7 +190,7 @@ export default function EmployerPlacementsPage() {
         <div className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("placementList")}</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("tableTitle")}</h2>
+            <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("tableTitle")}</h2>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
               {t("tableDescription")}
             </p>
@@ -245,10 +245,10 @@ export default function EmployerPlacementsPage() {
                       </span>
                     ) : null}
                     <div className="mt-2 flex gap-2">
-                      <Button asChild variant="outline" size="sm" className="h-8 flex-1 rounded-lg text-[11px] font-semibold">
+                      <Button asChild variant="outline" size="dense" className="flex-1 rounded-lg text-[11px] font-semibold">
                         <Link href={`/${locale}/employer/placements/${placement._id}`}>{t("viewDetails")}</Link>
                       </Button>
-                      <Button asChild variant="outline" size="sm" className="h-8 flex-1 rounded-lg text-[11px] font-semibold">
+                      <Button asChild variant="outline" size="dense" className="flex-1 rounded-lg text-[11px] font-semibold">
                         <Link href={`/${locale}/employer/placements/${placement._id}/onboarding`}>
                           <ClipboardList className="me-1 h-3.5 w-3.5" />
                           {t("onboardingColumn")}

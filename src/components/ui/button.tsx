@@ -20,7 +20,14 @@ const buttonVariants = cva(
         sm: "h-9 rounded-lg px-3",
         lg: "h-11 rounded-lg px-8",
         xs: "h-7 rounded-md px-2 text-xs gap-1 [&_svg]:size-3",
+        // 32px — `sm` minus one 4px step, nothing else changed. Named because
+        // 123 call sites were already writing `size="sm" className="h-8"` for
+        // dense table-row and toolbar actions, more than any other override.
+        // Forcing them up to `sm` (36px) grew measured table rows from 49px to
+        // ~60px, so the step is real; it just had no name.
+        dense: "h-8 rounded-lg px-3",
         icon: "h-10 w-10",
+        iconDense: "h-8 w-8",
       },
     },
     defaultVariants: {

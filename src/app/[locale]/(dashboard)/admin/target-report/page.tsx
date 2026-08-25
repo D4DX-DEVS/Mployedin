@@ -279,7 +279,7 @@ export default function AdminTargetReportPage() {
 
       {/* ═══════ KPI Summary ═══════ */}
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="workspace-glass-panel rounded-2xl p-4">
+        <div className="workspace-glass-panel card-pad rounded-2xl">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Employer Target</p>
@@ -289,7 +289,7 @@ export default function AdminTargetReportPage() {
             <div className="workspace-tone-sky rounded-2xl p-2.5"><Building2 className="h-5 w-5" /></div>
           </div>
         </div>
-        <div className="workspace-glass-panel rounded-2xl p-4">
+        <div className="workspace-glass-panel card-pad rounded-2xl">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Employee Target</p>
@@ -299,7 +299,7 @@ export default function AdminTargetReportPage() {
             <div className="workspace-tone-emerald rounded-2xl p-2.5"><Users className="h-5 w-5" /></div>
           </div>
         </div>
-        <div className="workspace-glass-panel rounded-2xl p-4">
+        <div className="workspace-glass-panel card-pad rounded-2xl">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Business Volume</p>
@@ -309,7 +309,7 @@ export default function AdminTargetReportPage() {
             <div className="workspace-tone-amber rounded-2xl p-2.5"><CircleDollarSign className="h-5 w-5" /></div>
           </div>
         </div>
-        <div className="workspace-glass-panel rounded-2xl p-4">
+        <div className="workspace-glass-panel card-pad rounded-2xl">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Avg Performance</p>
@@ -338,7 +338,7 @@ export default function AdminTargetReportPage() {
           </Button>
         }
         actions={hasActiveFilters ? (
-          <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9 text-xs text-muted-foreground">
+          <Button variant="ghost" size="sm" onClick={clearFilters} className="text-xs text-muted-foreground">
             <X className="h-3.5 w-3.5 mr-1" /> Clear filters
           </Button>
         ) : undefined}
@@ -392,10 +392,10 @@ export default function AdminTargetReportPage() {
       />
 
       {/* ═══════ Monthly Trend ═══════ */}
-      <section className="rounded-3xl border bg-card p-5 shadow-sm print:break-inside-avoid">
+      <section className="rounded-3xl border bg-card shadow-sm print:break-inside-avoid panel-body">
         <div className="mb-5 flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold tracking-tight">Monthly Performance Timeline</h2>
+            <h2 className="heading-section font-semibold tracking-tight">Monthly Performance Timeline</h2>
             <p className="text-sm text-muted-foreground">
               Target vs achieved{quarterFilter !== "all" ? ` — Q${quarterFilter}` : ""}{categoryFilter !== "all" ? ` — ${categoryFilter} only` : ""}
             </p>
@@ -437,10 +437,10 @@ export default function AdminTargetReportPage() {
       </section>
 
       {/* ═══════ Business Volume ═══════ */}
-      <section className="rounded-3xl border bg-card p-5 shadow-sm print:break-inside-avoid">
+      <section className="rounded-3xl border bg-card shadow-sm print:break-inside-avoid panel-body">
         <div className="mb-5 flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold tracking-tight">Business Volume — {yearFilter}</h2>
+            <h2 className="heading-section font-semibold tracking-tight">Business Volume — {yearFilter}</h2>
             <p className="text-sm text-muted-foreground">Monthly revenue (thousands){quarterFilter !== "all" ? ` — Q${quarterFilter}` : ""}</p>
           </div>
           <CircleDollarSign className="h-5 w-5 text-primary" />
@@ -475,10 +475,10 @@ export default function AdminTargetReportPage() {
       </section>
 
       {/* ═══════ Year-over-Year ═══════ */}
-      <section className="rounded-3xl border bg-card p-5 shadow-sm print:break-inside-avoid">
+      <section className="rounded-3xl border bg-card shadow-sm print:break-inside-avoid panel-body">
         <div className="mb-5 flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold tracking-tight">Year-over-Year Comparison</h2>
+            <h2 className="heading-section font-semibold tracking-tight">Year-over-Year Comparison</h2>
             <p className="text-sm text-muted-foreground">{data.yearOverYear.previousYear.year} vs {data.yearOverYear.currentYear.year}</p>
           </div>
         </div>
@@ -491,7 +491,7 @@ export default function AdminTargetReportPage() {
             { label: "Fin. Target", curr: data.yearOverYear.currentYear.financeTarget, prev: data.yearOverYear.previousYear.financeTarget, growth: data.yearOverYear.growth.financeTarget, isCurrency: true },
             { label: "Fin. Achieved", curr: data.yearOverYear.currentYear.financeAchieved, prev: data.yearOverYear.previousYear.financeAchieved, growth: data.yearOverYear.growth.financeAchieved, isCurrency: true },
           ] as const).map((item) => (
-            <div key={item.label} className="rounded-xl border border-border/50 p-3 text-center">
+            <div key={item.label} className="rounded-xl border border-border/50 text-center chip-pad">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{item.label}</p>
               <p className="mt-1 text-lg font-bold tabular-nums">{"isCurrency" in item && item.isCurrency ? formatCurrency(item.curr) : formatCount(item.curr)}</p>
               <p className="text-xs text-muted-foreground">was {"isCurrency" in item && item.isCurrency ? formatCurrency(item.prev) : formatCount(item.prev)}</p>
@@ -502,10 +502,10 @@ export default function AdminTargetReportPage() {
       </section>
 
       {/* ═══════ Quarterly Breakdown ═══════ */}
-      <section className="rounded-3xl border bg-card p-5 shadow-sm print:break-inside-avoid">
+      <section className="rounded-3xl border bg-card shadow-sm print:break-inside-avoid panel-body">
         <div className="mb-5 flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold tracking-tight">Quarterly Breakdown</h2>
+            <h2 className="heading-section font-semibold tracking-tight">Quarterly Breakdown</h2>
             <p className="text-sm text-muted-foreground">Performance by quarter with business volume</p>
           </div>
           <Badge variant="outline">4 quarters</Badge>
@@ -532,10 +532,10 @@ export default function AdminTargetReportPage() {
 
       {/* ═══════ Supervisor Table ═══════ */}
       {(roleFilter === "all" || roleFilter === "supervisors") && filteredProfiles.supervisors.length > 0 && (
-        <section className="rounded-3xl border bg-card p-5 shadow-sm print:break-inside-avoid">
+        <section className="rounded-3xl border bg-card shadow-sm print:break-inside-avoid panel-body">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold tracking-tight">Supervisor Performance</h2>
+              <h2 className="heading-section font-semibold tracking-tight">Supervisor Performance</h2>
               <p className="text-sm text-muted-foreground">{filteredProfiles.supervisors.length} supervisors ranked by progress</p>
             </div>
             <Users className="h-5 w-5 text-primary" />
@@ -582,10 +582,10 @@ export default function AdminTargetReportPage() {
 
       {/* ═══════ Agent Table ═══════ */}
       {(roleFilter === "all" || roleFilter === "agents") && filteredProfiles.agents.length > 0 && (
-        <section className="rounded-3xl border bg-card p-5 shadow-sm print:break-inside-avoid">
+        <section className="rounded-3xl border bg-card shadow-sm print:break-inside-avoid panel-body">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold tracking-tight">Agent Performance</h2>
+              <h2 className="heading-section font-semibold tracking-tight">Agent Performance</h2>
               <p className="text-sm text-muted-foreground">{filteredProfiles.agents.length} agents ranked by progress</p>
             </div>
             <Users className="h-5 w-5 text-primary" />

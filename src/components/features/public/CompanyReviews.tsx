@@ -63,7 +63,7 @@ export default function CompanyReviews({ employerId, companyName }: CompanyRevie
   return (
     <div className="mt-8">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
+        <h2 className="heading-section font-semibold text-foreground flex items-center gap-2">
           <MessageSquare className="w-5 h-5" />
           {t("reviews")}
         </h2>
@@ -77,7 +77,7 @@ export default function CompanyReviews({ employerId, companyName }: CompanyRevie
 
       {/* Stats */}
       {stats && stats.totalReviews > 0 && (
-        <div className="bg-card border border-border rounded-xl p-5 mb-4">
+        <div className="bg-card border border-border rounded-xl mb-4 panel-body">
           <div className="flex items-center gap-6 flex-wrap">
             <div className="text-center">
               <p className="text-3xl font-bold text-foreground">{stats.avgRating.toFixed(1)}</p>
@@ -138,7 +138,7 @@ export default function CompanyReviews({ employerId, companyName }: CompanyRevie
       ) : (
         <div className="space-y-3">
           {reviews.map((review) => (
-            <div key={review._id} className="bg-card border border-border rounded-xl p-5">
+            <div key={review._id} className="bg-card border border-border rounded-xl panel-body">
               <div className="flex items-start justify-between mb-2">
                 <div>
                   <h4 className="font-medium text-foreground">{review.title}</h4>
@@ -227,7 +227,7 @@ function WriteReviewForm({ employerId, onSubmitted, onCancel }: { employerId: st
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-card border border-border rounded-xl p-5 mb-4 space-y-4">
+    <form onSubmit={handleSubmit} className="bg-card border border-border rounded-xl mb-4 space-y-4 panel-body">
       <h3 className="font-semibold text-foreground">{t("writeReview")}</h3>
 
       <div className="flex items-center gap-2">
@@ -239,21 +239,21 @@ function WriteReviewForm({ employerId, onSubmitted, onCancel }: { employerId: st
         ))}
       </div>
 
-      <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder={t("reviewTitle")} className="w-full px-3 py-2 border border-border rounded-lg bg-background text-sm" required maxLength={200} />
+      <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder={t("reviewTitle")} className="w-full border border-border rounded-lg bg-background text-sm chip-pad" required maxLength={200} />
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label className="text-xs font-medium text-green-600">{t("pros")} *</label>
-          <textarea value={pros} onChange={e => setPros(e.target.value)} className="w-full mt-1 px-3 py-2 border border-border rounded-lg bg-background text-sm" rows={3} required maxLength={2000} placeholder={t("whatLiked")} />
+          <textarea value={pros} onChange={e => setPros(e.target.value)} className="w-full mt-1 border border-border rounded-lg bg-background text-sm chip-pad" rows={3} required maxLength={2000} placeholder={t("whatLiked")} />
         </div>
         <div>
           <label className="text-xs font-medium text-red-600">{t("cons")} *</label>
-          <textarea value={cons} onChange={e => setCons(e.target.value)} className="w-full mt-1 px-3 py-2 border border-border rounded-lg bg-background text-sm" rows={3} required maxLength={2000} placeholder={t("whatBetter")} />
+          <textarea value={cons} onChange={e => setCons(e.target.value)} className="w-full mt-1 border border-border rounded-lg bg-background text-sm chip-pad" rows={3} required maxLength={2000} placeholder={t("whatBetter")} />
         </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <input type="text" value={jobTitle} onChange={e => setJobTitle(e.target.value)} placeholder={t("yourJobTitle")} className="px-3 py-2 border border-border rounded-lg bg-background text-sm" />
+        <input type="text" value={jobTitle} onChange={e => setJobTitle(e.target.value)} placeholder={t("yourJobTitle")} className="border border-border rounded-lg bg-background text-sm chip-pad" />
         <Select value={employmentStatus} onValueChange={setEmploymentStatus}>
           <SelectTrigger className="h-9 rounded-lg">
             <SelectValue placeholder={t("employmentStatus")} />

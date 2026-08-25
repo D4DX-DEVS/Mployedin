@@ -88,7 +88,7 @@ export default function CompaniesListPage() {
   useEffect(() => { fetchCompanies(); }, [fetchCompanies]);
 
   return (
-    <div className="space-y-6">
+    <div className="page-container">
       <PageHero icon={Building2} title={t("title")} description={t("description")} />
 
       <section className="workspace-panel-surface rounded-3xl space-y-3 panel-body">
@@ -146,7 +146,7 @@ export default function CompaniesListPage() {
               <Link
                 key={c._id}
                 href={`/${locale}/job-seeker/companies/${c._id}`}
-                className="workspace-glass-panel rounded-2xl p-5 transition-all hover:ring-2 hover:ring-primary/30"
+                className="workspace-glass-panel rounded-2xl transition-all hover:ring-2 hover:ring-primary/30 panel-body"
               >
                 <div className="flex items-start gap-3">
                   <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted text-lg font-bold text-muted-foreground">

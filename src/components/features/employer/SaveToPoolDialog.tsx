@@ -161,7 +161,7 @@ export function SaveToPoolDialog({
         ) : (
           <div className="space-y-3 sm:space-y-4">
             {pools.length > 0 ? (
-              <div className="space-y-1.5">
+              <div className="field">
                 <Label>{t("selectPool")}</Label>
                 <Select value={selected} onValueChange={setSelected}>
                   <SelectTrigger>
@@ -180,7 +180,7 @@ export function SaveToPoolDialog({
             ) : null}
 
             {isCreating ? (
-              <div className="space-y-1.5">
+              <div className="field">
                 <Label htmlFor="save-to-pool-new-name">{t("poolName")}</Label>
                 <Input
                   id="save-to-pool-new-name"

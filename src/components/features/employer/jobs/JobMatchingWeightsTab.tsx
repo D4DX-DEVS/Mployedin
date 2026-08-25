@@ -131,7 +131,7 @@ export function JobMatchingWeightsTab({ jobId }: Props) {
         {/* Weight sliders */}
         <div className="card-base space-y-3 sm:space-y-4 panel-body">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <h3 className="heading-label font-semibold text-foreground flex items-center gap-2">
               <Sliders className="h-4 w-4 text-sky-600" /> {t("weightConfiguration")}
             </h3>
             <span className={`rounded-full px-3 py-1 text-xs font-semibold ${isTotalValid ? "bg-emerald-500/10 text-emerald-700" : "bg-red-500/10 text-red-600"}`}>
@@ -183,7 +183,7 @@ export function JobMatchingWeightsTab({ jobId }: Props) {
         {/* Distribution overview */}
         <div className="space-y-3 sm:space-y-4">
           <div className="card-base space-y-3 panel-body">
-            <h3 className="text-sm font-semibold text-foreground">{t("weightDistribution")}</h3>
+            <h3 className="heading-label font-semibold text-foreground">{t("weightDistribution")}</h3>
             {weightKeys.map((key) => (
               <div key={key} className="space-y-1">
                 <div className="flex justify-between text-xs">

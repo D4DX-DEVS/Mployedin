@@ -230,7 +230,7 @@ function DashboardMetricCard({
   tone = "blue",
 }: DashboardMetricCardProps) {
   return (
-    <div className="workspace-glass-panel rounded-xl p-3">
+    <div className="workspace-glass-panel card-pad rounded-xl">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
@@ -253,7 +253,7 @@ function DashboardMetricCard({
 
 function SideListCard({ title, actionLabel, onAction, children }: SideListCardProps) {
   return (
-    <aside className="workspace-glass-panel rounded-xl p-4">
+    <aside className="workspace-glass-panel card-pad rounded-xl">
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">{title}</h3>
         {actionLabel && onAction ? (
@@ -462,7 +462,7 @@ export default function SuperAgentTargetProfilesPage() {
         }
       />
 
-      <div className="rounded-2xl border border-border/60 bg-card/95 p-3 shadow-sm">
+      <div className="rounded-2xl border border-border/60 bg-card/95 shadow-sm chip-pad">
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative">
             <CalendarDays className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -557,7 +557,7 @@ export default function SuperAgentTargetProfilesPage() {
               </Button>
             </>
           ) : null}
-          <Button className="h-10 gap-0 rounded-xl bg-blue-700 px-3 text-white hover:bg-blue-800 sm:gap-2 sm:px-4" onClick={() => setShowDistribute(true)}>
+          <Button className="gap-0 rounded-xl bg-blue-700 px-3 text-white hover:bg-blue-800 sm:gap-2 sm:px-4" onClick={() => setShowDistribute(true)}>
             <SplitSquareVertical className="h-4 w-4" /> <span className="hidden sm:inline">Distribute</span>
           </Button>
         </div>
@@ -902,8 +902,8 @@ export default function SuperAgentTargetProfilesPage() {
                               <TooltipTrigger asChild>
                                 <Button
                                   variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 rounded-lg"
+                                  size="iconDense"
+                                  className="rounded-lg"
                                   aria-label={`Focus ${agent.assigneeName}`}
                                   onClick={() => setDetailAgent(agent)}
                                 >
@@ -918,8 +918,8 @@ export default function SuperAgentTargetProfilesPage() {
                               <TooltipTrigger asChild>
                                 <Button
                                   variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 rounded-lg"
+                                  size="iconDense"
+                                  className="rounded-lg"
                                   aria-label={`Adjust target for ${agent.assigneeName}`}
                                   onClick={() => setShowDistribute(true)}
                                 >
@@ -955,15 +955,15 @@ export default function SuperAgentTargetProfilesPage() {
               </Select>
             </div>
             <div className="flex items-center gap-1.5">
-              <Button variant="outline" size="sm" className="h-8 gap-1 rounded-lg px-3 text-xs font-medium" onClick={() => setShowInsights(true)}>
+              <Button variant="outline" size="dense" className="gap-1 rounded-lg px-3 text-xs font-medium" onClick={() => setShowInsights(true)}>
                 <BarChart3 className="h-3.5 w-3.5" /> Insights
               </Button>
               <div className="mx-2 h-5 w-px bg-border" />
-              <Button variant="outline" size="icon" className="h-8 w-8" disabled={teamPage <= 1} onClick={() => setTeamPage((p) => p - 1)}>
+              <Button variant="outline" size="iconDense" className="" disabled={teamPage <= 1} onClick={() => setTeamPage((p) => p - 1)}>
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               <span className="min-w-[3rem] text-center text-xs font-medium">{teamPage} / {totalTeamPages}</span>
-              <Button variant="outline" size="icon" className="h-8 w-8" disabled={teamPage >= totalTeamPages} onClick={() => setTeamPage((p) => p + 1)}>
+              <Button variant="outline" size="iconDense" className="" disabled={teamPage >= totalTeamPages} onClick={() => setTeamPage((p) => p + 1)}>
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
