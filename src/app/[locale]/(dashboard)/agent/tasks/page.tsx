@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -38,9 +39,9 @@ interface Task {
 /* ------------------------------------------------------------------ */
 
 const PRIORITY_COLORS: Record<string, string> = {
-  high: "text-red-600 bg-red-50 dark:bg-red-950/30",
-  medium: "text-amber-600 bg-amber-50 dark:bg-amber-950/30",
-  low: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30",
+  high: "text-red-600 bg-red-50",
+  medium: "text-amber-600 bg-amber-50",
+  low: "text-emerald-600 bg-emerald-50",
 };
 
 const getStatusOptions = (t: any) => [
@@ -294,7 +295,7 @@ export default function AgentTasksPage() {
                               : "text-muted-foreground"
                           }`}>
                             <Calendar className="h-3 w-3" />
-                            {new Date(task.dueDate).toLocaleDateString()}
+                            {formatDate(new Date(task.dueDate))}
                           </span>
                         )}
                       </div>

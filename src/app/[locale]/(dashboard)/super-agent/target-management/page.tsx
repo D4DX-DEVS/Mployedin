@@ -47,6 +47,7 @@ import {
   Eye, SlidersHorizontal, CircleDollarSign,
   ChevronLeft, ChevronRight, BarChart3,
 } from "lucide-react";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -158,7 +159,7 @@ const METRIC_TONE_CLASS_MAP: Record<MetricTone, string> = {
 function formatCompactCurrency(value: number, currency = "AED"): string {
   if (value >= 1_000_000) return `${currency} ${(value / 1_000_000).toFixed(1)}M`;
   if (value >= 1_000) return `${currency} ${Math.round(value / 1_000)}K`;
-  return `${currency} ${value.toLocaleString()}`;
+  return `${currency} ${formatCount(value)}`;
 }
 
 function getProgressColor(progress: number): string {
@@ -168,9 +169,9 @@ function getProgressColor(progress: number): string {
 }
 
 function getProgressTextColor(progress: number): string {
-  if (progress >= 75) return "text-emerald-600 dark:text-emerald-400";
-  if (progress >= 40) return "text-amber-600 dark:text-amber-400";
-  return "text-red-500 dark:text-red-400";
+  if (progress >= 75) return "text-emerald-600";
+  if (progress >= 40) return "text-amber-600";
+  return "text-red-500";
 }
 
 function formatShortDate(value?: string): string {

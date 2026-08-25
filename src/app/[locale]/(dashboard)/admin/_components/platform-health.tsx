@@ -71,11 +71,11 @@ type InsightTone = "critical" | "warning" | "positive";
 
 const toneClasses: Record<InsightTone, string> = {
   critical:
-    "rounded-[24px] border border-rose-100 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,241,242,0.98))] shadow-[0_24px_60px_-44px_rgba(244,63,94,0.18)] dark:border-rose-500/25 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(30,41,59,0.94))] dark:shadow-[0_24px_60px_-44px_rgba(244,63,94,0.2)]",
+    "rounded-[24px] border border-rose-100 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,241,242,0.98))] shadow-[0_24px_60px_-44px_rgba(244,63,94,0.18)]",
   warning:
-    "rounded-[24px] border border-amber-100 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,251,235,0.98))] shadow-[0_24px_60px_-44px_rgba(245,158,11,0.16)] dark:border-amber-500/25 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(30,41,59,0.94))] dark:shadow-[0_24px_60px_-44px_rgba(245,158,11,0.18)]",
+    "rounded-[24px] border border-amber-100 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,251,235,0.98))] shadow-[0_24px_60px_-44px_rgba(245,158,11,0.16)]",
   positive:
-    "rounded-[24px] border border-emerald-100 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(236,253,245,0.98))] shadow-[0_24px_60px_-44px_rgba(16,185,129,0.16)] dark:border-emerald-500/25 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(30,41,59,0.94))] dark:shadow-[0_24px_60px_-44px_rgba(16,185,129,0.18)]",
+    "rounded-[24px] border border-emerald-100 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(236,253,245,0.98))] shadow-[0_24px_60px_-44px_rgba(16,185,129,0.16)]",
 };
 
 const badgeClasses: Record<InsightTone, string> = {
@@ -85,21 +85,21 @@ const badgeClasses: Record<InsightTone, string> = {
 };
 
 const titleClasses: Record<InsightTone, string> = {
-  critical: "text-slate-950 dark:text-slate-50",
-  warning: "text-slate-950 dark:text-slate-50",
-  positive: "text-slate-950 dark:text-slate-50",
+  critical: "text-slate-950",
+  warning: "text-slate-950",
+  positive: "text-slate-950",
 };
 
 const detailClasses: Record<InsightTone, string> = {
-  critical: "text-slate-600 dark:text-slate-300",
-  warning: "text-slate-600 dark:text-slate-300",
-  positive: "text-slate-600 dark:text-slate-300",
+  critical: "text-slate-600",
+  warning: "text-slate-600",
+  positive: "text-slate-600",
 };
 
 const actionClasses: Record<InsightTone, string> = {
-  critical: "text-rose-700 hover:text-rose-800 dark:text-rose-200 dark:hover:text-rose-100",
-  warning: "text-amber-700 hover:text-amber-800 dark:text-amber-200 dark:hover:text-amber-100",
-  positive: "text-emerald-700 hover:text-emerald-800 dark:text-emerald-200 dark:hover:text-emerald-100",
+  critical: "text-rose-700 hover:text-rose-800",
+  warning: "text-amber-700 hover:text-amber-800",
+  positive: "text-emerald-700 hover:text-emerald-800",
 };
 
 export async function PlatformInsightsSection({
@@ -165,7 +165,7 @@ export async function PlatformInsightsSection({
             {t("sections.platformInsights.description")}
           </p>
         </div>
-        <div className="shrink-0 self-start rounded-2xl border border-sky-100 bg-sky-50/70 px-3 py-2 text-sky-700 shadow-sm dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-200 sm:text-right">
+        <div className="shrink-0 self-start rounded-2xl border border-sky-100 bg-sky-50/70 px-3 py-2 text-sky-700 shadow-sm sm:text-right">
           <p className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.16em] sm:text-[11px] sm:tracking-[0.18em]">{t("sections.platformInsights.engine")}</p>
           <p className="mt-1 text-xs font-semibold sm:text-sm">{t("sections.platformInsights.engineDetail")}</p>
         </div>

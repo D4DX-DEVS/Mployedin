@@ -23,6 +23,7 @@ import {
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
+import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -129,7 +130,7 @@ function formatPlacementSalary(p: Placement): string {
   if (amount == null) return "—";
   const currency =
     (typeof raw === "object" ? raw?.currency : undefined) ?? p.currency ?? "AED";
-  return `${currency} ${amount.toLocaleString()}`;
+  return `${currency} ${formatCount(amount)}`;
 }
 
 /* ------------------------------------------------------------------ */
@@ -262,7 +263,7 @@ export default function SuperAgentPlacementsPage() {
   );
 
   const totalSalary = useMemo(
-    () => Object.entries(salaryByCurrency).map(([cur, val]) => `${cur} ${val.toLocaleString()}`).join(" · ") || "—",
+    () => Object.entries(salaryByCurrency).map(([cur, val]) => `${cur} ${formatCount(val)}`).join(" · ") || "—",
     [salaryByCurrency],
   );
 
@@ -277,8 +278,8 @@ export default function SuperAgentPlacementsPage() {
     { header: t("exportSalary"), key: "salary", formatter: (_v, row) => formatPlacementSalary(row as unknown as Placement) },
     { header: t("exportCurrency"), key: "currency" },
     { header: t("exportCommissionPaid"), key: "commissionPaid", formatter: (v) => v ? tc("yes") : tc("no") },
-    { header: t("exportStartDate"), key: "startDate", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
-    { header: t("exportPlacedAt"), key: "placedAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: t("exportStartDate"), key: "startDate", formatter: (v) => v ? formatDate(new Date(String(v))) : "" },
+    { header: t("exportPlacedAt"), key: "placedAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
@@ -423,7 +424,7 @@ export default function SuperAgentPlacementsPage() {
             <div className="space-y-4">
               {/* Salary Summary */}
               {Object.keys(salaryByCurrency).length > 0 && (
-                <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-50/40 px-4 py-2.5 text-sm text-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-300">
+                <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-50/40 px-4 py-2.5 text-sm text-emerald-800">
                   <DollarSign className="h-4 w-4 shrink-0" />
                   <span>{t("totalSalaryValue")} <strong>{totalSalary}</strong></span>
                 </div>
@@ -546,16 +547,16 @@ export default function SuperAgentPlacementsPage() {
                   <TableCell className="text-foreground/85 tabular-nums">
                     <span className="block">{formatPlacementSalary(p)}</span>
                     {p.commissionPaid ? (
-                      <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
-                        <ShieldCheck className="h-3 w-3" /> {t("commissionBadgePaid")}{p.commissionAmount ? ` · ${p.commissionAmount.toLocaleString()}` : ""}
+                      <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
+                        <ShieldCheck className="h-3 w-3" /> {t("commissionBadgePaid")}{p.commissionAmount ? ` · ${formatCount(p.commissionAmount)}` : ""}
                       </span>
                     ) : (
                       <span className="text-xs text-muted-foreground">{t("commissionBadgeUnpaid")}</span>
                     )}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    <span className="block">{p.startDate ? new Date(p.startDate).toLocaleDateString() : "—"}</span>
-                    <span className="mt-1 block text-xs">{p.placedAt ? new Date(p.placedAt).toLocaleDateString() : "—"}</span>
+                    <span className="block">{p.startDate ? formatDate(new Date(p.startDate)) : "—"}</span>
+                    <span className="mt-1 block text-xs">{p.placedAt ? formatDate(new Date(p.placedAt)) : "—"}</span>
                   </TableCell>
                 </TableRow>
               ))}

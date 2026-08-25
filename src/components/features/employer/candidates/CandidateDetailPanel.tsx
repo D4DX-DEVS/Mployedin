@@ -29,7 +29,9 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useCandidateDetail, type Candidate, type CandidateJob } from "@/hooks/useCandidates";
-import { ScoreRing } from "./ScoreRing";
+import { ScoreRing, matchBandLabel } from "./ScoreRing";
+import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 // ── Detail response shape (subset of /api/employers/candidates/[id]) ──
 interface DetailLanguage {
@@ -120,6 +122,7 @@ export function CandidateDetailPanel({
   onToggleReviewList,
 }: CandidateDetailPanelProps) {
   const t = useTranslations("employerCandidates");
+  const tMatch = useTranslations("employerCompliance.match");
   const [tab, setTab] = useState<DetailTab>("profile");
   const { data, isLoading } = useCandidateDetail(candidate?._id ?? "");
   const detail = (data as CandidateDetailResponse | undefined)?.candidate;
@@ -189,7 +192,7 @@ export function CandidateDetailPanel({
   const salary = detail?.preferredSalary;
   const salaryText =
     salary && (salary.min || salary.max)
-      ? `${salary.currency ?? ""} ${salary.min ? salary.min.toLocaleString() : ""}${salary.min && salary.max ? " – " : ""}${salary.max ? salary.max.toLocaleString() : ""}`.trim()
+      ? `${salary.currency ?? ""} ${salary.min ? formatCount(salary.min) : ""}${salary.min && salary.max ? " – " : ""}${salary.max ? formatCount(salary.max) : ""}`.trim()
       : t("notProvided");
   const noticeText =
     detail?.noticePeriod == null
@@ -255,8 +258,17 @@ export function CandidateDetailPanel({
               {availabilityLabel}
             </span>
           </div>
-          <ScoreRing value={score} size={68} strokeWidth={6} label={t("matchLabel")} emptyLabel="—" />
+          <ScoreRing
+            value={score}
+            size={68}
+            strokeWidth={6}
+            label={t("matchLabel")}
+            emptyLabel="—"
+            bandLabel={matchBandLabel(score, tMatch)}
+          />
         </div>
+
+        <CandidateDataNotice variant="candidateDetail" className="mt-4" />
 
         {/* Actions */}
         <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -335,7 +347,7 @@ export function CandidateDetailPanel({
               ) : null}
               {strengths.length > 0 ? (
                 <div>
-                  <p className="mb-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">{t("strengths")}</p>
+                  <p className="mb-1.5 text-xs font-semibold text-emerald-600">{t("strengths")}</p>
                   <ul className="space-y-1">
                     {strengths.map((s, i) => (
                       <li key={i} className="flex items-start gap-1.5 text-sm text-foreground/90">
@@ -348,7 +360,7 @@ export function CandidateDetailPanel({
               ) : null}
               {gaps.length > 0 ? (
                 <div>
-                  <p className="mb-1.5 text-xs font-semibold text-rose-600 dark:text-rose-400">{t("gaps")}</p>
+                  <p className="mb-1.5 text-xs font-semibold text-rose-600">{t("gaps")}</p>
                   <ul className="space-y-1">
                     {gaps.map((g, i) => (
                       <li key={i} className="flex items-start gap-1.5 text-sm text-foreground/90">
@@ -376,7 +388,7 @@ export function CandidateDetailPanel({
                     className={cn(
                       "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium",
                       matched
-                        ? "bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/30 dark:text-emerald-400"
+                        ? "bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/30"
                         : "bg-muted text-foreground/80",
                     )}
                   >

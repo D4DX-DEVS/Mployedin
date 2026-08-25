@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 interface Banner {
   _id: string;
@@ -273,7 +274,7 @@ export default function LandingPage() {
               </p>
 
               {audience === "jobSeeker" ? (
-              <form onSubmit={handleSearch} className="mx-auto mt-8 max-w-2xl rounded-2xl border border-border/70 bg-card p-3 shadow-[0_20px_60px_-30px_rgba(15,23,42,0.35)] dark:shadow-[0_20px_60px_-30px_rgba(0,0,0,0.7)] lg:mx-0">
+              <form onSubmit={handleSearch} className="mx-auto mt-8 max-w-2xl rounded-2xl border border-border/70 bg-card p-3 shadow-[0_20px_60px_-30px_rgba(15,23,42,0.35)] lg:mx-0">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <label className="flex min-h-12 flex-col items-start justify-center rounded-xl border border-border/70 px-4 text-start">
                     <span className="text-[11px] font-semibold text-muted-foreground">{t("jobSearchLabel")}</span>
@@ -351,7 +352,7 @@ export default function LandingPage() {
 
             <div className="relative mx-auto hidden w-full max-w-lg lg:block" aria-hidden="true">
               <div className="absolute -inset-8 rounded-full bg-primary/10 blur-3xl" />
-              <div className="relative rotate-[1deg] rounded-[2rem] border border-white/60 bg-card/90 p-5 shadow-[0_40px_100px_-42px_rgba(30,47,108,0.48)] backdrop-blur dark:border-border/70">
+              <div className="relative rotate-[1deg] rounded-[2rem] border border-white/60 bg-card/90 p-5 shadow-[0_40px_100px_-42px_rgba(30,47,108,0.48)] backdrop-blur">
                 <div className="mb-5 flex items-center justify-between">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
@@ -376,7 +377,7 @@ export default function LandingPage() {
                         <div className="h-3 w-2/3 rounded-full bg-foreground/80" />
                         <div className="mt-2 h-2 w-1/2 rounded-full bg-muted-foreground/25" />
                       </div>
-                      <div className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                      <div className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-700">
                         {score}%
                       </div>
                     </div>
@@ -627,7 +628,7 @@ export default function LandingPage() {
 
             <div className={`mt-8 grid gap-6 ${data.videos.length === 1 ? "max-w-4xl" : "lg:grid-cols-2 xl:grid-cols-3"}`}>
               {data.videos.slice(0, 3).map((video) => (
-                <div key={video._id} className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm dark:shadow-[0_4px_20px_rgba(0,0,0,0.15)]">
+                <div key={video._id} className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm">
                   <div className="aspect-video bg-black/5">
                     <iframe
                       src={getEmbedUrl(video.url)}
@@ -665,7 +666,7 @@ export default function LandingPage() {
 
             <div className="grid gap-6 lg:grid-cols-3">
               {data.testimonials.slice(0, 3).map((testimonial) => (
-                <div key={testimonial._id} className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm dark:shadow-[0_4px_20px_rgba(0,0,0,0.15)]">
+                <div key={testimonial._id} className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
                   <div className="flex gap-1">
                     {Array.from({ length: testimonial.rating }).map((_, index) => (
                       <Star key={index} className="h-4 w-4 fill-amber-400 text-amber-400" />
@@ -713,7 +714,7 @@ export default function LandingPage() {
 
             <div className="mt-8 grid gap-6 lg:grid-cols-3">
               {data.recentPosts.slice(0, 3).map((post) => (
-                <Link key={post._id} href={`/${locale}/blog/${post.slug}`} className="group overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm transition-shadow hover:shadow-md dark:shadow-[0_4px_20px_rgba(0,0,0,0.15)] dark:hover:shadow-[0_8px_28px_rgba(0,0,0,0.25)]">
+                <Link key={post._id} href={`/${locale}/blog/${post.slug}`} className="group overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm transition-shadow hover:shadow-md">
                   {post.coverImage && <img src={post.coverImage} alt="" className="h-52 w-full object-cover" />}
                   <div className="p-6">
                     <h3 className="text-lg font-semibold tracking-tight text-foreground transition-colors group-hover:text-primary">
@@ -724,7 +725,7 @@ export default function LandingPage() {
                     </p>
                     <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                       {post.author && <span>{post.author}</span>}
-                      {post.publishedAt && <span>{new Date(post.publishedAt).toLocaleDateString()}</span>}
+                      {post.publishedAt && <span>{formatDate(new Date(post.publishedAt))}</span>}
                     </div>
                   </div>
                 </Link>

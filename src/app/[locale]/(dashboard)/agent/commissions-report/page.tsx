@@ -15,6 +15,7 @@ import {
   CircleDollarSign, Clock, CheckCircle2, Wallet,
   CalendarDays, RotateCcw, TrendingUp,
 } from "lucide-react";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -70,7 +71,7 @@ const TYPE_COLORS: Record<string, string> = {
 function fmt(value: number, currency = "AED"): string {
   if (value >= 1_000_000) return `${currency} ${(value / 1_000_000).toFixed(1)}M`;
   if (value >= 1_000) return `${currency} ${Math.round(value / 1_000)}K`;
-  return `${currency} ${value.toLocaleString()}`;
+  return `${currency} ${formatCount(value)}`;
 }
 
 /* ------------------------------------------------------------------ */

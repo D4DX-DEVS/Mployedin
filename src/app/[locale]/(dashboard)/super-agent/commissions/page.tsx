@@ -30,6 +30,7 @@ import { formatCurrency } from "@/lib/currency";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 interface Commission {
   _id: string;
@@ -124,7 +125,7 @@ export default function SuperAgentCommissionsPage() {
     { header: t("tableHeaderAmount"), key: "amount" },
     { header: t("exportHeaderCurrency"), key: "currency" },
     { header: tc("status"), key: "status" },
-    { header: tc("date"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: tc("date"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
@@ -330,7 +331,7 @@ export default function SuperAgentCommissionsPage() {
                       <TableCell className="max-w-xs truncate text-xs text-muted-foreground">{c.notes ?? "—"}</TableCell>
                       <TableCell className="text-right font-semibold text-foreground">{formatCurrency(c.amount, c.currency ?? currencyCode)}</TableCell>
                     <TableCell><StatusBadge status={c.status} /></TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{new Date(c.createdAt).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{formatDate(new Date(c.createdAt))}</TableCell>
                     <TableCell>
                       {c.status === "pending" && (
                         <Button variant="ghost" size="sm" className="h-7 text-xs text-green-700" onClick={() => updateStatus(c._id, "approved")}>

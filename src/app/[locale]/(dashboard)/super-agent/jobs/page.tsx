@@ -64,6 +64,7 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import type { ExportColumn } from "@/lib/export";
+import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
 /* ────────────────────────────── Types ────────────────────────────── */
 
@@ -380,7 +381,7 @@ export default function SuperAgentJobsPage() {
     if (!salary) return "—";
     if (salary.isNegotiable) return t("negotiable");
     if (salary.min && salary.max) {
-      return `${salary.min.toLocaleString()}–${salary.max.toLocaleString()} ${salary.currency ?? ""}`;
+      return `${formatCount(salary.min)}–${formatCount(salary.max)} ${salary.currency ?? ""}`;
     }
     return "—";
   };
@@ -438,7 +439,7 @@ export default function SuperAgentJobsPage() {
     { header: "Work Mode", key: "workMode" },
     { header: "Status", key: "status" },
     { header: "Category", key: "category" },
-    { header: "Date", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: "Date", key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
@@ -878,7 +879,7 @@ export default function SuperAgentJobsPage() {
                         <p className="font-medium text-foreground">{job.title}</p>
                         <div className="mt-1 flex flex-wrap items-center gap-1.5">
                           <StatusBadge status={job.status ?? "draft"} />
-                          <span className="text-[10px] text-muted-foreground">{new Date(job.createdAt).toLocaleDateString()}</span>
+                          <span className="text-[10px] text-muted-foreground">{formatDate(new Date(job.createdAt))}</span>
                         </div>
                         {job.tags && job.tags.length > 0 && (
                           <div className="mt-1 flex flex-wrap gap-1">
@@ -1010,7 +1011,7 @@ export default function SuperAgentJobsPage() {
                       {selectedJob.salary?.isNegotiable
                         ? t("negotiable")
                         : selectedJob.salary?.min && selectedJob.salary?.max
-                          ? `${selectedJob.salary.min.toLocaleString()}–${selectedJob.salary.max.toLocaleString()} ${selectedJob.salary.currency ?? ""}`
+                          ? `${formatCount(selectedJob.salary.min)}–${formatCount(selectedJob.salary.max)} ${selectedJob.salary.currency ?? ""}`
                           : "—"}
                     </p>
                   </div>
@@ -1047,7 +1048,7 @@ export default function SuperAgentJobsPage() {
                   <div>
                     <p className="text-xs text-muted-foreground">{t("postedLabel")}</p>
                     <p className="font-medium text-foreground">
-                      {new Date(selectedJob.createdAt).toLocaleDateString()}
+                      {formatDate(new Date(selectedJob.createdAt))}
                     </p>
                   </div>
                 </div>

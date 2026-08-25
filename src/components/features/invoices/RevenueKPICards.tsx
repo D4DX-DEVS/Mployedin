@@ -5,6 +5,7 @@ import {
   TrendingUp, TrendingDown, DollarSign, Clock, AlertTriangle,
   CheckCircle2, Percent, ReceiptText, RefreshCw, BarChart3,
 } from "lucide-react";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 interface KPIData {
   totalRevenue: number;
@@ -28,7 +29,7 @@ interface RevenueKPICardsProps {
 
 export function RevenueKPICards({ kpi, currency = "AED", variant = "admin" }: RevenueKPICardsProps) {
   const t = useTranslations("revenueKPICards");
-  const fmt = (v: number) => `${currency} ${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+  const fmt = (v: number) => `${currency} ${formatCount(v, { maximumFractionDigits: 0 })}`;
 
   const adminCards = [
     { label: t("totalRevenue"), value: fmt(kpi.totalRevenue), icon: DollarSign, tone: "workspace-tone-sky" },

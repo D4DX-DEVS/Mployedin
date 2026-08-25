@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { Calendar, Video, MapPin, Monitor, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { formatDate, formatTime } from "@/lib/ui/intlFormat";
 
 interface UpcomingInterview {
   _id: string;
@@ -87,13 +88,13 @@ export async function UpcomingInterviews({
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <span className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Calendar className="h-3 w-3" />
-                      {date.toLocaleDateString(undefined, {
+                      {formatDate(date, {
                         weekday: "short",
                         month: "short",
                         day: "numeric",
                       })}
                       {" at "}
-                      {date.toLocaleTimeString(undefined, {
+                      {formatTime(date, {
                         hour: "2-digit",
                         minute: "2-digit",
                       })}

@@ -23,6 +23,7 @@ import { useJobDetail, useUpdateJob } from "@/hooks/useJobs";
 import { useCountrySearch } from "@/hooks/useCountrySearch";
 import type { CountryOption } from "@/hooks/useCountrySearch";
 import { useTranslations } from "next-intl";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 // ─── Constants ───────────────────────────────────────────────────
 const JOB_CATEGORIES = [
@@ -114,7 +115,7 @@ function formatSalary(value: number, currency: string, period: string): string {
     return `${sym}${l % 1 === 0 ? l : l.toFixed(1)}L`;
   }
   if (value >= 1000) return `${sym}${(value / 1000).toFixed(0)}K`;
-  return `${sym}${value.toLocaleString()}`;
+  return `${sym}${formatCount(value)}`;
 }
 
 // ─── Section card ─────────────────────────────────────────────────
@@ -911,9 +912,9 @@ export function SharedJobEditPage({
               </Field>
             </div>
             {(form.salary.min > 0 || form.salary.max > 0) && (
-              <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/40 px-3 py-2 text-sm">
+              <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2 text-sm">
                 <span className="text-muted-foreground text-xs">{t("salaryPreview")} </span>
-                <span className="font-semibold text-emerald-700 dark:text-emerald-400">
+                <span className="font-semibold text-emerald-700">
                   {form.salary.min > 0 ? formatSalary(form.salary.min, form.salary.currency, form.salary.period) : "—"}
                   {" – "}
                   {form.salary.max > 0 ? formatSalary(form.salary.max, form.salary.currency, form.salary.period) : "—"}
@@ -1183,8 +1184,8 @@ export function SharedJobEditPage({
                     <MapPin className="w-3 h-3 flex-shrink-0" />
                     {[form.location.city, form.location.country].filter(Boolean).join(", ") || t("locationNotSet")}
                     {form.workMode && <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-medium",
-                      form.workMode === "remote" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-                        : form.workMode === "hybrid" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                      form.workMode === "remote" ? "bg-emerald-100 text-emerald-700"
+                        : form.workMode === "hybrid" ? "bg-amber-100 text-amber-700"
                         : "bg-muted text-muted-foreground"
                     )}>{form.workMode === "onsite" ? t("onSite") : form.workMode === "hybrid" ? t("hybridMode") : t("remote")}</span>}
                   </p>
@@ -1192,7 +1193,7 @@ export function SharedJobEditPage({
                 {(form.salary.min > 0 || form.salary.max > 0) && (
                   <div className="flex items-center gap-1.5 text-sm">
                     <DollarSign className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
-                    <span className="font-semibold text-emerald-700 dark:text-emerald-400">
+                    <span className="font-semibold text-emerald-700">
                       {form.salary.min > 0 ? formatSalary(form.salary.min, form.salary.currency, form.salary.period) : "—"}
                       {" – "}
                       {form.salary.max > 0 ? formatSalary(form.salary.max, form.salary.currency, form.salary.period) : "—"}
@@ -1202,10 +1203,10 @@ export function SharedJobEditPage({
                 )}
                 <div className="flex flex-wrap gap-1.5">
                   {form.category && <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">{form.category}</span>}
-                  {form.employmentType && <span className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-0.5 rounded-full font-medium">{form.employmentType === "full_time" ? t("fullTime") : form.employmentType === "part_time" ? t("partTime") : form.employmentType === "contract" ? t("contract") : form.employmentType === "internship" ? t("internship") : t("freelance")}</span>}
-                  {form.duration && <span className="text-xs bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 px-2 py-0.5 rounded-full font-medium">{form.duration}</span>}
+                  {form.employmentType && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">{form.employmentType === "full_time" ? t("fullTime") : form.employmentType === "part_time" ? t("partTime") : form.employmentType === "contract" ? t("contract") : form.employmentType === "internship" ? t("internship") : t("freelance")}</span>}
+                  {form.duration && <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-medium">{form.duration}</span>}
                   <span className="text-xs bg-muted px-2 py-0.5 rounded-full text-muted-foreground">{form.vacancies} {form.vacancies === 1 ? "vacancy" : "vacancies"}</span>
-                  {form.applicationMode === "auto" && <span className="text-xs bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 px-2 py-0.5 rounded-full font-medium">{t("aiMatching")}</span>}
+                  {form.applicationMode === "auto" && <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full font-medium">{t("aiMatching")}</span>}
                 </div>
                 {form.requirements.skills.length > 0 && (
                   <div>
@@ -1245,9 +1246,9 @@ export function SharedJobEditPage({
                 </div>
               </div>
             </div>
-            <div className="rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 p-3.5 text-xs text-amber-800 dark:text-amber-300 space-y-1">
+            <div className="rounded-xl bg-amber-50 border border-amber-200 p-3.5 text-xs text-amber-800 space-y-1">
               <p className="font-semibold">💡 Pro Tips</p>
-              <ul className="space-y-1 text-amber-700 dark:text-amber-400 list-disc list-inside">
+              <ul className="space-y-1 text-amber-700 list-disc list-inside">
                 <li>Adding salary → 2× more applies</li>
                 <li>Remote option → +40% reach</li>
                 <li>5+ skills → better AI matching</li>

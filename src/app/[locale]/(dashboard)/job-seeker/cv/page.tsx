@@ -563,7 +563,7 @@ export default function CVBuilderPage() {
                 </TabsTrigger>
               </TabsList>
               <button type="button" onClick={() => openTips("general")}
-                className="inline-flex max-w-full items-center gap-1.5 self-start rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-100 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-400 sm:self-auto">
+                className="inline-flex max-w-full items-center gap-1.5 self-start rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-100 sm:self-auto">
                 <Lightbulb className="h-3.5 w-3.5" />{t("actions.tips")}
               </button>
             </div>

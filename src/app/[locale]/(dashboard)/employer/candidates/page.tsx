@@ -9,7 +9,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
 import { SaveToPoolDialog } from "@/components/features/employer/SaveToPoolDialog";
-import { ScoreRing } from "@/components/features/employer/candidates/ScoreRing";
+import { ScoreRing, matchBandLabel } from "@/components/features/employer/candidates/ScoreRing";
 import { CandidateDetailPanel } from "@/components/features/employer/candidates/CandidateDetailPanel";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { PageHero } from "@/components/shared/PageHero";
@@ -63,6 +63,7 @@ import {
   Zap,
 } from "lucide-react";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 
 const MATCH_SESSION_STORAGE_KEY = "employer-candidate-matching-session-v1";
 const MAX_AI_MATCH_BATCH_SIZE = 20;
@@ -164,37 +165,37 @@ function safeSerializeCandidateMatchSessionState(state: { selectedJobId: string;
 }
 
 const scoreBadgeClass = (score?: number) => {
-  if (score == null) return "border border-border bg-card text-muted-foreground shadow-sm dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-300";
-  if (score >= 80) return "border border-status-selected/20 bg-status-selected-bg text-status-selected shadow-sm dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300";
-  if (score >= 60) return "border border-status-shortlisted/20 bg-status-shortlisted-bg text-status-shortlisted shadow-sm dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300";
-  return "border border-status-rejected/20 bg-status-rejected-bg text-status-rejected shadow-sm dark:border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-300";
+  if (score == null) return "border border-border bg-card text-muted-foreground shadow-sm";
+  if (score >= 80) return "border border-status-selected/20 bg-status-selected-bg text-status-selected shadow-sm";
+  if (score >= 60) return "border border-status-shortlisted/20 bg-status-shortlisted-bg text-status-shortlisted shadow-sm";
+  return "border border-status-rejected/20 bg-status-rejected-bg text-status-rejected shadow-sm";
 };
 
 const cardSurfaceClass = (score?: number, savedForReview?: boolean) => {
   // ponytail: light gradients with dark mode neutral shadow fallback
   if (savedForReview) {
-    return "border-status-applied/20 workspace-panel-surface shadow-[0_24px_60px_-44px_rgba(14,165,233,0.45)] dark:border-sky-500/30 dark:bg-card dark:shadow-lg";
+    return "border-status-applied/20 workspace-panel-surface shadow-[0_24px_60px_-44px_rgba(14,165,233,0.45)]";
   }
 
   if (score != null && score >= 80) {
-    return "border-status-selected/20 workspace-panel-surface shadow-[0_24px_60px_-44px_rgba(16,185,129,0.35)] dark:border-emerald-500/25 dark:bg-card dark:shadow-lg";
+    return "border-status-selected/20 workspace-panel-surface shadow-[0_24px_60px_-44px_rgba(16,185,129,0.35)]";
   }
 
-  return "border-border workspace-panel-surface shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] dark:border-slate-700 dark:bg-card dark:shadow-lg";
+  return "border-border workspace-panel-surface shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)]";
 };
 
 const availabilityTone = (status?: string) => {
   switch (status) {
     case "immediately":
-      return "border-status-selected/20 bg-status-selected-bg text-status-selected dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300";
+      return "border-status-selected/20 bg-status-selected-bg text-status-selected";
     case "within_month":
-      return "border-status-applied/20 bg-status-applied-bg text-status-applied dark:border-sky-500/30 dark:bg-sky-500/15 dark:text-sky-300";
+      return "border-status-applied/20 bg-status-applied-bg text-status-applied";
     case "within_3_months":
-      return "border-status-shortlisted/20 bg-status-shortlisted-bg text-status-shortlisted dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300";
+      return "border-status-shortlisted/20 bg-status-shortlisted-bg text-status-shortlisted";
     case "not_available":
-      return "border-status-rejected/20 bg-status-rejected-bg text-status-rejected dark:border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-300";
+      return "border-status-rejected/20 bg-status-rejected-bg text-status-rejected";
     default:
-      return "border-border bg-secondary/75 text-muted-foreground dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-300";
+      return "border-border bg-secondary/75 text-muted-foreground";
   }
 };
 
@@ -275,6 +276,7 @@ function CandidateMatchCard({
   onSaveToPool,
 }: CandidateCardProps) {
   const t = useTranslations("employerCandidates");
+  const tMatch = useTranslations("employerCompliance.match");
   const tp = useTranslations("talentPool");
   const currentRole = candidate.experience?.find((entry) => entry.isCurrent)?.jobTitle ?? null;
   const matchedSkills = getMatchedSkills(candidate, selectedJobData);
@@ -343,7 +345,7 @@ function CandidateMatchCard({
             <AvatarImage src={candidate.userId.avatar} alt={candidateDisplayName} />
           ) : null}
           <AvatarFallback
-            className={`text-sm font-semibold ${isInReviewList ? "bg-status-applied-bg text-status-applied dark:bg-sky-500/15 dark:text-sky-300" : "bg-secondary/75 text-foreground dark:bg-slate-800/80 dark:text-slate-300"}`}
+            className={`text-sm font-semibold ${isInReviewList ? "bg-status-applied-bg text-status-applied" : "bg-secondary/75 text-foreground"}`}
           >
             {(candidateDisplayName[0] ?? "?").toUpperCase()}
           </AvatarFallback>
@@ -351,7 +353,7 @@ function CandidateMatchCard({
 
         <div className="min-w-0 space-y-1">
           <div className="flex min-w-0 items-center gap-2">
-            <h3 className="truncate text-sm font-semibold text-foreground sm:text-[15px]">{candidateDisplayName}</h3>
+            <h2 className="truncate text-sm font-semibold text-foreground sm:text-[15px]">{candidateDisplayName}</h2>
             {rank ? (
               <span className="hidden items-center gap-1 rounded-full border border-border bg-background/80 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground lg:inline-flex">
                 <Trophy className="h-3 w-3 text-amber-500" />
@@ -359,7 +361,7 @@ function CandidateMatchCard({
               </span>
             ) : null}
             {isInReviewList ? (
-              <span className="hidden rounded-full border border-border bg-status-applied-bg px-2 py-0.5 text-[10px] font-semibold text-status-applied dark:border-sky-500/30 dark:bg-sky-500/15 dark:text-sky-300 lg:inline-flex">
+              <span className="hidden rounded-full border border-border bg-status-applied-bg px-2 py-0.5 text-[10px] font-semibold text-status-applied lg:inline-flex">
                 {t("savedLabel")}
               </span>
             ) : null}
@@ -380,7 +382,7 @@ function CandidateMatchCard({
               return (
                 <span
                   key={skill}
-                  className={`inline-flex max-w-full items-center rounded-full px-2 py-0.5 font-medium ${skillIndex === 2 ? "hidden sm:inline-flex" : ""} ${isRequired ? "bg-status-applied-bg text-status-applied dark:bg-sky-500/15 dark:text-sky-300" : "bg-secondary/75 text-muted-foreground dark:bg-slate-800/80 dark:text-slate-300"}`}
+                  className={`inline-flex max-w-full items-center rounded-full px-2 py-0.5 font-medium ${skillIndex === 2 ? "hidden sm:inline-flex" : ""} ${isRequired ? "bg-status-applied-bg text-status-applied" : "bg-secondary/75 text-muted-foreground"}`}
                 >
                   <span className="truncate">{skill}</span>
                 </span>
@@ -394,13 +396,20 @@ function CandidateMatchCard({
               <span className="sm:hidden">+{overflowSkillCount} {t("moreSuffix")}</span>
             ) : null}
             {selectedJobData && matchedSkills.length === 0 && missingSkills.length > 0 ? (
-              <span className="text-status-shortlisted dark:text-amber-300">{missingSkills.length === 1 ? t("skillGap", { count: missingSkills.length }) : t("skillGaps", { count: missingSkills.length })}</span>
+              <span className="text-status-shortlisted">{missingSkills.length === 1 ? t("skillGap", { count: missingSkills.length }) : t("skillGaps", { count: missingSkills.length })}</span>
             ) : null}
           </div>
         </div>
 
         <div className="flex shrink-0 flex-col items-end gap-1.5" onClick={stopRowClick} onKeyDown={stopRowClick}>
-          {hasAnyScore ? <ScoreRing value={candidate.matchScore} size={44} strokeWidth={5} /> : null}
+          {hasAnyScore ? (
+            <ScoreRing
+              value={candidate.matchScore}
+              size={44}
+              strokeWidth={5}
+              bandLabel={matchBandLabel(candidate.matchScore, tMatch)}
+            />
+          ) : null}
           <Button
             size="sm"
             variant={isInReviewList ? "default" : "outline"}
@@ -518,7 +527,7 @@ function CandidateInsightsDialog({
                   <div className="flex flex-wrap items-center gap-2">
                     <DialogTitle className="text-2xl font-semibold tracking-tight text-foreground">{getCandidateDisplayName(candidate)}</DialogTitle>
                     {isInReviewList ? (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-status-applied/20 bg-background/80 px-2.5 py-1 text-[11px] font-semibold text-status-applied dark:border-sky-500/30 dark:text-sky-300">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-status-applied/20 bg-background/80 px-2.5 py-1 text-[11px] font-semibold text-status-applied">
                         <CheckCircle2 className="h-3 w-3" />
                         {t("reviewList")}
                       </span>
@@ -716,9 +725,9 @@ function CandidateInsightsDialog({
 
 /* ── AI Screening Results Panel ──────────────────────────────────── */
 const RECOMMENDATION_STYLES: Record<string, string> = {
-  shortlist: "border-status-selected/20 bg-status-selected-bg text-status-selected dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300",
-  consider: "border-status-shortlisted/20 bg-status-shortlisted-bg text-status-shortlisted dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300",
-  pass: "border-status-rejected/20 bg-status-rejected-bg text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-300",
+  shortlist: "border-status-selected/20 bg-status-selected-bg text-status-selected",
+  consider: "border-status-shortlisted/20 bg-status-shortlisted-bg text-status-shortlisted",
+  pass: "border-status-rejected/20 bg-status-rejected-bg text-rose-700",
 };
 
 interface ScreeningPanelProps {
@@ -753,17 +762,22 @@ function AIScreeningResultsPanel({ results, jobTitle, totalReviewed, onClose }: 
         </Button>
       </div>
 
+      {/* This panel produces shortlist / consider / pass recommendations, so it
+          is the surface where an AI estimate is most likely to be mistaken for
+          a decision. Say plainly that it is not one. */}
+      <CandidateDataNotice variant="aiScore" />
+
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="workspace-glass-panel rounded-2xl p-3 text-center">
-          <p className="text-2xl font-semibold text-status-selected dark:text-emerald-400">{shortlistCount}</p>
+          <p className="text-2xl font-semibold text-status-selected">{shortlistCount}</p>
           <p className="text-xs font-medium text-muted-foreground">{t("shortlist")}</p>
         </div>
         <div className="workspace-glass-panel rounded-2xl p-3 text-center">
-          <p className="text-2xl font-semibold text-status-shortlisted dark:text-amber-400">{considerCount}</p>
+          <p className="text-2xl font-semibold text-status-shortlisted">{considerCount}</p>
           <p className="text-xs font-medium text-muted-foreground">{t("consider")}</p>
         </div>
         <div className="workspace-glass-panel rounded-2xl p-3 text-center">
-          <p className="text-2xl font-semibold text-status-rejected dark:text-rose-400">{passCount}</p>
+          <p className="text-2xl font-semibold text-status-rejected">{passCount}</p>
           <p className="text-xs font-medium text-muted-foreground">{t("pass")}</p>
         </div>
       </div>
@@ -781,7 +795,7 @@ function AIScreeningResultsPanel({ results, jobTitle, totalReviewed, onClose }: 
                 className="flex w-full items-center gap-3 px-4 py-3 text-left"
                 onClick={() => setExpandedId(isExpanded ? null : candidate.id)}
               >
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-black/5 text-xs font-bold dark:bg-white/10">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-black/5 text-xs font-bold">
                   #{idx + 1}
                 </span>
                 <div className="min-w-0 flex-1">
@@ -807,7 +821,7 @@ function AIScreeningResultsPanel({ results, jobTitle, totalReviewed, onClose }: 
                       <ul className="mt-1 space-y-1">
                         {candidate.strengths.map((s) => (
                           <li key={s} className="flex items-start gap-2 text-xs">
-                            <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-status-selected dark:text-emerald-400" />
+                            <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-status-selected" />
                             <span>{s}</span>
                           </li>
                         ))}
@@ -1465,6 +1479,10 @@ export default function EmployerCandidatesPage() {
         ]}
       />
 
+      {/* Privacy information at the point personal data is first shown, not
+          only behind a footer link. */}
+      <CandidateDataNotice variant="candidateList" />
+
       {screeningResults && (
         <AIScreeningResultsPanel
           results={screeningResults.candidates}
@@ -1506,12 +1524,12 @@ export default function EmployerCandidatesPage() {
       )}
 
       {!jobsLoading && !hasJobsError && jobs.length === 0 && (
-          <div className="rounded-[24px] border border-amber-500/20 bg-amber-500/10 p-4 text-amber-900 shadow-[0_16px_40px_-36px_rgba(245,158,11,0.45)] dark:text-amber-100">
+          <div className="rounded-[24px] border border-amber-500/20 bg-amber-500/10 p-4 text-amber-900 shadow-[0_16px_40px_-36px_rgba(245,158,11,0.45)]">
             <div className="flex items-start gap-3">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-status-shortlisted" />
           <div className="space-y-1">
             <p className="text-sm font-semibold">{t("noPublishedJobs")}</p>
-              <p className="text-sm text-amber-800/90 dark:text-amber-100/80">{t("publishJobFirst")}</p>
+              <p className="text-sm text-amber-800/90">{t("publishJobFirst")}</p>
           </div>
             </div>
         </div>
@@ -1636,7 +1654,7 @@ export default function EmployerCandidatesPage() {
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs font-medium text-muted-foreground">{workflowState.title}</span>
                 {reviewCount > 0 ? (
-                  <span className="rounded-full border border-sky-500/20 bg-sky-500/10 px-2.5 py-1 text-[11px] font-medium text-status-applied dark:text-sky-300">
+                  <span className="rounded-full border border-sky-500/20 bg-sky-500/10 px-2.5 py-1 text-[11px] font-medium text-status-applied">
                     {reviewCount} {t("savedCount")}
                   </span>
                 ) : null}
@@ -1650,7 +1668,7 @@ export default function EmployerCandidatesPage() {
             </div>
 
             {aiSummary ? (
-              <div className="mt-3 rounded-2xl border border-sky-500/20 bg-sky-500/10 px-3 py-2 text-sm text-sky-800 dark:text-sky-200">{aiSummary}</div>
+              <div className="mt-3 rounded-2xl border border-sky-500/20 bg-sky-500/10 px-3 py-2 text-sm text-sky-800">{aiSummary}</div>
             ) : null}
 
             {hasAnyScore ? (
@@ -1660,7 +1678,7 @@ export default function EmployerCandidatesPage() {
                     key={tab}
                     type="button"
                     onClick={() => setScoreFilter(tab)}
-                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${scoreFilter === tab ? "border-slate-950 bg-slate-950 text-white dark:border-sky-400 dark:bg-sky-500/20 dark:text-sky-100" : "border-border bg-background/80 text-muted-foreground hover:border-border hover:bg-background"}`}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${scoreFilter === tab ? "border-slate-950 bg-slate-950 text-white" : "border-border bg-background/80 text-muted-foreground hover:border-border hover:bg-background"}`}
                   >
                     {SCORE_FILTER_LABELS[tab]}
                     <span className="ml-1.5 opacity-70">({scoreCounts[tab]})</span>
@@ -1720,7 +1738,7 @@ export default function EmployerCandidatesPage() {
                     <button
                       key={suggestion}
                       type="button"
-                      className="rounded-full border border-border bg-background/80 px-3 py-1 text-xs font-medium text-muted-foreground transition hover:border-sky-500/20 hover:text-status-applied dark:hover:text-sky-300"
+                      className="rounded-full border border-border bg-background/80 px-3 py-1 text-xs font-medium text-muted-foreground transition hover:border-sky-500/20 hover:text-status-applied"
                       onClick={() => setAiQuery(suggestion)}
                     >
                       {suggestion}
@@ -1736,7 +1754,7 @@ export default function EmployerCandidatesPage() {
                 matchFeedback.type === "error"
                   ? "border-destructive/20 bg-destructive/5 text-foreground"
                   : matchFeedback.type === "success"
-                    ? "border-status-selected/20 bg-status-selected-bg text-emerald-900 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-200"
+                    ? "border-status-selected/20 bg-status-selected-bg text-emerald-900"
                     : "border-border bg-background/60 text-foreground/85"
               }`}
             >

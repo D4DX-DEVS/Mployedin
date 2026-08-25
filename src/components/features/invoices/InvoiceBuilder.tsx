@@ -22,6 +22,7 @@ import {
   Building2, FileText, FileCheck, ChevronLeft, ChevronRight,
   Plus, Trash2, Loader2, Search, Check, X, ChevronDown, MapPin, Users,
 } from "lucide-react";
+import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface Job {
@@ -813,7 +814,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
     }
   };
 
-  const fmt = (v: number) => `${currency} ${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const fmt = (v: number) => `${currency} ${formatCount(v, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const selectedJob = jobs.find((j) => j._id === selectedJobId);
   const selectedEmployer = employers.find((e) => e._id === selectedEmployerId);
   const selectedAgent = selectedJob && typeof selectedJob.agentId === "object" ? selectedJob.agentId : undefined;
@@ -883,7 +884,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                 step === s.id
                   ? "bg-primary text-primary-foreground"
                   : step > s.id
-                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                    ? "bg-emerald-100 text-emerald-700"
                     : "bg-muted text-muted-foreground"
               }`}
             >
@@ -966,9 +967,9 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
         </div>
 
         {/* Commission Preview (Internal) */}
-        <div className={`rounded-xl border p-4 ${combinedRateExceeds ? "border-rose-300 bg-rose-50/50 dark:border-rose-900/40 dark:bg-rose-950/20" : "border-amber-200/80 bg-amber-50/50 dark:border-amber-900/40 dark:bg-amber-950/20"}`}>
+        <div className={`rounded-xl border p-4 ${combinedRateExceeds ? "border-rose-300 bg-rose-50/50" : "border-amber-200/80 bg-amber-50/50"}`}>
           <div className="flex items-center justify-between">
-            <p className={`text-[10px] font-semibold uppercase tracking-wider ${combinedRateExceeds ? "text-rose-700 dark:text-rose-300" : "text-amber-700 dark:text-amber-300"}`}>{t("commissionSplit")}</p>
+            <p className={`text-[10px] font-semibold uppercase tracking-wider ${combinedRateExceeds ? "text-rose-700" : "text-amber-700"}`}>{t("commissionSplit")}</p>
             {role === "admin" && (selectedAgent || selectedSuperAgent) && (
               <button
                 type="button"
@@ -979,7 +980,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                     setCustomSuperAgentRate(superAgentRate);
                   }
                 }}
-                className={`rounded-full px-2 py-0.5 text-[9px] font-medium transition-colors ${commissionEnabled ? "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+                className={`rounded-full px-2 py-0.5 text-[9px] font-medium transition-colors ${commissionEnabled ? "bg-sky-100 text-sky-700" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
               >
                 {commissionEnabled ? `${t("custom")} ✓` : t("override")}
               </button>
@@ -999,7 +1000,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                     type="range" min={0} max={50} step={0.5}
                     value={customAgentRate}
                     onChange={(e) => setCustomAgentRate(parseFloat(e.target.value))}
-                    className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-sky-200 accent-sky-600 dark:bg-sky-800"
+                    className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-sky-200 accent-sky-600"
                   />
                 )}
               </div>
@@ -1022,7 +1023,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                     type="range" min={0} max={50} step={0.5}
                     value={customSuperAgentRate}
                     onChange={(e) => setCustomSuperAgentRate(parseFloat(e.target.value))}
-                    className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-indigo-200 accent-indigo-600 dark:bg-indigo-800"
+                    className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-indigo-200 accent-indigo-600"
                   />
                 )}
               </div>
@@ -1033,19 +1034,19 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
               </div>
             )}
             {combinedRateExceeds && (
-              <div className="mt-1 rounded-md bg-rose-100 px-2 py-1.5 dark:bg-rose-900/30">
-                <p className="text-[10px] font-semibold text-rose-700 dark:text-rose-300">
+              <div className="mt-1 rounded-md bg-rose-100 px-2 py-1.5">
+                <p className="text-[10px] font-semibold text-rose-700">
                   ⚠ {t("combinedRateExceedsWarning", { rate: combinedRate.toFixed(1) })}
                 </p>
               </div>
             )}
-            <div className="border-t border-amber-200/70 pt-1.5 dark:border-amber-800/40">
-              <div className={`flex justify-between font-medium ${companyNet < 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-700 dark:text-emerald-400"}`}>
+            <div className="border-t border-amber-200/70 pt-1.5">
+              <div className={`flex justify-between font-medium ${companyNet < 0 ? "text-rose-600" : "text-emerald-700"}`}>
                 <span>{t("platformRevenue")}</span>
                 <span>{fmt(companyNet)}</span>
               </div>
             </div>
-            <p className="mt-1 text-[9px] italic text-amber-600/80 dark:text-amber-400/60">{t("internalNotice")}</p>
+            <p className="mt-1 text-[9px] italic text-amber-600/80">{t("internalNotice")}</p>
           </div>
         </div>
 
@@ -1062,15 +1063,15 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("paymentGateway")}</p>
           <div className="mt-2 flex items-center gap-3">
             <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-              <div className="h-4 w-4 rounded bg-sky-100 dark:bg-sky-900/50" />
+              <div className="h-4 w-4 rounded bg-sky-100" />
               <span>Razorpay</span>
             </div>
             <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-              <div className="h-4 w-4 rounded bg-violet-100 dark:bg-violet-900/50" />
+              <div className="h-4 w-4 rounded bg-violet-100" />
               <span>Stripe</span>
             </div>
             <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-              <div className="h-4 w-4 rounded bg-emerald-100 dark:bg-emerald-900/50" />
+              <div className="h-4 w-4 rounded bg-emerald-100" />
               <span>Bank Transfer</span>
             </div>
           </div>
@@ -1090,21 +1091,21 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
               <div className="space-y-5">
                 {/* Admin cascade filters: Region → Super Agent → Agent → Jobs (optional) */}
                 {(role === "admin" || role === "super_agent") && (
-                  <details className="rounded-xl border border-sky-200/80 bg-gradient-to-br from-sky-50/60 to-transparent dark:border-sky-900/40 dark:from-sky-950/30">
+                  <details className="rounded-xl border border-sky-200/80 bg-gradient-to-br from-sky-50/60 to-transparent">
                     {/* Header — clickable to expand */}
                     <summary className="flex cursor-pointer select-none items-center justify-between px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <div className="flex h-5 w-5 items-center justify-center rounded bg-sky-100 dark:bg-sky-900/50">
-                          <Users className="h-3 w-3 text-sky-700 dark:text-sky-300" />
+                        <div className="flex h-5 w-5 items-center justify-center rounded bg-sky-100">
+                          <Users className="h-3 w-3 text-sky-700" />
                         </div>
-                        <p className="text-xs font-semibold uppercase tracking-wider text-sky-700 dark:text-sky-300">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-sky-700">
                           {role === "admin" ? t("filterByTeam") : t("filterByAgent")}
                         </p>
                         <span className="text-[10px] text-muted-foreground">({t("optional")})</span>
                       </div>
                       <div className="flex items-center gap-2">
                         {(selectedSuperAgentFilter || selectedAgentFilter || selectedEmployerFilter) && (
-                          <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:bg-sky-900/40 dark:text-sky-300">
+                          <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-medium text-sky-700">
                             {t("filtered")}
                           </span>
                         )}
@@ -1121,13 +1122,13 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                         <button
                           type="button"
                           onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                          className="flex w-full items-center gap-1.5 rounded-lg border border-dashed border-sky-300/60 bg-sky-50/50 px-3 py-1.5 text-[11px] font-medium text-sky-600 transition-colors hover:bg-sky-100/60 dark:border-sky-800/40 dark:bg-sky-950/20 dark:text-sky-400 dark:hover:bg-sky-900/30"
+                          className="flex w-full items-center gap-1.5 rounded-lg border border-dashed border-sky-300/60 bg-sky-50/50 px-3 py-1.5 text-[11px] font-medium text-sky-600 transition-colors hover:bg-sky-100/60"
                         >
                           <MapPin className="h-3 w-3" />
                           {t("narrowByRegion")}
                           <ChevronDown className={`ml-auto h-3 w-3 transition-transform ${showAdvancedFilters ? "rotate-180" : ""}`} />
                           {selectedRegionFilter && (
-                            <span className="ml-1 rounded-full bg-sky-200 px-1.5 py-0.5 text-[9px] font-semibold text-sky-800 dark:bg-sky-800 dark:text-sky-200">
+                            <span className="ml-1 rounded-full bg-sky-200 px-1.5 py-0.5 text-[9px] font-semibold text-sky-800">
                               {selectedRegionFilter}
                             </span>
                           )}
@@ -1261,7 +1262,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                     {loadingCount ? (
                       <span className="text-[10px] text-muted-foreground">{t("loading")}</span>
                     ) : totalJobCount > 0 ? (
-                      <span className="text-[10px] text-muted-foreground">{totalJobCount.toLocaleString()} {t("jobsTotal")}</span>
+                      <span className="text-[10px] text-muted-foreground">{formatCount(totalJobCount)} {t("jobsTotal")}</span>
                     ) : totalJobCount === 0 ? (
                       <span className="text-[10px] text-amber-600">{t("noJobsFound")}</span>
                     ) : null}
@@ -1269,14 +1270,14 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
   
                   {/* Selected job chip */}
                   {selectedJobId && selectedJob && (
-                    <div className="mb-3 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 dark:border-emerald-800 dark:bg-emerald-950/30">
+                    <div className="mb-3 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
                       <Check className="h-4 w-4 shrink-0 text-emerald-600" />
                       <div className="min-w-0 flex-1">
-                        <span className="truncate text-sm font-medium text-emerald-800 dark:text-emerald-300">
+                        <span className="truncate text-sm font-medium text-emerald-800">
                           {selectedJob.title}
                         </span>
                         {isPopulatedJobEmployer(selectedJob.employerId) && (
-                          <span className="ml-1.5 text-xs text-emerald-600 dark:text-emerald-400">
+                          <span className="ml-1.5 text-xs text-emerald-600">
                             — {selectedJob.employerId.companyName}
                           </span>
                         )}
@@ -1284,7 +1285,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                       <button
                         type="button"
                         onClick={() => { setSelectedJobId(""); setJobSearch(""); }}
-                        className="shrink-0 rounded-full p-0.5 text-emerald-600 hover:bg-emerald-200 dark:hover:bg-emerald-800"
+                        className="shrink-0 rounded-full p-0.5 text-emerald-600 hover:bg-emerald-200"
                       >
                         <X className="h-3.5 w-3.5" />
                       </button>
@@ -1293,12 +1294,12 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
 
                   {/* Duplicate invoice warning */}
                   {duplicateWarning && (
-                    <div className="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/30">
+                    <div className="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3">
                       <div className="flex items-start gap-2">
                         <svg className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.168 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /></svg>
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">Invoice Already Exists</p>
-                          <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-300">
+                          <p className="text-sm font-semibold text-amber-800">Invoice Already Exists</p>
+                          <p className="mt-0.5 text-xs text-amber-700">
                             An active invoice <span className="font-mono font-semibold">{duplicateWarning.invoiceNumber}</span> (status: <span className="capitalize">{duplicateWarning.status.replace(/_/g, " ")}</span>) already exists for this job and employer. Creating another will be rejected.
                           </p>
                         </div>
@@ -1360,8 +1361,8 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                                 const city = job.location?.city;
                                 const sal = job.salary;
                                 const salaryText = sal?.min && sal?.max
-                                  ? `${(sal.currency ?? "AED")} ${sal.min.toLocaleString()}–${sal.max.toLocaleString()}`
-                                  : sal?.min ? `${(sal.currency ?? "AED")} ${sal.min.toLocaleString()}+` : null;
+                                  ? `${(sal.currency ?? "AED")} ${formatCount(sal.min)}–${formatCount(sal.max)}`
+                                  : sal?.min ? `${(sal.currency ?? "AED")} ${formatCount(sal.min)}+` : null;
                                 const typeLabel = job.employmentType?.replace(/_/g, " ") ?? "";
                                 return (
                                   <button
@@ -1384,7 +1385,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                                           </span>
                                         )}
                                         {salaryText && (
-                                          <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">{salaryText}</span>
+                                          <span className="text-[11px] font-medium text-emerald-600">{salaryText}</span>
                                         )}
                                         {typeLabel && (
                                           <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] capitalize text-muted-foreground">{typeLabel}</span>
@@ -1393,9 +1394,9 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                                     </div>
                                     {job.status && (
                                       <span className={`mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                                        job.status === "active" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" :
-                                        job.status === "closed" ? "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300" :
-                                        "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                                        job.status === "active" ? "bg-emerald-100 text-emerald-700" :
+                                        job.status === "closed" ? "bg-rose-100 text-rose-700" :
+                                        "bg-amber-100 text-amber-700"
                                       }`}>{job.status}</span>
                                     )}
                                   </button>
@@ -1403,7 +1404,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                               })}
                               {totalJobCount > filteredJobs.length && (
                                 <p className="px-3 py-2 text-center text-[10px] text-muted-foreground">
-                                  {t("showingResults", { showing: filteredJobs.length, total: totalJobCount.toLocaleString() })}
+                                  {t("showingResults", { showing: filteredJobs.length, total: formatCount(totalJobCount) })}
                                 </p>
                               )}
                             </>
@@ -1420,7 +1421,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                             {loadingCount
                               ? t("loadingJobs")
                               : totalJobCount > 0
-                                ? <><span className="font-medium text-foreground">{totalJobCount.toLocaleString()}</span> {t("jobsAvailable")}</>
+                                ? <><span className="font-medium text-foreground">{formatCount(totalJobCount)}</span> {t("jobsAvailable")}</>
                                 : totalJobCount === 0
                                   ? t("noJobsAvailable")
                                   : t("loading")
@@ -1445,27 +1446,27 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                 {selectedJob && (
                   <div className="space-y-4">
                     {/* Employer + auto-detected tax & currency — click to override */}
-                    <details className="rounded-lg border border-emerald-200/70 bg-emerald-50/50 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+                    <details className="rounded-lg border border-emerald-200/70 bg-emerald-50/50">
                       <summary className="flex cursor-pointer select-none flex-wrap items-center gap-2 px-3 py-2">
                         <Building2 className="h-4 w-4 text-emerald-600" />
-                        <span className="text-sm font-medium text-emerald-800 dark:text-emerald-300">
+                        <span className="text-sm font-medium text-emerald-800">
                           {selectedEmployer?.companyName ?? (isPopulatedJobEmployer(selectedJob.employerId) ? selectedJob.employerId.companyName : t("unknown"))}
                         </span>
                         <div className="ml-auto flex items-center gap-1.5">
                           {currency && (
-                            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
                               {currency}
                             </span>
                           )}
                           {billingCountry && findTaxPreset(billingCountry) && (
-                            <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:bg-sky-900/40 dark:text-sky-300">
+                            <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-medium text-sky-700">
                               {findTaxPreset(billingCountry)!.label}
                             </span>
                           )}
                           <ChevronDown className="h-3.5 w-3.5 text-emerald-500 transition-transform [[open]>&]:rotate-180" />
                         </div>
                       </summary>
-                      <div className="grid gap-3 border-t border-emerald-200/50 px-3 py-3 dark:border-emerald-900/30 sm:grid-cols-3">
+                      <div className="grid gap-3 border-t border-emerald-200/50 px-3 py-3 sm:grid-cols-3">
                         <div>
                           <Label className="text-[10px] text-muted-foreground">{t("currency")}</Label>
                           <SearchableSelect
@@ -1662,7 +1663,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                                   </span>
                                 </td>
                                 <td className="px-2 py-2 text-right">
-                                  <span className="text-sm font-semibold">{itemTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                  <span className="text-sm font-semibold">{formatCount(itemTotal, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                 </td>
                                 <td className="px-2 py-2">
                                   <Button variant="ghost" size="sm" onClick={() => removeLineItem(i)} disabled={lineItems.length <= 1} className="h-7 w-7 p-0 text-muted-foreground hover:text-rose-500"><Trash2 className="h-3.5 w-3.5" /></Button>
@@ -1737,7 +1738,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                   <div className="mt-3 grid grid-cols-2 gap-4 rounded-lg bg-muted/30 px-4 py-3 text-xs sm:grid-cols-4">
                     <div>
                       <p className="text-[10px] font-semibold uppercase text-muted-foreground">{t("invoiceDate")}</p>
-                      <p className="mt-0.5 font-medium">{new Date().toLocaleDateString()}</p>
+                      <p className="mt-0.5 font-medium">{formatDate(new Date())}</p>
                     </div>
                     <div>
                       <p className="text-[10px] font-semibold uppercase text-muted-foreground">{t("terms")}</p>
@@ -1853,8 +1854,8 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
 
   // ── Commission summary for dialog mode (agent view) ──────────────────────
   const dialogCommissionSummary = (selectedAgent || selectedSuperAgent || agentRate > 0 || superAgentRate > 0) && totalAmount > 0 && (
-    <div className={`mt-4 rounded-xl border p-4 ${combinedRateExceeds ? "border-rose-300 bg-rose-50/50 dark:border-rose-900/40 dark:bg-rose-950/20" : "border-amber-200/80 bg-amber-50/50 dark:border-amber-900/40 dark:bg-amber-950/20"}`}>
-      <p className={`text-[10px] font-semibold uppercase tracking-wider ${combinedRateExceeds ? "text-rose-700 dark:text-rose-300" : "text-amber-700 dark:text-amber-300"}`}>
+    <div className={`mt-4 rounded-xl border p-4 ${combinedRateExceeds ? "border-rose-300 bg-rose-50/50" : "border-amber-200/80 bg-amber-50/50"}`}>
+      <p className={`text-[10px] font-semibold uppercase tracking-wider ${combinedRateExceeds ? "text-rose-700" : "text-amber-700"}`}>
         {role === "agent" ? t("yourCommission") : t("commissionSplit")}
       </p>
       <div className="mt-2 space-y-1.5 text-xs">
@@ -1863,7 +1864,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
             <span className="text-muted-foreground">
               {selectedAgent?.userId?.name ? `Agent (${selectedAgent.userId.name})` : "Agent Commission"}
             </span>
-            <span className="font-medium text-sky-700 dark:text-sky-300">{effectiveAgentRate}% &nbsp; {fmt(agentCommission)}</span>
+            <span className="font-medium text-sky-700">{effectiveAgentRate}% &nbsp; {fmt(agentCommission)}</span>
           </div>
         )}
         {effectiveSuperAgentRate > 0 && (
@@ -1871,11 +1872,11 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
             <span className="text-muted-foreground">
               {selectedSuperAgent?.userId?.name ? `SA (${selectedSuperAgent.userId.name})` : "Super Agent"}
             </span>
-            <span className="font-medium text-indigo-700 dark:text-indigo-300">{effectiveSuperAgentRate}% &nbsp; {fmt(superAgentCommission)}</span>
+            <span className="font-medium text-indigo-700">{effectiveSuperAgentRate}% &nbsp; {fmt(superAgentCommission)}</span>
           </div>
         )}
-        <div className="border-t border-amber-200/70 pt-1.5 dark:border-amber-800/40">
-          <div className={`flex justify-between font-medium ${companyNet < 0 ? "text-rose-600" : "text-emerald-700 dark:text-emerald-400"}`}>
+        <div className="border-t border-amber-200/70 pt-1.5">
+          <div className={`flex justify-between font-medium ${companyNet < 0 ? "text-rose-600" : "text-emerald-700"}`}>
             <span>Platform Revenue</span>
             <span>{fmt(companyNet)}</span>
           </div>
@@ -1883,7 +1884,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
         {combinedRateExceeds && (
           <p className="mt-1 text-[10px] font-semibold text-rose-600">{t("combinedRateExceedsFull", { rate: combinedRate.toFixed(1) })}</p>
         )}
-        <p className="mt-1 text-[9px] italic text-amber-600/80 dark:text-amber-400/60">{t("internalNotice")}</p>
+        <p className="mt-1 text-[9px] italic text-amber-600/80">{t("internalNotice")}</p>
       </div>
     </div>
   );
@@ -1903,7 +1904,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                     step === s.id
                       ? "bg-primary text-primary-foreground"
                       : step > s.id
-                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                        ? "bg-emerald-100 text-emerald-700"
                         : "bg-muted text-muted-foreground"
                   }`}
                 >

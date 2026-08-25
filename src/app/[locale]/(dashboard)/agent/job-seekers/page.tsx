@@ -20,6 +20,8 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { formatDate } from "@/lib/ui/intlFormat";
+import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 
 interface JobSeeker {
   _id: string;
@@ -169,7 +171,7 @@ export default function AgentJobSeekersPage() {
     { header: t("tableHeaderTopSkills"), key: "skills", formatter: (v) => Array.isArray(v) ? (v as string[]).join(", ") : "" },
     { header: t("tableHeaderAvailability"), key: "availabilityStatus" },
     { header: t("tableHeaderProfile"), key: "profileCompleteness" },
-    { header: t("tableHeaderJoined"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: t("tableHeaderJoined"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
@@ -205,6 +207,9 @@ export default function AgentJobSeekersPage() {
           { label: t("cardActiveFiltersLabel"), value: activeFilterCount, note: t("cardActiveFiltersDescription"), icon: Filter },
         ]}
       />
+      {/* Privacy information where candidate personal data is first shown,
+          rather than only behind a footer link. */}
+      <CandidateDataNotice variant="candidateList" />
 
       {/* Search and Filters */}
       <section className="workspace-panel-surface rounded-[28px] panel-body">
@@ -419,9 +424,9 @@ export default function AgentJobSeekersPage() {
                   <span className="block font-medium text-foreground">{s.userId?.name ?? "\u2014"}</span>
                   <span className="block text-xs text-muted-foreground">{s.userId?.email ?? "\u2014"}</span>
                   <span className={`mt-1 inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium leading-none ${
-                    s.availabilityStatus === "immediately" ? "bg-status-selected-bg text-status-selected dark:bg-green-950 dark:text-green-400"
-                    : s.availabilityStatus === "not_available" ? "bg-status-rejected-bg text-status-rejected dark:bg-red-950 dark:text-red-400"
-                    : "bg-status-shortlisted-bg text-status-shortlisted dark:bg-amber-950 dark:text-amber-400"
+                    s.availabilityStatus === "immediately" ? "bg-status-selected-bg text-status-selected"
+                    : s.availabilityStatus === "not_available" ? "bg-status-rejected-bg text-status-rejected"
+                    : "bg-status-shortlisted-bg text-status-shortlisted"
                   }`}>
                     {availabilityLabel(s.availabilityStatus)}
                   </span>
@@ -453,7 +458,7 @@ export default function AgentJobSeekersPage() {
                     </div>
                     <span className="text-xs text-muted-foreground">{s.profileCompleteness ?? 0}%</span>
                   </div>
-                  <span className="mt-1 block text-xs text-muted-foreground">{new Date(s.createdAt).toLocaleDateString()}</span>
+                  <span className="mt-1 block text-xs text-muted-foreground">{formatDate(new Date(s.createdAt))}</span>
                 </TableCell>
                 {can("job_seekers", "update") && (
                   <TableCell>

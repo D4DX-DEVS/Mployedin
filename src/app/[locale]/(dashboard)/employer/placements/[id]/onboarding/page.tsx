@@ -22,6 +22,7 @@ import {
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { toast } from "sonner";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 type OnboardingStatus = "not_started" | "in_progress" | "completed";
 type DocStatus = "requested" | "submitted" | "signed" | "approved";
@@ -92,7 +93,7 @@ const DOC_STATUS_STYLES: Record<DocStatus, string> = {
 function fmtDate(value?: string): string {
   if (!value) return "";
   try {
-    return new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+    return formatDate(new Date(value), { year: "numeric", month: "short", day: "numeric" });
   } catch {
     return "";
   }

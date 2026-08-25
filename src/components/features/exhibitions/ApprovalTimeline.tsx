@@ -32,17 +32,17 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  draft: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
-  submitted: "bg-blue-100 text-blue-800 dark:bg-blue-950/30 dark:text-blue-400",
-  under_review: "bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-400",
-  approved: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400",
-  revision_requested: "bg-orange-100 text-orange-800 dark:bg-orange-950/30 dark:text-orange-400",
-  budget_approved: "bg-teal-100 text-teal-800 dark:bg-teal-950/30 dark:text-teal-400",
-  resources_assigned: "bg-indigo-100 text-indigo-800 dark:bg-indigo-950/30 dark:text-indigo-400",
-  active: "bg-purple-100 text-purple-800 dark:bg-purple-950/30 dark:text-purple-400",
-  completed: "bg-green-100 text-green-800 dark:bg-green-950/30 dark:text-green-400",
-  rejected: "bg-red-100 text-red-800 dark:bg-red-950/30 dark:text-red-400",
-  archived: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400",
+  draft: "bg-gray-100 text-gray-700",
+  submitted: "bg-blue-100 text-blue-800",
+  under_review: "bg-amber-100 text-amber-800",
+  approved: "bg-emerald-100 text-emerald-800",
+  revision_requested: "bg-orange-100 text-orange-800",
+  budget_approved: "bg-teal-100 text-teal-800",
+  resources_assigned: "bg-indigo-100 text-indigo-800",
+  active: "bg-purple-100 text-purple-800",
+  completed: "bg-green-100 text-green-800",
+  rejected: "bg-red-100 text-red-800",
+  archived: "bg-slate-100 text-slate-600",
 };
 
 const STATUS_DOTS: Record<string, string> = {
@@ -67,10 +67,10 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 const ROLE_COLORS: Record<string, string> = {
-  agent: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-300 dark:border-blue-700/30",
-  super_agent: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/20 dark:text-amber-300 dark:border-amber-700/30",
-  admin: "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/20 dark:text-purple-300 dark:border-purple-700/30",
-  system: "bg-gray-50 text-gray-600 border-gray-200 dark:bg-gray-900/20 dark:text-gray-400 dark:border-gray-700/30",
+  agent: "bg-blue-50 text-blue-700 border-blue-200",
+  super_agent: "bg-amber-50 text-amber-700 border-amber-200",
+  admin: "bg-purple-50 text-purple-700 border-purple-200",
+  system: "bg-gray-50 text-gray-600 border-gray-200",
 };
 
 /* ------------------------------------------------------------------ */

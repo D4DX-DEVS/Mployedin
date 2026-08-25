@@ -274,9 +274,9 @@ export default function AdminExhibitionAnalyticsPage() {
           </div>
         )}
         metrics={[
-          { label: t("requestsLabel"), value: kpis.totalRequests, note: strongestMonth ? t("requestsBusiestMonth", { month: strongestMonth.month }) : t("requestsNoData"), icon: Target, iconClassName: "text-sky-600", iconSurfaceClassName: "bg-sky-50 dark:bg-sky-950/30" },
-          { label: t("approvalRateLabel"), value: `${kpis.approvalRate}%`, note: t("approvalRateSub", { approved: kpis.approved, rejected: kpis.rejected }), icon: Percent, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50 dark:bg-emerald-950/30" },
-          { label: t("roiLabel"), value: `${performance.roi}%`, note: performance.eventsReported > 0 ? t("roiEventsReported", { eventsReported: performance.eventsReported }) : t("roiAwaitingReports"), icon: TrendingUp, iconClassName: "text-violet-600", iconSurfaceClassName: "bg-violet-50 dark:bg-violet-950/30" },
+          { label: t("requestsLabel"), value: kpis.totalRequests, note: strongestMonth ? t("requestsBusiestMonth", { month: strongestMonth.month }) : t("requestsNoData"), icon: Target, iconClassName: "text-sky-600", iconSurfaceClassName: "bg-sky-50" },
+          { label: t("approvalRateLabel"), value: `${kpis.approvalRate}%`, note: t("approvalRateSub", { approved: kpis.approved, rejected: kpis.rejected }), icon: Percent, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50" },
+          { label: t("roiLabel"), value: `${performance.roi}%`, note: performance.eventsReported > 0 ? t("roiEventsReported", { eventsReported: performance.eventsReported }) : t("roiAwaitingReports"), icon: TrendingUp, iconClassName: "text-violet-600", iconSurfaceClassName: "bg-violet-50" },
         ]}
       >
         <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">

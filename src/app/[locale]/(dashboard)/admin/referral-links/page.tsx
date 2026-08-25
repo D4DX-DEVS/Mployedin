@@ -221,7 +221,7 @@ export default function AdminReferralLinksPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${link.creatorRole === "super_agent" ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300" : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"}`}>
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${link.creatorRole === "super_agent" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}`}>
                           {link.creatorRole === "super_agent" ? t("roleSuperAgent") : t("roleAgent")}
                         </span>
                       </TableCell>
@@ -272,7 +272,7 @@ export default function AdminReferralLinksPage() {
                             <div className="grid gap-2 sm:grid-cols-2">
                               {link.registrations.map((reg, i) => (
                                 <div key={i} className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
-                                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-300">
+                                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-blue-600">
                                     <Building2 className="h-4 w-4" />
                                   </div>
                                   <div className="flex-1 min-w-0">

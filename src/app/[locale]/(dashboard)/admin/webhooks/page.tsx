@@ -26,6 +26,7 @@ import { useConfirm } from "@/hooks/useConfirm";
 import { toast } from "sonner";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
+import { formatDate, formatDateTime } from "@/lib/ui/intlFormat";
 
 const EVENTS = [
   "invoice.created",
@@ -397,13 +398,13 @@ export default function AdminWebhooksPage() {
 
                 {/* Secret display (only on create success) */}
                 {newSecret && (
-                  <div className="rounded-lg border border-status-shortlisted/20 bg-status-shortlisted-bg dark:bg-amber-950/30 p-4 mb-4">
-                    <p className="text-sm font-medium text-status-shortlisted dark:text-amber-200 mb-2">
+                  <div className="rounded-lg border border-status-shortlisted/20 bg-status-shortlisted-bg p-4 mb-4">
+                    <p className="text-sm font-medium text-status-shortlisted mb-2">
                       <AlertCircle className="h-4 w-4 inline mr-1" />
                       Save this signing secret — it won&apos;t be shown again:
                     </p>
                     <div className="flex items-center gap-2">
-                      <code className="flex-1 text-xs break-all font-mono bg-card dark:bg-black/40 p-2 rounded">
+                      <code className="flex-1 text-xs break-all font-mono bg-card p-2 rounded">
                         {newSecret}
                       </code>
                       <Button variant="ghost" size="sm" onClick={copySecret}>
@@ -489,10 +490,10 @@ export default function AdminWebhooksPage() {
         {/* Stats Row */}
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {([
-            { label: "Active", value: activeCount, note: "Listening for events", icon: CheckCircle2, tone: "text-status-selected", chip: "bg-status-selected-bg dark:bg-emerald-950/30" },
+            { label: "Active", value: activeCount, note: "Listening for events", icon: CheckCircle2, tone: "text-status-selected", chip: "bg-status-selected-bg" },
             { label: "Inactive", value: inactiveCount, note: "Paused endpoints", icon: XCircle, tone: "text-muted-foreground", chip: "bg-muted/30" },
-            { label: "Healthy", value: healthyCount, note: "Last delivery OK", icon: Activity, tone: "text-status-applied", chip: "bg-status-applied-bg dark:bg-sky-950/30" },
-            { label: "Failed", value: failedCount, note: "Needs attention", icon: AlertCircle, tone: "text-red-500", chip: "bg-status-rejected-bg dark:bg-red-950/30" },
+            { label: "Healthy", value: healthyCount, note: "Last delivery OK", icon: Activity, tone: "text-status-applied", chip: "bg-status-applied-bg" },
+            { label: "Failed", value: failedCount, note: "Needs attention", icon: AlertCircle, tone: "text-red-500", chip: "bg-status-rejected-bg" },
           ] as const).map(({ label, value, note, icon: Icon, tone, chip }) => (
             <div key={label} className="workspace-glass-panel rounded-2xl p-4">
               <div className="flex items-start justify-between gap-3">
@@ -514,7 +515,7 @@ export default function AdminWebhooksPage() {
           <button
             type="button"
             onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-white/10 dark:hover:bg-white/5"
+            className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-white/10"
           >
             <Filter className="h-4 w-4 text-muted-foreground" />
             {showFilters ? "Hide Filters" : "Show Filters"}
@@ -537,7 +538,7 @@ export default function AdminWebhooksPage() {
 
         {/* ─── Expandable Filters ─────────────────────────────────────── */}
         {showFilters && (
-          <div className="mt-4 space-y-3 rounded-[20px] border border-border/30 bg-background/40 p-4 backdrop-blur-sm dark:bg-background/20">
+          <div className="mt-4 space-y-3 rounded-[20px] border border-border/30 bg-background/40 p-4 backdrop-blur-sm">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
@@ -654,7 +655,7 @@ export default function AdminWebhooksPage() {
                   </TableCell>
                   <TableCell className="px-4 py-3 text-center text-xs text-muted-foreground">
                     {wh.lastTriggeredAt
-                      ? new Date(wh.lastTriggeredAt).toLocaleDateString()
+                      ? formatDate(new Date(wh.lastTriggeredAt))
                       : "—"}
                     {wh.lastStatus && (
                       <span className={`ml-1 ${wh.lastStatus === "success" ? "text-status-selected" : "text-red-500"}`}>
@@ -783,18 +784,18 @@ export default function AdminWebhooksPage() {
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                           {entry.status === "success" ? (
-                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-status-selected-bg dark:bg-emerald-950/30">
+                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-status-selected-bg">
                               <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
                             </span>
                           ) : (
-                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-status-rejected-bg dark:bg-red-950/30">
+                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-status-rejected-bg">
                               <XCircle className="h-3.5 w-3.5 text-red-500" />
                             </span>
                           )}
                           <Badge variant="secondary" className="text-[10px] font-medium">{entry.event}</Badge>
                         </div>
                         <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                          {new Date(entry.deliveredAt).toLocaleString()}
+                          {formatDateTime(new Date(entry.deliveredAt))}
                         </span>
                       </div>
                       <div className="flex items-center gap-3 pl-8 text-xs text-muted-foreground">

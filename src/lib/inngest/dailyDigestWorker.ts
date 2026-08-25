@@ -11,6 +11,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import NotificationPreference from "@/models/NotificationPreference";
 import { sendEmail } from "@/lib/communications/email";
 import type { NotificationDailyDigestEvent } from "./events";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 export const dailyDigestWorker = inngest.createFunction(
   {
@@ -132,7 +133,7 @@ function buildDigestEmail(data: DigestEmailData): string {
     .map((j) => {
       const salaryText =
         j.salary && j.salary.max > 0
-          ? `${j.salary.min.toLocaleString()}–${j.salary.max.toLocaleString()} AED`
+          ? `${formatCount(j.salary.min)}–${formatCount(j.salary.max)} AED`
           : "";
       const matchColor =
         j.matchScore >= 80

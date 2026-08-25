@@ -73,7 +73,7 @@ export function SmartHeader({
           <Link
             href={newJobHref}
             aria-label={t("createJob")}
-            className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 self-start rounded-xl border border-border bg-background/80 px-3 text-sm font-semibold text-foreground transition hover:border-sky-300 hover:bg-sky-50 hover:text-sky-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 dark:hover:border-sky-500/40 dark:hover:bg-sky-500/10 dark:hover:text-sky-200 sm:px-4"
+            className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 self-start rounded-xl border border-border bg-background/80 px-3 text-sm font-semibold text-foreground transition hover:border-sky-300 hover:bg-sky-50 hover:text-sky-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 sm:px-4"
           >
             <Sparkles className="h-4 w-4" />
             <span className="sm:hidden">{t("createJobShort")}</span>

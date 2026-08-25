@@ -8,6 +8,7 @@ import { getTranslations } from "next-intl/server";
 import { Building2, MapPin, Globe, Users, Briefcase, CheckCircle2, Calendar, ExternalLink } from "lucide-react";
 import RelativeDate from "@/components/shared/RelativeDate";
 import CompanyReviews from "@/components/features/public/CompanyReviews";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 interface PageProps {
   params: Promise<{ locale: string; id: string }>;
@@ -168,8 +169,8 @@ export default async function PublicCompanyDetailPage({ params }: PageProps) {
                           </span>
                         ) : null}
                         {sal && (sal.min || sal.max) ? (
-                          <span className="text-green-600 dark:text-green-400">
-                            {(sal.currency as string) ?? "AED"} {sal.min ? Number(sal.min).toLocaleString() : ""}{sal.max ? ` – ${Number(sal.max).toLocaleString()}` : ""}/mo
+                          <span className="text-green-600">
+                            {(sal.currency as string) ?? "AED"} {sal.min ? formatCount(Number(sal.min)) : ""}{sal.max ? ` – ${formatCount(Number(sal.max))}` : ""}/mo
                           </span>
                         ) : null}
                       </div>

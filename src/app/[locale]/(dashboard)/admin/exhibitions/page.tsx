@@ -67,6 +67,7 @@ import {
   Wallet,
   XCircle,
 } from "lucide-react";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 interface ExhibitionRequest {
   _id: string;
@@ -124,18 +125,18 @@ interface MatchedResource {
 }
 
 const STATUS_BADGES: Record<string, string> = {
-  draft: "border-gray-200 bg-gray-50 text-gray-700 dark:border-gray-800 dark:bg-gray-900/40 dark:text-gray-300",
-  submitted: "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-300",
-  under_review: "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-300",
-  approved: "border-purple-200 bg-purple-50 text-purple-700 dark:border-purple-900/50 dark:bg-purple-950/30 dark:text-purple-300",
-  revision_requested: "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300",
-  budget_approved: "border-green-200 bg-green-50 text-green-700 dark:border-green-900/50 dark:bg-green-950/30 dark:text-green-300",
-  resources_assigned: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300",
-  active: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300",
-  completed: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300",
-  rejected: "border-red-200 bg-red-50 text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300",
-  archived: "border-gray-200 bg-gray-50 text-gray-600 dark:border-gray-800 dark:bg-gray-900/40 dark:text-gray-400",
-  cancelled: "border-gray-200 bg-gray-50 text-gray-600 dark:border-gray-800 dark:bg-gray-900/40 dark:text-gray-400",
+  draft: "border-gray-200 bg-gray-50 text-gray-700",
+  submitted: "border-blue-200 bg-blue-50 text-blue-700",
+  under_review: "border-orange-200 bg-orange-50 text-orange-700",
+  approved: "border-purple-200 bg-purple-50 text-purple-700",
+  revision_requested: "border-amber-200 bg-amber-50 text-amber-700",
+  budget_approved: "border-green-200 bg-green-50 text-green-700",
+  resources_assigned: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  active: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  completed: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  rejected: "border-red-200 bg-red-50 text-red-700",
+  archived: "border-gray-200 bg-gray-50 text-gray-600",
+  cancelled: "border-gray-200 bg-gray-50 text-gray-600",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -154,10 +155,10 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const PRIORITY_BADGES: Record<string, string> = {
-  low: "border-border bg-muted text-muted-foreground dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-300",
-  medium: "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-300",
-  high: "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-300",
-  critical: "border-red-200 bg-red-50 text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300",
+  low: "border-border bg-muted text-muted-foreground",
+  medium: "border-blue-200 bg-blue-50 text-blue-700",
+  high: "border-orange-200 bg-orange-50 text-orange-700",
+  critical: "border-red-200 bg-red-50 text-red-700",
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -317,7 +318,7 @@ function dayCount(start: string | undefined | null, end: string | undefined | nu
 
 function formatMoney(amount: number | undefined | null, currency = "AED") {
   if (amount == null) return "-";
-  return `${currency} ${amount.toLocaleString()}`;
+  return `${currency} ${formatCount(amount)}`;
 }
 
 function initials(name?: string) {
@@ -495,15 +496,15 @@ export default function AdminExhibitionsPage() {
   const totalBudgetUsed = summary.budgetUtilized;
 
   const kpis = [
-    { label: "Total Requests", value: summary.total, trend: "+8.4%", subtitle: "All time", icon: ClipboardCheck, tone: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950/30" },
-    { label: "Pending Review", value: summary.pendingReview, trend: "-2.1%", subtitle: "Needs first action", icon: Clock, tone: "text-orange-600", bg: "bg-orange-50 dark:bg-orange-950/30" },
-    { label: "Finance Review", value: summary.financeReview, trend: "+3", subtitle: "In finance queue", icon: CircleDollarSign, tone: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-950/30" },
-    { label: "Awaiting Approval", value: summary.awaitingApproval, trend: "Stable", subtitle: "Final approvers", icon: ShieldAlert, tone: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950/30" },
-    { label: "Approved", value: summary.approved, trend: "+5.2%", subtitle: "Ready or active", icon: CheckCircle2, tone: "text-green-600", bg: "bg-green-50 dark:bg-green-950/30" },
-    { label: "Rejected", value: summary.rejected, trend: "-1", subtitle: "Declined requests", icon: XCircle, tone: "text-red-600", bg: "bg-red-50 dark:bg-red-950/30" },
-    { label: "Budget Requested", value: formatMoney(totalBudgetReq, "AED"), trend: "+12%", subtitle: "Pipeline total", icon: Wallet, tone: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950/30" },
-    { label: "Budget Approved", value: formatMoney(totalBudgetApp, "AED"), trend: "+9%", subtitle: "Approved total", icon: Target, tone: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950/30" },
-    { label: "Budget Utilized", value: formatMoney(totalBudgetUsed, "AED"), trend: `${totalBudgetApp ? Math.round((totalBudgetUsed / totalBudgetApp) * 100) : 0}%`, subtitle: "Actual spend", icon: Percent, tone: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-950/30" },
+    { label: "Total Requests", value: summary.total, trend: "+8.4%", subtitle: "All time", icon: ClipboardCheck, tone: "text-blue-600", bg: "bg-blue-50" },
+    { label: "Pending Review", value: summary.pendingReview, trend: "-2.1%", subtitle: "Needs first action", icon: Clock, tone: "text-orange-600", bg: "bg-orange-50" },
+    { label: "Finance Review", value: summary.financeReview, trend: "+3", subtitle: "In finance queue", icon: CircleDollarSign, tone: "text-purple-600", bg: "bg-purple-50" },
+    { label: "Awaiting Approval", value: summary.awaitingApproval, trend: "Stable", subtitle: "Final approvers", icon: ShieldAlert, tone: "text-blue-600", bg: "bg-blue-50" },
+    { label: "Approved", value: summary.approved, trend: "+5.2%", subtitle: "Ready or active", icon: CheckCircle2, tone: "text-green-600", bg: "bg-green-50" },
+    { label: "Rejected", value: summary.rejected, trend: "-1", subtitle: "Declined requests", icon: XCircle, tone: "text-red-600", bg: "bg-red-50" },
+    { label: "Budget Requested", value: formatMoney(totalBudgetReq, "AED"), trend: "+12%", subtitle: "Pipeline total", icon: Wallet, tone: "text-blue-600", bg: "bg-blue-50" },
+    { label: "Budget Approved", value: formatMoney(totalBudgetApp, "AED"), trend: "+9%", subtitle: "Approved total", icon: Target, tone: "text-emerald-600", bg: "bg-emerald-50" },
+    { label: "Budget Utilized", value: formatMoney(totalBudgetUsed, "AED"), trend: `${totalBudgetApp ? Math.round((totalBudgetUsed / totalBudgetApp) * 100) : 0}%`, subtitle: "Actual spend", icon: Percent, tone: "text-purple-600", bg: "bg-purple-50" },
   ];
 
   const openAction = (item: ExhibitionRequest, status: string) => {
@@ -705,15 +706,15 @@ export default function AdminExhibitionsPage() {
         )}
         metricsClassName="xl:grid-cols-9"
         metrics={[
-          { label: t("totalRequests"), value: summary.total, note: t("allTime"), icon: ClipboardCheck, iconClassName: "text-blue-600", iconSurfaceClassName: "bg-blue-50 dark:bg-blue-950/30" },
-          { label: t("pendingReview"), value: summary.pendingReview, note: t("needsFirstAction"), icon: Clock, iconClassName: "text-orange-600", iconSurfaceClassName: "bg-orange-50 dark:bg-orange-950/30" },
-          { label: t("financeReview"), value: summary.financeReview, note: t("inFinanceQueue"), icon: CircleDollarSign, iconClassName: "text-purple-600", iconSurfaceClassName: "bg-purple-50 dark:bg-purple-950/30" },
-          { label: t("awaitingApproval"), value: summary.awaitingApproval, note: t("finalApprovers"), icon: ShieldAlert, iconClassName: "text-blue-600", iconSurfaceClassName: "bg-blue-50 dark:bg-blue-950/30" },
-          { label: t("approved"), value: summary.approved, note: t("readyOrActive"), icon: CheckCircle2, iconClassName: "text-green-600", iconSurfaceClassName: "bg-green-50 dark:bg-green-950/30" },
-          { label: t("rejected"), value: summary.rejected, note: t("declinedRequests"), icon: XCircle, iconClassName: "text-red-600", iconSurfaceClassName: "bg-red-50 dark:bg-red-950/30" },
-          { label: t("budgetRequested"), value: formatMoney(totalBudgetReq, "AED"), note: t("pipelineTotal"), icon: Wallet, iconClassName: "text-blue-600", iconSurfaceClassName: "bg-blue-50 dark:bg-blue-950/30" },
-          { label: t("budgetApproved"), value: formatMoney(totalBudgetApp, "AED"), note: t("approvedTotal"), icon: Target, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50 dark:bg-emerald-950/30" },
-          { label: t("budgetUtilized"), value: formatMoney(totalBudgetUsed, "AED"), note: t("actualSpend"), icon: Percent, iconClassName: "text-purple-600", iconSurfaceClassName: "bg-purple-50 dark:bg-purple-950/30" },
+          { label: t("totalRequests"), value: summary.total, note: t("allTime"), icon: ClipboardCheck, iconClassName: "text-blue-600", iconSurfaceClassName: "bg-blue-50" },
+          { label: t("pendingReview"), value: summary.pendingReview, note: t("needsFirstAction"), icon: Clock, iconClassName: "text-orange-600", iconSurfaceClassName: "bg-orange-50" },
+          { label: t("financeReview"), value: summary.financeReview, note: t("inFinanceQueue"), icon: CircleDollarSign, iconClassName: "text-purple-600", iconSurfaceClassName: "bg-purple-50" },
+          { label: t("awaitingApproval"), value: summary.awaitingApproval, note: t("finalApprovers"), icon: ShieldAlert, iconClassName: "text-blue-600", iconSurfaceClassName: "bg-blue-50" },
+          { label: t("approved"), value: summary.approved, note: t("readyOrActive"), icon: CheckCircle2, iconClassName: "text-green-600", iconSurfaceClassName: "bg-green-50" },
+          { label: t("rejected"), value: summary.rejected, note: t("declinedRequests"), icon: XCircle, iconClassName: "text-red-600", iconSurfaceClassName: "bg-red-50" },
+          { label: t("budgetRequested"), value: formatMoney(totalBudgetReq, "AED"), note: t("pipelineTotal"), icon: Wallet, iconClassName: "text-blue-600", iconSurfaceClassName: "bg-blue-50" },
+          { label: t("budgetApproved"), value: formatMoney(totalBudgetApp, "AED"), note: t("approvedTotal"), icon: Target, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50" },
+          { label: t("budgetUtilized"), value: formatMoney(totalBudgetUsed, "AED"), note: t("actualSpend"), icon: Percent, iconClassName: "text-purple-600", iconSurfaceClassName: "bg-purple-50" },
         ]}
       />
 
@@ -882,7 +883,7 @@ export default function AdminExhibitionsPage() {
                           key={item._id}
                           className={`transition-colors hover:bg-primary/[0.035] ${
                             isSelected
-                              ? "bg-blue-50/80 shadow-[inset_4px_0_0_hsl(var(--primary))] dark:bg-blue-950/20"
+                              ? "bg-blue-50/80 shadow-[inset_4px_0_0_hsl(var(--primary))]"
                               : index % 2 === 0
                                 ? "bg-background"
                                 : "bg-muted/15"
@@ -1046,7 +1047,7 @@ export default function AdminExhibitionsPage() {
                   />
                 </div>
                 {["rejected", "archived"].includes(actionStatus) && (
-                  <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-300">
+                  <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700">
                     {t("thisIsADestructiveWorkflowAction")}
                   </div>
                 )}

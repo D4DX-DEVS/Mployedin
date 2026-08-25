@@ -13,6 +13,7 @@ import {
 } from "@/components/features/super-agent/WorkspacePage";
 import { MarkdownRenderer } from "@/components/shared/MarkdownRenderer";
 import { formatCurrency } from "@/lib/currency";
+import { formatTime } from "@/lib/ui/intlFormat";
 
 
 interface Stats {
@@ -99,7 +100,7 @@ export default function SuperAgentReportsPage() {
       });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
-      setAiResult({ content: data.report ?? data.content ?? JSON.stringify(data), generatedAt: new Date().toLocaleTimeString() });
+      setAiResult({ content: data.report ?? data.content ?? JSON.stringify(data), generatedAt: formatTime(new Date()) });
     } catch (e) {
       setAiError("We couldn't generate this report. No report was saved. Try again.");
     } finally {

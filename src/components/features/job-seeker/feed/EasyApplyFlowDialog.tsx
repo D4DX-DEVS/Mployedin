@@ -358,7 +358,7 @@ export function EasyApplyFlowDialog({
             </DialogDescription>
 
             {typeof matchScore === "number" && (
-              <div className="mt-5 inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">
+              <div className="mt-5 inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
                 <Sparkles className="h-3.5 w-3.5" />
                 {t("success.matchBadge", { score: matchScore })}
               </div>
@@ -661,7 +661,7 @@ function SkillsStep({
                   onClick={() => onToggle(skill)}
                   className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all ${
                     on
-                      ? "border-emerald-400 bg-emerald-100 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200"
+                      ? "border-emerald-400 bg-emerald-100 text-emerald-800"
                       : "border-dashed border-border bg-secondary/60 text-muted-foreground hover:border-primary/50 hover:text-foreground"
                   }`}
                 >
@@ -683,7 +683,7 @@ function SkillsStep({
             {matchedSkills.map((skill) => (
               <span
                 key={skill}
-                className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-300"
+                className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700"
               >
                 <Check className="h-3 w-3" strokeWidth={3} />
                 {skill}

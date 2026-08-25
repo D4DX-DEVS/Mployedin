@@ -49,10 +49,10 @@ const AI_FEATURE_LABELS: Record<AIFeatureKey, string> = {
 };
 
 const TIER_COLORS: Record<number, string> = {
-  0: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300",
-  1: "bg-slate-200 text-foreground dark:bg-slate-700 dark:text-slate-200",
-  2: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
-  3: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300",
+  0: "bg-zinc-100 text-zinc-700",
+  1: "bg-slate-200 text-foreground",
+  2: "bg-amber-100 text-amber-700",
+  3: "bg-violet-100 text-violet-700",
 };
 
 function defaultEmployerLimits(): IEmployerFeatureLimits {
@@ -759,7 +759,7 @@ export default function AdminSubscriptionPlansPage() {
                         {t("tierBadge", { tier: p.tier })}
                       </Badge>
                       {p.isDefault && (
-                        <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 text-xs">
+                        <Badge className="bg-emerald-100 text-emerald-700 text-xs">
                           {t("defaultBadge")}
                         </Badge>
                       )}
@@ -955,7 +955,7 @@ function FeatureBadge({
     <span
       className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${
         value
-          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+          ? "bg-emerald-100 text-emerald-700"
           : "bg-muted text-muted-foreground line-through"
       }`}
     >

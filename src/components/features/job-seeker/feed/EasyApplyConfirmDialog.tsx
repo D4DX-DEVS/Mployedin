@@ -66,7 +66,7 @@ export function EasyApplyConfirmDialog({
                 {haveSkills.map((skill) => (
                   <span
                     key={skill}
-                    className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-100 px-2.5 py-1 text-[11px] font-medium text-emerald-800 dark:border-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200"
+                    className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-100 px-2.5 py-1 text-[11px] font-medium text-emerald-800"
                   >
                     <Check className="h-2.5 w-2.5" />
                     {skill}

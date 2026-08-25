@@ -317,13 +317,13 @@ export default function EmployerAnalyticsPage() {
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-red-500">
                 {tc("somethingWentWrong")}
               </p>
-              <p className="mt-2 text-sm leading-6 text-status-rejected dark:text-red-200">
+              <p className="mt-2 text-sm leading-6 text-status-rejected">
                 {t("loadError")}
               </p>
             </div>
             <button
               onClick={handleRefresh}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-background/80 px-4 py-2 text-sm font-semibold text-status-rejected transition hover:bg-red-500/10 dark:text-red-200"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-background/80 px-4 py-2 text-sm font-semibold text-status-rejected transition hover:bg-red-500/10"
             >
               <RefreshCw className="h-4 w-4" />
               {tc("tryAgain")}
@@ -351,7 +351,7 @@ export default function EmployerAnalyticsPage() {
                 <button
                   onClick={handleRefresh}
                   disabled={refreshing}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background/80 text-muted-foreground transition hover:border-sky-500/25 hover:text-status-applied dark:hover:text-sky-300 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background/80 text-muted-foreground transition hover:border-sky-500/25 hover:text-status-applied disabled:cursor-not-allowed disabled:opacity-60"
                   title={t("refreshNow")}
                   aria-label={t("refreshNow")}
                 >
@@ -361,7 +361,7 @@ export default function EmployerAnalyticsPage() {
                 </button>
                 <button
                   onClick={handleExportCSV}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background/80 text-muted-foreground transition hover:border-emerald-500/25 hover:text-status-selected dark:hover:text-emerald-300"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background/80 text-muted-foreground transition hover:border-emerald-500/25 hover:text-status-selected"
                   title={t("exportCsv")}
                   aria-label={t("exportCsv")}
                 >
@@ -709,7 +709,7 @@ function PipelineTab({
           </div>
 
           {/* Desktop: full comparison table */}
-          <div className="hidden overflow-x-auto sm:block">
+          <div className="hidden overflow-x-auto sm:block" tabIndex={0}>
             <table className="w-full min-w-[860px] text-sm">
               <thead>
                 <tr className="border-b border-border/60 bg-background/60">
@@ -735,7 +735,7 @@ function PipelineTab({
                       <Link
                         href={`/${locale}/employer/applications?jobId=${job.jobId}`}
                         title={t("viewApplications", { title: job.title })}
-                        className="hover:text-status-applied hover:underline dark:hover:text-sky-300"
+                        className="hover:text-status-applied hover:underline"
                       >
                         {job.title}
                       </Link>
@@ -815,7 +815,7 @@ function PipelineTab({
                       </span>
                       <Link
                         href={`/${locale}/employer/applications?jobId=${job.jobId}`}
-                        className="mt-1 block w-full text-[10px] font-semibold text-status-applied hover:underline dark:text-sky-300"
+                        className="mt-1 block w-full text-[10px] font-semibold text-status-applied hover:underline"
                       >
                         {t("viewApplications", { title: job.title })}
                       </Link>
@@ -839,7 +839,7 @@ function PipelineTab({
                 <button
                   onClick={() => setPerJobPage(Math.max(1, perJobPage - 1))}
                   disabled={perJobMeta.page <= 1}
-                  className="inline-flex items-center gap-1 rounded-lg border border-border bg-background/80 px-2 py-1 text-[10px] font-semibold text-foreground transition hover:border-sky-500/25 hover:text-status-applied disabled:cursor-not-allowed disabled:opacity-50 dark:hover:text-sky-300 sm:rounded-xl sm:px-3 sm:py-1.5 sm:text-xs"
+                  className="inline-flex items-center gap-1 rounded-lg border border-border bg-background/80 px-2 py-1 text-[10px] font-semibold text-foreground transition hover:border-sky-500/25 hover:text-status-applied disabled:cursor-not-allowed disabled:opacity-50 sm:rounded-xl sm:px-3 sm:py-1.5 sm:text-xs"
                 >
                   <ChevronLeft className="h-3 w-3 rtl:rotate-180 sm:h-3.5 sm:w-3.5" />
                   <span className="hidden sm:inline">{t("previousPage")}</span>
@@ -850,7 +850,7 @@ function PipelineTab({
                 <button
                   onClick={() => setPerJobPage(Math.min(perJobMeta.totalPages, perJobPage + 1))}
                   disabled={perJobMeta.page >= perJobMeta.totalPages}
-                  className="inline-flex items-center gap-1 rounded-lg border border-border bg-background/80 px-2 py-1 text-[10px] font-semibold text-foreground transition hover:border-sky-500/25 hover:text-status-applied disabled:cursor-not-allowed disabled:opacity-50 dark:hover:text-sky-300 sm:rounded-xl sm:px-3 sm:py-1.5 sm:text-xs"
+                  className="inline-flex items-center gap-1 rounded-lg border border-border bg-background/80 px-2 py-1 text-[10px] font-semibold text-foreground transition hover:border-sky-500/25 hover:text-status-applied disabled:cursor-not-allowed disabled:opacity-50 sm:rounded-xl sm:px-3 sm:py-1.5 sm:text-xs"
                 >
                   <span className="hidden sm:inline">{t("nextPage")}</span>
                   <ChevronRight className="h-3 w-3 rtl:rotate-180 sm:h-3.5 sm:w-3.5" />
@@ -875,7 +875,7 @@ function PipelineTab({
         {data.topJobs.length === 0 ? (
           <p className="px-6 py-12 text-center text-muted-foreground">{t("noJobApplications")}</p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" tabIndex={0}>
             <table className="w-full min-w-[560px] text-sm">
               <thead>
                 <tr className="border-b border-border/60 bg-background/60">
@@ -1191,7 +1191,7 @@ function HistoricalTab({
               </BarChart>
             </ResponsiveContainer>
 
-            <div className="mt-6 overflow-x-auto rounded-[24px] border border-border">
+            <div className="mt-6 overflow-x-auto rounded-[24px] border border-border" tabIndex={0}>
               <table className="w-full min-w-[640px] text-sm">
                 <thead>
                   <tr className="border-b border-border bg-secondary/65/80">
@@ -1229,7 +1229,7 @@ function HistoricalTab({
             />
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" tabIndex={0}>
             <table className="w-full min-w-[720px] text-sm">
               <thead>
                 <tr className="border-b border-border bg-secondary/65/80">
@@ -1322,7 +1322,7 @@ function PerformanceTab({ performance }: { performance: PerformanceData }) {
         {jobs.length === 0 ? (
           <p className="px-6 py-12 text-center text-muted-foreground">{t("noJobsCreated")}</p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" tabIndex={0}>
             <table className="w-full min-w-[920px] text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/50">
@@ -1493,7 +1493,7 @@ function ResponseTimeTab({ data }: { data: ResponseTimeData }) {
             />
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" tabIndex={0}>
             <table className="w-full min-w-[720px] text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/50">
@@ -1923,7 +1923,7 @@ function RateBadge({
     <span
       className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-xs ${
         highlight
-          ? "border border-status-selected/20 bg-status-selected-bg font-semibold text-status-selected dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300"
+          ? "border border-status-selected/20 bg-status-selected-bg font-semibold text-status-selected"
           : "border border-border bg-background/80 text-foreground/85"
       }`}
     >

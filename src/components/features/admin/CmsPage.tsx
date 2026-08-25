@@ -29,6 +29,7 @@ import CmsHeroFilters, {
   getDefaultCmsFilterValues,
 } from "@/components/features/admin/CmsHeroFilters";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 export interface CmsColumn {
   key: string;
@@ -226,7 +227,7 @@ export default function CmsPage({
         eyebrow={t("cmsWorkspace")}
         title={title}
         description={description}
-        summary={{ label: t("totalRecords"), value: total.toLocaleString(), note: t("acrossPages", { count: totalPages }) }}
+        summary={{ label: t("totalRecords"), value: formatCount(total), note: t("acrossPages", { count: totalPages }) }}
         actions={allowCreate && can(resource as "cms", "create") ? (
           <Button
             onClick={() =>

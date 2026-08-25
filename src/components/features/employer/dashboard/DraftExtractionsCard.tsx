@@ -114,9 +114,9 @@ export function DraftExtractionsCard({ locale, variant = "card", onCountChange }
   if (variant === "banner") {
     return (
       // Single row, mirrors DraftJobsCard banner — the two sit side-by-side.
-      <div className="workspace-glass-panel flex h-full flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-violet-200/60 p-3 dark:border-violet-500/30">
+      <div className="workspace-glass-panel flex h-full flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-violet-200/60 p-3">
         {ConfirmDialogNode}
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-600 dark:bg-violet-500/20 dark:text-violet-300">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-600">
           <Wand2 className="h-4 w-4" />
         </span>
         <p className="min-w-0 truncate text-sm font-semibold text-foreground">
@@ -128,7 +128,7 @@ export function DraftExtractionsCard({ locale, variant = "card", onCountChange }
               key={d._id}
               size="sm"
               variant="outline"
-              className="h-8 gap-1.5 rounded-lg border-violet-200 bg-background/70 text-xs text-violet-700 hover:bg-violet-50 dark:border-violet-500/30 dark:text-violet-300 dark:hover:bg-violet-950/40"
+              className="h-8 gap-1.5 rounded-lg border-violet-200 bg-background/70 text-xs text-violet-700 hover:bg-violet-50"
               onClick={() => router.push(continueHref(d._id))}
             >
               <RotateCcw className="h-3.5 w-3.5" />
@@ -146,7 +146,7 @@ export function DraftExtractionsCard({ locale, variant = "card", onCountChange }
     <section className="workspace-panel-surface panel-body flex flex-col rounded-[24px]">
       {ConfirmDialogNode}
       <div className="mb-4 flex items-center gap-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-600 dark:bg-violet-500/15 dark:text-violet-300">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
           <Wand2 className="h-4 w-4" />
         </span>
         <div className="min-w-0">
@@ -162,7 +162,7 @@ export function DraftExtractionsCard({ locale, variant = "card", onCountChange }
             className="group flex items-center gap-2 rounded-2xl border border-border/60 bg-background/70 p-2.5 transition-all hover:-translate-y-px hover:border-violet-400/40 hover:shadow-sm"
           >
             <Link href={continueHref(d._id)} className="flex min-w-0 flex-1 items-center gap-3">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-600 dark:bg-violet-500/20 dark:text-violet-300">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-600">
                 <FileText className="h-4 w-4" />
               </span>
               <div className="min-w-0 flex-1">
@@ -175,7 +175,7 @@ export function DraftExtractionsCard({ locale, variant = "card", onCountChange }
                   </span>
                 </div>
               </div>
-              <span className="hidden shrink-0 items-center gap-1.5 rounded-lg bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700 transition-colors group-hover:bg-violet-100 dark:bg-violet-500/15 dark:text-violet-300 sm:inline-flex">
+              <span className="hidden shrink-0 items-center gap-1.5 rounded-lg bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700 transition-colors group-hover:bg-violet-100 sm:inline-flex">
                 <RotateCcw className="h-3.5 w-3.5" />
                 {t("continue")}
               </span>

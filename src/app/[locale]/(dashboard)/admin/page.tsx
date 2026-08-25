@@ -29,6 +29,7 @@ import {
 } from "./_components/platform-health";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { DashboardNextAction, DashboardSignalStrip } from "@/components/shared/DashboardOverview";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 interface UsersByRoleRow {
   _id: string | null;
@@ -228,7 +229,7 @@ function getTrendClassName(direction: TrendDirection, positiveWhenDown = false) 
     return "bg-rose-100 text-rose-700";
   }
 
-  return "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300";
+  return "bg-slate-100 text-slate-600";
 }
 
 function formatRoleLabel(role: string | null | undefined, t: DashboardTranslator) {
@@ -520,7 +521,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
       insight: dominantRole
         ? t("kpis.totalUsers.dominant", { role: formatRoleLabel(dominantRole._id, t) })
         : t("kpis.totalUsers.fallback"),
-      toneClassName: "bg-sky-500 text-white ring-sky-400/30 dark:bg-sky-600 dark:text-white dark:ring-sky-400/30",
+      toneClassName: "bg-sky-500 text-white ring-sky-400/30",
       icon: Users,
       trend: usersTrend,
       trendClassName: getTrendClassName(usersTrend.direction),
@@ -535,7 +536,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
           <KpiActiveJobsInsightText />
         </Suspense>
       ),
-      toneClassName: "bg-emerald-500 text-white ring-emerald-400/30 dark:bg-emerald-600 dark:text-white dark:ring-emerald-400/30",
+      toneClassName: "bg-emerald-500 text-white ring-emerald-400/30",
       icon: Briefcase,
       trend: jobsTrend,
       trendClassName: getTrendClassName(jobsTrend.direction),
@@ -546,7 +547,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
       value: stats.totalApplications.toLocaleString(locale),
       detail: t("kpis.totalApplications.detail", { count: stats.applicationsThisMonth }),
       insight: t("kpis.totalApplications.insight", { value: applicationsPerActiveJob.toFixed(1) }),
-      toneClassName: "bg-violet-500 text-white ring-violet-400/30 dark:bg-violet-600 dark:text-white dark:ring-violet-400/30",
+      toneClassName: "bg-violet-500 text-white ring-violet-400/30",
       icon: FileText,
       trend: applicationsTrend,
       trendClassName: getTrendClassName(applicationsTrend.direction),
@@ -559,7 +560,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
       insight: stats.totalInterviews > 0
         ? t("kpis.totalInterviews.active")
         : t("kpis.totalInterviews.empty"),
-      toneClassName: "bg-amber-500 text-white ring-amber-400/30 dark:bg-amber-600 dark:text-white dark:ring-amber-400/30",
+      toneClassName: "bg-amber-500 text-white ring-amber-400/30",
       icon: Activity,
       trend: { direction: stats.totalInterviews > 0 ? "up" : "flat", label: t("trend.total", { count: stats.totalInterviews }) },
       trendClassName: getTrendClassName(stats.totalInterviews > 0 ? "up" : "flat"),
@@ -607,7 +608,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
       badge: t("quickActions.auditLogs.badge"),
       icon: Activity,
       iconClassName: "bg-slate-100 text-slate-600",
-      badgeClassName: "bg-slate-100 text-slate-800 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700",
+      badgeClassName: "bg-slate-100 text-slate-800 ring-1 ring-slate-200",
     },
     {
       label: t("quickActions.analytics.label"),
@@ -616,7 +617,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
       badge: t("quickActions.analytics.badge", { count: stats.totalInterviews }),
       icon: TrendingUp,
       iconClassName: "bg-violet-50 text-violet-600",
-      badgeClassName: "bg-violet-100 text-violet-900 ring-1 ring-violet-200 dark:bg-violet-500/15 dark:text-violet-200 dark:ring-violet-500/20",
+      badgeClassName: "bg-violet-100 text-violet-900 ring-1 ring-violet-200",
     },
 
   ];
@@ -863,7 +864,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
                 {t("sections.hiringFunnel.description")}
               </p>
             </div>
-            <div className="shrink-0 self-start rounded-2xl border border-emerald-100 bg-emerald-50/80 px-3 py-2 text-emerald-700 shadow-sm dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200">
+            <div className="shrink-0 self-start rounded-2xl border border-emerald-100 bg-emerald-50/80 px-3 py-2 text-emerald-700 shadow-sm">
               <p className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.16em] sm:text-[11px] sm:tracking-[0.18em]">{t("funnel.placements")}</p>
               <p className="mt-1 text-xs font-semibold sm:text-sm">{t("sections.hiringFunnel.closed", { count: stats.totalPlacements })}</p>
             </div>
@@ -885,7 +886,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
                 >
                   <div className="flex items-start justify-between gap-3">
                     <span className="text-xs font-semibold text-muted-foreground">{stage.label}</span>
-                    <span className="text-xl font-semibold tracking-tight text-foreground">{stage.count.toLocaleString()}</span>
+                    <span className="text-xl font-semibold tracking-tight text-foreground">{formatCount(stage.count)}</span>
                   </div>
                   <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary">
                     <div
@@ -917,10 +918,10 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
               </p>
             </div>
             <div className="flex flex-wrap gap-2 text-xs font-semibold">
-              <span className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3.5 py-1.5 text-blue-800 shadow-sm dark:border-blue-500/30 dark:bg-blue-500/15 dark:text-blue-100">
+              <span className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3.5 py-1.5 text-blue-800 shadow-sm">
                 <span className="h-2 w-2 rounded-full bg-blue-500" /> {t("funnel.jobs")}
               </span>
-              <span className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-violet-50 px-3.5 py-1.5 text-violet-800 shadow-sm dark:border-violet-500/30 dark:bg-violet-500/15 dark:text-violet-100">
+              <span className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-violet-50 px-3.5 py-1.5 text-violet-800 shadow-sm">
                 <span className="h-2 w-2 rounded-full bg-violet-500" /> {t("funnel.applications")}
               </span>
             </div>
@@ -1002,9 +1003,9 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
               </p>
             </div>
             {dominantRole ? (
-              <div className="shrink-0 self-start rounded-2xl border border-sky-100 bg-sky-50/70 px-3 py-2 text-sky-700 shadow-sm dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-200 sm:text-right">
-                <p className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.16em] text-sky-700 dark:text-sky-200 sm:text-[11px] sm:tracking-[0.18em]">{t("roleInsights.dominant")}</p>
-                <p className="mt-1 text-xs font-semibold text-sky-700 dark:text-sky-100 sm:text-sm">{formatRoleLabel(dominantRole._id, t)}</p>
+              <div className="shrink-0 self-start rounded-2xl border border-sky-100 bg-sky-50/70 px-3 py-2 text-sky-700 shadow-sm sm:text-right">
+                <p className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.16em] text-sky-700 sm:text-[11px] sm:tracking-[0.18em]">{t("roleInsights.dominant")}</p>
+                <p className="mt-1 text-xs font-semibold text-sky-700 sm:text-sm">{formatRoleLabel(dominantRole._id, t)}</p>
               </div>
             ) : null}
           </div>

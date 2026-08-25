@@ -30,6 +30,7 @@ import CmsHeroFilters, {
   cmsFiltersAreActive,
   getDefaultCmsFilterValues,
 } from "@/components/features/admin/CmsHeroFilters";
+import { formatCount, formatDate, formatDateTime } from "@/lib/ui/intlFormat";
 
 interface ContactItem {
   _id: string;
@@ -131,13 +132,13 @@ export default function ContactSubmissionsPage() {
         description={t("heroDescription")}
         summary={{
           label: t("totalMessages"),
-          value: total.toLocaleString(),
+          value: formatCount(total),
           note: t("acrossPages", { count: totalPages }),
         }}
         metrics={[
-          { label: t("statTotal"), value: total, note: t("allSubmissions"), icon: Mail, iconClassName: "text-amber-600", iconSurfaceClassName: "bg-amber-50 dark:bg-amber-950/30" },
-          { label: t("statUnread"), value: unreadCount, note: t("awaitingReview"), icon: MessageSquare, iconClassName: "text-sky-600", iconSurfaceClassName: "bg-sky-50 dark:bg-sky-950/30" },
-          { label: t("statRead"), value: items.length - unreadCount, note: t("alreadyReviewed"), icon: MailOpen, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50 dark:bg-emerald-950/30" },
+          { label: t("statTotal"), value: total, note: t("allSubmissions"), icon: Mail, iconClassName: "text-amber-600", iconSurfaceClassName: "bg-amber-50" },
+          { label: t("statUnread"), value: unreadCount, note: t("awaitingReview"), icon: MessageSquare, iconClassName: "text-sky-600", iconSurfaceClassName: "bg-sky-50" },
+          { label: t("statRead"), value: items.length - unreadCount, note: t("alreadyReviewed"), icon: MailOpen, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50" },
         ]}
       >
         <CmsHeroFilters
@@ -219,7 +220,7 @@ export default function ContactSubmissionsPage() {
                     <TableCell className="text-muted-foreground">{item.email}</TableCell>
                     <TableCell className="max-w-[200px] truncate">{item.subject || "—"}</TableCell>
                     <TableCell className="text-muted-foreground text-sm">
-                      {new Date(item.createdAt).toLocaleDateString()}
+                      {formatDate(new Date(item.createdAt))}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-end gap-1">
@@ -274,7 +275,7 @@ export default function ContactSubmissionsPage() {
                 </div>
                 <div>
                   <p className="font-medium text-muted-foreground">{t("fieldDate")}</p>
-                  <p>{new Date(viewItem.createdAt).toLocaleString()}</p>
+                  <p>{formatDateTime(new Date(viewItem.createdAt))}</p>
                 </div>
               </div>
               <div>

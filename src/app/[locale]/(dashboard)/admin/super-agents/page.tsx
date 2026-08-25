@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Search, Inbox, AlertCircle, Loader2, Download, FileSpreadsheet, FileText } from "lucide-react";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 interface AgentRef {
   _id: string;
@@ -158,7 +159,7 @@ export default function AdminSuperAgentsPage() {
     { header: t("exportHeaderAgents"), key: "superAgentProfile" as keyof SuperAgent, formatter: (_v, r) => String((r as unknown as SuperAgent).superAgentProfile?.agentCount ?? 0) },
     { header: t("exportHeaderOverridePercent"), key: "superAgentProfile" as keyof SuperAgent, formatter: (_v, r) => String((r as unknown as SuperAgent).superAgentProfile?.overrideCommissionRate ?? 0) },
     { header: t("exportHeaderStatus"), key: "isActive", formatter: (v) => v !== false ? t("exportStatusActive") : t("exportStatusInactive") },
-    { header: t("exportHeaderJoined"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : t("exportDashCharacter") },
+    { header: t("exportHeaderJoined"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : t("exportDashCharacter") },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: superAgents as unknown as Record<string, unknown>[],
@@ -489,7 +490,7 @@ export default function AdminSuperAgentsPage() {
                     ? `${sa.superAgentProfile.overrideCommissionRate}%`
                     : t("exportDashCharacter")}
                 </TableCell>
-                <TableCell className="text-muted-foreground text-sm">{new Date(sa.createdAt).toLocaleDateString()}</TableCell>
+                <TableCell className="text-muted-foreground text-sm">{formatDate(new Date(sa.createdAt))}</TableCell>
                 {(can("super_agents", "update") || can("super_agents", "delete")) && (
                   <TableCell>
                     <div className="flex items-center gap-1">

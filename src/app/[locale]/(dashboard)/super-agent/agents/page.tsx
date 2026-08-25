@@ -259,14 +259,14 @@ export default function SuperAgentAgentsPage() {
   function getPerformanceBadge(agent: AgentRow) {
     const badges: { label: string; className: string }[] = [];
     if (agent.leadsCount === 0) {
-      badges.push({ label: t("badgeNoActivity"), className: "bg-gray-100 text-gray-600 dark:bg-gray-500/20 dark:text-gray-300" });
+      badges.push({ label: t("badgeNoActivity"), className: "bg-gray-100 text-gray-600" });
     } else if (agent.conversionRate >= 50) {
-      badges.push({ label: t("badgeHighPerformer"), className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300" });
+      badges.push({ label: t("badgeHighPerformer"), className: "bg-emerald-100 text-emerald-700" });
     } else if (agent.conversionRate < 15 && agent.leadsCount > 0) {
-      badges.push({ label: t("badgeNeedsAttention"), className: "bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300" });
+      badges.push({ label: t("badgeNeedsAttention"), className: "bg-rose-100 text-rose-700" });
     }
     if (agent.avgResponseHours > 48 && agent.leadsCount > 0) {
-      badges.push({ label: t("badgeSlowResponse"), className: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300" });
+      badges.push({ label: t("badgeSlowResponse"), className: "bg-amber-100 text-amber-700" });
     }
     return badges;
   }

@@ -23,6 +23,7 @@ import { InvoiceBuilder } from "@/components/features/invoices/InvoiceBuilder";
 import { InvoiceDetailView } from "@/components/features/invoices/InvoiceDetailView";
 import { RevenueKPICards } from "@/components/features/invoices/RevenueKPICards";
 import { RevenueAnalyticsPanel } from "@/components/features/invoices/RevenueAnalyticsPanel";
+import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface Invoice {
@@ -123,7 +124,7 @@ export default function AgentInvoicesPage() {
       return ac ? `${ac.rate}% = ${ac.amount}` : "—";
     }},
     { header: tc("status"), key: "status" },
-    { header: t("exportHeaderDue"), key: "dueDate" as keyof Invoice, formatter: v => v ? new Date(String(v)).toLocaleDateString() : "—" },
+    { header: t("exportHeaderDue"), key: "dueDate" as keyof Invoice, formatter: v => v ? formatDate(new Date(String(v))) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: invoices as unknown as Record<string, unknown>[],
@@ -146,7 +147,7 @@ export default function AgentInvoicesPage() {
         right={
           <div className="flex items-center gap-2">
             <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">
-              <ArrowRight className="h-3.5 w-3.5 text-primary" /> {total.toLocaleString()} {t("invoicesPill")}
+              <ArrowRight className="h-3.5 w-3.5 text-primary" /> {formatCount(total)} {t("invoicesPill")}
             </div>
             <div className="inline-flex rounded-lg border border-border/70 bg-card">
               <button onClick={() => setActiveView("table")} className={`rounded-l-lg px-3 py-1.5 text-xs font-medium transition-colors ${activeView === "table" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
@@ -206,7 +207,7 @@ export default function AgentInvoicesPage() {
       {/* Table View */}
       {activeView === "table" && (
         <>
-          {errorMessage && <div className="rounded-2xl border border-rose-200 bg-rose-50/90 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">{errorMessage}</div>}
+          {errorMessage && <div className="rounded-2xl border border-rose-200 bg-rose-50/90 px-4 py-3 text-sm text-rose-700">{errorMessage}</div>}
 
           <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-[24px]">
             <div className="flex flex-col gap-2 border-b border-border/80 panel-head">

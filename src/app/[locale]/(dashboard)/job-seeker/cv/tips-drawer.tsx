@@ -47,7 +47,7 @@ export function TipsDrawer({
           {/* Header */}
           <div className="flex items-center justify-between border-b px-5 py-4">
             <div className="flex items-center gap-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 text-amber-600 dark:bg-amber-500/15">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
                 <Lightbulb className="h-4 w-4" />
               </span>
               <div>

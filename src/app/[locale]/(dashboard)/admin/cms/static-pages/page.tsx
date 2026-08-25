@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import CmsPage from "@/components/features/admin/CmsPage";
 import type { CrudField } from "@/components/shared/CrudModal";
 import { FileText } from "lucide-react";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 export default function StaticPagesAdminPage() {
   const t = useTranslations("adminCmsStaticPages");
@@ -32,7 +33,7 @@ export default function StaticPagesAdminPage() {
       key: "updatedAt",
       label: t("lastUpdatedColumnLabel"),
       render: (value: unknown) =>
-        value ? new Date(String(value)).toLocaleDateString() : t("emptyDateValue"),
+        value ? formatDate(new Date(String(value))) : t("emptyDateValue"),
     },
     { key: "isActive", label: t("statusLabel") },
   ];

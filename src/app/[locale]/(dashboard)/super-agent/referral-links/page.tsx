@@ -60,6 +60,7 @@ import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
+import { formatDate as formatIntlDate } from "@/lib/ui/intlFormat";
 
 function formatDate(d: string | undefined): string {
   if (!d) return "—";
@@ -186,8 +187,8 @@ export default function SuperAgentReferralLinksPage() {
     { header: t("exportColumnActive"), key: "isActive", formatter: (v) => v ? t("yesText") : t("noText") },
     { header: t("tableHeadUsed"), key: "usedCount" },
     { header: t("exportColumnMaxUses"), key: "maxUses" },
-    { header: t("exportColumnCreated"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
-    { header: t("tableHeadExpires"), key: "expiresAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: t("exportColumnCreated"), key: "createdAt", formatter: (v) => v ? formatIntlDate(new Date(String(v))) : "" },
+    { header: t("tableHeadExpires"), key: "expiresAt", formatter: (v) => v ? formatIntlDate(new Date(String(v))) : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
@@ -313,9 +314,9 @@ export default function SuperAgentReferralLinksPage() {
           </div>
 
           {aiSummary && (
-            <div className="flex items-start gap-2 rounded-xl bg-purple-50 dark:bg-purple-950/30 px-4 py-2.5">
+            <div className="flex items-start gap-2 rounded-xl bg-purple-50 px-4 py-2.5">
               <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-purple-500" />
-              <p className="text-xs text-purple-700 dark:text-purple-300">{aiSummary}</p>
+              <p className="text-xs text-purple-700">{aiSummary}</p>
             </div>
           )}
 
@@ -483,10 +484,10 @@ export default function SuperAgentReferralLinksPage() {
                       <TableCell className="text-sm text-muted-foreground">{formatDate(link.expiresAt)}</TableCell>
                       <TableCell>
                         <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                          status === "active" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" :
-                          status === "expired" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" :
-                          status === "maxed" ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" :
-                          "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                          status === "active" ? "bg-emerald-100 text-emerald-700" :
+                          status === "expired" ? "bg-amber-100 text-amber-700" :
+                          status === "maxed" ? "bg-orange-100 text-orange-700" :
+                          "bg-red-100 text-red-700"
                         }`}>
                           <span className={`h-1.5 w-1.5 rounded-full ${
                             status === "active" ? "bg-emerald-500" :
@@ -514,7 +515,7 @@ export default function SuperAgentReferralLinksPage() {
                               updateMutation.mutate({ id: link._id, isActive: !link.isActive });
                             }}
                             disabled={updateMutation.isPending}
-                            className={`inline-flex h-7 items-center gap-1 rounded-md border px-2 text-[11px] font-medium transition-colors ${link.isActive ? "border-amber-300 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30" : "border-emerald-300 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"}`}
+                            className={`inline-flex h-7 items-center gap-1 rounded-md border px-2 text-[11px] font-medium transition-colors ${link.isActive ? "border-amber-300 text-amber-600 hover:bg-amber-50" : "border-emerald-300 text-emerald-600 hover:bg-emerald-50"}`}
                             title={link.isActive ? t("toggleDisableTooltip") : t("toggleEnableTooltip")}
                             aria-label={link.isActive ? t("toggleDisableAriaLabel") : t("toggleEnableAriaLabel")}
                           >

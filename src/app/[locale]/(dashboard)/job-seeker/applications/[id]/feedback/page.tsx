@@ -120,7 +120,7 @@ export default function ApplicationFeedbackPage() {
     return (
       <div className="page-container">
         <div className="max-w-lg mx-auto text-center py-8 sm:py-16 space-y-3 sm:space-y-4">
-          <div className="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-950/40 flex items-center justify-center mx-auto sm:w-16 sm:h-16">
+          <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center mx-auto sm:w-16 sm:h-16">
             <CheckCircle className="w-7 h-7 text-emerald-600 sm:w-8 sm:h-8" />
           </div>
           <h2 className="text-lg font-semibold sm:text-xl">{t("thankYou")}</h2>
@@ -157,7 +157,7 @@ export default function ApplicationFeedbackPage() {
                 onClick={() => setRating(star)}
                 onMouseEnter={() => setHovered(star)}
                 onMouseLeave={() => setHovered(0)}
-                className="transition-transform hover:scale-110 focus:outline-none"
+                className="rounded-md transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 aria-label={t("rateStarsAria", { count: star })}
               >
                 <Star
@@ -172,7 +172,7 @@ export default function ApplicationFeedbackPage() {
           </div>
 
           {(hovered || rating) > 0 && (
-            <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
+            <p className="text-sm font-medium text-amber-600">
               {starLabels[hovered || rating]}
             </p>
           )}
@@ -190,7 +190,7 @@ export default function ApplicationFeedbackPage() {
               <span className="text-sm text-muted-foreground">{label}</span>
               <div className="flex gap-1">
                 {[1, 2, 3, 4, 5].map((s) => (
-                  <button key={s} type="button" onClick={() => set(s)} className="focus:outline-none">
+                  <button key={s} type="button" onClick={() => set(s)} className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                     <Star className={`w-5 h-5 ${s <= value ? "fill-amber-400 text-amber-400" : "text-muted-foreground/20"}`} />
                   </button>
                 ))}

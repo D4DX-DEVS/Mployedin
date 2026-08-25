@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { cn } from "@/lib/utils";
+import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
 // ── Types ──────────────────────────────────────────────────────────
 interface ApplicationDetail {
@@ -171,7 +172,7 @@ export default function ApplicationDetailPage() {
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
             <Calendar className="h-3 w-3" />
-            {t("applied")} {new Date(app.appliedAt).toLocaleDateString()}
+            {t("applied")} {formatDate(new Date(app.appliedAt))}
           </span>
           {(() => {
             const loc = job?.location?.isRemote
@@ -187,8 +188,8 @@ export default function ApplicationDetailPage() {
             <span className="flex items-center gap-1">
               <span aria-hidden="true">💰</span>
               {job.salary.min && job.salary.max
-                ? `${job.salary.currency ?? "AED"} ${job.salary.min.toLocaleString()} – ${job.salary.max.toLocaleString()}`
-                : `From ${job.salary.currency ?? "AED"} ${(job.salary.min || job.salary.max).toLocaleString()}`}
+                ? `${job.salary.currency ?? "AED"} ${formatCount(job.salary.min)} – ${formatCount(job.salary.max)}`
+                : `From ${job.salary.currency ?? "AED"} ${formatCount((job.salary.min || job.salary.max))}`}
             </span>
           )}
           {app.aiMatchScore != null && app.aiMatchScore > 0 && (
@@ -459,12 +460,12 @@ function OfferActionCard({ offer, onUpdated }: { offer: OfferItem; onUpdated: ()
         )}
         {offer.startDate && (
           <span className="flex items-center gap-1">
-            <Calendar className="h-3 w-3" /> {t("startDate")}: {new Date(offer.startDate).toLocaleDateString()}
+            <Calendar className="h-3 w-3" /> {t("startDate")}: {formatDate(new Date(offer.startDate))}
           </span>
         )}
         {offer.expiresAt && isPending && (
           <span className={cn("text-[11px]", isExpired ? "text-red-600" : "text-amber-600")}>
-            {isExpired ? t("expired") : `${t("expires")}: ${new Date(offer.expiresAt).toLocaleDateString()}`}
+            {isExpired ? t("expired") : `${t("expires")}: ${formatDate(new Date(offer.expiresAt))}`}
           </span>
         )}
       </div>

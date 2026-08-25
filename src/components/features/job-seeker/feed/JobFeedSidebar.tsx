@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { ChevronRight, ChevronDown } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -178,7 +179,7 @@ export function JobFeedSidebar({ filters, onFiltersChange, locale }: SidebarProp
 
   const salaryLabel =
     profile?.preferredSalary
-      ? `${profile.preferredSalary.min.toLocaleString()}–${profile.preferredSalary.max.toLocaleString()} ${profile.preferredSalary.currency}`
+      ? `${formatCount(profile.preferredSalary.min)}–${formatCount(profile.preferredSalary.max)} ${profile.preferredSalary.currency}`
       : undefined;
 
   const activeFilterCount =

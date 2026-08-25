@@ -93,10 +93,10 @@ export function AIChatDraftsCard({ locale, variant = "card", onCountChange }: AI
   // ── Banner variant ──────────────────────────────────────────────────────
   if (variant === "banner") {
     return (
-      <div className="rounded-2xl border border-sky-200 bg-sky-50/80 p-4 dark:border-sky-500/30 dark:bg-sky-500/10">
+      <div className="rounded-2xl border border-sky-200 bg-sky-50/80 p-4">
         {ConfirmDialogNode}
         <div className="flex flex-wrap items-center gap-3">
-          <Bot className="h-5 w-5 flex-shrink-0 text-sky-600 dark:text-sky-400" />
+          <Bot className="h-5 w-5 flex-shrink-0 text-sky-600" />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-foreground">
               {t("bannerTitle", { count: drafts.length })}
@@ -128,7 +128,7 @@ export function AIChatDraftsCard({ locale, variant = "card", onCountChange }: AI
     <section className="workspace-panel-surface panel-body flex flex-col rounded-[24px]">
       {ConfirmDialogNode}
       <div className="mb-3 flex items-center gap-2.5">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-500/15 dark:text-sky-300">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-600">
           <Bot className="h-4 w-4" />
         </span>
         <div className="min-w-0">
@@ -146,14 +146,14 @@ export function AIChatDraftsCard({ locale, variant = "card", onCountChange }: AI
             className="group flex items-center gap-1.5 rounded-xl border border-border/60 bg-background/70 px-2 py-1 transition-all hover:border-sky-400/40 hover:shadow-sm sm:gap-2 sm:px-2.5 sm:py-1.5"
           >
             <Link href={continueHref(d._id)} className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2.5">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-sky-100 text-sky-600 dark:bg-sky-500/20 dark:text-sky-300 sm:h-7 sm:w-7">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-sky-100 text-sky-600 sm:h-7 sm:w-7">
                 <Bot className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
               </span>
               <div className="flex min-w-0 flex-1 items-center gap-2">
                 <p className="truncate text-xs font-medium text-foreground sm:text-sm">{d.title}</p>
                 <div className="flex shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground">
                   {d.hasExtractedJob && (
-                    <span className="hidden items-center gap-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 sm:inline-flex">
+                    <span className="hidden items-center gap-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 sm:inline-flex">
                       {t("draftReady")}
                     </span>
                   )}
@@ -163,7 +163,7 @@ export function AIChatDraftsCard({ locale, variant = "card", onCountChange }: AI
                   </span>
                 </div>
               </div>
-              <span className="hidden shrink-0 items-center gap-1.5 rounded-lg bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700 transition-colors group-hover:bg-sky-100 dark:bg-sky-500/15 dark:text-sky-300 sm:inline-flex">
+              <span className="hidden shrink-0 items-center gap-1.5 rounded-lg bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700 transition-colors group-hover:bg-sky-100 sm:inline-flex">
                 <RotateCcw className="h-3.5 w-3.5" />
                 {t("continueChat")}
               </span>

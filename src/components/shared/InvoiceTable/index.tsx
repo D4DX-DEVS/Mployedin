@@ -9,6 +9,7 @@ import { ListSkeleton } from "@/components/shared/ListSkeleton";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
 export interface InvoiceTableInvoice {
   _id: string;
@@ -88,21 +89,21 @@ export function InvoiceTable({ invoices, loading, role, onSelect }: InvoiceTable
       header: t("total"),
       headerClassName: "text-right",
       cellClassName: "text-right font-semibold",
-      cell: (inv) => `${inv.currency} ${(inv.totalAmount ?? 0).toLocaleString()}`,
+      cell: (inv) => `${inv.currency} ${formatCount((inv.totalAmount ?? 0))}`,
     },
     {
       key: "paid",
       header: t("paid"),
       headerClassName: "text-right",
-      cellClassName: "text-right text-sm text-emerald-600 dark:text-emerald-400",
-      cell: (inv) => `${inv.currency} ${(inv.paidAmount ?? 0).toLocaleString()}`,
+      cellClassName: "text-right text-sm text-emerald-600",
+      cell: (inv) => `${inv.currency} ${formatCount((inv.paidAmount ?? 0))}`,
     },
     {
       key: "balance",
       header: t("balance"),
       headerClassName: "text-right",
-      cellClassName: "text-right text-sm text-amber-600 dark:text-amber-400",
-      cell: (inv) => `${inv.currency} ${(inv.balanceDue ?? 0).toLocaleString()}`,
+      cellClassName: "text-right text-sm text-amber-600",
+      cell: (inv) => `${inv.currency} ${formatCount((inv.balanceDue ?? 0))}`,
     },
     {
       key: "commission",
@@ -113,7 +114,7 @@ export function InvoiceTable({ invoices, loading, role, onSelect }: InvoiceTable
         const myComm = inv.commissions?.find((c) => c.role === role);
         return myComm ? (
           <div className="text-xs">
-            <p className="font-medium text-primary">{myComm.rate}% = {inv.currency} {myComm.amount.toLocaleString()}</p>
+            <p className="font-medium text-primary">{myComm.rate}% = {inv.currency} {formatCount(myComm.amount)}</p>
             <StatusBadge status={myComm.status} />
           </div>
         ) : <span className="text-xs text-muted-foreground">—</span>;
@@ -129,7 +130,7 @@ export function InvoiceTable({ invoices, loading, role, onSelect }: InvoiceTable
       header: t("dueDate"),
       headerClassName: hiddenMd,
       cellClassName: `${hiddenMd ?? ""} text-xs text-muted-foreground`.trim(),
-      cell: (inv) => (inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : "—"),
+      cell: (inv) => (inv.dueDate ? formatDate(new Date(inv.dueDate)) : "—"),
     },
     {
       key: "actions",

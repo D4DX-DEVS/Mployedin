@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { useTranslations } from "next-intl";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 interface Message {
   role: "user" | "assistant";
@@ -63,7 +64,7 @@ function AIMarkdown({ content }: { content: string }) {
         ol: ({ ...props }) => <ol className="list-decimal list-inside space-y-0.5 my-1" {...props} />,
         li: ({ ...props }) => <li className="leading-relaxed" {...props} />,
         strong: ({ ...props }) => <strong className="font-semibold" {...props} />,
-        code: ({ ...props }) => <code className="rounded bg-black/10 px-1 font-mono text-[0.88em] dark:bg-white/10" {...props} />,
+        code: ({ ...props }) => <code className="rounded bg-black/10 px-1 font-mono text-[0.88em]" {...props} />,
         a: ({ href: rawHref, ...props }) => {
           const href = normalizeHref(rawHref);
           const isInternal = href?.startsWith("/");
@@ -596,12 +597,12 @@ export function ConversationalAI({
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{th.title || t("untitled")}</p>
                     <p className="text-xs text-muted-foreground">
-                      {new Date(th.updatedAt).toLocaleDateString()}
+                      {formatDate(new Date(th.updatedAt))}
                     </p>
                   </div>
                   <button
                     onClick={(e) => deleteThread(th._id, e)}
-                    className="shrink-0 text-muted-foreground hover:text-red-500 transition-colors p-1 rounded hover:bg-red-50 dark:hover:bg-red-950/30"
+                    className="shrink-0 text-muted-foreground hover:text-red-500 transition-colors p-1 rounded hover:bg-red-50"
                     title={t("deleteConversation")}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -635,7 +636,7 @@ export function ConversationalAI({
                             key={qp.label}
                             onClick={() => sendMessage(qp.label)}
                             disabled={isStreaming}
-                            className="flex items-center gap-2 rounded-xl border border-border/60 bg-background/60 dark:bg-card/40 px-3 py-2 text-xs text-foreground hover:border-primary/40 hover:bg-primary/5 transition-colors text-left disabled:opacity-50"
+                            className="flex items-center gap-2 rounded-xl border border-border/60 bg-background/60 px-3 py-2 text-xs text-foreground hover:border-primary/40 hover:bg-primary/5 transition-colors text-left disabled:opacity-50"
                           >
                             <span className="text-primary">{qp.icon}</span>
                             <span className="leading-snug">{qp.label}</span>

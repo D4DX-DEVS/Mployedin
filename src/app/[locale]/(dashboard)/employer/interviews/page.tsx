@@ -35,6 +35,7 @@ import type { ExportColumn } from "@/lib/export";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { formatNumber } from "@/lib/formatNumber";
+import { formatDateTime as formatIntlDateTime } from "@/lib/ui/intlFormat";
 
 interface AIQuestionsTarget {
   interviewId: string;
@@ -221,7 +222,7 @@ export default function EmployerInterviewsPage() {
     { header: tc("role"), key: "jobId", formatter: (_v, r) => (r as Record<string, any>).jobId?.title ?? "Untitled role" },
     { header: tc("round"), key: "interviewRound", formatter: (v) => `R${v ?? 1}` },
     { header: tc("type"), key: "type", formatter: (v) => String(v ?? "in-person") },
-    { header: tc("scheduled"), key: "scheduledAt", formatter: (v) => v ? new Date(String(v)).toLocaleString() : "—" },
+    { header: tc("scheduled"), key: "scheduledAt", formatter: (v) => v ? formatIntlDateTime(new Date(String(v))) : "—" },
     { header: tc("status"), key: "status", formatter: (v) => String(v ?? "—") },
     { header: tc("outcome"), key: "outcome", formatter: (v) => String(v ?? "—") },
   ];
@@ -234,9 +235,13 @@ export default function EmployerInterviewsPage() {
 
   function formatDateTime(value: string): { date: string; time: string } {
     const date = new Date(value);
+    // An `undefined` locale resolves to the server's locale during SSR and the
+    // browser's on the client, which produced a hydration mismatch on every
+    // load of this page. Use the route locale, as the rest of the workspace does.
+    const dateLocale = locale === "ar" ? "ar-SA" : "en-US";
     return {
-      date: date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }),
-      time: date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
+      date: date.toLocaleDateString(dateLocale, { month: "short", day: "numeric", year: "numeric" }),
+      time: date.toLocaleTimeString(dateLocale, { hour: "numeric", minute: "2-digit" }),
     };
   }
 
@@ -1085,10 +1090,10 @@ export default function EmployerInterviewsPage() {
                       {Object.entries(prepBrief.timeAllocation).map(([key, mins]) => (
                         <div
                           key={key}
-                          className="flex flex-1 flex-col items-center rounded-xl bg-status-interview-bg p-2 dark:bg-violet-500/10"
+                          className="flex flex-1 flex-col items-center rounded-xl bg-status-interview-bg p-2"
                           style={{ flex: mins }}
                         >
-                          <span className="text-lg font-semibold text-status-interview dark:text-violet-300">{mins}m</span>
+                          <span className="text-lg font-semibold text-status-interview">{mins}m</span>
                           <span className="text-[10px] capitalize text-muted-foreground">{key}</span>
                         </div>
                       ))}
@@ -1098,8 +1103,8 @@ export default function EmployerInterviewsPage() {
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   {/* Key Strengths */}
-                  <div className="rounded-2xl border border-status-selected/20 bg-status-selected-bg/60 p-4 dark:border-emerald-500/20 dark:bg-emerald-500/10">
-                    <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">{t("keyStrengths")}</p>
+                  <div className="rounded-2xl border border-status-selected/20 bg-status-selected-bg/60 p-4">
+                    <p className="text-xs font-semibold text-emerald-700">{t("keyStrengths")}</p>
                     <ul className="mt-2 space-y-1.5">
                       {prepBrief.keyStrengths.map((s) => (
                         <li key={s} className="flex items-start gap-2 text-xs text-muted-foreground">
@@ -1111,8 +1116,8 @@ export default function EmployerInterviewsPage() {
                   </div>
 
                   {/* Areas to Probe */}
-                  <div className="rounded-2xl border border-status-shortlisted/20 bg-status-shortlisted-bg/60 p-4 dark:border-amber-500/20 dark:bg-amber-500/10">
-                    <p className="text-xs font-semibold text-status-shortlisted dark:text-amber-300">{t("areasToProbe")}</p>
+                  <div className="rounded-2xl border border-status-shortlisted/20 bg-status-shortlisted-bg/60 p-4">
+                    <p className="text-xs font-semibold text-status-shortlisted">{t("areasToProbe")}</p>
                     <ul className="mt-2 space-y-1.5">
                       {prepBrief.areasToProbe.map((a) => (
                         <li key={a} className="flex items-start gap-2 text-xs text-muted-foreground">
@@ -1140,8 +1145,8 @@ export default function EmployerInterviewsPage() {
 
                 {/* Red Flags */}
                 {prepBrief.redFlags.length > 0 && (
-                  <div className="rounded-2xl border border-status-rejected/20 bg-status-rejected-bg/60 p-4 dark:border-rose-500/20 dark:bg-rose-500/10">
-                    <p className="text-xs font-semibold text-rose-700 dark:text-rose-300">{t("redFlags")}</p>
+                  <div className="rounded-2xl border border-status-rejected/20 bg-status-rejected-bg/60 p-4">
+                    <p className="text-xs font-semibold text-rose-700">{t("redFlags")}</p>
                     <ul className="mt-2 space-y-1.5">
                       {prepBrief.redFlags.map((r) => (
                         <li key={r} className="flex items-start gap-2 text-xs text-muted-foreground">
@@ -1453,7 +1458,7 @@ function InterviewActionModal({
                 <div className="col-span-1">
                   <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("salary")}</label>
                   <input type="number" value={salaryAmount} onChange={(e) => setSalaryAmount(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
                     placeholder={t("salaryPlaceholder")} min="0" />
                 </div>
                 <div>
@@ -1495,13 +1500,13 @@ function InterviewActionModal({
               <div>
                 <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("benefitsOptional")}</label>
                 <textarea value={benefits} onChange={(e) => setBenefits(e.target.value)} rows={2} maxLength={2000}
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
                   placeholder={t("benefitsPlaceholder")} />
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("notesOptional")}</label>
                 <textarea value={offerNotes} onChange={(e) => setOfferNotes(e.target.value)} rows={2} maxLength={1000}
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
                   placeholder={t("notesPlaceholder")} />
               </div>
             </>

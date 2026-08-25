@@ -27,6 +27,7 @@ import { useTranslations } from "next-intl";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -106,7 +107,7 @@ const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "S
 function formatCurrency(value: number, currency = "AED"): string {
   if (value >= 1_000_000) return `${currency} ${(value / 1_000_000).toFixed(1)}M`;
   if (value >= 1_000) return `${currency} ${Math.round(value / 1_000)}K`;
-  return `${currency} ${value.toLocaleString()}`;
+  return `${currency} ${formatCount(value)}`;
 }
 
 function GrowthIndicator({ value }: { value: number }) {
@@ -492,8 +493,8 @@ export default function AdminTargetReportPage() {
           ] as const).map((item) => (
             <div key={item.label} className="rounded-xl border border-border/50 p-3 text-center">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{item.label}</p>
-              <p className="mt-1 text-lg font-bold tabular-nums">{"isCurrency" in item && item.isCurrency ? formatCurrency(item.curr) : item.curr.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground">was {"isCurrency" in item && item.isCurrency ? formatCurrency(item.prev) : item.prev.toLocaleString()}</p>
+              <p className="mt-1 text-lg font-bold tabular-nums">{"isCurrency" in item && item.isCurrency ? formatCurrency(item.curr) : formatCount(item.curr)}</p>
+              <p className="text-xs text-muted-foreground">was {"isCurrency" in item && item.isCurrency ? formatCurrency(item.prev) : formatCount(item.prev)}</p>
               <GrowthIndicator value={item.growth} />
             </div>
           ))}

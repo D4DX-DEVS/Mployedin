@@ -123,7 +123,7 @@ export default function CmsHeroFilters({
         <button
           type="button"
           onClick={onToggleFilters}
-          className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-white/10 dark:hover:bg-white/5"
+          className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-white/10"
         >
           <Filter className="h-4 w-4 text-muted-foreground" />
           {showFilters ? "Hide Filters" : "Show Filters"}
@@ -153,7 +153,7 @@ export default function CmsHeroFilters({
       </div>
 
       {showFilters && (
-        <div className="mt-4 space-y-3 rounded-[20px] border border-border/30 bg-background/40 p-4 backdrop-blur-sm dark:bg-background/20">
+        <div className="mt-4 space-y-3 rounded-[20px] border border-border/30 bg-background/40 p-4 backdrop-blur-sm">
           {hasSearch && (
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

@@ -46,12 +46,12 @@ interface ResumeViewerModalProps {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; pill: string }> = {
-  applied:             { label: "Applied",     pill: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
-  shortlisted:         { label: "Shortlisted", pill: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" },
-  interview_scheduled: { label: "Interview",   pill: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300" },
-  offer:               { label: "Offer",       pill: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" },
-  selected:            { label: "Selected",    pill: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" },
-  rejected:            { label: "Rejected",    pill: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" },
+  applied:             { label: "Applied",     pill: "bg-blue-100 text-blue-700" },
+  shortlisted:         { label: "Shortlisted", pill: "bg-emerald-100 text-emerald-700" },
+  interview_scheduled: { label: "Interview",   pill: "bg-purple-100 text-purple-700" },
+  offer:               { label: "Offer",       pill: "bg-amber-100 text-amber-700" },
+  selected:            { label: "Selected",    pill: "bg-green-100 text-green-700" },
+  rejected:            { label: "Rejected",    pill: "bg-red-100 text-red-700" },
 };
 
 function ScoreBar({ label, value }: { label: string; value: number }) {
@@ -178,7 +178,7 @@ function AtsPanel({ jobSeekerId, jobId }: { jobSeekerId: string; jobId: string }
         )}
 
         {badParse && (
-          <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-2.5 text-[11px] text-amber-600 dark:text-amber-400">
+          <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-2.5 text-[11px] text-amber-600">
             <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
             <span>{t("notParseable")}</span>
           </div>
@@ -342,7 +342,7 @@ export function ResumeViewerModal({
               <>
                 {currentStatus !== "shortlisted" && currentStatus !== "selected" && (
                   <Button size="sm" variant="outline"
-                    className="h-8 gap-1.5 text-xs border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950"
+                    className="h-8 gap-1.5 text-xs border-emerald-300 text-emerald-700 hover:bg-emerald-50"
                     disabled={actionLoading !== null}
                     onClick={() => handleAction("shortlisted")}
                   >
@@ -352,7 +352,7 @@ export function ResumeViewerModal({
                 )}
                 {currentStatus !== "interview_scheduled" && (
                   <Button size="sm" variant="outline"
-                    className="h-8 gap-1.5 text-xs border-purple-300 text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-950"
+                    className="h-8 gap-1.5 text-xs border-purple-300 text-purple-700 hover:bg-purple-50"
                     disabled={actionLoading !== null}
                     onClick={() => handleAction("interview_scheduled")}
                   >
@@ -362,7 +362,7 @@ export function ResumeViewerModal({
                 )}
                 {currentStatus !== "rejected" && (
                   <Button size="sm" variant="outline"
-                    className="h-8 gap-1.5 text-xs border-red-300 text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+                    className="h-8 gap-1.5 text-xs border-red-300 text-red-700 hover:bg-red-50"
                     disabled={actionLoading !== null}
                     onClick={() => handleAction("rejected")}
                   >
@@ -414,7 +414,7 @@ export function ResumeViewerModal({
         <div className="flex flex-1 overflow-hidden">
 
           {/* CV Viewer — padded, light bg */}
-          <div className="flex-1 overflow-auto bg-gray-50 dark:bg-muted/20 p-4">
+          <div className="flex-1 overflow-auto bg-gray-50 p-4">
             {isPdf ? (
               previewFailed ? (
                 <div className="flex flex-col items-center justify-center min-h-full gap-3 text-center px-6">
@@ -563,7 +563,7 @@ export function ResumeViewerModal({
                     {/* Strengths */}
                     {strengths && strengths.length > 0 && (
                       <div className="space-y-1.5">
-                        <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+                        <p className="text-xs font-semibold text-emerald-700 flex items-center gap-1.5">
                           <CheckCircle2 className="w-3.5 h-3.5" /> {t("strengths")}
                         </p>
                         <ul className="space-y-1">
@@ -580,7 +580,7 @@ export function ResumeViewerModal({
                     {/* Gaps */}
                     {gaps && gaps.length > 0 && (
                       <div className="space-y-1.5">
-                        <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                        <p className="text-xs font-semibold text-amber-700 flex items-center gap-1.5">
                           <XCircle className="w-3.5 h-3.5" /> {t("gaps")}
                         </p>
                         <ul className="space-y-1">
@@ -616,14 +616,14 @@ export function ResumeViewerModal({
                     </Button>
                   )}
                   {currentStatus === "shortlisted" && (
-                    <div className="flex items-center justify-center gap-1.5 py-1 text-emerald-700 dark:text-emerald-400 text-sm font-medium">
+                    <div className="flex items-center justify-center gap-1.5 py-1 text-emerald-700 text-sm font-medium">
                       <CheckCircle2 className="w-4 h-4" /> {t("shortlisted")}
                     </div>
                   )}
                   {currentStatus !== "interview_scheduled" && (
                     <Button
                       variant="outline"
-                      className="w-full gap-2 border-purple-300 text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-950"
+                      className="w-full gap-2 border-purple-300 text-purple-700 hover:bg-purple-50"
                       disabled={actionLoading !== null}
                       onClick={() => handleAction("interview_scheduled")}
                     >
@@ -634,7 +634,7 @@ export function ResumeViewerModal({
                   {currentStatus !== "rejected" && (
                     <Button
                       variant="outline"
-                      className="w-full gap-2 border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+                      className="w-full gap-2 border-red-300 text-red-600 hover:bg-red-50"
                       disabled={actionLoading !== null}
                       onClick={() => handleAction("rejected")}
                     >

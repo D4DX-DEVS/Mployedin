@@ -40,7 +40,7 @@ export function DashboardStatCards({
       value: activeJobCount,
       href: `/${locale}/employer/jobs`,
       Icon: BriefcaseBusiness,
-      iconClassName: "text-emerald-600 dark:text-emerald-300",
+      iconClassName: "text-emerald-600",
       secondary: (
         <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <span className="inline-flex items-center gap-1">
@@ -59,7 +59,7 @@ export function DashboardStatCards({
       // Deep-link straight to new (unactioned) applications
       href: `/${locale}/employer/applications?status=applied`,
       Icon: FileText,
-      iconClassName: "text-amber-600 dark:text-amber-300",
+      iconClassName: "text-amber-600",
       secondary: null,
     },
     {
@@ -68,7 +68,7 @@ export function DashboardStatCards({
       value: highMatchCount,
       href: `/${locale}/employer/applications?scoreMin=80`,
       Icon: Sparkles,
-      iconClassName: "text-violet-600 dark:text-violet-300",
+      iconClassName: "text-violet-600",
       secondary: null,
     },
     {
@@ -77,7 +77,7 @@ export function DashboardStatCards({
       value: interviewsToday,
       href: `/${locale}/employer/interviews`,
       Icon: CalendarDays,
-      iconClassName: "text-sky-600 dark:text-sky-300",
+      iconClassName: "text-sky-600",
       secondary: null,
     },
   ];

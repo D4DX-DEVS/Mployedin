@@ -276,8 +276,8 @@ export default function AgentEmployersPage() {
 
       {/* Referral link display — immediately visible after clicking "Get Referral Link" */}
       {referralError && (
-        <section className="rounded-[28px] border border-status-rejected/20 bg-status-rejected-bg p-4 dark:border-red-800/40 dark:bg-red-950/20">
-          <p className="text-sm text-status-rejected dark:text-red-400">{referralError}</p>
+        <section className="rounded-[28px] border border-status-rejected/20 bg-status-rejected-bg p-4">
+          <p className="text-sm text-status-rejected">{referralError}</p>
         </section>
       )}
 
@@ -285,7 +285,7 @@ export default function AgentEmployersPage() {
         <section className="workspace-panel-surface rounded-[28px] space-y-4 panel-body">
           {/* Link URL + Copy */}
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-sky-100 text-status-applied dark:bg-sky-900/30 dark:text-sky-400">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-sky-100 text-status-applied">
               <Link2 className="h-5 w-5" />
             </div>
             <div className="flex-1 min-w-0">
@@ -297,9 +297,9 @@ export default function AgentEmployersPage() {
                   </span>
                 )}
                 {referralData.isActive ? (
-                  <span className="rounded-full bg-status-selected-bg px-2 py-0.5 text-[10px] font-semibold text-status-selected dark:bg-green-900/30 dark:text-green-400">{tc("active")}</span>
+                  <span className="rounded-full bg-status-selected-bg px-2 py-0.5 text-[10px] font-semibold text-status-selected">{tc("active")}</span>
                 ) : (
-                  <span className="rounded-full bg-status-rejected-bg px-2 py-0.5 text-[10px] font-semibold text-status-rejected dark:bg-red-900/30 dark:text-red-400">{t("referralDisabledStatus")}</span>
+                  <span className="rounded-full bg-status-rejected-bg px-2 py-0.5 text-[10px] font-semibold text-status-rejected">{t("referralDisabledStatus")}</span>
                 )}
               </div>
               <p className="mt-1 text-xs text-muted-foreground break-all font-mono">{referralLink}</p>
@@ -338,8 +338,8 @@ export default function AgentEmployersPage() {
               disabled={togglingActive}
               className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-semibold transition-colors disabled:opacity-50 ${
                 referralData.isActive
-                  ? "border-status-shortlisted/20 text-status-shortlisted hover:bg-status-shortlisted-bg dark:border-amber-800 dark:hover:bg-amber-950/20"
-                  : "border-status-selected/20 text-status-selected hover:bg-status-selected-bg dark:border-green-800 dark:hover:bg-green-950/20"
+                  ? "border-status-shortlisted/20 text-status-shortlisted hover:bg-status-shortlisted-bg"
+                  : "border-status-selected/20 text-status-selected hover:bg-status-selected-bg"
               }`}
             >
               {referralData.isActive ? <PowerOff className="h-3.5 w-3.5" /> : <Power className="h-3.5 w-3.5" />}
@@ -355,7 +355,7 @@ export default function AgentEmployersPage() {
             </button>
             <Link
               href={`/${locale}/agent/referral-links`}
-              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-xs font-medium text-status-applied hover:bg-status-applied-bg dark:hover:bg-sky-950/20"
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-xs font-medium text-status-applied hover:bg-status-applied-bg"
             >
               <ExternalLink className="h-3.5 w-3.5" />
               {t("referralManageAllLinks")}
@@ -374,7 +374,7 @@ export default function AgentEmployersPage() {
                 <div className="space-y-2">
                   {referralData.registrations.map((reg, i) => (
                     <div key={i} className="flex items-center gap-3 rounded-xl bg-secondary/40 px-4 py-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-100 text-status-applied dark:bg-sky-900/30 dark:text-sky-400">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-100 text-status-applied">
                         <Building2 className="h-4 w-4" />
                       </div>
                       <div className="flex-1">
@@ -495,7 +495,7 @@ export default function AgentEmployersPage() {
                       <button
                         onClick={() => handleSwitchToEmployerView(em._id)}
                         disabled={switchingEmployerId === em._id || !em.isActive}
-                        className="inline-flex items-center justify-center gap-1 rounded-xl border border-sky-400/50 bg-status-applied-bg px-3 py-2 text-xs font-semibold text-status-applied transition-colors hover:bg-status-applied-bg disabled:opacity-50 dark:bg-sky-950/20 dark:text-sky-400 dark:hover:bg-sky-900/30"
+                        className="inline-flex items-center justify-center gap-1 rounded-xl border border-sky-400/50 bg-status-applied-bg px-3 py-2 text-xs font-semibold text-status-applied transition-colors hover:bg-status-applied-bg disabled:opacity-50"
                         aria-label={t("cardSwitchWorkspaceAriaLabel", { company: em.companyName ?? em.name })}
                       >
                         {switchingEmployerId === em._id ? (

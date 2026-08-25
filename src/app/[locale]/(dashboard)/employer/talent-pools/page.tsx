@@ -292,7 +292,7 @@ function PoolCard({
         </button>
       </div>
 
-      <button type="button" onClick={onOpen} className="flex flex-1 flex-col gap-2 text-left focus:outline-none">
+      <button type="button" onClick={onOpen} className="flex flex-1 flex-col gap-2 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
         <div className="flex items-start gap-3">
           <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${color.bg} ring-4 ${color.ring}`}>
             <Layers className={`h-5 w-5 ${color.text}`} />

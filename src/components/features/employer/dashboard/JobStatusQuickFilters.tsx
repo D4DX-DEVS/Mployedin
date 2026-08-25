@@ -48,7 +48,7 @@ export function JobStatusQuickFilters({
       countKey: "activeJobs",
       icon: Briefcase,
       accent:
-        "border-emerald-200 bg-emerald-50/70 text-emerald-700 hover:border-emerald-300 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300",
+        "border-emerald-200 bg-emerald-50/70 text-emerald-700 hover:border-emerald-300",
     },
     {
       status: "draft",
@@ -57,7 +57,7 @@ export function JobStatusQuickFilters({
       countKey: "draftJobs",
       icon: FileEdit,
       accent:
-        "border-amber-200 bg-amber-50/70 text-amber-700 hover:border-amber-300 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300",
+        "border-amber-200 bg-amber-50/70 text-amber-700 hover:border-amber-300",
     },
     {
       status: "paused",
@@ -66,7 +66,7 @@ export function JobStatusQuickFilters({
       countKey: "pausedJobs",
       icon: PauseCircle,
       accent:
-        "border-sky-200 bg-sky-50/70 text-sky-700 hover:border-sky-300 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-300",
+        "border-sky-200 bg-sky-50/70 text-sky-700 hover:border-sky-300",
     },
   ];
 
@@ -89,7 +89,7 @@ export function JobStatusQuickFilters({
         </div>
         <Link
           href={jobsHref}
-          className="text-xs font-semibold text-sky-700 transition-colors hover:text-sky-800 dark:text-sky-300 dark:hover:text-sky-200"
+          className="text-xs font-semibold text-sky-700 transition-colors hover:text-sky-800"
         >
           {t("manageAll")}
         </Link>

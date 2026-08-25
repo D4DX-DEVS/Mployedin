@@ -352,7 +352,7 @@ function InvoiceSection({ invoices, displayCurrency, rates }: { invoices: Invoic
         <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><FileText className="h-4 w-4" /> {t("billingAndInvoices")}</h4>
         <span className="text-xs text-muted-foreground">{t("invoiceCountLabel", { count: invoices.length })}</span>
       </div>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto" tabIndex={0}>
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-xs text-muted-foreground border-b border-border/40">

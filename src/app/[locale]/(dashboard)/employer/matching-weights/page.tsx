@@ -236,16 +236,16 @@ export default function EmployerMatchingWeightsPage() {
 
       {/* Template saved banner */}
       {templateSaved && (
-        <div className="flex items-center gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-status-selected dark:text-emerald-200">
+        <div className="flex items-center gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-status-selected">
           <CheckCircle className="h-4 w-4" />
           {t("templateSavedSuccess")}
         </div>
       )}
 
       {error && (
-        <div className="flex items-center justify-between rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-status-rejected dark:text-red-200">
+        <div className="flex items-center justify-between rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-status-rejected">
           <span>{error}</span>
-          <button onClick={() => setError(null)} className="font-medium text-red-400 hover:text-red-600 dark:text-red-300 dark:hover:text-red-200">✕</button>
+          <button onClick={() => setError(null)} className="font-medium text-red-400 hover:text-red-600">✕</button>
         </div>
       )}
 
@@ -272,7 +272,7 @@ export default function EmployerMatchingWeightsPage() {
               </h3>
               <p className="mt-1 text-sm text-muted-foreground">{t("adjustPercentages")}</p>
             </div>
-            <span className={`rounded-full px-3 py-1 text-sm font-semibold ${isTotalValid ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-red-500/10 text-status-rejected dark:text-red-300"}`}>
+            <span className={`rounded-full px-3 py-1 text-sm font-semibold ${isTotalValid ? "bg-emerald-500/10 text-emerald-700" : "bg-red-500/10 text-status-rejected"}`}>
               {t("totalLabel")} {total}% {isTotalValid ? "✓" : t("need100")}
             </span>
           </div>
@@ -353,8 +353,8 @@ export default function EmployerMatchingWeightsPage() {
             </div>
 
             <div className={`mt-4 rounded-2xl p-4 text-sm ${isTotalValid
-              ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-              : "bg-amber-500/10 text-status-shortlisted dark:text-amber-300"
+              ? "bg-emerald-500/10 text-emerald-700"
+              : "bg-amber-500/10 text-status-shortlisted"
             }`}>
               {isTotalValid
                 ? `✓ ${t("balancedCorrectly")}`

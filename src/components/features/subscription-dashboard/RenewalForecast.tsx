@@ -37,9 +37,9 @@ export function RenewalForecast({ data }: RenewalForecastProps) {
           <p className="text-3xl font-bold">{data.totalRenewing}</p>
           <p className="text-xs text-muted-foreground">{t("subscriptions")}</p>
         </div>
-        <div className="rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200/50 dark:border-emerald-500/20 p-4 text-center">
-          <p className="text-[10px] text-emerald-600 dark:text-emerald-400 uppercase tracking-wider font-semibold mb-1">{t("expectedRevenue")}</p>
-          <p className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(data.expectedRevenue)}</p>
+        <div className="rounded-xl bg-emerald-50 border border-emerald-200/50 p-4 text-center">
+          <p className="text-[10px] text-emerald-600 uppercase tracking-wider font-semibold mb-1">{t("expectedRevenue")}</p>
+          <p className="text-3xl font-bold text-emerald-600">{formatCurrency(data.expectedRevenue)}</p>
           <p className="text-xs text-muted-foreground">AED</p>
         </div>
       </div>

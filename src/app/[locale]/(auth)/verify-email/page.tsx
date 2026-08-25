@@ -177,8 +177,8 @@ export default function VerifyEmailPage() {
       {/* Success */}
       {status === "success" && (
         <div className="flex flex-col items-center gap-6 py-6 text-center">
-          <div className="h-14 w-14 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-            <CheckCircle className="h-7 w-7 text-green-600 dark:text-green-400" />
+          <div className="h-14 w-14 rounded-full bg-green-100 flex items-center justify-center">
+            <CheckCircle className="h-7 w-7 text-green-600" />
           </div>
           <div className="space-y-1.5">
             <h1 className="text-2xl font-semibold tracking-tight">{t("verifiedTitle")}</h1>
@@ -244,8 +244,8 @@ export default function VerifyEmailPage() {
           )}
 
           {emailFailed && (
-            <div className="w-full max-w-xs p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-left">
-              <p className="text-xs text-amber-800 dark:text-amber-300">
+            <div className="w-full max-w-xs p-3 rounded-xl bg-amber-50 border border-amber-200 text-left">
+              <p className="text-xs text-amber-800">
                 {t("troubleSendingBefore")} <strong>{t("resendWord")}</strong>{t("troubleSendingAfter")}
               </p>
             </div>

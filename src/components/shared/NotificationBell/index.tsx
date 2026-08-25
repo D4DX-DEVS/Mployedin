@@ -73,7 +73,7 @@ export function NotificationBell({ locale }: NotificationBellProps) {
                 key={n._id}
                 onClick={() => !n.isRead && markOneRead.mutate(n._id)}
                 className={`relative px-4 py-3 border-b border-border last:border-0 hover:bg-muted/40 cursor-pointer transition-colors ${
-                  !n.isRead ? "bg-blue-50 dark:bg-blue-950/20" : ""
+                  !n.isRead ? "bg-blue-50" : ""
                 }`}
               >
                 {!n.isRead && (

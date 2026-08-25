@@ -99,9 +99,9 @@ interface SkillBadgeProps {
 function SkillBadge({ skill, state }: SkillBadgeProps) {
   const styles = {
     matched:
-      "border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200",
+      "border-emerald-300 bg-emerald-100 text-emerald-800",
     confirmed:
-      "border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200",
+      "border-emerald-300 bg-emerald-100 text-emerald-800",
     unanswered:
       "border-border/60 bg-muted/20 text-muted-foreground",
     denied:

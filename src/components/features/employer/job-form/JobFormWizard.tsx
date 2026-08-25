@@ -24,6 +24,7 @@ import { Step4SalarySettings } from "./Step4SalarySettings";
 import { Step5ScreeningQuestions } from "./Step5ScreeningQuestions";
 import { AdvancedSettingsSection } from "./AdvancedSettingsSection";
 import { JobQualityScore } from "./JobQualityScore";
+import { InclusiveWordingPanel } from "./InclusiveWordingPanel";
 import { MatchPreviewPanel } from "./MatchPreviewPanel";
 import { StickyActionBar } from "./StickyActionBar";
 
@@ -747,6 +748,7 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
             {/* Right sidebar — smart panels */}
             <div className="w-full space-y-3 xl:sticky xl:top-4 xl:self-start">
               <JobQualityScore values={formValues} />
+              <InclusiveWordingPanel values={formValues} />
               <MatchPreviewPanel
                 skills={skills}
                 country={country}

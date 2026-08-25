@@ -298,7 +298,7 @@ export default function AdminBulkImportPage() {
               </TableHeader>
               <TableBody>
                 {parsedRows.slice(0, 100).map((row) => (
-                  <TableRow key={row.rowNumber} className={row.status === "error" ? "bg-red-50/50 dark:bg-red-950/10" : ""}>
+                  <TableRow key={row.rowNumber} className={row.status === "error" ? "bg-red-50/50" : ""}>
                     <TableCell className="text-xs text-muted-foreground">{row.rowNumber}</TableCell>
                     <TableCell>
                       {row.status === "valid" ? (

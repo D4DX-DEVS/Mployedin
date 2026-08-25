@@ -16,6 +16,7 @@ import { TableToolbar } from "@/components/shared/TableToolbar";
 import { useTableExport } from "@/hooks/useTableExport";
 import { usePlacements, type Placement } from "@/hooks/usePlacements";
 import type { ExportColumn } from "@/lib/export";
+import { formatCount, formatDate as formatIntlDate } from "@/lib/ui/intlFormat";
 
 export default function EmployerPlacementsPage() {
   const router = useRouter();
@@ -60,10 +61,10 @@ export default function EmployerPlacementsPage() {
     { header: t("candidate"), key: "candidateName", formatter: (v) => String(v ?? t("candidateFallback")) },
     { header: t("position"), key: "jobTitle", formatter: (v) => String(v ?? t("untitledRole")) },
     { header: t("type"), key: "type", formatter: (v) => String(v ?? "\u2014") },
-    { header: t("salary"), key: "salary", formatter: (_v, r) => { const p = r as Record<string, any>; if (!p.salary) return t("notDisclosed"); return `${p.salary.currency} ${p.salary.amount?.toLocaleString()}`; } },
+    { header: t("salary"), key: "salary", formatter: (_v, r) => { const p = r as Record<string, any>; if (!p.salary) return t("notDisclosed"); return `${p.salary.currency} ${formatCount(p.salary.amount)}`; } },
     { header: t("status"), key: "status", formatter: (v) => String(v ?? "\u2014") },
-    { header: t("startDate"), key: "startDate", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : t("notSet") },
-    { header: t("created"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "\u2014" },
+    { header: t("startDate"), key: "startDate", formatter: (v) => v ? formatIntlDate(new Date(String(v))) : t("notSet") },
+    { header: t("created"), key: "createdAt", formatter: (v) => v ? formatIntlDate(new Date(String(v))) : "\u2014" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: placements as unknown as Record<string, unknown>[],
@@ -74,7 +75,7 @@ export default function EmployerPlacementsPage() {
 
   function formatDate(value?: string): string {
     if (!value) return t("notSet");
-    return new Date(value).toLocaleDateString(undefined, {
+    return formatIntlDate(new Date(value), {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -83,7 +84,7 @@ export default function EmployerPlacementsPage() {
 
   function formatSalary(placement: Placement): string {
     if (!placement.salary || placement.salary.amount == null) return t("notDisclosed");
-    return `${placement.salary.currency} ${placement.salary.amount.toLocaleString()}`;
+    return `${placement.salary.currency} ${formatCount(placement.salary.amount)}`;
   }
 
   // Reset page when filters change (skip the initial mount so a page restored from the URL survives)
@@ -303,7 +304,7 @@ export default function EmployerPlacementsPage() {
                     <div className="space-y-2">
                       <p className="font-medium text-foreground">{placement.jobTitle ?? t("untitledRole")}</p>
                       {placement.type ? (
-                        <span className="inline-flex rounded-full bg-secondary/75 px-2.5 py-1 text-[11px] font-medium capitalize text-muted-foreground dark:bg-secondary/75 dark:text-muted-foreground">
+                        <span className="inline-flex rounded-full bg-secondary/75 px-2.5 py-1 text-[11px] font-medium capitalize text-muted-foreground">
                           {placement.type}
                         </span>
                       ) : null}

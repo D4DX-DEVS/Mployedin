@@ -22,13 +22,14 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { useConfirm } from "@/hooks/useConfirm";
+import { formatDate, formatDateTime } from "@/lib/ui/intlFormat";
 
 const USER_ROLES = ["all", "job_seeker", "employer", "agent", "super_agent", "admin"];
 const TEMPLATE_TYPES_ARRAY = ["onboarding", "transactional", "marketing", "system"] as const;
 const fieldClassName =
   "w-full rounded-2xl border border-border bg-muted/50 px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-primary/60 focus:bg-background focus:ring-4 focus:ring-primary/20";
 const panelClassName =
-  "rounded-[28px] border border-border bg-card/95 p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur dark:shadow-[0_24px_60px_-46px_rgba(0,0,0,0.35)]";
+  "rounded-[28px] border border-border bg-card/95 p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur";
 
 interface BroadcastForm {
   title: string;
@@ -657,7 +658,7 @@ export default function AdminCommunicationsPage() {
                       </div>
                       <p className="text-sm font-medium text-foreground">{template.subject}</p>
                       <p className="max-w-3xl whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{template.body}</p>
-                      <p className="text-xs text-muted-foreground">Created {new Date(template.createdAt).toLocaleDateString()}</p>
+                      <p className="text-xs text-muted-foreground">Created {formatDate(new Date(template.createdAt))}</p>
                     </div>
 
                     <div className="flex flex-wrap gap-2">
@@ -800,7 +801,7 @@ export default function AdminCommunicationsPage() {
                   </div>
                   <div className="rounded-2xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tr("sentLabel")}</p>
-                    <p className="mt-2 font-medium text-foreground">{new Date(record.createdAt).toLocaleString()}</p>
+                    <p className="mt-2 font-medium text-foreground">{formatDateTime(new Date(record.createdAt))}</p>
                   </div>
                 </div>
               </article>

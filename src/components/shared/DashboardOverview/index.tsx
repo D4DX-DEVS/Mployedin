@@ -96,7 +96,7 @@ export function DashboardNextAction({
           <p className="mt-0.5 text-xs leading-5 text-muted-foreground sm:text-sm">{description}</p>
         </div>
         {badge && (
-          <span className="rounded-full bg-sky-100 px-2 py-1 text-xs font-semibold text-sky-900 dark:bg-sky-900/60 dark:text-sky-100">
+          <span className="rounded-full bg-sky-100 px-2 py-1 text-xs font-semibold text-sky-900">
             {badge}
           </span>
         )}
@@ -156,7 +156,10 @@ export function DashboardSignalStrip({
               aria-label={signal.ariaLabel}
               className={cn(
                 "group min-w-0 px-3 py-3 text-start transition-colors hover:bg-primary/[0.035] focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-500 sm:px-4",
+                // 2-up on phones, 4-up from md: every column but the first needs a rule
+                // at md, while on phones only the right-hand column does.
                 index % 2 === 1 && "border-s border-border/60",
+                index % 2 === 0 && index > 0 && "md:border-s md:border-border/60",
                 index >= 2 && "border-t border-border/60 md:border-t-0",
                 index > 0 && "md:border-s md:border-border/60"
               )}

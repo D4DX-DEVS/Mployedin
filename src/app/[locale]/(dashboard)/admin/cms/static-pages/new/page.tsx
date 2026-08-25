@@ -181,7 +181,7 @@ export default function NewStaticPage() {
             ) : (
               <div className="min-h-[300px] rounded-xl border border-border bg-background p-6 overflow-auto">
                 <div
-                  className="prose prose-neutral dark:prose-invert max-w-none prose-headings:scroll-mt-20 prose-h2:text-xl prose-h2:font-semibold prose-h3:text-lg prose-p:leading-7"
+                  className="prose prose-neutral max-w-none prose-headings:scroll-mt-20 prose-h2:text-xl prose-h2:font-semibold prose-h3:text-lg prose-p:leading-7"
                   dangerouslySetInnerHTML={{ __html: body }}
                 />
               </div>
@@ -232,7 +232,7 @@ export default function NewStaticPage() {
             ) : (
               <div className="min-h-[300px] rounded-xl border border-border bg-background p-6 overflow-auto" dir="rtl">
                 <div
-                  className="prose prose-neutral dark:prose-invert max-w-none prose-headings:scroll-mt-20 prose-h2:text-xl prose-h2:font-semibold prose-h3:text-lg prose-p:leading-7"
+                  className="prose prose-neutral max-w-none prose-headings:scroll-mt-20 prose-h2:text-xl prose-h2:font-semibold prose-h3:text-lg prose-p:leading-7"
                   dangerouslySetInnerHTML={{ __html: bodyAr }}
                 />
               </div>

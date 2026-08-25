@@ -321,7 +321,7 @@ export default function EmployerWorkflowPage() {
 
       {/* Template saved banner */}
       {templateSaved && (
-        <div className="flex items-center gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-status-selected dark:text-emerald-200">
+        <div className="flex items-center gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-status-selected">
           <CheckCircle className="h-4 w-4" />
           {t("templateSaved")}
         </div>
@@ -329,7 +329,7 @@ export default function EmployerWorkflowPage() {
 
       {/* Unsaved changes banner */}
       {dirty && (
-        <div className="flex items-center gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-status-shortlisted dark:text-amber-200">
+        <div className="flex items-center gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-status-shortlisted">
           <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
           {t("unsavedChanges")}
         </div>
@@ -337,9 +337,9 @@ export default function EmployerWorkflowPage() {
 
       {/* Error banner */}
       {error && (
-        <div className="flex items-center justify-between rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-status-rejected dark:text-red-200">
+        <div className="flex items-center justify-between rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-status-rejected">
           <span>{error}</span>
-          <button onClick={() => setError(null)} className="font-medium text-red-400 hover:text-red-600 dark:text-red-300 dark:hover:text-red-200">✕</button>
+          <button onClick={() => setError(null)} className="font-medium text-red-400 hover:text-red-600">✕</button>
         </div>
       )}
 
@@ -492,7 +492,7 @@ export default function EmployerWorkflowPage() {
                       </div>
                       <button
                         onClick={() => removeStage(stage.id)}
-                        className="rounded-xl p-2 text-muted-foreground transition-all hover:bg-red-500/10 hover:text-red-500 sm:opacity-0 sm:group-hover:opacity-100 dark:hover:text-red-300"
+                        className="rounded-xl p-2 text-muted-foreground transition-all hover:bg-red-500/10 hover:text-red-500 sm:opacity-0 sm:group-hover:opacity-100"
                         title={t("removeStage")}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -523,7 +523,7 @@ export default function EmployerWorkflowPage() {
             <div className="space-y-2">
               <div className="flex items-start gap-3">
                 <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-violet-500/10">
-                  <Sparkles className="h-4 w-4 text-status-interview dark:text-violet-300" />
+                  <Sparkles className="h-4 w-4 text-status-interview" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
@@ -550,7 +550,7 @@ export default function EmployerWorkflowPage() {
             <div className="space-y-2">
               <div className="flex items-start gap-3">
                 <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-sky-500/10">
-                  <Bell className="h-4 w-4 text-status-applied dark:text-sky-300" />
+                  <Bell className="h-4 w-4 text-status-applied" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
@@ -580,12 +580,12 @@ export default function EmployerWorkflowPage() {
             <div className="space-y-3">
               <div className="flex items-start gap-3">
                 <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-red-500/10">
-                  <ShieldAlert className="h-4 w-4 text-status-rejected dark:text-red-300" />
+                  <ShieldAlert className="h-4 w-4 text-status-rejected" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <p className="text-sm font-medium text-foreground">{t("autoRejectThreshold")}</p>
-                    <span className="text-lg font-bold text-status-applied dark:text-sky-300">{autoRejectBelow}%</span>
+                    <span className="text-lg font-bold text-status-applied">{autoRejectBelow}%</span>
                   </div>
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     {t.rich("autoRejectThresholdDesc", {

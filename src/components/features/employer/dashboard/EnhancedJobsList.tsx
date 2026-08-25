@@ -54,16 +54,16 @@ export function EnhancedJobsList({ jobs, locale }: EnhancedJobsListProps) {
         {jobs.map((job) => {
           const matchColor =
             job.avgMatchScore >= 70
-              ? "text-emerald-600 dark:text-emerald-400"
+              ? "text-emerald-600"
               : job.avgMatchScore >= 50
-                ? "text-amber-600 dark:text-amber-400"
+                ? "text-amber-600"
                 : "text-muted-foreground";
 
           const matchBg =
             job.avgMatchScore >= 70
-              ? "bg-emerald-50 dark:bg-emerald-950/30"
+              ? "bg-emerald-50"
               : job.avgMatchScore >= 50
-                ? "bg-amber-50 dark:bg-amber-950/30"
+                ? "bg-amber-50"
                 : "bg-muted/40";
 
           const daysAgo = getDaysAgo(job.createdAt);
@@ -116,7 +116,7 @@ export function EnhancedJobsList({ jobs, locale }: EnhancedJobsListProps) {
                 )}
 
                 {job.topMatchScore >= 70 && (
-                  <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium text-[11px]">
+                  <span className="inline-flex items-center gap-1 text-emerald-600 font-medium text-[11px]">
                     \u2605 {t("topMatch", { score: Math.round(job.topMatchScore) })}
                   </span>
                 )}
@@ -132,7 +132,7 @@ export function EnhancedJobsList({ jobs, locale }: EnhancedJobsListProps) {
                 </Link>
                 <Link
                   href={`/${locale}/employer/interviews`}
-                  className="inline-flex items-center gap-1 text-[11px] font-medium text-violet-600 dark:text-violet-400 hover:underline"
+                  className="inline-flex items-center gap-1 text-[11px] font-medium text-violet-600 hover:underline"
                 >
                   <Calendar className="h-3 w-3" />
                   {t("schedule")}

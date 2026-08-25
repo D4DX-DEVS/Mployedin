@@ -14,6 +14,7 @@ import { useCandidateDetail } from "@/hooks/useCandidates";
 import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
 import { CvInlineFrame } from "@/components/shared/CvInlineFrame";
 import { useTranslations } from "next-intl";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 /* ── Types ── */
 interface CandidateJob {
@@ -348,7 +349,7 @@ export default function UnifiedCandidatePage() {
                   <div className="col-span-2">
                     <span className="text-xs text-muted-foreground">{t("expectedSalary")}</span>
                     <p className="font-medium">
-                      {candidate.preferredSalary.currency} {candidate.preferredSalary.min?.toLocaleString()} – {candidate.preferredSalary.max?.toLocaleString()}
+                      {candidate.preferredSalary.currency} {formatCount(candidate.preferredSalary.min)} – {formatCount(candidate.preferredSalary.max)}
                     </p>
                   </div>
                 )}

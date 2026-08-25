@@ -268,9 +268,9 @@ export function InterviewBookingModal({
   })();
 
   const scoreLabel = (score: number) => {
-    if (score >= 80) return "text-emerald-600 dark:text-emerald-400 bg-emerald-500/15";
-    if (score >= 50) return "text-amber-600 dark:text-amber-400 bg-amber-500/15";
-    return "text-red-600 dark:text-red-400 bg-red-500/15";
+    if (score >= 80) return "text-emerald-600 bg-emerald-500/15";
+    if (score >= 50) return "text-amber-600 bg-amber-500/15";
+    return "text-red-600 bg-red-500/15";
   };
 
   return createPortal(

@@ -135,21 +135,21 @@ export function JobWorkflowTab({ jobId }: Props) {
     <div className="space-y-3 sm:space-y-5">
       {/* Source indicator */}
       {source === "employer" && !dirty && (
-        <div className="flex items-center gap-2 rounded-2xl border border-sky-500/20 bg-sky-500/10 px-4 py-3 text-sm text-sky-700 dark:text-sky-200">
+        <div className="flex items-center gap-2 rounded-2xl border border-sky-500/20 bg-sky-500/10 px-4 py-3 text-sm text-sky-700">
           <Settings2 className="h-4 w-4 shrink-0" />
           {t("usingEmployerDefaultWorkflow")}
         </div>
       )}
 
       {dirty && (
-        <div className="flex items-center gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+        <div className="flex items-center gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-800">
           <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
           {t("youHaveUnsavedChanges")}
         </div>
       )}
 
       {error && (
-        <div className="flex items-center justify-between rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">
+        <div className="flex items-center justify-between rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-700">
           <span>{error}</span>
           <button onClick={() => setError(null)} className="font-medium text-red-400 hover:text-red-600">✕</button>
         </div>
@@ -283,7 +283,7 @@ export function JobWorkflowTab({ jobId }: Props) {
 
           <div className="flex items-start gap-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/10">
-              <Sparkles className="h-4 w-4 text-violet-600 dark:text-violet-300" />
+              <Sparkles className="h-4 w-4 text-violet-600" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2">
@@ -296,7 +296,7 @@ export function JobWorkflowTab({ jobId }: Props) {
 
           <div className="flex items-start gap-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-500/10">
-              <Bell className="h-4 w-4 text-blue-600 dark:text-sky-300" />
+              <Bell className="h-4 w-4 text-blue-600" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2">
@@ -310,12 +310,12 @@ export function JobWorkflowTab({ jobId }: Props) {
           <div className="border-t border-border/60 pt-4">
             <div className="flex items-start gap-3">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-red-500/10">
-                <ShieldAlert className="h-4 w-4 text-red-600 dark:text-red-300" />
+                <ShieldAlert className="h-4 w-4 text-red-600" />
               </div>
               <div className="flex-1">
                 <div className="flex justify-between items-baseline">
                   <p className="text-sm font-medium text-foreground">{t("autoRejectThreshold")}</p>
-                  <span className="text-base font-bold text-sky-700 dark:text-sky-300">{autoRejectBelow}%</span>
+                  <span className="text-base font-bold text-sky-700">{autoRejectBelow}%</span>
                 </div>
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   {t("rejectBelowMatchScore", { percent: autoRejectBelow })}

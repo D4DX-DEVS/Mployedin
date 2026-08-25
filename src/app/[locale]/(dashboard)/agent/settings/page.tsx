@@ -720,13 +720,13 @@ function NotificationsTab() {
     <>
       {/* Global kill switch */}
       {prefs.unsubscribedAll && (
-        <div className="rounded-xl border border-amber-200/60 bg-amber-50/50 dark:border-amber-800/40 dark:bg-amber-950/20 p-4">
+        <div className="rounded-xl border border-amber-200/60 bg-amber-50/50 p-4">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="w-4 h-4 text-status-shortlisted dark:text-amber-400 mt-0.5 shrink-0" />
+              <AlertTriangle className="w-4 h-4 text-status-shortlisted mt-0.5 shrink-0" />
               <div>
-                <p className="text-sm font-medium text-status-shortlisted dark:text-amber-300">{t("notifications.pausedTitle")}</p>
-                <p className="text-xs text-status-shortlisted dark:text-amber-400 mt-1">
+                <p className="text-sm font-medium text-status-shortlisted">{t("notifications.pausedTitle")}</p>
+                <p className="text-xs text-status-shortlisted mt-1">
                   {t("notifications.pausedDescription")}
                 </p>
               </div>
@@ -1367,7 +1367,7 @@ function SecurityTab() {
               <Shield className="w-4 h-4 text-muted-foreground" />
               <div>
                 <p className="text-[11px] text-muted-foreground">{t("security.accountStatus")}</p>
-                <p className="text-sm font-medium text-status-selected dark:text-emerald-400">{t("security.active")}</p>
+                <p className="text-sm font-medium text-status-selected">{t("security.active")}</p>
               </div>
             </div>
           </div>

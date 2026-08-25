@@ -303,7 +303,7 @@ export default function AgentJobsPage() {
           >
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/20 to-sky-500/20">
-                <Filter className="h-4 w-4 text-status-interview dark:text-violet-400" />
+                <Filter className="h-4 w-4 text-status-interview" />
               </div>
               <div className="text-left">
                 <h2 className="text-sm font-semibold text-foreground">{t("filters.title")}</h2>
@@ -333,7 +333,7 @@ export default function AgentJobsPage() {
                 aria-expanded={aiOpen}
                 className={`mb-3 inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${
                   aiOpen
-                    ? "border-violet-500/30 bg-violet-500/10 text-status-interview dark:text-violet-300"
+                    ? "border-violet-500/30 bg-violet-500/10 text-status-interview"
                     : "border-border/60 text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -385,10 +385,10 @@ export default function AgentJobsPage() {
 
                 {/* AI summary banner */}
                 {aiSummary && (
-                  <div className="flex items-center gap-2 rounded-xl border border-status-interview/20 bg-violet-50/60 px-3 py-2 dark:border-violet-800/40 dark:bg-violet-950/30">
-                    <Sparkles className="h-3.5 w-3.5 shrink-0 text-status-interview dark:text-violet-400" />
-                    <p className="flex-1 text-xs text-status-interview dark:text-violet-300">{aiSummary}</p>
-                    <button onClick={clearAiFilters} className="shrink-0 rounded p-0.5 hover:bg-violet-200/60 dark:hover:bg-violet-800/40">
+                  <div className="flex items-center gap-2 rounded-xl border border-status-interview/20 bg-violet-50/60 px-3 py-2">
+                    <Sparkles className="h-3.5 w-3.5 shrink-0 text-status-interview" />
+                    <p className="flex-1 text-xs text-status-interview">{aiSummary}</p>
+                    <button onClick={clearAiFilters} className="shrink-0 rounded p-0.5 hover:bg-violet-200/60">
                       <X className="h-3.5 w-3.5 text-violet-500" />
                     </button>
                   </div>

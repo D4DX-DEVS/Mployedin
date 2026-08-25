@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { cn } from "@/lib/utils";
 import type { JobFormValues } from "@/components/features/employer/job-form/jobFormSchema";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 interface ExtractedJob {
   title: string;
@@ -457,7 +458,7 @@ export default function AIJobExtractPage() {
               dragActive
                 ? "border-primary bg-primary/5"
                 : file
-                  ? "border-green-400 bg-green-50/50 dark:bg-green-950/10"
+                  ? "border-green-400 bg-green-50/50"
                   : "border-border hover:border-primary/50 hover:bg-muted/30"
             )}
             onClick={() => fileInputRef.current?.click()}
@@ -486,7 +487,7 @@ export default function AIJobExtractPage() {
                     className="mx-auto max-h-32 rounded-xl object-contain shadow-sm"
                   />
                 ) : (
-                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-green-100 text-green-600 dark:bg-green-900/30">
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-green-100 text-green-600">
                     <FileText className="h-7 w-7" />
                   </div>
                 )}
@@ -628,7 +629,7 @@ export default function AIJobExtractPage() {
                   className={cn(
                     "relative rounded-2xl border p-5 transition-all",
                     status === "posted"
-                      ? "border-green-300 bg-green-50/50 dark:bg-green-950/10"
+                      ? "border-green-300 bg-green-50/50"
                       : status === "error"
                         ? "border-destructive/30 bg-destructive/5"
                         : isSelected
@@ -699,7 +700,7 @@ export default function AIJobExtractPage() {
                         <div className="flex items-center gap-1.5">
                           <DollarSign className="h-3 w-3 flex-shrink-0" />
                           <span>
-                            {job.salary?.currency ?? "USD"} {job.salary?.min?.toLocaleString()}–{job.salary?.max?.toLocaleString()}/{job.salary?.period ?? "mo"}
+                            {job.salary?.currency ?? "USD"} {formatCount(job.salary?.min)}–{formatCount(job.salary?.max)}/{job.salary?.period ?? "mo"}
                           </span>
                         </div>
                       )}

@@ -15,6 +15,7 @@ import { SkillInsights } from "@/components/features/job-seeker/skills/SkillInsi
 import RelativeDate from "@/components/shared/RelativeDate";
 import { ShareJob } from "@/components/shared/ShareJob";
 import { serializeJsonLd } from "@/lib/security/jsonLd";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 interface PageProps {
   params: Promise<{ locale: string; id: string }>;
@@ -75,11 +76,11 @@ function salaryLabel(
   if (salary.min && salary.max)
     return t("salaryRangePerMonth", {
       currency: salary.currency ?? "AED",
-      min: salary.min.toLocaleString(),
-      max: salary.max.toLocaleString(),
+      min: formatCount(salary.min),
+      max: formatCount(salary.max),
     });
   if (salary.min)
-    return t("fromSalaryPerMonth", { currency: salary.currency ?? "AED", min: salary.min.toLocaleString() });
+    return t("fromSalaryPerMonth", { currency: salary.currency ?? "AED", min: formatCount(salary.min) });
   return null;
 }
 

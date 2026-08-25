@@ -54,21 +54,21 @@ const severityStyles: Record<
 > = {
   critical: {
     border: "border-l-rose-500",
-    badge: "bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300",
+    badge: "bg-rose-100 text-rose-700",
     badgeText: "Critical",
-    iconChip: "bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-300",
+    iconChip: "bg-rose-100 text-rose-600",
   },
   warning: {
     border: "border-l-amber-400",
-    badge: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300",
+    badge: "bg-amber-100 text-amber-700",
     badgeText: "Warning",
-    iconChip: "bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300",
+    iconChip: "bg-amber-100 text-amber-600",
   },
   info: {
     border: "border-l-emerald-400",
-    badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300",
+    badge: "bg-emerald-100 text-emerald-700",
     badgeText: "Info",
-    iconChip: "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300",
+    iconChip: "bg-emerald-100 text-emerald-600",
   },
 };
 
@@ -406,7 +406,7 @@ export function SuperAgentInsightsPanel() {
             <div
               key={insight.id}
               className={cn(
-                "rounded-xl border border-l-[3px] border-border/50 bg-background/70 px-3 py-2.5 shadow-sm transition-all duration-300 hover:bg-background hover:shadow-md dark:bg-card/50 dark:hover:bg-card/70",
+                "rounded-xl border border-l-[3px] border-border/50 bg-background/70 px-3 py-2.5 shadow-sm transition-all duration-300 hover:bg-background hover:shadow-md",
                 sev.border,
                 isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2",
                 isDismissed && "opacity-50"
@@ -448,7 +448,7 @@ export function SuperAgentInsightsPanel() {
               <div className="flex items-center justify-between mt-2 pl-[38px]">
                 {insight.action && insight.actionType ? (
                   isActionComplete ? (
-                    <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                    <span className="text-[10px] font-medium text-emerald-600 flex items-center gap-1">
                       ✓ {t("done")}
                     </span>
                   ) : (

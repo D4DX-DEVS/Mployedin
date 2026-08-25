@@ -18,15 +18,16 @@ import { useOffers, useWithdrawOffer } from "@/hooks/useOffers";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { Offer, OfferStatus } from "@/hooks/useOffers";
 import type { ExportColumn } from "@/lib/export";
+import { formatCount, formatDate as formatIntlDate } from "@/lib/ui/intlFormat";
 
 function getStatusColor(status: OfferStatus): string {
   switch (status) {
-    case "pending": return "bg-status-shortlisted-bg text-status-shortlisted border-status-shortlisted/20 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30";
-    case "accepted": return "bg-status-selected-bg text-emerald-700 border-status-selected/20 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30";
-    case "declined": return "bg-status-rejected-bg text-status-rejected border-status-rejected/20 dark:bg-red-500/15 dark:text-red-300 dark:border-red-500/30";
-    case "expired": return "bg-secondary/75 text-muted-foreground border-border dark:bg-slate-500/80 dark:text-muted-foreground dark:border-slate-700";
-    case "withdrawn": return "bg-status-shortlisted-bg text-status-shortlisted border-status-shortlisted/20 dark:bg-amber-500/15 dark:text-orange-300 dark:border-orange-500/30";
-    default: return "bg-secondary/75 text-muted-foreground border-border dark:bg-slate-500/80 dark:text-muted-foreground dark:border-slate-700";
+    case "pending": return "bg-status-shortlisted-bg text-status-shortlisted border-status-shortlisted/20";
+    case "accepted": return "bg-status-selected-bg text-emerald-700 border-status-selected/20";
+    case "declined": return "bg-status-rejected-bg text-status-rejected border-status-rejected/20";
+    case "expired": return "bg-secondary/75 text-muted-foreground border-border";
+    case "withdrawn": return "bg-status-shortlisted-bg text-status-shortlisted border-status-shortlisted/20";
+    default: return "bg-secondary/75 text-muted-foreground border-border";
   }
 }
 
@@ -120,11 +121,11 @@ export default function EmployerOffersPage() {
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
     { header: t("candidate"), key: "jobSeekerId", formatter: (_v, r) => { const o = r as unknown as Offer; return candidateName(o); } },
     { header: t("role"), key: "jobId", formatter: (_v, r) => (r as Record<string, any>).jobId?.title || t("untitledRole") },
-    { header: t("salary"), key: "salary", formatter: (_v, r) => { const o = r as Record<string, any>; return `${o.salary?.currency} ${o.salary?.amount?.toLocaleString()}`; } },
-    { header: t("startDate"), key: "startDate", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : t("notSet") },
+    { header: t("salary"), key: "salary", formatter: (_v, r) => { const o = r as Record<string, any>; return `${o.salary?.currency} ${formatCount(o.salary?.amount)}`; } },
+    { header: t("startDate"), key: "startDate", formatter: (v) => v ? formatIntlDate(new Date(String(v))) : t("notSet") },
     { header: t("status"), key: "status", formatter: (v) => String(v ?? "—") },
-    { header: t("expired"), key: "expiresAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : t("notSet") },
-    { header: t("createdAt"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
+    { header: t("expired"), key: "expiresAt", formatter: (v) => v ? formatIntlDate(new Date(String(v))) : t("notSet") },
+    { header: t("createdAt"), key: "createdAt", formatter: (v) => v ? formatIntlDate(new Date(String(v))) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: offers as unknown as Record<string, unknown>[],
@@ -135,7 +136,7 @@ export default function EmployerOffersPage() {
 
   function formatDate(value?: string): string {
     if (!value) return t("notSet");
-    return new Date(value).toLocaleDateString(undefined, {
+    return formatIntlDate(new Date(value), {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -144,7 +145,7 @@ export default function EmployerOffersPage() {
 
   function formatSalary(offer: Offer): string {
     if (!offer.salary?.amount) return t("notDisclosed");
-    return `${offer.salary.currency ?? "AED"} ${offer.salary.amount.toLocaleString()}`;
+    return `${offer.salary.currency ?? "AED"} ${formatCount(offer.salary.amount)}`;
   }
 
   function candidateName(offer: Offer): string {
@@ -156,7 +157,7 @@ export default function EmployerOffersPage() {
       <DashboardPageHeader
         icon={DollarSign}
         eyebrow={t("pending")}
-        title={t("pending")}
+        title={t("title")}
         metrics={[
           { label: t("pending"), value: pendingCount, note: t("pendingNote"), icon: Clock3 },
           { label: t("accepted"), value: acceptedCount, note: t("acceptedNote"), icon: CircleCheckBig },
@@ -167,10 +168,12 @@ export default function EmployerOffersPage() {
 
       <section className="workspace-panel-surface rounded-[28px] panel-body">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          {/* Phones keep only the label — the long title + blurb pushed the
+              list below the fold (jobs page hides the same copy on mobile). */}
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("filterDecisions")}</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("filterTitle")}</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+            <h2 className="mt-2 hidden text-xl font-semibold tracking-tight text-foreground sm:block">{t("filterTitle")}</h2>
+            <p className="mt-2 hidden max-w-2xl text-sm leading-6 text-muted-foreground sm:block">
               {t("filterDescription")}
             </p>
           </div>
@@ -227,7 +230,7 @@ export default function EmployerOffersPage() {
         </section>
       ) : offers.length === 0 ? (
         <section className="workspace-panel-surface rounded-[28px] panel-body">
-          <div className="flex flex-col items-center py-14 text-center">
+          <div className="flex flex-col items-center py-8 text-center sm:py-14">
             <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-status-applied-bg text-status-applied">
               <DollarSign className="h-7 w-7" />
             </div>
@@ -403,6 +406,7 @@ export default function EmployerOffersPage() {
         </section>
       )}
 
+      {total > 0 && (
       <PaginationControls
         page={page}
         totalPages={totalPages}
@@ -411,6 +415,7 @@ export default function EmployerOffersPage() {
         onPageChange={setPage}
         onLimitChange={(l) => { setLimit(l); setPage(1); }}
       />
+      )}
 
       {withdrawingId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-6 backdrop-blur-sm">
@@ -462,7 +467,7 @@ export default function EmployerOffersPage() {
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("salary")}</p>
                   <p className="mt-2 text-sm font-semibold text-foreground">
-                    {detailOffer.salary.currency} {detailOffer.salary.amount.toLocaleString()} / {detailOffer.salary.period}
+                    {detailOffer.salary.currency} {formatCount(detailOffer.salary.amount)} / {detailOffer.salary.period}
                   </p>
                 </div>
                 <div>

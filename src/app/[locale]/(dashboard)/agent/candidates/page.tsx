@@ -39,6 +39,7 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 interface ApplicationItem {
   _id: string;
@@ -300,7 +301,7 @@ export default function AgentCandidatesPage() {
     { header: t("tableHeaderJob"), key: "jobId", formatter: (_v, row) => (row.jobId as { title?: string })?.title ?? "" },
     { header: tc("status"), key: "status" },
     { header: t("tableHeaderAIMatch"), key: "aiMatchScore", formatter: (v) => v != null ? `${v}%` : "" },
-    { header: t("tableHeaderApplied"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: t("tableHeaderApplied"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
@@ -449,7 +450,7 @@ export default function AgentCandidatesPage() {
                         {app.aiMatchScore != null ? `${app.aiMatchScore}%` : "—"}
                       </div>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{new Date(app.appliedAt ?? app.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{formatDate(new Date(app.appliedAt ?? app.createdAt))}</TableCell>
                     <TableCell>
                       <div className="flex items-center justify-end gap-1.5">
                         {updatingId === app._id ? (

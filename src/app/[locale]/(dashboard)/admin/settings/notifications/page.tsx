@@ -14,6 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { formatDateTime } from "@/lib/ui/intlFormat";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -296,7 +297,7 @@ function CronJobsTab({
                   <p className="text-xs text-muted-foreground mt-0.5">{meta.desc}</p>
                   {state?.lastRunAt && (
                     <p className="text-[10px] text-muted-foreground/70 mt-1">
-                      {t("lastRunTime", { time: new Date(state.lastRunAt).toLocaleString(), message: state.lastRunMessage ? ` — ${state.lastRunMessage}` : "" })}
+                      {t("lastRunTime", { time: formatDateTime(new Date(state.lastRunAt)), message: state.lastRunMessage ? ` — ${state.lastRunMessage}` : "" })}
                     </p>
                   )}
                 </div>
@@ -408,7 +409,7 @@ function EmailLogsTab() {
                 <tr><td colSpan={5} className="text-center py-8 text-muted-foreground">{t("emailLogsEmptyMessage")}</td></tr>
               ) : logs.map((log) => (
                 <tr key={log._id} className="hover:bg-muted/20">
-                  <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">{new Date(log.sentAt).toLocaleString()}</td>
+                  <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">{formatDateTime(new Date(log.sentAt))}</td>
                   <td className="px-3 py-2 max-w-[180px] truncate">{log.to}</td>
                   <td className="px-3 py-2 max-w-[200px] truncate">{log.subject}</td>
                   <td className="px-3 py-2"><Badge variant="outline" className="text-[10px] px-1.5 py-0">{log.source}</Badge></td>

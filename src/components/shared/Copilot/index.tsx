@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { ToolProposalCard } from "./ToolProposalCard";
 import type { CopilotStreamFrame, TranscriptItem } from "./types";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 let idCounter = 0;
 const nextId = () => `ci-${Date.now()}-${idCounter++}`;
@@ -74,7 +75,7 @@ function AssistantMarkdown({ content }: { content: string }) {
         ol: ({ ...props }) => <ol className="list-decimal list-inside space-y-0.5 my-1" {...props} />,
         li: ({ ...props }) => <li className="leading-relaxed" {...props} />,
         strong: ({ ...props }) => <strong className="font-semibold" {...props} />,
-        code: ({ ...props }) => <code className="rounded bg-black/10 px-1 font-mono text-[0.88em] dark:bg-white/10" {...props} />,
+        code: ({ ...props }) => <code className="rounded bg-black/10 px-1 font-mono text-[0.88em]" {...props} />,
         a: ({ ...props }) => (
           <a className="text-primary underline underline-offset-2 hover:text-primary/80" target="_blank" rel="noopener noreferrer" {...props} />
         ),
@@ -518,7 +519,7 @@ export function Copilot({ className }: CopilotProps) {
               >
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{chat.title || t("newChat")}</p>
-                  <p className="text-xs text-muted-foreground">{new Date(chat.updatedAt).toLocaleDateString()}</p>
+                  <p className="text-xs text-muted-foreground">{formatDate(new Date(chat.updatedAt))}</p>
                 </div>
                 <button
                   type="button"

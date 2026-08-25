@@ -98,7 +98,7 @@ export function ChangeEmailCard() {
       {pendingEmail && (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
           <div>
-            <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
+            <p className="text-sm font-semibold text-amber-700">
               Pending change to {pendingEmail}
             </p>
             <p className="mt-0.5 text-xs text-muted-foreground">

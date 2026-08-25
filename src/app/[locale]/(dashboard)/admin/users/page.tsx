@@ -31,6 +31,7 @@ import {
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import type { UserRole, PermissionMode, CustomPermissions } from "@/types/user";
 import { AlertCircle, Loader2, Download, FileSpreadsheet, FileText } from "lucide-react";
+import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
 interface User {
   _id: string;
@@ -81,8 +82,8 @@ export default function AdminUsersPage() {
     { header: t("roleTableHeader"), key: "role" },
     { header: t("statusTableHeader"), key: "isActive", formatter: (v) => v ? t("active") : t("inactive") },
     { header: t("localeTableHeader"), key: "locale" },
-    { header: "Last Login", key: "lastLogin", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
-    { header: t("joinedTableHeader"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
+    { header: "Last Login", key: "lastLogin", formatter: (v) => v ? formatDate(new Date(String(v))) : "—" },
+    { header: t("joinedTableHeader"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: users as unknown as Record<string, unknown>[],
@@ -254,7 +255,7 @@ export default function AdminUsersPage() {
         icon={Users}
         eyebrow={t("adminWorkspace")}
         title={t("userManagement")}
-        description={t("userManagementDesc", { total: total.toLocaleString() })}
+        description={t("userManagementDesc", { total: formatCount(total) })}
       />
 
       <section className="workspace-panel-surface overflow-hidden rounded-[20px]">

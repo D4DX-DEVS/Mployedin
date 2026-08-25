@@ -18,6 +18,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import type { ExportColumn } from "@/lib/export";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 /* ── Types ─────────────────────────────────────────────────────────── */
 
@@ -231,7 +232,7 @@ export default function AgentInterviewsPage() {
     { header: t("columnJob"), key: "jobId", formatter: (_v, row) => (row.jobId as { title?: string })?.title ?? "" },
     { header: t("columnEmployer"), key: "employerId", formatter: (_v, row) => (row.employerId as { companyName?: string })?.companyName ?? "" },
     { header: t("columnType"), key: "type" },
-    { header: t("columnScheduled"), key: "scheduledAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: t("columnScheduled"), key: "scheduledAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "" },
     { header: t("columnRound"), key: "interviewRound" },
     { header: t("columnStatus"), key: "status" },
     { header: t("columnOutcome"), key: "outcome" },
@@ -506,7 +507,7 @@ export default function AgentInterviewsPage() {
                   </TableCell>
                   <TableCell className="text-muted-foreground whitespace-nowrap">
                     <div>
-                      <p className="text-sm">{new Date(iv.scheduledAt).toLocaleDateString()}</p>
+                      <p className="text-sm">{formatDate(new Date(iv.scheduledAt))}</p>
                       <p className="text-xs text-muted-foreground/70">{new Date(iv.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}{iv.duration ? ` · ${iv.duration}min` : ""}</p>
                       <p className="text-xs text-muted-foreground/70">{t("columnRound")}: {iv.interviewRound ?? 1}</p>
                     </div>

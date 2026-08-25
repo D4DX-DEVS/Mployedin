@@ -29,14 +29,15 @@ import { useJobs, useUpdateJobStatus, useCloneJob, useDeleteJob, useSaveAsTempla
 import { useDebounce } from "@/hooks/useDebounce";
 import type { ExportColumn } from "@/lib/export";
 import { toUserFacingError } from "@/lib/errors/user-facing";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 const STATUS_COLORS: Record<string, string> = {
-  active: "bg-status-selected-bg text-emerald-700 border-status-selected/20 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-500/30",
-  draft: "bg-status-shortlisted-bg text-status-shortlisted border-status-shortlisted/20 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-500/30",
-  pending_approval: "bg-status-applied-bg text-status-applied border-status-applied/20 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-500/30",
-  paused: "bg-status-applied-bg text-status-applied border-border dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-500/30",
+  active: "bg-status-selected-bg text-emerald-700 border-status-selected/20",
+  draft: "bg-status-shortlisted-bg text-status-shortlisted border-status-shortlisted/20",
+  pending_approval: "bg-status-applied-bg text-status-applied border-status-applied/20",
+  paused: "bg-status-applied-bg text-status-applied border-border",
   closed: "bg-muted text-muted-foreground",
-  expired: "bg-status-rejected-bg text-status-rejected border-status-rejected/20 dark:bg-red-950/40 dark:text-red-300 dark:border-red-500/30",
+  expired: "bg-status-rejected-bg text-status-rejected border-status-rejected/20",
 };
 
 // Map job.status → human label key. Avoids rendering raw snake_case status strings.
@@ -420,6 +421,8 @@ export default function EmployerJobsPage() {
           <div className="relative min-w-0 flex-1">
             <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
+              type="search"
+              aria-label={t("searchJobsPlaceholder")}
               placeholder={t("searchJobsPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -677,7 +680,7 @@ export default function EmployerJobsPage() {
                         {statusLabel}
                       </Badge>
                       {job.clonedFrom ? (
-                        <Badge variant="outline" className="inline-flex shrink-0 border-status-applied/20 bg-status-applied-bg px-1.5 py-0 text-[10px] font-medium text-status-applied dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                        <Badge variant="outline" className="inline-flex shrink-0 border-status-applied/20 bg-status-applied-bg px-1.5 py-0 text-[10px] font-medium text-status-applied">
                           <Copy className="me-1 h-2.5 w-2.5" />{t("clonedBadge")}
                         </Badge>
                       ) : null}
@@ -697,9 +700,9 @@ export default function EmployerJobsPage() {
 
                 <dl aria-label={t("jobMetricsLabel")} className="mt-4 grid grid-cols-3 divide-x divide-border/70 rounded-xl bg-secondary/50 py-2 rtl:divide-x-reverse">
                   {[
-                    { label: t("viewsStat"), value: job.views?.toLocaleString() ?? "0" },
-                    { label: t("applicantsStat"), value: applicants.toLocaleString() },
-                    { label: t("statOpeningsLabel"), value: (job.vacancies ?? 0).toLocaleString() },
+                    { label: t("viewsStat"), value: formatCount(job.views) ?? "0" },
+                    { label: t("applicantsStat"), value: formatCount(applicants) },
+                    { label: t("statOpeningsLabel"), value: formatCount((job.vacancies ?? 0)) },
                   ].map((metric) => (
                     <div key={metric.label} className="min-w-0 px-2 text-center">
                       <dd className="text-sm font-semibold tabular-nums text-foreground">{metric.value}</dd>

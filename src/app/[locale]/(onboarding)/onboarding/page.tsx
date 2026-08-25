@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TagAutocomplete, Autocomplete } from "@/components/ui/tag-autocomplete";
-import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -838,11 +837,6 @@ export default function JobSeekerOnboardingPage() {
           <Image src="/logo.png" alt="Mployedin" width={100} height={34} className="h-auto w-[106px] object-contain" style={{ height: "auto" }} />
         </div>
         <div className="flex items-center gap-3">
-          <div className="hidden text-right sm:block">
-            <p className="text-xs font-medium text-gray-600">{t("appTheme")}</p>
-            <p className="text-[11px] text-gray-400">{t("appThemeSubtitle")}</p>
-          </div>
-          <ThemeToggle />
           {userName && (
             <span className="text-sm text-gray-600">{t("welcome", { name: userName })}</span>
           )}
@@ -851,10 +845,10 @@ export default function JobSeekerOnboardingPage() {
             variant="outline"
             size="sm"
             onClick={() => signOut({ callbackUrl: `/${locale}/login` })}
-            className="group ml-1 h-10 rounded-full border-slate-200/80 bg-white/90 px-3.5 text-slate-600 shadow-sm shadow-slate-200/60 hover:border-red-200 hover:bg-red-50 hover:text-red-600 dark:border-slate-700/80 dark:bg-slate-900/80 dark:text-slate-200 dark:shadow-slate-950/60 dark:hover:border-red-900 dark:hover:bg-red-950/60 dark:hover:text-red-300"
+            className="group ml-1 h-10 rounded-full border-slate-200/80 bg-white/90 px-3.5 text-slate-600 shadow-sm shadow-slate-200/60 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
             title={t("signOut")}
           >
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors group-hover:bg-red-100 group-hover:text-red-500 dark:bg-slate-800 dark:text-slate-300 dark:group-hover:bg-red-950 dark:group-hover:text-red-300">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors group-hover:bg-red-100 group-hover:text-red-500">
               <LogOut className="h-3.5 w-3.5" />
             </span>
             <span className="hidden sm:inline">{t("signOut")}</span>

@@ -16,21 +16,21 @@ export const APPLICATION_STATUS_COLORS: Record<string, string> = {
 };
 
 export const ROLE_COLORS: Record<string, string> = {
-  admin: "bg-red-100 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-900/60",
+  admin: "bg-red-100 text-red-700 border-red-200",
   super_agent:
-    "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-900/60",
+    "bg-purple-100 text-purple-700 border-purple-200",
   agent:
-    "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900/60",
+    "bg-blue-100 text-blue-700 border-blue-200",
   employer:
-    "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/60",
+    "bg-amber-100 text-amber-700 border-amber-200",
   job_seeker:
-    "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/60",
+    "bg-emerald-100 text-emerald-700 border-emerald-200",
 };
 
 /** Generic good/warn/bad tier — match scores, health, completeness. */
 export const TIER_COLORS = {
-  good: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300",
-  warn: "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300",
+  good: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  warn: "border-amber-200 bg-amber-50 text-amber-700",
   bad: "border-border/70 bg-muted/20 text-muted-foreground",
 } as const;
 

@@ -26,6 +26,7 @@ import {
   ProgressRing, TargetSummaryCard,
 } from "@/components/features/targets/TargetComponents";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -89,7 +90,7 @@ const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "S
 function formatCurrency(value: number, currency = "AED"): string {
   if (value >= 1_000_000) return `${currency} ${(value / 1_000_000).toFixed(1)}M`;
   if (value >= 1_000) return `${currency} ${Math.round(value / 1_000)}K`;
-  return `${currency} ${value.toLocaleString()}`;
+  return `${currency} ${formatCount(value)}`;
 }
 
 function GrowthIndicator({ value }: { value: number }) {
@@ -362,7 +363,7 @@ export default function AgentTargetReportPage() {
         <div className="flex flex-wrap items-center justify-center gap-8">
           <ProgressRing value={profile.employerProgress} label="Employer" sublabel={`${profile.employerAchieved}/${profile.employerTarget}`} />
           <ProgressRing value={profile.employeeProgress} label="Employee" sublabel={`${profile.employeeAchieved}/${profile.employeeTarget}`} />
-          <ProgressRing value={profile.financeProgress} label="Finance" sublabel={`${currency} ${profile.financeAchieved.toLocaleString()}`} />
+          <ProgressRing value={profile.financeProgress} label="Finance" sublabel={`${currency} ${formatCount(profile.financeAchieved)}`} />
           <ProgressRing value={profile.overallProgress} label="Overall" sublabel="Annual" color="#3b82f6" />
         </div>
       </section>

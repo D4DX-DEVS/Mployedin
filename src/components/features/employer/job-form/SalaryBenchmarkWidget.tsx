@@ -95,22 +95,22 @@ export function SalaryBenchmarkWidget({
 
   const competitivenessConfig = {
     below: {
-      color: "text-red-600 dark:text-red-400",
-      bg: "bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800",
+      color: "text-red-600",
+      bg: "bg-red-50 border-red-200",
       bar: "bg-red-400",
       label: t("below"),
       icon: "↓",
     },
     competitive: {
-      color: "text-emerald-600 dark:text-emerald-400",
-      bg: "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800",
+      color: "text-emerald-600",
+      bg: "bg-emerald-50 border-emerald-200",
       bar: "bg-emerald-400",
       label: t("competitive"),
       icon: "✓",
     },
     above: {
-      color: "text-blue-600 dark:text-blue-400",
-      bg: "bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800",
+      color: "text-blue-600",
+      bg: "bg-blue-50 border-blue-200",
       bar: "bg-blue-400",
       label: t("above"),
       icon: "↑",

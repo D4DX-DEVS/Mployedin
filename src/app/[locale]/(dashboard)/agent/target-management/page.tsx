@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -274,8 +275,8 @@ export default function AgentTargetManagementPage() {
                 />
                 <KpiCard
                   label={t("financeTarget")}
-                  value={<>{profile.currency} {profile.financeAchieved.toLocaleString()}<span className="text-lg text-muted-foreground">/{profile.financeTarget.toLocaleString()}</span></>}
-                  subtext={`Assigned ${profile.currency} ${profile.financeTarget.toLocaleString()} · Balance ${profile.currency} ${profile.financePending.toLocaleString()}`}
+                  value={<>{profile.currency} {formatCount(profile.financeAchieved)}<span className="text-lg text-muted-foreground">/{formatCount(profile.financeTarget)}</span></>}
+                  subtext={`Assigned ${profile.currency} ${formatCount(profile.financeTarget)} · Balance ${profile.currency} ${formatCount(profile.financePending)}`}
                   icon={<DollarSign className="h-5 w-5" />}
                   toneClassName="workspace-tone-amber"
                 />
@@ -319,7 +320,7 @@ export default function AgentTargetManagementPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Next finance work</p>
-                      <p className="mt-2 text-2xl font-semibold tabular-nums text-foreground">{profile.currency} {profile.financePending.toLocaleString()}</p>
+                      <p className="mt-2 text-2xl font-semibold tabular-nums text-foreground">{profile.currency} {formatCount(profile.financePending)}</p>
                       <p className="mt-1 text-xs text-muted-foreground">Revenue balance remaining</p>
                     </div>
                     <div className="workspace-tone-amber rounded-2xl p-2.5"><DollarSign className="h-5 w-5" /></div>
@@ -348,7 +349,7 @@ export default function AgentTargetManagementPage() {
                         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Employees</p>
                       </div>
                       <div>
-                        <p className="text-2xl font-bold tabular-nums text-primary">{profile.currency} {dailyGoals.finance.toLocaleString()}</p>
+                        <p className="text-2xl font-bold tabular-nums text-primary">{profile.currency} {formatCount(dailyGoals.finance)}</p>
                         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Finance</p>
                       </div>
                     </div>
@@ -368,7 +369,7 @@ export default function AgentTargetManagementPage() {
                         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Employees</p>
                       </div>
                       <div>
-                        <p className="text-2xl font-bold tabular-nums text-primary">{profile.currency} {weeklyGoals.finance.toLocaleString()}</p>
+                        <p className="text-2xl font-bold tabular-nums text-primary">{profile.currency} {formatCount(weeklyGoals.finance)}</p>
                         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Finance</p>
                       </div>
                     </div>
@@ -393,7 +394,7 @@ export default function AgentTargetManagementPage() {
                 <div className="flex flex-wrap items-center justify-center gap-8">
                   <ProgressRing value={profile.employerProgress} label="Employer" sublabel={`${profile.employerAchieved}/${profile.employerTarget}`} />
                   <ProgressRing value={profile.employeeProgress} label="Employee" sublabel={`${profile.employeeAchieved}/${profile.employeeTarget}`} />
-                  <ProgressRing value={profile.financeProgress} label="Finance" sublabel={`${profile.currency} ${profile.financeAchieved.toLocaleString()}`} />
+                  <ProgressRing value={profile.financeProgress} label="Finance" sublabel={`${profile.currency} ${formatCount(profile.financeAchieved)}`} />
                   <ProgressRing value={profile.overallProgress} label="Overall" sublabel="Annual" color="#3b82f6" />
                 </div>
               </div>

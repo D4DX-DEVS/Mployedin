@@ -23,22 +23,22 @@ export function InvoiceHealthCards({ data }: InvoiceHealthCardsProps) {
     {
       label: t("paidThisMonth"),
       value: data.paidCount,
-      bg: "bg-emerald-50 dark:bg-emerald-900/20",
-      textColor: "text-emerald-600 dark:text-emerald-400",
+      bg: "bg-emerald-50",
+      textColor: "text-emerald-600",
       href: `${invoicesHref}?status=paid`,
     },
     {
       label: t("pending"),
       value: data.pendingCount,
-      bg: "bg-amber-50 dark:bg-amber-900/20",
-      textColor: "text-amber-600 dark:text-amber-400",
+      bg: "bg-amber-50",
+      textColor: "text-amber-600",
       href: `${invoicesHref}?status=pending`,
     },
     {
       label: t("overdue"),
       value: data.overdueCount,
-      bg: "bg-rose-50 dark:bg-rose-900/20",
-      textColor: "text-rose-600 dark:text-rose-400",
+      bg: "bg-rose-50",
+      textColor: "text-rose-600",
       href: `${invoicesHref}?status=overdue`,
     },
     {

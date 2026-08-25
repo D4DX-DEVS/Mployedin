@@ -8,6 +8,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { formatCount, formatTime } from "@/lib/ui/intlFormat";
 
 /* ─── AI Report Templates ─── */
 
@@ -90,7 +91,7 @@ export default function AgentReportsPage() {
         throw new Error(data?.message || data?.error || t("reportGenError"));
       }
       const data = await res.json();
-      setResult({ content: data.report ?? data.content ?? JSON.stringify(data), generatedAt: new Date().toLocaleTimeString() });
+      setResult({ content: data.report ?? data.content ?? JSON.stringify(data), generatedAt: formatTime(new Date()) });
     } catch (e) {
       setError("We couldn't generate this report. No report was saved. Try again.");
     } finally {
@@ -160,7 +161,7 @@ export default function AgentReportsPage() {
               { label: t("overdueFollowups"), value: analytics.kpis.overdueFollowUps, icon: <Flame className="h-4 w-4" />, alert: analytics.kpis.overdueFollowUps > 0 },
               { label: t("scheduledInterviews"), value: analytics.kpis.scheduledInterviews, icon: <CalendarCheck2 className="h-4 w-4" /> },
             ].map((s) => (
-              <div key={s.label} className={`min-w-0 workspace-glass-panel rounded-2xl p-3 sm:p-4 ${s.alert ? "border-status-shortlisted/20 dark:border-status-shortlisted/10" : ""}`}>
+              <div key={s.label} className={`min-w-0 workspace-glass-panel rounded-2xl p-3 sm:p-4 ${s.alert ? "border-status-shortlisted/20" : ""}`}>
                 <div className="flex items-center gap-2 text-muted-foreground">{s.icon}<p className="text-[11px] font-semibold uppercase tracking-[0.16em]">{s.label}</p></div>
                 <p className={`mt-2 text-xl sm:text-2xl font-semibold ${s.alert ? "text-status-shortlisted" : "text-foreground"}`}>{s.value}</p>
               </div>
@@ -211,7 +212,7 @@ export default function AgentReportsPage() {
                 <div key={c.label} className="min-w-0 workspace-glass-panel rounded-2xl p-3 sm:p-4 text-center">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{c.label}</p>
                   <p className={`mt-2 text-xl sm:text-2xl font-semibold ${c.color}`}>{c.data?.count ?? 0}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{(c.data?.total ?? 0).toLocaleString()} AED</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{formatCount((c.data?.total ?? 0))} AED</p>
                 </div>
               ))}
             </div>

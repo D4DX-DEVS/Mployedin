@@ -17,6 +17,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import type { ExportColumn } from "@/lib/export";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
 interface Placement {
   _id: string;
@@ -104,7 +105,7 @@ export default function AgentPlacementsPage() {
     { header: t("tableHeaderSalary"), key: "salary" },
     { header: t("tableHeaderCurrency"), key: "currency" },
     { header: tc("status"), key: "status" },
-    { header: t("tableHeaderStartDate"), key: "startDate", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: t("tableHeaderStartDate"), key: "startDate", formatter: (v) => v ? formatDate(new Date(String(v))) : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
@@ -126,7 +127,7 @@ export default function AgentPlacementsPage() {
           { label: t("statCompleted"), value: completedPlacements, note: t("statCompletedDesc"), icon: UserCheck },
           { label: t("statOfferStage"), value: signedOffers, note: t("statOfferStageDesc"), icon: BriefcaseBusiness },
           { label: t("statStartDates"), value: startedCount, note: t("statStartDatesDesc"), icon: ArrowRight },
-          { label: t("statSalaryValue"), value: totalCompensation.toLocaleString(), note: t("statSalaryValueDesc"), icon: CircleDollarSign },
+          { label: t("statSalaryValue"), value: formatCount(totalCompensation), note: t("statSalaryValueDesc"), icon: CircleDollarSign },
         ]}
       />
 
@@ -253,9 +254,9 @@ export default function AgentPlacementsPage() {
                   <span className="mt-1 block text-xs text-muted-foreground">{p.employerId?.companyName ?? "—"}</span>
                 </TableCell>
                 <TableCell className="text-muted-foreground">
-                  {p.salary ? `${p.currency ?? "USD"} ${p.salary.toLocaleString()}` : "—"}
+                  {p.salary ? `${p.currency ?? "USD"} ${formatCount(p.salary)}` : "—"}
                 </TableCell>
-                <TableCell className="text-muted-foreground">{p.startDate ? new Date(p.startDate).toLocaleDateString() : "—"}</TableCell>
+                <TableCell className="text-muted-foreground">{p.startDate ? formatDate(new Date(p.startDate)) : "—"}</TableCell>
               </TableRow>
             ))}
           </TableBody>

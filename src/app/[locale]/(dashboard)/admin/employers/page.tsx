@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2, Search, Inbox, ShieldCheck, ShieldOff, FileText, ExternalLink, Ban, Download, FileSpreadsheet, LogIn, Loader2 } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 interface Employer {
   _id: string;
@@ -97,7 +98,7 @@ export default function AdminEmployersPage() {
     { header: t("exportColumnEmail"), key: "email" },
     { header: t("exportColumnIndustry"), key: "industry" },
     { header: t("exportColumnStatus"), key: "status", formatter: (v, r) => r.status ?? (r.isActive !== false ? "active" : "inactive") },
-    { header: t("exportColumnJoined"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
+    { header: t("exportColumnJoined"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: employers as unknown as Record<string, unknown>[],
@@ -324,7 +325,7 @@ export default function AdminEmployersPage() {
                 </TableCell>
                 <TableCell className="text-muted-foreground">{emp.email ?? emp.contactEmail ?? "—"}</TableCell>
                 <TableCell className="text-muted-foreground">{emp.industry ?? "—"}</TableCell>
-                <TableCell className="text-muted-foreground">{new Date(emp.createdAt).toLocaleDateString()}</TableCell>
+                <TableCell className="text-muted-foreground">{formatDate(new Date(emp.createdAt))}</TableCell>
                 {(can("employers", "update") || can("employers", "delete") || can("employers", "approve")) && (
                   <TableCell>
                     <div className="flex items-center gap-1">

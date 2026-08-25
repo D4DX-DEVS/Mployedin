@@ -16,6 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Search, UserCog, Loader2, Eye, Inbox } from "lucide-react";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 interface UserRow {
   _id: string;
@@ -196,7 +197,7 @@ export default function AdminUserImpersonatePage() {
                     <TableCell className="text-muted-foreground">{user.email}</TableCell>
                     <TableCell><StatusBadge status={user.role} /></TableCell>
                     <TableCell><StatusBadge status={user.isActive ? "active" : "inactive"} /></TableCell>
-                    <TableCell className="text-muted-foreground">{new Date(user.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell className="text-muted-foreground">{formatDate(new Date(user.createdAt))}</TableCell>
                     <TableCell>
                       <div className="flex items-center justify-end gap-1.5">
                         <Button variant="ghost" size="xs" asChild title={t("viewProfileTitle")}>

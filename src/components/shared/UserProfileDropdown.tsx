@@ -43,7 +43,6 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
-import { ThemeToggle } from "@/components/shared/ThemeToggle";
 
 const ROLE_KEYS: Record<string, string> = {
   admin: "admin",
@@ -227,7 +226,6 @@ export function UserProfileDropdown({
                 is viewport-based and would overflow this 288px menu. */}
             <div className="flex shrink-0 items-center gap-2 [&>div:first-child]:!w-16 [&>div:first-child]:[&_span]:hidden">
               <LanguageSwitcher />
-              <ThemeToggle />
             </div>
           </div>
 

@@ -19,6 +19,7 @@ import {
   Building2, FileText, CreditCard, Coins, History, AlertTriangle,
   CheckCircle2, XCircle, Send, Loader2, Download, Eye, BellRing, UserCircle2,
 } from "lucide-react";
+import { formatCount, formatDate, formatDateTime } from "@/lib/ui/intlFormat";
 
 interface InvoiceCommission {
   role: string;
@@ -121,15 +122,15 @@ const DELIVERY_STATE_LABELS: Record<InvoiceDeliveryState, string> = {
 };
 
 const DELIVERY_STATE_STYLES: Record<InvoiceDeliveryState, string> = {
-  not_sent: "border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-800 dark:bg-slate-950/30 dark:text-slate-300",
-  sent: "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900/50 dark:bg-sky-950/30 dark:text-sky-300",
-  viewed: "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900/50 dark:bg-violet-950/30 dark:text-violet-300",
-  downloaded: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300",
+  not_sent: "border-slate-200 bg-slate-50 text-slate-600",
+  sent: "border-sky-200 bg-sky-50 text-sky-700",
+  viewed: "border-violet-200 bg-violet-50 text-violet-700",
+  downloaded: "border-emerald-200 bg-emerald-50 text-emerald-700",
 };
 
 function fmtDateTime(value?: string) {
   if (!value) return "—";
-  return new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  return formatDateTime(new Date(value), { dateStyle: "medium", timeStyle: "short" });
 }
 
 export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }: InvoiceDetailViewProps) {
@@ -242,7 +243,7 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
     }
   };
 
-  const fmt = (v: number | undefined | null) => `${invoice?.currency ?? "AED"} ${(v ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const fmt = (v: number | undefined | null) => `${invoice?.currency ?? "AED"} ${formatCount((v ?? 0), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const canManage = role === "admin" || role === "super_agent";
   const deliveryState = invoice ? getInvoiceDeliveryState(invoice) : "not_sent";
   const canRecordReminder = Boolean(invoice?.sentAt && invoice && ["sent", "partially_paid", "overdue"].includes(invoice.status));
@@ -280,7 +281,7 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
               <StatusBadge status={invoice.status} />
               <span className="text-xs text-muted-foreground">{invoice.category}</span>
               <span className="text-xs text-muted-foreground">•</span>
-              <span className="text-xs text-muted-foreground">{invoice.issuedAt ? new Date(invoice.issuedAt).toLocaleDateString() : "Not issued yet"}</span>
+              <span className="text-xs text-muted-foreground">{invoice.issuedAt ? formatDate(new Date(invoice.issuedAt)) : "Not issued yet"}</span>
             </div>
           )}
         </DialogHeader>
@@ -357,11 +358,11 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
                       <div className="mt-2 space-y-0.5 text-sm">
                         <p>{t("job")}: <span className="font-medium">{invoice.jobId?.title || "—"}</span></p>
                         <p>{t("terms")}: <span className="font-medium">{invoice.paymentTerms?.replace(/_/g, " ")}</span></p>
-                        {invoice.dueDate && <p>{t("dueDate")}: <span className="font-medium">{new Date(invoice.dueDate).toLocaleDateString()}</span></p>}
-                        {invoice.approvedAt && <p>{t("approved")}: <span className="font-medium">{new Date(invoice.approvedAt).toLocaleDateString()}</span></p>}
-                        {invoice.rejectedAt && <p>{t("rejected")}: <span className="font-medium">{new Date(invoice.rejectedAt).toLocaleDateString()}</span></p>}
+                        {invoice.dueDate && <p>{t("dueDate")}: <span className="font-medium">{formatDate(new Date(invoice.dueDate))}</span></p>}
+                        {invoice.approvedAt && <p>{t("approved")}: <span className="font-medium">{formatDate(new Date(invoice.approvedAt))}</span></p>}
+                        {invoice.rejectedAt && <p>{t("rejected")}: <span className="font-medium">{formatDate(new Date(invoice.rejectedAt))}</span></p>}
                         <p>{t("tax")}: <span className="font-medium">{invoice.taxType && invoice.taxType !== "none" ? `${invoice.taxType.toUpperCase()} ${invoice.taxPercent}%` : t("none")}</span></p>
-                        {invoice.rejectionReason && <p className="text-rose-600 dark:text-rose-300">{t("reason")}: {invoice.rejectionReason}</p>}
+                        {invoice.rejectionReason && <p className="text-rose-600">{t("reason")}: {invoice.rejectionReason}</p>}
                         {invoice.description && <p className="text-muted-foreground">{invoice.description}</p>}
                       </div>
                     </div>
@@ -423,7 +424,7 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
                   {(invoice.notes || invoice.internalNotes) && (
                     <div className="space-y-2">
                       {invoice.notes && <div className="rounded-lg bg-muted/30 p-3 text-sm"><p className="font-semibold text-xs text-muted-foreground">{t("notes")}</p><p className="mt-1">{invoice.notes}</p></div>}
-                      {invoice.internalNotes && canManage && <div className="rounded-lg bg-amber-50/50 p-3 text-sm dark:bg-amber-950/20"><p className="font-semibold text-xs text-amber-700 dark:text-amber-300">{t("internalNotes")}</p><p className="mt-1">{invoice.internalNotes}</p></div>}
+                      {invoice.internalNotes && canManage && <div className="rounded-lg bg-amber-50/50 p-3 text-sm"><p className="font-semibold text-xs text-amber-700">{t("internalNotes")}</p><p className="mt-1">{invoice.internalNotes}</p></div>}
                     </div>
                   )}
                 </div>
@@ -443,8 +444,8 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
 
                   {/* Payment form */}
                   {showPaymentForm && (
-                    <div className="rounded-xl border border-sky-200 bg-sky-50/50 p-4 dark:border-sky-900/40 dark:bg-sky-950/20">
-                      <p className="mb-3 text-xs font-semibold text-sky-700 dark:text-sky-300">{t("recordNewPayment", { balance: fmt(invoice.balanceDue) })}</p>
+                    <div className="rounded-xl border border-sky-200 bg-sky-50/50 p-4">
+                      <p className="mb-3 text-xs font-semibold text-sky-700">{t("recordNewPayment", { balance: fmt(invoice.balanceDue) })}</p>
                       <div className="grid gap-3 sm:grid-cols-2">
                         <div><Label className="text-xs">{t("amount")} *</Label><Input type="number" min={0.01} max={invoice.balanceDue} step="0.01" className="mt-1 h-9 rounded-lg" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} /></div>
                         <div><Label className="text-xs">{t("date")}</Label><DateTimePicker mode="date" value={paymentDate} onChange={setPaymentDate} /></div>
@@ -471,7 +472,7 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
                             <p className="text-xs text-muted-foreground">{p.paymentMethod?.replace(/_/g, " ")} {p.referenceNumber ? `• ${p.referenceNumber}` : ""}</p>
                             {p.recordedBy && <p className="text-xs text-muted-foreground">By: {p.recordedBy.name || p.recordedBy.email}</p>}
                           </div>
-                          <p className="text-xs text-muted-foreground">{new Date(p.paymentDate).toLocaleDateString()}</p>
+                          <p className="text-xs text-muted-foreground">{formatDate(new Date(p.paymentDate))}</p>
                         </div>
                       ))}
                     </div>
@@ -517,8 +518,8 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
             {canManage && (
               <div className="space-y-3 border-t border-border/80 px-6 py-3">
                 {invoice.status === "pending_approval" && showRejectForm && (
-                  <div className="rounded-xl border border-rose-200 bg-rose-50/70 p-3 dark:border-rose-900/50 dark:bg-rose-950/20">
-                    <Label className="text-xs text-rose-700 dark:text-rose-300">{t("rejectionReason")}</Label>
+                  <div className="rounded-xl border border-rose-200 bg-rose-50/70 p-3">
+                    <Label className="text-xs text-rose-700">{t("rejectionReason")}</Label>
                     <Textarea className="mt-1 rounded-lg" rows={2} value={rejectionReason} onChange={e => setRejectionReason(e.target.value)} placeholder={t("rejectionReasonPlaceholder")} />
                   </div>
                 )}
@@ -530,11 +531,11 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
                         <CheckCircle2 className="h-3.5 w-3.5" /> {t("approveAndIssue")}
                       </Button>
                       {showRejectForm ? (
-                        <Button size="sm" variant="outline" onClick={handleRejectInvoice} disabled={updatingStatus} className="h-8 gap-1.5 rounded-lg text-xs text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30">
+                        <Button size="sm" variant="outline" onClick={handleRejectInvoice} disabled={updatingStatus} className="h-8 gap-1.5 rounded-lg text-xs text-rose-600 hover:bg-rose-50">
                           <XCircle className="h-3.5 w-3.5" /> {t("confirmReject")}
                         </Button>
                       ) : (
-                        <Button size="sm" variant="outline" onClick={() => setShowRejectForm(true)} disabled={updatingStatus} className="h-8 gap-1.5 rounded-lg text-xs text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30">
+                        <Button size="sm" variant="outline" onClick={() => setShowRejectForm(true)} disabled={updatingStatus} className="h-8 gap-1.5 rounded-lg text-xs text-rose-600 hover:bg-rose-50">
                           <XCircle className="h-3.5 w-3.5" /> {t("reject")}
                         </Button>
                       )}
@@ -561,7 +562,7 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
                     </Button>
                   )}
                   {!["pending_approval", "void", "cancelled", "refunded", "paid", "credit_note"].includes(invoice.status) && (
-                    <Button size="sm" variant="outline" onClick={() => handleStatusUpdate("void")} disabled={updatingStatus} className="h-8 gap-1.5 rounded-lg text-xs text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30">
+                    <Button size="sm" variant="outline" onClick={() => handleStatusUpdate("void")} disabled={updatingStatus} className="h-8 gap-1.5 rounded-lg text-xs text-rose-600 hover:bg-rose-50">
                       <XCircle className="h-3.5 w-3.5" /> {t("void")}
                     </Button>
                   )}

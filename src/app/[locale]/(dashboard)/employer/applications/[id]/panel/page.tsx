@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { cn } from "@/lib/utils";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 // ── Types ──────────────────────────────────────────────────────────
 interface ScorecardScores {
@@ -297,7 +298,7 @@ export default function HiringPanelPage() {
                     </div>
                     {d.reasoning && <p className="text-xs text-muted-foreground mt-1">{d.reasoning}</p>}
                     <div className="text-[11px] text-muted-foreground mt-1">
-                      By {d.decidedBy?.name ?? "Unknown"} · {new Date(d.createdAt).toLocaleDateString()}
+                      By {d.decidedBy?.name ?? "Unknown"} · {formatDate(new Date(d.createdAt))}
                     </div>
                   </div>
                 </div>
@@ -419,7 +420,7 @@ function EvaluatorCard({ scorecard: sc }: { scorecard: EvaluatorScorecard }) {
       <div className="flex items-center gap-3 text-xs text-muted-foreground">
         <span>{t("overall")}: <strong className="text-foreground">{sc.overallScore.toFixed(1)}{t("outOf5")}</strong></span>
         <span>·</span>
-        <span>{new Date(sc.createdAt).toLocaleDateString()}</span>
+        <span>{formatDate(new Date(sc.createdAt))}</span>
       </div>
 
       {(sc.strengths || sc.concerns) && (

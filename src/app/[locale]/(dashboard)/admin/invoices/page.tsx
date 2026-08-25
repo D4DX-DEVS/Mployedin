@@ -30,6 +30,7 @@ import { InvoiceDetailView } from "@/components/features/invoices/InvoiceDetailV
 import { RevenueKPICards } from "@/components/features/invoices/RevenueKPICards";
 import { RevenueAnalyticsPanel } from "@/components/features/invoices/RevenueAnalyticsPanel";
 import { UninvoicedPlacementsQueue } from "@/components/features/invoices/UninvoicedPlacementsQueue";
+import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface Invoice {
@@ -195,7 +196,7 @@ export default function AdminInvoicesPage() {
   };
 
   const hasActiveFilters = Boolean(statusFilter || categoryFilter || typeFilter || searchTerm || dateFrom || dateTo);
-  const fmt = (v: number) => `${displayCurrency} ${v.toLocaleString()}`;
+  const fmt = (v: number) => `${displayCurrency} ${formatCount(v)}`;
 
   // Export columns
   const exportColumns: ExportColumn<Invoice>[] = [
@@ -222,8 +223,8 @@ export default function AdminInvoicesPage() {
     { header: "Company Revenue", key: "platformRevenue" as keyof Invoice, formatter: v => String(v ?? 0) },
     { header: "Currency", key: "currency" },
     { header: "Status", key: "status" },
-    { header: "Due Date", key: "dueDate" as keyof Invoice, formatter: v => v ? new Date(String(v)).toLocaleDateString() : "—" },
-    { header: "Issued", key: "issuedAt", formatter: v => v ? new Date(String(v)).toLocaleDateString() : "—" },
+    { header: "Due Date", key: "dueDate" as keyof Invoice, formatter: v => v ? formatDate(new Date(String(v))) : "—" },
+    { header: "Issued", key: "issuedAt", formatter: v => v ? formatDate(new Date(String(v))) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: invoices as unknown as Record<string, unknown>[],
@@ -253,7 +254,7 @@ export default function AdminInvoicesPage() {
           <div className="flex items-center gap-2">
             <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">
               <ArrowRight className="h-3.5 w-3.5 text-primary" />
-              {t("invoiceCount", { count: total.toLocaleString() })}
+              {t("invoiceCount", { count: formatCount(total) })}
             </div>
             {/* View Toggle */}
             <div className="inline-flex rounded-lg border border-border/70 bg-card">
@@ -334,7 +335,7 @@ export default function AdminInvoicesPage() {
       {activeView === "table" && (
         <>
           {errorMessage && (
-            <div className="rounded-2xl border border-rose-200 bg-rose-50/90 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">{errorMessage}</div>
+            <div className="rounded-2xl border border-rose-200 bg-rose-50/90 px-4 py-3 text-sm text-rose-700">{errorMessage}</div>
           )}
 
           <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-[24px]">
@@ -342,7 +343,7 @@ export default function AdminInvoicesPage() {
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("invoiceLedger")}</p>
               <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                 <h3 className="text-lg font-semibold text-foreground">{t("allInvoices")}</h3>
-                <p className="text-sm text-muted-foreground">{t("recordsCount", { shown: invoices.length, total: total.toLocaleString() })}</p>
+                <p className="text-sm text-muted-foreground">{t("recordsCount", { shown: invoices.length, total: formatCount(total) })}</p>
               </div>
             </div>
 
@@ -390,10 +391,10 @@ export default function AdminInvoicesPage() {
                         <TableCell><p className="max-w-[140px] truncate font-medium text-foreground">{inv.employerId?.companyName ?? "—"}</p></TableCell>
                         <TableCell><p className="max-w-[130px] truncate text-sm text-muted-foreground">{inv.jobId?.title ?? "—"}</p></TableCell>
                         <TableCell><span className="inline-flex rounded-full border border-border/70 bg-secondary/70 px-2 py-0.5 text-[10px] font-medium capitalize">{inv.category?.replace(/_/g, " ")}</span></TableCell>
-                        <TableCell className="text-right font-semibold">{inv.currency} {(inv.totalAmount ?? 0).toLocaleString()}</TableCell>
-                        <TableCell className="text-right text-sm text-emerald-600 dark:text-emerald-400">{inv.currency} {(inv.paidAmount ?? 0).toLocaleString()}</TableCell>
-                        <TableCell className="text-right text-sm text-amber-600 dark:text-amber-400">{inv.currency} {(inv.balanceDue ?? 0).toLocaleString()}</TableCell>
-                        <TableCell className="text-right text-xs text-muted-foreground">{inv.taxAmount > 0 ? `${inv.currency} ${inv.taxAmount.toLocaleString()}` : "—"}</TableCell>
+                        <TableCell className="text-right font-semibold">{inv.currency} {formatCount((inv.totalAmount ?? 0))}</TableCell>
+                        <TableCell className="text-right text-sm text-emerald-600">{inv.currency} {formatCount((inv.paidAmount ?? 0))}</TableCell>
+                        <TableCell className="text-right text-sm text-amber-600">{inv.currency} {formatCount((inv.balanceDue ?? 0))}</TableCell>
+                        <TableCell className="text-right text-xs text-muted-foreground">{inv.taxAmount > 0 ? `${inv.currency} ${formatCount(inv.taxAmount)}` : "—"}</TableCell>
                         <TableCell>
                           {totalComm > 0 ? (
                             <div className="text-xs">
@@ -403,7 +404,7 @@ export default function AdminInvoicesPage() {
                           ) : <span className="text-xs text-muted-foreground">—</span>}
                         </TableCell>
                         <TableCell><StatusBadge status={inv.status} /></TableCell>
-                        <TableCell className="text-xs text-muted-foreground">{inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : "—"}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{inv.dueDate ? formatDate(new Date(inv.dueDate)) : "—"}</TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-1" onClick={e => e.stopPropagation()}>
                             <Button variant="ghost" size="sm" onClick={() => setSelectedInvoiceId(inv._id)} className="h-7 w-7 p-0" title={t("viewDetails")}><Eye className="h-3.5 w-3.5" /></Button>
@@ -423,16 +424,16 @@ export default function AdminInvoicesPage() {
                               }}><Download className="h-3.5 w-3.5" /></Button>
                             )}
                             {can("subscriptions", "update") && inv.status === "draft" && (
-                              <Button variant="ghost" size="sm" onClick={() => updateStatus(inv._id, "issued")} className="h-7 px-2 text-[10px] text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/30">{t("issue")}</Button>
+                              <Button variant="ghost" size="sm" onClick={() => updateStatus(inv._id, "issued")} className="h-7 px-2 text-[10px] text-sky-600 hover:bg-sky-50">{t("issue")}</Button>
                             )}
                             {can("subscriptions", "update") && ["issued", "sent"].includes(inv.status) && (
-                              <Button variant="ghost" size="sm" onClick={() => updateStatus(inv._id, "paid")} className="h-7 px-2 text-[10px] text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30">{t("markAsPaid")}</Button>
+                              <Button variant="ghost" size="sm" onClick={() => updateStatus(inv._id, "paid")} className="h-7 px-2 text-[10px] text-emerald-600 hover:bg-emerald-50">{t("markAsPaid")}</Button>
                             )}
                             {can("subscriptions", "update") && !["void", "cancelled", "refunded", "paid", "credit_note"].includes(inv.status) && (
                               <Button variant="ghost" size="sm" onClick={async () => {
                                 const ok = await confirmDialog(t("confirmVoidMessage"));
                                 if (ok) updateStatus(inv._id, "void");
-                              }} className="h-7 px-2 text-[10px] text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30">{t("void")}</Button>
+                              }} className="h-7 px-2 text-[10px] text-rose-600 hover:bg-rose-50">{t("void")}</Button>
                             )}
                           </div>
                         </TableCell>

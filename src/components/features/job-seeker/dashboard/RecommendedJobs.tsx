@@ -23,6 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { ApplyWithCvDialog } from "@/components/features/job-seeker/feed/ApplyWithCvDialog";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 interface JobPage {
   jobs: RecommendedJob[];
@@ -283,7 +284,7 @@ export function RecommendedJobs({ locale }: { locale: string }) {
                   {job.salary?.min > 0 && (
                     <span className="flex items-center gap-1">
                       <DollarSign className="h-3 w-3" />
-                      {job.salary.min.toLocaleString()}â€“{job.salary.max.toLocaleString()}{" "}
+                      {formatCount(job.salary.min)}â€“{formatCount(job.salary.max)}{" "}
                       {job.salary.currency}
                     </span>
                   )}

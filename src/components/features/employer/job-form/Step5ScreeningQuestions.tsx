@@ -11,6 +11,7 @@ import {
   Trash2,
   ChevronUp,
   ChevronDown,
+  ShieldAlert,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { checkWording, SCREENING_QUESTION_RULES } from "@/lib/compliance/inclusiveWording";
 import type { JobFormValues } from "./jobFormSchema";
 
 const QUESTION_TYPES = [
@@ -39,6 +41,9 @@ function generateId() {
 
 export function Step5ScreeningQuestions() {
   const t = useTranslations("employerJobForm.step5");
+  const tCompliance = useTranslations("employerCompliance.wording");
+  const tChar = useTranslations("employerCompliance.characteristics");
+  const tSuggest = useTranslations("employerCompliance.suggestions");
   const locale = useLocale();
   const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
   const maxQuestionsLabel = (20).toLocaleString(numberLocale);
@@ -149,6 +154,10 @@ export function Step5ScreeningQuestions() {
           const qType = questions[index]?.type ?? "text";
           const needsOptions = NEEDS_OPTIONS.has(qType);
           const fieldError = questionErrors[index];
+          const protectedFlags = checkWording(
+            questions[index]?.label ?? "",
+            SCREENING_QUESTION_RULES
+          );
 
           return (
             <div
@@ -206,18 +215,49 @@ export function Step5ScreeningQuestions() {
 
               {/* Question Label */}
               <div className="space-y-2">
-                <Label className="text-sm font-medium">
+                <Label htmlFor={`sq-label-${field.id}`} className="text-sm font-medium">
                   {t("questionText")}
                 </Label>
                 <Input
+                  id={`sq-label-${field.id}`}
                   {...register(`screeningQuestions.${index}.label`)}
                   placeholder={t("questionPlaceholder")}
                   className="rounded-xl"
+                  aria-invalid={fieldError?.label?.message ? true : undefined}
+                  aria-describedby={
+                    [
+                      fieldError?.label?.message ? `sq-error-${field.id}` : null,
+                      protectedFlags.length > 0 ? `sq-warning-${field.id}` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" ") || undefined
+                  }
                 />
                 {fieldError?.label?.message && (
-                  <p className="text-xs text-destructive">
+                  <p id={`sq-error-${field.id}`} className="text-xs text-destructive">
                     {t("questionRequired")}
                   </p>
+                )}
+                {/* Advisory only — asking for a protected characteristic is
+                    sometimes justified, so this warns and never blocks. */}
+                {protectedFlags.length > 0 && (
+                  <div
+                    id={`sq-warning-${field.id}`}
+                    role="status"
+                    className="flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950"
+                  >
+                    <ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    <div className="min-w-0">
+                      <p className="font-semibold">
+                        {tCompliance("screeningWarning")}{" "}
+                        <span className="font-normal">
+                          ({protectedFlags.map((f) => tChar(f.characteristic)).join(", ")})
+                        </span>
+                      </p>
+                      <p className="mt-0.5">{tSuggest(protectedFlags[0].suggestionKey)}</p>
+                      <p className="mt-0.5">{tCompliance("screeningWarningAction")}</p>
+                    </div>
+                  </div>
                 )}
               </div>
 

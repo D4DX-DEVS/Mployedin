@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { formatDate as formatIntlDate } from "@/lib/ui/intlFormat";
 
 type OnboardingStatus = "not_started" | "in_progress" | "completed";
 type DocStatus = "requested" | "submitted" | "signed" | "approved";
@@ -60,7 +61,7 @@ const DOC_STATUS_STYLES: Record<DocStatus, string> = {
 function formatDate(value?: string | null): string {
   if (!value) return "";
   try {
-    return new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+    return formatIntlDate(new Date(value), { year: "numeric", month: "short", day: "numeric" });
   } catch {
     return "";
   }

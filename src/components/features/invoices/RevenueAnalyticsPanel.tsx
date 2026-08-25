@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import type { InvoiceAnalytics } from "@/hooks/useInvoiceAnalytics";
 import { BarChart3, TrendingUp, Users, Layers, Clock } from "lucide-react";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 interface RevenueAnalyticsPanelProps {
   data: InvoiceAnalytics;
@@ -11,7 +12,7 @@ interface RevenueAnalyticsPanelProps {
 
 export function RevenueAnalyticsPanel({ data, currency = "AED" }: RevenueAnalyticsPanelProps) {
   const t = useTranslations("revenueAnalyticsPanel");
-  const fmt = (v: number) => `${currency} ${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+  const fmt = (v: number) => `${currency} ${formatCount(v, { maximumFractionDigits: 0 })}`;
 
   return (
     <div className="space-y-6">
@@ -130,7 +131,7 @@ export function RevenueAnalyticsPanel({ data, currency = "AED" }: RevenueAnalyti
             <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-5">
               {data.invoiceAging.map((bucket) => {
                 const labels: Record<string, string> = { "0": "0–30 days", "30": "30–60 days", "60": "60–90 days", "90": "90–120 days", "120": "120+ days", "365+": "365+ days" };
-                const colors: Record<string, string> = { "0": "border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/20", "30": "border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/20", "60": "border-orange-200 bg-orange-50 dark:border-orange-900 dark:bg-orange-950/20", "90": "border-rose-200 bg-rose-50 dark:border-rose-900 dark:bg-rose-950/20", "120": "border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/20" };
+                const colors: Record<string, string> = { "0": "border-emerald-200 bg-emerald-50", "30": "border-amber-200 bg-amber-50", "60": "border-orange-200 bg-orange-50", "90": "border-rose-200 bg-rose-50", "120": "border-red-200 bg-red-50" };
                 return (
                   <div key={String(bucket._id)} className={`rounded-xl border p-3 ${colors[String(bucket._id)] ?? "border-border bg-muted/30"}`}>
                     <p className="text-[10px] font-semibold uppercase text-muted-foreground">{labels[String(bucket._id)] ?? `${bucket._id}+ days`}</p>

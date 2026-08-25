@@ -19,6 +19,7 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 interface Commission {
   _id: string;
@@ -90,7 +91,7 @@ export default function AgentCommissionsPage() {
     { header: t("tableHeaderAmount"), key: "amount" },
     { header: t("exportHeaderCurrency"), key: "currency" },
     { header: t("tableHeaderStatus"), key: "status" },
-    { header: t("tableHeaderDate"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: t("tableHeaderDate"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
@@ -348,7 +349,7 @@ export default function AgentCommissionsPage() {
                 </TableCell>
                 <TableCell><StatusBadge status={c.status} /></TableCell>
                 <TableCell className="text-xs text-muted-foreground">
-                  {new Date(c.paidAt ?? c.createdAt).toLocaleDateString()}
+                  {formatDate(new Date(c.paidAt ?? c.createdAt))}
                 </TableCell>
               </TableRow>
             ))}

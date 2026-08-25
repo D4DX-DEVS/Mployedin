@@ -105,9 +105,9 @@ const WEEKDAY_FULL_KEYS = [
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
 const EVENT_COLORS: Record<string, string> = {
-  video: "bg-sky-500/10 border-sky-500/30 text-sky-700 dark:text-sky-300 backdrop-blur-sm",
-  offline: "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300 backdrop-blur-sm",
-  hybrid: "bg-violet-500/10 border-violet-500/30 text-violet-700 dark:text-violet-300 backdrop-blur-sm",
+  video: "bg-sky-500/10 border-sky-500/30 text-sky-700 backdrop-blur-sm",
+  offline: "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 backdrop-blur-sm",
+  hybrid: "bg-violet-500/10 border-violet-500/30 text-violet-700 backdrop-blur-sm",
 };
 
 const EVENT_DOT_COLORS: Record<string, string> = {

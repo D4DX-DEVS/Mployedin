@@ -116,7 +116,7 @@ export default function BlogDetailPage() {
         )}
 
         <div
-          className="mt-10 prose prose-neutral dark:prose-invert max-w-none"
+          className="mt-10 prose prose-neutral max-w-none"
           dangerouslySetInnerHTML={{ __html: sanitizeHtml(body) }}
         />
       </div>

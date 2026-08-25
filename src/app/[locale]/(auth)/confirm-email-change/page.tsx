@@ -70,8 +70,8 @@ export default function ConfirmEmailChangePage() {
 
       {status === "success" && (
         <div className="flex flex-col items-center gap-6 py-6 text-center">
-          <div className="h-14 w-14 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-            <CheckCircle className="h-7 w-7 text-green-600 dark:text-green-400" />
+          <div className="h-14 w-14 rounded-full bg-green-100 flex items-center justify-center">
+            <CheckCircle className="h-7 w-7 text-green-600" />
           </div>
           <div className="space-y-1.5">
             <h1 className="text-2xl font-semibold tracking-tight">{t("emailUpdatedTitle")}</h1>

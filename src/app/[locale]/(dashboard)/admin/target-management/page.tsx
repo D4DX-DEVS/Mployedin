@@ -26,6 +26,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -462,8 +463,8 @@ export default function AdminTargetManagementPage() {
         />
         <KpiCard
           label="Finance"
-          value={<>{(totals?.finance.achieved ?? 0).toLocaleString()}<span className="text-lg text-muted-foreground">/{(totals?.finance.target ?? 0).toLocaleString()}</span></>}
-          subtext={`Assigned ${(profiles[0]?.currency ?? "AED")} ${(totals?.finance.target ?? 0).toLocaleString()} · Balance ${(profiles[0]?.currency ?? "AED")} ${Math.max(0, (totals?.finance.target ?? 0) - (totals?.finance.achieved ?? 0)).toLocaleString()}`}
+          value={<>{formatCount((totals?.finance.achieved ?? 0))}<span className="text-lg text-muted-foreground">/{formatCount((totals?.finance.target ?? 0))}</span></>}
+          subtext={`Assigned ${(profiles[0]?.currency ?? "AED")} ${formatCount((totals?.finance.target ?? 0))} · Balance ${(profiles[0]?.currency ?? "AED")} ${formatCount(Math.max(0, (totals?.finance.target ?? 0) - (totals?.finance.achieved ?? 0)))}`}
           icon={<DollarSign className="h-5 w-5" />}
           toneClassName="workspace-tone-amber"
         />
@@ -478,15 +479,15 @@ export default function AdminTargetManagementPage() {
           toneClassName="workspace-tone-violet"
         />
         <div className="workspace-glass-panel flex items-center gap-4 rounded-2xl p-4">
-          <div className="rounded-2xl bg-red-500/10 p-2.5 text-red-600 dark:text-red-400">
+          <div className="rounded-2xl bg-red-500/10 p-2.5 text-red-600">
             <ShieldAlert className="h-5 w-5" />
           </div>
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Risk Overview</p>
             <div className="mt-1 flex items-center gap-3 text-xs font-semibold">
-              <span className="text-red-600 dark:text-red-400">{totals?.riskBreakdown.high ?? 0} High</span>
-              <span className="text-amber-600 dark:text-amber-400">{totals?.riskBreakdown.medium ?? 0} Med</span>
-              <span className="text-emerald-600 dark:text-emerald-400">{totals?.riskBreakdown.low ?? 0} Low</span>
+              <span className="text-red-600">{totals?.riskBreakdown.high ?? 0} High</span>
+              <span className="text-amber-600">{totals?.riskBreakdown.medium ?? 0} Med</span>
+              <span className="text-emerald-600">{totals?.riskBreakdown.low ?? 0} Low</span>
             </div>
           </div>
         </div>
@@ -698,7 +699,7 @@ export default function AdminTargetManagementPage() {
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {underperformers.slice(0, 6).map((u) => (
                   <div key={u._id} className="workspace-glass-panel flex items-center gap-3 rounded-xl p-3 border-l-4 border-red-500/40">
-                    <div className="rounded-xl bg-red-500/10 p-2 text-red-600 dark:text-red-400">
+                    <div className="rounded-xl bg-red-500/10 p-2 text-red-600">
                       <TrendingUp className="h-4 w-4 rotate-180" />
                     </div>
                     <div className="flex-1 min-w-0">

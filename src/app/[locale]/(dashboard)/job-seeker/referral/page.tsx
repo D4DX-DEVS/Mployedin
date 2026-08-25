@@ -146,9 +146,9 @@ export default function JobSeekerReferralPage() {
                 </div>
                 <div className="text-right">
                   <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
-                    r.status === "active" ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30" :
-                    r.status === "registered" ? "bg-sky-50 text-sky-600 dark:bg-sky-950/30" :
-                    "bg-amber-50 text-amber-600 dark:bg-amber-950/30"
+                    r.status === "active" ? "bg-emerald-50 text-emerald-600" :
+                    r.status === "registered" ? "bg-sky-50 text-sky-600" :
+                    "bg-amber-50 text-amber-600"
                   }`}>
                     {r.status}
                   </span>

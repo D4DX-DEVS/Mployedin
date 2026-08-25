@@ -29,6 +29,7 @@ import {
   Wand2, CheckCircle, ArrowRight, Trash2, Edit2, ClipboardList, Filter, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { toUserFacingError } from "@/lib/errors/user-facing";
+import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -109,11 +110,11 @@ function getSourceLabel(job: Job, t: ReturnType<typeof useTranslations>) {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  active: "bg-status-selected-bg text-emerald-700 border-status-selected/20 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-500/30",
-  draft: "bg-status-shortlisted-bg text-status-shortlisted border-status-shortlisted/20 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-500/30",
-  paused: "bg-sky-100 text-status-applied border-border dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-500/30",
+  active: "bg-status-selected-bg text-emerald-700 border-status-selected/20",
+  draft: "bg-status-shortlisted-bg text-status-shortlisted border-status-shortlisted/20",
+  paused: "bg-sky-100 text-status-applied border-border",
   closed: "bg-muted text-muted-foreground",
-  expired: "bg-status-rejected-bg text-status-rejected border-status-rejected/20 dark:bg-red-950/40 dark:text-red-300 dark:border-red-500/30",
+  expired: "bg-status-rejected-bg text-status-rejected border-status-rejected/20",
 };
 
 const JOB_SUMMARY_MAX_LENGTH = 180;
@@ -124,8 +125,8 @@ function formatSalary(job: Job, t: ReturnType<typeof useTranslations>): string |
   const currency = job.salary?.currency ?? "USD";
   if (min <= 0 && max <= 0) return null;
   if (job.salary?.isNegotiable) return t("negotiable");
-  if (min > 0 && max > 0) return `${min.toLocaleString()} - ${max.toLocaleString()} ${currency}`;
-  return `${Math.max(min, max).toLocaleString()} ${currency}`;
+  if (min > 0 && max > 0) return `${formatCount(min)} - ${formatCount(max)} ${currency}`;
+  return `${formatCount(Math.max(min, max))} ${currency}`;
 }
 
 function getJobSummary(job: Job): string | null {
@@ -255,7 +256,7 @@ export default function AdminJobsPage() {
     { header: t("location"), key: "location", formatter: (v) => formatLocation(v as Job["location"]) },
     { header: t("categoryLabel"), key: "category", formatter: (v) => String(v ?? "—") },
     { header: t("applicantsCountLabel"), key: "applicantsCount", formatter: (v) => String(v ?? 0) },
-    { header: t("createdLabel"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
+    { header: t("createdLabel"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: jobs as unknown as Record<string, unknown>[],
@@ -319,7 +320,7 @@ export default function AdminJobsPage() {
         description={t("jobListingsDescription")}
         summary={{
           label: t("platformTotal"),
-          value: t("jobsCount", { total: total.toLocaleString() }),
+          value: t("jobsCount", { total: formatCount(total) }),
           note: t("acrossPages", { totalPages }),
         }}
         actions={(
@@ -331,10 +332,10 @@ export default function AdminJobsPage() {
           </Link>
         )}
         metrics={[
-          { label: t("totalJobs"), value: total, note: t("totalJobsNote"), icon: Briefcase, iconClassName: "text-status-applied", iconSurfaceClassName: "bg-status-applied-bg dark:bg-sky-950/30" },
-          { label: t("active"), value: activeJobs, note: t("activeNote"), icon: ShieldCheck, iconClassName: "text-status-selected", iconSurfaceClassName: "bg-status-selected-bg dark:bg-emerald-950/30" },
-          { label: t("draftJobs"), value: draftJobs, note: t("draftJobsNote"), icon: FileText, iconClassName: "text-status-shortlisted", iconSurfaceClassName: "bg-status-shortlisted-bg dark:bg-amber-950/30" },
-          { label: t("applicants"), value: totalApplicants, note: t("applicantsNote"), icon: Users, iconClassName: "text-status-interview", iconSurfaceClassName: "bg-status-interview-bg dark:bg-violet-950/30" },
+          { label: t("totalJobs"), value: total, note: t("totalJobsNote"), icon: Briefcase, iconClassName: "text-status-applied", iconSurfaceClassName: "bg-status-applied-bg" },
+          { label: t("active"), value: activeJobs, note: t("activeNote"), icon: ShieldCheck, iconClassName: "text-status-selected", iconSurfaceClassName: "bg-status-selected-bg" },
+          { label: t("draftJobs"), value: draftJobs, note: t("draftJobsNote"), icon: FileText, iconClassName: "text-status-shortlisted", iconSurfaceClassName: "bg-status-shortlisted-bg" },
+          { label: t("applicants"), value: totalApplicants, note: t("applicantsNote"), icon: Users, iconClassName: "text-status-interview", iconSurfaceClassName: "bg-status-interview-bg" },
         ]}
         footer={(
           <>
@@ -366,7 +367,7 @@ export default function AdminJobsPage() {
 
         {/* ─── Expandable Filters ─────────────────────────────────────── */}
         {showFilters && (
-          <div className="mt-4 space-y-3 rounded-[20px] border border-border/30 bg-background/40 p-4 backdrop-blur-sm dark:bg-background/20">
+          <div className="mt-4 space-y-3 rounded-[20px] border border-border/30 bg-background/40 p-4 backdrop-blur-sm">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -495,7 +496,7 @@ export default function AdminJobsPage() {
 
       {/* ─── Error ────────────────────────────────────────────────────── */}
       {errorMessage && (
-        <div className="rounded-2xl border border-status-rejected/20 bg-rose-50/90 px-4 py-3 text-sm text-rose-700 shadow-sm dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">
+        <div className="rounded-2xl border border-status-rejected/20 bg-rose-50/90 px-4 py-3 text-sm text-rose-700 shadow-sm">
           {errorMessage}
         </div>
       )}
@@ -533,30 +534,30 @@ export default function AdminJobsPage() {
                     </div>
                     <div className="mt-1.5 flex flex-wrap gap-1">
                       {job.employerId?.companyName && (
-                        <span className="flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-slate-300">
+                        <span className="flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
                           <Building2 className="h-3 w-3" />
                           {job.employerId.companyName}
                         </span>
                       )}
-                      <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-slate-300">{formatLocation(job.location)}</span>
+                      <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground">{formatLocation(job.location)}</span>
                       {job.category && (
-                        <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-slate-300">{job.category}</span>
+                        <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground">{job.category}</span>
                       )}
                       {salaryLabel && (
-                        <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-slate-300">{salaryLabel}</span>
+                        <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground">{salaryLabel}</span>
                       )}
                       {(job.vacancies ?? 0) > 0 && (
-                        <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-slate-300">
+                        <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
                           {t("openings", { count: job.vacancies ?? 0 })}
                         </span>
                       )}
-                      <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-slate-300">{t("posted", { date: posted })}</span>
+                      <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground">{t("posted", { date: posted })}</span>
                     </div>
 
                     {(job.requirements?.skills?.length ?? 0) > 0 && (
                       <div className={`mt-1.5 flex flex-wrap gap-1 ${isExpanded ? "" : "max-sm:hidden"}`}>
                         {job.requirements!.skills!.slice(0, 4).map((s) => (
-                          <Badge key={s} variant="outline" className="rounded-full border-border bg-secondary/65 px-2 py-0.5 text-[11px] font-normal text-muted-foreground dark:border-border dark:bg-background/80 dark:text-slate-300">{s}</Badge>
+                          <Badge key={s} variant="outline" className="rounded-full border-border bg-secondary/65 px-2 py-0.5 text-[11px] font-normal text-muted-foreground">{s}</Badge>
                         ))}
                       </div>
                     )}
@@ -674,7 +675,7 @@ export default function AdminJobsPage() {
                     {selectedJob.employmentType && <Fact icon={Clock} label={t("type")} value={selectedJob.employmentType.replace(/_/g, " ")} />}
                     {selectedJob.workMode && <Fact icon={Globe} label={t("workMode")} value={selectedJob.workMode.replace(/_/g, " ")} />}
                     {(selectedJob.vacancies ?? 0) > 0 && <Fact icon={Users} label={t("vacancies")} value={String(selectedJob.vacancies)} />}
-                    <Fact icon={Calendar} label={t("posted")} value={new Date(selectedJob.createdAt).toLocaleDateString()} />
+                    <Fact icon={Calendar} label={t("posted")} value={formatDate(new Date(selectedJob.createdAt))} />
                     <Fact icon={UserCheck} label={t("source")} value={getSourceLabel(selectedJob, t)} />
                   </div>
 

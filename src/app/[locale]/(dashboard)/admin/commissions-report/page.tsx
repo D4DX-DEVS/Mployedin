@@ -24,6 +24,7 @@ import {
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -108,7 +109,7 @@ const STATUS_BADGE: Record<string, string> = {
 function fmt(value: number, currency = "AED"): string {
   if (value >= 1_000_000) return `${currency} ${(value / 1_000_000).toFixed(1)}M`;
   if (value >= 1_000) return `${currency} ${Math.round(value / 1_000)}K`;
-  return `${currency} ${value.toLocaleString()}`;
+  return `${currency} ${formatCount(value)}`;
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -226,11 +227,11 @@ export default function AdminCommissionsReportPage() {
           </>
         )}
         metrics={[
-          { label: t("totalCommissions"), value: loading ? <span className="inline-block h-6 w-20 animate-pulse rounded bg-muted" /> : s ? fmt(s.totalCommissions, s.currency) : "—", icon: CircleDollarSign, iconClassName: "text-indigo-600", iconSurfaceClassName: "bg-indigo-50 dark:bg-indigo-950/30" },
-          { label: t("pending"), value: loading ? <span className="inline-block h-6 w-20 animate-pulse rounded bg-muted" /> : s ? fmt(s.totalPending, s.currency) : "—", icon: Clock, iconClassName: "text-amber-600", iconSurfaceClassName: "bg-amber-50 dark:bg-amber-950/30" },
-          { label: t("approved"), value: loading ? <span className="inline-block h-6 w-20 animate-pulse rounded bg-muted" /> : s ? fmt(s.totalApproved, s.currency) : "—", icon: CheckCircle2, iconClassName: "text-blue-600", iconSurfaceClassName: "bg-blue-50 dark:bg-blue-950/30" },
-          { label: t("paidOut"), value: loading ? <span className="inline-block h-6 w-20 animate-pulse rounded bg-muted" /> : s ? fmt(s.totalPaid, s.currency) : "—", icon: Wallet, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50 dark:bg-emerald-950/30" },
-          { label: t("avgRate"), value: loading ? <span className="inline-block h-6 w-20 animate-pulse rounded bg-muted" /> : s ? `${s.avgRate}%` : "—", icon: TrendingUp, iconClassName: "text-violet-600", iconSurfaceClassName: "bg-violet-50 dark:bg-violet-950/30" },
+          { label: t("totalCommissions"), value: loading ? <span className="inline-block h-6 w-20 animate-pulse rounded bg-muted" /> : s ? fmt(s.totalCommissions, s.currency) : "—", icon: CircleDollarSign, iconClassName: "text-indigo-600", iconSurfaceClassName: "bg-indigo-50" },
+          { label: t("pending"), value: loading ? <span className="inline-block h-6 w-20 animate-pulse rounded bg-muted" /> : s ? fmt(s.totalPending, s.currency) : "—", icon: Clock, iconClassName: "text-amber-600", iconSurfaceClassName: "bg-amber-50" },
+          { label: t("approved"), value: loading ? <span className="inline-block h-6 w-20 animate-pulse rounded bg-muted" /> : s ? fmt(s.totalApproved, s.currency) : "—", icon: CheckCircle2, iconClassName: "text-blue-600", iconSurfaceClassName: "bg-blue-50" },
+          { label: t("paidOut"), value: loading ? <span className="inline-block h-6 w-20 animate-pulse rounded bg-muted" /> : s ? fmt(s.totalPaid, s.currency) : "—", icon: Wallet, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50" },
+          { label: t("avgRate"), value: loading ? <span className="inline-block h-6 w-20 animate-pulse rounded bg-muted" /> : s ? `${s.avgRate}%` : "—", icon: TrendingUp, iconClassName: "text-violet-600", iconSurfaceClassName: "bg-violet-50" },
         ]}
       />
 

@@ -57,7 +57,7 @@ export function InteractivePipeline({
       subLabelKey: "new",
       icon: FileText,
       href: `/${locale}/employer/applications?status=applied`,
-      accent: "text-sky-600 dark:text-sky-300",
+      accent: "text-sky-600",
     },
     {
       labelKey: "screening",
@@ -66,7 +66,7 @@ export function InteractivePipeline({
       subLabelKey: "inReview",
       icon: ClipboardCheck,
       href: `/${locale}/employer/applications?status=shortlisted`,
-      accent: "text-violet-600 dark:text-violet-300",
+      accent: "text-violet-600",
     },
     {
       labelKey: "interviews",
@@ -75,7 +75,7 @@ export function InteractivePipeline({
       subLabelKey: "scheduled",
       icon: Calendar,
       href: `/${locale}/employer/interviews`,
-      accent: "text-amber-600 dark:text-amber-300",
+      accent: "text-amber-600",
     },
     {
       labelKey: "offers",
@@ -84,7 +84,7 @@ export function InteractivePipeline({
       subLabelKey: "sent",
       icon: Gift,
       href: `/${locale}/employer/offers`,
-      accent: "text-emerald-600 dark:text-emerald-300",
+      accent: "text-emerald-600",
     },
     {
       labelKey: "hired",
@@ -93,7 +93,7 @@ export function InteractivePipeline({
       subLabelKey: "placed",
       icon: BriefcaseBusiness,
       href: `/${locale}/employer/placements`,
-      accent: "text-teal-600 dark:text-teal-300",
+      accent: "text-teal-600",
     },
   ];
 
@@ -105,7 +105,7 @@ export function InteractivePipeline({
       action={
         <Link
           href={`/${locale}/employer/applications`}
-          className="inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-sky-700 hover:bg-sky-50 hover:text-sky-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 dark:text-sky-300 dark:hover:bg-sky-500/10 sm:text-sm"
+          className="inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-sky-700 hover:bg-sky-50 hover:text-sky-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 sm:text-sm"
         >
           {t("viewAllApplications")}
           <ChevronRight className="h-4 w-4 rtl:rotate-180" aria-hidden="true" />

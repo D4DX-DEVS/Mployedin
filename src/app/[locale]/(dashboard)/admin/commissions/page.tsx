@@ -25,6 +25,7 @@ import type { ExportColumn } from "@/lib/export";
 import { Inbox } from "lucide-react";
 import { SUPPORTED_CURRENCIES } from "@/lib/currency";
 import { toUserFacingError } from "@/lib/errors/user-facing";
+import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
 interface Commission {
   _id: string;
@@ -279,7 +280,7 @@ export default function AdminCommissionsPage() {
     { header: "Currency", key: "currency", formatter: (v) => String(v ?? "AED") },
     { header: "Rate %", key: "rate", formatter: (v) => v != null ? `${v}%` : "—" },
     { header: "Status", key: "status" },
-    { header: "Created", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
+    { header: "Created", key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: commissions as unknown as Record<string, unknown>[],
@@ -298,8 +299,8 @@ export default function AdminCommissionsPage() {
         description={t("commissionsDescription")}
         summary={{
           label: t("commissionRecordsAcross"),
-          value: total.toLocaleString(),
-          note: `${totalPages.toLocaleString()} ${totalPages === 1 ? t("commissionRecordsPages") : t("commissionRecordsPages_plural")}`,
+          value: formatCount(total),
+          note: `${formatCount(totalPages)} ${totalPages === 1 ? t("commissionRecordsPages") : t("commissionRecordsPages_plural")}`,
         }}
       />
 
@@ -429,7 +430,7 @@ export default function AdminCommissionsPage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("pendingReviewLabel")}</p>
-                <p className="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight text-primary">{displayCurrency} {pendingAmount.toLocaleString()}</p>
+                <p className="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight text-primary">{displayCurrency} {formatCount(pendingAmount)}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{t("pendingReviewHint")}</p>
               </div>
               <div className="workspace-tone-sky rounded-2xl p-2.5">
@@ -441,7 +442,7 @@ export default function AdminCommissionsPage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("approvedLabel")}</p>
-                <p className="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight text-primary">{displayCurrency} {approvedAmount.toLocaleString()}</p>
+                <p className="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight text-primary">{displayCurrency} {formatCount(approvedAmount)}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{t("approvedHint")}</p>
               </div>
               <div className="workspace-tone-sky rounded-2xl p-2.5">
@@ -453,7 +454,7 @@ export default function AdminCommissionsPage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("paidOutLabel")}</p>
-                <p className="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight text-primary">{displayCurrency} {paidAmount.toLocaleString()}</p>
+                <p className="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight text-primary">{displayCurrency} {formatCount(paidAmount)}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{t("paidOutHint")}</p>
               </div>
               <div className="workspace-tone-sky rounded-2xl p-2.5">
@@ -464,7 +465,7 @@ export default function AdminCommissionsPage() {
       </section>
 
       {errorMessage ? (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50/90 px-4 py-3 text-sm text-rose-700 shadow-sm dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">
+        <div className="rounded-2xl border border-rose-200 bg-rose-50/90 px-4 py-3 text-sm text-rose-700 shadow-sm">
           {errorMessage}
         </div>
       ) : null}
@@ -474,7 +475,7 @@ export default function AdminCommissionsPage() {
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("commissionLedgerLabel")}</p>
           <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
             <h3 className="text-lg font-semibold text-foreground">{t("commissionLedgerTitle")}</h3>
-            <p className="text-sm text-muted-foreground">{t("recordsShowing")} {visibleCommissions.toLocaleString()} {visibleCommissions === 1 ? t("record") : t("records")} {t("onThisPage")}</p>
+            <p className="text-sm text-muted-foreground">{t("recordsShowing")} {formatCount(visibleCommissions)} {visibleCommissions === 1 ? t("record") : t("records")} {t("onThisPage")}</p>
           </div>
         </div>
 
@@ -530,12 +531,12 @@ export default function AdminCommissionsPage() {
                   </TableCell>
                   <TableCell>
                     <div>
-                      <p className="font-semibold text-foreground">{c.currency ?? "USD"} {c.amount.toLocaleString()}</p>
+                      <p className="font-semibold text-foreground">{c.currency ?? "USD"} {formatCount(c.amount)}</p>
                       <p className="mt-1 text-xs text-muted-foreground">{c.rate ? `${c.rate}% rate` : t("rateNotSet")}</p>
                     </div>
                   </TableCell>
                   <TableCell><StatusBadge status={c.status} /></TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{new Date(c.createdAt).toLocaleDateString()}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{formatDate(new Date(c.createdAt))}</TableCell>
                   <TableCell>
                     <div className="flex flex-wrap justify-end gap-1.5">
                       {can("commissions", "approve") && c.status === "pending" && (
@@ -543,7 +544,7 @@ export default function AdminCommissionsPage() {
                           variant="ghost"
                           size="xs"
                           onClick={() => updateStatus(c._id, "approved")}
-                          className="text-emerald-700 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
+                          className="text-emerald-700 hover:bg-emerald-50"
                         >
                           {t("approveButton")}
                         </Button>
@@ -553,7 +554,7 @@ export default function AdminCommissionsPage() {
                           variant="ghost"
                           size="xs"
                           onClick={() => updateStatus(c._id, "paid")}
-                          className="text-sky-700 hover:bg-sky-50 dark:text-sky-300 dark:hover:bg-sky-950/40"
+                          className="text-sky-700 hover:bg-sky-50"
                         >
                           {t("markPaidButton")}
                         </Button>
@@ -563,7 +564,7 @@ export default function AdminCommissionsPage() {
                           variant="ghost"
                           size="xs"
                           onClick={() => handleDispute(c._id)}
-                          className="text-amber-700 hover:bg-amber-50 dark:text-amber-300 dark:hover:bg-amber-950/40"
+                          className="text-amber-700 hover:bg-amber-50"
                           title={t("disputeTitle")}
                         >
                           {t("disputeButton")}
@@ -574,7 +575,7 @@ export default function AdminCommissionsPage() {
                           variant="ghost"
                           size="xs"
                           onClick={() => handleClawback(c._id, c.amount)}
-                          className="text-rose-700 hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-950/40"
+                          className="text-rose-700 hover:bg-rose-50"
                           title={t("clawbackTitle")}
                         >
                           {t("clawbackButton")}
@@ -585,7 +586,7 @@ export default function AdminCommissionsPage() {
                           variant="ghost"
                           size="xs"
                           onClick={() => handleResolveDispute(c._id)}
-                          className="text-emerald-700 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
+                          className="text-emerald-700 hover:bg-emerald-50"
                           title={t("resolveTitle")}
                         >
                           {t("resolveButton")}

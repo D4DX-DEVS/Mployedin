@@ -21,6 +21,7 @@ import { useScorecards } from "@/hooks/useScorecards";
 import { useTableExport } from "@/hooks/useTableExport";
 import { FeedbackTrendsPanel } from "@/components/features/employer/FeedbackTrendsPanel";
 import type { ExportColumn } from "@/lib/export";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 const RECOMMENDATION_COLORS: Record<string, string> = {
   strong_yes: "bg-emerald-100 text-emerald-700 border-emerald-300",
@@ -68,10 +69,10 @@ export default function ScorecardListPage() {
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
     { header: "Candidate", key: "_id", formatter: (v) => `Candidate #${String(v).slice(-4)}` },
-    { header: "Interview Date", key: "interviewId", formatter: (_v, r) => new Date((r as Record<string, any>).interviewId?.scheduledAt).toLocaleDateString() },
+    { header: "Interview Date", key: "interviewId", formatter: (_v, r) => formatDate(new Date((r as Record<string, any>).interviewId?.scheduledAt)) },
     { header: "Overall Score", key: "overallScore", formatter: (v) => `${Number(v).toFixed(1)}/5` },
     { header: "Recommendation", key: "recommendation", formatter: (v) => RECOMMENDATION_LABELS_KEY[String(v)] ?? String(v) },
-    { header: "Evaluated", key: "createdAt", formatter: (v) => new Date(String(v)).toLocaleDateString() },
+    { header: "Evaluated", key: "createdAt", formatter: (v) => formatDate(new Date(String(v))) },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: scorecards as unknown as Record<string, unknown>[],
@@ -163,9 +164,9 @@ export default function ScorecardListPage() {
                   <TableCell className="text-muted-foreground text-sm">
                     <div className="flex items-center gap-1">
                       <Calendar className="w-4 h-4" />
-                      {new Date(
+                      {formatDate(new Date(
                         scorecard.interviewId.scheduledAt
-                      ).toLocaleDateString()}
+                      ))}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -183,7 +184,7 @@ export default function ScorecardListPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground text-sm">
-                    {new Date(scorecard.createdAt).toLocaleDateString()}
+                    {formatDate(new Date(scorecard.createdAt))}
                   </TableCell>
                 </TableRow>
               ))}

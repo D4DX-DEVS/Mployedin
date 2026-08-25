@@ -11,6 +11,7 @@ import RelativeDate from "@/components/shared/RelativeDate";
 import { connectDB } from "@/lib/db/mongoose";
 import Employer from "@/models/Employer";
 import Job from "@/models/Job";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 interface PageProps {
   params: Promise<{ locale: string; id: string }>;
@@ -78,10 +79,10 @@ function normalizeExternalUrl(url?: string) {
 function salaryLabel(salary?: EmployerJob["salary"], salaryFromLabel?: string) {
   if (!salary?.min && !salary?.max) return null;
   if (salary.min && salary.max) {
-    return `${salary.currency ?? "AED"} ${salary.min.toLocaleString()} - ${salary.max.toLocaleString()}`;
+    return `${salary.currency ?? "AED"} ${formatCount(salary.min)} - ${formatCount(salary.max)}`;
   }
   if (salary.min) {
-    return `${salaryFromLabel || "From"} ${salary.currency ?? "AED"} ${salary.min.toLocaleString()}`;
+    return `${salaryFromLabel || "From"} ${salary.currency ?? "AED"} ${formatCount(salary.min)}`;
   }
   return null;
 }

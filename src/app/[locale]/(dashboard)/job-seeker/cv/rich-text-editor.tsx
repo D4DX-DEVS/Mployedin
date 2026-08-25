@@ -160,7 +160,7 @@ export function RichTextEditor({
           onInput={emit}
           onBlur={emit}
           style={{ minHeight }}
-          className="cv-rich-text px-3 py-2 text-sm leading-relaxed outline-none [&_a]:text-primary [&_a]:underline [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5"
+          className="cv-rich-text px-3 py-2 text-sm leading-relaxed outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [&_a]:text-primary [&_a]:underline [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5"
         />
       </div>
     </div>

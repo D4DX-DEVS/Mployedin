@@ -31,6 +31,7 @@ import {
   Weight,
   WandSparkles,
 } from "lucide-react";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -653,13 +654,13 @@ export function TeamAllocationDialog({
                           {t("total")} ({validRows.length} {t(validRows.length !== 1 ? "agents" : "agent")})
                         </td>
                         <td className="px-3 py-2.5 text-center text-sm font-bold text-foreground tabular-nums">
-                          {totals.employer.toLocaleString()}
+                          {formatCount(totals.employer)}
                         </td>
                         <td className="px-3 py-2.5 text-center text-sm font-bold text-foreground tabular-nums">
-                          {totals.employee.toLocaleString()}
+                          {formatCount(totals.employee)}
                         </td>
                         <td className="px-3 py-2.5 text-center text-sm font-bold text-foreground tabular-nums">
-                          {totals.finance.toLocaleString()}
+                          {formatCount(totals.finance)}
                         </td>
                         <td className="px-3 py-2.5" />
                       </tr>
@@ -668,13 +669,13 @@ export function TeamAllocationDialog({
                           {t("remaining")}
                         </td>
                         <td className={`px-3 py-2 text-center text-xs font-semibold tabular-nums ${remaining.emp < 0 ? "text-red-500" : "text-emerald-600"}`}>
-                          {remaining.emp.toLocaleString()}
+                          {formatCount(remaining.emp)}
                         </td>
                         <td className={`px-3 py-2 text-center text-xs font-semibold tabular-nums ${remaining.ee < 0 ? "text-red-500" : "text-emerald-600"}`}>
-                          {remaining.ee.toLocaleString()}
+                          {formatCount(remaining.ee)}
                         </td>
                         <td className={`px-3 py-2 text-center text-xs font-semibold tabular-nums ${remaining.fin < 0 ? "text-red-500" : "text-emerald-600"}`}>
-                          {remaining.fin.toLocaleString()}
+                          {formatCount(remaining.fin)}
                         </td>
                         <td className="px-3 py-2" />
                       </tr>
@@ -753,7 +754,7 @@ function AgentTargetRow({
 
   return (
     <>
-      <tr className={`transition-colors ${hasTarget ? "bg-sky-50/50 dark:bg-sky-950/20" : "hover:bg-muted/20"}`}>
+      <tr className={`transition-colors ${hasTarget ? "bg-sky-50/50" : "hover:bg-muted/20"}`}>
         {/* Agent Info */}
         <td className="px-4 py-2.5">
           <div>

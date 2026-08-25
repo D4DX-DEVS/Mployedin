@@ -273,7 +273,7 @@ function MatchScoreCard({
       )}
 
       {score === 100 && (
-        <div className="mt-3 flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-xs font-medium text-green-700 dark:bg-green-950 dark:border-green-800 dark:text-green-300">
+        <div className="mt-3 flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-xs font-medium text-green-700">
           <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
           {t("optimized")}
         </div>

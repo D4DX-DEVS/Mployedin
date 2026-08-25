@@ -26,6 +26,7 @@ import { usePagination } from "@/hooks/usePagination";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
+import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
 interface Placement {
   _id: string;
@@ -57,13 +58,13 @@ function formatSalaryValue(value: number): string {
   if (value === 0) return "0";
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
   if (value >= 1_000) return `${(value / 1_000).toFixed(0)}K`;
-  return value.toLocaleString();
+  return formatCount(value);
 }
 
 function formatCurrencyBreakdown(salaryByCurrency: Record<string, number>, t: any): string {
   const entries = Object.entries(salaryByCurrency).filter(([, v]) => v > 0);
   if (entries.length === 0) return t("noSalaryData");
-  return entries.map(([cur, val]) => `${val.toLocaleString()} ${cur}`).join(t("currencyBreakdownSeparator"));
+  return entries.map(([cur, val]) => `${formatCount(val)} ${cur}`).join(t("currencyBreakdownSeparator"));
 }
 
 export default function AdminPlacementsPage() {
@@ -248,7 +249,7 @@ export default function AdminPlacementsPage() {
     { header: "Salary", key: "salary", formatter: (v, r) => `${v ?? 0} ${(r as unknown as Placement).currency ?? "AED"}` },
     { header: "Visa Status", key: "visaStatus" },
     { header: "Commission Paid", key: "commissionPaid", formatter: (v) => v ? "Yes" : "No" },
-    { header: "Start Date", key: "startDate", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
+    { header: "Start Date", key: "startDate", formatter: (v) => v ? formatDate(new Date(String(v))) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: placements as unknown as Record<string, unknown>[],
@@ -282,10 +283,10 @@ export default function AdminPlacementsPage() {
           </Button>
         )}
         metrics={[
-          { label: t("totalPlacements"), value: total, note: t("allTime"), icon: Users, iconClassName: "text-status-applied", iconSurfaceClassName: "bg-status-applied-bg dark:bg-sky-950/30" },
-          { label: t("pendingVisa"), value: pendingVisa, note: t("awaitingApproval"), icon: Clock, iconClassName: "text-status-shortlisted", iconSurfaceClassName: "bg-status-shortlisted-bg dark:bg-amber-950/30" },
-          { label: t("unpaidCommission"), value: unpaidCommissions, note: t("needsCollection"), icon: DollarSign, iconClassName: "text-red-500", iconSurfaceClassName: "bg-status-rejected-bg dark:bg-red-950/30" },
-          { label: t("totalSalaryValue"), value: formatSalaryValue(totalValue), note: Object.keys(salaryByCurrency).length > 0 ? Object.entries(salaryByCurrency).slice(0, 2).map(([c, v]) => `${formatSalaryValue(v)} ${c}`).join(t("currencyBreakdownSeparator")) : t("noData"), icon: TrendingUp, iconClassName: "text-status-selected", iconSurfaceClassName: "bg-status-selected-bg dark:bg-emerald-950/30" },
+          { label: t("totalPlacements"), value: total, note: t("allTime"), icon: Users, iconClassName: "text-status-applied", iconSurfaceClassName: "bg-status-applied-bg" },
+          { label: t("pendingVisa"), value: pendingVisa, note: t("awaitingApproval"), icon: Clock, iconClassName: "text-status-shortlisted", iconSurfaceClassName: "bg-status-shortlisted-bg" },
+          { label: t("unpaidCommission"), value: unpaidCommissions, note: t("needsCollection"), icon: DollarSign, iconClassName: "text-red-500", iconSurfaceClassName: "bg-status-rejected-bg" },
+          { label: t("totalSalaryValue"), value: formatSalaryValue(totalValue), note: Object.keys(salaryByCurrency).length > 0 ? Object.entries(salaryByCurrency).slice(0, 2).map(([c, v]) => `${formatSalaryValue(v)} ${c}`).join(t("currencyBreakdownSeparator")) : t("noData"), icon: TrendingUp, iconClassName: "text-status-selected", iconSurfaceClassName: "bg-status-selected-bg" },
         ]}
         footer={(
           <>
@@ -318,10 +319,10 @@ export default function AdminPlacementsPage() {
 
         {/* AI Insights inline panel */}
         {aiInsights && (
-          <div className="mt-4 rounded-[20px] border border-sky-200/50 bg-sky-50/50 p-4 dark:border-sky-800/30 dark:bg-sky-950/20">
+          <div className="mt-4 rounded-[20px] border border-sky-200/50 bg-sky-50/50 p-4">
             <div className="mb-2 flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-status-applied dark:text-sky-400" />
-              <span className="text-sm font-semibold text-sky-800 dark:text-sky-300">{t("aiPlacementInsights")}</span>
+              <Sparkles className="h-4 w-4 text-status-applied" />
+              <span className="text-sm font-semibold text-sky-800">{t("aiPlacementInsights")}</span>
             </div>
             <div className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{aiInsights}</div>
           </div>
@@ -329,7 +330,7 @@ export default function AdminPlacementsPage() {
 
         {/* ─── Expandable Filters ─────────────────────────────────────── */}
         {showFilters && (
-          <div className="mt-4 space-y-3 rounded-[20px] border border-border/30 bg-background/40 p-4 backdrop-blur-sm dark:bg-background/20">
+          <div className="mt-4 space-y-3 rounded-[20px] border border-border/30 bg-background/40 p-4 backdrop-blur-sm">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -490,7 +491,7 @@ export default function AdminPlacementsPage() {
                   <TableCell className="px-4 py-3">{p.companyName ?? t("dashSeparator")}</TableCell>
                   <TableCell className="px-4 py-3 text-muted-foreground">{p.agentName ?? t("dashSeparator")}</TableCell>
                   <TableCell className="px-4 py-3 font-medium">
-                    {p.salary?.toLocaleString()}{" "}
+                    {formatCount(p.salary)}{" "}
                     <span className="text-xs text-muted-foreground">{p.currency}</span>
                   </TableCell>
                   <TableCell className="px-4 py-3">
@@ -512,7 +513,7 @@ export default function AdminPlacementsPage() {
                           variant="ghost"
                           size="xs"
                           onClick={() => markCommission(p._id, true)}
-                          className="text-emerald-700 hover:bg-status-selected-bg dark:hover:bg-emerald-950/30"
+                          className="text-emerald-700 hover:bg-status-selected-bg"
                         >
                           {t("markPaid")}
                         </Button>
@@ -522,7 +523,7 @@ export default function AdminPlacementsPage() {
                           variant="ghost"
                           size="xs"
                           onClick={() => setEditItem(p)}
-                          className="text-status-applied hover:bg-blue-50 dark:hover:bg-blue-950/30"
+                          className="text-status-applied hover:bg-blue-50"
                           title={t("edit")}
                         >
                           <Pencil className="h-3.5 w-3.5" />
@@ -533,7 +534,7 @@ export default function AdminPlacementsPage() {
                           variant="ghost"
                           size="xs"
                           onClick={() => handleDelete(p._id)}
-                          className="text-status-rejected hover:bg-status-rejected-bg dark:hover:bg-red-950/30"
+                          className="text-status-rejected hover:bg-status-rejected-bg"
                           title={t("delete")}
                         >
                           <Trash2 className="h-3.5 w-3.5" />

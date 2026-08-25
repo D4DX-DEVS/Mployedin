@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { useTranslations } from "next-intl";
+import { formatDate, formatDateTime } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -67,10 +68,10 @@ const ACCESS_LEVELS = [
 ];
 
 const ACCESS_COLORS: Record<string, string> = {
-  all_staff: "ring-emerald-200 bg-emerald-50/80 text-emerald-700 dark:ring-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300",
-  agent: "ring-sky-200 bg-sky-50/80 text-sky-700 dark:ring-sky-500/30 dark:bg-sky-500/10 dark:text-sky-300",
-  super_agent: "ring-violet-200 bg-violet-50/80 text-violet-700 dark:ring-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300",
-  admin: "ring-rose-200 bg-rose-50/80 text-rose-700 dark:ring-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300",
+  all_staff: "ring-emerald-200 bg-emerald-50/80 text-emerald-700",
+  agent: "ring-sky-200 bg-sky-50/80 text-sky-700",
+  super_agent: "ring-violet-200 bg-violet-50/80 text-violet-700",
+  admin: "ring-rose-200 bg-rose-50/80 text-rose-700",
 };
 
 const SORT_OPTIONS = [
@@ -219,10 +220,10 @@ export default function AdminResourcesPage() {
           </Button>
         }
         metrics={[
-          { label: "Total Resources", value: items.length, icon: Package, iconClassName: "text-sky-600", iconSurfaceClassName: "bg-sky-50 dark:bg-sky-950/30" },
-          { label: "Total Downloads", value: totalDownloads, icon: Download, iconClassName: "text-blue-600", iconSurfaceClassName: "bg-blue-50 dark:bg-blue-950/30" },
-          { label: "Categories", value: Object.keys(categoryCounts).length, icon: BarChart2, iconClassName: "text-violet-600", iconSurfaceClassName: "bg-violet-50 dark:bg-violet-950/30" },
-          { label: "Active", value: items.filter((i) => i.isActive).length, icon: Activity, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50 dark:bg-emerald-950/30" },
+          { label: "Total Resources", value: items.length, icon: Package, iconClassName: "text-sky-600", iconSurfaceClassName: "bg-sky-50" },
+          { label: "Total Downloads", value: totalDownloads, icon: Download, iconClassName: "text-blue-600", iconSurfaceClassName: "bg-blue-50" },
+          { label: "Categories", value: Object.keys(categoryCounts).length, icon: BarChart2, iconClassName: "text-violet-600", iconSurfaceClassName: "bg-violet-50" },
+          { label: "Active", value: items.filter((i) => i.isActive).length, icon: Activity, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50" },
         ]}
         footer={
           <div className="flex w-full min-w-0 flex-wrap items-center gap-2">
@@ -367,13 +368,13 @@ export default function AdminResourcesPage() {
                   <div className="space-y-1.5">{detailItem.versionHistory.map((v, i) => (
                     <div key={i} className="flex items-center gap-2 text-xs border-l-2 border-primary/30 pl-3 py-1.5">
                       <Badge variant="outline" className="text-[10px] shrink-0">v{v.version}</Badge>
-                      <span className="text-muted-foreground">{new Date(v.uploadedAt).toLocaleString()}</span>
+                      <span className="text-muted-foreground">{formatDateTime(new Date(v.uploadedAt))}</span>
                       {v.notes && <span className="italic text-muted-foreground">{v.notes}</span>}
                     </div>
                   ))}</div>
                 </div>
               )}
-              <p className="text-xs text-muted-foreground pt-2 border-t">Uploaded by {detailItem.uploadedBy?.name} &middot; {new Date(detailItem.createdAt).toLocaleDateString()}</p>
+              <p className="text-xs text-muted-foreground pt-2 border-t">Uploaded by {detailItem.uploadedBy?.name} &middot; {formatDate(new Date(detailItem.createdAt))}</p>
             </div>
             <DialogFooter><Button variant="ghost" onClick={() => setDetailItem(null)}>{tc("close")}</Button></DialogFooter>
           </>)}
@@ -415,7 +416,7 @@ export default function AdminResourcesPage() {
                   </div>
                   <div className="text-right shrink-0">
                     <p className="text-muted-foreground font-medium">{log.fileName}</p>
-                    <p className="text-muted-foreground text-[10px]">{new Date(log.downloadedAt).toLocaleString()}</p>
+                    <p className="text-muted-foreground text-[10px]">{formatDateTime(new Date(log.downloadedAt))}</p>
                   </div>
                 </div>
               ))}

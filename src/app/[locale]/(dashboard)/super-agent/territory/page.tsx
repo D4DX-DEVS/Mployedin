@@ -67,10 +67,10 @@ export default function SuperAgentTerritoryPage() {
 
   /* Color scale based on agent density */
   const getHeatColor = (count: number) => {
-    if (count >= 5) return "border-emerald-200 bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:border-emerald-800/50 dark:from-emerald-950/40 dark:to-emerald-900/20";
-    if (count >= 3) return "border-sky-200 bg-gradient-to-br from-sky-50 to-sky-100/50 dark:border-sky-800/50 dark:from-sky-950/40 dark:to-sky-900/20";
-    if (count >= 1) return "border-amber-200 bg-gradient-to-br from-amber-50 to-amber-100/50 dark:border-amber-800/50 dark:from-amber-950/40 dark:to-amber-900/20";
-    return "border-red-200 bg-gradient-to-br from-red-50 to-red-100/30 dark:border-red-800/50 dark:from-red-950/40 dark:to-red-900/20";
+    if (count >= 5) return "border-emerald-200 bg-gradient-to-br from-emerald-50 to-emerald-100/50";
+    if (count >= 3) return "border-sky-200 bg-gradient-to-br from-sky-50 to-sky-100/50";
+    if (count >= 1) return "border-amber-200 bg-gradient-to-br from-amber-50 to-amber-100/50";
+    return "border-red-200 bg-gradient-to-br from-red-50 to-red-100/30";
   };
 
   const getHeatLabel = (count: number) => {
@@ -81,10 +81,10 @@ export default function SuperAgentTerritoryPage() {
   };
 
   const getHeatBadge = (count: number) => {
-    if (count >= 5) return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300";
-    if (count >= 3) return "bg-sky-100 text-sky-700 dark:bg-sky-900/50 dark:text-sky-300";
-    if (count >= 1) return "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300";
-    return "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300";
+    if (count >= 5) return "bg-emerald-100 text-emerald-700";
+    if (count >= 3) return "bg-sky-100 text-sky-700";
+    if (count >= 1) return "bg-amber-100 text-amber-700";
+    return "bg-red-100 text-red-700";
   };
 
   /* Compute coverage summary */
@@ -183,28 +183,28 @@ export default function SuperAgentTerritoryPage() {
                 {/* Stats grid */}
                 <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                   <div className="flex items-center gap-2.5">
-                    <UserCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                    <UserCheck className="h-4 w-4 text-emerald-600" />
                     <div>
                       <p className="text-lg font-bold tabular-nums text-foreground">{region.agentCount}</p>
                       <p className="text-[10px] font-medium text-muted-foreground">{t("cardAgents")}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2.5">
-                    <Building2 className="h-4 w-4 text-sky-600 dark:text-sky-400" />
+                    <Building2 className="h-4 w-4 text-sky-600" />
                     <div>
                       <p className="text-lg font-bold tabular-nums text-foreground">{region.employerCount}</p>
                       <p className="text-[10px] font-medium text-muted-foreground">{t("cardEmployers")}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2.5">
-                    <Briefcase className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                    <Briefcase className="h-4 w-4 text-violet-600" />
                     <div>
                       <p className="text-lg font-bold tabular-nums text-foreground">{region.jobCount}</p>
                       <p className="text-[10px] font-medium text-muted-foreground">{t("cardJobs")}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2.5">
-                    <TrendingUp className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                    <TrendingUp className="h-4 w-4 text-amber-600" />
                     <div>
                       <p className="text-lg font-bold tabular-nums text-foreground">{region.seekerCount}</p>
                       <p className="text-[10px] font-medium text-muted-foreground">{t("cardCandidates")}</p>

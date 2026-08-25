@@ -102,12 +102,12 @@ interface AgentDetail {
 
 function getStatusConfig(t: ReturnType<typeof useTranslations>): Record<string, { label: string; className: string; icon: typeof CheckCircle2 }> {
   return {
-    new: { label: t("statusNew"), className: "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300", icon: AlertCircle },
-    contacted: { label: t("statusContacted"), className: "bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300", icon: Phone },
-    interested: { label: t("statusInterested"), className: "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300", icon: Target },
-    negotiating: { label: t("statusNegotiating"), className: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300", icon: TrendingUp },
-    converted: { label: t("statusConverted"), className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300", icon: CheckCircle2 },
-    lost: { label: t("statusLost"), className: "bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300", icon: XCircle },
+    new: { label: t("statusNew"), className: "bg-blue-100 text-blue-700", icon: AlertCircle },
+    contacted: { label: t("statusContacted"), className: "bg-sky-100 text-sky-700", icon: Phone },
+    interested: { label: t("statusInterested"), className: "bg-indigo-100 text-indigo-700", icon: Target },
+    negotiating: { label: t("statusNegotiating"), className: "bg-amber-100 text-amber-700", icon: TrendingUp },
+    converted: { label: t("statusConverted"), className: "bg-emerald-100 text-emerald-700", icon: CheckCircle2 },
+    lost: { label: t("statusLost"), className: "bg-rose-100 text-rose-700", icon: XCircle },
   };
 }
 
@@ -473,8 +473,8 @@ export default function AgentDetailPage() {
                       <span className={cn(
                         "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
                         rl.isActive
-                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300"
-                          : "bg-gray-100 text-gray-600 dark:bg-gray-500/20 dark:text-gray-300"
+                          ? "bg-emerald-100 text-emerald-700"
+                          : "bg-gray-100 text-gray-600"
                       )}>
                         <span className={cn("h-1.5 w-1.5 rounded-full", rl.isActive ? "bg-emerald-500" : "bg-gray-400")} />
                         {rl.isActive ? tc("active") : tc("inactive")}

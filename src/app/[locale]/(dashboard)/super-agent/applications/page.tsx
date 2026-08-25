@@ -18,6 +18,7 @@ import {
   RotateCcw, FileText, TrendingUp,
   CheckCircle2, Star,
 } from "lucide-react";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -225,7 +226,7 @@ export default function SuperAgentApplicationsPage() {
                     )}
                   </TableCell>
                   <TableCell className="text-xs capitalize text-muted-foreground">{(a.source ?? "direct").replace(/_/g, " ")}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{new Date(a.appliedAt).toLocaleDateString()}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{formatDate(new Date(a.appliedAt))}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

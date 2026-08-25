@@ -33,6 +33,7 @@ import {
   InterviewWelcome,
   ScreeningWelcome,
 } from "./tabs/WelcomeScreens";
+import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
 // ─── Types ──────────────────────────────────────────────────────
 interface Message {
@@ -742,7 +743,7 @@ export function RecruitmentAssistant() {
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">{th.title || t("untitled")}</p>
                           <p className="text-xs text-muted-foreground">
-                            {new Date(th.updatedAt).toLocaleDateString()}
+                            {formatDate(new Date(th.updatedAt))}
                           </p>
                         </div>
                         <button
@@ -880,7 +881,7 @@ function AIMarkdown({ content }: { content: string }) {
         ol: ({ ...props }) => <ol className="list-decimal list-inside space-y-0.5 my-1" {...props} />,
         li: ({ ...props }) => <li className="leading-relaxed" {...props} />,
         strong: ({ ...props }) => <strong className="font-semibold" {...props} />,
-        code: ({ ...props }) => <code className="rounded bg-black/10 px-1 font-mono text-[0.88em] dark:bg-white/10" {...props} />,
+        code: ({ ...props }) => <code className="rounded bg-black/10 px-1 font-mono text-[0.88em]" {...props} />,
         a: ({ href, ...props }) => {
           const isInternal = href?.startsWith("/");
           return (
@@ -984,10 +985,10 @@ function JobPreviewCard({
 }) {
   const t = useTranslations("recruitmentAI");
   return (
-    <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 dark:border-emerald-900/40 dark:bg-emerald-950/20 p-3 sm:p-4 space-y-3 mt-2">
+    <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-3 sm:p-4 space-y-3 mt-2">
       <div className="flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-emerald-600 flex-shrink-0" />
-        <h4 className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wide">
+        <h4 className="text-xs font-bold text-emerald-700 uppercase tracking-wide">
           {t("jobCreator.preview")}
         </h4>
       </div>
@@ -1005,7 +1006,7 @@ function JobPreviewCard({
         {job.salary && (
           <Row
             label={t("previewLabels.salary")}
-            value={`${job.salary.currency ?? "USD"} ${job.salary.min?.toLocaleString()} – ${job.salary.max?.toLocaleString()} / ${job.salary.period ?? "month"}`}
+            value={`${job.salary.currency ?? "USD"} ${formatCount(job.salary.min)} – ${formatCount(job.salary.max)} / ${job.salary.period ?? "month"}`}
           />
         )}
         {job.employmentType && (
@@ -1017,7 +1018,7 @@ function JobPreviewCard({
             {job.requirements.skills.slice(0, 8).map((s) => (
               <span
                 key={s}
-                className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 text-[11px] font-medium"
+                className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[11px] font-medium"
               >
                 {s}
               </span>
@@ -1073,10 +1074,10 @@ function BulkJobPreviewCard({
 }) {
   const t = useTranslations("recruitmentAI");
   return (
-    <div className="rounded-2xl border border-blue-200 bg-blue-50/50 dark:border-blue-900/40 dark:bg-blue-950/20 p-3 sm:p-4 space-y-3 mt-2">
+    <div className="rounded-2xl border border-blue-200 bg-blue-50/50 p-3 sm:p-4 space-y-3 mt-2">
       <div className="flex items-center gap-2">
         <LayoutList className="h-4 w-4 text-blue-600 flex-shrink-0" />
-        <h4 className="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wide">
+        <h4 className="text-xs font-bold text-blue-700 uppercase tracking-wide">
           {t("bulkPreview", { count: jobs.length })}
         </h4>
       </div>
@@ -1084,7 +1085,7 @@ function BulkJobPreviewCard({
         {jobs.map((job, idx) => (
           <div
             key={idx}
-            className="rounded-lg border border-blue-100 dark:border-blue-900/30 bg-white dark:bg-blue-950/30 p-2.5 space-y-1"
+            className="rounded-lg border border-blue-100 bg-white p-2.5 space-y-1"
           >
             <p className="text-xs font-semibold text-foreground">{job.title || `Job ${idx + 1}`}</p>
             <div className="flex flex-wrap gap-1 text-[11px] text-muted-foreground">
@@ -1098,7 +1099,7 @@ function BulkJobPreviewCard({
                 {job.requirements.skills.slice(0, 5).map((s) => (
                   <span
                     key={s}
-                    className="px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 text-[10px] font-medium"
+                    className="px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-medium"
                   >
                     {s}
                   </span>
@@ -1113,13 +1114,13 @@ function BulkJobPreviewCard({
       </div>
       {progress && (
         <div className="space-y-1">
-          <div className="w-full h-1.5 bg-blue-100 dark:bg-blue-900/40 rounded-full overflow-hidden">
+          <div className="w-full h-1.5 bg-blue-100 rounded-full overflow-hidden">
             <div
               className="h-full bg-blue-600 transition-all duration-300 rounded-full"
               style={{ width: `${(progress.created / progress.total) * 100}%` }}
             />
           </div>
-          <p className="text-[11px] text-blue-600 dark:text-blue-400">
+          <p className="text-[11px] text-blue-600">
             {t("createdProgress", { created: progress.created, total: progress.total })}
           </p>
           {progress.errors.length > 0 && (

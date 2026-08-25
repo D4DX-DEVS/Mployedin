@@ -16,6 +16,7 @@ import {
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { useTranslations } from "next-intl";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 interface ResourceFile { fileName: string; url: string; key: string; contentType: string; size: number; }
 interface Resource {
@@ -162,7 +163,7 @@ export default function ResourceDownloadsPage() {
                     ))}
                   </div>
 
-                  <p className="text-xs text-muted-foreground">{new Date(item.createdAt).toLocaleDateString()}</p>
+                  <p className="text-xs text-muted-foreground">{formatDate(new Date(item.createdAt))}</p>
                 </div>
               </article>
             );

@@ -2355,7 +2355,8 @@
       "langTelugu": "Telugu",
       "langUrdu": "Urdu",
       "enterToSend": "Press Enter to send, use Shift+Enter for a new line, or tap the mic to dictate a longer brief.",
-      "tapSendWhenReady": "Tap send when you're ready."
+      "tapSendWhenReady": "Tap send when you're ready.",
+      "eyebrow": "AI job creation"
     },
     "quickPrompts": {
       "superAgent": {
@@ -2480,7 +2481,7 @@
     "privacyPolicy": "Privacy Policy",
     "cookiePolicy": "Cookie Policy",
     "contentPreparing": "Content is being prepared.",
-    "cookieConsent": "We use cookies to enhance your experience.",
+    "cookieConsent": "We only use cookies and browser storage that are needed to sign you in and keep the site working. We do not use advertising or tracking cookies.",
     "cookieAccept": "Accept",
     "cookieDecline": "Decline",
     "learnMore": "Learn More",
@@ -13380,8 +13381,6 @@
     "stepEducationSubtitle": "Employers prefer to know about your Education",
     "stepLastStep": "Last step",
     "stepLastStepSubtitle": "Add headline & preferences",
-    "appTheme": "App theme",
-    "appThemeSubtitle": "Applies after onboarding",
     "welcome": "Welcome, {name}",
     "signOut": "Sign out",
     "noMatches": "No matches",
@@ -14946,5 +14945,76 @@
     "scopeReadProfile": "View your job seeker profile",
     "scopeReadEmployerJobs": "View your company's job postings",
     "scopeReadApplicants": "View applicants to your job postings"
+  },
+  "employerCompliance": {
+    "wording": {
+      "title": "Inclusive wording check",
+      "subtitleClean": "No wording concerns found in this advert.",
+      "subtitleFound": "{count, plural, one {# phrase to review} other {# phrases to review}} before you publish.",
+      "advisory": "This is guidance, not a legal check. You decide what to publish, and clearing these checks does not mean an advert meets your legal obligations.",
+      "reviewLabel": "Review",
+      "flaggedPhrase": "Flagged phrase",
+      "guidanceLink": "GOV.UK guidance on advertising a job",
+      "guidanceHref": "https://www.gov.uk/employer-preventing-discrimination/recruitment",
+      "showDetails": "Show what was flagged",
+      "hideDetails": "Hide details",
+      "experienceCapTitle": "Narrow experience range",
+      "experienceCapBody": "A tight cap such as 1 to 2 years can screen out career changers and people returning to work, which may read as an age requirement. Consider setting a minimum only.",
+      "screeningWarning": "This question may ask for personal information linked to a protected characteristic.",
+      "screeningWarningAction": "Ask only what the role requires, or collect this separately for equal-opportunities monitoring."
+    },
+    "characteristics": {
+      "age": "Age",
+      "disability": "Disability",
+      "gender_reassignment": "Gender reassignment",
+      "marriage_civil_partnership": "Marriage and civil partnership",
+      "pregnancy_maternity": "Pregnancy and maternity",
+      "race": "Race",
+      "religion_belief": "Religion or belief",
+      "sex": "Sex",
+      "sexual_orientation": "Sexual orientation"
+    },
+    "suggestions": {
+      "ageDescriptor": "Describe the work, not the person. Try naming the skills or pace the role needs.",
+      "ageProxy": "Say what experience the role needs instead of when someone studied.",
+      "ageLimit": "Remove the age limit. State the skills or qualifications the role actually requires.",
+      "ageEnergy": "Energetic often reads as an age signal. Describe the actual demands, such as a busy shop floor where you are on your feet.",
+      "genderedJobTitle": "Use a neutral job title, for example Sales Assistant, Supervisor or Waiting Staff.",
+      "genderedRequirement": "Remove the gender requirement unless it is a genuine occupational requirement you can justify.",
+      "nativeSpeaker": "Ask for the standard of English the job needs, for example fluent written and spoken English.",
+      "nationalityRequirement": "Ask about the right to work in the UK instead of nationality or ethnicity.",
+      "cultureFit": "Culture fit is vague and can hide bias. Name the working style or values you mean.",
+      "physicalRequirement": "Describe the task, for example moving stock up to 15kg, and offer reasonable adjustments.",
+      "attendanceRequirement": "Attendance wording can disadvantage disabled applicants. Describe the shift pattern instead.",
+      "religionRequirement": "Remove the religious requirement unless it is a genuine occupational requirement.",
+      "religiousObservance": "State the shift pattern plainly and say you will discuss adjustments.",
+      "pregnancyRequirement": "Remove this. Employment gaps and family plans must not affect selection.",
+      "maritalRequirement": "Remove this. Marital and family status must not affect selection.",
+      "orientationRequirement": "Remove this unless it is a genuine occupational requirement.",
+      "genderReassignmentRequirement": "Remove this. Gender identity and history must not affect selection.",
+      "askAge": "Ask only if age is a legal requirement for the role, and say why.",
+      "askMaritalStatus": "Remove this question. Marital and family status must not affect selection.",
+      "askPregnancy": "Remove this question. Pregnancy and family plans must not affect selection.",
+      "askHealth": "Ask about reasonable adjustments for the interview instead of health or disability.",
+      "askEthnicity": "Ask about the right to work in the UK, or collect this separately and anonymously.",
+      "askReligion": "Remove this question unless it is a genuine occupational requirement.",
+      "askGender": "Remove this question, or collect it separately and anonymously for monitoring.",
+      "askOrientation": "Remove this question, or collect it separately and anonymously for monitoring.",
+      "askGenderIdentity": "Remove this question, or collect it separately and anonymously for monitoring."
+    },
+    "privacy": {
+      "title": "About this candidate information",
+      "candidateList": "These are real people's details, shared with you so you can consider them for your roles. Use them only for recruitment, keep them secure, and do not share them outside your hiring team.",
+      "candidateDetail": "This profile contains personal data, which may include contact details, a CV and work history. Use it only to assess this application. Do not copy it into other systems or share it outside your hiring team.",
+      "aiScore": "AI match scores are an estimate produced from the job description and the candidate's profile. They are a guide, not a decision. Always review the full application yourself before rejecting or progressing anyone.",
+      "linkLabel": "How we handle personal data",
+      "dismiss": "Got it"
+    },
+    "match": {
+      "strong": "Strong match",
+      "moderate": "Possible match",
+      "low": "Weak match",
+      "estimate": "Estimated match"
+    }
   }
 }

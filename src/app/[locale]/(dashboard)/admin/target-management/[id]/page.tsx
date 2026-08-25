@@ -20,6 +20,7 @@ import {
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -191,8 +192,8 @@ export default function AdminTargetProfileDetailPage() {
         <div className="mt-6 flex items-center gap-4">
           <Progress value={Math.min(profile.overallProgress, 100)} className="h-3 flex-1" />
           <span className={`text-lg font-bold tabular-nums ${
-            profile.overallProgress >= 75 ? "text-emerald-600 dark:text-emerald-400" :
-            profile.overallProgress >= 40 ? "text-amber-600 dark:text-amber-400" :
+            profile.overallProgress >= 75 ? "text-emerald-600" :
+            profile.overallProgress >= 40 ? "text-amber-600" :
             "text-muted-foreground"
           }`}>{profile.overallProgress}%</span>
         </div>
@@ -214,7 +215,7 @@ export default function AdminTargetProfileDetailPage() {
           <ProgressRing
             value={profile.financeProgress}
             label="Finance"
-            sublabel={`${profile.currency} ${profile.financeAchieved.toLocaleString()}/${profile.financeTarget.toLocaleString()}`}
+            sublabel={`${profile.currency} ${formatCount(profile.financeAchieved)}/${formatCount(profile.financeTarget)}`}
           />
           <ProgressRing
             value={profile.overallProgress}

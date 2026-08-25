@@ -22,6 +22,8 @@ import { Badge } from "@/components/ui/badge";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
+import { formatDate } from "@/lib/ui/intlFormat";
+import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -123,10 +125,10 @@ function InsightIcon({ type }: { type: string }) {
 function ScoreBadge({ score }: { score?: number }) {
   if (score == null) return <span className="text-xs text-muted-foreground">—</span>;
   const color =
-    score >= 80 ? "text-status-selected bg-status-selected-bg dark:bg-emerald-950/30 dark:text-emerald-400"
-    : score >= 60 ? "text-status-applied bg-status-applied-bg dark:bg-blue-950/30 dark:text-blue-400"
-    : score >= 40 ? "text-status-shortlisted bg-status-shortlisted-bg dark:bg-amber-950/30 dark:text-amber-400"
-    : "text-status-rejected bg-status-rejected-bg dark:bg-red-950/30 dark:text-red-400";
+    score >= 80 ? "text-status-selected bg-status-selected-bg"
+    : score >= 60 ? "text-status-applied bg-status-applied-bg"
+    : score >= 40 ? "text-status-shortlisted bg-status-shortlisted-bg"
+    : "text-status-rejected bg-status-rejected-bg";
   return (
     <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${color}`}>
       <Brain className="h-3 w-3" />
@@ -217,7 +219,7 @@ export default function AdminApplicationsPage() {
     { header: "Status", key: "status" },
     { header: "Source", key: "source", formatter: (v) => sourceLabel(v as string) },
     { header: "AI Score", key: "aiMatchScore", formatter: (v) => v != null ? `${v}%` : "—" },
-    { header: "Applied", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
+    { header: "Applied", key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: applications as unknown as Record<string, unknown>[],
@@ -396,10 +398,10 @@ export default function AdminApplicationsPage() {
           </Button>
         )}
         metrics={[
-          { label: t("totalApps"), value: stats?.totalAll ?? 0, note: t("allApplications"), icon: FileText, iconClassName: "text-status-applied", iconSurfaceClassName: "bg-status-applied-bg dark:bg-sky-950/30" },
-          { label: t("today"), value: stats?.todayCount ?? 0, note: t("newToday"), icon: TrendingUp, iconClassName: "text-status-selected", iconSurfaceClassName: "bg-status-selected-bg dark:bg-emerald-950/30" },
-          { label: t("aiScored"), value: stats?.scoredCount ?? 0, note: `${t("avgColon")} ${stats?.avgAiScore ?? 0}%`, icon: Brain, iconClassName: "text-status-interview", iconSurfaceClassName: "bg-status-interview-bg dark:bg-violet-950/30" },
-          { label: t("inShortlist"), value: stats?.byStatus?.["shortlisted"] ?? 0, note: t("pipelineLabel"), icon: Users, iconClassName: "text-status-shortlisted", iconSurfaceClassName: "bg-status-shortlisted-bg dark:bg-amber-950/30" },
+          { label: t("totalApps"), value: stats?.totalAll ?? 0, note: t("allApplications"), icon: FileText, iconClassName: "text-status-applied", iconSurfaceClassName: "bg-status-applied-bg" },
+          { label: t("today"), value: stats?.todayCount ?? 0, note: t("newToday"), icon: TrendingUp, iconClassName: "text-status-selected", iconSurfaceClassName: "bg-status-selected-bg" },
+          { label: t("aiScored"), value: stats?.scoredCount ?? 0, note: `${t("avgColon")} ${stats?.avgAiScore ?? 0}%`, icon: Brain, iconClassName: "text-status-interview", iconSurfaceClassName: "bg-status-interview-bg" },
+          { label: t("inShortlist"), value: stats?.byStatus?.["shortlisted"] ?? 0, note: t("pipelineLabel"), icon: Users, iconClassName: "text-status-shortlisted", iconSurfaceClassName: "bg-status-shortlisted-bg" },
         ]}
         footer={(
           <>
@@ -436,7 +438,7 @@ export default function AdminApplicationsPage() {
 
         {/* ─── AI Insights inline ─────────────────────────────────────── */}
         {showAiPanel && (
-          <div className="mt-6 rounded-[20px] border border-border/30 bg-background/40 p-5 space-y-4 backdrop-blur-sm dark:bg-background/20">
+          <div className="mt-6 rounded-[20px] border border-border/30 bg-background/40 p-5 space-y-4 backdrop-blur-sm">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-sky-500" />
@@ -460,9 +462,9 @@ export default function AdminApplicationsPage() {
                   {aiInsights.healthScore != null && (
                     <div className="flex flex-col items-center gap-1">
                       <div className={`text-2xl sm:text-3xl font-bold ${
-                        aiInsights.healthScore >= 70 ? "text-status-selected dark:text-emerald-400"
-                        : aiInsights.healthScore >= 40 ? "text-status-shortlisted dark:text-amber-400"
-                        : "text-status-rejected dark:text-red-400"
+                        aiInsights.healthScore >= 70 ? "text-status-selected"
+                        : aiInsights.healthScore >= 40 ? "text-status-shortlisted"
+                        : "text-status-rejected"
                       }`}>
                         {aiInsights.healthScore}
                       </div>
@@ -487,12 +489,12 @@ export default function AdminApplicationsPage() {
                 )}
 
                 {aiInsights.recommendations.length > 0 && (
-                  <div className="rounded-xl border border-sky-200/50 bg-sky-50/50 p-3 space-y-1.5 dark:border-sky-800/30 dark:bg-sky-950/20">
-                    <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-status-applied dark:text-sky-400">
+                  <div className="rounded-xl border border-sky-200/50 bg-sky-50/50 p-3 space-y-1.5">
+                    <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-status-applied">
                       <Zap className="h-3.5 w-3.5" /> {t("recommendations")}
                     </p>
                     {aiInsights.recommendations.map((rec, i) => (
-                      <p key={i} className="pl-5 text-sm text-sky-900 dark:text-sky-200">• {rec}</p>
+                      <p key={i} className="pl-5 text-sm text-sky-900">• {rec}</p>
                     ))}
                   </div>
                 )}
@@ -544,7 +546,7 @@ export default function AdminApplicationsPage() {
 
         {/* ─── Expandable Filters ─────────────────────────────────────── */}
         {showFilters && (
-          <div className="mt-4 space-y-3 rounded-[20px] border border-border/30 bg-background/40 p-4 backdrop-blur-sm dark:bg-background/20">
+          <div className="mt-4 space-y-3 rounded-[20px] border border-border/30 bg-background/40 p-4 backdrop-blur-sm">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -660,6 +662,9 @@ export default function AdminApplicationsPage() {
           </div>
         )}
       </DashboardPageHeader>
+      {/* Privacy information where candidate personal data is first shown,
+          rather than only behind a footer link. */}
+      <CandidateDataNotice variant="candidateList" />
 
       {/* ─── Application List ─────────────────────────────────────────── */}
       {loading ? (
@@ -714,13 +719,13 @@ export default function AdminApplicationsPage() {
                 : null;
               const locationExp = [jobLocation, seeker?.totalExperienceYears ? `${seeker.totalExperienceYears}+ yrs` : null].filter(Boolean).join(" · ");
               const topSkills = seeker?.skills?.slice(0, 3) ?? [];
-              const appliedDate = new Date(app.appliedAt ?? app.createdAt).toLocaleDateString(undefined, { day: "2-digit", month: "short" });
+              const appliedDate = formatDate(new Date(app.appliedAt ?? app.createdAt), { day: "2-digit", month: "short" });
               const aiScoreLabel = app.aiMatchScore != null ? `${app.aiMatchScore}% match` : null;
               const aiScoreColor = app.aiMatchScore != null
-                ? app.aiMatchScore >= 80 ? "bg-status-selected-bg text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
-                  : app.aiMatchScore >= 60 ? "bg-status-applied-bg text-status-applied dark:bg-sky-950/30 dark:text-sky-400"
-                  : app.aiMatchScore >= 40 ? "bg-status-shortlisted-bg text-status-shortlisted dark:bg-amber-950/30 dark:text-amber-400"
-                  : "bg-status-rejected-bg text-status-rejected dark:bg-rose-950/30 dark:text-rose-400"
+                ? app.aiMatchScore >= 80 ? "bg-status-selected-bg text-emerald-700"
+                  : app.aiMatchScore >= 60 ? "bg-status-applied-bg text-status-applied"
+                  : app.aiMatchScore >= 40 ? "bg-status-shortlisted-bg text-status-shortlisted"
+                  : "bg-status-rejected-bg text-status-rejected"
                 : "";
 
               return (
@@ -730,7 +735,7 @@ export default function AdminApplicationsPage() {
                 >
                   {/* Candidate */}
                   <div className="flex min-w-0 items-center gap-2 sm:gap-3.5">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-status-applied shadow-inner dark:text-sky-300 sm:h-10 sm:w-10 sm:rounded-xl">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-status-applied shadow-inner sm:h-10 sm:w-10 sm:rounded-xl">
                       <User className="h-3.5 w-3.5 sm:h-5 sm:w-5" />
                     </div>
                     {/* flex-1 only on phones: it lets the name column use the

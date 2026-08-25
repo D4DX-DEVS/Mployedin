@@ -66,7 +66,7 @@ export function AIRecommendedCandidatesCard({
       scoreMax: 101,
       count: band90PlusCount,
       icon: Star,
-      accent: "text-emerald-600 dark:text-emerald-300",
+      accent: "text-emerald-600",
     },
     {
       labelKey: "band80to89",
@@ -75,7 +75,7 @@ export function AIRecommendedCandidatesCard({
       scoreMax: 90,
       count: band80to89Count,
       icon: TrendingUp,
-      accent: "text-sky-600 dark:text-sky-300",
+      accent: "text-sky-600",
     },
     {
       labelKey: "needsReview",
@@ -84,7 +84,7 @@ export function AIRecommendedCandidatesCard({
       scoreMax: 80,
       count: needsReviewCount,
       icon: AlertCircle,
-      accent: "text-amber-600 dark:text-amber-300",
+      accent: "text-amber-600",
     },
   ];
 
@@ -105,7 +105,7 @@ export function AIRecommendedCandidatesCard({
         hasAnyMatches ? (
           <Link
             href={`${applicationsBase}?scoreMin=80`}
-            className="inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-sky-700 hover:bg-sky-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 dark:text-sky-300 dark:hover:bg-sky-500/10 sm:text-sm"
+            className="inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-sky-700 hover:bg-sky-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 sm:text-sm"
           >
             {t("reviewCandidates")}
             <ChevronRight className="h-4 w-4 rtl:rotate-180" aria-hidden="true" />
@@ -139,7 +139,7 @@ export function AIRecommendedCandidatesCard({
         </div>
       ) : (
         <div className="flex flex-1 items-center gap-3 px-4 py-4 sm:px-5">
-          <Sparkles className="h-5 w-5 shrink-0 text-sky-600 dark:text-sky-300" aria-hidden="true" />
+          <Sparkles className="h-5 w-5 shrink-0 text-sky-600" aria-hidden="true" />
           <div>
             <p className="text-sm font-semibold text-foreground">{t("emptyTitle")}</p>
             <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{t("emptyDescription")}</p>
@@ -147,7 +147,7 @@ export function AIRecommendedCandidatesCard({
         </div>
       )}
       <div className="mt-auto flex items-start gap-2 border-t border-border/60 px-4 py-3 text-xs leading-5 text-muted-foreground sm:px-5">
-        <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-sky-600 dark:text-sky-300" aria-hidden="true" />
+        <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-sky-600" aria-hidden="true" />
         <p>{t("assistiveNote")}</p>
       </div>
     </DashboardSection>

@@ -32,6 +32,8 @@ import {
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import { formatDate } from "@/lib/ui/intlFormat";
+import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 
 interface JobSeeker {
   _id: string;
@@ -161,7 +163,7 @@ export default function AdminJobSeekersPage() {
     { header: "Profile %", key: "profileCompleteness", formatter: (v) => v != null ? `${v}%` : "—" },
     { header: "Has CV", key: "cv", formatter: (v) => (v as JobSeeker["cv"])?.originalUrl ? "Yes" : "No" },
     { header: "Status", key: "status", formatter: (v) => String(v ?? "active") },
-    { header: "Joined", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
+    { header: "Joined", key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "—" },
   ], []);
 
   // PDF fits ~10 columns in landscape A4; the full 17-column set is unreadable
@@ -450,6 +452,9 @@ export default function AdminJobSeekersPage() {
         title={tr("heroTitle")}
         description={tr("heroDescription")}
       />
+      {/* Privacy information where candidate personal data is first shown,
+          rather than only behind a footer link. */}
+      <CandidateDataNotice variant="candidateList" />
 
       {/* ── AI Search Bar ─────────────────────────────────── */}
       <section className="workspace-panel-surface rounded-[20px] panel-body">
@@ -763,10 +768,10 @@ export default function AdminJobSeekersPage() {
                   <span className="mb-1.5 block text-muted-foreground">{js.nationality ?? "—"}</span>
                   {js.availabilityStatus ? (
                     <span className={`inline-block rounded-full px-1.5 py-0.5 text-[0.6rem] font-medium ${
-                      js.availabilityStatus === "immediately" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" :
-                      js.availabilityStatus === "within_month" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" :
-                      js.availabilityStatus === "not_available" ? "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400" :
-                      "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                      js.availabilityStatus === "immediately" ? "bg-emerald-100 text-emerald-700" :
+                      js.availabilityStatus === "within_month" ? "bg-amber-100 text-amber-700" :
+                      js.availabilityStatus === "not_available" ? "bg-rose-100 text-rose-700" :
+                      "bg-blue-100 text-blue-700"
                     }`}>
                       {js.availabilityStatus.replace(/_/g, " ")}
                     </span>
@@ -790,7 +795,7 @@ export default function AdminJobSeekersPage() {
                     </button>
                   ) : <span className="text-muted-foreground">—</span>}
                 </TableCell>
-                <TableCell className="text-muted-foreground text-xs">{new Date(js.createdAt).toLocaleDateString()}</TableCell>
+                <TableCell className="text-muted-foreground text-xs">{formatDate(new Date(js.createdAt))}</TableCell>
                 {(can("job_seekers", "update") || can("job_seekers", "delete")) && (
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-1">

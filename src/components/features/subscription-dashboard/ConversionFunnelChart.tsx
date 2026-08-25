@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { Filter } from "lucide-react";
 import type { ConversionFunnel as ConversionFunnelData } from "./useSubscriptionDashboard";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 interface Props {
   data: ConversionFunnelData;
@@ -37,7 +38,7 @@ export function ConversionFunnelChart({ data }: Props) {
               <div className="flex items-center justify-between text-sm mb-1">
                 <span className="font-medium">{stage.label}</span>
                 <div className="flex items-center gap-3">
-                  <span className="font-bold">{stage.value.toLocaleString()}</span>
+                  <span className="font-bold">{formatCount(stage.value)}</span>
                   {idx > 0 && (
                     <span className="text-xs text-muted-foreground">({convRate}%)</span>
                   )}

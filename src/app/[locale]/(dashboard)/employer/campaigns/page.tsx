@@ -48,9 +48,9 @@ import {
 
 const STATUS_STYLES: Record<SequenceStatus, string> = {
   draft: "bg-muted text-muted-foreground",
-  active: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300",
-  paused: "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
-  completed: "bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300",
+  active: "bg-emerald-50 text-emerald-700",
+  paused: "bg-amber-50 text-amber-700",
+  completed: "bg-sky-50 text-sky-700",
 };
 
 function StatusBadge({ status }: { status: SequenceStatus }) {

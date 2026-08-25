@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { useJobDetail } from "@/hooks/useJobs";
 import Link from "next/link";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 const STATUS_COLORS: Record<string, string> = {
   active: "bg-emerald-100 text-emerald-700 border-emerald-200",
@@ -136,7 +137,7 @@ export default function AgentJobDetailPage() {
           <div className="flex flex-col items-center justify-center p-2 sm:p-4 gap-1">
             <div className="text-xl font-bold text-foreground leading-tight">
               {job.salary?.min && job.salary?.max
-                ? `${job.salary.min.toLocaleString()}–${job.salary.max.toLocaleString()}`
+                ? `${formatCount(job.salary.min)}–${formatCount(job.salary.max)}`
                 : "—"}
             </div>
             <div className="text-xs text-muted-foreground flex items-center gap-1">

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { TrendingUp, DollarSign, MapPin, Briefcase, Search } from "lucide-react";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 interface SalaryData {
   salaryOverview: { _id: { currency: string }; avgMin: number; avgMax: number; count: number; minSalary: number; maxSalary: number }[];
@@ -41,7 +42,7 @@ export default function SalaryExplorerPage() {
   };
 
   const fmt = (num: number, currency = "AED") =>
-    `${currency} ${Math.round(num).toLocaleString()}`;
+    `${currency} ${formatCount(Math.round(num))}`;
 
   return (
     <main className="container mx-auto px-4 py-8 max-w-6xl">
@@ -123,7 +124,7 @@ export default function SalaryExplorerPage() {
                       {data.topPayingRoles.map((role, i) => (
                         <tr key={i} className="hover:bg-muted/30 transition-colors">
                           <td className="px-4 py-3 font-medium text-foreground">{role._id}</td>
-                          <td className="px-4 py-3 text-green-600 dark:text-green-400">
+                          <td className="px-4 py-3 text-green-600">
                             {fmt(role.avgMin, role.currency)} – {fmt(role.avgMax, role.currency)}
                           </td>
                           <td className="px-4 py-3 text-muted-foreground">{role.count}</td>
@@ -147,7 +148,7 @@ export default function SalaryExplorerPage() {
                 {data.byCountry.map((item, i) => (
                   <div key={i} className="p-4 bg-card border border-border rounded-xl hover:border-primary/30 transition-colors">
                     <p className="font-medium text-foreground">{item._id}</p>
-                    <p className="text-sm text-green-600 dark:text-green-400 mt-1">
+                    <p className="text-sm text-green-600 mt-1">
                       {fmt(item.avgMin, item.currency)} – {fmt(item.avgMax, item.currency)}
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">{t("jobsCount", { count: item.count })}</p>

@@ -32,6 +32,7 @@ import {
   RadialBar,
   Legend,
 } from "recharts";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -273,13 +274,13 @@ export function AgentDetailDialog({ open, onOpenChange, agent, year }: AgentDeta
                     <div className="flex items-baseline gap-1">
                       <span className="text-xl font-bold text-foreground tabular-nums">
                         {card.isCurrency
-                          ? `${agent.currency} ${card.achieved.toLocaleString()}`
-                          : card.achieved.toLocaleString()}
+                          ? `${agent.currency} ${formatCount(card.achieved)}`
+                          : formatCount(card.achieved)}
                       </span>
                       <span className="text-xs text-muted-foreground">
                         / {card.isCurrency
-                          ? `${agent.currency} ${card.target.toLocaleString()}`
-                          : card.target.toLocaleString()}
+                          ? `${agent.currency} ${formatCount(card.target)}`
+                          : formatCount(card.target)}
                       </span>
                     </div>
                     {/* Progress bar */}
@@ -348,7 +349,7 @@ export function AgentDetailDialog({ open, onOpenChange, agent, year }: AgentDeta
                           borderRadius: "8px",
                           fontSize: "12px",
                         }}
-                        formatter={(value) => [`${agent.currency} ${Number(value).toLocaleString()}`, undefined]}
+                        formatter={(value) => [`${agent.currency} ${formatCount(Number(value))}`, undefined]}
                       />
                       <Bar dataKey="revenueTarget" name="Revenue Target" fill="#86efac" radius={[2, 2, 0, 0]} />
                       <Bar dataKey="revenue" name="Revenue Achieved" fill="#10b981" radius={[2, 2, 0, 0]} />

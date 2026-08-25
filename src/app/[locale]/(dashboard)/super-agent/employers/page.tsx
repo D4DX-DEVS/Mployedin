@@ -510,7 +510,7 @@ export default function SuperAgentEmployersPage() {
                     <button
                       onClick={() => handleSwitchToEmployerView(em._id)}
                       disabled={switchingEmployerId === em._id || !em.isActive}
-                      className="inline-flex items-center gap-1 rounded-lg border border-sky-400/50 bg-sky-50 px-2.5 py-1.5 text-xs font-semibold text-sky-700 transition-colors hover:bg-sky-100 disabled:opacity-50 dark:bg-sky-950/20 dark:text-sky-400 dark:hover:bg-sky-900/30"
+                      className="inline-flex items-center gap-1 rounded-lg border border-sky-400/50 bg-sky-50 px-2.5 py-1.5 text-xs font-semibold text-sky-700 transition-colors hover:bg-sky-100 disabled:opacity-50"
                       title={t("switchButtonTitle")}
                       aria-label={t("switchButtonAriaLabel", { company: em.companyName ?? em.name })}
                     >

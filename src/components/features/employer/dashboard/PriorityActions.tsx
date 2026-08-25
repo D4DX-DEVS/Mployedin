@@ -50,20 +50,20 @@ export function PriorityActions({
     urgent: {
       labelKey: "urgent",
       icon: Flame,
-      badgeBg: "bg-red-100 dark:bg-red-950/30",
-      badgeText: "text-red-600 dark:text-red-400",
+      badgeBg: "bg-red-100",
+      badgeText: "text-red-800",
     },
     medium: {
       labelKey: "medium",
       icon: AlertTriangle,
-      badgeBg: "bg-amber-50 dark:bg-amber-950/30",
-      badgeText: "text-amber-600 dark:text-amber-400",
+      badgeBg: "bg-amber-100",
+      badgeText: "text-amber-900",
     },
     suggestion: {
       labelKey: "suggestion",
       icon: Lightbulb,
-      badgeBg: "bg-sky-100 dark:bg-sky-900/60",
-      badgeText: "text-sky-900 dark:text-sky-100",
+      badgeBg: "bg-sky-100",
+      badgeText: "text-sky-900",
     },
   };
 
@@ -205,7 +205,7 @@ export function PriorityActions({
                 <span className="min-w-0 flex-1 text-sm font-medium leading-5 text-foreground">
                   {t(action.textKey, action.textValues)}
                 </span>
-                <span className="hidden shrink-0 text-xs font-semibold text-sky-700 dark:text-sky-300 sm:inline">
+                <span className="hidden shrink-0 text-xs font-semibold text-sky-700 sm:inline">
                   {t(action.actionLabelKey)}
                 </span>
                 <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 rtl:rotate-180 rtl:group-hover:-translate-x-0.5" aria-hidden="true" />

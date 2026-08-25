@@ -1,3 +1,4 @@
+import { formatCount } from "@/lib/ui/intlFormat";
 /** Country-to-currency mapping and formatting utilities */
 
 export interface CurrencyInfo {
@@ -180,7 +181,7 @@ export function formatCurrency(
   if (isNaN(num)) return "—";
   const info = SUPPORTED_CURRENCIES.find((c) => c.code === currencyCode);
   const marker = currencyDisplay === "code" ? currencyCode : (info?.symbol ?? currencyCode);
-  return `${marker} ${num.toLocaleString()}`;
+  return `${marker} ${formatCount(num)}`;
 }
 
 /**

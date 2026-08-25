@@ -113,7 +113,7 @@ describe("ResponsiveTables", () => {
     expect(tables[1]).not.toHaveClass("responsive-card-table");
   });
 
-  it("adds an accessible disclosure button for collapsible mobile rows", async () => {
+  it("makes the row an accessible, keyboard-operable disclosure control", async () => {
     Object.defineProperty(window, "matchMedia", {
       configurable: true,
       value: (query: string) => ({
@@ -148,17 +148,29 @@ describe("ResponsiveTables", () => {
       </>
     );
 
-    const disclosure = await screen.findByRole("button", { name: "Show details" });
-    const row = container.querySelector("tbody tr");
-    const controlledIds = disclosure.getAttribute("aria-controls")?.split(" ") ?? [];
+    // The row itself is the disclosure control. It used to be an injected
+    // <button>, but injecting a node into a cell React owns raced hydration on
+    // streamed Suspense boundaries ("Hydration failed ... extra child"). The
+    // control is now attributes on the existing <tr>: nothing is added to the
+    // DOM, `aria-expanded` is valid on role="row", and the whole row is the
+    // target instead of a 44x44 corner.
+    const row = await screen.findByRole("row", { name: "Show details" });
+    expect(container.querySelector("button[data-mobile-disclosure]")).toBeNull();
 
-    expect(disclosure).toHaveAttribute("aria-expanded", "false");
+    const controlledIds = row.getAttribute("aria-controls")?.split(" ") ?? [];
+    expect(row).toHaveAttribute("aria-expanded", "false");
+    expect(row).toHaveAttribute("tabindex", "0");
     expect(controlledIds).toHaveLength(2);
     controlledIds.forEach((id) => expect(document.getElementById(id)).toBeTruthy());
 
-    fireEvent.click(disclosure);
+    fireEvent.click(row);
     expect(row).toHaveAttribute("data-mobile-expanded");
-    expect(disclosure).toHaveAttribute("aria-expanded", "true");
-    expect(disclosure).toHaveAccessibleName("Hide details");
+    expect(row).toHaveAttribute("aria-expanded", "true");
+    expect(row).toHaveAccessibleName("Hide details");
+
+    // Keyboard operable, since the row is now the control.
+    fireEvent.keyDown(row, { key: "Enter" });
+    expect(row).not.toHaveAttribute("data-mobile-expanded");
+    expect(row).toHaveAttribute("aria-expanded", "false");
   });
 });

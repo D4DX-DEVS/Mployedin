@@ -5,6 +5,7 @@ import type { PosterFormat, DesignStyle, ShowFields, PosterTemplate } from "@/li
 import { FORMAT_DIMENSIONS, TEMPLATES } from "@/lib/composer/types";
 import { CREDITS_PER_GENERATION } from "@/lib/composer/credits";
 import { CheckCircle2, Sparkles } from "lucide-react";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 const DESIGN_STYLES: { id: DesignStyle; label: string }[] = [
   { id: "professional", label: "Professional" },
@@ -69,7 +70,7 @@ export function PosterCustomizer({
     : job?.location?.country || "";
 
   const salaryStr = job?.salary?.min
-    ? `${job.salary.currency || "AED"} ${job.salary.min?.toLocaleString()} - ${job.salary.max?.toLocaleString()}`
+    ? `${job.salary.currency || "AED"} ${formatCount(job.salary.min)} - ${formatCount(job.salary.max)}`
     : "";
 
   const expStr = job?.experienceMin != null

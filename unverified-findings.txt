@@ -1,0 +1,103 @@
+=== DIMENSION: Candidates, applications, and every surface where CANDIDATE PERSONAL DATA appears
+[privacy-notice-gap-applications] (critical) Missing privacy notice on Applications page despite displaying personal data
+  file: src/app/[locale]/(dashboard)/employer/applications/page.tsx:1-2000
+  evidence: Applications page imports CandidateDataNotice (line 0 context shows it's not used), displays candidate names (line 1659 truncate text-sm font-semibold), locations (implied in schema), skills (line 376), and employment status, but grep confirms zero instances of CandidateDataNotice in file.
+  consequence: Violates UK data protection guidance (ICO): privacy information must be shown at the point personal data is displayed, not only in footer links. Users see detailed candidate information with no notice about data handling, purpose, or duration.
+  fix: Add `<CandidateDataNotice variant="candidateList" />` at the top of the filter panel or above the applications table, matching the placement on candidates/page.tsx (line 1484). Similar to how it's done in candidates list and detail panel.
+
+[privacy-notice-gap-talent-pools] (critical) Missing privacy notice in Talent Pools detail modal showing candidate data
+  file: src/app/[locale]/(dashboard)/employer/talent-pools/page.tsx:737-774
+  evidence: PoolDetailDialog displays candidate personal data: line 748 shows name (truncate text-sm font-semibold), line 750 shows headline, line 754-762 displays skills with full names/content. Zero CandidateDataNotice component in file.
+  consequence: Candidates' personal details (name, headline, skills, employment history) are displayed without any privacy notice or data handling information. Employer sees profile data with no context about lawful basis, retention, or use restrictions.
+  fix: Add `<CandidateDataNotice variant="candidateDetail" className="mb-4" />` after the pool header (around line 703) and before the candidate list begins (line 734). Wrap in a check for pool.candidates?.length > 0 to avoid showing it when pool is empty.
+
+[protected-characteristic-filter-nationality] (critical) Nationality filter enables discriminatory candidate filtering under UK equality law
+  file: src/app/[locale]/(dashboard)/employer/applications/page.tsx:284, 311, 324, 1093-1100
+  evidence: Line 284: `const [nationalityFilter, setNationalityFilter]`. Line 311: `const debouncedNationality = useDebounce(nationalityFilter, 350)`. Line 324: `nationality: debouncedNationality.trim() || undefined` in API query. Lines 1093-1100: filter UI renders text input with label 'Nationality'. This field is sent to backend query.
+  consequence: Enables employers to filter candidates by nationality, which under UK Equality Act 2010 is a protected characteristic. Even though filtering by nationality directly may seem neutral, in recruitment it facilitates indirect discrimination and breaches the requirement that selection should be on merit alone, free from protected characteristic bias.
+  fix: Remove the nationality filter entirely: delete lines 284, 311, 324 from state/query definition; delete lines 1093-1100 from UI; remove `nationalityFilter` from line 136 reset function and line 400 dependency array. Nationality is not job-related and should never be available as a filtering criterion.
+
+[ai-score-not-decision-not-shown-consistently] (high) AI match scores lack plain-language disclaimer that they are not a hiring decision
+  file: src/app/[locale]/(dashboard)/employer/applications/page.tsx:1-1500+
+  evidence: Applications page shows AI match scores on candidate cards (e.g. line 1688 references aiMatchScore display) without the 'not a decision' disclaimer shown in candidates/page.tsx AIScreeningResultsPanel (line 768 has CandidateDataNotice variant='aiScore'). Score alone, with only color coding, implies it's actionable.
+  consequence: Users may assume AI match score is a recommendation to hire/reject, when it is explicitly stated elsewhere as 'a guide, not a decision' requiring human review. Particularly risky on applications where status changes (shortlist, reject) are action-adjacent to scores.
+  fix: Add a persistent disclaimer near AI scores on applications list: either wrap score badge with aria-label='AI match score, is a guide not a decision' or add tooltip on hover. In detail panel (if implemented), add CandidateDataNotice variant='aiScore' above AI match section, matching candidates detail panel.
+
+[responsive-candidate-name-overflow] (medium) Candidate card layout may clip/overflow at narrow widths (360-430px)
+  file: src/app/[locale]/(dashboard)/employer/candidates/page.tsx:334, 354-374
+  evidence: CandidateMatchCard uses grid layout (line 334): `grid-cols-[auto_auto_minmax(0,1fr)_auto]`. Checkbox (5w), avatar (10w), name/role/meta (truncate), score ring (44px) + buttons (right). On 360px device, 44px score + 2× 32px buttons = 108px right column leaves <250px for name/role. Name uses truncate (line 356) but role also truncates (line 373); location/exp uses 3 badges on 1 line (lines 375-401 layout includes skill badges).
+  consequence: On narrow phones, candidate name truncates mid-word, role disappears entirely, and skill badges fold awkwardly. Accessibility: low visual hierarchy makes it harder to identify which candidate is selected.
+  fix: Adjust grid on mobile to wrap right column below at `sm:` breakpoint: use `grid-cols-[auto_auto_minmax(0,1fr)]` on mobile, then `grid-cols-[auto_auto_minmax(0,1fr)_auto]` at `sm:`. Or stack score ring + buttons vertically on mobile using flex-col wrapper with sm:flex-row at breakpoint.
+
+[bulk-reject-action-not-confirmed] (medium) Bulk reject action lacks confirmation prompt before applying to all selected candidates
+  file: src/app/[locale]/(dashboard)/employer/applications/page.tsx:1168-1195
+  evidence: Lines 1168-1171 render reject button that sets showRejectPrompt=true. Lines 1179-1197 show rejection reason input. Line 1191 calls openEmailPreview('reject') with no application-count check or final confirmation. handleBulkAction (line 677) processes all selected without showing count of affected applications.
+  consequence: Employer can select many candidates and enter one rejection reason, then unknowingly apply it to dozens at once with one click. Particularly risky if employer selects 'all on page' by mistake.
+  fix: Before openEmailPreview('reject') is called (line 1191), show a confirmation: 'Reject {selected.length} candidate(s) with this reason?' Display the exact count and names (if ≤10) or 'and {n} more' above the preview button. Match the auto-shortlist confirmation pattern (lines 1199-1250).
+
+[applications-list-no-reject-warning] (medium) Reject button on applications is not visually distinguished as consequential/destructive
+  file: src/app/[locale]/(dashboard)/employer/applications/page.tsx:1168-1171
+  evidence: Reject button uses `variant='outline'` with `bg-background/80` and `text-destructive` on line 1168. Colors it red, but button class doesn't use `variant='destructive'` which would apply destructive styling (bg-red-600, hover darker). No visual emphasis as 'final action'.
+  consequence: Casual rejection without visual warning. Candidate receives rejection email; decision is hard to undo. Button styling should signal finality.
+  fix: Change line 1168 to use `variant='destructive'` instead of `variant='outline'`, or keep outline but add a confirm dialog: 'Reject {selected.length}? This cannot be undone.' before calling handleBulkAction.
+
+[cv-download-no-retention-notice] (medium) CV download/view actions lack indication of data retention or purpose
+  file: src/components/shared/ResumeViewerModal.tsx:92-101
+  evidence: MoreMenu component (lines 72-106) offers download link to CV (line 92-101). No text notes that CV is stored for recruitment purposes only, for how long, or that it should not be copied/stored by employer outside their hiring system.
+  consequence: Employer downloads CV without understanding data handling obligations (GDPR: retention limits, access control, processing restrictions). May assume they can forward it, archive indefinitely, or use for other purposes.
+  fix: Add a tooltip or inline text when viewing/downloading CV: 'This CV is for recruitment assessment only. Do not forward outside your hiring team or retain longer than {X} months after the role closes.' Tooltip on download icon or brief notice in MoreMenu.
+
+=== DIMENSION: UK recruitment compliance risk in the product (Equality Act 2010 protected characteristics)
+[ai-generated-descriptions-no-guard] (critical) AI-generated job descriptions not checked for discriminatory wording
+  file: src/lib/ai/assistantPrompts.ts:19-150
+  evidence: JOB_CREATOR_PROMPT (lines 19-150) includes instruction to 'fill in' job description automatically but has no mention of Equality Act 2010, UK employment law, or avoiding protected characteristic language. Only generic tone guidance: 'Tone: Professional, engaging, inclusive' (line 67 in route.ts).
+  consequence: Employers using AI to generate job descriptions can unwittingly include discriminatory language (e.g., 'young and energetic team', 'native English speaker', 'clean bill of health') without warning. The product itself generates the discriminatory text if the AI model does so.
+  fix: Add specific instruction to JOB_CREATOR_PROMPT and /api/ai/job-description endpoint prompt to avoid all protected characteristics under Equality Act 2010 (age, disability, gender, race, religion, sexual orientation, gender reassignment, marriage/civil partnership, pregnancy/maternity). Example: 'Do NOT mention age (e.g. "young", "energetic", "recent graduate"), nationality (e.g. "native English speaker"), or any other Equality Act 2010 protected characteristic. Neutral wording only.'
+
+[ai-extraction-bypass-compliance] (critical) Jobs extracted from uploaded documents can be posted directly without compliance review
+  file: src/app/[locale]/(dashboard)/employer/jobs/ai-extract/page.tsx:337-366, 766
+  evidence: Line 337-366 shows postSingleJob() calls /api/jobs POST directly with extracted job data. Line 766 in the 'Quick Post' button calls postSingleJob(index) immediately. The extracted job (which may have discriminatory wording from the source document) bypasses the InclusiveWordingPanel entirely.
+  consequence: An employer can upload a discriminatory job advert (PDF/Word/image), have it AI-extracted, and click 'Quick Post' to publish it live without any warning about discriminatory language. The InclusiveWordingPanel is never shown for this flow.
+  fix: Add server-side compliance check in POST /api/jobs (handlers.ts createHandler) that validates job data against checkAdvert rules. Return a 400 error with findings if discriminatory language is detected, letting the client show the InclusiveWordingPanel. Alternatively, run checkAdvert on the client before postSingleJob and show warnings (modal) before allowing POST.
+
+[incomplete-compliance-coverage] (high) Compliance warnings only shown in new job form, not in edit or extraction flows
+  file: src/components/features/employer/job-form/JobFormWizard.tsx:751
+  evidence: InclusiveWordingPanel imported at line 27 and used only at line 751 within JobFormWizard. Not imported or used in SharedJobEditPage (employers editing existing jobs) or ai-extract page (employers posting extracted jobs).
+  consequence: An employer editing a draft job, or an employer posting an extracted job, never sees the InclusiveWordingPanel warnings. They can change text to discriminatory language (or extract discriminatory text) without any advisory.
+  fix: Add InclusiveWordingPanel to SharedJobEditPage (src/components/features/jobs/SharedJobEditPage.tsx) and to ai-extract page (src/app/[locale]/(dashboard)/employer/jobs/ai-extract/page.tsx) in the job preview/edit areas before posting or saving.
+
+[no-server-side-compliance-validation] (high) All compliance checks are client-side only; no server-side validation of job content
+  file: src/app/api/jobs/handlers.ts:279-428
+  evidence: createHandler (line 279-428) validates HTML safety (line 398: sanitizeHtml) but has no import of or call to checkAdvert or checkWording. Job data is saved directly without checking for discriminatory language. Only client-side checks exist (InclusiveWordingPanel is advisory and non-blocking).
+  consequence: A malicious employer, or an API caller using a script, could bypass the client-side checks entirely and post discriminatory job content directly to the API. The server has no guardrail.
+  fix: Add server-side validation in createHandler: import checkAdvert, call checkAdvert({title, description, responsibilities, qualifications, benefits}) before saving. Log findings but do NOT block (to avoid rejecting edge cases like genuine occupational requirements). Optionally store findings in job document for audit trail.
+
+[talent-search-nationality-filter] (high) Employers can filter candidates by nationality, a protected characteristic
+  file: src/app/api/employer/talent-search/route.ts:34, 43
+  evidence: Line 34 accepts nationality parameter: const nationality = searchParams.get('nationality')?.trim();  Line 43 applies it: if (nationality) conditions.push({ nationality: new RegExp(escape(nationality), 'i') }); No restriction on which nationalities can be filtered, and no genuine occupational requirement validation.
+  consequence: An employer can openly filter talent by nationality (e.g., 'I only want UK nationals', 'I only want Indian nationals'). This directly discriminates based on race under Equality Act 2010 s.9. While there may be rare genuine occupational requirements, the system provides no mechanism to justify or validate them.
+  fix: Remove nationality filter from /api/employer/talent-search endpoint, or add a strict allowlist (e.g., only specific visa/work-authorization filters that are non-discriminatory). If nationality filtering is retained for business reasons, add a strong warning on the UI: 'Filtering by nationality may violate Equality Act 2010 unless there is a genuine occupational requirement for this role.'
+
+[screening-questions-check-not-blocking] (medium) Screening question compliance check is advisory but has no server-side validation
+  file: src/components/features/employer/job-form/Step5ScreeningQuestions.tsx:157-261
+  evidence: Line 157-160: checkWording() is called on question label against SCREENING_QUESTION_RULES. Line 243-261: warning is displayed if protectedFlags.length > 0, but the warning is advisory (role='status', no aria-invalid on submit button). Users can submit jobs with protected-characteristic questions.
+  consequence: An employer can ask screening questions like 'What is your date of birth?' or 'Are you married?' despite the warning. The questions are saved and candidates must answer them, directly asking for protected characteristics.
+  fix: Add server-side check in POST /api/jobs to validate screeningQuestions against SCREENING_QUESTION_RULES. Return 400 error with specific guidance if blocking, or silently log for audit trail if advisory. Recommend making blocking for the most egregious questions (e.g., 'Are you disabled?', 'What is your gender?').
+
+[ai-prompt-lacks-legal-guidance] (medium) AI assistant prompt for job creation lacks specific UK employment law guidance
+  file: src/lib/ai/assistantPrompts.ts:19-150
+  evidence: JOB_CREATOR_PROMPT has detailed extraction rules, field mapping rules, and tone guidance ('Professional, engaging, inclusive') but no mention of Equality Act 2010, protected characteristics, UK employment law, or GOV.UK guidance on non-discriminatory job adverts.
+  consequence: The AI system has no explicit instruction to avoid discriminatory language when generating job descriptions, responsibilities, qualifications, or requirements. Generic 'inclusive' tone is not a substitute for specific legal guardrails.
+  fix: Add to JOB_CREATOR_PROMPT a dedicated 'Legal Compliance' section: 'UK Law (Equality Act 2010): NEVER mention or imply requirements tied to: age ("young", "energetic", "recent graduate"), disability ("able-bodied", "healthy", "no health issues"), gender (gendered job titles, male/female only), nationality ("native English speaker", "British only"), or any other protected characteristic. Use neutral alternatives: "digital skills" instead of "tech-savvy youngster", "fluent English" instead of "native English speaker". See GOV.UK guidance: www.gov.uk/employer-rights-responsibilities/recruitment-discrimination.'
+
+[candidate-avatar-exposure-in-search] (medium) Candidate avatars returned in talent search enable appearance-based discrimination
+  file: src/app/api/employer/talent-search/route.ts:72, 81, 85
+  evidence: Line 72 populates userId with avatar: .populate({ path: 'userId', select: 'name avatar' }). Lines 81, 85 include avatar in response: userId: user?._id ? { _id: String(user._id), name: user.name ?? '', avatar: user.avatar } : undefined.
+  consequence: Employers can see candidate photos/avatars in the talent search results. Photos enable appearance-based discrimination (age estimation from appearance, gender, religion via appearance, disability visibility, race). While candidate profiles may voluntarily include avatars, including them in employer search results specifically enables discrimination.
+  fix: Remove avatar field from talent-search response, or make it opt-in at the candidate level with a warning that avatars may facilitate discrimination. At minimum, add guidance on the talent search UI: 'Candidate avatars are provided. Be aware that appearance-based decisions may violate Equality Act 2010; focus on skills and experience only.'
+
+[job-form-wizard-never-blocks-submission] (low) InclusiveWordingPanel findings never prevent job submission; completely advisory
+  file: src/components/features/employer/job-form/InclusiveWordingPanel.tsx:23, 43
+  evidence: InclusiveWordingPanel component comment line 23: 'Never blocks submission'. Line 43: clean status determined but never used to disable submit button. Panel is display-only, no aria-invalid or disabled state on form.
+  consequence: Employers can ignore all wording warnings and publish discriminatory adverts without friction. The warnings are informational only.
+  fix: This is actually CORRECT design per the component's documented intent (advisory, never blocking), because the product cannot know context (genuine occupational requirement, positive action scheme, role-neutral use). Keep advisory. No change needed here — the issue is insufficient coverage elsewhere (ai-extraction, editing, server-side).

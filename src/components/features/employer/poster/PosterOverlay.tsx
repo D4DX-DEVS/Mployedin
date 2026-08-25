@@ -6,6 +6,7 @@ import { getLayoutDefinition } from "@/lib/composer/layouts";
 import type { ElementPosition } from "@/lib/composer/layouts";
 import { buildPosterContent } from "@/lib/composer/content-builder";
 import { getHeadlineForType, MPLOYEDIN_LOGO_PATH, proxiedImageUrl } from "@/lib/composer/branding";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 // Layout font sizes are calibrated to a 1080px-wide canvas. Expressing them in
 // container-query units (cqw = 1% of the poster container's width) makes every
@@ -105,7 +106,7 @@ export function PosterOverlay({
     ? `${job.location.city}, ${job.location.country || ""}`
     : job?.location?.country || "";
   const salaryStr = job?.salary?.min
-    ? `${job.salary.currency || "AED"} ${job.salary.min?.toLocaleString()} - ${job.salary.max?.toLocaleString()}`
+    ? `${job.salary.currency || "AED"} ${formatCount(job.salary.min)} - ${formatCount(job.salary.max)}`
     : "";
   const expStr = job?.experienceMin != null
     ? `${job.experienceMin}-${job.experienceMax || job.experienceMin} Years Experience`

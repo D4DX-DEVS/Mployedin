@@ -24,6 +24,7 @@ import {
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -33,10 +34,10 @@ type LeadStatus = "new" | "contacted" | "interested" | "negotiating" | "converte
 type LeadQualification = "cold" | "warm" | "hot" | "qualified";
 
 const QUAL_STYLES: Record<string, string> = {
-  qualified: "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300",
-  hot: "border-rose-300 bg-rose-50 text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-300",
-  warm: "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300",
-  cold: "border-sky-300 bg-sky-50 text-sky-800 dark:border-sky-500/30 dark:bg-sky-500/15 dark:text-sky-300",
+  qualified: "border-emerald-300 bg-emerald-50 text-emerald-800",
+  hot: "border-rose-300 bg-rose-50 text-rose-800",
+  warm: "border-amber-300 bg-amber-50 text-amber-800",
+  cold: "border-sky-300 bg-sky-50 text-sky-800",
 };
 
 interface Lead {
@@ -281,8 +282,8 @@ export default function SuperAgentLeadsPage() {
     { header: t("columnStage"), key: "status" },
     { header: t("columnScore"), key: "score" },
     { header: t("columnQualification"), key: "qualificationLevel" },
-    { header: t("columnFollowUp"), key: "followUpAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
-    { header: tc("date"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: t("columnFollowUp"), key: "followUpAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "" },
+    { header: tc("date"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
@@ -409,14 +410,14 @@ export default function SuperAgentLeadsPage() {
                   value={aiQuery}
                   onChange={(e) => setAiQuery(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleAiSearch(); }}
-                  className="h-9 w-full rounded-xl border-amber-500/20 bg-amber-50/50 pl-9 pr-3 text-sm shadow-none focus:border-amber-500/40 focus:ring-amber-500/20 dark:bg-amber-950/20 sm:w-56"
+                  className="h-9 w-full rounded-xl border-amber-500/20 bg-amber-50/50 pl-9 pr-3 text-sm shadow-none focus:border-amber-500/40 focus:ring-amber-500/20 sm:w-56"
                 />
               </div>
               <button
                 type="button"
                 onClick={handleAiSearch}
                 disabled={aiLoading || !aiQuery.trim()}
-                className="flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 text-xs font-medium text-amber-700 transition-all hover:bg-amber-500/20 disabled:opacity-50 dark:text-amber-400"
+                className="flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 text-xs font-medium text-amber-700 transition-all hover:bg-amber-500/20 disabled:opacity-50"
               >
                 {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
                 <span className="hidden sm:inline">{t("aiButton")}</span>
@@ -437,7 +438,7 @@ export default function SuperAgentLeadsPage() {
             <div className="space-y-4">
               {/* AI Summary Banner */}
               {aiSummary && (
-                <div className={`flex items-start gap-3 rounded-xl border px-4 py-3 text-sm ${aiDegraded ? "border-amber-500/20 bg-amber-50/40 text-amber-800 dark:bg-amber-950/20 dark:text-amber-300" : "border-emerald-500/20 bg-emerald-50/40 text-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-300"}`}>
+                <div className={`flex items-start gap-3 rounded-xl border px-4 py-3 text-sm ${aiDegraded ? "border-amber-500/20 bg-amber-50/40 text-amber-800" : "border-emerald-500/20 bg-emerald-50/40 text-emerald-800"}`}>
                   <Sparkles className="mt-0.5 h-4 w-4 shrink-0" />
                   <div className="flex-1">
                     <p>{aiSummary}</p>
@@ -638,7 +639,7 @@ export default function SuperAgentLeadsPage() {
                           <span>{lead.country ?? "—"}</span>
                         </div>
                         {lead.autoRouted && (
-                          <span className="ml-1 rounded bg-emerald-100 px-1 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">{t("badgeRouted")}</span>
+                          <span className="ml-1 rounded bg-emerald-100 px-1 py-0.5 text-[10px] font-semibold text-emerald-700">{t("badgeRouted")}</span>
                         )}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
@@ -648,14 +649,14 @@ export default function SuperAgentLeadsPage() {
                       <TableCell className="text-xs text-muted-foreground">{lead.agentId?.userId?.name ?? "—"}</TableCell>
                       <TableCell className="text-xs">
                         {lead.followUpAt ? (
-                          <span className={isOverdue ? "font-medium text-red-600 dark:text-red-400" : "text-muted-foreground"}>
-                            {new Date(lead.followUpAt).toLocaleDateString()}
+                          <span className={isOverdue ? "font-medium text-red-600" : "text-muted-foreground"}>
+                            {formatDate(new Date(lead.followUpAt))}
                             {isOverdue && <span className="ml-1 text-[10px]">{t("labelOverdue")}</span>}
                           </span>
                         ) : (
                           <span className="text-muted-foreground/50">—</span>
                         )}
-                        <span className="mt-1 block text-[10px] text-muted-foreground">{new Date(lead.createdAt).toLocaleDateString()}</span>
+                        <span className="mt-1 block text-[10px] text-muted-foreground">{formatDate(new Date(lead.createdAt))}</span>
                       </TableCell>
                     </TableRow>
                   );

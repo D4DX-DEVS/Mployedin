@@ -38,6 +38,7 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { formatDate as formatIntlDate } from "@/lib/ui/intlFormat";
 
 function formatDate(d: string | undefined): string {
   if (!d) return "—";
@@ -134,8 +135,8 @@ export default function AgentReferralLinksPage() {
     { header: tc("active"), key: "isActive", formatter: (v) => v ? t("exportYes") : t("exportNo") },
     { header: t("tableHeaderUsed"), key: "usedCount" },
     { header: t("tableHeaderMaxUses"), key: "maxUses" },
-    { header: tc("date"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
-    { header: t("tableHeaderExpires"), key: "expiresAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: tc("date"), key: "createdAt", formatter: (v) => v ? formatIntlDate(new Date(String(v))) : "" },
+    { header: t("tableHeaderExpires"), key: "expiresAt", formatter: (v) => v ? formatIntlDate(new Date(String(v))) : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({

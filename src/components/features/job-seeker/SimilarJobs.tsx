@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { MapPin, Briefcase } from "lucide-react";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 interface SimilarJob {
   _id: string;
@@ -74,7 +75,7 @@ export function SimilarJobs({ jobId, locale }: { jobId: string; locale: string }
               {job.salary?.min && job.salary?.max && (
                 <span className="inline-flex rounded-full border border-border/60 bg-muted/20 px-2.5 py-1">
                   {job.salary.currency ?? "AED"}{" "}
-                  {job.salary.min.toLocaleString()}–{job.salary.max.toLocaleString()}
+                  {formatCount(job.salary.min)}–{formatCount(job.salary.max)}
                 </span>
               )}
             </div>

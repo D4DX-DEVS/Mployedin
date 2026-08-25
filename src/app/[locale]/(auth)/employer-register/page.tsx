@@ -395,9 +395,9 @@ export default function EmployerRegisterPage() {
           {t("subtitle")}
         </p>
         {referralCode && (
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 mt-1 rounded-full bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 mt-1 rounded-full bg-green-50 border border-green-200">
             <ShieldCheck className="h-3.5 w-3.5 text-green-600" />
-            <span className="text-xs font-medium text-green-700 dark:text-green-400">{t("referral", { code: referralCode })}</span>
+            <span className="text-xs font-medium text-green-700">{t("referral", { code: referralCode })}</span>
           </div>
         )}
       </div>
@@ -549,7 +549,7 @@ export default function EmployerRegisterPage() {
                         lvl.value === "standard"
                           ? "bg-primary/10 text-primary"
                           : lvl.value === "premium"
-                            ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
+                            ? "bg-amber-100 text-amber-700"
                             : "bg-muted text-muted-foreground"
                       }`}>
                         {lvl.badge}

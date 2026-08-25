@@ -68,7 +68,7 @@ export function ToolProposalCard({
       )}
 
       {item.status === "executed" && item.resultMessage && (
-        <p className="mt-2 text-xs text-emerald-600 dark:text-emerald-400">{item.resultMessage}</p>
+        <p className="mt-2 text-xs text-emerald-600">{item.resultMessage}</p>
       )}
       {item.status === "failed" && item.resultMessage && (
         <p className="mt-2 text-xs text-destructive">{item.resultMessage}</p>

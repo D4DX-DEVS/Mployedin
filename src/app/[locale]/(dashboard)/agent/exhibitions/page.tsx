@@ -87,17 +87,17 @@ interface ExhibitionRequest {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  draft: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
-  submitted: "bg-blue-100 text-blue-800 dark:bg-blue-950/30 dark:text-blue-400",
-  under_review: "bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-400",
-  approved: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400",
-  revision_requested: "bg-orange-100 text-orange-800 dark:bg-orange-950/30 dark:text-orange-400",
-  budget_approved: "bg-teal-100 text-teal-800 dark:bg-teal-950/30 dark:text-teal-400",
-  resources_assigned: "bg-indigo-100 text-indigo-800 dark:bg-indigo-950/30 dark:text-indigo-400",
-  active: "bg-purple-100 text-purple-800 dark:bg-purple-950/30 dark:text-purple-400",
-  completed: "bg-green-100 text-green-800 dark:bg-green-950/30 dark:text-green-400",
-  rejected: "bg-red-100 text-red-800 dark:bg-red-950/30 dark:text-red-400",
-  archived: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400",
+  draft: "bg-gray-100 text-gray-700",
+  submitted: "bg-blue-100 text-blue-800",
+  under_review: "bg-amber-100 text-amber-800",
+  approved: "bg-emerald-100 text-emerald-800",
+  revision_requested: "bg-orange-100 text-orange-800",
+  budget_approved: "bg-teal-100 text-teal-800",
+  resources_assigned: "bg-indigo-100 text-indigo-800",
+  active: "bg-purple-100 text-purple-800",
+  completed: "bg-green-100 text-green-800",
+  rejected: "bg-red-100 text-red-800",
+  archived: "bg-slate-100 text-slate-600",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -115,10 +115,10 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
-  low: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
-  medium: "bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400",
-  high: "bg-orange-100 text-orange-700 dark:bg-orange-950/30 dark:text-orange-400",
-  critical: "bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400",
+  low: "bg-gray-100 text-gray-600",
+  medium: "bg-blue-100 text-blue-700",
+  high: "bg-orange-100 text-orange-700",
+  critical: "bg-red-100 text-red-700",
 };
 
 const EVENT_CATEGORIES = [
@@ -616,7 +616,7 @@ export default function AgentExhibitionsPage() {
         <DialogContent className="max-h-[90vh] max-w-4xl overflow-hidden p-0">
           {detailItem && (
             <>
-              <DialogHeader className="border-b bg-gradient-to-r from-primary/8 via-background to-emerald-50/60 px-6 pb-5 pr-12 pt-6 dark:to-emerald-950/10">
+              <DialogHeader className="border-b bg-gradient-to-r from-primary/8 via-background to-emerald-50/60 px-6 pb-5 pr-12 pt-6">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
@@ -642,11 +642,11 @@ export default function AgentExhibitionsPage() {
               </DialogHeader>
               <div className="max-h-[68vh] space-y-6 overflow-y-auto px-6 py-5 text-sm">
                 {detailItem.status === "revision_requested" && detailItem.reviewNote && (
-                  <div className="rounded-lg border border-orange-200 bg-orange-50 p-3 dark:border-orange-800 dark:bg-orange-950/20">
-                    <p className="mb-1 flex items-center gap-1 font-medium text-orange-800 dark:text-orange-400">
+                  <div className="rounded-lg border border-orange-200 bg-orange-50 p-3">
+                    <p className="mb-1 flex items-center gap-1 font-medium text-orange-800">
                       <AlertTriangle className="h-4 w-4" /> Revision Requested
                     </p>
-                    <p className="text-orange-700 dark:text-orange-300">{detailItem.reviewNote}</p>
+                    <p className="text-orange-700">{detailItem.reviewNote}</p>
                   </div>
                 )}
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -712,9 +712,9 @@ export default function AgentExhibitionsPage() {
                   </div>
                 )}
                 {detailItem.approvedBudget != null && (
-                  <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 dark:border-emerald-800 dark:bg-emerald-950/20">
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
                     <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Approved Budget</p>
-                    <p className="mt-2 text-lg font-bold text-emerald-700 dark:text-emerald-400">{formatCurrency(detailItem.approvedBudget, detailItem.budgetCurrency)}</p>
+                    <p className="mt-2 text-lg font-bold text-emerald-700">{formatCurrency(detailItem.approvedBudget, detailItem.budgetCurrency)}</p>
                     {detailItem.approvedBudget !== detailItem.estimatedBudget && (
                       <p className="mt-1 text-xs text-muted-foreground">Estimated was {formatCurrency(detailItem.estimatedBudget, detailItem.budgetCurrency)}</p>
                     )}

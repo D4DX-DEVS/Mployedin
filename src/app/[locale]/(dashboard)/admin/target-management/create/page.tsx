@@ -17,6 +17,7 @@ import {
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "next/navigation";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -503,13 +504,13 @@ export default function CreateTargetProfilePage() {
                     Total ({validRows.length} supervisor{validRows.length !== 1 ? "s" : ""})
                   </td>
                   <td className="px-4 py-3 text-center text-sm font-bold text-foreground tabular-nums">
-                    {totals.employer.toLocaleString()}
+                    {formatCount(totals.employer)}
                   </td>
                   <td className="px-4 py-3 text-center text-sm font-bold text-foreground tabular-nums">
-                    {totals.employee.toLocaleString()}
+                    {formatCount(totals.employee)}
                   </td>
                   <td className="px-4 py-3 text-center text-sm font-bold text-foreground tabular-nums">
-                    {totals.finance.toLocaleString()}
+                    {formatCount(totals.finance)}
                   </td>
                   <td className="px-4 py-3" />
                 </tr>
@@ -559,7 +560,7 @@ function SupervisorTargetRow({
 
   return (
     <>
-      <tr className={`transition-colors ${hasTarget ? "bg-sky-50/50 dark:bg-sky-950/20" : "hover:bg-muted/20"}`}>
+      <tr className={`transition-colors ${hasTarget ? "bg-sky-50/50" : "hover:bg-muted/20"}`}>
         {/* Supervisor Info */}
         <td className="px-4 py-3">
           <div>

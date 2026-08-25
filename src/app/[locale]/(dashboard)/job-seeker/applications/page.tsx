@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { formatLocalizedLocation } from "@/lib/i18n/locations";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 
 interface ApplicationJob {
   _id: string;
@@ -452,6 +453,10 @@ function ApplicationCard({
   const [showDetails, setShowDetails] = useState(false);
 
   // Close the withdrawal dialog on Escape for keyboard accessibility.
+  // Withdrawing an application is destructive and irreversible; the dialog
+  // needs focus held inside it, not just an Escape key handler.
+  const withdrawTrapRef = useFocusTrap<HTMLDivElement>(showWithdraw);
+
   useEffect(() => {
     if (!showWithdraw) return;
     const onKey = (e: KeyboardEvent) => {
@@ -762,6 +767,7 @@ function ApplicationCard({
           onClick={(e) => { if (e.target === e.currentTarget) setShowWithdraw(false); }}
         >
           <div
+            ref={withdrawTrapRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby={`withdraw-title-${app._id}`}

@@ -34,6 +34,7 @@ import {
   SUPPORTED_CURRENCIES,
   currencyForCountry,
 } from "@/lib/currency";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -134,7 +135,7 @@ function SaveFeedback({ saving, saved, hasChanges, onSave, label = "Save Changes
         {saving ? tc("saving") : label}
       </Button>
       {saved && (
-        <span className="text-sm text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+        <span className="text-sm text-emerald-600 flex items-center gap-1">
           <CheckCircle2 className="w-3.5 h-3.5" /> {tc("saved")}
         </span>
       )}
@@ -561,7 +562,7 @@ function RegionTab() {
                 <div key={amount} className="rounded-xl border border-border/50 bg-muted/20 p-4">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sample")}</p>
                   <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
-                    {symbol} {amount.toLocaleString()}
+                    {symbol} {formatCount(amount)}
                   </p>
                 </div>
               );
@@ -615,12 +616,12 @@ function CommissionTab() {
             </p>
           </div>
 
-          <div className="rounded-xl border border-blue-200/60 bg-blue-50/50 dark:border-blue-800/40 dark:bg-blue-950/20 p-4">
+          <div className="rounded-xl border border-blue-200/60 bg-blue-50/50 p-4">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+              <AlertTriangle className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
               <div>
-                <p className="text-sm font-medium text-blue-800 dark:text-blue-300">{t("howItWorks")}</p>
-                <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">
+                <p className="text-sm font-medium text-blue-800">{t("howItWorks")}</p>
+                <p className="text-xs text-blue-700 mt-1">
                   {t("commissionRateExplain")}
                 </p>
               </div>
@@ -640,10 +641,10 @@ function CommissionTab() {
                 return (
                   <div key={salary} className="rounded-xl border border-border/50 bg-muted/20 p-4">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                      {t("onPlacement", { amount: salary.toLocaleString() })}
+                      {t("onPlacement", { amount: formatCount(salary) })}
                     </p>
                     <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
-                      {commission.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      {formatCount(commission, { maximumFractionDigits: 0 })}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">{t("percentCommission", { rate: overrideRate })}</p>
                   </div>
@@ -735,13 +736,13 @@ function NotificationsTab() {
     <>
       {/* Global kill switch */}
       {prefs.unsubscribedAll && (
-        <div className="rounded-xl border border-amber-200/60 bg-amber-50/50 dark:border-amber-800/40 dark:bg-amber-950/20 p-4">
+        <div className="rounded-xl border border-amber-200/60 bg-amber-50/50 p-4">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+              <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
               <div>
-                <p className="text-sm font-medium text-amber-800 dark:text-amber-300">{t("notificationsPaused")}</p>
-                <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+                <p className="text-sm font-medium text-amber-800">{t("notificationsPaused")}</p>
+                <p className="text-xs text-amber-700 mt-1">
                   {t("notificationsPausedDesc")}
                 </p>
               </div>
@@ -1379,7 +1380,7 @@ function SecurityTab() {
               <Shield className="w-4 h-4 text-muted-foreground" />
               <div>
                 <p className="text-[11px] text-muted-foreground">{t("accountStatus")}</p>
-                <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">{tc("active")}</p>
+                <p className="text-sm font-medium text-emerald-600">{tc("active")}</p>
               </div>
             </div>
           </div>

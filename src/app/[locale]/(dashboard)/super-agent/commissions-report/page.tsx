@@ -25,6 +25,7 @@ import type { ExportColumn } from "@/lib/export";
 import {
   SuperAgentPageIntro, SuperAgentMetricsGrid,
 } from "@/components/features/super-agent/WorkspacePage";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -77,7 +78,7 @@ const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "S
 function fmt(value: number, currency = "AED"): string {
   if (value >= 1_000_000) return `${currency} ${(value / 1_000_000).toFixed(1)}M`;
   if (value >= 1_000) return `${currency} ${Math.round(value / 1_000)}K`;
-  return `${currency} ${value.toLocaleString()}`;
+  return `${currency} ${formatCount(value)}`;
 }
 
 /* ------------------------------------------------------------------ */
@@ -200,10 +201,10 @@ export default function SuperAgentCommissionsReportPage() {
       {data && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
-            { label: t("breakdownOverridePending"), value: s ? fmt(s.overridePending, s.currency) : "—", icon: Clock, color: "text-amber-600", chip: "bg-amber-50 dark:bg-amber-950/30" },
-            { label: t("breakdownOverrideApproved"), value: s ? fmt(s.overrideApproved, s.currency) : "—", icon: CheckCircle2, color: "text-blue-600", chip: "bg-blue-50 dark:bg-blue-950/30" },
-            { label: t("breakdownOverridePaid"), value: s ? fmt(s.overridePaid, s.currency) : "—", icon: Wallet, color: "text-emerald-600", chip: "bg-emerald-50 dark:bg-emerald-950/30" },
-            { label: t("breakdownTeamTotalEarned"), value: s ? fmt(s.teamTotal, s.currency) : "—", icon: Users, color: "text-sky-600", chip: "bg-sky-50 dark:bg-sky-950/30" },
+            { label: t("breakdownOverridePending"), value: s ? fmt(s.overridePending, s.currency) : "—", icon: Clock, color: "text-amber-600", chip: "bg-amber-50" },
+            { label: t("breakdownOverrideApproved"), value: s ? fmt(s.overrideApproved, s.currency) : "—", icon: CheckCircle2, color: "text-blue-600", chip: "bg-blue-50" },
+            { label: t("breakdownOverridePaid"), value: s ? fmt(s.overridePaid, s.currency) : "—", icon: Wallet, color: "text-emerald-600", chip: "bg-emerald-50" },
+            { label: t("breakdownTeamTotalEarned"), value: s ? fmt(s.teamTotal, s.currency) : "—", icon: Users, color: "text-sky-600", chip: "bg-sky-50" },
           ].map(({ label, value, icon: Icon, color, chip }) => (
             <div key={label} className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
               <div className="flex items-center gap-2">

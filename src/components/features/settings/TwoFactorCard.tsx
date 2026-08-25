@@ -7,6 +7,7 @@ import { ShieldCheck, ShieldOff, Loader2, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 type Phase = "loading" | "disabled" | "setup" | "recovery" | "enabled";
 
@@ -186,7 +187,7 @@ export function TwoFactorCard() {
       {phase === "recovery" && (
         <div className="mt-5 space-y-4">
           <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
-            <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
+            <p className="text-sm font-semibold text-amber-700">
               Save these recovery codes now — they will not be shown again.
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -213,7 +214,7 @@ export function TwoFactorCard() {
       {phase === "enabled" && (
         <div className="mt-5 space-y-4">
           <p className="text-sm text-muted-foreground">
-            Two-factor authentication is active{enabledAt ? ` since ${new Date(enabledAt).toLocaleDateString()}` : ""}.
+            Two-factor authentication is active{enabledAt ? ` since ${formatDate(new Date(enabledAt))}` : ""}.
             You&apos;ll be asked for a code at every sign-in.
           </p>
           {!showDisable ? (

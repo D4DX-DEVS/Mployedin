@@ -21,6 +21,7 @@ import {
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
+import { formatDateTime } from "@/lib/ui/intlFormat";
 
 interface Interview {
   _id: string;
@@ -256,7 +257,7 @@ export default function AdminInterviewOversightPage() {
     { header: "Job", key: "job" as keyof Interview, formatter: (_v, r) => (r as unknown as Interview).job?.title ?? "—" },
     { header: "Type", key: "type" },
     { header: "Status", key: "status" },
-    { header: "Scheduled", key: "scheduledAt", formatter: (v) => v ? new Date(String(v)).toLocaleString() : "—" },
+    { header: "Scheduled", key: "scheduledAt", formatter: (v) => v ? formatDateTime(new Date(String(v))) : "—" },
     { header: "Duration (min)", key: "duration", formatter: (v) => String(v ?? "—") },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
@@ -301,10 +302,10 @@ export default function AdminInterviewOversightPage() {
           </Button>
         )}
         metrics={[
-          { label: t("scheduled"), value: scheduledCount, note: t("upcoming"), icon: Calendar, iconClassName: "text-status-applied", iconSurfaceClassName: "bg-status-applied-bg dark:bg-sky-950/30" },
-          { label: t("completed"), value: completedCount, note: t("finished"), icon: CheckCircle2, iconClassName: "text-status-selected", iconSurfaceClassName: "bg-status-selected-bg dark:bg-emerald-950/30" },
-          { label: t("cancelled"), value: cancelledCount, note: t("calledOff"), icon: RotateCcw, iconClassName: "text-status-shortlisted", iconSurfaceClassName: "bg-status-shortlisted-bg dark:bg-amber-950/30" },
-          { label: t("noShows"), value: noShowCount, note: t("missed"), icon: AlertTriangle, iconClassName: "text-red-500", iconSurfaceClassName: "bg-status-rejected-bg dark:bg-red-950/30" },
+          { label: t("scheduled"), value: scheduledCount, note: t("upcoming"), icon: Calendar, iconClassName: "text-status-applied", iconSurfaceClassName: "bg-status-applied-bg" },
+          { label: t("completed"), value: completedCount, note: t("finished"), icon: CheckCircle2, iconClassName: "text-status-selected", iconSurfaceClassName: "bg-status-selected-bg" },
+          { label: t("cancelled"), value: cancelledCount, note: t("calledOff"), icon: RotateCcw, iconClassName: "text-status-shortlisted", iconSurfaceClassName: "bg-status-shortlisted-bg" },
+          { label: t("noShows"), value: noShowCount, note: t("missed"), icon: AlertTriangle, iconClassName: "text-red-500", iconSurfaceClassName: "bg-status-rejected-bg" },
         ]}
         footer={(
           <>
@@ -337,7 +338,7 @@ export default function AdminInterviewOversightPage() {
 
         {/* ─── AI Insights inline ─────────────────────────────────────── */}
         {showInsights && (
-          <div className="mt-6 rounded-[20px] border border-border/30 bg-background/40 p-5 backdrop-blur-sm dark:bg-background/20">
+          <div className="mt-6 rounded-[20px] border border-border/30 bg-background/40 p-5 backdrop-blur-sm">
             <div className="mb-4 flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-sky-500" />
               <h3 className="text-lg font-semibold">{t("aiInterviewInsights")}</h3>
@@ -374,7 +375,7 @@ export default function AdminInterviewOversightPage() {
 
         {/* ─── Expandable Filters ─────────────────────────────────────── */}
         {showFilters && (
-          <div className="mt-4 space-y-3 rounded-[20px] border border-border/30 bg-background/40 p-4 backdrop-blur-sm dark:bg-background/20">
+          <div className="mt-4 space-y-3 rounded-[20px] border border-border/30 bg-background/40 p-4 backdrop-blur-sm">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input

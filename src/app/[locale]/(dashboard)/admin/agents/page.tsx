@@ -30,6 +30,7 @@ import {
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Search, Inbox, AlertCircle, Loader2, Download, FileSpreadsheet, FileText } from "lucide-react";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 interface AgentProfile {
   _id: string;
@@ -99,7 +100,7 @@ export default function AdminAgentsPage() {
     { header: tr("exportSuperAgent"), key: "agentProfile" as keyof Agent, formatter: (_v, r) => (r as unknown as Agent).agentProfile?.superAgentName ?? "—" },
     { header: tr("exportCommission"), key: "agentProfile" as keyof Agent, formatter: (_v, r) => String((r as unknown as Agent).agentProfile?.commissionRate ?? 0) },
     { header: tr("exportStatus"), key: "isActive", formatter: (v) => v !== false ? tr("active") : tr("inactive") },
-    { header: tr("exportJoined"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
+    { header: tr("exportJoined"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: agents as unknown as Record<string, unknown>[],
@@ -484,7 +485,7 @@ export default function AdminAgentsPage() {
                 <TableCell className="text-sm">
                   {agent.agentProfile?.commissionRate != null ? `${agent.agentProfile.commissionRate}%` : "—"}
                 </TableCell>
-                <TableCell className="text-muted-foreground text-sm">{new Date(agent.createdAt).toLocaleDateString()}</TableCell>
+                <TableCell className="text-muted-foreground text-sm">{formatDate(new Date(agent.createdAt))}</TableCell>
                 {(can("agents", "update") || can("agents", "delete")) && (
                   <TableCell>
                     <div className="flex items-center gap-1">

@@ -58,8 +58,8 @@ export function CandidateQualityChart({
     avgMatchScore >= 50 ? "text-amber-600" : "text-red-500";
 
   const qualityBg =
-    avgMatchScore >= 70 ? "bg-emerald-50 dark:bg-emerald-950/20" :
-    avgMatchScore >= 50 ? "bg-amber-50 dark:bg-amber-950/20" : "bg-red-50 dark:bg-red-950/20";
+    avgMatchScore >= 70 ? "bg-emerald-50" :
+    avgMatchScore >= 50 ? "bg-amber-50" : "bg-red-50";
 
   const data = generateTrendData(avgMatchScore > 0 ? avgMatchScore : 60);
   const statCards = [
@@ -67,25 +67,25 @@ export function CandidateQualityChart({
       label: t("highMatch"),
       value: highMatchCount,
       detail: t("highMatchDetail"),
-      valueClass: "text-emerald-600 dark:text-emerald-400",
-      borderClass: "border-emerald-200 dark:border-emerald-800",
-      surfaceClass: "bg-emerald-50/60 dark:bg-emerald-950/30",
+      valueClass: "text-emerald-600",
+      borderClass: "border-emerald-200",
+      surfaceClass: "bg-emerald-50/60",
     },
     {
       label: t("applications"),
       value: totalApplications,
       detail: t("inThisWorkspace"),
       valueClass: "text-foreground",
-      borderClass: "border-slate-200 dark:border-slate-700",
-      surfaceClass: "bg-slate-50/80 dark:bg-slate-800/70",
+      borderClass: "border-slate-200",
+      surfaceClass: "bg-slate-50/80",
     },
     {
       label: t("lowMatch"),
       value: lowMatchCount,
       detail: t("lowMatchDetail"),
-      valueClass: "text-red-500 dark:text-red-400",
-      borderClass: "border-red-200 dark:border-red-800",
-      surfaceClass: "bg-red-50/60 dark:bg-red-950/30",
+      valueClass: "text-red-500",
+      borderClass: "border-red-200",
+      surfaceClass: "bg-red-50/60",
     },
   ];
 

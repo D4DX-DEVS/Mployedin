@@ -55,13 +55,13 @@ const ACTION_ICONS: Record<string, React.ReactNode> = {
 };
 
 const ACTION_COLORS: Record<string, string> = {
-  create: "bg-emerald-100 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400",
-  update: "bg-sky-100 text-sky-600 dark:bg-sky-950/40 dark:text-sky-400",
-  delete: "bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-400",
-  login: "bg-indigo-100 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400",
-  approve: "bg-emerald-100 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400",
-  reject: "bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400",
-  export: "bg-violet-100 text-violet-600 dark:bg-violet-950/40 dark:text-violet-400",
+  create: "bg-emerald-100 text-emerald-600",
+  update: "bg-sky-100 text-sky-600",
+  delete: "bg-red-100 text-red-600",
+  login: "bg-indigo-100 text-indigo-600",
+  approve: "bg-emerald-100 text-emerald-600",
+  reject: "bg-rose-100 text-rose-600",
+  export: "bg-violet-100 text-violet-600",
 };
 
 type TimelineTranslator = (key: string, values?: Record<string, string | number>) => string;

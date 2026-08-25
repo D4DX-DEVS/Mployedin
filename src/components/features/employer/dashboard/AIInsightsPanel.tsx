@@ -146,8 +146,8 @@ export function AIInsightsPanel({
               key={idx}
               className={cn(
                 "flex items-start gap-3 px-4 py-3 rounded-xl transition-all",
-                insight.type === "warning" && "bg-amber-50/50 dark:bg-amber-950/10",
-                insight.type === "success" && "bg-emerald-50/50 dark:bg-emerald-950/10",
+                insight.type === "warning" && "bg-amber-50/50",
+                insight.type === "success" && "bg-emerald-50/50",
                 insight.type === "info" && "bg-primary/[0.03]"
               )}
             >

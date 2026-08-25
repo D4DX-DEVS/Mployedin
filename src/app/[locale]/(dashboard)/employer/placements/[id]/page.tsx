@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useConfirm } from "@/hooks/useConfirm";
+import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
 type PlacementLocation = string | { country?: string; city?: string; isRemote?: boolean };
 
@@ -33,9 +34,9 @@ interface PlacementDetail {
 }
 
 const STATUS_BADGE: Record<string, string> = {
-  active: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300",
-  completed: "bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300",
-  terminated: "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300",
+  active: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  completed: "bg-sky-100 text-sky-700 border-sky-200",
+  terminated: "bg-rose-100 text-rose-700 border-rose-200",
 };
 
 function formatLocation(location?: PlacementLocation) {
@@ -162,17 +163,17 @@ export default function PlacementDetailPage() {
           <InfoItem
             icon={DollarSign}
             label={t("salaryCol")}
-            value={placement.salary != null ? `${placement.currency ?? "AED"} ${placement.salary.toLocaleString()}` : undefined}
+            value={placement.salary != null ? `${placement.currency ?? "AED"} ${formatCount(placement.salary)}` : undefined}
           />
           <InfoItem
             icon={Calendar}
             label={t("placedAtLabel")}
-            value={placement.placedAt ? new Date(placement.placedAt).toLocaleDateString() : undefined}
+            value={placement.placedAt ? formatDate(new Date(placement.placedAt)) : undefined}
           />
           <InfoItem
             icon={Calendar}
             label={t("startDateLabel")}
-            value={placement.startDate ? new Date(placement.startDate).toLocaleDateString() : undefined}
+            value={placement.startDate ? formatDate(new Date(placement.startDate)) : undefined}
           />
           <InfoItem icon={User} label={t("visaStatusLabel")} value={placement.visaStatus?.replace(/_/g, " ")} />
         </div>

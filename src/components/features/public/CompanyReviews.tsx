@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Star, ThumbsUp, MessageSquare, Send } from "lucide-react";
 import { toast } from "sonner";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 interface Review {
   _id: string;
@@ -154,7 +155,7 @@ export default function CompanyReviews({ employerId, companyName }: CompanyRevie
                     </span>
                   </div>
                 </div>
-                <span className="text-xs text-muted-foreground">{new Date(review.createdAt).toLocaleDateString()}</span>
+                <span className="text-xs text-muted-foreground">{formatDate(new Date(review.createdAt))}</span>
               </div>
               <div className="grid gap-2 sm:grid-cols-2 mt-3">
                 <div>
@@ -270,8 +271,8 @@ function WriteReviewForm({ employerId, onSubmitted, onCancel }: { employerId: st
 
       <div className="flex items-center gap-2">
         <span className="text-sm text-muted-foreground">{t("recommendQuestion")}?</span>
-        <button type="button" onClick={() => setRecommendToFriend(true)} className={`px-3 py-1 rounded border text-xs ${recommendToFriend === true ? "border-green-500 bg-green-50 text-green-600 dark:bg-green-950" : "border-border"}`}>👍 Yes</button>
-        <button type="button" onClick={() => setRecommendToFriend(false)} className={`px-3 py-1 rounded border text-xs ${recommendToFriend === false ? "border-red-500 bg-red-50 text-red-600 dark:bg-red-950" : "border-border"}`}>👎 No</button>
+        <button type="button" onClick={() => setRecommendToFriend(true)} className={`px-3 py-1 rounded border text-xs ${recommendToFriend === true ? "border-green-500 bg-green-50 text-green-600" : "border-border"}`}>👍 Yes</button>
+        <button type="button" onClick={() => setRecommendToFriend(false)} className={`px-3 py-1 rounded border text-xs ${recommendToFriend === false ? "border-red-500 bg-red-50 text-red-600" : "border-border"}`}>👎 No</button>
       </div>
 
       <div className="flex justify-end gap-3">

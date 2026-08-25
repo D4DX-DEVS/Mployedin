@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { formatDate as formatIntlDate } from "@/lib/ui/intlFormat";
 
 interface Question {
   question: string;
@@ -195,7 +196,7 @@ export function AIInterviewQuestionsPanel({
   }
 
   function formatDate(iso: string) {
-    return new Date(iso).toLocaleDateString(undefined, {
+    return formatIntlDate(new Date(iso), {
       month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
     });
   }

@@ -17,6 +17,8 @@ import {
   RotateCcw, Users, Briefcase, GraduationCap,
   Star, Eye, Mail, Phone, Globe, MapPin,
 } from "lucide-react";
+import { formatDate } from "@/lib/ui/intlFormat";
+import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -136,6 +138,9 @@ export default function SuperAgentJobSeekersPage() {
         title={t("pageTitle")}
         description={t("pageDescription")}
       />
+      {/* Privacy information where candidate personal data is first shown,
+          rather than only behind a footer link. */}
+      <CandidateDataNotice variant="candidateList" />
 
       <SuperAgentMetricsGrid items={metricsItems} />
 
@@ -255,7 +260,7 @@ export default function SuperAgentJobSeekersPage() {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{new Date(s.createdAt).toLocaleDateString()}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{formatDate(new Date(s.createdAt))}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

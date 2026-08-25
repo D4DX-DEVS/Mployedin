@@ -20,6 +20,7 @@ import { useConfirm } from "@/hooks/useConfirm";
 import SocialShare from "@/components/features/public/SocialShare";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 interface Job {
   _id: string;
@@ -278,7 +279,7 @@ export default function JobDetailPage() {
 
         {/* Draft / In-review state hint — makes the unpublished status unambiguous */}
         {job.status === "draft" ? (
-          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 dark:border-amber-500/30 dark:bg-amber-950/40 dark:text-amber-200">
+          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
             {t("statusDraftHint")}
           </div>
         ) : null}
@@ -300,7 +301,7 @@ export default function JobDetailPage() {
           <div className="flex flex-col items-center justify-center p-2 sm:p-4 gap-1">
             <div className="text-xl font-bold text-foreground leading-tight">
               {job.salary?.min && job.salary?.max
-                ? `${job.salary.min.toLocaleString()}–${job.salary.max.toLocaleString()}`
+                ? `${formatCount(job.salary.min)}–${formatCount(job.salary.max)}`
                 : "—"}
             </div>
             <div className="text-xs text-muted-foreground flex items-center gap-1">

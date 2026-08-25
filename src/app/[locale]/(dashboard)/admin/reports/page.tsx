@@ -27,6 +27,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toUserFacingError } from "@/lib/errors/user-facing";
+import { formatCount, formatDate as formatIntlDate } from "@/lib/ui/intlFormat";
 
 interface TrendData {
   current: number;
@@ -168,7 +169,7 @@ function formatDate(value: string) {
     return "--";
   }
 
-  return date.toLocaleDateString(undefined, {
+  return formatIntlDate(date, {
     month: "short",
     day: "numeric",
   });
@@ -185,9 +186,9 @@ function TrendBadge({ trend }: { trend: TrendData }) {
       ? ArrowDownRight
       : Minus;
   const className = trend.direction === "up"
-    ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800/70 dark:bg-emerald-950/60 dark:text-emerald-200"
+    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
     : trend.direction === "down"
-      ? "border-red-200 bg-red-50 text-red-700 dark:border-red-800/70 dark:bg-red-950/60 dark:text-red-200"
+      ? "border-red-200 bg-red-50 text-red-700"
       : "border-border bg-secondary/80 text-muted-foreground";
 
   return (
@@ -256,7 +257,7 @@ export default function AdminReportsPage() {
   const kpis = [
     {
       label: t("totalJobs"),
-      value: totalJobs.toLocaleString(),
+      value: formatCount(totalJobs),
       trend: stats?.trends.jobs,
       detail: t("totalJobsRolesDetail", { current: stats?.trends.jobs.current ?? 0 }),
       insight: t("totalJobsInsight", { count: stats?.summary.jobsWithoutApplications ?? 0 }),
@@ -268,7 +269,7 @@ export default function AdminReportsPage() {
     },
     {
       label: t("applications"),
-      value: totalApplications.toLocaleString(),
+      value: formatCount(totalApplications),
       trend: stats?.trends.applications,
       detail: t("applicationsDetail", { current: stats?.trends.applications.current ?? 0 }),
       insight: t("applicationsInsight", { rate: applicationRate.toFixed(1) }),
@@ -280,7 +281,7 @@ export default function AdminReportsPage() {
     },
     {
       label: t("placements"),
-      value: totalPlacements.toLocaleString(),
+      value: formatCount(totalPlacements),
       trend: stats?.trends.placements,
       detail: t("placementsDetail", { current: stats?.trends.placements.current ?? 0 }),
       insight: t("placementsInsight", { rate: Math.round(placementRate * 100) }),
@@ -292,11 +293,11 @@ export default function AdminReportsPage() {
     },
     {
       label: t("revenue"),
-      value: `$${totalRevenue.toLocaleString()}`,
+      value: `$${formatCount(totalRevenue)}`,
       trend: stats?.trends.revenue,
-      detail: t("revenueDetail", { current: (stats?.trends.revenue.current ?? 0).toLocaleString() }),
+      detail: t("revenueDetail", { current: formatCount((stats?.trends.revenue.current ?? 0)) }),
       insight: totalPlacements > 0
-        ? t("revenueInsightWithPlacements", { earned: Math.round(totalRevenue / totalPlacements).toLocaleString() })
+        ? t("revenueInsightWithPlacements", { earned: formatCount(Math.round(totalRevenue / totalPlacements)) })
         : t("revenueInsightNoPlacements"),
       valueClassName: "text-foreground",
       indicatorClassName: totalRevenue > 0 ? "bg-amber-500" : "bg-slate-400",
@@ -347,9 +348,9 @@ export default function AdminReportsPage() {
           <div className="workspace-panel-surface h-72 animate-pulse rounded-[20px] lg:col-span-2" />
         </div>
       ) : errorMessage ? (
-        <section className="workspace-panel-surface rounded-[28px] border border-rose-200/80 dark:border-rose-900/60 panel-body" aria-label={t("a11yReportsError")}>
+        <section className="workspace-panel-surface rounded-[28px] border border-rose-200/80 panel-body" aria-label={t("a11yReportsError")}>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-rose-500">{t("unableToLoadReports")}</p>
-          <p className="mt-2 text-sm leading-6 text-rose-700 dark:text-rose-200">{errorMessage}</p>
+          <p className="mt-2 text-sm leading-6 text-rose-700">{errorMessage}</p>
         </section>
       ) : (
         <>
@@ -523,7 +524,7 @@ export default function AdminReportsPage() {
                             {index === 0 ? t("baseFunnelVolume") : t("retainedFromPrevious", { conversion, previous: funnel[index - 1]?.label.toLowerCase() })}
                           </p>
                         </div>
-                        <p className="text-2xl font-semibold tracking-tight text-foreground">{stage.count.toLocaleString()}</p>
+                        <p className="text-2xl font-semibold tracking-tight text-foreground">{formatCount(stage.count)}</p>
                       </div>
                       <div
                         className="mt-3 h-2 overflow-hidden rounded-full bg-secondary"
@@ -677,7 +678,7 @@ export default function AdminReportsPage() {
                         </div>
                         <div>
                           <p className="text-xs text-muted-foreground">{t("topAgentPaidMetric")}</p>
-                          <p className="font-semibold text-foreground">${agent.revenue.toLocaleString()}</p>
+                          <p className="font-semibold text-foreground">${formatCount(agent.revenue)}</p>
                         </div>
                       </div>
                     </div>

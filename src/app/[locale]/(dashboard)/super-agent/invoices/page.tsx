@@ -26,6 +26,7 @@ import { RevenueAnalyticsPanel } from "@/components/features/invoices/RevenueAna
 import {
   SuperAgentPageIntro,
 } from "@/components/features/super-agent/WorkspacePage";
+import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface Invoice {
@@ -105,7 +106,7 @@ export default function SuperAgentInvoicesPage() {
   useEffect(() => { document.title = t("pageTitle"); }, [t]);
 
   const hasActiveFilters = Boolean(statusFilter || categoryFilter || dateFrom || dateTo);
-  const fmt = (v: number) => `${displayCurrency} ${v.toLocaleString()}`;
+  const fmt = (v: number) => `${displayCurrency} ${formatCount(v)}`;
 
   const exportColumns: ExportColumn<Invoice>[] = [
     { header: t("invoiceNumber"), key: "invoiceNumber" },
@@ -122,7 +123,7 @@ export default function SuperAgentInvoicesPage() {
       return sc ? `${sc.rate}% = ${sc.amount}` : "—";
     }},
     { header: tc("status"), key: "status" },
-    { header: t("dueDate"), key: "dueDate" as keyof Invoice, formatter: v => v ? new Date(String(v)).toLocaleDateString() : "—" },
+    { header: t("dueDate"), key: "dueDate" as keyof Invoice, formatter: v => v ? formatDate(new Date(String(v))) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: invoices as unknown as Record<string, unknown>[],
@@ -162,7 +163,7 @@ export default function SuperAgentInvoicesPage() {
         description={t("heroDescription")}
         eyebrow={tc("superAgentWorkspace")}
         summaryTitle={t("summaryTitle")}
-        summaryDescription={t("summaryDescription", { total: total.toLocaleString(), paid: fmt(summary.totalPaid) })}
+        summaryDescription={t("summaryDescription", { total: formatCount(total), paid: fmt(summary.totalPaid) })}
       >
         <div className="flex items-center gap-2">
           <Button onClick={() => router.push(`/${locale}/super-agent/invoices/new`)} className="h-10 gap-1.5 rounded-xl text-xs font-semibold">
@@ -225,7 +226,7 @@ export default function SuperAgentInvoicesPage() {
       {/* Table View */}
       {activeView === "table" && (
         <>
-          {errorMessage && <div className="rounded-2xl border border-rose-200 bg-rose-50/90 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">{errorMessage}</div>}
+          {errorMessage && <div className="rounded-2xl border border-rose-200 bg-rose-50/90 px-4 py-3 text-sm text-rose-700">{errorMessage}</div>}
 
           <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-[24px]">
             <div className="flex flex-col gap-2 border-b border-border/80 panel-head">

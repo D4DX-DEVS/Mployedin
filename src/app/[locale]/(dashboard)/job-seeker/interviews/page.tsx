@@ -252,7 +252,7 @@ function InterviewCard({ interview: iv, upcoming, onRefresh }: { interview: Inte
               <TypeIcon className="w-3 h-3 me-1" /> {t(`type.${iv.type}`)}
             </Badge>
             {(iv.interviewRound ?? 1) > 1 && (
-              <Badge variant="outline" className="text-xs border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/40 dark:text-indigo-300">
+              <Badge variant="outline" className="text-xs border-indigo-200 bg-indigo-50 text-indigo-700">
                 {t("round", { round: (iv.interviewRound ?? 1).toLocaleString(numberLocale) })}
               </Badge>
             )}

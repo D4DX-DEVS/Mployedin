@@ -19,6 +19,7 @@ import {
   RotateCcw, Calendar, Video, MapPin, Phone, Clock,
   CheckCircle2, XCircle,
 } from "lucide-react";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -240,7 +241,7 @@ export default function SuperAgentInterviewsPage() {
                     </span>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {new Date(i.scheduledAt).toLocaleDateString()}{" "}
+                    {formatDate(new Date(i.scheduledAt))}{" "}
                     <span className="text-xs">{new Date(i.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                     <span className="mt-1 block text-xs">{i.duration ? t("durationMinutes", { duration: i.duration }) : "—"}</span>
                   </TableCell>

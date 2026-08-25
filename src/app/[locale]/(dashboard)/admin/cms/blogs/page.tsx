@@ -5,6 +5,7 @@ import CmsPage from "@/components/features/admin/CmsPage";
 import type { CrudField } from "@/components/shared/CrudModal";
 import { Badge } from "@/components/ui/badge";
 import { Newspaper } from "lucide-react";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 export default function BlogsAdminPage() {
   const t = useTranslations("adminCmsBlogs");
@@ -57,7 +58,7 @@ export default function BlogsAdminPage() {
       key: "publishedAt",
       label: t("publishedAtColumnLabel"),
       render: (value: unknown) =>
-        value ? new Date(String(value)).toLocaleDateString() : "—",
+        value ? formatDate(new Date(String(value))) : "—",
     },
   ];
 

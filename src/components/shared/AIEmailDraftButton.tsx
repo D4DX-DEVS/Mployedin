@@ -81,7 +81,7 @@ export function AIEmailDraftButton({ applicationId, candidateName, defaultContex
       <Button
         variant="ghost"
         size="sm"
-        className="h-7 rounded-lg px-2.5 text-[11px] font-semibold text-violet-700 hover:bg-violet-50 dark:text-violet-400 dark:hover:bg-violet-500/10"
+        className="h-7 rounded-lg px-2.5 text-[11px] font-semibold text-violet-700 hover:bg-violet-50"
         onClick={() => setOpen(true)}
         title="AI Email Draft"
       >

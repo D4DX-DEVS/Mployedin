@@ -220,10 +220,10 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
                   stage.conversion === null
                     ? "text-muted-foreground/60"
                     : stage.conversion >= 100
-                      ? "text-emerald-600 dark:text-emerald-400"
+                      ? "text-emerald-600"
                       : stage.conversion >= 50
-                        ? "text-amber-600 dark:text-amber-400"
-                        : "text-rose-600 dark:text-rose-400"
+                        ? "text-amber-600"
+                        : "text-rose-600"
                 }`}
                 title={stage.conversion === null
                   ? t("funnel.ratioUnavailable")
@@ -287,7 +287,7 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
                 <div key={row.agentId} className="flex items-center gap-3 py-3">
                   <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
                     index === 0
-                      ? "bg-amber-100 text-amber-700 dark:bg-amber-950/70 dark:text-amber-200"
+                      ? "bg-amber-100 text-amber-700"
                       : "bg-secondary text-muted-foreground"
                   }`}>
                     {index + 1}

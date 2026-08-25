@@ -33,6 +33,7 @@ import { TableToolbar } from "@/components/shared/TableToolbar";
 import { usePagination } from "@/hooks/usePagination";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
+import { formatCount, formatDateTime } from "@/lib/ui/intlFormat";
 
 /* ─── Types ─── */
 interface TeamMember {
@@ -71,19 +72,19 @@ const ACTION_ICONS: Record<string, React.ReactNode> = {
 };
 
 const ACTION_COLORS: Record<string, string> = {
-  "login.success": "bg-status-selected-bg text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
-  "login.failed": "bg-status-rejected-bg text-status-rejected dark:bg-red-500/15 dark:text-red-300",
-  "job.create": "bg-status-applied-bg text-status-applied dark:bg-sky-500/15 dark:text-blue-300",
-  "job.update": "bg-status-shortlisted-bg text-status-shortlisted dark:bg-amber-500/15 dark:text-amber-300",
-  "job.delete": "bg-status-rejected-bg text-status-rejected dark:bg-red-500/15 dark:text-red-300",
-  "interview.create": "bg-status-interview-bg text-status-interview dark:bg-purple-500/15 dark:text-purple-300",
-  "interview.update": "bg-status-shortlisted-bg text-status-shortlisted dark:bg-amber-500/15 dark:text-amber-300",
-  "application.update": "bg-status-interview-bg text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300",
-  "offer.create": "bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300",
-  "team.invite": "bg-status-applied-bg text-status-applied dark:bg-sky-500/15 dark:text-sky-300",
-  "team.update_member": "bg-status-shortlisted-bg text-status-shortlisted dark:bg-amber-500/15 dark:text-amber-300",
-  "team.remove_member": "bg-status-rejected-bg text-status-rejected dark:bg-red-500/15 dark:text-red-300",
-  "scorecard.create": "bg-status-interview-bg text-status-interview dark:bg-indigo-500/15 dark:text-violet-300",
+  "login.success": "bg-status-selected-bg text-emerald-700",
+  "login.failed": "bg-status-rejected-bg text-status-rejected",
+  "job.create": "bg-status-applied-bg text-status-applied",
+  "job.update": "bg-status-shortlisted-bg text-status-shortlisted",
+  "job.delete": "bg-status-rejected-bg text-status-rejected",
+  "interview.create": "bg-status-interview-bg text-status-interview",
+  "interview.update": "bg-status-shortlisted-bg text-status-shortlisted",
+  "application.update": "bg-status-interview-bg text-indigo-700",
+  "offer.create": "bg-teal-100 text-teal-700",
+  "team.invite": "bg-status-applied-bg text-status-applied",
+  "team.update_member": "bg-status-shortlisted-bg text-status-shortlisted",
+  "team.remove_member": "bg-status-rejected-bg text-status-rejected",
+  "scorecard.create": "bg-status-interview-bg text-status-interview",
 };
 
 function getResourceOptions(t: ReturnType<typeof useTranslations>) {
@@ -143,7 +144,7 @@ export default function TeamActivityLogsPage() {
     usePagination(25);
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
-    { header: t("timestamp"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleString() : "\u2014" },
+    { header: t("timestamp"), key: "createdAt", formatter: (v) => v ? formatDateTime(new Date(String(v))) : "\u2014" },
     { header: t("actor"), key: "actorId", formatter: (_v, r) => (r as Record<string, any>).actorId?.name ?? "System" },
     { header: t("email"), key: "actorId", formatter: (_v, r) => (r as Record<string, any>).actorId?.email ?? "\u2014" },
     { header: t("action"), key: "action", formatter: (v) => String(v ?? "\u2014") },
@@ -210,7 +211,7 @@ export default function TeamActivityLogsPage() {
       {/* Header */}
       <PageHero
         title={t("title")}
-        description={t("description", { activities: total.toLocaleString(), members: members.length })}
+        description={t("description", { activities: formatCount(total), members: members.length })}
         icon={Activity}
         actions={
           <Link href={`/${locale}/employer/team`}>
@@ -231,14 +232,14 @@ export default function TeamActivityLogsPage() {
               value: members.length,
               icon: Users,
               color: "text-primary",
-              bg: "bg-card border-border dark:bg-card dark:border-border",
+              bg: "bg-card border-border",
             },
             {
               label: t("totalActivities"),
               value: total,
               icon: Activity,
               color: "text-status-selected",
-              bg: "bg-card border-border dark:bg-card dark:border-border",
+              bg: "bg-card border-border",
             },
             {
               label: t("today"),
@@ -248,14 +249,14 @@ export default function TeamActivityLogsPage() {
               ).length,
               icon: Calendar,
               color: "text-status-applied",
-              bg: "bg-card border-border dark:bg-card dark:border-border",
+              bg: "bg-card border-border",
             },
             {
               label: t("loginEvents"),
               value: logs.filter((l) => l.action.startsWith("login")).length,
               icon: LogIn,
               color: "text-status-shortlisted",
-              bg: "bg-card border-border dark:bg-card dark:border-border",
+              bg: "bg-card border-border",
             },
           ].map((s) => (
             <div
@@ -275,7 +276,7 @@ export default function TeamActivityLogsPage() {
                 <p
                   className={`text-xl font-bold ${s.color} leading-none tabular-nums shrink-0`}
                 >
-                  {typeof s.value === "number" ? s.value.toLocaleString() : s.value}
+                  {typeof s.value === "number" ? formatCount(s.value) : s.value}
                 </p>
               </div>
             </div>
@@ -407,7 +408,7 @@ export default function TeamActivityLogsPage() {
       ) : (
         <>
           {/* ── Desktop Table ── */}
-          <div className="hidden md:block rounded-xl border overflow-x-auto bg-background">
+          <div className="hidden md:block rounded-xl border overflow-x-auto bg-background" tabIndex={0}>
             <table className="w-full text-sm">
               <thead className="bg-muted/50 text-xs text-muted-foreground uppercase tracking-wide">
                 <tr>
