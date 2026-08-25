@@ -166,10 +166,10 @@ export default function EmployerWorkflowPage() {
   if (loading)
     return (
       <div className="page-container">
-        <div className="h-40 animate-pulse rounded-[28px] border border-border bg-background/70" />
+        <div className="h-40 animate-pulse rounded-3xl border border-border bg-background/70" />
         <div className="grid gap-4 lg:grid-cols-[1.35fr,0.65fr]">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-32 animate-pulse rounded-[28px] border border-border bg-background/70" />
+            <div key={i} className="h-32 animate-pulse rounded-3xl border border-border bg-background/70" />
           ))}
         </div>
       </div>
@@ -354,11 +354,12 @@ export default function EmployerWorkflowPage() {
           { label: t("automatedSteps"), value: automatedStages, note: t("automatedStepsDesc"), icon: Sparkles },
           { label: saveStateLabel, value: notifyOnStageChange ? t("alertsEnabled") : t("alertsDisabled"), note: t("liveConfigDesc"), icon: Bell },
         ]}
+        headingLevel={2}
       />
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.35fr,0.65fr]">
         {/* ─── Pipeline Stages ─── */}
-        <section className="workspace-panel-surface space-y-4 rounded-[28px] panel-body">
+        <section className="workspace-panel-surface space-y-4 rounded-3xl panel-body">
           <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("workflowBuilder")}</p>
@@ -382,7 +383,7 @@ export default function EmployerWorkflowPage() {
 
           {/* Add stage input */}
           {addingStage && (
-            <div className="flex flex-col items-stretch gap-2 rounded-[22px] border border-dashed border-sky-500/30 bg-sky-500/10 p-4 sm:flex-row sm:items-center">
+            <div className="flex flex-col items-stretch gap-2 rounded-3xl border border-dashed border-sky-500/30 bg-sky-500/10 p-4 sm:flex-row sm:items-center">
               <Input
                 value={newStageLabel}
                 onChange={(e) => setNewStageLabel(e.target.value)}
@@ -414,7 +415,7 @@ export default function EmployerWorkflowPage() {
 
           {/* Stages list */}
           {stages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-[22px] border border-dashed border-border bg-background/60 py-16 text-center">
+            <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-border bg-background/60 py-16 text-center">
               <Settings2 className="mb-3 h-10 w-10 text-muted-foreground" />
               <p className="text-sm font-semibold text-foreground">{t("noStages")}</p>
               <p className="mb-4 mt-1 text-xs text-muted-foreground">
@@ -434,7 +435,7 @@ export default function EmployerWorkflowPage() {
               {sortedStages.map((stage, i) => (
                   <div
                     key={stage.id}
-                    className={`group rounded-[22px] border p-3 transition-all sm:p-4 ${
+                    className={`group rounded-3xl border p-3 transition-all sm:p-4 ${
                       stage.enabled
                         ? "border-border bg-background/80 shadow-[0_20px_45px_-40px_rgba(15,23,42,0.45)] hover:border-sky-500/25"
                         : "border-border/80 bg-background/55 opacity-70"
@@ -445,16 +446,18 @@ export default function EmployerWorkflowPage() {
                         <button
                           onClick={() => moveStage(i, "up")}
                           disabled={i === 0}
-                          className="rounded-md p-0.5 transition-colors hover:bg-background hover:text-foreground disabled:opacity-20"
+                          className="rounded-md p-1.5 transition-colors hover:bg-background hover:text-foreground disabled:opacity-20"
+                          aria-label={`Move ${getStageLabel(stage)} up`}
                         >
-                          <ChevronUp className="h-3 w-3" />
+                          <ChevronUp className="h-3 w-3" aria-hidden="true" />
                         </button>
                         <button
                           onClick={() => moveStage(i, "down")}
                           disabled={i === sortedStages.length - 1}
-                          className="rounded-md p-0.5 transition-colors hover:bg-background hover:text-foreground disabled:opacity-20"
+                          className="rounded-md p-1.5 transition-colors hover:bg-background hover:text-foreground disabled:opacity-20"
+                          aria-label={`Move ${getStageLabel(stage)} down`}
                         >
-                          <ChevronDown className="h-3 w-3" />
+                          <ChevronDown className="h-3 w-3" aria-hidden="true" />
                         </button>
                       </div>
                       <div className="mt-1 flex h-9 w-9 items-center justify-center rounded-2xl border border-border bg-background/60 text-xs font-semibold text-muted-foreground">
@@ -472,20 +475,22 @@ export default function EmployerWorkflowPage() {
                             separate lines and doubling every stage card's height. */}
                         <div className="mt-2 flex flex-nowrap items-center gap-3">
                           <div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-                            <span className="truncate">{t("autoProgress")}</span>
+                            <span className="truncate" id={`autoProgress-${stage.id}`}>{t("autoProgress")}</span>
                             <Switch
                               checked={stage.autoProgress}
                               onCheckedChange={() => toggleStage(stage.id, "autoProgress")}
                               disabled={!stage.enabled}
                               className="h-5 w-9 shrink-0 data-[state=checked]:[&>span]:translate-x-4 rtl:data-[state=checked]:[&>span]:-translate-x-4 [&>span]:h-4 [&>span]:w-4"
+                              aria-labelledby={`autoProgress-${stage.id}`}
                             />
                           </div>
                           <div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-                            <span className="truncate">{t("stage")}</span>
+                            <span className="truncate" id={`stage-enabled-${stage.id}`}>{t("stage")}</span>
                             <Switch
                               checked={stage.enabled}
                               onCheckedChange={() => toggleStage(stage.id, "enabled")}
                               className="h-5 w-9 shrink-0 data-[state=checked]:[&>span]:translate-x-4 rtl:data-[state=checked]:[&>span]:-translate-x-4 [&>span]:h-4 [&>span]:w-4"
+                              aria-labelledby={`stage-enabled-${stage.id}`}
                             />
                           </div>
                         </div>
@@ -512,7 +517,7 @@ export default function EmployerWorkflowPage() {
 
         {/* ─── Automation Settings ─── */}
         <div className="space-y-4">
-          <section className="workspace-panel-surface space-y-5 rounded-[28px] panel-body">
+          <section className="workspace-panel-surface space-y-5 rounded-3xl panel-body">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("automation")}</p>
               <h3 className="mt-2 text-lg font-semibold text-foreground">{t("recruitmentRules")}</h3>
@@ -527,9 +532,10 @@ export default function EmployerWorkflowPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-                    <p className="truncate text-sm font-medium text-foreground">{t("aiAutoScreening")}</p>
+                    <p id="wf-ai-auto-screening" className="truncate text-sm font-medium text-foreground">{t("aiAutoScreening")}</p>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <Switch
+                        aria-labelledby="wf-ai-auto-screening"
                         checked={aiAutoScreen}
                         onCheckedChange={(v) => { setAiAutoScreen(v); markDirty(); }}
                       />
@@ -554,9 +560,10 @@ export default function EmployerWorkflowPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-                    <p className="truncate text-sm font-medium text-foreground">{t("notifyCandidates")}</p>
+                    <p id="wf-notify-candidates" className="truncate text-sm font-medium text-foreground">{t("notifyCandidates")}</p>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <Switch
+                        aria-labelledby="wf-notify-candidates"
                         checked={notifyOnStageChange}
                         onCheckedChange={(v) => { setNotifyOnStageChange(v); markDirty(); }}
                       />
@@ -603,6 +610,7 @@ export default function EmployerWorkflowPage() {
                 value={autoRejectBelow}
                 onChange={(e) => { setAutoRejectBelow(parseInt(e.target.value)); markDirty(); }}
                 className="w-full cursor-pointer accent-sky-600"
+                aria-label={t("autoRejectThreshold")}
               />
               <div className="flex justify-between text-[10px] text-muted-foreground">
                 <span>{t("thresholdOff")}</span>
@@ -611,7 +619,7 @@ export default function EmployerWorkflowPage() {
               </div>
             </div>
 
-            <div className="rounded-[22px] border border-border bg-background/60 p-4">
+            <div className="rounded-3xl border border-border bg-background/60 p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("guidance")}</p>
               <p className="mt-2 text-sm font-semibold text-foreground">{t("guidanceTitle")}</p>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">

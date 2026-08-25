@@ -191,11 +191,12 @@ function ActiveView({
               <p className="font-medium">{formatDate(subscription.endDate)} {t("daysRemaining", { days: remaining })}</p>
             </div>
             <div>
-              <p className="text-muted-foreground text-xs">{t("autoRenew")}</p>
+              <p className="text-muted-foreground text-xs" id="autoRenewLabel">{t("autoRenew")}</p>
               <div className="flex items-center gap-2 mt-0.5">
                 <Switch
                   checked={subscription.autoRenew}
                   onCheckedChange={() => toast.info(t("autoRenewAdminOnly"))}
+                  aria-labelledby="autoRenewLabel"
                 />
                 <span className="text-sm font-medium">{subscription.autoRenew ? t("enabled") : t("disabled")}</span>
               </div>

@@ -372,7 +372,11 @@ function CandidateMatchCard({
           </div>
           <p className="truncate text-sm text-muted-foreground">{currentRole ?? t("roleNotSpecified")}</p>
           <p className="truncate text-xs text-muted-foreground/90">{primaryMeta || t("locationExpNotSpecified")}</p>
-          <div className="flex min-w-0 flex-nowrap items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground [&>*]:shrink-0">
+          <div className="flex min-w-0 flex-nowrap items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground">
+            {/* The trailing "+N more" / skill-gap chips keep shrink-0 individually.
+                A blanket [&>*]:shrink-0 here outranked the skills span's own
+                `shrink` (arbitrary-variant specificity), so long skill names
+                pushed the row past the card and were clipped on phones. */}
             <span className="flex min-w-0 shrink items-center gap-1.5 overflow-hidden">
             {/* 3rd tag hides on phones and folds into the mobile "+more" count —
                 showing all 3 there wrapped the last tag onto its own orphan line. */}
@@ -382,21 +386,21 @@ function CandidateMatchCard({
               return (
                 <span
                   key={skill}
-                  className={`inline-flex max-w-full items-center rounded-full px-2 py-0.5 font-medium ${skillIndex === 2 ? "hidden sm:inline-flex" : ""} ${isRequired ? "bg-status-applied-bg text-status-applied" : "bg-secondary/75 text-muted-foreground"}`}
+                  className={`inline-flex min-w-0 max-w-full items-center rounded-full px-2 py-0.5 font-medium ${skillIndex === 2 ? "hidden sm:inline-flex" : ""} ${isRequired ? "bg-status-applied-bg text-status-applied" : "bg-secondary/75 text-muted-foreground"}`}
                 >
                   <span className="truncate">{skill}</span>
                 </span>
               );
             })}
             </span>
-            {overflowSkillCount > 0 ? <span className="hidden sm:inline">+{overflowSkillCount} {t("moreSuffix")}</span> : null}
+            {overflowSkillCount > 0 ? <span className="hidden shrink-0 sm:inline">+{overflowSkillCount} {t("moreSuffix")}</span> : null}
             {visibleSkills.length >= 3 ? (
-              <span className="sm:hidden">+{overflowSkillCount + 1} {t("moreSuffix")}</span>
+              <span className="shrink-0 sm:hidden">+{overflowSkillCount + 1} {t("moreSuffix")}</span>
             ) : overflowSkillCount > 0 ? (
-              <span className="sm:hidden">+{overflowSkillCount} {t("moreSuffix")}</span>
+              <span className="shrink-0 sm:hidden">+{overflowSkillCount} {t("moreSuffix")}</span>
             ) : null}
             {selectedJobData && matchedSkills.length === 0 && missingSkills.length > 0 ? (
-              <span className="text-status-shortlisted">{missingSkills.length === 1 ? t("skillGap", { count: missingSkills.length }) : t("skillGaps", { count: missingSkills.length })}</span>
+              <span className="shrink-0 text-status-shortlisted">{missingSkills.length === 1 ? t("skillGap", { count: missingSkills.length }) : t("skillGaps", { count: missingSkills.length })}</span>
             ) : null}
           </div>
         </div>
@@ -510,7 +514,7 @@ function CandidateInsightsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent hideClose className="max-h-[88vh] max-w-5xl overflow-hidden rounded-[32px] border-border bg-background p-0 shadow-[0_40px_120px_-48px_rgba(15,23,42,0.5)]">
+      <DialogContent hideClose className="max-h-[88vh] max-w-5xl overflow-hidden rounded-3xl border-border bg-background p-0 shadow-[0_40px_120px_-48px_rgba(15,23,42,0.5)]">
         <div className="max-h-[88vh] overflow-y-auto">
           <div className="relative border-b border-border bg-muted/20 px-6 py-6 sm:px-8">
             <button
@@ -600,14 +604,14 @@ function CandidateInsightsDialog({
               {hasInsights ? (
                 <div className="space-y-4">
                   {candidate.matchSummary ? (
-                    <div className="workspace-glass-panel rounded-[24px] p-5">
+                    <div className="workspace-glass-panel rounded-3xl p-5">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("aiSummary")}</p>
                       <p className="mt-3 text-sm leading-7 text-muted-foreground">{candidate.matchSummary}</p>
                     </div>
                   ) : null}
 
                   {candidate.matchBreakdown ? (
-                    <div className="workspace-glass-panel rounded-[24px] p-5">
+                    <div className="workspace-glass-panel rounded-3xl p-5">
                       <div className="mb-4 flex items-center gap-2">
                         <BarChart3 className="h-4 w-4 text-status-applied" />
                         <p className="text-sm font-semibold text-foreground">{t("scoreBreakdown")}</p>
@@ -634,7 +638,7 @@ function CandidateInsightsDialog({
               ) : null}
 
               <div className="space-y-4">
-                <div className="rounded-[24px] border border-border bg-card p-5">
+                <div className="rounded-3xl border border-border bg-card p-5">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("keySkills")}</p>
                   <div className="mt-4 flex flex-wrap gap-2">
                     {(candidate.skills ?? []).map((skill) => {
@@ -653,7 +657,7 @@ function CandidateInsightsDialog({
                 </div>
 
                 {candidate.strengths?.length ? (
-                  <div className="rounded-[24px] border border-status-selected/20 bg-status-selected-bg p-5">
+                  <div className="rounded-3xl border border-status-selected/20 bg-status-selected-bg p-5">
                     <p className="text-sm font-semibold text-status-selected">{t("strengths")}</p>
                     <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
                       {candidate.strengths.map((strength) => (
@@ -667,7 +671,7 @@ function CandidateInsightsDialog({
                 ) : null}
 
                 {(candidate.gaps?.length || selectedJobData) ? (
-                  <div className="rounded-[24px] border border-border bg-card p-5">
+                  <div className="rounded-3xl border border-border bg-card p-5">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("roleContext")}</p>
                     {selectedJobData ? (
                       <div className="mt-3 space-y-3 text-sm text-muted-foreground">
@@ -745,7 +749,7 @@ function AIScreeningResultsPanel({ results, jobTitle, totalReviewed, onClose }: 
   const passCount = results.filter((c) => c.recommendation === "pass").length;
 
   return (
-    <section className="workspace-panel-surface rounded-[24px] space-y-4 panel-body">
+    <section className="workspace-panel-surface rounded-3xl space-y-4 panel-body">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
@@ -788,7 +792,7 @@ function AIScreeningResultsPanel({ results, jobTitle, totalReviewed, onClose }: 
           return (
             <div
               key={candidate.id}
-              className={`overflow-hidden rounded-[18px] border transition-colors ${RECOMMENDATION_STYLES[candidate.recommendation] ?? "border-border bg-background"}`}
+              className={`overflow-hidden rounded-2xl border transition-colors ${RECOMMENDATION_STYLES[candidate.recommendation] ?? "border-border bg-background"}`}
             >
               <button
                 type="button"
@@ -1493,7 +1497,7 @@ export default function EmployerCandidatesPage() {
       )}
 
       {hasLoadError && (
-        <div className="rounded-[24px] border border-destructive/20 bg-destructive/5 p-4 shadow-[0_16px_40px_-36px_rgba(220,38,38,0.45)]">
+        <div className="rounded-3xl border border-destructive/20 bg-destructive/5 p-4 shadow-[0_16px_40px_-36px_rgba(220,38,38,0.45)]">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
@@ -1524,7 +1528,7 @@ export default function EmployerCandidatesPage() {
       )}
 
       {!jobsLoading && !hasJobsError && jobs.length === 0 && (
-          <div className="rounded-[24px] border border-amber-500/20 bg-amber-500/10 p-4 text-amber-900 shadow-[0_16px_40px_-36px_rgba(245,158,11,0.45)]">
+          <div className="rounded-3xl border border-amber-500/20 bg-amber-500/10 p-4 text-amber-900 shadow-[0_16px_40px_-36px_rgba(245,158,11,0.45)]">
             <div className="flex items-start gap-3">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-status-shortlisted" />
           <div className="space-y-1">
@@ -1537,7 +1541,7 @@ export default function EmployerCandidatesPage() {
 
       {/* Collapsible filter panel — toggled from the hero, full width for breathing room */}
       {filtersExpanded ? (
-          <section className="workspace-panel-surface rounded-[24px] backdrop-blur panel-body">
+          <section className="workspace-panel-surface rounded-3xl backdrop-blur panel-body">
           <div className="flex items-center justify-between gap-3">
             <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("filterAndActLabel")}</p>
@@ -1688,7 +1692,7 @@ export default function EmployerCandidatesPage() {
             ) : null}
 
             {showAdvancedFilters ? (
-              <div className="mt-3 space-y-3 rounded-[20px] border border-border bg-background/60 p-3">
+              <div className="mt-3 space-y-3 rounded-3xl border border-border bg-background/60 p-3">
                 <div className="grid gap-2">
                   <Input
                     value={skillsFilter}
@@ -1831,7 +1835,7 @@ export default function EmployerCandidatesPage() {
       {loading ? (
         <div className="space-y-2">
           {Array.from({ length: 6 }).map((_, index) => (
-            <div key={index} className="workspace-panel-surface h-[88px] animate-pulse rounded-[22px]" />
+            <div key={index} className="workspace-panel-surface h-[88px] animate-pulse rounded-3xl" />
           ))}
         </div>
       ) : filteredCandidates.length === 0 ? (

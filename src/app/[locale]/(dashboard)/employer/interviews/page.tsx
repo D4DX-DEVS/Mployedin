@@ -20,6 +20,7 @@ import {
   CalendarClock, CheckCircle2, XCircle, AlertTriangle, Forward, FileText,
   Send, Ban, Loader2, BookOpen, Search, Filter, ChevronDown, ChevronUp, ChevronRight, X,
 } from "lucide-react";
+import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -385,6 +386,10 @@ export default function EmployerInterviewsPage() {
         </div>
       </div>
 
+      {/* Privacy information at the point personal data is first shown, not
+          only behind a footer link. */}
+      <CandidateDataNotice variant="candidateList" />
+
       {/* ── Stat row — tap a tile to filter the list by that status ────── */}
       <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
         {([
@@ -424,6 +429,7 @@ export default function EmployerInterviewsPage() {
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               placeholder={tc("search")}
+              aria-label={tc("search")}
               className="h-10 w-full min-w-0 rounded-xl border border-border bg-background pl-9 pr-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
             />
             {search && (
@@ -570,7 +576,7 @@ export default function EmployerInterviewsPage() {
 
       {/* ── Error State ───────────────────────────────────────────────── */}
       {error ? (
-        <section className="workspace-panel-surface rounded-[28px] border border-destructive/30 panel-body">
+        <section className="workspace-panel-surface rounded-3xl border border-destructive/30 panel-body">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-rejected">{t("interviewList")}</p>
@@ -884,7 +890,7 @@ export default function EmployerInterviewsPage() {
           Tapping a compact card opens the full field set + stage actions
           here instead of stacking them into the card itself. */}
       <Dialog open={Boolean(detailInterview)} onOpenChange={(open) => { if (!open) setDetailInterview(null); }}>
-        <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto rounded-[24px] border-border bg-background p-0">
+        <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto rounded-3xl border-border bg-background p-0">
           {detailInterview && (() => {
             const iv = detailInterview;
             const scheduled = formatDateTime(iv.scheduledAt);
@@ -1057,7 +1063,7 @@ export default function EmployerInterviewsPage() {
 
       {/* ── AI Prep Brief Dialog ──────────────────────────────────────── */}
       <Dialog open={Boolean(prepBrief)} onOpenChange={(open) => { if (!open) setPrepBrief(null); }}>
-        <DialogContent className="flex max-h-[88vh] max-w-2xl flex-col rounded-[24px] border-border bg-background p-0">
+        <DialogContent className="flex max-h-[88vh] max-w-2xl flex-col rounded-3xl border-border bg-background p-0">
           {prepBrief && (
             <>
               <DialogHeader className="shrink-0 border-b border-border px-6 py-5">

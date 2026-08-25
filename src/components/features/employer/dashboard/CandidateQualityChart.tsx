@@ -90,7 +90,7 @@ export function CandidateQualityChart({
   ];
 
   return (
-    <section className="workspace-panel-surface flex h-full flex-col overflow-hidden rounded-[28px]">
+    <section className="workspace-panel-surface flex h-full flex-col overflow-hidden rounded-3xl">
       <div className="border-b border-border/60 px-5 py-5 sm:px-6">
         <div className="flex items-start justify-between gap-4">
           <div>

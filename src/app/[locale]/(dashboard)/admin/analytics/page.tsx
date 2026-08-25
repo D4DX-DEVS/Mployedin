@@ -234,7 +234,7 @@ export default function AdminAnalyticsPage() {
       />
 
       <div className="grid gap-3 sm:gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-        <section className="workspace-panel-surface rounded-[28px] panel-body" aria-label={t("a11yAnalyticsTemplates")}>
+        <section className="workspace-panel-surface rounded-3xl panel-body" aria-label={t("a11yAnalyticsTemplates")}>
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("promptLibrary")}</p>
             <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("promptLibraryTitle")}</h2>
@@ -252,7 +252,7 @@ export default function AdminAnalyticsPage() {
                 }}
                 disabled={loading}
                 className={[
-                  "group flex items-start gap-3 rounded-2xl border border-border/80 bg-card p-3 text-left shadow-[0_16px_28px_-28px_rgba(15,23,42,0.1)] transition-all disabled:cursor-not-allowed disabled:opacity-60 sm:rounded-[24px] sm:p-4",
+                  "group flex items-start gap-3 rounded-2xl border border-border/80 bg-card p-3 text-left shadow-[0_16px_28px_-28px_rgba(15,23,42,0.1)] transition-all disabled:cursor-not-allowed disabled:opacity-60 sm:rounded-3xl sm:p-4",
                   activeTemplate === item.query && result
                     ? "border-sky-300 bg-sky-50/70 shadow-[0_22px_40px_-34px_rgba(2,132,199,0.18)]"
                     : "hover:-translate-y-0.5 hover:border-border hover:bg-muted",
@@ -270,7 +270,7 @@ export default function AdminAnalyticsPage() {
           </div>
         </section>
 
-        <section className="workspace-panel-surface rounded-[28px] panel-body" aria-label={t("a11yCustomAnalyticsQuery")}>
+        <section className="workspace-panel-surface rounded-3xl panel-body" aria-label={t("a11yCustomAnalyticsQuery")}>
           <div className="flex items-center gap-2 text-primary">
             <Sparkles className="h-4 w-4" />
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">{t("composeInsight")}</p>
@@ -291,7 +291,7 @@ export default function AdminAnalyticsPage() {
                 }
               }}
               placeholder={t("customAnalyticsPlaceholder")}
-              className="min-h-[180px] rounded-[24px] border-border bg-card px-4 py-3 text-sm leading-6 shadow-none"
+              className="min-h-[180px] rounded-3xl border-border bg-card px-4 py-3 text-sm leading-6 shadow-none"
             />
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -325,7 +325,7 @@ export default function AdminAnalyticsPage() {
         </section>
       </div>
 
-      <section className="workspace-panel-surface rounded-[28px] panel-body" aria-label={t("a11yAnalyticsReport")}>
+      <section className="workspace-panel-surface rounded-3xl panel-body" aria-label={t("a11yAnalyticsReport")}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("reportOutput")}</p>
@@ -359,7 +359,7 @@ export default function AdminAnalyticsPage() {
           </DropdownMenu>
         </div>
 
-        <div className="mt-6 rounded-[24px] border border-border/80 bg-card p-4">
+        <div className="mt-6 rounded-3xl border border-border/80 bg-card p-4">
           {loading ? (
             <div className="space-y-3" aria-label={t("generatingAnalytics")}>
               <div className="sr-only" role="status" aria-live="polite">{t("generatingAnalyticsStatus")}</div>
@@ -369,11 +369,11 @@ export default function AdminAnalyticsPage() {
               <div className="h-4 w-[84%] animate-pulse rounded-full bg-secondary" />
             </div>
           ) : result ? (
-            <div className="max-h-[520px] overflow-y-auto rounded-[20px] text-sm leading-7 text-foreground">
+            <div className="max-h-[520px] overflow-y-auto rounded-3xl text-sm leading-7 text-foreground">
               <MarkdownRenderer content={result} />
             </div>
           ) : (
-            <div className="flex min-h-[220px] flex-col items-center justify-center rounded-[20px] border border-dashed border-border bg-muted/80 px-6 text-center">
+            <div className="flex min-h-[220px] flex-col items-center justify-center rounded-3xl border border-dashed border-border bg-muted/80 px-6 text-center">
               <div className="rounded-2xl bg-sky-100 p-3 text-sky-700">
                 <BarChart3 className="h-5 w-5" />
               </div>

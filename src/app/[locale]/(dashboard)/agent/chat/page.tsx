@@ -105,7 +105,7 @@ export default function AgentChatPage() {
         }}
       />
 
-      <div className="workspace-panel-surface flex min-h-96 flex-1 gap-0 overflow-hidden rounded-[28px]">
+      <div className="workspace-panel-surface flex min-h-96 flex-1 gap-0 overflow-hidden rounded-3xl">
         <aside className={`${showChannels ? "flex" : "hidden"} workspace-subtle-surface sm:flex w-full sm:w-60 shrink-0 flex-col border-r border-border`}>
           <div className="border-b border-border p-4">
             <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("channelsLabel")}</p>

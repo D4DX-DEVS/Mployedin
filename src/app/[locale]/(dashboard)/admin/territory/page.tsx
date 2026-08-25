@@ -169,7 +169,7 @@ export default function AdminTerritoryPage() {
         }
       />
 
-      <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
+      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
         {/* Inline create form */}
         {showForm && (
           <div className="border-b border-border/60 bg-secondary/30 px-5 py-4">

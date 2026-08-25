@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { DollarSign, CalendarDays, Clock3, CircleCheckBig, Eye, X, FileText, FileDown, ChevronDown } from "lucide-react";
+import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -166,7 +167,11 @@ export default function EmployerOffersPage() {
         ]}
       />
 
-      <section className="workspace-panel-surface rounded-[28px] panel-body">
+      {/* Privacy information at the point personal data is first shown, not
+          only behind a footer link. */}
+      <CandidateDataNotice variant="candidateList" />
+
+      <section className="workspace-panel-surface rounded-3xl panel-body">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           {/* Phones keep only the label — the long title + blurb pushed the
               list below the fold (jobs page hides the same copy on mobile). */}
@@ -200,7 +205,7 @@ export default function EmployerOffersPage() {
       </section>
 
       {error ? (
-        <section className="workspace-panel-surface rounded-[28px] border border-red-500/20 panel-body">
+        <section className="workspace-panel-surface rounded-3xl border border-red-500/20 panel-body">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-rejected">{t("offerList")}</p>
@@ -215,7 +220,7 @@ export default function EmployerOffersPage() {
           </div>
         </section>
       ) : loading ? (
-        <section className="workspace-panel-surface rounded-[28px] panel-body">
+        <section className="workspace-panel-surface rounded-3xl panel-body">
           <div className="mb-5 flex items-center justify-between gap-4">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("offerList")}</p>
@@ -229,7 +234,7 @@ export default function EmployerOffersPage() {
           </div>
         </section>
       ) : offers.length === 0 ? (
-        <section className="workspace-panel-surface rounded-[28px] panel-body">
+        <section className="workspace-panel-surface rounded-3xl panel-body">
           <div className="flex flex-col items-center py-8 text-center sm:py-14">
             <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-status-applied-bg text-status-applied">
               <DollarSign className="h-7 w-7" />
@@ -244,7 +249,7 @@ export default function EmployerOffersPage() {
           </div>
         </section>
       ) : (
-        <section className="workspace-panel-surface rounded-[28px] panel-body">
+        <section className="workspace-panel-surface rounded-3xl panel-body">
           {/* Export sits on the heading row and the filter blurb (already shown
               verbatim in the filter card above) is desktop-only — together they
               cost ~120px of phone height for nothing. */}
@@ -419,7 +424,7 @@ export default function EmployerOffersPage() {
 
       {withdrawingId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-6 backdrop-blur-sm">
-          <div className="w-full max-w-md overflow-hidden rounded-[28px] border border-border bg-background shadow-[0_30px_90px_-36px_rgba(15,23,42,0.5)]">
+          <div className="w-full max-w-md overflow-hidden rounded-3xl border border-border bg-background shadow-[0_30px_90px_-36px_rgba(15,23,42,0.5)]">
             <div className="border-b border-border/60 px-6 py-5">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("offerAction")}</p>
               <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("withdrawConfirm")}</h2>
@@ -439,7 +444,7 @@ export default function EmployerOffersPage() {
 
       {detailOffer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-6 backdrop-blur-sm">
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[28px] border border-border bg-background shadow-[0_30px_90px_-36px_rgba(15,23,42,0.5)]">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-border bg-background shadow-[0_30px_90px_-36px_rgba(15,23,42,0.5)]">
             <div className="flex items-start justify-between gap-4 panel-head">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("offerDetail")}</p>

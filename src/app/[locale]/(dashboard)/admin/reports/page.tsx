@@ -315,7 +315,7 @@ export default function AdminReportsPage() {
         description={t("platformDemandDescription")}
       />
 
-      <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
+      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
         <div className="grid grid-cols-2 gap-3 p-5 sm:grid-cols-2 xl:grid-cols-4">
           {kpis.map((kpi) => (
             <Link key={kpi.label} href={kpi.href} className="rounded-2xl border border-border/60 bg-card p-4 transition-shadow hover:ring-2 hover:ring-primary/20 hover:shadow-md">
@@ -343,19 +343,19 @@ export default function AdminReportsPage() {
 
       {loading ? (
         <div className="grid gap-4 lg:grid-cols-2" role="status" aria-live="polite" aria-label={t("loadingReports")}>
-          <div className="workspace-panel-surface h-72 animate-pulse rounded-[20px]" />
-          <div className="workspace-panel-surface h-72 animate-pulse rounded-[20px]" />
-          <div className="workspace-panel-surface h-72 animate-pulse rounded-[20px] lg:col-span-2" />
+          <div className="workspace-panel-surface h-72 animate-pulse rounded-3xl" />
+          <div className="workspace-panel-surface h-72 animate-pulse rounded-3xl" />
+          <div className="workspace-panel-surface h-72 animate-pulse rounded-3xl lg:col-span-2" />
         </div>
       ) : errorMessage ? (
-        <section className="workspace-panel-surface rounded-[28px] border border-rose-200/80 panel-body" aria-label={t("a11yReportsError")}>
+        <section className="workspace-panel-surface rounded-3xl border border-rose-200/80 panel-body" aria-label={t("a11yReportsError")}>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-rose-500">{t("unableToLoadReports")}</p>
           <p className="mt-2 text-sm leading-6 text-rose-700">{errorMessage}</p>
         </section>
       ) : (
         <>
           <div className="grid gap-6 xl:grid-cols-[minmax(320px,0.9fr)_minmax(0,1.1fr)]">
-            <section className="workspace-panel-surface rounded-[28px] panel-body" aria-label={t("a11yPlatformAlerts")}>
+            <section className="workspace-panel-surface rounded-3xl panel-body" aria-label={t("a11yPlatformAlerts")}>
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("actionQueue")}</p>
@@ -395,7 +395,7 @@ export default function AdminReportsPage() {
               </div>
             </section>
 
-            <section className="workspace-panel-surface rounded-[28px] panel-body" aria-label={t("a11yJobsVsApplications")}>
+            <section className="workspace-panel-surface rounded-3xl panel-body" aria-label={t("a11yJobsVsApplications")}>
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("demandTrend")}</p>
@@ -415,7 +415,7 @@ export default function AdminReportsPage() {
               {activitySeries.length ? (
                 <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6">
                   {activitySeries.map((point) => (
-                    <div key={point.label} className="rounded-[22px] border border-slate-200/80 bg-slate-50/80 px-3 py-4">
+                    <div key={point.label} className="rounded-3xl border border-slate-200/80 bg-slate-50/80 px-3 py-4">
                       <div className="flex h-32 items-end justify-center gap-2" aria-label={t("jobsDemandChart", { label: point.label })}>
                         <div
                           className="w-4 rounded-t-full bg-blue-500"
@@ -451,7 +451,7 @@ export default function AdminReportsPage() {
           </div>
 
           <div className="grid gap-6 xl:grid-cols-2">
-            <section className="workspace-panel-surface rounded-[28px] panel-body" aria-label={t("a11yApplicationsByStatus")}>
+            <section className="workspace-panel-surface rounded-3xl panel-body" aria-label={t("a11yApplicationsByStatus")}>
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("pipelineMix")}</p>
@@ -478,7 +478,7 @@ export default function AdminReportsPage() {
 
                   <div className="mt-6 grid gap-3 sm:grid-cols-2">
                     {statusRows.map((row) => (
-                      <div key={row.key} className="workspace-subtle-surface rounded-[22px] px-4 py-3">
+                      <div key={row.key} className="workspace-subtle-surface rounded-3xl px-4 py-3">
                         <div className="flex items-center gap-2">
                           <span className={`h-2.5 w-2.5 rounded-full ${STATUS_TONES[row.toneKey] ?? "bg-slate-400"}`} />
                           <span className="text-sm font-semibold text-foreground">{row.label}</span>
@@ -498,7 +498,7 @@ export default function AdminReportsPage() {
               )}
             </section>
 
-            <section className="workspace-panel-surface rounded-[28px] panel-body" aria-label={t("a11yConversionFunnel")}>
+            <section className="workspace-panel-surface rounded-3xl panel-body" aria-label={t("a11yConversionFunnel")}>
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("flowEfficiency")}</p>
@@ -516,7 +516,7 @@ export default function AdminReportsPage() {
                   const conversion = previousCount > 0 ? Math.round((stage.count / previousCount) * 100) : 0;
 
                   return (
-                    <div key={stage.key} className="workspace-subtle-surface rounded-[22px] px-4 py-4">
+                    <div key={stage.key} className="workspace-subtle-surface rounded-3xl px-4 py-4">
                       <div className="flex items-center justify-between gap-4 text-sm">
                         <div>
                           <p className="font-semibold text-foreground">{stage.label}</p>
@@ -547,7 +547,7 @@ export default function AdminReportsPage() {
           </div>
 
           <div className="grid gap-6 xl:grid-cols-3">
-            <section className="workspace-panel-surface rounded-[28px] panel-body" aria-label={t("a11yRecentJobs")}>
+            <section className="workspace-panel-surface rounded-3xl panel-body" aria-label={t("a11yRecentJobs")}>
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("recentActivity")}</p>
@@ -559,7 +559,7 @@ export default function AdminReportsPage() {
               </div>
 
               {stats?.recentJobs.length ? (
-                <div className="mt-6 overflow-hidden rounded-[22px] border border-border/70 bg-background/60">
+                <div className="mt-6 overflow-hidden rounded-3xl border border-border/70 bg-background/60">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -594,7 +594,7 @@ export default function AdminReportsPage() {
               )}
             </section>
 
-            <section className="workspace-panel-surface rounded-[28px] panel-body" aria-label={t("a11yRecentApplications")}>
+            <section className="workspace-panel-surface rounded-3xl panel-body" aria-label={t("a11yRecentApplications")}>
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("recentActivity")}</p>
@@ -606,7 +606,7 @@ export default function AdminReportsPage() {
               </div>
 
               {stats?.recentApplications.length ? (
-                <div className="mt-6 overflow-hidden rounded-[22px] border border-border/70 bg-background/60">
+                <div className="mt-6 overflow-hidden rounded-3xl border border-border/70 bg-background/60">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -641,7 +641,7 @@ export default function AdminReportsPage() {
               )}
             </section>
 
-            <section className="workspace-panel-surface rounded-[28px] panel-body" aria-label={t("a11yTopAgents")}>
+            <section className="workspace-panel-surface rounded-3xl panel-body" aria-label={t("a11yTopAgents")}>
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("ownership")}</p>
@@ -655,7 +655,7 @@ export default function AdminReportsPage() {
               {stats?.topAgents.length ? (
                 <div className="mt-6 space-y-3">
                   {stats.topAgents.map((agent, index) => (
-                    <div key={agent.id} className="workspace-subtle-surface rounded-[22px] px-4 py-4">
+                    <div key={agent.id} className="workspace-subtle-surface rounded-3xl px-4 py-4">
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("rankPrefix", { index: index + 1 })}</p>
@@ -692,7 +692,7 @@ export default function AdminReportsPage() {
             </section>
           </div>
 
-          <section className="workspace-panel-surface rounded-[28px] panel-body" aria-label={t("a11yOperationalHighlights")}>
+          <section className="workspace-panel-surface rounded-3xl panel-body" aria-label={t("a11yOperationalHighlights")}>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("decisionSupport")}</p>
@@ -702,7 +702,7 @@ export default function AdminReportsPage() {
             </div>
 
             <div className="mt-6 grid gap-4 md:grid-cols-3">
-              <div className="workspace-subtle-surface rounded-[24px] p-4">
+              <div className="workspace-subtle-surface rounded-3xl p-4">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Clock3 className="h-4 w-4" />
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">{t("agingQueue")}</p>
@@ -710,7 +710,7 @@ export default function AdminReportsPage() {
                 <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{stats?.summary.staleOpenApplications ?? 0}</p>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">{t("agingQueueDescription")}</p>
               </div>
-              <div className="workspace-subtle-surface rounded-[24px] p-4">
+              <div className="workspace-subtle-surface rounded-3xl p-4">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <TrendingUp className="h-4 w-4" />
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">{t("demandEfficiency")}</p>
@@ -718,7 +718,7 @@ export default function AdminReportsPage() {
                 <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{applicationRate.toFixed(1)}</p>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">{t("demandEfficiencyDescription")}</p>
               </div>
-              <div className="workspace-subtle-surface rounded-[24px] p-4">
+              <div className="workspace-subtle-surface rounded-3xl p-4">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Wallet className="h-4 w-4" />
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">{t("commercialYield")}</p>

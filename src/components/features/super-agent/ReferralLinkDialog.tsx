@@ -100,7 +100,7 @@ export function ReferralLinkDialog({ open, onClose }: ReferralLinkDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-lg gap-0 overflow-hidden rounded-[24px] p-0">
+      <DialogContent className="max-w-lg gap-0 overflow-hidden rounded-3xl p-0">
         {/* Header */}
         <DialogHeader className="border-b border-border/60 bg-gradient-to-br from-sky-50/80 to-indigo-50/60 px-6 py-5">
           <div className="flex items-center gap-3">

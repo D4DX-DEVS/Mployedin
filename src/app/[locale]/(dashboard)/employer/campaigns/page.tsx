@@ -113,13 +113,14 @@ export default function EmployerCampaignsPage() {
       />
 
       {(total > 0 || search || statusFilter) && (
-        <div className="workspace-panel-surface rounded-[28px] panel-body">
+        <div className="workspace-panel-surface rounded-3xl panel-body">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <Input
               placeholder={t("searchPlaceholder") || "Search campaigns..."}
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               className="h-10 rounded-xl border-border bg-background sm:flex-1"
+              aria-label={t("searchPlaceholder") || "Search campaigns..."}
             />
             <Select
               value={statusFilter || "all"}

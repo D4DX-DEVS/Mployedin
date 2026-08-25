@@ -716,7 +716,7 @@ export default function AgentLeadsPage() {
       />
 
       {/* ──── Toolbar ──── */}
-      <section className="workspace-panel-surface rounded-[28px] panel-body">
+      <section className="workspace-panel-surface rounded-3xl panel-body">
         {/* Opt into the shared mobile toolbar rules (see globals.css). Scoped to
             this row, not the whole section — the stage pills below carry leading
             icons too, and the icon-only rule would strip their labels. */}
@@ -872,7 +872,7 @@ export default function AgentLeadsPage() {
       ) : (
         /* ──── TABLE VIEW ──── */
         <>
-          <section className="workspace-panel-surface overflow-hidden rounded-[28px]">
+          <section className="workspace-panel-surface overflow-hidden rounded-3xl">
             {leads.length === 0 ? (
               <div className="flex flex-col items-center gap-3 py-16 text-center">
                 <div className="rounded-2xl bg-muted/50 p-4">
@@ -1236,7 +1236,7 @@ export default function AgentLeadsPage() {
 
       {/* ──── AI Score Dialog ──── */}
       <Dialog open={Boolean(scoreResult)} onOpenChange={(open) => { if (!open) setScoreResult(null); }}>
-        <DialogContent className="max-w-lg rounded-[24px] border-border bg-background p-0">
+        <DialogContent className="max-w-lg rounded-3xl border-border bg-background p-0">
           {scoreResult && (
             <>
               <DialogHeader className="border-b border-border px-6 py-5">

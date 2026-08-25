@@ -115,9 +115,11 @@ export function PosterCustomizer({
 
       {/* Design Description (optional art direction for the AI background) */}
       <div>
-        <label className="text-xs font-medium text-foreground">{t("styleLabel")}</label>
-        <p className="text-[10px] text-muted-foreground mb-1">{t("styleHelpText")}</p>
+        <label htmlFor="poster-style-description" className="text-xs font-medium text-foreground">{t("styleLabel")}</label>
+        <p id="poster-style-help" className="text-[10px] text-muted-foreground mb-1">{t("styleHelpText")}</p>
         <textarea
+          id="poster-style-description"
+          aria-describedby="poster-style-help"
           value={description}
           onChange={(e) => onDescriptionChange(e.target.value)}
           placeholder={t("stylePlaceholder")}

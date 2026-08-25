@@ -4381,7 +4381,8 @@
     "previous": "Previous",
     "next": "Next",
     "pageOf": "Page {page} of {pages}",
-    "perPage": "Per page"
+    "perPage": "Per page",
+    "viewPosterLabel": "View poster for {job}"
   },
   "employerMessages": {
     "title": "Messages",
@@ -6444,7 +6445,8 @@
     "errors": {
       "fetchFailed": "We couldn't load onboarding. Please try again.",
       "updateFailed": "We couldn't update onboarding. Please try again."
-    }
+    },
+    "removeDocumentLabel": "Remove {document}"
   },
   "jobSeekerOnboarding": {
     "title": "Your Onboarding",
@@ -8415,7 +8417,8 @@
     "quickPost": "Quick Post",
     "viewAllJobs": "View All Jobs",
     "toastFormFailed": "We couldn't open job form",
-    "toastDraftUnavailable": "This extraction draft is no longer available — it may have expired or been discarded."
+    "toastDraftUnavailable": "This extraction draft is no longer available — it may have expired or been discarded.",
+    "removeJobLabel": "Remove {job}"
   },
   "employerJobDetail": {
     "loadError": "Couldn't load this job. Please try again.",
@@ -14349,7 +14352,8 @@
     "redFlag": "Red Flag",
     "copied": "Copied!",
     "copyAll": "Copy All",
-    "print": "Print"
+    "print": "Print",
+    "closeLabel": "Close interview questions for {job}"
   },
   "logoUpload": {
     "onlyJpegPngWebpAllowed": "Only JPEG, PNG, and WebP images are allowed.",

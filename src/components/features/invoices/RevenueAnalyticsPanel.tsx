@@ -17,7 +17,7 @@ export function RevenueAnalyticsPanel({ data, currency = "AED" }: RevenueAnalyti
   return (
     <div className="space-y-6">
       {/* Monthly Revenue Trend */}
-      <div className="workspace-panel-surface overflow-hidden rounded-[20px]">
+      <div className="workspace-panel-surface overflow-hidden rounded-3xl">
         <div className="border-b border-border/80 px-5 py-4">
           <div className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4 text-primary" />
@@ -57,7 +57,7 @@ export function RevenueAnalyticsPanel({ data, currency = "AED" }: RevenueAnalyti
 
       <div className="grid gap-6 xl:grid-cols-2">
         {/* Revenue by Category */}
-        <div className="workspace-panel-surface overflow-hidden rounded-[20px]">
+        <div className="workspace-panel-surface overflow-hidden rounded-3xl">
           <div className="border-b border-border/80 px-5 py-4">
             <div className="flex items-center gap-2">
               <Layers className="h-4 w-4 text-primary" />
@@ -87,7 +87,7 @@ export function RevenueAnalyticsPanel({ data, currency = "AED" }: RevenueAnalyti
         </div>
 
         {/* Top Paying Employers */}
-        <div className="workspace-panel-surface overflow-hidden rounded-[20px]">
+        <div className="workspace-panel-surface overflow-hidden rounded-3xl">
           <div className="border-b border-border/80 px-5 py-4">
             <div className="flex items-center gap-2">
               <Users className="h-4 w-4 text-primary" />
@@ -118,7 +118,7 @@ export function RevenueAnalyticsPanel({ data, currency = "AED" }: RevenueAnalyti
       </div>
 
       {/* Invoice Aging Analysis */}
-      <div className="workspace-panel-surface overflow-hidden rounded-[20px]">
+      <div className="workspace-panel-surface overflow-hidden rounded-3xl">
         <div className="border-b border-border/80 px-5 py-4">
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-primary" />

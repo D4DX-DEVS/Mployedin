@@ -157,7 +157,7 @@ export default function SavedSearchesPage() {
       />
 
       {showForm && (
-        <section className="workspace-panel-surface rounded-[28px] space-y-4 panel-body">
+        <section className="workspace-panel-surface rounded-3xl space-y-4 panel-body">
           <h2 className="text-lg font-semibold text-foreground">{t("createTitle")}</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             <Input placeholder={t("namePlaceholder")} value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} />
@@ -188,7 +188,7 @@ export default function SavedSearchesPage() {
         </section>
       )}
 
-      <section className="workspace-panel-surface rounded-[28px] panel-body">
+      <section className="workspace-panel-surface rounded-3xl panel-body">
         {searches.length > 0 && (
           <div className="mb-4 flex gap-2">
             <input

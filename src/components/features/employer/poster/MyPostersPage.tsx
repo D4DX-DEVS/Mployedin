@@ -96,7 +96,11 @@ export function MyPostersPage() {
         description={t("description")}
         eyebrow={t("eyebrow")}
         actions={
-          <div className="flex flex-wrap items-center gap-3">
+          /* Flattened out of a wrapper div: DashboardPageHeader's actions row is
+             already `flex flex-wrap items-center gap-2 [&>*]:shrink-0`, and that
+             shrink-0 applied to a nested div stopped it wrapping, so the credits
+             pill + CTA overflowed the card at 360-390px. */
+          <>
             <CreditsBadge credits={credits} />
             <Link
               href={`/${locale}/employer/jobs`}
@@ -105,7 +109,7 @@ export function MyPostersPage() {
               <Plus className="h-4 w-4" />
               {t("createCta")}
             </Link>
-          </div>
+          </>
         }
       />
 
@@ -144,7 +148,7 @@ export function MyPostersPage() {
                   className={`group relative rounded-xl border overflow-hidden bg-card shadow-sm hover:shadow-md transition-shadow ${reuseHref ? "cursor-pointer" : ""}`}
                 >
                   {/* Composed poster thumbnail (background + branding/text overlay) */}
-                  <div className="aspect-square relative" style={{ containerType: "size" }}>
+                  <div className="aspect-square relative" style={{ containerType: "size" }} aria-hidden="true">
                     {thumb ? (
                       <>
                         <div
@@ -173,9 +177,10 @@ export function MyPostersPage() {
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
+                          aria-label={t("viewPosterLabel", { job: poster.jobId?.title || t("untitledJob") })}
                           className="p-2 rounded-full bg-white/20 hover:bg-white/30"
                         >
-                          <ExternalLink className="w-4 h-4 text-white" />
+                          <ExternalLink className="w-4 h-4 text-white" aria-hidden="true" />
                         </a>
                       )}
                       <button

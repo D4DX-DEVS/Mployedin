@@ -146,7 +146,7 @@ export default function JobAttributePage({ category, title, titleAr, description
     <div className="page-container">
       {ConfirmDialogNode}
 
-      <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
+      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
         {/* Compact header row: mobile stacked, desktop row */}
         <div className="flex flex-col gap-3 border-b border-border/80 sm:flex-row sm:items-center sm:justify-between panel-head">
           <div className="min-w-0">

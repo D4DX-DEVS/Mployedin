@@ -29,7 +29,7 @@ const TEMPLATE_TYPES_ARRAY = ["onboarding", "transactional", "marketing", "syste
 const fieldClassName =
   "w-full rounded-2xl border border-border bg-muted/50 px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-primary/60 focus:bg-background focus:ring-4 focus:ring-primary/20";
 const panelClassName =
-  "rounded-[28px] border border-border bg-card/95 p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur";
+  "rounded-3xl border border-border bg-card/95 p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur";
 
 interface BroadcastForm {
   title: string;
@@ -312,7 +312,7 @@ export default function AdminCommunicationsPage() {
       />
 
       {/* ── Tab Navigation ── */}
-      <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
+      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
         <div className="flex gap-1 overflow-x-auto px-4 py-2">
           {TABS.map((tabOption) => {
             const active = tab === tabOption.key;

@@ -77,7 +77,7 @@ export function JobStatusQuickFilters({
   };
 
   return (
-    <section aria-label={t("sectionLabel")} className="workspace-panel-surface rounded-2xl sm:rounded-[28px] panel-body">
+    <section aria-label={t("sectionLabel")} className="workspace-panel-surface rounded-2xl sm:rounded-3xl panel-body">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">

@@ -296,12 +296,12 @@ export default function EmployerAnalyticsPage() {
           {[1, 2, 3, 4].map((i) => (
             <div
               key={i}
-              className="workspace-panel-surface h-[120px] animate-pulse rounded-[28px]"
+              className="workspace-panel-surface h-[120px] animate-pulse rounded-3xl"
             />
           ))}
         </div>
 
-        <div className="workspace-panel-surface h-[360px] animate-pulse rounded-[28px]" />
+        <div className="workspace-panel-surface h-[360px] animate-pulse rounded-3xl" />
       </div>
     );
   }
@@ -483,7 +483,7 @@ export default function EmployerAnalyticsPage() {
 
 function TabLoadingSkeleton() {
   return (
-    <div className="workspace-panel-surface rounded-[28px] space-y-4 animate-pulse panel-body">
+    <div className="workspace-panel-surface rounded-3xl space-y-4 animate-pulse panel-body">
       <div className="h-5 w-48 bg-muted rounded" />
       <div className="grid gap-3 sm:grid-cols-3">
         {[1, 2, 3].map((i) => (
@@ -598,7 +598,7 @@ function PipelineTab({
       )}
 
       {pipeline.stalledCount > 0 && (
-        <div className="workspace-panel-surface rounded-2xl border-status-shortlisted/20 sm:rounded-[28px] panel-body">
+        <div className="workspace-panel-surface rounded-2xl border-status-shortlisted/20 sm:rounded-3xl panel-body">
           <div className="flex items-start gap-2.5 sm:gap-4">
             <div className="rounded-xl bg-status-shortlisted-bg p-2 text-status-shortlisted sm:rounded-2xl sm:p-3">
               <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -703,6 +703,7 @@ function PipelineTab({
                 value={perJobSearchInput}
                 onChange={(e) => setPerJobSearchInput(e.target.value)}
                 placeholder={t("searchJobs")}
+                aria-label={t("searchJobs")}
                 className="w-full rounded-lg border border-border bg-background/80 py-1.5 pe-3 ps-8 text-xs text-foreground placeholder:text-muted-foreground focus:border-sky-500/40 focus:outline-none focus:ring-2 focus:ring-sky-500/20 sm:rounded-xl sm:py-2 sm:ps-9 sm:text-sm"
               />
             </div>
@@ -1191,7 +1192,7 @@ function HistoricalTab({
               </BarChart>
             </ResponsiveContainer>
 
-            <div className="mt-6 overflow-x-auto rounded-[24px] border border-border" tabIndex={0}>
+            <div className="mt-6 overflow-x-auto rounded-3xl border border-border" tabIndex={0}>
               <table className="w-full min-w-[640px] text-sm">
                 <thead>
                   <tr className="border-b border-border bg-secondary/65/80">
@@ -1790,7 +1791,7 @@ function AnalyticsPanel({
   return (
     <section
       className={cn(
-        "workspace-panel-surface rounded-2xl p-3 sm:rounded-[28px] sm:p-6",
+        "workspace-panel-surface rounded-2xl p-3 sm:rounded-3xl sm:p-6",
         className
       )}
     >
@@ -1874,7 +1875,7 @@ function SummaryCard({
 }) {
   const colors = COLOR_MAP[color] || COLOR_MAP.blue;
   return (
-    <div className={cn("workspace-panel-surface rounded-[28px] border p-4", colors.border)}>
+    <div className={cn("workspace-panel-surface rounded-3xl border p-4", colors.border)}>
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
       <p className={`mt-3 text-3xl font-semibold tracking-tight ${colors.text}`}>{value}</p>
       {description ? <p className="mt-1 text-xs text-muted-foreground">{description}</p> : null}
@@ -1895,17 +1896,17 @@ function ConversionCard({
 }) {
   const colors = COLOR_MAP[color] || COLOR_MAP.blue;
   return (
-    <div className={cn("workspace-panel-surface rounded-xl border p-1.5 transition-all hover:-translate-y-0.5 sm:rounded-[28px] sm:p-4", colors.border)}>
+    <div className={cn("workspace-panel-surface rounded-xl border p-1.5 transition-all hover:-translate-y-0.5 sm:rounded-3xl sm:p-4", colors.border)}>
       <div className="flex items-start justify-between gap-1 sm:gap-3">
         <div className="min-w-0">
-          <p className="truncate text-[7px] font-semibold uppercase tracking-tight text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">{label}</p>
+          <p className="truncate text-[11px] font-semibold uppercase tracking-tight text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">{label}</p>
           <p className={`mt-1 text-sm font-semibold tracking-tight sm:mt-3 sm:text-3xl ${colors.text}`}>{count}</p>
         </div>
         <div className={cn("hidden rounded-2xl p-2.5 sm:block", colors.surface, colors.icon)}>
           <TrendingUp className="h-5 w-5" />
         </div>
       </div>
-      <p className="mt-1 truncate text-[7px] text-muted-foreground sm:mt-3 sm:text-xs">{subtitle}</p>
+      <p className="mt-1 truncate text-[11px] text-muted-foreground sm:mt-3 sm:text-xs">{subtitle}</p>
     </div>
   );
 }

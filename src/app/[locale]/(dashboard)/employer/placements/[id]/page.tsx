@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import { useConfirm } from "@/hooks/useConfirm";
 import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
@@ -150,6 +151,8 @@ export default function PlacementDetailPage() {
           )}
         </div>
       </div>
+
+      <CandidateDataNotice variant="candidateDetail" />
 
       <div className="card-base space-y-5 panel-body">
         <div>

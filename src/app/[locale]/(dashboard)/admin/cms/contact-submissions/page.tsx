@@ -153,7 +153,7 @@ export default function ContactSubmissionsPage() {
         />
       </DashboardPageHeader>
 
-      <section className="workspace-panel-surface overflow-hidden rounded-[28px]">
+      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -181,7 +181,7 @@ export default function ContactSubmissionsPage() {
                 <TableRow className="border-border/70 hover:bg-transparent">
                   <TableCell colSpan={6} className="px-6 py-16 text-center">
                     <div className="flex flex-col items-center gap-2">
-                      <div className="workspace-muted-pill mx-auto mb-2 flex h-16 w-16 items-center justify-center rounded-[24px]">
+                      <div className="workspace-muted-pill mx-auto mb-2 flex h-16 w-16 items-center justify-center rounded-3xl">
                         <Inbox className="h-7 w-7 text-muted-foreground" />
                       </div>
                       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">

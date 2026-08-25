@@ -718,7 +718,7 @@ export default function AdminExhibitionsPage() {
         ]}
       />
 
-      <section className="workspace-panel-surface rounded-[28px] panel-body">
+      <section className="workspace-panel-surface rounded-3xl panel-body">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("requestQueue")}</p>
@@ -845,7 +845,7 @@ export default function AdminExhibitionsPage() {
             </div>
           ) : items.length === 0 ? (
             <div className="workspace-empty-state flex flex-col items-center gap-3 rounded-2xl px-6 py-14 text-center">
-              <div className="workspace-muted-pill rounded-[20px] p-3">
+              <div className="workspace-muted-pill rounded-3xl p-3">
                 <Inbox className="h-8 w-8 text-muted-foreground" />
               </div>
               <p className="text-sm font-semibold text-foreground">{t("noExhibitionRequestsFound")}</p>

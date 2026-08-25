@@ -132,7 +132,7 @@ export default function AgentPlacementsPage() {
       />
 
       {/* data-table-toolbar opts into the shared mobile filter rules (globals.css). */}
-      <section className="workspace-panel-surface rounded-[28px] panel-body" data-table-toolbar="simple">
+      <section className="workspace-panel-surface rounded-3xl panel-body" data-table-toolbar="simple">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("filterLabel")}</p>
@@ -205,7 +205,7 @@ export default function AgentPlacementsPage() {
         )}
       </section>
 
-      <section className="workspace-panel-surface rounded-[28px] panel-body">
+      <section className="workspace-panel-surface rounded-3xl panel-body">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("resultsLabel")}</p><h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("resultsSubtitle")}</h2></div><div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium"><ArrowRight className="h-3.5 w-3.5 text-primary" />{t("resultsPagination", { total: pagination.total, pages: pagination.totalPages, plural: pagination.totalPages === 1 ? "" : "s" })}</div></div>
         <TableToolbar
           onExportCsv={handleExportCsv}
@@ -213,7 +213,7 @@ export default function AgentPlacementsPage() {
           onExportPdf={handleExportPdf}
           className="mt-4"
         />
-        <div className="workspace-subtle-surface mt-5 overflow-hidden rounded-[24px]">
+        <div className="workspace-subtle-surface mt-5 overflow-hidden rounded-3xl">
         <Table>
           <TableHeader>
             <TableRow className="workspace-subtle-surface hover:bg-secondary/70">

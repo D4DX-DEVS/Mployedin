@@ -338,7 +338,7 @@ export default function AdminInterviewOversightPage() {
 
         {/* ─── AI Insights inline ─────────────────────────────────────── */}
         {showInsights && (
-          <div className="mt-6 rounded-[20px] border border-border/30 bg-background/40 p-5 backdrop-blur-sm">
+          <div className="mt-6 rounded-3xl border border-border/30 bg-background/40 p-5 backdrop-blur-sm">
             <div className="mb-4 flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-sky-500" />
               <h3 className="text-lg font-semibold">{t("aiInterviewInsights")}</h3>
@@ -375,7 +375,7 @@ export default function AdminInterviewOversightPage() {
 
         {/* ─── Expandable Filters ─────────────────────────────────────── */}
         {showFilters && (
-          <div className="mt-4 space-y-3 rounded-[20px] border border-border/30 bg-background/40 p-4 backdrop-blur-sm">
+          <div className="mt-4 space-y-3 rounded-3xl border border-border/30 bg-background/40 p-4 backdrop-blur-sm">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
@@ -466,7 +466,7 @@ export default function AdminInterviewOversightPage() {
       </DashboardPageHeader>
 
       {/* ─── Table ────────────────────────────────────────────────────── */}
-      <section className="workspace-panel-surface overflow-hidden rounded-[28px]">
+      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>

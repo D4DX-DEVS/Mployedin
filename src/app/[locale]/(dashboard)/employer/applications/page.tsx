@@ -41,6 +41,7 @@ import {
   X,
 } from "lucide-react";
 import { ScorecardForm } from "@/components/scorecards/ScorecardForm";
+import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { FeatureGate } from "@/components/shared/FeatureGate";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -281,7 +282,6 @@ export default function EmployerApplicationsPage() {
   const [jobFilter, setJobFilter] = useState(initialJobId);
   const [experienceRange, setExperienceRange] = useState<[number | null, number | null]>([null, null]);
   const [skillsFilter, setSkillsFilter] = useState<string[]>([]);
-  const [nationalityFilter, setNationalityFilter] = useState("");
   const [jobsLoaded, setJobsLoaded] = useState(false);
 
   interface EmployerJob {
@@ -308,7 +308,6 @@ export default function EmployerApplicationsPage() {
   const debouncedSearch = useDebounce(searchQuery, 350);
   const debouncedScoreRange = useDebounce(scoreRange, 500);
   const debouncedExperienceRange = useDebounce(experienceRange, 500);
-  const debouncedNationality = useDebounce(nationalityFilter, 350);
 
   const applicationsQuery = useApplications({
     page,
@@ -321,7 +320,6 @@ export default function EmployerApplicationsPage() {
     experienceMin: debouncedExperienceRange[0] ?? undefined,
     experienceMax: debouncedExperienceRange[1] ?? undefined,
     skills: skillsFilter.length > 0 ? skillsFilter : undefined,
-    nationality: debouncedNationality.trim() || undefined,
     sortBy,
     sortOrder,
     fetchJobs: !jobsLoaded,
@@ -397,7 +395,7 @@ export default function EmployerApplicationsPage() {
     setPage(1);
     setSelected([]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter, scoreRange, daysFilter, searchQuery, jobFilter, experienceRange, skillsFilter, nationalityFilter, sortOption]);
+  }, [statusFilter, scoreRange, daysFilter, searchQuery, jobFilter, experienceRange, skillsFilter, sortOption]);
 
   function updateApplicationStatus(id: string, status: string, reason?: string) {
     return updateStatus.mutateAsync({ id, status, rejectionReason: reason });
@@ -671,7 +669,7 @@ export default function EmployerApplicationsPage() {
   const interviewCount = filteredApplications.filter((app) => app.status === "interview_scheduled").length;
   const selectedStageCount = filteredApplications.filter((app) => app.status === "selected").length;
   const allVisibleSelected = filteredApplications.length > 0 && filteredApplications.every((app) => selected.includes(app._id));
-  const hasActiveRefinement = statusFilter !== "all" || scoreRange[0] > 0 || scoreRange[1] < 100 || daysFilter !== null || searchQuery.trim().length > 0 || !!jobFilter || experienceRange[0] !== null || experienceRange[1] !== null || skillsFilter.length > 0 || nationalityFilter.trim().length > 0;
+  const hasActiveRefinement = statusFilter !== "all" || scoreRange[0] > 0 || scoreRange[1] < 100 || daysFilter !== null || searchQuery.trim().length > 0 || !!jobFilter || experienceRange[0] !== null || experienceRange[1] !== null || skillsFilter.length > 0;
 
   async function handleBulkAction(
     action: "reject" | "move_stage" | "send_message",
@@ -850,6 +848,10 @@ export default function EmployerApplicationsPage() {
         ) : undefined}
       />
 
+      {/* Privacy information at the point personal data is first shown, not
+          only behind a footer link. */}
+      <CandidateDataNotice variant="candidateList" />
+
       <div className="px-3 text-sm text-muted-foreground sm:px-4">
         <span className="font-medium text-foreground">{isLoading ? "—" : filteredApplications.length}</span> {t("applicants")}
         <span className="px-2 text-border">•</span>
@@ -860,7 +862,7 @@ export default function EmployerApplicationsPage() {
         <span className="font-medium text-foreground">{isLoading ? "—" : selectedStageCount}</span> {t("selected")}
       </div>
 
-      <section className="workspace-panel-surface rounded-[22px] panel-body">
+      <section className="workspace-panel-surface rounded-3xl panel-body">
 
           <div className="mb-2 flex items-center gap-2 sm:mb-3">
             <button
@@ -990,7 +992,7 @@ export default function EmployerApplicationsPage() {
           )}
 
       {showFilters && (
-        <div className="mt-3 grid grid-cols-2 gap-2 rounded-[20px] border border-border/60 bg-background/60 p-2.5 sm:gap-4 sm:p-4 lg:grid-cols-4">
+        <div className="mt-3 grid grid-cols-2 gap-2 rounded-3xl border border-border/60 bg-background/60 p-2.5 sm:gap-4 sm:p-4 lg:grid-cols-4">
           {/* AI Score Range */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("aiScoreRange")}</label>
@@ -1088,18 +1090,6 @@ export default function EmployerApplicationsPage() {
             )}
           </div>
 
-          {/* Nationality Filter */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("nationality")}</label>
-            <input
-              type="text"
-              value={nationalityFilter}
-              onChange={(e) => setNationalityFilter(e.target.value)}
-              placeholder={t("nationalityPlaceholder")}
-              className="h-9 w-full rounded-xl border border-border bg-background/80 px-3 text-sm text-foreground"
-            />
-          </div>
-
           {/* Quick-fill from job requirements */}
           {selectedJob && (
             <div className="sm:col-span-2 lg:col-span-4 flex flex-wrap items-center gap-2 border-t border-border/40 pt-3">
@@ -1133,7 +1123,6 @@ export default function EmployerApplicationsPage() {
                     setDaysFilter(null);
                     setExperienceRange([null, null]);
                     setSkillsFilter([]);
-                    setNationalityFilter("");
                   }}>
                   {t("resetAllFilters")}
                 </Button>
@@ -1143,7 +1132,7 @@ export default function EmployerApplicationsPage() {
           {!selectedJob && (
             <div className="flex items-end">
               <Button size="sm" variant="ghost" className="h-9 rounded-xl px-4 text-sm text-muted-foreground"
-                onClick={() => { setScoreRange([0, 100]); setDaysFilter(null); setExperienceRange([null, null]); setSkillsFilter([]); setNationalityFilter(""); }}>
+                onClick={() => { setScoreRange([0, 100]); setDaysFilter(null); setExperienceRange([null, null]); setSkillsFilter([]); }}>
                 {t("reset")}
               </Button>
             </div>
@@ -1153,7 +1142,7 @@ export default function EmployerApplicationsPage() {
       </section>
 
       {canUpdate && selected.length > 0 && (
-        <div className="flex flex-wrap items-center gap-3 rounded-[24px] border border-sky-500/20 bg-sky-500/10 p-4 text-sky-800">
+        <div className="flex flex-wrap items-center gap-3 rounded-3xl border border-sky-500/20 bg-sky-500/10 p-4 text-sky-800">
           <span className="text-sm font-semibold">{selected.length} {t("bulkActions")}</span>
           <div className="flex gap-2 flex-wrap">
             <Button size="sm" variant="outline" className="h-10 rounded-xl border-border bg-background/80 px-4 text-sm"
@@ -1177,7 +1166,7 @@ export default function EmployerApplicationsPage() {
       )}
 
       {showRejectPrompt && (
-        <div className="flex flex-col gap-3 rounded-[24px] border border-destructive/30 bg-destructive/5 p-4">
+        <div className="flex flex-col gap-3 rounded-3xl border border-destructive/30 bg-destructive/5 p-4">
           <p className="text-sm font-semibold text-destructive">{t("rejectionRequired")}</p>
           <div className="flex gap-2">
             <input
@@ -1198,7 +1187,7 @@ export default function EmployerApplicationsPage() {
 
       {/* Shortlist Top confirmation — user picks how many */}
       {shortlistConfirm && (
-        <div className="flex flex-col gap-4 rounded-[24px] border border-emerald-500/20 bg-emerald-500/10 p-5">
+        <div className="flex flex-col gap-4 rounded-3xl border border-emerald-500/20 bg-emerald-500/10 p-5">
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/20">
               <CheckCheck className="h-5 w-5 text-status-selected" />
@@ -1301,7 +1290,7 @@ export default function EmployerApplicationsPage() {
 
       {/* Post-shortlist: prompt to schedule interviews */}
       {postShortlistPrompt && (
-        <div className="flex flex-col gap-3 rounded-[24px] border border-violet-500/20 bg-violet-500/10 p-5">
+        <div className="flex flex-col gap-3 rounded-3xl border border-violet-500/20 bg-violet-500/10 p-5">
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-violet-500/20">
               <Calendar className="h-5 w-5 text-status-interview" />
@@ -1344,8 +1333,8 @@ export default function EmployerApplicationsPage() {
       >
         <div className="min-w-0 space-y-3">
           {applicationsQuery.isError ? (
-            <div className="workspace-panel-surface rounded-[24px] px-6 py-16 text-center">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-[24px] bg-status-rejected-bg text-rose-500">
+            <div className="workspace-panel-surface rounded-3xl px-6 py-16 text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-status-rejected-bg text-rose-500">
                 <Inbox className="h-7 w-7" />
               </div>
               <h3 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
@@ -1361,7 +1350,7 @@ export default function EmployerApplicationsPage() {
           ) : isLoading ? (
             <div className="space-y-2">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-20 animate-pulse rounded-[20px] border border-border/60 bg-background/70" />
+                <div key={i} className="h-20 animate-pulse rounded-3xl border border-border/60 bg-background/70" />
               ))}
             </div>
           ) : (
@@ -1574,7 +1563,7 @@ function TableView({
   }
 
   return (
-    <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-[24px]">
+    <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-3xl">
       <div className="hidden items-center gap-3 border-b border-border/70 bg-background/50 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground lg:grid" style={{ gridTemplateColumns: gridCols }}>
         <span />
         <span>{t("candidate")}</span>
@@ -2307,7 +2296,7 @@ function ApplicationDetailsPanel({
 
           {activeTab === "resume" ? (
             <div className="space-y-4">
-              <div className="workspace-glass-panel rounded-[24px] p-5">
+              <div className="workspace-glass-panel rounded-3xl p-5">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("tabResume")}</p>
                 {hasResume ? (
                   <div className="mt-4 space-y-3">
@@ -2332,7 +2321,7 @@ function ApplicationDetailsPanel({
           ) : null}
 
           {activeTab === "timeline" ? (
-            <div className="workspace-glass-panel rounded-[24px] p-6 text-center">
+            <div className="workspace-glass-panel rounded-3xl p-6 text-center">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500/10 text-status-applied">
                 <History className="h-6 w-6" />
               </div>
@@ -2347,7 +2336,7 @@ function ApplicationDetailsPanel({
           ) : null}
 
           {activeTab === "notes" ? (
-            <div className="workspace-glass-panel rounded-[24px] p-5 space-y-3">
+            <div className="workspace-glass-panel rounded-3xl p-5 space-y-3">
               <div className="flex items-center gap-2">
                 <FileText className="h-4 w-4 text-status-interview" />
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("notes")}</p>
@@ -2372,7 +2361,7 @@ function ApplicationDetailsPanel({
 
 
           {activeTab === "scorecard" ? (
-            <div className="workspace-glass-panel rounded-[24px] p-6">
+            <div className="workspace-glass-panel rounded-3xl p-6">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("scorecard")}</p>
               {scorecard ? (
                 <div className="mt-3">
@@ -2409,7 +2398,7 @@ function ApplicationDetailsPanel({
       <aside
         role="region"
         aria-label={t("candidateDetailsFor", { name: candidateName })}
-        className="sticky top-4 flex max-h-[calc(100dvh-2rem)] min-h-0 flex-col overflow-hidden rounded-[22px] border border-border bg-background shadow-sm"
+        className="sticky top-4 flex max-h-[calc(100dvh-2rem)] min-h-0 flex-col overflow-hidden rounded-3xl border border-border bg-background shadow-sm"
       >
         {panelBody}
       </aside>

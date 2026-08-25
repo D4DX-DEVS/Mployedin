@@ -258,7 +258,7 @@ export default function AdminUsersPage() {
         description={t("userManagementDesc", { total: formatCount(total) })}
       />
 
-      <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
+      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
         {/* data-table-toolbar opts this hand-rolled header into the shared
             mobile toolbar rules, same as pages built on <TableToolbar>. */}
         <div data-table-toolbar="compact-admin" className="flex flex-wrap items-center gap-1.5 border-b border-border/80 sm:gap-2 panel-head">

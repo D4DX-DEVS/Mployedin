@@ -18,7 +18,7 @@ export function CurrentOpeningsList({
   const t = useTranslations("employerDashboard.statsCards");
 
   return (
-    <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-[28px]">
+    <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-3xl">
       <div className="border-b border-border/60 px-3 sm:px-5 py-5 sm:px-3 sm:px-6">
         <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
           <Briefcase className="h-3.5 w-3.5 text-sky-600" />
@@ -33,7 +33,7 @@ export function CurrentOpeningsList({
       <div className="space-y-2.5 px-3 py-3 sm:px-5 sm:py-5">
         <Link
           href={`/${locale}/employer/jobs`}
-          className="group flex items-center gap-3 rounded-[20px] border border-border bg-background/80 px-3.5 py-3.5 transition-all hover:-translate-y-0.5 hover:border-sky-500/25 sm:px-4 sm:py-4"
+          className="group flex items-center gap-3 rounded-3xl border border-border bg-background/80 px-3.5 py-3.5 transition-all hover:-translate-y-0.5 hover:border-sky-500/25 sm:px-4 sm:py-4"
         >
           <div className="rounded-2xl bg-sky-50 p-2.5 text-sky-600">
             <Briefcase className="h-4 w-4 shrink-0" />
@@ -48,7 +48,7 @@ export function CurrentOpeningsList({
 
         <Link
           href={`/${locale}/employer/applications`}
-          className="group flex items-center gap-3 rounded-[20px] border border-border bg-background/80 px-3.5 py-3.5 transition-all hover:-translate-y-0.5 hover:border-sky-500/25 sm:px-4 sm:py-4"
+          className="group flex items-center gap-3 rounded-3xl border border-border bg-background/80 px-3.5 py-3.5 transition-all hover:-translate-y-0.5 hover:border-sky-500/25 sm:px-4 sm:py-4"
         >
           <div className="rounded-2xl bg-amber-50 p-2.5 text-amber-600">
             <FileText className="h-4 w-4 shrink-0" />
@@ -74,7 +74,7 @@ export function OpeningsStats({ activeJobs, totalApplications }: OpeningsStatsPr
   const t = useTranslations("employerDashboard.statsCards");
 
   return (
-    <section className="workspace-panel-surface rounded-2xl sm:rounded-[28px] panel-body">
+    <section className="workspace-panel-surface rounded-2xl sm:rounded-3xl panel-body">
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("currentPortfolio")}</p>
       <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground sm:text-2xl">{t("seeHiringVolume")}</h2>
       <div className="mt-4 space-y-2.5">
@@ -101,7 +101,7 @@ export function TimeToHire({ avgDays }: TimeToHireProps) {
   const t = useTranslations("employerDashboard.statsCards");
 
   return (
-    <section className="rounded-[28px] border border-amber-200 bg-[linear-gradient(180deg,_rgba(255,251,235,0.98),_rgba(255,247,237,0.96))] p-3 sm:p-4 shadow-[0_24px_60px_-46px_rgba(245,158,11,0.32)] sm:p-3 sm:p-5">
+    <section className="rounded-3xl border border-amber-200 bg-[linear-gradient(180deg,_rgba(255,251,235,0.98),_rgba(255,247,237,0.96))] p-3 sm:p-4 shadow-[0_24px_60px_-46px_rgba(245,158,11,0.32)] sm:p-3 sm:p-5">
       <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700">
         <Clock className="h-3.5 w-3.5" />
         {t("timeToHire")}

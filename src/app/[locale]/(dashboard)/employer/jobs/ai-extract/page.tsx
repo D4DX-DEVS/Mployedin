@@ -14,6 +14,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { cn } from "@/lib/utils";
 import type { JobFormValues } from "@/components/features/employer/job-form/jobFormSchema";
 import { formatCount } from "@/lib/ui/intlFormat";
+import { WordingWarning } from "@/components/features/employer/job-form/WordingWarning";
 
 interface ExtractedJob {
   title: string;
@@ -441,7 +442,7 @@ export default function AIJobExtractPage() {
       />
 
       {/* Upload Section */}
-      <section className="overflow-hidden rounded-[28px] border border-border/70 bg-gradient-to-br from-background via-background to-primary/5 p-6 shadow-sm">
+      <section className="overflow-hidden rounded-3xl border border-border/70 bg-gradient-to-br from-background via-background to-primary/5 p-6 shadow-sm">
         <div className="flex items-center gap-2 text-sm font-medium text-primary">
           <Sparkles className="h-4 w-4" />
           {t("uploadTitle")}
@@ -738,6 +739,22 @@ export default function AIJobExtractPage() {
                       </div>
                     )}
 
+                    {/* An uploaded advert's own wording is reproduced verbatim, so it
+                        is checked here — Quick Post otherwise reaches publish
+                        without ever passing the wizard's wording panel. */}
+                    {status !== "posted" && (
+                      <WordingWarning
+                        advert={{
+                          title: job.title,
+                          description: job.description,
+                          responsibilities: job.responsibilities,
+                          qualifications: job.qualifications,
+                          benefits: job.benefits,
+                        }}
+                        className="mt-2"
+                      />
+                    )}
+
                     {/* Actions */}
                     {status !== "posted" && (
                       <div className="flex items-center gap-2 pt-2 border-t border-border/50">
@@ -769,8 +786,9 @@ export default function AIJobExtractPage() {
                           size="sm"
                           className="h-7 text-xs gap-1 text-destructive hover:text-destructive ml-auto"
                           onClick={() => removeJob(index)}
+                          aria-label={t("removeJobLabel", { job: job.title })}
                         >
-                          <Trash2 className="h-3 w-3" />
+                          <Trash2 className="h-3 w-3" aria-hidden="true" />
                         </Button>
                       </div>
                     )}

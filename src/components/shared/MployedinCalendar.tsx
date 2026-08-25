@@ -1112,7 +1112,7 @@ export default function MployedinCalendar({
       {/* â”€â”€ Main Layout â”€â”€ */}
       <div className="grid gap-5 xl:grid-cols-[1fr_280px]">
         {/* Calendar Area */}
-        <div className="workspace-panel-surface overflow-hidden rounded-[20px]">
+        <div className="workspace-panel-surface overflow-hidden rounded-3xl">
           {loading ? (
             <div className="animate-in fade-in-50 duration-500 p-4 space-y-3">
               {/* Skeleton header row */}
@@ -1152,7 +1152,7 @@ export default function MployedinCalendar({
         {/* Sidebar */}
         <div className="space-y-4">
           {/* Mini calendar */}
-          <div className="workspace-panel-surface rounded-[20px] panel-body">
+          <div className="workspace-panel-surface rounded-3xl panel-body">
             <MiniCalendar
               currentDate={currentDate}
               selectedDate={selectedDate}
@@ -1168,7 +1168,7 @@ export default function MployedinCalendar({
           </div>
 
           {/* Event detail or upcoming list */}
-          <div className="workspace-panel-surface rounded-[20px] panel-body">
+          <div className="workspace-panel-surface rounded-3xl panel-body">
             {selectedEvent ? (
               <EventDetail
                 event={selectedEvent}

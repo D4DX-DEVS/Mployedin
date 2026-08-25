@@ -161,7 +161,7 @@ export default function AdminNotificationsPage() {
       />
 
       {/* ── Tab Navigation ── */}
-      <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
+      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
         <div className="flex gap-1 overflow-x-auto px-4 py-2">
           {TABS.map((t) => (
             <button

@@ -15,6 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PageHero } from "@/components/shared/PageHero";
+import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { useScorecards } from "@/hooks/useScorecards";
@@ -119,6 +120,8 @@ export default function ScorecardListPage() {
         </div>
       ) : (
       <>
+      <CandidateDataNotice variant="candidateList" />
+
       {/* Aggregate Feedback Trends */}
       <FeedbackTrendsPanel />
 

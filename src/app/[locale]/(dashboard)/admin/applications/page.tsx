@@ -438,7 +438,7 @@ export default function AdminApplicationsPage() {
 
         {/* ─── AI Insights inline ─────────────────────────────────────── */}
         {showAiPanel && (
-          <div className="mt-6 rounded-[20px] border border-border/30 bg-background/40 p-5 space-y-4 backdrop-blur-sm">
+          <div className="mt-6 rounded-3xl border border-border/30 bg-background/40 p-5 space-y-4 backdrop-blur-sm">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-sky-500" />
@@ -546,7 +546,7 @@ export default function AdminApplicationsPage() {
 
         {/* ─── Expandable Filters ─────────────────────────────────────── */}
         {showFilters && (
-          <div className="mt-4 space-y-3 rounded-[20px] border border-border/30 bg-background/40 p-4 backdrop-blur-sm">
+          <div className="mt-4 space-y-3 rounded-3xl border border-border/30 bg-background/40 p-4 backdrop-blur-sm">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -670,12 +670,12 @@ export default function AdminApplicationsPage() {
       {loading ? (
         <div className="space-y-2">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-24 animate-pulse rounded-[20px] border border-border/60 bg-background/70" />
+            <div key={i} className="h-24 animate-pulse rounded-3xl border border-border/60 bg-background/70" />
           ))}
         </div>
       ) : applications.length === 0 ? (
-        <div className="workspace-panel-surface rounded-[28px] px-4 py-8 sm:px-6 sm:py-16 text-center">
-          <div className="workspace-muted-pill mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-[24px]">
+        <div className="workspace-panel-surface rounded-3xl px-4 py-8 sm:px-6 sm:py-16 text-center">
+          <div className="workspace-muted-pill mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl">
             <Inbox className="h-7 w-7" />
           </div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
@@ -696,7 +696,7 @@ export default function AdminApplicationsPage() {
           )}
         </div>
       ) : (
-        <section className="workspace-panel-surface overflow-hidden rounded-[28px]">
+        <section className="workspace-panel-surface overflow-hidden rounded-3xl">
           {/* Column headers */}
           <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] items-center gap-4 border-b border-border/70 bg-background/50 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground lg:grid">
             <span>{t("candidate")}</span>

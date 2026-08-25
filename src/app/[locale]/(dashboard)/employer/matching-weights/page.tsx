@@ -123,10 +123,10 @@ export default function EmployerMatchingWeightsPage() {
 
   if (loading) return (
     <div className="page-container">
-      <div className="h-40 animate-pulse rounded-[28px] border border-border bg-background/70" />
+      <div className="h-40 animate-pulse rounded-3xl border border-border bg-background/70" />
       <div className="grid gap-4 lg:grid-cols-[1.35fr,0.65fr]">
-        <div className="h-[28rem] animate-pulse rounded-[28px] border border-border bg-background/70" />
-        <div className="h-[28rem] animate-pulse rounded-[28px] border border-border bg-background/70" />
+        <div className="h-[28rem] animate-pulse rounded-3xl border border-border bg-background/70" />
+        <div className="h-[28rem] animate-pulse rounded-3xl border border-border bg-background/70" />
       </div>
     </div>
   );
@@ -259,11 +259,12 @@ export default function EmployerMatchingWeightsPage() {
           { label: t("topPriority"), value: t(WEIGHT_LABEL_KEYS[topPriority]), note: `${t("currentStrongest")} ${weights[topPriority]}%.`, icon: Target },
           { label: saveStateLabel, value: `${weights[topPriority]}%`, note: t("readyToUpdateDesc"), icon: BarChart3 },
         ]}
+        headingLevel={2}
       />
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.35fr,0.65fr]">
         {/* Sliders */}
-        <section className="workspace-panel-surface space-y-5 rounded-[28px] panel-body">
+        <section className="workspace-panel-surface space-y-5 rounded-3xl panel-body">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("weightBuilder")}</p>
@@ -278,15 +279,16 @@ export default function EmployerMatchingWeightsPage() {
           </div>
 
           {weightKeys.map((key) => (
-            <div key={key} className="rounded-[22px] border border-border bg-background/60 p-3 sm:p-4">
+            <div key={key} className="rounded-3xl border border-border bg-background/60 p-3 sm:p-4">
               <div className="max-w-2xl">
-                <label className="text-sm font-semibold text-foreground">{t(WEIGHT_LABEL_KEYS[key])}</label>
+                <label htmlFor={`weight-${key}`} className="text-sm font-semibold text-foreground">{t(WEIGHT_LABEL_KEYS[key])}</label>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">{t(WEIGHT_DESC_KEYS[key])}</p>
               </div>
               {/* Number box and slider share one row — stacked they burned a
                   full extra line of height per weight, five times over. */}
               <div className="mt-2 flex items-center gap-2 sm:mt-3 sm:gap-3">
                 <Input
+                  id={`weight-${key}`}
                   type="number"
                   min={0}
                   max={100}
@@ -297,6 +299,7 @@ export default function EmployerMatchingWeightsPage() {
                 <span className="shrink-0 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">%</span>
                 <input
                   type="range"
+                  aria-label={t(WEIGHT_LABEL_KEYS[key])}
                   min={0}
                   max={100}
                   step={5}
@@ -330,7 +333,7 @@ export default function EmployerMatchingWeightsPage() {
 
         {/* Visualization */}
         <div className="space-y-5">
-          <section className="workspace-panel-surface space-y-4 rounded-[28px] panel-body">
+          <section className="workspace-panel-surface space-y-4 rounded-3xl panel-body">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("distribution")}</p>
               <h3 className="mt-2 text-lg font-semibold text-foreground">{t("weightOverview")}</h3>
@@ -362,7 +365,7 @@ export default function EmployerMatchingWeightsPage() {
             </div>
           </section>
 
-          <section className="rounded-[28px] border border-border bg-background/60 p-6 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.28)]">
+          <section className="rounded-3xl border border-border bg-background/60 p-6 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.28)]">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("tuningGuidance")}</p>
             <h3 className="mt-2 text-lg font-semibold text-foreground">{t("tuningTitle")}</h3>
             <p className="mt-3 text-sm leading-6 text-muted-foreground">

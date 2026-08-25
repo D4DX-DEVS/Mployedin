@@ -457,7 +457,7 @@ export default function AdminJobSeekersPage() {
       <CandidateDataNotice variant="candidateList" />
 
       {/* ── AI Search Bar ─────────────────────────────────── */}
-      <section className="workspace-panel-surface rounded-[20px] panel-body">
+      <section className="workspace-panel-surface rounded-3xl panel-body">
         <div className="flex items-center gap-2 mb-3">
           <Sparkles className="h-4 w-4 text-primary" />
           <h2 className="text-sm font-semibold text-foreground">{tr("aiSearchTitle")}</h2>
@@ -524,7 +524,7 @@ export default function AdminJobSeekersPage() {
       </section>
 
       {/* ── Main Panel ────────────────────────────────────── */}
-      <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
+      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
         {/* Header with filters & actions */}
         <div className="flex flex-col gap-3 border-b border-border/80 panel-head">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

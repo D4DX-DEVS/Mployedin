@@ -191,7 +191,7 @@ export const JobFeedCard = memo(function JobFeedCard({
 
   return (
     <div
-      className="card-base group relative overflow-hidden rounded-lg sm:rounded-[26px] border border-border/70 bg-[linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96))] transition-all duration-200 shadow-[0_18px_48px_-38px_rgba(15,23,42,0.35)] hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_24px_60px_-38px_rgba(37,99,235,0.18)]"
+      className="card-base group relative overflow-hidden rounded-lg sm:rounded-3xl border border-border/70 bg-[linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96))] transition-all duration-200 shadow-[0_18px_48px_-38px_rgba(15,23,42,0.35)] hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_24px_60px_-38px_rgba(37,99,235,0.18)]"
     >
       <div className="flex gap-2 sm:gap-3.5">
         {/* Card body */}

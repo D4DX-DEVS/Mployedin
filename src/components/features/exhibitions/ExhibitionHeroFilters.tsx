@@ -133,7 +133,7 @@ export function ExhibitionFilterPanel({
   if (!open) return null;
 
   return (
-    <div className="mt-3 space-y-2.5 rounded-[20px] border border-border/30 bg-background/40 p-3 backdrop-blur-sm sm:p-4">
+    <div className="mt-3 space-y-2.5 rounded-3xl border border-border/30 bg-background/40 p-3 backdrop-blur-sm sm:p-4">
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input

@@ -279,8 +279,8 @@ export function AIInterviewQuestionsPanel({
               </div>
             )}
           </div>
-          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose}>
-            <X className="w-4 h-4" />
+          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose} aria-label={t("closeLabel", { job: jobTitle })}>
+            <X className="w-4 h-4" aria-hidden="true" />
           </Button>
         </div>
 

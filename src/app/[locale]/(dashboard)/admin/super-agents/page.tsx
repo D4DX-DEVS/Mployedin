@@ -370,7 +370,7 @@ export default function AdminSuperAgentsPage() {
   return (
     <div className="page-container">
       {ConfirmDialogNode}
-      <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
+      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
         <div className="flex flex-col gap-3 border-b border-border/80 sm:flex-row sm:items-center sm:justify-between panel-head">
           <PageHeader title={t("pageTitle")} description={t("pageSubtitle")} />
           <div className="flex flex-wrap items-center gap-2">

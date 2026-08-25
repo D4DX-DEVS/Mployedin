@@ -172,7 +172,7 @@ function OnboardingCard({ onboarding, onChanged }: { onboarding: Onboarding; onC
       : "bg-amber-100 text-amber-700 border-amber-300";
 
   return (
-    <div className="space-y-4 sm:space-y-5 rounded-[28px] border border-border bg-card p-3 sm:p-6">
+    <div className="space-y-4 sm:space-y-5 rounded-3xl border border-border bg-card p-3 sm:p-6">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">

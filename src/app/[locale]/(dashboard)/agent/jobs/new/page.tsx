@@ -134,7 +134,7 @@ export default function AgentJobPosterPage() {
         }
       />
 
-      <section className="rounded-[28px] border border-border bg-card/90 p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur sm:p-6 space-y-3">
+      <section className="rounded-3xl border border-border bg-card/90 p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur sm:p-6 space-y-3">
         <div className="flex items-center gap-2">
           <Building2 className="h-4 w-4 text-status-applied" />
           <h3 className="text-sm font-semibold text-foreground">{t("employer.title")}</h3>
@@ -165,7 +165,7 @@ export default function AgentJobPosterPage() {
         )}
       </section>
 
-      <form onSubmit={handleSubmit} className="rounded-[28px] border border-border bg-card/90 p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur sm:p-6 space-y-5">
+      <form onSubmit={handleSubmit} className="rounded-3xl border border-border bg-card/90 p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur sm:p-6 space-y-5">
         <div className="flex items-center gap-2 mb-1">
           <Briefcase className="h-4 w-4 text-status-applied" />
           <h3 className="text-sm font-semibold text-foreground">{t("form.title")}</h3>

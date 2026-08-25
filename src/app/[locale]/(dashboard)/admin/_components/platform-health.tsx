@@ -71,11 +71,11 @@ type InsightTone = "critical" | "warning" | "positive";
 
 const toneClasses: Record<InsightTone, string> = {
   critical:
-    "rounded-[24px] border border-rose-100 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,241,242,0.98))] shadow-[0_24px_60px_-44px_rgba(244,63,94,0.18)]",
+    "rounded-3xl border border-rose-100 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,241,242,0.98))] shadow-[0_24px_60px_-44px_rgba(244,63,94,0.18)]",
   warning:
-    "rounded-[24px] border border-amber-100 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,251,235,0.98))] shadow-[0_24px_60px_-44px_rgba(245,158,11,0.16)]",
+    "rounded-3xl border border-amber-100 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,251,235,0.98))] shadow-[0_24px_60px_-44px_rgba(245,158,11,0.16)]",
   positive:
-    "rounded-[24px] border border-emerald-100 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(236,253,245,0.98))] shadow-[0_24px_60px_-44px_rgba(16,185,129,0.16)]",
+    "rounded-3xl border border-emerald-100 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(236,253,245,0.98))] shadow-[0_24px_60px_-44px_rgba(16,185,129,0.16)]",
 };
 
 const badgeClasses: Record<InsightTone, string> = {
@@ -200,7 +200,7 @@ export async function PlatformInsightsSection({
 
 export function PlatformInsightsSkeleton() {
   return (
-    <section className="workspace-panel-surface rounded-2xl sm:rounded-[28px] panel-body" data-surface="light-panel" aria-hidden="true">
+    <section className="workspace-panel-surface rounded-2xl sm:rounded-3xl panel-body" data-surface="light-panel" aria-hidden="true">
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-2">
           <div className="h-7 w-52 rounded-lg skeleton-shimmer" />
@@ -210,7 +210,7 @@ export function PlatformInsightsSkeleton() {
       </div>
       <div className="mt-6 grid gap-4 md:grid-cols-3">
         {[0, 1, 2].map((i) => (
-          <div key={i} className="rounded-[24px] border border-border/50 p-5 space-y-4">
+          <div key={i} className="rounded-3xl border border-border/50 p-5 space-y-4">
             <div className="h-5 w-16 rounded-full skeleton-shimmer" />
             <div className="h-6 w-40 rounded skeleton-shimmer" />
             <div className="space-y-1.5">

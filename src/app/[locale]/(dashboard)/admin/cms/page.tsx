@@ -163,7 +163,7 @@ export default function CmsOverviewPage() {
       >
 
         {showFilters && (
-          <div className="mt-4 space-y-3 rounded-[20px] border border-border/30 bg-background/40 p-4 backdrop-blur-sm">
+          <div className="mt-4 space-y-3 rounded-3xl border border-border/30 bg-background/40 p-4 backdrop-blur-sm">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -189,7 +189,7 @@ export default function CmsOverviewPage() {
         )}
       </DashboardPageHeader>
 
-      <section className="workspace-panel-surface overflow-hidden rounded-[28px] panel-body">
+      <section className="workspace-panel-surface overflow-hidden rounded-3xl panel-body">
         <div className="mb-5">
           <h2 className="text-xl font-semibold tracking-tight text-foreground">{t("contentModulesHeading")}</h2>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">

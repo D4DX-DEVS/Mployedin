@@ -125,7 +125,7 @@ export function TableToolbar({
   if (usesCompactAdminLayout) {
     return (
       <section
-        className={cn("workspace-panel-surface overflow-hidden rounded-[20px]", className)}
+        className={cn("workspace-panel-surface overflow-hidden rounded-3xl", className)}
         data-table-toolbar="compact-admin"
       >
         <div className="flex flex-col gap-3 px-3 py-3 sm:px-4 sm:py-4 xl:flex-row xl:items-start xl:justify-between">

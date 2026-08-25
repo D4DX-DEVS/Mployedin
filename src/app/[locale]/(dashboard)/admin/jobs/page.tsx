@@ -367,7 +367,7 @@ export default function AdminJobsPage() {
 
         {/* ─── Expandable Filters ─────────────────────────────────────── */}
         {showFilters && (
-          <div className="mt-4 space-y-3 rounded-[20px] border border-border/30 bg-background/40 p-4 backdrop-blur-sm">
+          <div className="mt-4 space-y-3 rounded-3xl border border-border/30 bg-background/40 p-4 backdrop-blur-sm">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -503,7 +503,7 @@ export default function AdminJobsPage() {
 
       {/* ─── Job Cards ────────────────────────────────────────────────── */}
       {loading ? (
-        <ListSkeleton count={5} itemClassName="h-40 rounded-[28px]" className="space-y-4" />
+        <ListSkeleton count={5} itemClassName="h-40 rounded-3xl" className="space-y-4" />
       ) : jobs.length === 0 ? (
         <EmptyState
           icon={Inbox}
@@ -523,7 +523,7 @@ export default function AdminJobsPage() {
             return (
               <article
                 key={job._id}
-                className="workspace-panel-surface rounded-[22px] transition-all hover:-translate-y-0.5 hover:border-border panel-body"
+                className="workspace-panel-surface rounded-3xl transition-all hover:-translate-y-0.5 hover:border-border panel-body"
               >
                 <div className="grid gap-2.5 xl:grid-cols-[minmax(0,1fr)_268px] xl:items-start">
                   {/* Left: Job metadata */}
@@ -590,7 +590,7 @@ export default function AdminJobsPage() {
                   </div>
 
                   {/* Right: Action panel */}
-                  <div aria-label={`Actions for ${job.title}`} role="group" className="workspace-subtle-surface rounded-[16px] border border-border p-2 xl:self-start">
+                  <div aria-label={`Actions for ${job.title}`} role="group" className="workspace-subtle-surface rounded-2xl border border-border p-2 xl:self-start">
                     <div className="grid grid-cols-2 gap-1.5">
                       <Button
                         size="sm"

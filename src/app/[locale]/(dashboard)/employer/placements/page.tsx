@@ -9,6 +9,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Users, Briefcase, TrendingUp, Inbox, CircleCheckBig, ClipboardList, ChevronDown } from "lucide-react";
+import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -109,7 +110,11 @@ export default function EmployerPlacementsPage() {
         ]}
       />
 
-      <section className="workspace-panel-surface rounded-[28px] panel-body">
+      {/* Privacy information at the point personal data is first shown, not
+          only behind a footer link. */}
+      <CandidateDataNotice variant="candidateList" />
+
+      <section className="workspace-panel-surface rounded-3xl panel-body">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("filterOutcomes")}</p>
@@ -166,7 +171,7 @@ export default function EmployerPlacementsPage() {
       </section>
 
       {error ? (
-        <section className="workspace-panel-surface rounded-[28px] border border-red-500/20 panel-body">
+        <section className="workspace-panel-surface rounded-3xl border border-red-500/20 panel-body">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-rejected">{t("placementList")}</p>
@@ -181,7 +186,7 @@ export default function EmployerPlacementsPage() {
           </div>
         </section>
       ) : (
-      <section className="workspace-panel-surface rounded-[28px] panel-body">
+      <section className="workspace-panel-surface rounded-3xl panel-body">
         <div className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("placementList")}</p>

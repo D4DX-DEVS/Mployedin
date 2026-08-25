@@ -25,6 +25,7 @@ import {
 import { useConfirm } from "@/hooks/useConfirm";
 import { useDebounce } from "@/hooks/useDebounce";
 import RelativeDate from "@/components/shared/RelativeDate";
+import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import {
@@ -184,13 +185,17 @@ export default function EmployerTalentPoolsPage() {
         ] : undefined}
       />
 
+      {/* Privacy information at the point personal data is first shown, not
+          only behind a footer link. */}
+      <CandidateDataNotice variant="candidateList" />
+
       {pools.length > 0 && (
         <section className="workspace-panel-surface rounded-2xl panel-body">
           {/* Search + sort share one row on phones too. */}
           <div className="flex flex-row items-center gap-2 sm:gap-3">
             <div className="relative min-w-0 flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder={t("searchPools")} value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+              <Input placeholder={t("searchPools")} value={search} onChange={(e) => setSearch(e.target.value)} aria-label={t("searchPools")} className="pl-9" />
             </div>
             <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortKey)}>
               <SelectTrigger className="w-[10.5rem] shrink-0 sm:w-[200px]" aria-label={t("sortBy")}>
@@ -307,7 +312,7 @@ function PoolCard({
           </div>
         </div>
 
-        <div className="flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap text-xs text-muted-foreground [&>*]:shrink-0">
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs text-muted-foreground [&>*]:shrink-0">
           <Users className="h-3.5 w-3.5" aria-hidden />
           <span className="font-medium text-foreground">{t("candidateCount", { count })}</span>
           <span aria-hidden>·</span>

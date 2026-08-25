@@ -338,7 +338,7 @@ export default function AdminInvoicesPage() {
             <div className="rounded-2xl border border-rose-200 bg-rose-50/90 px-4 py-3 text-sm text-rose-700">{errorMessage}</div>
           )}
 
-          <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-[24px]">
+          <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-3xl">
             <div className="flex flex-col gap-2 border-b border-border/80 panel-head">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("invoiceLedger")}</p>
               <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
@@ -377,7 +377,7 @@ export default function AdminInvoicesPage() {
                   ) : invoices.length === 0 ? (
                     <TableRow className="border-border/70 hover:bg-transparent">
                       <TableCell colSpan={12} className="px-6 py-14 text-center">
-                        <div className="flex flex-col items-center gap-3"><div className="workspace-muted-pill rounded-[20px] p-3"><Inbox className="h-6 w-6" /></div><div><p className="text-sm font-semibold">{t("noInvoicesFound")}</p><p className="mt-1 text-sm text-muted-foreground">{t("noInvoicesDescription")}</p></div></div>
+                        <div className="flex flex-col items-center gap-3"><div className="workspace-muted-pill rounded-3xl p-3"><Inbox className="h-6 w-6" /></div><div><p className="text-sm font-semibold">{t("noInvoicesFound")}</p><p className="mt-1 text-sm text-muted-foreground">{t("noInvoicesDescription")}</p></div></div>
                       </TableCell>
                     </TableRow>
                   ) : invoices.map((inv) => {

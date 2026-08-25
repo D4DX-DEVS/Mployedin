@@ -212,7 +212,7 @@ export default function AgentJobSeekersPage() {
       <CandidateDataNotice variant="candidateList" />
 
       {/* Search and Filters */}
-      <section className="workspace-panel-surface rounded-[28px] panel-body">
+      <section className="workspace-panel-surface rounded-3xl panel-body">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("browseProfilesLabel")}</p>
           <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("searchTitle")}</h2>
@@ -375,7 +375,7 @@ export default function AgentJobSeekersPage() {
       </section>
 
       {/* Results table */}
-      <section className="workspace-panel-surface rounded-[28px] panel-body">
+      <section className="workspace-panel-surface rounded-3xl panel-body">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("resultsLabel")}</p>
@@ -384,7 +384,7 @@ export default function AgentJobSeekersPage() {
           <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium"><ArrowRight className="h-3.5 w-3.5 text-primary" />{t("resultsPagination", { total: pagination.total, pages: pagination.totalPages })}</div>
         </div>
 
-        <div className="workspace-subtle-surface mt-5 overflow-hidden rounded-[24px]">
+        <div className="workspace-subtle-surface mt-5 overflow-hidden rounded-3xl">
         <Table>
           <TableHeader>
             <TableRow className="workspace-subtle-surface hover:bg-secondary/70">

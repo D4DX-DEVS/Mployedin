@@ -125,7 +125,7 @@ export function AIChatDraftsCard({ locale, variant = "card", onCountChange }: AI
 
   // ── Card variant (employer dashboard) ───────────────────────────────────
   return (
-    <section className="workspace-panel-surface panel-body flex flex-col rounded-[24px]">
+    <section className="workspace-panel-surface panel-body flex flex-col rounded-3xl">
       {ConfirmDialogNode}
       <div className="mb-3 flex items-center gap-2.5">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-600">

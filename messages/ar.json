@@ -4381,7 +4381,8 @@
     "previous": "السابق",
     "next": "التالي",
     "pageOf": "صفحة {page} من {pages}",
-    "perPage": "لكل صفحة"
+    "perPage": "لكل صفحة",
+    "viewPosterLabel": "عرض ملصق {job}"
   },
   "employerMessages": {
     "title": "الرسائل",
@@ -6444,7 +6445,8 @@
     "errors": {
       "fetchFailed": "تعذر تحميل التهيئة. يرجى المحاولة مرة أخرى.",
       "updateFailed": "تعذر تحديث التهيئة. يرجى المحاولة مرة أخرى."
-    }
+    },
+    "removeDocumentLabel": "إزالة {document}"
   },
   "jobSeekerOnboarding": {
     "title": "التهيئة الخاصة بك",
@@ -8415,7 +8417,8 @@
     "quickPost": "نشر سريع",
     "viewAllJobs": "عرض جميع الوظائف",
     "toastFormFailed": "تعذر فتح نموذج الوظيفة",
-    "toastDraftUnavailable": "مسودة الاستخراج هذه لم تعد متاحة — ربما انتهت صلاحيتها أو تم تجاهلها."
+    "toastDraftUnavailable": "مسودة الاستخراج هذه لم تعد متاحة — ربما انتهت صلاحيتها أو تم تجاهلها.",
+    "removeJobLabel": "إزالة {job}"
   },
   "employerJobDetail": {
     "loadError": "تعذر تحميل هذه الوظيفة. يرجى المحاولة مرة أخرى.",
@@ -14349,7 +14352,8 @@
     "redFlag": "علامة حمراء",
     "copied": "تم النسخ!",
     "copyAll": "نسخ الكل",
-    "print": "طباعة"
+    "print": "طباعة",
+    "closeLabel": "إغلاق أسئلة المقابلة لـ {job}"
   },
   "logoUpload": {
     "onlyJpegPngWebpAllowed": "يُسمح فقط بصور JPEG و PNG و WebP.",

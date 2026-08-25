@@ -485,7 +485,7 @@ export default function AdminWebhooksPage() {
         }
       />
 
-      <section className="workspace-panel-surface overflow-hidden rounded-[20px] panel-body">
+      <section className="workspace-panel-surface overflow-hidden rounded-3xl panel-body">
 
         {/* Stats Row */}
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -538,7 +538,7 @@ export default function AdminWebhooksPage() {
 
         {/* ─── Expandable Filters ─────────────────────────────────────── */}
         {showFilters && (
-          <div className="mt-4 space-y-3 rounded-[20px] border border-border/30 bg-background/40 p-4 backdrop-blur-sm">
+          <div className="mt-4 space-y-3 rounded-3xl border border-border/30 bg-background/40 p-4 backdrop-blur-sm">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
@@ -579,7 +579,7 @@ export default function AdminWebhooksPage() {
       </section>
 
       {/* ─── Table ────────────────────────────────────────────────────── */}
-      <section className="workspace-panel-surface overflow-hidden rounded-[28px]">
+      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>

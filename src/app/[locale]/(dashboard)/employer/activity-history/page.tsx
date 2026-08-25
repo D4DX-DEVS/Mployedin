@@ -230,7 +230,7 @@ export default function ActivityHistoryPage() {
       {/* Activity List */}
       <section className="space-y-3">
         {error ? (
-          <div className="flex flex-col items-center justify-center rounded-[28px] border border-dashed border-border py-20 text-center">
+          <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-border py-20 text-center">
             <p className="text-sm font-semibold text-destructive">{tc("somethingWentWrong")}</p>
             <Button variant="outline" size="sm" className="mt-4 rounded-xl" onClick={handleRefresh}>
               {tc("tryAgain")}
@@ -241,12 +241,12 @@ export default function ActivityHistoryPage() {
             {[1, 2, 3, 4, 5].map((i) => (
               <div
                 key={i}
-                className="workspace-panel-surface h-[92px] animate-pulse rounded-[20px]"
+                className="workspace-panel-surface h-[92px] animate-pulse rounded-3xl"
               />
             ))}
           </div>
         ) : entries.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-[28px] border border-dashed border-border py-20 text-center">
+          <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-border py-20 text-center">
             <History className="h-14 w-14 text-muted-foreground/30 mb-5" />
             <h3 className="text-lg font-semibold text-foreground">{t("noActivity")}</h3>
             <p className="text-sm text-muted-foreground mt-2 max-w-md">{t("noActivityDescription")}</p>
@@ -263,7 +263,7 @@ export default function ActivityHistoryPage() {
             return (
               <div
                 key={entry.id}
-                className="workspace-panel-surface flex items-start gap-4 rounded-[20px] transition-all hover:shadow-[0_6px_20px_-6px_rgba(15,23,42,0.1)] panel-body"
+                className="workspace-panel-surface flex items-start gap-4 rounded-3xl transition-all hover:shadow-[0_6px_20px_-6px_rgba(15,23,42,0.1)] panel-body"
               >
                 {/* Action Icon */}
                 <div className={cn(
@@ -323,7 +323,7 @@ export default function ActivityHistoryPage() {
 
       {/* Pagination */}
       {pagination.totalPages > 1 && (
-        <div className="flex items-center justify-between rounded-[20px] border border-border bg-card/90 px-5 py-3.5 backdrop-blur-sm">
+        <div className="flex items-center justify-between rounded-3xl border border-border bg-card/90 px-5 py-3.5 backdrop-blur-sm">
           <p className="text-sm text-muted-foreground">
             {t("showingRange", {
               from: String((pagination.page - 1) * pagination.limit + 1),

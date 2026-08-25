@@ -144,9 +144,9 @@ function SectionHeader({ icon: Icon, title, description }: { icon: typeof Buildi
   );
 }
 
-function FieldLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
+function FieldLabel({ children, required, htmlFor }: { children: React.ReactNode; required?: boolean; htmlFor?: string }) {
   return (
-    <label className="text-[13px] font-medium text-foreground/80 mb-1.5 block">
+    <label htmlFor={htmlFor} className="text-[13px] font-medium text-foreground/80 mb-1.5 block">
       {children}
       {required && <span className="text-destructive ml-0.5">*</span>}
     </label>
@@ -582,8 +582,9 @@ function CompanySettingsPage() {
                   <div className="p-6 space-y-3 sm:space-y-5">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div data-field="companyName" className="transition-all duration-300">
-                        <FieldLabel required>{t("companyName")}</FieldLabel>
+                        <FieldLabel required htmlFor="companyName">{t("companyName")}</FieldLabel>
                         <Input
+                          id="companyName"
                           value={form.companyName}
                           onChange={(e) => setField("companyName", e.target.value)}
                           placeholder={t("companyNamePlaceholder")}
@@ -591,9 +592,10 @@ function CompanySettingsPage() {
                         />
                       </div>
                       <div data-field="industry" className="transition-all duration-300">
-                        <FieldLabel>{t("industry")}</FieldLabel>
+                        <FieldLabel htmlFor="company-industry">{t("industry")}</FieldLabel>
                         {/* Options come from admin → Platform Data → Industries (merged with seeds) */}
                         <Autocomplete
+                          id="company-industry"
                           type="industries"
                           value={form.industry}
                           onChange={(v) => setField("industry", v)}
@@ -613,8 +615,9 @@ function CompanySettingsPage() {
                         />
                       </div>
                       <div>
-                        <FieldLabel>{t("foundedYear")}</FieldLabel>
+                        <FieldLabel htmlFor="foundedYear">{t("foundedYear")}</FieldLabel>
                         <Input
+                          id="foundedYear"
                           type="number"
                           placeholder={t("foundedYearPlaceholder")}
                           min={1800}
@@ -624,8 +627,9 @@ function CompanySettingsPage() {
                         />
                       </div>
                       <div>
-                        <FieldLabel>{t("yourTitle")}</FieldLabel>
+                        <FieldLabel htmlFor="designation">{t("yourTitle")}</FieldLabel>
                         <Input
+                          id="designation"
                           placeholder={t("yourTitlePlaceholder")}
                           value={form.designation}
                           onChange={(e) => setField("designation", e.target.value)}
@@ -635,8 +639,9 @@ function CompanySettingsPage() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div>
-                        <FieldLabel>{t("address")}</FieldLabel>
+                        <FieldLabel htmlFor="address">{t("address")}</FieldLabel>
                         <Input
+                          id="address"
                           placeholder={t("addressPlaceholder")}
                           value={form.address}
                           onChange={(e) => setField("address", e.target.value)}
@@ -656,16 +661,18 @@ function CompanySettingsPage() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div>
-                        <FieldLabel>{t("registrationNo")}</FieldLabel>
+                        <FieldLabel htmlFor="registrationNo">{t("registrationNo")}</FieldLabel>
                         <Input
+                          id="registrationNo"
                           placeholder={t("registrationNoPlaceholder")}
                           value={form.registrationNo}
                           onChange={(e) => setField("registrationNo", e.target.value)}
                         />
                       </div>
                       <div>
-                        <FieldLabel>{t("taxId")}</FieldLabel>
+                        <FieldLabel htmlFor="taxId">{t("taxId")}</FieldLabel>
                         <Input
+                          id="taxId"
                           placeholder={t("taxIdPlaceholder")}
                           value={form.taxId}
                           onChange={(e) => setField("taxId", e.target.value)}
@@ -677,8 +684,9 @@ function CompanySettingsPage() {
                     <Separator />
 
                     <div>
-                      <FieldLabel>{t("aboutCompany")}</FieldLabel>
+                      <FieldLabel htmlFor="description">{t("aboutCompany")}</FieldLabel>
                       <Textarea
+                        id="description"
                         placeholder={t("aboutCompanyPlaceholder")}
                         value={form.description}
                         onChange={(e) => setField("description", e.target.value)}
@@ -707,10 +715,11 @@ function CompanySettingsPage() {
                   <div className="p-6 space-y-3 sm:space-y-5">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div data-field="companyEmail" className="transition-all duration-300">
-                        <FieldLabel required>{t("companyEmail")}</FieldLabel>
+                        <FieldLabel required htmlFor="companyEmail">{t("companyEmail")}</FieldLabel>
                         <div className="relative">
                           <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
                           <Input
+                            id="companyEmail"
                             type="email"
                             className="pl-10"
                             value={form.companyEmail}
@@ -721,10 +730,11 @@ function CompanySettingsPage() {
                         </div>
                       </div>
                       <div data-field="phone" className="transition-all duration-300">
-                        <FieldLabel required>{t("phone")}</FieldLabel>
+                        <FieldLabel required htmlFor="phone">{t("phone")}</FieldLabel>
                         <div className="relative">
                           <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
                           <Input
+                            id="phone"
                             type="tel"
                             className="pl-10"
                             value={form.phone}
@@ -737,10 +747,11 @@ function CompanySettingsPage() {
                     </div>
 
                     <div data-field="website" className="transition-all duration-300">
-                      <FieldLabel>{t("website")}</FieldLabel>
+                      <FieldLabel htmlFor="website">{t("website")}</FieldLabel>
                       <div className="relative">
                         <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
                         <Input
+                          id="website"
                           type="text"
                           className="pl-10"
                           placeholder={t("websitePlaceholder")}
@@ -757,10 +768,11 @@ function CompanySettingsPage() {
                   <div className="p-6">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div>
-                        <FieldLabel>{t("linkedin")}</FieldLabel>
+                        <FieldLabel htmlFor="linkedin">{t("linkedin")}</FieldLabel>
                         <div className="relative">
                           <Linkedin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#0077B5]" />
                           <Input
+                            id="linkedin"
                             type="text"
                             className="pl-10"
                             placeholder={t("linkedinPlaceholder")}
@@ -770,10 +782,11 @@ function CompanySettingsPage() {
                         </div>
                       </div>
                       <div>
-                        <FieldLabel>{t("twitter")}</FieldLabel>
+                        <FieldLabel htmlFor="twitter">{t("twitter")}</FieldLabel>
                         <div className="relative">
                           <Twitter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#1DA1F2]" />
                           <Input
+                            id="twitter"
                             type="text"
                             className="pl-10"
                             placeholder={t("twitterPlaceholder")}
@@ -783,10 +796,11 @@ function CompanySettingsPage() {
                         </div>
                       </div>
                       <div>
-                        <FieldLabel>{t("facebook")}</FieldLabel>
+                        <FieldLabel htmlFor="facebook">{t("facebook")}</FieldLabel>
                         <div className="relative">
                           <Facebook className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#1877F2]" />
                           <Input
+                            id="facebook"
                             type="text"
                             className="pl-10"
                             placeholder={t("facebookPlaceholder")}
@@ -796,10 +810,11 @@ function CompanySettingsPage() {
                         </div>
                       </div>
                       <div>
-                        <FieldLabel>{t("instagram")}</FieldLabel>
+                        <FieldLabel htmlFor="instagram">{t("instagram")}</FieldLabel>
                         <div className="relative">
                           <Instagram className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#E4405F]" />
                           <Input
+                            id="instagram"
                             type="text"
                             className="pl-10"
                             placeholder={t("instagramPlaceholder")}
@@ -843,10 +858,11 @@ function CompanySettingsPage() {
                   </div>
 
                   <div>
-                    <FieldLabel>{t("preferredHiringLocations")}</FieldLabel>
+                    <FieldLabel htmlFor="preferredLocations">{t("preferredHiringLocations")}</FieldLabel>
                     <div className="relative">
                       <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
                       <Input
+                        id="preferredLocations"
                         className="pl-10"
                         placeholder={t("preferredLocationsPlaceholder")}
                         value={form.preferredLocations}

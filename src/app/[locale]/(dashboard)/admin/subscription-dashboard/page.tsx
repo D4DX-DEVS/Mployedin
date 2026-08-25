@@ -60,7 +60,7 @@ export default function AdminSubscriptionDashboardPage() {
   if (isLoading) {
     return (
       <div className="page-container">
-        <div className="h-32 animate-pulse rounded-[28px] bg-background/70" />
+        <div className="h-32 animate-pulse rounded-3xl bg-background/70" />
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="h-24 animate-pulse rounded-2xl bg-background/70" />

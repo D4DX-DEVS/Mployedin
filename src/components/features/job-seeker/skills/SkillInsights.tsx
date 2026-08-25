@@ -23,7 +23,7 @@ export function SkillInsights({ jobId }: SkillInsightsProps) {
 
   if (isLoading) {
     return (
-      <div className="animate-pulse space-y-3 rounded-xl sm:rounded-[28px] border border-border/60 bg-card p-4 sm:p-6">
+      <div className="animate-pulse space-y-3 rounded-xl sm:rounded-3xl border border-border/60 bg-card p-4 sm:p-6">
         <div className="h-4 w-32 rounded bg-muted" />
         <div className="h-3 w-48 rounded bg-muted" />
         <div className="flex gap-2">
@@ -40,7 +40,7 @@ export function SkillInsights({ jobId }: SkillInsightsProps) {
   const matchCount = data.matchedSkills.length + data.confirmedSkills.length;
 
   return (
-    <section className="card-base rounded-xl sm:rounded-[28px] panel-body">
+    <section className="card-base rounded-xl sm:rounded-3xl panel-body">
       <div className="flex items-center gap-2">
         <Lightbulb className="h-4 w-4 text-amber-500" />
         <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">

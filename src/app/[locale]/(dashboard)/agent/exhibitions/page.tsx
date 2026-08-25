@@ -504,7 +504,7 @@ export default function AgentExhibitionsPage() {
         />
       </DashboardPageHeader>
 
-      <section className="workspace-panel-surface rounded-[28px] panel-body">
+      <section className="workspace-panel-surface rounded-3xl panel-body">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Your requests</p>
           <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Request history</h2>
@@ -518,14 +518,14 @@ export default function AgentExhibitionsPage() {
         </div>
       ) : items.length === 0 ? (
         <div className="workspace-empty-state flex flex-col items-center gap-3 px-6 py-14 text-center">
-          <div className="workspace-muted-pill rounded-[20px] p-3"><Inbox className="h-8 w-8 text-muted-foreground" /></div>
+          <div className="workspace-muted-pill rounded-3xl p-3"><Inbox className="h-8 w-8 text-muted-foreground" /></div>
           <p className="text-sm font-semibold text-foreground">{t("noRequests")}</p>
           <Button variant="outline" className="mt-2 rounded-xl" onClick={openNewRequest}>
             <Plus className="mr-2 h-4 w-4" /> Create your first request
           </Button>
         </div>
       ) : (
-        <div className="workspace-panel-surface overflow-hidden rounded-[24px]">
+        <div className="workspace-panel-surface overflow-hidden rounded-3xl">
           <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>

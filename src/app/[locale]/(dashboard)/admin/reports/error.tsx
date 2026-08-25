@@ -20,7 +20,7 @@ export default function AdminReportsError({
 
   return (
     <div className="page-container flex min-h-[60vh] items-center justify-center">
-      <div className="workspace-panel-surface flex max-w-md flex-col items-center gap-4 rounded-[28px] p-8 text-center">
+      <div className="workspace-panel-surface flex max-w-md flex-col items-center gap-4 rounded-3xl p-8 text-center">
         <div className="workspace-tone-amber rounded-full p-3">
           <AlertTriangle className="h-6 w-6" />
         </div>

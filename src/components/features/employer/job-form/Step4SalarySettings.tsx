@@ -196,6 +196,8 @@ export function Step4SalarySettings() {
                     {...register("salary.min", { valueAsNumber: true })}
                     className={cn(errors.salary && "border-destructive")}
                     placeholder="0"
+                    aria-invalid={!!(errors.salary?.min || errors.salary?.message)}
+                    aria-describedby={errors.salary?.min || errors.salary?.message ? "salary-error" : undefined}
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -210,6 +212,8 @@ export function Step4SalarySettings() {
                     {...register("salary.max", { valueAsNumber: true })}
                     className={cn(errors.salary && "border-destructive")}
                     placeholder="0"
+                    aria-invalid={!!(errors.salary?.max || errors.salary?.message)}
+                    aria-describedby={errors.salary?.max || errors.salary?.message ? "salary-error" : undefined}
                   />
                 </div>
               </div>
@@ -229,7 +233,7 @@ export function Step4SalarySettings() {
                   string, so a negative minimum was reported as the wrong fault.
                   Prefer the actual field message. */}
               {errors.salary && (
-                <p className="text-xs text-destructive">
+                <p id="salary-error" className="text-xs text-destructive">
                   {errors.salary.min?.message ??
                     errors.salary.max?.message ??
                     errors.salary.message ??

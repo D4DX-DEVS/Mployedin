@@ -185,13 +185,13 @@ export default async function JobSeekerCompanyPage({ params }: PageProps) {
         </div>
 
         <div className="mx-auto max-w-6xl px-4 py-5 sm:py-8">
-          <section className="overflow-hidden rounded-lg sm:rounded-[30px] border border-border/60 bg-gradient-to-br from-card via-card to-primary/[0.05] shadow-[0_20px_60px_rgba(15,23,42,0.06)]">
+          <section className="overflow-hidden rounded-lg sm:rounded-3xl border border-border/60 bg-gradient-to-br from-card via-card to-primary/[0.05] shadow-[0_20px_60px_rgba(15,23,42,0.06)]">
             <div className="h-20 sm:h-28 md:h-36 bg-[radial-gradient(circle_at_top_left,_rgba(37,99,235,0.24),_transparent_40%),linear-gradient(135deg,_rgba(15,23,42,0.08),_rgba(37,99,235,0.12))]" />
 
             <div className="px-4 pb-4 sm:px-6 sm:pb-6 md:px-8 md:pb-8">
               <div className="-mt-12 flex flex-col gap-4 sm:-mt-14 md:-mt-16 sm:flex-row sm:items-end sm:justify-between sm:gap-5">
                 <div className="flex items-end gap-3 sm:gap-4">
-                  <div className="flex h-20 w-20 sm:h-24 sm:w-24 md:h-28 md:w-28 items-center justify-center overflow-hidden rounded-xl sm:rounded-[26px] border border-border/70 bg-background text-xl sm:text-2xl font-semibold text-foreground shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
+                  <div className="flex h-20 w-20 sm:h-24 sm:w-24 md:h-28 md:w-28 items-center justify-center overflow-hidden rounded-xl sm:rounded-3xl border border-border/70 bg-background text-xl sm:text-2xl font-semibold text-foreground shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
                     {employer.logo ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={employer.logo} alt={`${employer.companyName} logo`} className="h-full w-full object-cover" />
@@ -257,7 +257,7 @@ export default async function JobSeekerCompanyPage({ params }: PageProps) {
 
           <div className="mt-5 sm:mt-6 grid gap-5 sm:gap-6 lg:grid-cols-[minmax(0,1.7fr)_320px]">
             <div className="space-y-5 sm:space-y-6">
-              <section className="card-base rounded-lg sm:rounded-[28px] panel-body">
+              <section className="card-base rounded-lg sm:rounded-3xl panel-body">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("aboutSection")}</div>
                 <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">{t("whatCompanyHiring")}</h2>
                 <p className="mt-4 text-sm leading-7 text-muted-foreground">
@@ -265,7 +265,7 @@ export default async function JobSeekerCompanyPage({ params }: PageProps) {
                 </p>
               </section>
 
-              <section className="card-base rounded-lg sm:rounded-[28px] panel-body">
+              <section className="card-base rounded-lg sm:rounded-3xl panel-body">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("openRoles")}</div>
@@ -288,7 +288,7 @@ export default async function JobSeekerCompanyPage({ params }: PageProps) {
                         <Link
                           key={job._id}
                           href={`/${locale}/job-seeker/jobs/${job._id}`}
-                          className="group rounded-lg sm:rounded-[22px] border border-border/70 bg-[linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96))] p-3 sm:p-4 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_20px_45px_-34px_rgba(37,99,235,0.18)]"
+                          className="group rounded-lg sm:rounded-3xl border border-border/70 bg-[linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96))] p-3 sm:p-4 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_20px_45px_-34px_rgba(37,99,235,0.18)]"
                         >
                           <p className="line-clamp-2 text-base font-semibold text-foreground transition-colors group-hover:text-primary">
                             {job.title}
@@ -319,7 +319,7 @@ export default async function JobSeekerCompanyPage({ params }: PageProps) {
                     })}
                   </div>
                 ) : (
-                  <div className="mt-5 rounded-lg sm:rounded-[22px] border border-border/70 bg-muted/20 px-4 py-5 text-sm text-muted-foreground">
+                  <div className="mt-5 rounded-lg sm:rounded-3xl border border-border/70 bg-muted/20 px-4 py-5 text-sm text-muted-foreground">
                     {t("noActiveJobs")}
                   </div>
                 )}
@@ -327,32 +327,32 @@ export default async function JobSeekerCompanyPage({ params }: PageProps) {
             </div>
 
             <div className="space-y-4 sm:space-y-5 lg:sticky lg:top-6 lg:self-start">
-              <section className="card-base rounded-lg sm:rounded-[28px] panel-body">
+              <section className="card-base rounded-lg sm:rounded-3xl panel-body">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("trustSignals")}</div>
                 <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">{t("companySnapshot")}</h3>
                 <div className="mt-4 space-y-3 text-sm text-muted-foreground">
-                  <div className="rounded-lg sm:rounded-[20px] border border-border/60 bg-muted/20 px-3 sm:px-4 py-2 sm:py-3">
+                  <div className="rounded-lg sm:rounded-3xl border border-border/60 bg-muted/20 px-3 sm:px-4 py-2 sm:py-3">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("verification")}</div>
                     <p className="mt-1 font-medium text-foreground">
                       {(employer.domainVerified || employer.isAgentVerified) ? t("verifiedEmployer") : t("verificationLevelLabel", { level: employer.verificationLevel ?? "basic" })}
                     </p>
                   </div>
                   {employer.responseTimeCommitment ? (
-                    <div className="rounded-lg sm:rounded-[20px] border border-border/60 bg-muted/20 px-3 sm:px-4 py-2 sm:py-3">
+                    <div className="rounded-lg sm:rounded-3xl border border-border/60 bg-muted/20 px-3 sm:px-4 py-2 sm:py-3">
                       <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("responseTime")}</div>
                       <p className="mt-1 font-medium text-foreground">
                         {t("typicallyResponds", { days: employer.responseTimeCommitment, plural: employer.responseTimeCommitment === 1 ? "" : "s" })}
                       </p>
                     </div>
                   ) : null}
-                  <div className="rounded-lg sm:rounded-[20px] border border-border/60 bg-muted/20 px-3 sm:px-4 py-2 sm:py-3">
+                  <div className="rounded-lg sm:rounded-3xl border border-border/60 bg-muted/20 px-3 sm:px-4 py-2 sm:py-3">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("hiringActivity")}</div>
                     <p className="mt-1 font-medium text-foreground">{activeJobs.length} {t("activeRolesOnPlatform", { plural: activeJobs.length === 1 ? "" : "s" })}</p>
                   </div>
                 </div>
               </section>
 
-              <section className="card-base rounded-lg sm:rounded-[28px] panel-body">
+              <section className="card-base rounded-lg sm:rounded-3xl panel-body">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("links")}</div>
                 <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">{t("exploreFurther")}</h3>
                 <div className="mt-4 space-y-3">
@@ -361,7 +361,7 @@ export default async function JobSeekerCompanyPage({ params }: PageProps) {
                       href={websiteUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center justify-between rounded-lg sm:rounded-[20px] border border-border/60 px-3 sm:px-4 py-2.5 sm:py-3 text-sm font-medium transition-colors hover:bg-muted/40"
+                      className="flex items-center justify-between rounded-lg sm:rounded-3xl border border-border/60 px-3 sm:px-4 py-2.5 sm:py-3 text-sm font-medium transition-colors hover:bg-muted/40"
                     >
                       <span>{t("companyWebsite")}</span>
                       <Globe className="h-4 w-4 text-muted-foreground" />
@@ -373,7 +373,7 @@ export default async function JobSeekerCompanyPage({ params }: PageProps) {
                       href={url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center justify-between rounded-lg sm:rounded-[20px] border border-border/60 px-3 sm:px-4 py-2.5 sm:py-3 text-sm font-medium transition-colors hover:bg-muted/40"
+                      className="flex items-center justify-between rounded-lg sm:rounded-3xl border border-border/60 px-3 sm:px-4 py-2.5 sm:py-3 text-sm font-medium transition-colors hover:bg-muted/40"
                     >
                       <span>{url.replace(/^https?:\/\//i, "")}</span>
                       <Globe className="h-4 w-4 text-muted-foreground" />
@@ -381,7 +381,7 @@ export default async function JobSeekerCompanyPage({ params }: PageProps) {
                   ))}
                   <Link
                     href={`/${locale}/job-seeker/jobs?employerId=${id}`}
-                    className="flex items-center justify-between rounded-lg sm:rounded-[20px] border border-border/60 px-3 sm:px-4 py-2.5 sm:py-3 text-sm font-medium transition-colors hover:bg-muted/40"
+                    className="flex items-center justify-between rounded-lg sm:rounded-3xl border border-border/60 px-3 sm:px-4 py-2.5 sm:py-3 text-sm font-medium transition-colors hover:bg-muted/40"
                   >
                     <span>{t("backToSearchEmployer")}</span>
                     <BriefcaseBusiness className="h-4 w-4 text-muted-foreground" />

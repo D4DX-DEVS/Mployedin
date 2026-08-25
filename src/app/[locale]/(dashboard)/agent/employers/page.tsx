@@ -276,13 +276,13 @@ export default function AgentEmployersPage() {
 
       {/* Referral link display — immediately visible after clicking "Get Referral Link" */}
       {referralError && (
-        <section className="rounded-[28px] border border-status-rejected/20 bg-status-rejected-bg p-4">
+        <section className="rounded-3xl border border-status-rejected/20 bg-status-rejected-bg p-4">
           <p className="text-sm text-status-rejected">{referralError}</p>
         </section>
       )}
 
       {referralData && (
-        <section className="workspace-panel-surface rounded-[28px] space-y-4 panel-body">
+        <section className="workspace-panel-surface rounded-3xl space-y-4 panel-body">
           {/* Link URL + Copy */}
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-sky-100 text-status-applied">
@@ -394,7 +394,7 @@ export default function AgentEmployersPage() {
         </section>
       )}
 
-      <section className="workspace-panel-surface rounded-[28px] panel-body">
+      <section className="workspace-panel-surface rounded-3xl panel-body">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("browseEmployersLabel")}</p>
@@ -418,7 +418,7 @@ export default function AgentEmployersPage() {
       {loading ? (
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="workspace-panel-surface space-y-4 overflow-hidden rounded-[28px] panel-body">
+            <div key={i} className="workspace-panel-surface space-y-4 overflow-hidden rounded-3xl panel-body">
               <div className="flex items-start gap-2">
                 <Skeleton className="h-11 w-11 shrink-0 rounded-2xl" />
                 <div className="min-w-0 flex-1 space-y-2">
@@ -438,7 +438,7 @@ export default function AgentEmployersPage() {
           ))}
         </section>
       ) : employers.length === 0 ? (
-        <section className="workspace-empty-state rounded-[28px] p-10 text-center">
+        <section className="workspace-empty-state rounded-3xl p-10 text-center">
           <Building2 className="mx-auto mb-3 h-10 w-10 text-muted-foreground/55" />
           <p className="text-sm font-medium text-foreground">{t("emptyStateTitle")}</p>
           <p className="mt-1 text-sm text-muted-foreground">{t("emptyStateDescription")}</p>
@@ -446,7 +446,7 @@ export default function AgentEmployersPage() {
       ) : (
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {employers.map((em) => (
-            <div key={em._id} className="workspace-panel-surface space-y-4 overflow-hidden rounded-[28px] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_26px_64px_-42px_rgba(2,132,199,0.32)] panel-body">
+            <div key={em._id} className="workspace-panel-surface space-y-4 overflow-hidden rounded-3xl transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_26px_64px_-42px_rgba(2,132,199,0.32)] panel-body">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="workspace-tone-sky flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl">

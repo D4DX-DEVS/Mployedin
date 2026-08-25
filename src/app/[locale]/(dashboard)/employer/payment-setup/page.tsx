@@ -104,7 +104,7 @@ export default function EmployerPaymentSetupPage() {
       />
 
       {/* Gateway Selection */}
-      <section className="workspace-panel-surface rounded-[28px] panel-body">
+      <section className="workspace-panel-surface rounded-3xl panel-body">
         <h2 className="text-lg font-semibold text-foreground">{t("chooseProvider")}</h2>
         <p className="mt-1 text-sm text-muted-foreground">{t("chooseProviderDesc")}</p>
 
@@ -134,7 +134,7 @@ export default function EmployerPaymentSetupPage() {
 
       {/* API Key Configuration */}
       {selectedGateway !== "none" && (
-        <section className="workspace-panel-surface rounded-[28px] space-y-4 panel-body">
+        <section className="workspace-panel-surface rounded-3xl space-y-4 panel-body">
           <div className="flex items-center gap-2">
             <Lock className="h-4 w-4 text-muted-foreground" />
             <h2 className="text-lg font-semibold text-foreground">{t("apiKeysTitle")}</h2>
@@ -180,7 +180,7 @@ export default function EmployerPaymentSetupPage() {
       )}
 
       {/* Info Note */}
-      <section className="workspace-panel-surface rounded-[28px] panel-body">
+      <section className="workspace-panel-surface rounded-3xl panel-body">
         <div className="flex items-start gap-3">
           <Shield className="mt-0.5 h-5 w-5 text-muted-foreground" />
           <div>

@@ -11,7 +11,7 @@ export default async function JobSeekerLayout({
   await requireRole(locale, ["job_seeker", "admin"]);
   return (
     <div className="w-full min-w-0">
-      <div className="job-seeker-route-content mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+      <div className="job-seeker-route-content">
         {children}
       </div>
     </div>

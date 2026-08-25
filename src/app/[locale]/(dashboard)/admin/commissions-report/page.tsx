@@ -237,7 +237,7 @@ export default function AdminCommissionsReportPage() {
 
       {/* ── Monthly Trend Chart + Type Breakdown ── */}
       <div className="grid gap-4 lg:grid-cols-3">
-        <section className="lg:col-span-2 workspace-panel-surface rounded-[28px] panel-body">
+        <section className="lg:col-span-2 workspace-panel-surface rounded-3xl panel-body">
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("monthlyTrendTitle", { year: yearFilter })}</h2>
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
@@ -253,7 +253,7 @@ export default function AdminCommissionsReportPage() {
           </ResponsiveContainer>
         </section>
 
-        <section className="workspace-panel-surface rounded-[28px] panel-body">
+        <section className="workspace-panel-surface rounded-3xl panel-body">
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("byTypeTitle")}</h2>
           {pieData.length > 0 ? (
             <ResponsiveContainer width="100%" height={200}>
@@ -307,7 +307,7 @@ export default function AdminCommissionsReportPage() {
       )}
 
       {/* ── Agent Breakdown Table ── */}
-      <section className="workspace-panel-surface overflow-hidden rounded-[28px]">
+      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
         <div className="border-b px-4 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-muted-foreground" />

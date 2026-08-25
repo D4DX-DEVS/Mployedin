@@ -90,7 +90,7 @@ export function AIEmailDraftButton({ applicationId, candidateName, defaultContex
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[88vh] max-w-lg overflow-y-auto rounded-[24px] border-border bg-background p-0">
+        <DialogContent className="max-h-[88vh] max-w-lg overflow-y-auto rounded-3xl border-border bg-background p-0">
           <DialogHeader className="border-b border-border px-6 py-5">
             <div className="flex items-center gap-2">
               <Mail className="h-5 w-5 text-violet-500" />

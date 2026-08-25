@@ -223,7 +223,7 @@ export default function AgentTargetReportPage() {
   if (loading) {
     return (
       <div className="page-container">
-        <div className="h-20 w-full animate-pulse rounded-[20px] bg-muted/40" />
+        <div className="h-20 w-full animate-pulse rounded-3xl bg-muted/40" />
         <div className="grid gap-4 sm:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="h-28 animate-pulse rounded-2xl bg-muted/50" />

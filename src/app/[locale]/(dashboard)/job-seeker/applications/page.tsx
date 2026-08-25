@@ -187,12 +187,16 @@ export default function ApplicationsPage() {
   const activeApplicationsCount = applications.filter((application) => !TERMINAL_STATUSES.includes(application.status)).length;
 
   return (
-    /* max-sm:px-0 — the job-seeker layout already pads 16px; page-container's own
-       24px stacked on top of it and left rows only 304px wide on a 390px screen. */
-    <div className="page-container max-w-[1240px] pt-3 max-sm:px-0 md:pt-4 lg:pt-4">
+    /* The `max-sm:px-0` that used to sit here compensated for the job-seeker
+       role layout double-padding this page. That layout now yields its gutter
+       to `.page-container` (see globals.css "Job-seeker route frame"), so the
+       compensation would leave phones with no gutter at all.
+       max-w-[1240px] is deliberate: a narrower reading column for a single
+       list of application rows. */
+    <div className="page-container max-w-[1240px] pt-3 md:pt-4 lg:pt-4">
       {/* Flattened below sm — the outer shell around a list of cards read as a
           box-in-box on phones and ate horizontal room from every row. */}
-      <section className="card-base overflow-hidden rounded-[24px] border border-border/70 shadow-[0_8px_24px_rgba(15,23,42,0.05)] max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:shadow-none panel-body">
+      <section className="card-base overflow-hidden rounded-3xl border border-border/70 shadow-[0_8px_24px_rgba(15,23,42,0.05)] max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:shadow-none panel-body">
         <div className="border-b border-border/60 px-3.5 py-3 max-sm:px-0 sm:px-4 sm:py-3.5 lg:px-5 lg:py-4">
           <div className="flex flex-col gap-2.5">
             <div className="flex flex-col gap-1.5 lg:flex-row lg:items-center lg:justify-between">
@@ -501,7 +505,7 @@ function ApplicationCard({
 
   return (
     <>
-      <div className="card-base rounded-[18px] border border-border/70 px-3 py-2.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_12px_26px_rgba(15,23,42,0.06)] sm:px-3.5 sm:py-3">
+      <div className="card-base rounded-2xl border border-border/70 px-3 py-2.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_12px_26px_rgba(15,23,42,0.06)] sm:px-3.5 sm:py-3">
         <button
           type="button"
           className="group flex w-full items-center gap-2.5 text-left"
@@ -607,7 +611,7 @@ function ApplicationCard({
         {showDetails && hasExpandableDetails && (
           <div
             id={`application-details-${app._id}`}
-            className="mt-2 space-y-2 rounded-[16px] border border-border/60 bg-muted/10 p-2.5"
+            className="mt-2 space-y-2 rounded-2xl border border-border/60 bg-muted/10 p-2.5"
           >
             {recentStatuses.length > 0 && (
               <div className="flex flex-wrap items-center gap-2">
@@ -621,7 +625,7 @@ function ApplicationCard({
             )}
 
             {latestStatusEntry?.note && (
-              <div className="flex items-center gap-1.5 rounded-[18px] border border-border/60 bg-background/80 px-3 py-2 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1.5 rounded-2xl border border-border/60 bg-background/80 px-3 py-2 text-xs text-muted-foreground">
                 <Clock className="h-3.5 w-3.5 flex-shrink-0" />
                 {latestStatusEntry.note}
               </div>
@@ -629,7 +633,7 @@ function ApplicationCard({
 
             {/* Interview Details */}
             {app.latestInterview && (
-              <div className="rounded-[14px] border border-primary/20 bg-primary/5 px-3 py-2.5 space-y-1.5">
+              <div className="rounded-2xl border border-primary/20 bg-primary/5 px-3 py-2.5 space-y-1.5">
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
                   <Video className="h-3.5 w-3.5" />
                   {t("details.interview")}
@@ -689,7 +693,7 @@ function ApplicationCard({
 
             {/* Offer Details */}
             {app.latestOffer && (
-              <div className="rounded-[14px] border border-emerald-200 bg-emerald-50/50 px-3 py-2.5 space-y-1.5">
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 px-3 py-2.5 space-y-1.5">
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
                   <DollarSign className="h-3.5 w-3.5" />
                   {t("details.offer")}
@@ -729,7 +733,7 @@ function ApplicationCard({
 
             {/* Placement Details */}
             {app.placement && (
-              <div className="rounded-[14px] border border-blue-200 bg-blue-50/50 px-3 py-2.5 space-y-1.5">
+              <div className="rounded-2xl border border-blue-200 bg-blue-50/50 px-3 py-2.5 space-y-1.5">
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-blue-700">
                   <Briefcase className="h-3.5 w-3.5" />
                   {t("details.placement")}

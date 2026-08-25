@@ -337,10 +337,11 @@ export default function HiringPanelPage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">
+            <label htmlFor="reasoning-textarea" className="text-sm font-medium">
               {t("reasoning")}
             </label>
             <Textarea
+              id="reasoning-textarea"
               placeholder={t("reasoningPlaceholder")}
               value={reasoning}
               onChange={(e) => setReasoning(e.target.value)}

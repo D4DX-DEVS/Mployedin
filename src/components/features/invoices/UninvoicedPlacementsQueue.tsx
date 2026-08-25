@@ -367,7 +367,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                 <TableRow className="border-border/70 hover:bg-transparent">
                   <TableCell colSpan={10} className="px-6 py-14 text-center">
                     <div className="flex flex-col items-center gap-3">
-                      <div className="rounded-[20px] bg-emerald-50 p-3">
+                      <div className="rounded-3xl bg-emerald-50 p-3">
                         <FileText className="h-6 w-6 text-emerald-500" />
                       </div>
                       <div>

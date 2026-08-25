@@ -13,6 +13,7 @@ import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
+import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import { PageHero } from "@/components/shared/PageHero";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { toast } from "sonner";
@@ -227,6 +228,10 @@ export default function BackgroundChecksPage() {
         }
       />
 
+      {/* Privacy information at the point personal data is first shown, not
+          only behind a footer link. */}
+      <CandidateDataNotice variant="candidateList" />
+
       {loading ? (
         <div className="grid gap-3">
           {Array.from({ length: 5 }).map((_, i) => (
@@ -247,7 +252,7 @@ export default function BackgroundChecksPage() {
         </div>
       ) : (
         <>
-          <div className="workspace-panel-surface rounded-2xl sm:rounded-[28px] panel-body">
+          <div className="workspace-panel-surface rounded-2xl sm:rounded-3xl panel-body">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -256,6 +261,7 @@ export default function BackgroundChecksPage() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="pl-9 h-10 rounded-xl border-border bg-background"
+                  aria-label={t("searchPlaceholder")}
                 />
               </div>
               <div className="flex gap-2">

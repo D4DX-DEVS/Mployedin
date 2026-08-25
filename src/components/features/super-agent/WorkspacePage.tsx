@@ -119,7 +119,7 @@ export function SuperAgentMetricsGrid({ items }: { items: SuperAgentMetricItem[]
 
 export function SuperAgentSection({ eyebrow, title, description, actions, children, className }: SuperAgentSectionProps) {
   return (
-    <section className={cn("max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none workspace-panel-surface rounded-[28px] p-3 sm:p-4 lg:p-5", className)}>
+    <section className={cn("max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none workspace-panel-surface rounded-3xl p-3 sm:p-4 lg:p-5", className)}>
       <div className="flex flex-col gap-2 sm:gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           {eyebrow ? (
@@ -140,7 +140,7 @@ export function SuperAgentSection({ eyebrow, title, description, actions, childr
 
 export function SuperAgentDataTableShell({ children }: { children: ReactNode }) {
   return (
-    <div className="workspace-panel-surface overflow-hidden rounded-[24px]">
+    <div className="workspace-panel-surface overflow-hidden rounded-3xl">
       {children}
     </div>
   );
@@ -149,7 +149,7 @@ export function SuperAgentDataTableShell({ children }: { children: ReactNode }) 
 export function SuperAgentEmptyState({ icon, title, description }: SuperAgentEmptyStateProps) {
   return (
     <div className="workspace-empty-state flex flex-col items-center gap-3 px-6 py-14 text-center">
-      <div className="workspace-muted-pill rounded-[20px] p-3">{icon}</div>
+      <div className="workspace-muted-pill rounded-3xl p-3">{icon}</div>
       <div>
         <p className="text-sm font-semibold text-foreground">{title}</p>
         <p className="mt-1 text-sm text-muted-foreground">{description}</p>

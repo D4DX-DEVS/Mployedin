@@ -31,7 +31,6 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   const location = searchParams.get("location")?.trim();
   const availability = searchParams.get("availability")?.trim();
   const experienceYears = parseInt(searchParams.get("experienceYears") ?? "0");
-  const nationality = searchParams.get("nationality")?.trim();
   const skills = searchParams.get("skills")?.split(",").map((s) => s.trim()).filter(Boolean);
 
   const escape = (v: string) => v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -40,7 +39,8 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   const conditions: Record<string, unknown>[] = [{ profileVisibility: "visible" }];
 
   if (availability) conditions.push({ availabilityStatus: availability });
-  if (nationality) conditions.push({ nationality: new RegExp(escape(nationality), "i") });
+  // Nationality is a protected characteristic under the Equality Act 2010
+  // (s.9, race including national origin) — not offered as a sourcing filter.
   if (experienceYears > 0) conditions.push({ totalExperienceYears: { $gte: experienceYears } });
   if (skills && skills.length > 0) {
     conditions.push({ skills: { $in: skills.map((s) => new RegExp(escape(s), "i")) } });
@@ -67,7 +67,7 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   const [docs, total] = await Promise.all([
     JobSeeker.find(filter)
       .select(
-        "fullName currentLocation preferredLocations skills availabilityStatus profileCompleteness totalExperienceYears headline experience cv.originalUrl userId nationality"
+        "fullName currentLocation preferredLocations skills availabilityStatus profileCompleteness totalExperienceYears headline experience cv.originalUrl userId"
       )
       .populate({ path: "userId", select: "name avatar" })
       .sort({ profileCompleteness: -1, updatedAt: -1 })
@@ -84,7 +84,6 @@ async function handler(req: NextRequest, ctx: AuthContext) {
       fullName: (d.fullName as string) ?? user?.name,
       userId: user?._id ? { _id: String(user._id), name: user.name ?? "", avatar: user.avatar } : undefined,
       currentLocation: d.currentLocation,
-      nationality: d.nationality,
       skills: d.skills,
       availabilityStatus: d.availabilityStatus,
       profileCompleteness: d.profileCompleteness,

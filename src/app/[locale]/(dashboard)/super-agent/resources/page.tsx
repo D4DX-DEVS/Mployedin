@@ -109,7 +109,7 @@ export default function ResourceDownloadsPage() {
           {[1, 2, 3].map((i) => (<div key={i} className="h-48 animate-pulse rounded-2xl bg-background/70" />))}
         </div>
       ) : items.length === 0 ? (
-        <section className="workspace-panel-surface rounded-[28px] p-10 sm:p-14 text-center">
+        <section className="workspace-panel-surface rounded-3xl p-10 sm:p-14 text-center">
           <div className="flex flex-col items-center">
             <div className="workspace-glass-panel rounded-2xl p-4 mb-5">
               <Inbox className="h-8 w-8 text-muted-foreground/50" />

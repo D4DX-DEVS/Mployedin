@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -196,11 +197,13 @@ export default function UnifiedCandidatePage() {
     <div className="page-container">
       {/* Back + Header */}
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={() => router.push(`/${locale}/employer/candidates`)}>
-          <ArrowLeft className="h-4 w-4" />
+        <Button variant="ghost" size="sm" onClick={() => router.push(`/${locale}/employer/candidates`)} aria-label={t("goBack")}>
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         </Button>
         <PageHeader title={name} description={t("unifiedProfile")} />
       </div>
+
+      <CandidateDataNotice variant="candidateDetail" />
 
       {/* Profile Card */}
       <div className="card-base panel-body">

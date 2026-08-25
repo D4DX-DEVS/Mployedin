@@ -51,6 +51,23 @@ input[type="number"] {
   --font-arabic: var(--font-noto-arabic);
   --font-malayalam: var(--font-noto-malayalam);
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+
+  /* ── RADIUS SCALE ──────────────────────────────────────────────────────────
+     Four semantic tiers, one knob each. Before this pass the product carried
+     387 arbitrary `rounded-[Npx]` values across 10 distinct pixel sizes
+     (28/20/24/22/26/18/16/14/30/32) with no semantic meaning — measured
+     2026-08-25. They are now snapped onto these steps:
+
+       control  10px  --workspace-radius-control  small inputs, chips
+       card     12px  rounded-xl                  nested cards, list rows
+       panel    16px  rounded-2xl  (= --radius)   standard card / panel
+       surface  24px  rounded-3xl                 hero / major surface
+
+     `--radius-3xl` is the single knob for the surface tier: the old dominant
+     value was 28px, so set it to 1.75rem to restore that look everywhere at
+     once. Left at the Tailwind default so the 69 pre-existing `rounded-3xl`
+     call sites keep rendering exactly as they did. */
+  --radius-3xl: 1.5rem;
 }
 
 /* ═══════════════════════════════════════════════
@@ -1306,16 +1323,6 @@ body {
   min-width: 0;
 }
 
-/* Job-seeker pages historically had a role-layout gutter around a second
-   `.page-container`, doubling phone padding from 16px to 32px. Keep the role
-   gutter for legacy unwrapped pages, but let the shared page container own its
-   spacing whenever it is the direct route root. */
-.job-seeker-route-content:has(> .page-container) {
-  width: 100%;
-  max-width: none;
-  padding: 0;
-}
-
 /* Task-first dashboards keep closely related operational sections within one
    viewport on phones and tablets. Role dashboards can opt into this rhythm
    without adding competing `space-y-*` utilities to `.page-container`. */
@@ -1328,6 +1335,34 @@ body {
     --page-gap: 1.25rem;
   }
 }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Job-seeker route frame
+   ═══════════════════════════════════════════════════════════════════════════
+   The job-seeker role layout wraps every page in its own gutter, so the role
+   measured a different page frame from the rest of the product: 32px gutter /
+   1280px max-width, against 24px / 1400px everywhere else. Worse, the reset
+   that was meant to stop the gutter doubling around a nested `.page-container`
+   lived in `@layer components`, which loses to Tailwind's `@layer utilities`
+   (`lg:px-8`) — so it never applied and those pages rendered a 56px gutter.
+
+   These rules are deliberately UNLAYERED: unlayered CSS outranks every cascade
+   layer, so they beat the utilities on the wrapper without `!important`.
+   Measured 2026-08-25 across 8 job-seeker routes at 360-1440px.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.job-seeker-route-content {
+  width: 100%;
+  max-width: 1400px;
+  margin-inline: auto;
+  padding: var(--page-gutter);
+}
+
+/* When the page already renders the shared container, that container owns the
+   gutter and the wrapper contributes nothing. */
+.job-seeker-route-content:has(> .page-container) {
+  max-width: none;
+  padding: 0;
 }
 
 @layer components {
@@ -2629,3 +2664,5 @@ table.workspace-list-table tbody tr:focus-visible {
     white-space: normal;
   }
 }
+
+/* rhythm pass: 1787649926 */

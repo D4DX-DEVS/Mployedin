@@ -214,7 +214,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
 
   if (!session) {
     return (
-      <div className="space-y-3 rounded-[22px] border border-border/70 bg-muted/10 px-4 py-4">
+      <div className="space-y-3 rounded-3xl border border-border/70 bg-muted/10 px-4 py-4">
         <p className="text-sm font-semibold text-foreground">{t("quickApplyTitle")}</p>
         <p className="text-xs text-muted-foreground">{t("quickApplyHint")}</p>
 
@@ -282,7 +282,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
 
   if (applied) {
     return (
-      <div className="w-full rounded-[22px] border border-green-500/30 bg-green-500/10 px-4 py-4 text-center">
+      <div className="w-full rounded-3xl border border-green-500/30 bg-green-500/10 px-4 py-4 text-center">
         <p className="text-sm font-semibold text-green-600">✓ {t("applicationSubmitted")}</p>
         <p className="mt-1 text-xs text-muted-foreground">
           {t("sentProfile")}
@@ -431,7 +431,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
   return (
     <div className="space-y-4">
       {profile && (
-        <div className="space-y-2 rounded-[22px] border border-border/70 bg-muted/20 px-4 py-4 shadow-[0_12px_28px_rgba(15,23,42,0.04)]">
+        <div className="space-y-2 rounded-3xl border border-border/70 bg-muted/20 px-4 py-4 shadow-[0_12px_28px_rgba(15,23,42,0.04)]">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             {t("applyingAs")}
           </p>
@@ -463,7 +463,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
 
       {/* CV / Resume — choose saved or upload a modified version */}
       {profile && (
-        <div className="space-y-2 rounded-[22px] border border-border/70 bg-muted/10 px-4 py-4">
+        <div className="space-y-2 rounded-3xl border border-border/70 bg-muted/10 px-4 py-4">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             {t("profileCv")}
           </p>
@@ -523,7 +523,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
 
       {/* Additional documents (certificates, portfolio files, etc.) */}
       {profile && (
-        <div className="space-y-2 rounded-[22px] border border-border/70 bg-muted/10 px-4 py-4">
+        <div className="space-y-2 rounded-3xl border border-border/70 bg-muted/10 px-4 py-4">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             {t("additionalDocuments")}
           </p>
@@ -587,7 +587,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
 
       {/* Screening Questions */}
       {hasQuestions && (
-        <div className="space-y-3 rounded-[22px] border border-border/70 bg-muted/10 px-4 py-4">
+        <div className="space-y-3 rounded-3xl border border-border/70 bg-muted/10 px-4 py-4">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             {t("screeningQuestions")}
           </p>
@@ -722,7 +722,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
         </button>
         {showCoverLetter && (
           <textarea
-            className="textarea-field mt-2 min-h-[132px] rounded-[22px] border-border/70 bg-background px-4 py-3 text-sm shadow-none"
+            className="textarea-field mt-2 min-h-[132px] rounded-3xl border-border/70 bg-background px-4 py-3 text-sm shadow-none"
             rows={4}
             maxLength={2000}
             placeholder={`Why are you a great fit for ${jobTitle}?`}
@@ -817,7 +817,7 @@ function EasyApplySkillConfirm({ jobId }: { jobId: string }) {
   if (!currentSkill || index >= skills.length) {
     if (answeredCount === 0) return null;
     return (
-      <div className="rounded-[22px] border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
+      <div className="rounded-3xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
         <p className="text-xs font-semibold text-emerald-600">
           {t("skillsUpdated", { count: answeredCount })}
         </p>
@@ -828,7 +828,7 @@ function EasyApplySkillConfirm({ jobId }: { jobId: string }) {
   const remaining = skills.length - index;
 
   return (
-    <div className="space-y-3 rounded-[22px] border border-border/70 bg-muted/20 px-4 py-4 shadow-[0_12px_28px_rgba(15,23,42,0.04)]">
+    <div className="space-y-3 rounded-3xl border border-border/70 bg-muted/20 px-4 py-4 shadow-[0_12px_28px_rgba(15,23,42,0.04)]">
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
         {t("confirmSkills")}
       </p>

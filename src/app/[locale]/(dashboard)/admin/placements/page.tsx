@@ -319,7 +319,7 @@ export default function AdminPlacementsPage() {
 
         {/* AI Insights inline panel */}
         {aiInsights && (
-          <div className="mt-4 rounded-[20px] border border-sky-200/50 bg-sky-50/50 p-4">
+          <div className="mt-4 rounded-3xl border border-sky-200/50 bg-sky-50/50 p-4">
             <div className="mb-2 flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-status-applied" />
               <span className="text-sm font-semibold text-sky-800">{t("aiPlacementInsights")}</span>
@@ -330,7 +330,7 @@ export default function AdminPlacementsPage() {
 
         {/* ─── Expandable Filters ─────────────────────────────────────── */}
         {showFilters && (
-          <div className="mt-4 space-y-3 rounded-[20px] border border-border/30 bg-background/40 p-4 backdrop-blur-sm">
+          <div className="mt-4 space-y-3 rounded-3xl border border-border/30 bg-background/40 p-4 backdrop-blur-sm">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -437,7 +437,7 @@ export default function AdminPlacementsPage() {
       </DashboardPageHeader>
 
       {/* ─── Table ────────────────────────────────────────────────────── */}
-      <section className="workspace-panel-surface overflow-hidden rounded-[28px]">
+      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>

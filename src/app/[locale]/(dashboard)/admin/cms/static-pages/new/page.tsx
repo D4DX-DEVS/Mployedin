@@ -81,7 +81,7 @@ export default function NewStaticPage() {
         )}
 
         {/* Basic fields */}
-        <section className="workspace-panel-surface rounded-[28px] panel-body">
+        <section className="workspace-panel-surface rounded-3xl panel-body">
           <h2 className="text-lg font-semibold tracking-tight">{t("basicInfoHeading")}</h2>
           <div className="mt-4 grid gap-5 sm:grid-cols-2">
             <div className="space-y-2">
@@ -137,7 +137,7 @@ export default function NewStaticPage() {
         </section>
 
         {/* Body English */}
-        <section className="workspace-panel-surface rounded-[28px] panel-body">
+        <section className="workspace-panel-surface rounded-3xl panel-body">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold tracking-tight">
               {t("bodyEnglishHeading")} <span className="text-destructive">{t("bodyEnglishRequired")}</span>
@@ -190,7 +190,7 @@ export default function NewStaticPage() {
         </section>
 
         {/* Body Arabic */}
-        <section className="workspace-panel-surface rounded-[28px] panel-body">
+        <section className="workspace-panel-surface rounded-3xl panel-body">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold tracking-tight">{t("bodyArabicHeading")}</h2>
             <div className="flex items-center gap-1 rounded-lg border border-border bg-secondary/50 p-0.5">
@@ -241,7 +241,7 @@ export default function NewStaticPage() {
         </section>
 
         {/* Actions */}
-        <section className="workspace-panel-surface rounded-[28px] panel-body">
+        <section className="workspace-panel-surface rounded-3xl panel-body">
           <div className="flex items-center justify-end gap-3">
             <Button
               type="button"

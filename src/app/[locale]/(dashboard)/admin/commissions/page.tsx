@@ -470,7 +470,7 @@ export default function AdminCommissionsPage() {
         </div>
       ) : null}
 
-      <section className="workspace-panel-surface overflow-hidden rounded-[24px]">
+      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
         <div className="flex flex-col gap-2 border-b border-border/80 panel-head">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("commissionLedgerLabel")}</p>
           <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
@@ -506,7 +506,7 @@ export default function AdminCommissionsPage() {
                 <TableRow className="border-border/70 hover:bg-transparent">
                   <TableCell colSpan={6} className="px-6 py-14 text-center">
                     <div className="flex flex-col items-center gap-3 text-center">
-                      <div className="workspace-muted-pill rounded-[20px] p-3">
+                      <div className="workspace-muted-pill rounded-3xl p-3">
                         <Inbox className="h-6 w-6" />
                       </div>
                       <div>

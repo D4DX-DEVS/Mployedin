@@ -131,7 +131,7 @@ export function DraftJobsCard({ locale, variant = "card", onCountChange }: Draft
 
   // ── Card variant (employer dashboard) ───────────────────────────────────
   return (
-    <section className="workspace-panel-surface panel-body flex flex-col rounded-[24px]">
+    <section className="workspace-panel-surface panel-body flex flex-col rounded-3xl">
       {ConfirmDialogNode}
       <div className="mb-4 flex items-center gap-3">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600">

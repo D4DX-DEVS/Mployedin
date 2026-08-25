@@ -129,7 +129,7 @@ export default function AgentReportsPage() {
       {/* ─── KPI Cards with Trends ─── */}
       {analyticsLoading ? (
         <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => <div key={i} className="min-w-0 h-32 animate-pulse rounded-[24px] border border-border/70 bg-card/90" />)}
+          {Array.from({ length: 4 }).map((_, i) => <div key={i} className="min-w-0 h-32 animate-pulse rounded-3xl border border-border/70 bg-card/90" />)}
         </div>
       ) : analytics && (
         <>
@@ -140,7 +140,7 @@ export default function AgentReportsPage() {
               { label: t("kpiPlacements30d"), value: analytics.trends.placements.current, trend: analytics.trends.placements, icon: <TrendingUp className="h-5 w-5" />, tone: "workspace-tone-emerald" },
               { label: t("kpiInterviews30d"), value: analytics.trends.interviews.current, trend: analytics.trends.interviews, icon: <CalendarCheck2 className="h-5 w-5" />, tone: "workspace-tone-amber" },
             ].map((kpi) => (
-              <div key={kpi.label} className="min-w-0 workspace-glass-panel rounded-[24px] p-3 sm:p-4">
+              <div key={kpi.label} className="min-w-0 workspace-glass-panel rounded-3xl p-3 sm:p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{kpi.label}</p>
@@ -169,7 +169,7 @@ export default function AgentReportsPage() {
           </section>
 
           {/* ─── Lead Funnel ─── */}
-          <section className="workspace-panel-surface rounded-[28px] panel-body">
+          <section className="workspace-panel-surface rounded-3xl panel-body">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("leadFunnel")}</p>
             <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("pipelineStageDistribution")}</h2>
             <div className="mt-5 space-y-3">
@@ -198,7 +198,7 @@ export default function AgentReportsPage() {
           </section>
 
           {/* ─── Commission Summary ─── */}
-          <section className="workspace-panel-surface rounded-[28px] panel-body">
+          <section className="workspace-panel-surface rounded-3xl panel-body">
             <div className="flex items-center gap-2 mb-4">
               <CircleDollarSign className="h-4 w-4 text-primary" />
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("commissionSummary")}</p>
@@ -220,7 +220,7 @@ export default function AgentReportsPage() {
 
           {/* ─── Monthly Trends Table ─── */}
           {analytics.monthlyTrends.length > 0 && (
-            <section className="workspace-panel-surface rounded-[28px] panel-body">
+            <section className="workspace-panel-surface rounded-3xl panel-body">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("monthlyTrends")}</p>
               <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("sixMonthPerformance")}</h2>
               <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
@@ -261,7 +261,7 @@ export default function AgentReportsPage() {
       )}
 
       {/* ─── AI Report Section ─── */}
-      <section className="workspace-panel-surface rounded-[28px] panel-body">
+      <section className="workspace-panel-surface rounded-3xl panel-body">
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("aiPoweredReports")}</p>
         <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("generateCustomReports")}</h2>
         <p className="mt-1 text-sm text-muted-foreground">{t("reportsFromLiveData")}</p>
@@ -281,7 +281,7 @@ export default function AgentReportsPage() {
         </div>
       </section>
 
-      <section className="workspace-panel-surface space-y-4 rounded-[28px] panel-body">
+      <section className="workspace-panel-surface space-y-4 rounded-3xl panel-body">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
           <p className="text-sm font-semibold text-foreground">{t("customReport")}</p>
@@ -310,7 +310,7 @@ export default function AgentReportsPage() {
       )}
 
       {result && (
-        <section className="workspace-panel-surface space-y-4 rounded-[28px] panel-body">
+        <section className="workspace-panel-surface space-y-4 rounded-3xl panel-body">
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-primary">{t("reportGeneratedAt", { time: result.generatedAt })}</p>
             <button

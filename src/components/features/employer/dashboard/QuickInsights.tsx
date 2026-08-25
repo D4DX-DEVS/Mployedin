@@ -32,7 +32,7 @@ export function QuickInsights({ avgMatchScore, highMatchCount }: QuickInsightsPr
   ];
 
   return (
-    <section className="workspace-panel-surface flex h-full flex-col overflow-hidden rounded-[28px]">
+    <section className="workspace-panel-surface flex h-full flex-col overflow-hidden rounded-3xl">
       <div className="border-b border-border/60 px-3.5 py-3 sm:px-6 sm:py-4">
         <span className="inline-flex items-center gap-2 rounded-full border border-sky-100 bg-sky-50/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700">
           <Sparkles className="h-3.5 w-3.5" />

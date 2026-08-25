@@ -156,7 +156,7 @@ export default function MarketIntelligencePage() {
       {loading ? (
         <div className="space-y-3 sm:space-y-4">
           {Array.from({ length: 2 }).map((_, i) => (
-            <div key={i} className="rounded-[28px] border border-border/70 bg-card/95 p-5 space-y-3">
+            <div key={i} className="rounded-3xl border border-border/70 bg-card/95 p-5 space-y-3">
               <Skeleton className="h-5 w-40" />
               <Skeleton className="h-4 w-full" />
               <Skeleton className="h-4 w-full" />
@@ -189,7 +189,7 @@ export default function MarketIntelligencePage() {
                 };
 
                 return (
-                  <div key={i} className="rounded-[24px] border border-border/70 bg-card/95 p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.24)]">
+                  <div key={i} className="rounded-3xl border border-border/70 bg-card/95 p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.24)]">
                     <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                       {icons[insight.category] ?? <TrendingUp className="h-4 w-4" />}
                       <span className="capitalize">{insight.category}</span>

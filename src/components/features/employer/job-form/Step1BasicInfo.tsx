@@ -201,6 +201,8 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
               aria-autocomplete="list"
               aria-expanded={showSuggestions && titleSuggestions.length > 0}
               aria-controls={titleSuggestions.length > 0 ? suggestionsListId : undefined}
+              aria-invalid={!!errors.title}
+              aria-describedby={errors.title ? "job-title-error" : undefined}
               onFocus={() => titleSuggestions.length > 0 && setShowSuggestions(true)}
             />
             {fetchingSuggestions && (
@@ -252,7 +254,7 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
             {t("jobTitleHint")}
           </p>
           {errors.title && (
-            <p className="mt-1 text-xs text-destructive">{getTitleError()}</p>
+            <p id="job-title-error" className="mt-1 text-xs text-destructive">{getTitleError()}</p>
           )}
         </div>
 
@@ -290,8 +292,9 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
 
       {/* Duration (for internships/contracts) */}
       <div className="space-y-1.5">
-        <Label className="text-sm font-medium">{t("duration")} <span className="text-xs text-muted-foreground font-normal">({t("optional")})</span></Label>
+        <Label htmlFor="job-duration" className="text-sm font-medium">{t("duration")} <span className="text-xs text-muted-foreground font-normal">({t("optional")})</span></Label>
         <Input
+          id="job-duration"
           {...register("duration")}
           placeholder={t("durationPlaceholder")}
           maxLength={100}
@@ -349,6 +352,8 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
               id="location-country"
               options={COUNTRIES.map((country) => ({ value: country, label: getCountryLabel(country) }))}
               value={watch("location.country") ?? ""}
+              aria-invalid={!!errors.location?.country}
+              aria-describedby={errors.location?.country ? "location-country-error" : undefined}
               onValueChange={(v) => {
                 setValue("location.country", v, { shouldValidate: true });
                 // Auto-select currency based on country
@@ -366,7 +371,7 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
               placeholder={t("countryPlaceholder")}
             />
             {errors.location?.country && (
-              <p className="text-xs text-destructive">{t("validation.countryRequired")}</p>
+              <p id="location-country-error" className="text-xs text-destructive">{t("validation.countryRequired")}</p>
             )}
           </div>
 
@@ -380,11 +385,13 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
               {...register("location.city")}
               placeholder={t("cityPlaceholder")}
               className={cn(errors.location?.city && "border-destructive")}
+              aria-invalid={!!errors.location?.city}
+              aria-describedby={errors.location?.city ? "location-city-error" : undefined}
             />
             {errors.location?.city && (
               // Showing "City is required" for a filled-but-invalid city (e.g.
               // "12345") told the user the wrong thing. Prefer the real message.
-              <p className="text-xs text-destructive">
+              <p id="location-city-error" className="text-xs text-destructive">
                 {errors.location.city.message ?? t("validation.cityRequired")}
               </p>
             )}

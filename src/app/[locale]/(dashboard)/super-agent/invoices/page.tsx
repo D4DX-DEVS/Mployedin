@@ -228,7 +228,7 @@ export default function SuperAgentInvoicesPage() {
         <>
           {errorMessage && <div className="rounded-2xl border border-rose-200 bg-rose-50/90 px-4 py-3 text-sm text-rose-700">{errorMessage}</div>}
 
-          <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-[24px]">
+          <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-3xl">
             <div className="flex flex-col gap-2 border-b border-border/80 panel-head">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("ledgerLabel")}</p>
               <h3 className="text-lg font-semibold text-foreground">{t("tableTitle")}</h3>

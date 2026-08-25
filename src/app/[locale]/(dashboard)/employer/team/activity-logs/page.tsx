@@ -322,10 +322,11 @@ export default function TeamActivityLogsPage() {
         </div>
 
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">{t("action")}</label>
+          <label htmlFor="action-search" className="text-xs font-medium text-muted-foreground">{t("action")}</label>
           <div className="relative">
             <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
+              id="action-search"
               placeholder="e.g. job.create"
               value={action}
               onChange={(e) => {

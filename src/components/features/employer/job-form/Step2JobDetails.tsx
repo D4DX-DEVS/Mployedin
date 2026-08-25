@@ -336,12 +336,14 @@ export function Step2JobDetails() {
                 "min-h-[260px] resize-y text-sm leading-6",
                 errors.description && "border-destructive"
               )}
+              aria-invalid={!!errors.description}
+              aria-describedby={errors.description ? "description-error" : undefined}
             />
           )}
 
           <div className="flex items-center justify-between gap-3">
             {errors.description ? (
-              <p className="flex items-center gap-1 text-xs text-destructive">
+              <p id="description-error" className="flex items-center gap-1 text-xs text-destructive">
                 <AlertCircle className="w-3 h-3" />
                 {errors.description.message}
               </p>
