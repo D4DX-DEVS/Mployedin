@@ -176,7 +176,7 @@ export default function SuperAgentCommissionsReportPage() {
           { label: t("kpiGrandTotal"), value: loading ? "—" : s ? fmt(s.grandTotal, s.currency) : "—", helper: t("kpiGrandTotalHelper"), icon: <CircleDollarSign className="h-5 w-5" />, toneClassName: "workspace-tone-indigo" },
           { label: t("kpiMyOverride"), value: loading ? "—" : s ? fmt(s.overrideTotal, s.currency) : "—", helper: t("kpiMyOverrideHelper"), icon: <Layers className="h-5 w-5" />, toneClassName: "workspace-tone-violet" },
           { label: t("kpiTeamEarned"), value: loading ? "—" : s ? fmt(s.teamTotal, s.currency) : "—", helper: t("kpiTeamEarnedHelper"), icon: <Users className="h-5 w-5" />, toneClassName: "workspace-tone-sky" },
-          { label: tc("status"), value: loading ? "—" : s ? fmt(s.overridePending, s.currency) : "—", helper: t("kpiPendingHelper"), icon: <Clock className="h-5 w-5" />, toneClassName: "workspace-tone-amber" },
+          { label: t("kpiPending"), value: loading ? "—" : s ? fmt(s.overridePending, s.currency) : "—", helper: t("kpiPendingHelper"), icon: <Clock className="h-5 w-5" />, toneClassName: "workspace-tone-amber" },
           { label: t("kpiOverridePaid"), value: loading ? "—" : s ? fmt(s.overridePaid, s.currency) : "—", helper: t("kpiOverridePaidHelper"), icon: <Wallet className="h-5 w-5" />, toneClassName: "workspace-tone-emerald" },
         ]}
       />

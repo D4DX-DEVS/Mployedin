@@ -119,19 +119,25 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       $group: {
         _id: "$status",
         total: { $sum: "$amount" },
+        // Record count per status, alongside the amount. Clients showing
+        // "N pending" were counting the current page instead of the whole set.
+        count: { $sum: 1 },
         currency: { $first: "$currency" },
       },
     },
   ]);
 
   const summary: Record<string, unknown> = { pending: 0, approved: 0, paid: 0, disputed: 0, clawed_back: 0, currency: (currency && currency !== "all") ? currency : ((await SystemSettings.findOne().lean())?.defaultCurrency ?? "AED") };
+  const counts: Record<string, number> = { pending: 0, approved: 0, paid: 0, disputed: 0, clawed_back: 0 };
   for (const row of summaryAgg) {
     const s = row._id as string;
     if (s === "pending" || s === "approved" || s === "paid" || s === "disputed" || s === "clawed_back") {
       summary[s] = row.total;
+      counts[s] = row.count ?? 0;
       summary.currency = row.currency ?? summary.currency;
     }
   }
+  summary.counts = counts;
 
   return NextResponse.json({
     commissions,

@@ -161,7 +161,6 @@ export default function SuperAgentInvoicesPage() {
       <SuperAgentPageIntro
         title={t("heroTitle")}
         description={t("heroDescription")}
-        eyebrow={tc("superAgentWorkspace")}
         summaryTitle={t("summaryTitle")}
         summaryDescription={t("summaryDescription", { total: formatCount(total), paid: fmt(summary.totalPaid) })}
       >

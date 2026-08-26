@@ -143,9 +143,21 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 
   const total = items.length;
   const totalPages = Math.max(1, Math.ceil(total / limit));
+
+  // Aggregates over the whole scoped + filtered set, computed BEFORE the page
+  // slice. The client used to derive its KPI tiles from the returned page, so
+  // "Total agents" read 10 when the super agent had 57. Scoping is unchanged —
+  // `items` here is already restricted to this super agent's assigned agents.
+  const totals = {
+    agents: total,
+    leads: items.reduce((sum, a) => sum + (a.leadsCount ?? 0), 0),
+    conversions: items.reduce((sum, a) => sum + (a.conversions ?? 0), 0),
+    placements: items.reduce((sum, a) => sum + (a.placements ?? 0), 0),
+  };
+
   const pageItems = items.slice((page - 1) * limit, page * limit);
 
-  return NextResponse.json({ items: pageItems, total, page, totalPages, ...(facets ? { facets } : {}) });
+  return NextResponse.json({ items: pageItems, total, page, totalPages, totals, ...(facets ? { facets } : {}) });
 }, { resource: "agents", action: "read" });
 
 /* ------------------------------------------------------------------ */

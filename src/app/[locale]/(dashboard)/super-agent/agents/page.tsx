@@ -22,8 +22,7 @@ import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CascadingLocationPicker } from "@/components/shared/CascadingLocationPicker";
 import { usePagination } from "@/hooks/usePagination";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import {
-  SuperAgentMetricsGrid,
+import {
   SuperAgentPageIntro,
   SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
@@ -132,6 +131,9 @@ export default function SuperAgentAgentsPage() {
   const tt = useTranslations("table");
   const tconf = useTranslations("confirm");
   const [agents, setAgents] = useState<AgentRow[]>([]);
+  // Aggregates across every agent assigned to this super agent, not just the
+  // page on screen. The API computes them before slicing.
+  const [totals, setTotals] = useState({ agents: 0, leads: 0, conversions: 0, placements: 0 });
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -162,6 +164,7 @@ export default function SuperAgentAgentsPage() {
       const data = await res.json();
       setAgents(data.items ?? []);
       updateTotal(data.total ?? data.items?.length ?? 0);
+      setTotals(data.totals ?? { agents: data.total ?? 0, leads: 0, conversions: 0, placements: 0 });
     }
     setLoading(false);
   }, [filters, page, limit, updateTotal]);
@@ -299,31 +302,34 @@ export default function SuperAgentAgentsPage() {
     ? (filters.convRateMax ? `${filters.convRateMin}-${filters.convRateMax}` : `${filters.convRateMin}+`)
     : "";
 
+  // These read from `totals`, not `agents`. Reducing over `agents` counted only
+  // the rows on the current page, so "Total agents" showed 10 next to a
+  // pagination footer reading "1–10 of 57".
   const kpis = [
     {
       label: t("totalAgents"),
-      value: agents.length,
+      value: totals.agents,
       helper: t("totalAgentsHelper"),
       icon: <Users2 className="h-5 w-5" />,
       toneClassName: "workspace-tone-sky",
     },
     {
       label: t("totalLeads"),
-      value: agents.reduce((a, b) => a + (b.leadsCount ?? 0), 0),
+      value: totals.leads,
       helper: t("totalLeadsHelper"),
       icon: <Target className="h-5 w-5" />,
       toneClassName: "workspace-tone-emerald",
     },
     {
       label: t("conversions"),
-      value: agents.reduce((a, b) => a + (b.conversions ?? 0), 0),
+      value: totals.conversions,
       helper: t("conversionsHelper"),
       icon: <Activity className="h-5 w-5" />,
       toneClassName: "workspace-tone-indigo",
     },
     {
       label: t("placements"),
-      value: agents.reduce((a, b) => a + (b.placements ?? 0), 0),
+      value: totals.placements,
       helper: t("placementsHelper"),
       icon: <BriefcaseBusiness className="h-5 w-5" />,
       toneClassName: "workspace-tone-amber",
@@ -353,35 +359,39 @@ export default function SuperAgentAgentsPage() {
 
   return (
     <div className="page-container">
+      {/* The "Roster / N visible rows / stays in sync with pagination" box is
+          gone: the pagination footer already states the count, and explaining
+          that pagination works is not information. */}
       <SuperAgentPageIntro
         title={t("pageTitle")}
         description={t("pageDescription")}
       >
-        <div className="flex flex-col gap-3 sm:min-w-[160px] xl:min-w-[180px]">
-          <div className="hidden workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:block">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("roster")}</p>
-            <p className="mt-1 text-lg font-semibold text-foreground">{total} {t("visibleRows")}</p>
-            <p className="text-xs text-muted-foreground">{t("paginationSync")}</p>
-          </div>
-          <Button
-            onClick={() => { setCreateError(""); setShowCreate(true); }}
-            className="gap-2 w-full"
-          >
-            <Plus className="h-4 w-4" />
-            {t("addAgent")}
-          </Button>
-        </div>
+        {/* Insights live here as one button that opens a dialog. As four cards
+            they sat between the heading and the table on every visit. */}
+        <SuperAgentInsightsPanel asDialog />
+        <Button
+          onClick={() => { setCreateError(""); setShowCreate(true); }}
+          className="gap-2"
+        >
+          <Plus className="h-4 w-4" />
+          {t("addAgent")}
+        </Button>
       </SuperAgentPageIntro>
 
-      <SuperAgentInsightsPanel />
+      {/* One compact line instead of four large tiles. These are context for the
+          table below, not the reason anyone opens this page — as cards they
+          pushed the first agent row off the first screen. */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-muted-foreground">
+        {kpis.map((k, i) => (
+          <span key={k.label} className="flex items-center gap-1.5">
+            {i > 0 && <span className="text-border">·</span>}
+            <span className="font-semibold tabular-nums text-foreground">{k.value}</span>
+            {k.label}
+          </span>
+        ))}
+      </div>
 
-      <SuperAgentMetricsGrid items={kpis} />
-
-      <SuperAgentSection
-        eyebrow={t("teamReviewEyebrow")}
-        title={t("teamReviewTitle")}
-        description={t("teamReviewDescription")}
-      >
+      <SuperAgentSection title={t("teamReviewTitle")} className="[&>div:first-child]:sr-only">
         {/* ── Search Row + Advanced Toggle ── */}
         <TableToolbar
           search={filters.search}

@@ -246,9 +246,9 @@ export default function SuperAgentExhibitionsPage() {
     <div className="page-container">
       <DashboardPageHeader
         icon={CalendarDays}
-        eyebrow="Super agent workspace"
-        title="Exhibition Management"
-        description="Review and approve exhibition requests from your team. Use filters to narrow the queue, then act on submissions inline."
+        
+        title={t("exhibitionManagement")}
+        description={t("exhibitionManagementDesc")}
         summary={{ label: "Queue health", value: `${pendingCount + reviewCount} requests`, note: "Awaiting your review" }}
         actions={
           <div className="flex items-center gap-1">
@@ -279,9 +279,9 @@ export default function SuperAgentExhibitionsPage() {
       </DashboardPageHeader>
 
       <SuperAgentSection
-        eyebrow="Requests"
+        eyebrow={t("requests")}
         title={t("teamExhibitionRequests")}
-        description="Open details or run approval actions from the table below."
+        description={t("requestsDesc")}
       >
         {loading ? (
           <SuperAgentDataTableShell>
@@ -459,7 +459,7 @@ export default function SuperAgentExhibitionsPage() {
               {reviewAction === "approved" && (
                 <div>
                   <Label>Recommended Budget ({reviewItem.budgetCurrency})</Label>
-                  <Input type="number" value={approvedBudget} onChange={(e) => setApprovedBudget(e.target.value)} placeholder="Recommended budget amount" />
+                  <Input type="number" value={approvedBudget} onChange={(e) => setApprovedBudget(e.target.value)} placeholder={t("recommendedBudget")} />
                   <p className="text-xs text-muted-foreground mt-1">Requested: {reviewItem.budgetCurrency} {formatCount(reviewItem.estimatedBudget)}</p>
                 </div>
               )}

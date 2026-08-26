@@ -291,9 +291,8 @@ export default function SuperAgentCreateTargetPage() {
       {/* Header */}
       <DashboardPageHeader
         icon={Target}
-        eyebrow="Target management"
-        title="Assign Agent Targets"
-        description="Set annual targets for your team agents"
+        title={t("assignAgentTargets")}
+        description={t("assignAgentTargetsDesc")}
         actions={
             <div className="flex items-center gap-2">
               <Label className="text-xs font-medium text-muted-foreground">Year</Label>
@@ -348,7 +347,7 @@ export default function SuperAgentCreateTargetPage() {
                   <Input
                     value={filterName}
                     onChange={(e) => setFilterName(e.target.value)}
-                    placeholder="Search by name or email..."
+                    placeholder={t("searchByNameEmail")}
                     className="h-8 rounded-lg border-border bg-background pl-8 text-xs"
                   />
                 </div>
@@ -364,7 +363,7 @@ export default function SuperAgentCreateTargetPage() {
                     { value: "", label: "All regions" },
                     ...regionOptions.map((r) => ({ value: r, label: r })),
                   ]}
-                  placeholder="All regions"
+                  placeholder={t("allRegions")}
                   searchPlaceholder="Search regions..."
                   emptyMessage="No regions found"
                   className="h-8 text-xs"

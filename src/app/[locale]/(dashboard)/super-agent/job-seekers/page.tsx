@@ -138,10 +138,6 @@ export default function SuperAgentJobSeekersPage() {
         title={t("pageTitle")}
         description={t("pageDescription")}
       />
-      {/* Privacy information where candidate personal data is first shown,
-          rather than only behind a footer link. */}
-      <CandidateDataNotice variant="candidateList" />
-
       <SuperAgentMetricsGrid items={metricsItems} />
 
       <TableToolbar
@@ -152,16 +148,21 @@ export default function SuperAgentJobSeekersPage() {
         searchPlaceholder={t("searchPlaceholder")}
         hasActiveFilters={filters.country !== "all" || filters.experienceMin !== "all" || filters.availability !== "all"}
         actions={
-          (filters.search || filters.country !== "all" || filters.experienceMin !== "all" || filters.availability !== "all") ? (
-            <button
-              type="button"
-              onClick={handleClearFilters}
-              className="flex h-9 items-center gap-2 rounded-lg border border-border/70 bg-card px-3 text-sm text-muted-foreground hover:bg-secondary/80 transition-all"
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-              {t("reset")}
-            </button>
-          ) : undefined
+          <>
+            {/* Privacy detail at the point candidate data is shown, as an icon +
+                popover. It was a full-width text banner above the metrics. */}
+            <CandidateDataNotice variant="candidateList" compact />
+            {(filters.search || filters.country !== "all" || filters.experienceMin !== "all" || filters.availability !== "all") ? (
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className="flex h-9 items-center gap-2 rounded-lg border border-border/70 bg-card px-3 text-sm text-muted-foreground hover:bg-secondary/80 transition-all"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                {t("reset")}
+              </button>
+            ) : null}
+          </>
         }
         filterContent={
           <div className="flex flex-wrap items-center gap-3">

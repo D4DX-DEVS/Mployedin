@@ -83,7 +83,6 @@ export default function ResourceDownloadsPage() {
     <div className="page-container">
       <DashboardPageHeader
         icon={FolderOpen}
-        eyebrow={t("heroLabel")}
         title={t("downloadsTitle")}
         description={t("downloadsSubtitle")}
         footer={

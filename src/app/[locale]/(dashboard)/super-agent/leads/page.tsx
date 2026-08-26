@@ -7,8 +7,8 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Activity, ArrowUpDown, ChevronDown, ChevronUp,
-  CircleSlash, Gauge, Handshake, Loader2, RotateCcw,
+  ArrowUpDown, ChevronDown, ChevronUp,
+  Gauge, Loader2, RotateCcw,
   Sparkles, Target, X,
 } from "lucide-react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -17,7 +17,6 @@ import { usePagination } from "@/hooks/usePagination";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
-  SuperAgentMetricsGrid,
   SuperAgentPageIntro,
   SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
@@ -135,6 +134,8 @@ export default function SuperAgentLeadsPage() {
   const tt = useTranslations("table");
 
   const [leads, setLeads] = useState<Lead[]>([]);
+  // Per-stage totals across the whole filtered pipeline, from the API.
+  const [apiStageCounts, setApiStageCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
 
@@ -189,6 +190,7 @@ export default function SuperAgentLeadsPage() {
       if (res.ok) {
         const data = await res.json();
         setLeads(data.items ?? []);
+        setApiStageCounts(data.stageCounts ?? {});
         updateTotal(data.total ?? 0);
         if (data.facets) setFacets(data.facets);
       }
@@ -262,8 +264,11 @@ export default function SuperAgentLeadsPage() {
   }, [aiQuery, resetPage]);
 
   /* -- Computed values -- */
+  // Counts come from the API aggregate, over the whole filtered pipeline.
+  // Deriving them from `leads` counted the current page, so the six stages
+  // always summed to the page size instead of the pipeline.
   const stageCounts = STAGES.reduce((acc, s) => {
-    acc[s] = leads.filter((l) => l.status === s).length;
+    acc[s] = apiStageCounts[s] ?? 0;
     return acc;
   }, {} as Record<LeadStatus, number>);
 
@@ -292,37 +297,6 @@ export default function SuperAgentLeadsPage() {
     filename: "super-agent-leads",
     title: t("pageTitle"),
   });
-
-  const kpis = [
-    {
-      label: t("kpiOpenPipeline"),
-      value: leads.filter((lead) => !["converted", "lost"].includes(lead.status)).length,
-      helper: t("kpiOpenPipelineHelper"),
-      icon: <Target className="h-5 w-5" />,
-      toneClassName: "workspace-tone-sky",
-    },
-    {
-      label: t("kpiContacted"),
-      value: stageCounts.contacted,
-      helper: t("kpiContactedHelper"),
-      icon: <Activity className="h-5 w-5" />,
-      toneClassName: "workspace-tone-indigo",
-    },
-    {
-      label: t("kpiConverted"),
-      value: stageCounts.converted,
-      helper: t("kpiConvertedHelper"),
-      icon: <Handshake className="h-5 w-5" />,
-      toneClassName: "workspace-tone-emerald",
-    },
-    {
-      label: t("kpiLost"),
-      value: stageCounts.lost,
-      helper: t("kpiLostHelper"),
-      icon: <CircleSlash className="h-5 w-5" />,
-      toneClassName: "workspace-tone-rose",
-    },
-  ];
 
   /* ---------------------------------------------------------------- */
   /*  Sortable Header Cell                                            */
@@ -354,20 +328,18 @@ export default function SuperAgentLeadsPage() {
 
   return (
     <div className="page-container">
+      {/* One concept, one representation. The four KPI tiles (Open pipeline /
+          Contacted / Converted / Lost) restated the stage strip below, which
+          carries the same funnel in more detail and doubles as the filter — so
+          the tiles are gone and the strip is the primary control. The hero's
+          "Coverage" box explained how to use that strip, which the strip
+          demonstrates by itself. */}
       <SuperAgentPageIntro
         title={t("pageTitle")}
         description={t("pageDescription")}
-        summaryTitle={t("summaryTitle")}
-        summaryDescription={t("summaryDescription")}
       />
 
-      <SuperAgentMetricsGrid items={kpis} />
-
-      <SuperAgentSection
-        eyebrow={t("sectionEyebrow")}
-        title={t("sectionTitle")}
-        description={t("sectionDescription")}
-      >
+      <SuperAgentSection title={t("sectionTitle")} className="[&>div:first-child]:sr-only">
         {/* ---- Stage Strip ---- */}
         <div className="flex flex-col gap-4">
           {/* Phones: one scrollable chip row. Six stage cards owned a full screen. */}

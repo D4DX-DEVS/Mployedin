@@ -36,7 +36,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   if (!scope) {
     return NextResponse.json({ items: [], total: 0, page: 1, totalPages: 0 });
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   // Regional scope MUST always apply. Keep it inside $and so later $or
   // assignments (hasNotes / search) cannot clobber the territory boundary
   // (previous bug: hasNotes="false" overwrote filter.$or → cross-region leak).
@@ -94,7 +94,15 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   // Distinct values for filter dropdowns
   const returnDistinct = searchParams.get("distinct") === "true";
 
-  const [items, total] = await Promise.all([
+  // The stage strip is this page's primary control, so its counts must span the
+  // whole filtered set. The client derived them from the page it had been
+  // handed, so every stage summed to the page size (10) rather than the
+  // pipeline. Status is dropped from this match on purpose: selecting a stage
+  // must not collapse the other stages' counts to zero.
+   
+  const { status: _stageFilter, ...filterWithoutStatus } = filter as Record<string, unknown>;
+
+  const [items, total, stageAgg] = await Promise.all([
     Lead.find(filter)
       .populate({ path: "agentId", select: "userId", populate: { path: "userId", select: "name" } })
       .sort(sort)
@@ -102,9 +110,16 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       .limit(limit)
       .lean(),
     Lead.countDocuments(filter),
+    Lead.aggregate([
+      { $match: filterWithoutStatus },
+      { $group: { _id: "$status", count: { $sum: 1 } } },
+    ]),
   ]);
 
-  const result: Record<string, unknown> = { items, total, page, totalPages: Math.ceil(total / limit) };
+  const stageCounts: Record<string, number> = {};
+  for (const row of stageAgg) stageCounts[String(row._id)] = row.count;
+
+  const result: Record<string, unknown> = { items, total, stageCounts, page, totalPages: Math.ceil(total / limit) };
 
   // Return distinct filter values when requested (for dropdowns)
   if (returnDistinct) {

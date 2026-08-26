@@ -129,11 +129,16 @@ export function TableToolbar({
         data-table-toolbar="compact-admin"
       >
         <div className="flex flex-col gap-3 px-3 py-3 sm:px-4 sm:py-4 xl:flex-row xl:items-start xl:justify-between">
-          <div className="min-w-0 xl:max-w-2xl">
-            {title && <h2 className="heading-section font-semibold text-foreground">{title}</h2>}
-            {description && <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>}
-            {left && <div className="mt-3">{left}</div>}
-          </div>
+          {/* Only render the heading column when there is something in it.
+              Empty, it still claimed `xl:max-w-2xl`, leaving a wide dead gap to
+              the left of the search/filter/export controls. */}
+          {(title || description || left) && (
+            <div className="min-w-0 xl:max-w-2xl">
+              {title && <h2 className="heading-section font-semibold text-foreground">{title}</h2>}
+              {description && <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>}
+              {left && <div className="mt-3">{left}</div>}
+            </div>
+          )}
 
           <div className="flex w-full flex-col gap-2 xl:w-auto xl:min-w-[320px] xl:items-end">
             <div className="flex w-full min-w-0 flex-wrap items-center gap-2 xl:justify-end [&_.toolbar-search-field]:min-w-0 [&_.toolbar-search-field]:flex-1 sm:[&_.toolbar-search-field]:flex-none">

@@ -452,7 +452,6 @@ export default function SuperAgentTargetProfilesPage() {
     <div className="page-container">
       <PageHero
         icon={Target}
-        eyebrow={t("eyebrow")}
         title={t("title")}
         description={t("superAgentDescription")}
         actions={
@@ -517,7 +516,7 @@ export default function SuperAgentTargetProfilesPage() {
                 <Input
                   value={teamSearch}
                   onChange={(e) => setTeamSearch(e.target.value)}
-                  placeholder="Search agents, email, territory"
+                  placeholder={t("searchAgentsTerritory")}
                   className="h-10 rounded-xl border-border bg-background pl-9 text-sm"
                 />
               </div>
@@ -525,7 +524,7 @@ export default function SuperAgentTargetProfilesPage() {
                 options={territoryOptions}
                 value={teamTerritoryFilter}
                 onValueChange={setTeamTerritoryFilter}
-                placeholder="Territory"
+                placeholder={t("territory")}
                 className="h-10 w-40 rounded-xl"
               />
               <SearchableSelect
@@ -537,7 +536,7 @@ export default function SuperAgentTargetProfilesPage() {
                 ]}
                 value={teamCompletionFilter}
                 onValueChange={(value) => setTeamCompletionFilter(value as "all" | CompletionStage)}
-                placeholder="Stage"
+                placeholder={t("stage")}
                 className="h-10 w-36 rounded-xl"
               />
               <SearchableSelect
@@ -549,7 +548,7 @@ export default function SuperAgentTargetProfilesPage() {
                 ]}
                 value={teamRiskFilter}
                 onValueChange={(value) => setTeamRiskFilter(value as "all" | "high" | "medium" | "low")}
-                placeholder="Risk"
+                placeholder={t("risk")}
                 className="h-10 w-32 rounded-xl"
               />
               <Button variant="outline" size="sm" className="h-10 gap-0 rounded-xl sm:gap-2" onClick={handleExport} disabled={teamProfiles.length === 0}>
@@ -567,7 +566,7 @@ export default function SuperAgentTargetProfilesPage() {
         <>
         <section className="grid grid-cols-2 gap-3 xl:grid-cols-3 2xl:grid-cols-6">
           <DashboardMetricCard
-            label="Team completion"
+            label={t("teamCompletion")}
             value={`${filteredTotals.avgPerformance}%`}
             helper={`${filteredStageCounts.in_progress} active · ${filteredStageCounts.completed} completed`}
             icon={<TrendingUp className="h-5 w-5" />}
@@ -575,7 +574,7 @@ export default function SuperAgentTargetProfilesPage() {
             tone="blue"
           />
           <DashboardMetricCard
-            label="Employer target"
+            label={t("employerTarget")}
             value={<>{filteredTotals.employer.achieved}<span className="text-base text-muted-foreground"> / {filteredTotals.employer.target}</span></>}
             helper={`${Math.max(0, filteredTotals.employer.target - filteredTotals.employer.achieved)} balance`}
             icon={<Building2 className="h-5 w-5" />}
@@ -583,7 +582,7 @@ export default function SuperAgentTargetProfilesPage() {
             tone="green"
           />
           <DashboardMetricCard
-            label="Employee target"
+            label={t("employeeTarget")}
             value={<>{filteredTotals.employee.achieved}<span className="text-base text-muted-foreground"> / {filteredTotals.employee.target}</span></>}
             helper={`${Math.max(0, filteredTotals.employee.target - filteredTotals.employee.achieved)} balance`}
             icon={<Users className="h-5 w-5" />}
@@ -591,7 +590,7 @@ export default function SuperAgentTargetProfilesPage() {
             tone="violet"
           />
           <DashboardMetricCard
-            label="Revenue target"
+            label={t("revenueTarget")}
             value={formatCompactCurrency(filteredTotals.finance.achieved, ownProfile?.currency ?? "AED")}
             helper={`${formatCompactCurrency(filteredTotals.finance.target, ownProfile?.currency ?? "AED")} assigned`}
             icon={<DollarSign className="h-5 w-5" />}
@@ -599,16 +598,16 @@ export default function SuperAgentTargetProfilesPage() {
             tone="amber"
           />
           <DashboardMetricCard
-            label="At risk"
+            label={t("atRisk")}
             value={filteredTotals.riskHigh}
-            helper="Agents need attention"
+            helper={t("atRiskHelper")}
             icon={<AlertCircle className="h-5 w-5" />}
             tone="red"
           />
           <DashboardMetricCard
-            label="Pending actions"
+            label={t("pendingActions")}
             value={pendingActionsCount}
-            helper="Agents still not completed"
+            helper={t("pendingActionsHelper")}
             icon={<ClipboardList className="h-5 w-5" />}
             tone="blue"
           />
@@ -696,31 +695,31 @@ export default function SuperAgentTargetProfilesPage() {
             <>
               <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
                 <DashboardMetricCard
-                  label="Team agents"
+                  label={t("teamAgents")}
                   value={analytics.teamSummary.totalAgents}
-                  helper="Agents with target profiles"
+                  helper={t("teamAgentsHelper")}
                   icon={<Users className="h-5 w-5" />}
                   tone="blue"
                 />
                 <DashboardMetricCard
-                  label="Avg performance"
+                  label={t("avgPerformance")}
                   value={`${analytics.teamSummary.avgPerformance}%`}
-                  helper="Across distributed agent profiles"
+                  helper={t("avgPerformanceHelper")}
                   icon={<TrendingUp className="h-5 w-5" />}
                   progress={analytics.teamSummary.avgPerformance}
                   tone="green"
                 />
                 <DashboardMetricCard
-                  label="High risk"
+                  label={t("highRisk")}
                   value={analytics.teamSummary.highRiskCount}
-                  helper="Agents needing action"
+                  helper={t("highRiskHelper")}
                   icon={<AlertCircle className="h-5 w-5" />}
                   tone="red"
                 />
                 <DashboardMetricCard
-                  label="Platinum"
+                  label={t("platinum")}
                   value={analytics.teamSummary.incentiveBreakdown.platinum}
-                  helper="Agents at or above 100%"
+                  helper={t("platinumHelper")}
                   icon={<CheckCircle2 className="h-5 w-5" />}
                   tone="violet"
                 />
@@ -816,7 +815,7 @@ export default function SuperAgentTargetProfilesPage() {
                     <TableCell colSpan={10} className="py-16 text-center">
                       <TargetEmptyState
                         title={t("noAgentTargets")}
-                        description="Distribute your targets to agents using the button above"
+                        description={t("distributeEmptyHint")}
                         action={
                           <Button size="sm" onClick={() => setShowDistribute(true)} className="mt-2 gap-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90">
                             <SplitSquareVertical className="h-4 w-4" /> Distribute
@@ -830,7 +829,7 @@ export default function SuperAgentTargetProfilesPage() {
                     <TableCell colSpan={10} className="py-16 text-center">
                       <TargetEmptyState
                         title={t("noAgentsMatchFilters")}
-                        description="Try a different search, risk level, or completion stage."
+                        description={t("noMatchHint")}
                         action={
                           <Button
                             size="sm"

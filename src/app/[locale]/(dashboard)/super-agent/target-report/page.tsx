@@ -256,9 +256,8 @@ export default function SuperAgentTargetReportPage() {
     <div className="page-container print:space-y-4">
       {/* ═══════ HERO ═══════ */}
       <SuperAgentPageIntro
-        title="Target Report"
-        description={`Team performance report — ${yearFilter}. Track your agents' employer, employee, and finance targets.`}
-        eyebrow="Targets workspace"
+        title={t("targetReportTitle")}
+        description={t("teamReportHeroDescription", { year: yearFilter })}
         summaryTitle="Team coverage"
         summaryDescription={`${data.teamBreakdown.length} agents tracked across employer, employee, and finance targets with ${data.summary.avgProgress}% average performance.`}
       />
@@ -276,7 +275,7 @@ export default function SuperAgentTargetReportPage() {
       {/* ═══════ TOOLBAR ═══════ */}
       <TableToolbar
         title={t("performanceDataTitle")}
-        description="Filter by quarter, category, or risk level to narrow results."
+        description={t("reportFilterHintRisk")}
         search={searchQuery}
         onSearchChange={setSearchQuery}
         searchPlaceholder="Search agent name…"
@@ -301,7 +300,7 @@ export default function SuperAgentTargetReportPage() {
               <Input type="number" value={yearFilter} onChange={(e) => setYearFilter(parseInt(e.target.value) || currentYear)} className="h-9 w-24 rounded-lg text-sm" />
             </div>
             <Select value={quarterFilter} onValueChange={setQuarterFilter}>
-              <SelectTrigger className="h-9 w-[130px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder="Quarter" /></SelectTrigger>
+              <SelectTrigger className="h-9 w-[130px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder={t("quarter")} /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Quarters</SelectItem>
                 <SelectItem value="1">Q1 (Jan–Mar)</SelectItem>
@@ -311,7 +310,7 @@ export default function SuperAgentTargetReportPage() {
               </SelectContent>
             </Select>
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="h-9 w-[140px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder="Category" /></SelectTrigger>
+              <SelectTrigger className="h-9 w-[140px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder={t("category")} /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
                 <SelectItem value="employer">Employer</SelectItem>
@@ -320,7 +319,7 @@ export default function SuperAgentTargetReportPage() {
               </SelectContent>
             </Select>
             <Select value={riskFilter} onValueChange={setRiskFilter}>
-              <SelectTrigger className="h-9 w-[130px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder="Risk" /></SelectTrigger>
+              <SelectTrigger className="h-9 w-[130px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder={t("risk")} /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Risks</SelectItem>
                 <SelectItem value="high">High Risk</SelectItem>

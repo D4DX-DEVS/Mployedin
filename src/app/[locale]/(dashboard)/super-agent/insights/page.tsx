@@ -13,10 +13,10 @@ export default function SuperAgentInsightsPage() {
       <SuperAgentPageIntro
         title={t("title")}
         description={t("description")}
-        summaryTitle={t("summaryTitle")}
-        summaryDescription={t("summaryDescription")}
       />
-      <SuperAgentInsightsPanel />
+      {/* This panel is the whole page here, so it opens expanded. Everywhere
+          else it collapses to a summary bar above that page's own content. */}
+      <SuperAgentInsightsPanel defaultExpanded />
     </div>
   );
 }

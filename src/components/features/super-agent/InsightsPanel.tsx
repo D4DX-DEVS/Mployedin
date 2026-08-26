@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useConfirm } from "@/hooks/useConfirm";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 /* ────────────────────────────────────────────────────────
    Types
@@ -84,7 +85,16 @@ const confidenceStyles: Record<ConfidenceLevel, { dot: string; label: string }> 
    Component
    ──────────────────────────────────────────────────────── */
 
-export function SuperAgentInsightsPanel() {
+interface SuperAgentInsightsPanelProps {
+  /** Start expanded. For the insights page, where this panel is the content;
+   *  elsewhere it collapses to a one-line summary above the page's own table. */
+  defaultExpanded?: boolean;
+  /** Render as a single button (for a page hero) that opens the insights in a
+   *  dialog, instead of occupying a block on the page. */
+  asDialog?: boolean;
+}
+
+export function SuperAgentInsightsPanel({ defaultExpanded = false, asDialog = false }: SuperAgentInsightsPanelProps = {}) {
   const t = useTranslations("insightsPanel");
   const router = useRouter();
   const { confirm, ConfirmDialogNode } = useConfirm();
@@ -104,7 +114,8 @@ export function SuperAgentInsightsPanel() {
   });
   const [showDismissed, setShowDismissed] = useState(false);
   // ponytail: mobile collapses to a summary row; no bottom sheet until someone asks
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(defaultExpanded);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const persistDismissed = useCallback((ids: Set<string>) => {
     try { localStorage.setItem(DISMISSED_KEY, JSON.stringify([...ids])); } catch { /* noop */ }
@@ -168,6 +179,12 @@ export function SuperAgentInsightsPanel() {
   const handleAction = async (insight: Insight) => {
     if (!insight.actionType) return;
     const key = insight.id;
+
+    // In dialog mode, close this popup first. `useConfirm` renders its own
+    // Radix Dialog, and opening it from inside this one nests two dialogs —
+    // they fight over the focus trap. Closing first also reads better: you
+    // picked an action, the list gets out of the way, the confirm appears.
+    if (asDialog) setDialogOpen(false);
 
     if (insight.actionType === "navigate" && insight.actionUrl) {
       router.push(insight.actionUrl);
@@ -341,60 +358,9 @@ export function SuperAgentInsightsPanel() {
 
   // ── Insight cards ──
 
-  return (
-    <>
-      {ConfirmDialogNode}
-      <div className={cn("text-left w-full space-y-0 sm:workspace-glass-panel sm:rounded-2xl sm:px-4 sm:py-4", mobileOpen && "workspace-glass-panel rounded-xl px-3 py-3")}>
-      <div className={cn("flex-nowrap items-center justify-between gap-2 mb-2.5 sm:mb-3 sm:flex", mobileOpen ? "flex" : "hidden")}>
-        <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
-          <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary sm:h-4 sm:w-4" />
-          <p className="truncate text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">
-            {t("aiInsights")}
-          </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {dismissedCount > 0 && (
-            <button
-              onClick={() => showDismissed ? restoreAll() : setShowDismissed(true)}
-              className="whitespace-nowrap text-[10px] text-muted-foreground/60 hover:text-primary transition-colors flex items-center gap-1"
-            >
-              <Eye className="h-3 w-3" />
-              {showDismissed ? t("restoreAll") : `${dismissedCount} ${t("hidden")}`}
-            </button>
-          )}
-          <button
-            onClick={fetchInsights}
-            className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
-            title={t("refreshInsights")}
-          >
-            <RefreshCw className="h-3 w-3" />
-          </button>
-        </div>
-      </div>
-
-      {!mobileOpen && visibleInsights.length > 0 && (
-        <button
-          onClick={() => setMobileOpen(true)}
-          className="flex w-full items-center justify-between rounded-lg border border-border/50 bg-background/70 text-left sm:hidden chip-pad"
-        >
-          <span className="text-[13px] font-semibold text-foreground">
-            {visibleInsights.length} {t("aiInsights")}
-          </span>
-          <span className="text-[10px] text-muted-foreground">
-            {(["critical", "warning", "info"] as InsightSeverity[])
-              .map((sv) => [sv, visibleInsights.filter((i) => i.severity === sv).length] as const)
-              .filter(([, n]) => n > 0)
-              .map(([sv, n]) => `${n} ${severityStyles[sv].badgeText.toLowerCase()}`)
-              .join(" · ")} ›
-          </span>
-        </button>
-      )}
-
-      <div className={cn(
-        "gap-2 sm:gap-2.5 sm:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4",
-        mobileOpen ? "grid" : "hidden"
-      )}>
-        {visibleInsights.map((insight, idx) => {
+  // Shared by both modes: the block layout and the dialog render the same cards.
+  const renderCards = () =>
+        visibleInsights.map((insight, idx) => {
           const sev = severityStyles[insight.severity];
           const isVisible = idx < visibleCount;
           const isFeedbackSent = feedbackGiven.has(insight.id);
@@ -492,7 +458,133 @@ export function SuperAgentInsightsPanel() {
               </div>
             </div>
           );
-        })}
+        });
+
+  const severitySummary = (["critical", "warning", "info"] as InsightSeverity[])
+    .map((sv) => [sv, visibleInsights.filter((i) => i.severity === sv).length] as const)
+    .filter(([, n]) => n > 0)
+    .map(([sv, n]) => `${n} ${severityStyles[sv].badgeText.toLowerCase()}`)
+    .join(" · ");
+
+  // Hero-button mode: one control, insights open in a dialog. Nothing on the
+  // page between the heading and the table it belongs to.
+  if (asDialog) {
+    if (visibleInsights.length === 0) return null;
+    return (
+      <>
+        {ConfirmDialogNode}
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogTrigger asChild>
+            <button
+              type="button"
+              className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl border border-border bg-background/80 px-3 text-sm font-medium text-foreground transition-colors hover:border-primary/30 hover:bg-secondary/70"
+            >
+              <Sparkles className="h-4 w-4 text-primary" />
+              {visibleInsights.length} {t("aiInsights")}
+              {severitySummary && (
+                <span className="hidden text-[11px] font-normal text-muted-foreground sm:inline">
+                  {severitySummary}
+                </span>
+              )}
+            </button>
+          </DialogTrigger>
+          <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                {t("aiInsights")}
+              </DialogTitle>
+            </DialogHeader>
+            {/* Restore + refresh belong here too. Without them a dismissed
+                insight could not be brought back from this page at all —
+                dismissals persist in localStorage. */}
+            <div className="-mt-1 flex items-center justify-end gap-3">
+              {dismissedCount > 0 && (
+                <button
+                  onClick={() => showDismissed ? restoreAll() : setShowDismissed(true)}
+                  className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-primary"
+                >
+                  <Eye className="h-3 w-3" />
+                  {showDismissed ? t("restoreAll") : `${dismissedCount} ${t("hidden")}`}
+                </button>
+              )}
+              <button
+                onClick={fetchInsights}
+                title={t("refreshInsights")}
+                className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-primary"
+              >
+                <RefreshCw className="h-3 w-3" />
+              </button>
+            </div>
+            <div className="grid gap-2.5 sm:grid-cols-2">
+              {renderCards()}
+            </div>
+          </DialogContent>
+        </Dialog>
+      </>
+    );
+  }
+
+  return (
+    <>
+      {ConfirmDialogNode}
+      <div className={cn("text-left w-full space-y-0 sm:workspace-glass-panel sm:rounded-2xl sm:px-4 sm:py-4", mobileOpen && "workspace-glass-panel rounded-xl px-3 py-3")}>
+      <div className={cn("flex-nowrap items-center justify-between gap-2 mb-2.5 sm:mb-3", mobileOpen ? "flex" : "hidden")}>
+        <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+          <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary sm:h-4 sm:w-4" />
+          <p className="truncate text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">
+            {t("aiInsights")}
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {dismissedCount > 0 && (
+            <button
+              onClick={() => showDismissed ? restoreAll() : setShowDismissed(true)}
+              className="whitespace-nowrap text-[10px] text-muted-foreground/60 hover:text-primary transition-colors flex items-center gap-1"
+            >
+              <Eye className="h-3 w-3" />
+              {showDismissed ? t("restoreAll") : `${dismissedCount} ${t("hidden")}`}
+            </button>
+          )}
+          <button
+            onClick={fetchInsights}
+            className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
+            title={t("refreshInsights")}
+          >
+            <RefreshCw className="h-3 w-3" />
+          </button>
+        </div>
+      </div>
+
+      {/* Summary bar at every width, not just phones. The grid was `sm:grid`,
+          so on desktop four insight cards sat permanently above the page's
+          actual table. This is an attention layer — it says how much needs
+          attention and opens on demand. */}
+      {!mobileOpen && visibleInsights.length > 0 && (
+        <button
+          onClick={() => setMobileOpen(true)}
+          aria-expanded={false}
+          className="flex w-full items-center justify-between rounded-lg border border-border/50 bg-background/70 text-left chip-pad"
+        >
+          <span className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
+            <Sparkles className="h-3.5 w-3.5 text-primary" />
+            {visibleInsights.length} {t("aiInsights")}
+          </span>
+          <span className="text-[10px] text-muted-foreground">
+            {(["critical", "warning", "info"] as InsightSeverity[])
+              .map((sv) => [sv, visibleInsights.filter((i) => i.severity === sv).length] as const)
+              .filter(([, n]) => n > 0)
+              .map(([sv, n]) => `${n} ${severityStyles[sv].badgeText.toLowerCase()}`)
+              .join(" · ")} ›
+          </span>
+        </button>
+      )}
+
+      <div className={cn(
+        "gap-2 sm:gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4",
+        mobileOpen ? "grid" : "hidden"
+      )}>
+        {renderCards()}
       </div>
       </div>
     </>
