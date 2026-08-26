@@ -182,7 +182,6 @@ export default function LeadDetailPage() {
       {/* Header */}
       <DashboardPageHeader
         icon={Building2}
-        eyebrow={t("backToPipeline")}
         title={lead.companyName}
         description={[lead.contactPerson, lead.country, lead.industry].filter(Boolean).join(" · ")}
         actions={

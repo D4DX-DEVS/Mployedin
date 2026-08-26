@@ -119,7 +119,6 @@ export default function EmployerJobTemplatesPage() {
       {/* Hero */}
       <DashboardPageHeader
         icon={FileText}
-        eyebrow={t("title")}
         title={t("title")}
         description={t("description")}
         summary={{ label: t("totalTemplates"), value: total }}

@@ -67,7 +67,6 @@ export default function NewLeadPage() {
     <div className="page-container">
       <PageHero
         icon={Building2}
-        eyebrow={t("agentWorkspace")}
         title={t("pageTitle")}
         description={t("pageDescription")}
         actions={

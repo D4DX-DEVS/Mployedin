@@ -135,7 +135,7 @@ export default function AgentJobSeekersPage() {
       pagination.updateTotal(data.total ?? data.items?.length ?? 0);
     }
     setLoading(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [search, availability, minProfile, maxProfile, skillsFilter, locationFilter, hasCV, jobType, sortBy, pagination.page, pagination.limit]);
 
   useEffect(() => { fetchSeekers(); }, [fetchSeekers]);
@@ -196,32 +196,28 @@ export default function AgentJobSeekersPage() {
       {/* Hero */}
       <DashboardPageHeader
         icon={UserRoundSearch}
-        eyebrow={t("heroAgentWorkspace")}
         title={t("heroTitle")}
         description={t("heroDescription")}
-        summary={{ label: t("talentPoolLabel"), value: `${pagination.total} ${t("talentPoolProfiles")}`, note: t("talentPoolDescription") }}
+        summary={{ label: t("talentPoolLabel"), value: `${pagination.total} ${t("talentPoolProfiles")}` }}
         metrics={[
-          { label: t("cardCompleteLabel"), value: completeProfiles, note: t("cardCompleteDescription"), icon: UserRoundSearch },
-          { label: t("cardAvgProfileLabel"), value: `${averageCompleteness}%`, note: t("cardAvgProfileDescription"), icon: ArrowRight },
-          { label: t("cardWithTitlesLabel"), value: withTitles, note: t("cardWithTitlesDescription"), icon: BriefcaseBusiness },
-          { label: t("cardActiveFiltersLabel"), value: activeFilterCount, note: t("cardActiveFiltersDescription"), icon: Filter },
+          { label: t("cardCompleteLabel"), value: completeProfiles, icon: UserRoundSearch },
+          { label: t("cardAvgProfileLabel"), value: `${averageCompleteness}%`, icon: ArrowRight },
+          { label: t("cardWithTitlesLabel"), value: withTitles, icon: BriefcaseBusiness },
         ]}
+        compactOnMobile
       />
-      {/* Privacy information where candidate personal data is first shown,
-          rather than only behind a footer link. */}
-      <CandidateDataNotice variant="candidateList" />
 
-      {/* Search and Filters */}
+      {/* One panel: privacy notice, search, filters and the table together.
+          The notice was a full-width text banner and the filters had their own
+          card — three stacked blocks before the first profile row. */}
       <section className="workspace-panel-surface rounded-3xl panel-body">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("browseProfilesLabel")}</p>
-          <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("searchTitle")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("searchDescription")}</p>
-        </div>
-
-        {/* Wraps instead of stacking, so Filter shares the line with the
-            search box rather than becoming a full-width band on phones. */}
-        <div className="mt-5 flex flex-wrap items-center gap-2 sm:gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-1.5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("resultsLabel")}</p>
+            {/* Privacy detail at the point candidate data is shown, as an icon +
+                popover instead of a banner that pushed the list off-screen. */}
+            <CandidateDataNotice variant="candidateList" compact />
+          </div>
           <TableToolbar
             search={search}
             onSearchChange={setSearch}
@@ -372,19 +368,8 @@ export default function AgentJobSeekersPage() {
             </div>
           </div>
         )}
-      </section>
 
-      {/* Results table */}
-      <section className="workspace-panel-surface rounded-3xl panel-body">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("resultsLabel")}</p>
-            <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("resultsTitle")}</h2>
-          </div>
-          <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium"><ArrowRight className="h-3.5 w-3.5 text-primary" />{t("resultsPagination", { total: pagination.total, pages: pagination.totalPages })}</div>
-        </div>
-
-        <div className="workspace-subtle-surface mt-5 overflow-hidden rounded-3xl">
+        <div className="workspace-subtle-surface mt-4 overflow-hidden rounded-3xl">
         <Table>
           <TableHeader>
             <TableRow className="workspace-subtle-surface hover:bg-secondary/70">

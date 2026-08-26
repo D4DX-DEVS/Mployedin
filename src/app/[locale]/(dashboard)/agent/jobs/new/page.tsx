@@ -123,7 +123,6 @@ export default function AgentJobPosterPage() {
     <div className="page-container">
       <PageHero
         icon={Briefcase}
-        eyebrow={common("workspace")}
         title={t("title")}
         description={t("description")}
         actions={

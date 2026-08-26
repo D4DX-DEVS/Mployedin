@@ -330,19 +330,19 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
         {/* Amount Summary Cards */}
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <div className="rounded-xl border border-border/70 text-center chip-pad">
-            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{t("summaryTotal")}</p>
+            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("summaryTotal")}</p>
             <p className="mt-0.5 text-base font-bold">{fmt(invoice.totalAmount)}</p>
           </div>
           <div className="rounded-xl border border-status-selected/20 bg-status-selected-bg/30 text-center chip-pad">
-            <p className="text-[10px] font-medium uppercase tracking-wider text-status-selected">{t("summaryPaid")}</p>
+            <p className="text-[11px] font-medium uppercase tracking-wider text-status-selected">{t("summaryPaid")}</p>
             <p className="mt-0.5 text-base font-bold text-emerald-700">{fmt(invoice.paidAmount ?? 0)}</p>
           </div>
           <div className="rounded-xl border border-status-shortlisted/20 bg-status-shortlisted-bg/30 text-center chip-pad">
-            <p className="text-[10px] font-medium uppercase tracking-wider text-status-shortlisted">{t("summaryBalance")}</p>
+            <p className="text-[11px] font-medium uppercase tracking-wider text-status-shortlisted">{t("summaryBalance")}</p>
             <p className="mt-0.5 text-base font-bold text-status-shortlisted">{fmt(balanceDue)}</p>
           </div>
           <div className="rounded-xl border border-border/70 text-center chip-pad">
-            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{t("summaryDue")}</p>
+            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("summaryDue")}</p>
             <p className="mt-0.5 text-sm font-semibold">{invoice.dueDate ? formatDate(new Date(invoice.dueDate)) : "—"}</p>
           </div>
         </div>
@@ -496,7 +496,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                       <p className="text-sm font-semibold">{t("payOnline")}</p>
                     </div>
                     {!gatewayEnabled && (
-                      <Badge variant="outline" className="text-[10px] border-status-shortlisted/20 bg-status-shortlisted-bg text-status-shortlisted">
+                      <Badge variant="outline" className="text-[11px] border-status-shortlisted/20 bg-status-shortlisted-bg text-status-shortlisted">
                         {t("comingSoon")}
                       </Badge>
                     )}
@@ -858,7 +858,6 @@ export default function EmployerInvoicesPage() {
       <PageHero
         title={t("title")}
         description={t("description")}
-        eyebrow={t("employerBilling")}
         icon={Building2}
         actions={
           <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
@@ -988,7 +987,7 @@ export default function EmployerInvoicesPage() {
                 <TableRow key={inv._id} className="border-border/70 cursor-pointer hover:bg-secondary/30" onClick={() => setSelectedInvoice(inv)}>
                   <TableCell><p className="font-mono text-sm font-medium">{inv.invoiceNumber}</p></TableCell>
                   <TableCell><p className="max-w-[160px] truncate text-sm">{inv.jobId?.title ?? "—"}</p></TableCell>
-                  <TableCell><span className="text-[10px] capitalize text-muted-foreground">{inv.category?.replace(/_/g, " ")}</span></TableCell>
+                  <TableCell><span className="text-[11px] capitalize text-muted-foreground">{inv.category?.replace(/_/g, " ")}</span></TableCell>
                   <TableCell className="text-right font-semibold">{inv.currency} {formatCount((inv.totalAmount ?? 0))}</TableCell>
                   <TableCell className="text-right text-sm text-status-selected">{inv.currency} {formatCount((inv.paidAmount ?? 0))}</TableCell>
                   <TableCell className="text-right text-sm text-status-shortlisted">{inv.currency} {formatCount((inv.balanceDue ?? 0))}</TableCell>

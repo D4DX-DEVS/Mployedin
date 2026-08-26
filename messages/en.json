@@ -4279,7 +4279,9 @@
       "saturday": "Saturday"
     },
     "optional": "optional",
-    "pickDateTime": "Pick date & time"
+    "pickDateTime": "Pick date & time",
+    "pickDate": "Pick a date",
+    "pickTime": "Pick a time"
   },
   "messagesPage": {
     "defaultTitle": "Messages",
@@ -6167,7 +6169,8 @@
     "officePlaceholder": "Office address or room",
     "salaryPlaceholder": "5000",
     "generateMeetLink": "Generate link",
-    "meetLinkAutoNote": "Leave blank to auto-generate a video room"
+    "meetLinkAutoNote": "Leave blank to auto-generate a video room",
+    "unableToLoadDesc": "We couldn’t load interviews. Your interview records are unchanged. Try again."
   },
   "employerOffers": {
     "title": "Offer workspace",
@@ -6186,7 +6189,7 @@
     "perMonth": "/mo",
     "perYear": "/yr",
     "untitledRole": "Untitled role",
-    "subtitle": "Review every pending, accepted, and expired offer in one workspace.",
+    "subtitle": "Review, track, and manage candidate offers.",
     "currentView": "Current view",
     "activeOffers": "active offers",
     "totalRecords": "total records",
@@ -6199,8 +6202,6 @@
     "avgSalaryDesc": "Mean offer amount",
     "allOffers": "All",
     "offerList": "Offer list",
-    "offerListDesc": "Every outbound offer with real-time candidate status.",
-    "offersCount": "offers",
     "candidate": "Candidate",
     "role": "Role",
     "offerDetails": "Offer Details",
@@ -6218,14 +6219,7 @@
     "clearFilters": "Clear",
     "viewDescription": "Pending, accepted, expired, and withdrawn decisions in one place.",
     "openPipeline": "Open Pipeline",
-    "pendingNote": "Pending offers in the current results set.",
-    "acceptedNote": "Accepted offers visible in the current results set.",
-    "expiringNote": "Current results with two days or less remaining.",
     "responded": "Responded",
-    "respondedNote": "Offers on this page that already have a response.",
-    "filterDecisions": "Filter decisions",
-    "filterTitle": "Focus on the offers that need action now.",
-    "filterDescription": "Filter by job role and offer status to find the decisions that need your attention.",
     "allJobs": "All Jobs",
     "allStatuses": "All statuses",
     "notSet": "Not set",
@@ -6252,6 +6246,7 @@
     "createDesc": "Choose a candidate, select what to verify, and add referees to contact.",
     "loading": "Loading checks…",
     "empty": "No background or reference checks yet.",
+    "noResults": "No checks match your search or date range.",
     "references": "references",
     "created": "Check created.",
     "create": "Create check",
@@ -6345,16 +6340,11 @@
     "currentlyActiveNote": "Hires who are currently on the job.",
     "completed": "Completed",
     "completedNote": "Placements that have finished or ended.",
-    "thisMonth": "This month",
-    "thisMonthNote": "New hires who started this month.",
-    "filterOutcomes": "Filter outcomes",
-    "filterTitle": "Focus on active, completed, or terminated placements.",
-    "filterDescription": "Filter your hires by status to focus on the placements that need your attention.",
-    "filterAll": "all",
-    "filterActive": "active",
-    "filterCompleted": "completed",
-    "filterTerminated": "terminated",
-    "filterVisaTitle": "Visa status",
+    "subtitle": "Review, track, and manage placed candidates.",
+    "filterAll": "All statuses",
+    "filterActive": "Active",
+    "filterCompleted": "Completed",
+    "filterTerminated": "Terminated",
     "visaAll": "All visas",
     "visaNotRequired": "Not required",
     "visaPending": "Pending",
@@ -6364,9 +6354,6 @@
     "placementList": "Placement list",
     "unableToLoad": "Unable to load placements right now",
     "loadError": "We couldn't load placements. Your placement records are unchanged. Try again.",
-    "tableTitle": "Review the hires that have already crossed the line.",
-    "tableDescription": "Candidate identity, job context, placement type, compensation, and status stay visible in one refined results table.",
-    "placementsOnPage": "{count} placements on this page",
     "position": "Position",
     "startDate": "Start date",
     "salary": "Salary",
@@ -6569,7 +6556,8 @@
     "tuningTitle": "Start with recruiter intent, not a perfect formula.",
     "tuningBody": "Increase skills for technical hiring, raise relevant experience for senior roles, and lean on education and certifications for regulated or licensed positions.",
     "totalLabel": "Total:",
-    "need100": "Need 100%"
+    "need100": "Need 100%",
+    "saveAsTemplateShort": "Template"
   },
   "employerWorkflow": {
     "title": "Hiring Workflow",
@@ -6599,12 +6587,12 @@
     "offer": "Offer",
     "hired": "Hired",
     "rejected": "Rejected",
-    "autoProgress": "Auto Progress",
+    "autoProgress": "Auto progression",
     "autoReject": "Auto Reject",
     "enabled": "Enabled",
     "disabled": "Disabled",
     "daysThreshold": "Days threshold",
-    "stage": "Stage",
+    "stage": "Stage enabled",
     "loadingError": "Could not load workflow settings. Please try again.",
     "saveError": "Could not save workflow settings. Please try again.",
     "templateSaveError": "Could not save workflow template. Please try again.",
@@ -6661,7 +6649,8 @@
     "guidanceTitle": "Keep automation explainable",
     "guidanceDesc": "Use thresholds to prioritize review, but keep a recruiter in the loop for final rejection decisions.",
     "saving": "Saving",
-    "saved": "Saved"
+    "saved": "Saved",
+    "saveAsTemplateShort": "Template"
   },
   "employerJobNew": {
     "title": "Create a Job Posting",
@@ -7219,7 +7208,8 @@
     "overallRating": "Overall Rating",
     "date": "Date",
     "evaluatedBy": "Evaluated By",
-    "notes": "Notes"
+    "notes": "Notes",
+    "scorecardList": "Scorecards"
   },
   "employerPaymentSetup": {
     "title": "Payment Setup",
@@ -7336,7 +7326,16 @@
     "errorUpdatingExhibition": "Error updating exhibition",
     "noExhibitionRequestsFound": "No exhibition requests found",
     "tryAdjustingFiltersExhibitions": "Try adjusting filters or check back when agents submit new events.",
-    "teamExhibitionRequests": "Team exhibition requests"
+    "teamExhibitionRequests": "Team exhibition requests",
+    "statusSubmitted": "Submitted",
+    "statusCompleted": "Completed",
+    "statusRevision": "Revision",
+    "duplicateRequest": "Duplicate request",
+    "deleteRequest": "Delete request",
+    "selectStartDate": "Select start date",
+    "selectEndDate": "Select end date",
+    "contactPlaceholder": "Email or phone",
+    "selectCurrency": "Select currency"
   },
   "resources": {
     "title": "Resource Management",
@@ -7546,7 +7545,20 @@
     "reassignTargetProfile": "Reassign target profile",
     "common": {
       "export": "Export"
-    }
+    },
+    "searchAgents": "Search agents",
+    "stage": "Stage",
+    "quarter": "Quarter",
+    "category": "Category",
+    "labelEmployer": "Employer",
+    "labelEmployee": "Employee",
+    "labelFinance": "Finance",
+    "labelOverall": "Overall",
+    "sublabelAnnual": "Annual",
+    "myTargetReport": "My Target Report",
+    "reportFilterHint": "Filter by quarter or category to drill down.",
+    "noMatchHint": "Try a different search, risk level, or completion stage.",
+    "reportHeroDescription": "Personal performance report — {year}. Track your employer, employee, and finance targets."
   },
   "webhooks": {
     "title": "Webhooks",
@@ -7898,7 +7910,8 @@
     "deleted": "Sequence deleted",
     "activatedToast": "Sequence activated",
     "pausedToast": "Sequence paused",
-    "deleteConfirm": "Delete this sequence? This cannot be undone."
+    "deleteConfirm": "Delete this sequence? This cannot be undone.",
+    "campaigns": "Campaigns"
   },
   "offerLetters": {
     "title": "Offer Letters",
@@ -8253,7 +8266,8 @@
     "scheduledSuccess": "Scheduled for {success} candidate(s). {failed} failed.",
     "notification": "Candidates will receive automatic notifications with all details.",
     "pickDate": "Pick a date",
-    "pickTime": "Pick a time"
+    "pickTime": "Pick a time",
+    "candidateList": "Candidate list"
   },
   "employerTraining": {
     "badge": "Employer learning",
@@ -8326,7 +8340,9 @@
     "email": "Email",
     "ipAddress": "IP Address",
     "noLogs": "No activity logs found",
-    "noLogsDesc": "Team member activities will appear here once they start using the platform."
+    "noLogsDesc": "Team member activities will appear here once they start using the platform.",
+    "export": "Export",
+    "exportData": "Export data"
   },
   "employerCandidateProfile": {
     "notFound": "Candidate not found",
@@ -14875,7 +14891,9 @@
     "failedMessagesDescription": "No message was sent. Try again to reopen your conversations."
   },
   "agentCalendar": {
-    "failedLoadingCalendarEvents": "We couldn't load calendar events"
+    "failedLoadingCalendarEvents": "We couldn't load calendar events",
+    "title": "Calendar",
+    "description": "Visual overview of all your interviews and follow-ups"
   },
   "agentMessages": {
     "title": "Messages",
@@ -15022,3 +15040,4 @@
     }
   }
 }
+

@@ -1527,14 +1527,31 @@ body {
 @media (max-width: 639px) {
 
   /* Coarse and narrow layouts share a 44px interaction baseline. Small visual
-     icons can remain compact inside the control without shrinking its hit box. */
-  :where(button, [role="button"]),
+     icons can remain compact inside the control without shrinking its hit box.
+     Switches opt out: a Radix switch is a <button>, so this stretched its 20px
+     track to 44px and the pill radius rendered it as an oval. It gets the same
+     hit area from the centred overlay below instead. */
+  :where(button:not([role="switch"]), [role="button"]),
   :where(
     input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]),
     select,
     textarea
   ) {
     min-height: 44px;
+  }
+
+  [role="switch"] {
+    position: relative;
+  }
+
+  [role="switch"]::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
   }
 
   .dashboard-shell-workspace .page-header-title {
@@ -1569,7 +1586,7 @@ body {
   /* Mobile workspace controls follow the platform touch-target baseline.
      Explicit visual heights may remain compact, but the hit area never drops
      below 44px. Native checkboxes/radios stay inside their larger label rows. */
-  .dashboard-shell :where(button, [role="button"]),
+  .dashboard-shell :where(button:not([role="switch"]), [role="button"]),
   .dashboard-main :where(
     input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]),
     select,
@@ -1577,6 +1594,7 @@ body {
   ) {
     min-height: 44px;
   }
+
 
   .dashboard-shell :where(
     button[aria-label],
@@ -2079,7 +2097,7 @@ table.workspace-list-table tbody tr:focus-visible {
   /* ── Control heights ──────────────────────────────────────────────────────
      Admin is also used on touch devices. Visual controls may stay compact,
      but their standalone hit area keeps the shared 44px floor. */
-  .dashboard-shell-admin .dashboard-main :is(button, [role="button"], input, select, textarea):is(
+  .dashboard-shell-admin .dashboard-main :is(button:not([role="switch"]), [role="button"], input, select, textarea):is(
       [class~="h-3"], [class~="h-3.5"], [class~="h-4"], [class~="h-5"], [class~="h-6"],
       [class~="h-7"], [class~="h-8"], [class~="h-9"], [class~="h-10"], [class~="h-11"], [class~="h-12"], [class~="h-14"]
     ) {
@@ -2087,14 +2105,14 @@ table.workspace-list-table tbody tr:focus-visible {
   }
 
   /* Padding utilities affect the visual treatment, not the touch target. */
-  .dashboard-shell-admin .dashboard-main :is(button, [role="button"]):is(
+  .dashboard-shell-admin .dashboard-main :is(button:not([role="switch"]), [role="button"]):is(
       [class~="py-0"], [class~="py-0.5"], [class~="py-1"], [class~="py-1.5"]
     ) {
     min-height: 44px;
   }
 
   /* Everything else uses the same touch-safe floor as the other roles. */
-  .dashboard-shell-admin .dashboard-main :where(button, [role="button"]),
+  .dashboard-shell-admin .dashboard-main :where(button:not([role="switch"]), [role="button"]),
   .dashboard-shell-admin .dashboard-main :where(
     input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]),
     select,

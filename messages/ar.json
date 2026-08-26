@@ -4279,7 +4279,9 @@
       "saturday": "السبت"
     },
     "optional": "اختياري",
-    "pickDateTime": "اختر التاريخ والوقت"
+    "pickDateTime": "اختر التاريخ والوقت",
+    "pickDate": "اختر تاريخاً",
+    "pickTime": "اختر وقتاً"
   },
   "messagesPage": {
     "defaultTitle": "الرسائل",
@@ -6167,7 +6169,8 @@
     "officePlaceholder": "عنوان المكتب أو الغرفة",
     "salaryPlaceholder": "5000",
     "generateMeetLink": "إنشاء رابط",
-    "meetLinkAutoNote": "اتركه فارغًا لإنشاء غرفة اجتماع تلقائيًا"
+    "meetLinkAutoNote": "اتركه فارغًا لإنشاء غرفة اجتماع تلقائيًا",
+    "unableToLoadDesc": "تعذر تحميل المقابلات. سجلات المقابلات لم تتغير. حاول مرة أخرى."
   },
   "employerOffers": {
     "title": "مساحة عمل العروض",
@@ -6186,7 +6189,7 @@
     "perMonth": "/شهريًا",
     "perYear": "/سنويًا",
     "untitledRole": "دور بدون عنوان",
-    "subtitle": "راجع كل العروض المعلقة والمقبولة والمنتهية في مساحة عمل واحدة.",
+    "subtitle": "راجع وتابع وأدر عروض المرشحين.",
     "currentView": "العرض الحالي",
     "activeOffers": "عروض نشطة",
     "totalRecords": "إجمالي السجلات",
@@ -6199,8 +6202,6 @@
     "avgSalaryDesc": "متوسط مبلغ العرض",
     "allOffers": "الكل",
     "offerList": "قائمة العروض",
-    "offerListDesc": "كل عرض صادر مع حالة المرشح لحظياً.",
-    "offersCount": "عروض",
     "candidate": "المرشح",
     "role": "الوظيفة",
     "offerDetails": "تفاصيل العرض",
@@ -6218,14 +6219,7 @@
     "clearFilters": "مسح",
     "viewDescription": "العروض المعلقة والمقبولة والمنتهية والمسحوبة في مكان واحد.",
     "openPipeline": "فتح خط المرشحين",
-    "pendingNote": "العروض المعلقة في مجموعة النتائج الحالية.",
-    "acceptedNote": "العروض المقبولة الظاهرة في مجموعة النتائج الحالية.",
-    "expiringNote": "النتائج الحالية التي تبقى لها يومان أو أقل.",
     "responded": "تم الرد",
-    "respondedNote": "العروض في هذه الصفحة التي تلقت ردًا بالفعل.",
-    "filterDecisions": "تصفية القرارات",
-    "filterTitle": "ركّز على العروض التي تحتاج إجراءً الآن.",
-    "filterDescription": "صفّي حسب الوظيفة وحالة العرض للعثور على القرارات التي تحتاج انتباهك.",
     "allJobs": "كل الوظائف",
     "allStatuses": "كل الحالات",
     "notSet": "غير محدد",
@@ -6252,6 +6246,7 @@
     "createDesc": "اختر مرشحًا، وحدد ما تريد التحقق منه، وأضف المراجع للتواصل معهم.",
     "loading": "جارٍ تحميل الفحوصات…",
     "empty": "لا توجد فحوصات خلفية أو مراجع بعد.",
+    "noResults": "لا توجد فحوصات مطابقة لبحثك أو النطاق الزمني.",
     "references": "مراجع",
     "created": "تم إنشاء الفحص.",
     "create": "إنشاء فحص",
@@ -6345,16 +6340,11 @@
     "currentlyActiveNote": "المعيّنون الذين هم على رأس العمل حاليًا.",
     "completed": "مكتمل",
     "completedNote": "التعيينات التي انتهت أو اكتملت.",
-    "thisMonth": "هذا الشهر",
-    "thisMonthNote": "المعيّنون الجدد الذين بدأوا هذا الشهر.",
-    "filterOutcomes": "تصفية النتائج",
-    "filterTitle": "ركّز على التعيينات النشطة أو المكتملة أو المنتهية.",
-    "filterDescription": "صفِّ تعييناتك حسب الحالة للتركيز على ما يحتاج انتباهك.",
-    "filterAll": "الكل",
+    "subtitle": "راجع وتابع وأدر المرشحين المعيّنين.",
+    "filterAll": "كل الحالات",
     "filterActive": "نشط",
     "filterCompleted": "مكتمل",
     "filterTerminated": "منتهي",
-    "filterVisaTitle": "حالة التأشيرة",
     "visaAll": "كل التأشيرات",
     "visaNotRequired": "غير مطلوبة",
     "visaPending": "قيد الانتظار",
@@ -6364,9 +6354,6 @@
     "placementList": "قائمة التعيينات",
     "unableToLoad": "تعذر تحميل التعيينات حاليًا",
     "loadError": "تعذر تحميل التعيينات. سجلات التعيينات لم تتغير. حاول مرة أخرى.",
-    "tableTitle": "راجع التعيينات التي تجاوزت خط النهاية.",
-    "tableDescription": "هوية المرشح وسياق الوظيفة ونوع التعيين والتعويضات والحالة تبقى ظاهرة في جدول نتائج واحد.",
-    "placementsOnPage": "{count} تعيين في هذه الصفحة",
     "position": "المنصب",
     "startDate": "تاريخ البدء",
     "salary": "الراتب",
@@ -6569,7 +6556,8 @@
     "tuningTitle": "ابدأ بنية المسؤول عن التوظيف، وليس بمعادلة مثالية.",
     "tuningBody": "زِد المهارات للتوظيف التقني، وارفع الخبرة ذات الصلة للأدوار العليا، واعتمد على التعليم والشهادات للوظائف المنظمة أو المرخصة.",
     "totalLabel": "المجموع:",
-    "need100": "يلزم 100%"
+    "need100": "يلزم 100%",
+    "saveAsTemplateShort": "قالب"
   },
   "employerWorkflow": {
     "title": "سير عمل التوظيف",
@@ -6599,12 +6587,12 @@
     "offer": "عرض",
     "hired": "تم التوظيف",
     "rejected": "مرفوض",
-    "autoProgress": "تقدم تلقائي",
+    "autoProgress": "التقدم التلقائي",
     "autoReject": "رفض تلقائي",
     "enabled": "مفعل",
     "disabled": "معطل",
     "daysThreshold": "حد الأيام",
-    "stage": "المرحلة",
+    "stage": "المرحلة مفعّلة",
     "loadingError": "تعذر تحميل إعدادات سير العمل. يرجى المحاولة مرة أخرى.",
     "saveError": "تعذر حفظ إعدادات سير العمل. يرجى المحاولة مرة أخرى.",
     "templateSaveError": "تعذر حفظ قالب سير العمل. يرجى المحاولة مرة أخرى.",
@@ -6661,7 +6649,8 @@
     "guidanceTitle": "اجعل الأتمتة قابلة للتفسير",
     "guidanceDesc": "استخدم العتبات لترتيب أولوية المراجعة، مع إبقاء مسؤول التوظيف ضمن القرار النهائي للرفض.",
     "saving": "جارٍ الحفظ",
-    "saved": "تم الحفظ"
+    "saved": "تم الحفظ",
+    "saveAsTemplateShort": "قالب"
   },
   "employerJobNew": {
     "title": "إنشاء إعلان وظيفي",
@@ -7219,7 +7208,8 @@
     "overallRating": "التقييم العام",
     "date": "التاريخ",
     "evaluatedBy": "تم التقييم بواسطة",
-    "notes": "ملاحظات"
+    "notes": "ملاحظات",
+    "scorecardList": "بطاقات التقييم"
   },
   "employerPaymentSetup": {
     "title": "إعداد الدفع",
@@ -7336,7 +7326,16 @@
     "errorUpdatingExhibition": "خطأ في تحديث المعرض",
     "noExhibitionRequestsFound": "لا توجد طلبات معارض",
     "tryAdjustingFiltersExhibitions": "جرّب تعديل الفلاتر أو عد لاحقًا عندما يقدم الوكلاء طلبات جديدة.",
-    "teamExhibitionRequests": "طلبات معارض الفريق"
+    "teamExhibitionRequests": "طلبات معارض الفريق",
+    "statusSubmitted": "تم الإرسال",
+    "statusCompleted": "مكتمل",
+    "statusRevision": "بحاجة إلى مراجعة",
+    "duplicateRequest": "تكرار الطلب",
+    "deleteRequest": "حذف الطلب",
+    "selectStartDate": "اختر تاريخ البداية",
+    "selectEndDate": "اختر تاريخ النهاية",
+    "contactPlaceholder": "البريد الإلكتروني أو الهاتف",
+    "selectCurrency": "اختر العملة"
   },
   "resources": {
     "title": "إدارة الموارد",
@@ -7546,7 +7545,20 @@
     "reassignTargetProfile": "إعادة تعيين ملف الهدف",
     "common": {
       "export": "تصدير"
-    }
+    },
+    "searchAgents": "ابحث عن الوكلاء",
+    "stage": "المرحلة",
+    "quarter": "الربع",
+    "category": "الفئة",
+    "labelEmployer": "صاحب العمل",
+    "labelEmployee": "الموظف",
+    "labelFinance": "المالية",
+    "labelOverall": "الإجمالي",
+    "sublabelAnnual": "سنوي",
+    "myTargetReport": "تقرير أهدافي",
+    "reportFilterHint": "صفِّ حسب الربع أو الفئة للتعمق في التفاصيل.",
+    "noMatchHint": "جرّب بحثاً مختلفاً أو مستوى مخاطر أو مرحلة إنجاز أخرى.",
+    "reportHeroDescription": "تقرير الأداء الشخصي — {year}. تابع أهدافك لأصحاب العمل والموظفين والمالية."
   },
   "webhooks": {
     "title": "الويب هوك",
@@ -7898,7 +7910,8 @@
     "deleted": "تم حذف التسلسل",
     "activatedToast": "تم تفعيل التسلسل",
     "pausedToast": "تم إيقاف التسلسل",
-    "deleteConfirm": "حذف هذا التسلسل؟ لا يمكن التراجع عن ذلك."
+    "deleteConfirm": "حذف هذا التسلسل؟ لا يمكن التراجع عن ذلك.",
+    "campaigns": "الحملات"
   },
   "offerLetters": {
     "title": "خطابات العرض",
@@ -8253,7 +8266,8 @@
     "scheduledSuccess": "تمت الجدولة لـ {success} مرشح(ين). {failed} فشل.",
     "notification": "سيتلقى المرشحون إشعارات تلقائية بجميع التفاصيل.",
     "pickDate": "اختر تاريخاً",
-    "pickTime": "اختر وقتاً"
+    "pickTime": "اختر وقتاً",
+    "candidateList": "قائمة المرشحين"
   },
   "employerTraining": {
     "badge": "تعلم صاحب العمل",
@@ -8326,7 +8340,9 @@
     "email": "البريد الإلكتروني",
     "ipAddress": "عنوان IP",
     "noLogs": "لم يتم العثور على سجلات نشاط",
-    "noLogsDesc": "ستظهر أنشطة أعضاء الفريق هنا بمجرد بدء استخدامهم للمنصة."
+    "noLogsDesc": "ستظهر أنشطة أعضاء الفريق هنا بمجرد بدء استخدامهم للمنصة.",
+    "export": "تصدير",
+    "exportData": "تصدير البيانات"
   },
   "employerCandidateProfile": {
     "notFound": "المرشح غير موجود",
@@ -14875,7 +14891,9 @@
     "failedMessagesDescription": "لم يتم إرسال أي رسالة. حاول مرة أخرى لفتح محادثاتك."
   },
   "agentCalendar": {
-    "failedLoadingCalendarEvents": "تعذر تحميل أحداث التقويم"
+    "failedLoadingCalendarEvents": "تعذر تحميل أحداث التقويم",
+    "title": "التقويم",
+    "description": "نظرة عامة مرئية على جميع مقابلاتك ومتابعاتك"
   },
   "agentMessages": {
     "title": "الرسائل",
@@ -15022,3 +15040,4 @@
     }
   }
 }
+

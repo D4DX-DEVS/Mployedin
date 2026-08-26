@@ -81,7 +81,6 @@ export default function ResourceDownloadsPage() {
       {/* Hero Section */}
       <DashboardPageHeader
         icon={FolderOpen}
-        eyebrow="Resources"
         title={t("downloadsTitle")}
         description={t("downloadsSubtitle")}
         footer={
@@ -90,8 +89,8 @@ export default function ResourceDownloadsPage() {
               <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input placeholder={t("searchPlaceholder")} value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 pl-9 text-sm" />
             </div>
-            <SearchableSelect options={CATEGORY_OPTIONS} value={categoryFilter} onValueChange={setCategoryFilter} placeholder="Category" />
-            <SearchableSelect options={SORT_OPTIONS} value={sortBy} onValueChange={setSortBy} placeholder="Sort" />
+            <SearchableSelect options={CATEGORY_OPTIONS} value={categoryFilter} onValueChange={setCategoryFilter} placeholder={t("filterCategory")} />
+            <SearchableSelect options={SORT_OPTIONS} value={sortBy} onValueChange={setSortBy} placeholder={t("sortLabel")} />
             {categoryFilter !== "all" && (
               <button onClick={() => setCategoryFilter("all")} className="shrink-0 text-xs text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground">Clear</button>
             )}

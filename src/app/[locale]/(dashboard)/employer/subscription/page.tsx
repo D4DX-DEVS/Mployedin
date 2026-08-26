@@ -97,7 +97,7 @@ export default function EmployerSubscriptionPage() {
             <span>{t("displayCurrency")}</span>
             <CurrencySelector value={displayCurrency} onChange={setDisplayCurrency} />
             {rateSource === "live" && (
-              <span className="text-[10px] text-emerald-500" title={t("a11yLiveExchangeRates")}>● live</span>
+              <span className="text-[11px] text-emerald-500" title={t("a11yLiveExchangeRates")}>● live</span>
             )}
           </div>
         }
@@ -136,7 +136,6 @@ function ActiveView({
   const limits = snap?.employerLimits as Record<string, unknown> | undefined;
   const usage = subscription.usage;
   const remaining = daysUntil(subscription.endDate);
-  const currentTier = snap?.tier ?? 0;
 
   const usageItems = [
     { label: t("activeJobs"), icon: <Briefcase className="h-5 w-5" />, used: usage?.activeJobs ?? 0, max: (limits?.maxActiveJobs as number) ?? 0 },
@@ -217,27 +216,28 @@ function ActiveView({
       </section>
 
       {/* ── 2. Usage Overview ── */}
-      <section className="rounded-2xl border border-border/60 bg-card space-y-3 sm:space-y-4 panel-body">
+      <section className="rounded-2xl border border-border/60 bg-card space-y-2 sm:space-y-3 panel-body">
         <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
           <BarChart3 className="h-4 w-4" /> {t("usageOverview")}
         </h4>
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-3">
           {usageItems.map((u) => {
             const unlimited = u.max === -1;
             const pct = unlimited ? 0 : pctUsed(u.used, u.max);
             return (
-              <div key={u.label} className={`rounded-xl border ${pct >= 80 ? "border-amber-500/40" : "border-border/40"} card-pad`}>
-                <div className="flex items-center gap-2 mb-3">
-                  <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${barBg(pct)}`}>{u.icon}</div>
-                  <span className="text-sm font-medium">{u.label}</span>
-                </div>
-                <div className="flex items-baseline justify-between mb-2">
-                  <p className="text-2xl font-bold">{u.used}<span className="text-sm font-normal text-muted-foreground"> / {unlimited ? "∞" : u.max}</span></p>
+              <div key={u.label} className={`rounded-xl border ${pct >= 80 ? "border-amber-500/40" : "border-border/40"} chip-pad`}>
+                {/* Icon, label, count and percentage share one row; only the
+                    bar sits below. Stacked in three blocks these cards ran
+                    104px tall for two short numbers. */}
+                <div className="flex items-center gap-2">
+                  <div className={`h-8 w-8 shrink-0 rounded-lg flex items-center justify-center ${barBg(pct)}`}>{u.icon}</div>
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{u.label}</span>
+                  <p className="shrink-0 text-lg font-bold leading-none">{u.used}<span className="text-xs font-normal text-muted-foreground"> / {unlimited ? "∞" : u.max}</span></p>
                   {!unlimited && u.max > 0 && (
-                    <span className={`text-xs font-medium ${pct >= 100 ? "text-red-500" : pct >= 80 ? "text-amber-500" : "text-muted-foreground"}`}>{pct}% used</span>
+                    <span className={`shrink-0 text-[11px] font-medium ${pct >= 100 ? "text-red-500" : pct >= 80 ? "text-amber-500" : "text-muted-foreground"}`}>{pct}%</span>
                   )}
                 </div>
-                <div className="h-2 rounded-full bg-muted">
+                <div className="mt-2 h-2 rounded-full bg-muted">
                   <div className={`h-full rounded-full transition-all ${barColor(pct)}`} style={{ width: `${unlimited ? 5 : Math.max(pct, 2)}%` }} />
                 </div>
               </div>
@@ -255,9 +255,9 @@ function ActiveView({
 
       {/* ── 3. Choose Your Plan ── */}
       {plans.length > 0 && (
-        <section className="space-y-3 sm:space-y-4">
+        <section className="space-y-2 sm:space-y-3">
           <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><Crown className="h-4 w-4" /> {t("chooseYourPlan")}</h4>
-          <PricingGrid plans={plans} currentTier={currentTier} displayCurrency={displayCurrency} rates={rates} />
+          <PricingGrid plans={plans} currentPlanId={subscription.planId} displayCurrency={displayCurrency} rates={rates} />
         </section>
       )}
 

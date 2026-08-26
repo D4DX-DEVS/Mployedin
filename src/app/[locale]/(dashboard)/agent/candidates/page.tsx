@@ -20,8 +20,6 @@ import {
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
-  ArrowRight,
-  BriefcaseBusiness,
   CalendarCheck2,
   CalendarPlus,
   Check,
@@ -315,37 +313,46 @@ export default function AgentCandidatesPage() {
     <div className="page-container">
       <DashboardPageHeader
         icon={Users}
-        eyebrow={t("agentWorkspace")}
         title={t("candidatesPipeline")}
         description={t("pipelineDescription")}
-        summary={{ label: t("pipeline"), value: `${pagination.total} ${t("application", { count: pagination.total })}`, note: t("pipelineSubtext") }}
+        summary={{ label: t("pipeline"), value: `${pagination.total} ${t("application", { count: pagination.total })}` }}
         metrics={[
-          { label: t("shortlistedLabel"), value: shortlistedCount, note: t("shortlistedDesc"), icon: Users },
-          { label: t("interviewsLabel"), value: interviewCount, note: t("interviewsDesc"), icon: CalendarCheck2 },
-          { label: t("highMatchLabel"), value: highMatchCount, note: t("highMatchDesc"), icon: Star },
-          { label: t("jobFilterLabel"), value: jobIdFilter ? 1 : 0, note: t("jobFilterDesc"), icon: BriefcaseBusiness },
+          { label: t("shortlistedLabel"), value: shortlistedCount, icon: Users },
+          { label: t("interviewsLabel"), value: interviewCount, icon: CalendarCheck2 },
+          { label: t("highMatchLabel"), value: highMatchCount, icon: Star },
         ]}
+        compactOnMobile
       />
 
+      {/* One panel: search + export inline, status pills below, table under
+          them. The old separate filter card restated the page title three
+          times before the first row was reachable. */}
       <section className="workspace-panel-surface rounded-3xl panel-body">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("filterCandidatesLabel")}</p>
-          <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("filterCandidatesTitle")}</h2>
-          <p className="mt-1 text-xs sm:text-sm text-muted-foreground">{t("filterCandidatesDesc")}</p>
-        </div>
-        <div className="relative mt-5 max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t("searchPlaceholder")}
-            className="h-10 w-full rounded-xl border border-border bg-background/70 pl-10 pr-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground/60 focus:border-ring focus:ring-2 focus:ring-ring/20"
+        <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3 sm:gap-3 sm:pb-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            {t("currentResultsLabel")}
+          </p>
+          <div className="relative min-w-0 flex-1 sm:ms-auto sm:w-64 sm:flex-none">
+            <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t("searchPlaceholder")}
+              className="h-10 w-full rounded-xl border border-border bg-background/70 ps-10 pe-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground/60 focus:border-ring focus:ring-2 focus:ring-ring/20"
+            />
+          </div>
+          <TableToolbar
+            onExportCsv={handleExportCsv}
+            onExportExcel={handleExportExcel}
+            onExportPdf={handleExportPdf}
+            className="shrink-0"
           />
         </div>
-        <div className="mt-5 flex flex-wrap gap-2">
+
+        <div className="flex flex-wrap gap-1.5 pt-3 sm:gap-2 sm:pt-4">
           {jobIdFilter && (
-            <Button variant="outline" size="sm" onClick={() => setJobIdFilter("")} className="workspace-tone-sky h-10 rounded-xl border-transparent px-4 hover:opacity-90">
+            <Button variant="outline" size="sm" onClick={() => setJobIdFilter("")} className="workspace-tone-sky h-9 rounded-xl border-transparent px-3 hover:opacity-90">
               {filteredJobTitle ? `✕ ${filteredJobTitle}` : t("clearJobFilter")}
             </Button>
           )}
@@ -360,8 +367,8 @@ export default function AgentCandidatesPage() {
                 variant="outline"
                 size="sm"
                 className={isSelected
-                  ? "workspace-tone-sky h-10 rounded-xl border-transparent px-4 capitalize hover:opacity-90"
-                  : "workspace-muted-pill h-10 rounded-xl px-4 capitalize hover:bg-card"
+                  ? "workspace-tone-sky h-9 rounded-xl border-transparent px-3 capitalize hover:opacity-90"
+                  : "workspace-muted-pill h-9 rounded-xl px-3 capitalize hover:bg-card"
                 }
               >
                 {status ? t(`status_${status}`) : tc("all")}
@@ -369,26 +376,8 @@ export default function AgentCandidatesPage() {
             );
           })}
         </div>
-      </section>
 
-      <section className="workspace-panel-surface rounded-3xl panel-body">
-        <div className="flex flex-col gap-2 sm:gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("currentResultsLabel")}</p>
-            <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("currentResultsTitle")}</h2>
-          </div>
-          <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">
-            <ArrowRight className="h-3.5 w-3.5 text-primary" />
-            {t("paginationSummary", { applications: pagination.total, pages: pagination.totalPages })}
-          </div>
-        </div>
-        <TableToolbar
-          onExportCsv={handleExportCsv}
-          onExportExcel={handleExportExcel}
-          onExportPdf={handleExportPdf}
-          className="mt-3 sm:mt-4"
-        />
-        <div className="workspace-subtle-surface mt-5 overflow-hidden rounded-3xl">
+        <div className="workspace-subtle-surface mt-4 overflow-hidden rounded-3xl">
           {loading ? (
             <Table>
               <TableHeader>

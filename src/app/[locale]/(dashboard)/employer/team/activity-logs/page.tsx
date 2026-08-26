@@ -18,6 +18,9 @@ import {
   DollarSign,
   Shield,
   ArrowLeft,
+  Download,
+  FileSpreadsheet,
+  FileDown,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -27,9 +30,16 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
 import { PageHero } from "@/components/shared/PageHero";
 import { PaginationControls } from "@/components/shared/PaginationControls";
-import { TableToolbar } from "@/components/shared/TableToolbar";
 import { usePagination } from "@/hooks/usePagination";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
@@ -225,7 +235,7 @@ export default function TeamActivityLogsPage() {
 
       {/* Stats Summary */}
       {!loading && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-4 gap-1.5 sm:gap-3">
           {[
             {
               label: t("teamMembers"),
@@ -261,20 +271,20 @@ export default function TeamActivityLogsPage() {
           ].map((s) => (
             <div
               key={s.label}
-              className={`card-base card-pad flex sm:flex-col gap-3 sm:gap-2 border ${s.bg}`}
+              className={`card-base flex items-center gap-2.5 border p-2 sm:gap-3 sm:p-3 ${s.bg}`}
             >
-              <div
-                className="rounded-xl border bg-background/80 shrink-0 self-start sm:self-auto w-fit chip-pad"
-                style={{ borderColor: "inherit" }}
-              >
+              {/* Icon beside the figure, not stacked above it. Hidden on phones
+                  so all four cards fit across a 390px row — at ~93px each there
+                  is only room for the label and the number. */}
+              <div className="hidden shrink-0 rounded-xl border border-border bg-background/80 chip-pad sm:block">
                 <s.icon className={`h-5 w-5 ${s.color}`} />
               </div>
-              <div className="flex sm:flex-col items-center sm:items-start justify-between sm:justify-start gap-1 flex-1 min-w-0">
-                <p className="text-xs font-medium text-muted-foreground truncate">
+              <div className="min-w-0 flex-1">
+                <p className="line-clamp-2 text-[11px] font-medium leading-tight text-muted-foreground sm:truncate sm:text-xs">
                   {s.label}
                 </p>
                 <p
-                  className={`text-xl font-bold ${s.color} leading-none tabular-nums shrink-0`}
+                  className={`mt-1 text-base font-bold sm:text-xl ${s.color} leading-none tabular-nums`}
                 >
                   {typeof s.value === "number" ? formatCount(s.value) : s.value}
                 </p>
@@ -283,13 +293,6 @@ export default function TeamActivityLogsPage() {
           ))}
         </div>
       )}
-
-      {/* Export Toolbar */}
-      <TableToolbar
-        onExportCsv={handleExportCsv}
-        onExportExcel={handleExportExcel}
-        onExportPdf={handleExportPdf}
-      />
 
       {/* Filters */}
       <div className="flex gap-3 flex-wrap items-end">
@@ -382,6 +385,33 @@ export default function TeamActivityLogsPage() {
             Clear
           </Button>
         )}
+
+        <div className="ms-auto flex items-end gap-3">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Download className="h-4 w-4 mr-1.5" />
+                {t("export")}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuLabel>{t("exportData")}</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleExportCsv}>
+                <FileDown className="h-4 w-4" />
+                CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportExcel}>
+                <FileSpreadsheet className="h-4 w-4" />
+                Excel
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportPdf}>
+                <FileText className="h-4 w-4" />
+                PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* Activity Log */}

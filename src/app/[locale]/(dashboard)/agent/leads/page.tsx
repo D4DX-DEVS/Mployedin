@@ -700,7 +700,6 @@ export default function AgentLeadsPage() {
       {/* ──── Hero Header ──── */}
       <DashboardPageHeader
         icon={Target}
-        eyebrow={t("heroBadge")}
         title={t("pageTitle")}
         description={t("heroDescription")}
         actions={can("leads", "create") ? (

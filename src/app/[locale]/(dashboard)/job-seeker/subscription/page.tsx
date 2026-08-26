@@ -234,7 +234,7 @@ function ActiveView({
       {plans.length > 0 && (
         <section id="plans" className="space-y-4 scroll-mt-6">
           <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><Crown className="h-4 w-4" /> Available Plans</h4>
-          <PricingGrid plans={plans} currentTier={currentTier} displayCurrency={displayCurrency} rates={rates} />
+          <PricingGrid plans={plans} currentPlanId={subscription.planId} displayCurrency={displayCurrency} rates={rates} />
         </section>
       )}
 

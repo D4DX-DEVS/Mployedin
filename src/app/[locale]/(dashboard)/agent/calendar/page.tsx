@@ -64,8 +64,8 @@ export default function AgentCalendarPage() {
     <div className="page-container">
       {/* Hero */}
       <PageHero
-        title="Calendar"
-        description="Visual overview of all your interviews and follow-ups"
+        title={t("title")}
+        description={t("description")}
       />
 
       <MployedinCalendar

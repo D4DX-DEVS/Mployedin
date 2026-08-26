@@ -254,9 +254,8 @@ export default function AgentTargetReportPage() {
       {/* ═══════ HERO ═══════ */}
       <DashboardPageHeader
         icon={Target}
-        eyebrow="Agent workspace"
-        title="My Target Report"
-        description={`Personal performance report — ${yearFilter}. Track your employer, employee, and finance targets.`}
+        title={t("myTargetReport")}
+        description={t("reportHeroDescription", { year: yearFilter })}
         summary={{
           label: "Performance",
           value: `${profile.overallProgress}% overall`,
@@ -311,7 +310,7 @@ export default function AgentTargetReportPage() {
       {/* ═══════ TOOLBAR ═══════ */}
       <TableToolbar
         title={t("monthlyBreakdownTitle")}
-        description="Filter by quarter or category to drill down."
+        description={t("reportFilterHint")}
         onExportCsv={handleExportCsv}
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
@@ -333,7 +332,7 @@ export default function AgentTargetReportPage() {
               <Input type="number" value={yearFilter} onChange={(e) => setYearFilter(parseInt(e.target.value) || currentYear)} className="h-9 w-24 rounded-lg text-sm" />
             </div>
             <Select value={quarterFilter} onValueChange={setQuarterFilter}>
-              <SelectTrigger className="h-9 w-[130px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder="Quarter" /></SelectTrigger>
+              <SelectTrigger className="h-9 w-[130px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder={t("quarter")} /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Quarters</SelectItem>
                 <SelectItem value="1">Q1 (Jan–Mar)</SelectItem>
@@ -343,7 +342,7 @@ export default function AgentTargetReportPage() {
               </SelectContent>
             </Select>
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="h-9 w-[140px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder="Category" /></SelectTrigger>
+              <SelectTrigger className="h-9 w-[140px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder={t("category")} /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
                 <SelectItem value="employer">Employer</SelectItem>
@@ -361,10 +360,10 @@ export default function AgentTargetReportPage() {
       {/* ═══════ Progress Rings ═══════ */}
       <section className="workspace-glass-panel rounded-2xl panel-body">
         <div className="flex flex-wrap items-center justify-center gap-8">
-          <ProgressRing value={profile.employerProgress} label="Employer" sublabel={`${profile.employerAchieved}/${profile.employerTarget}`} />
-          <ProgressRing value={profile.employeeProgress} label="Employee" sublabel={`${profile.employeeAchieved}/${profile.employeeTarget}`} />
-          <ProgressRing value={profile.financeProgress} label="Finance" sublabel={`${currency} ${formatCount(profile.financeAchieved)}`} />
-          <ProgressRing value={profile.overallProgress} label="Overall" sublabel="Annual" color="#3b82f6" />
+          <ProgressRing value={profile.employerProgress} label={t("labelEmployer")} sublabel={`${profile.employerAchieved}/${profile.employerTarget}`} />
+          <ProgressRing value={profile.employeeProgress} label={t("labelEmployee")} sublabel={`${profile.employeeAchieved}/${profile.employeeTarget}`} />
+          <ProgressRing value={profile.financeProgress} label={t("labelFinance")} sublabel={`${currency} ${formatCount(profile.financeAchieved)}`} />
+          <ProgressRing value={profile.overallProgress} label={t("labelOverall")} sublabel={t("sublabelAnnual")} color="#3b82f6" />
         </div>
       </section>
 

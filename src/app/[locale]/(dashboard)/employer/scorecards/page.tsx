@@ -120,7 +120,14 @@ export default function ScorecardListPage() {
         </div>
       ) : (
       <>
-      <CandidateDataNotice variant="candidateList" />
+      {/* Privacy info at the point candidate data is shown, compacted to
+          an icon + popover to keep the list above the fold. */}
+      <div className="flex items-center gap-2 mb-4">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          {t("scorecardList")}
+        </p>
+        <CandidateDataNotice variant="candidateList" compact />
+      </div>
 
       {/* Aggregate Feedback Trends */}
       <FeedbackTrendsPanel />

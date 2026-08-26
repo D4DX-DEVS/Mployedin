@@ -116,7 +116,6 @@ export default function AgentReportsPage() {
     <div className="page-container">
       <DashboardPageHeader
         icon={BarChart3}
-        eyebrow={t("agentWorkspace")}
         title={t("reportsAnalytics")}
         description={t("pageDescription")}
         summary={{

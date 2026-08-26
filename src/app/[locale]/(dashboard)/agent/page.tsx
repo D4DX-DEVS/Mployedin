@@ -170,42 +170,36 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
     {
       label: t("actions.addEmployerLead.label"),
       href: `/${locale}/agent/leads/new`,
-      note: t("actions.addEmployerLead.note"),
       icon: Target,
       tone: "workspace-tone-amber",
     },
     {
       label: t("actions.postJob.label"),
       href: `/${locale}/agent/jobs/new`,
-      note: t("actions.postJob.note"),
       icon: BriefcaseBusiness,
       tone: "workspace-tone-sky",
     },
     {
       label: t("actions.myJobs.label"),
       href: `/${locale}/agent/jobs`,
-      note: t("actions.myJobs.note"),
       icon: BarChart3,
       tone: "workspace-tone-indigo",
     },
     {
       label: t("actions.candidates.label"),
       href: `/${locale}/agent/candidates`,
-      note: t("actions.candidates.note"),
       icon: Users,
       tone: "workspace-tone-emerald",
     },
     {
       label: t("actions.jobSeekers.label"),
       href: `/${locale}/agent/job-seekers`,
-      note: t("actions.jobSeekers.note"),
       icon: UserRoundSearch,
       tone: "workspace-tone-violet",
     },
     {
       label: t("actions.performanceReport.label"),
       href: `/${locale}/agent/reports`,
-      note: t("actions.performanceReport.note"),
       icon: CircleDollarSign,
       tone: "workspace-tone-rose",
     },
@@ -276,7 +270,6 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
     <div className="page-container dashboard-overview-page">
       <DashboardPageHeader
         icon={Target}
-        eyebrow={t("hero.eyebrow")}
         title={t("hero.title")}
         description={t("hero.description")}
         summary={{
@@ -349,7 +342,6 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
                   </div>
                   <div className="min-w-0 flex-1">
                     <h3 className="heading-label pe-5 font-semibold leading-5 text-foreground sm:truncate sm:pe-0">{action.label}</h3>
-                    <p className="mt-1 hidden text-xs leading-5 text-muted-foreground sm:line-clamp-1">{action.note}</p>
                   </div>
                   <ArrowRight className="absolute end-3 top-3 h-4 w-4 shrink-0 text-muted-foreground/55 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-primary sm:static" />
                 </Link>

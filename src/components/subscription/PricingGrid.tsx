@@ -106,7 +106,8 @@ function Cell({ value, format }: { value: unknown; format?: (v: unknown) => stri
 
 interface PricingGridProps {
   plans: AvailablePlan[];
-  currentTier?: number;
+  /** _id of the user's current plan — matching by tier breaks when plans share a tier */
+  currentPlanId?: string;
   showActivateFree?: boolean;
   displayCurrency?: string;
   rates?: Record<string, number>;
@@ -114,7 +115,7 @@ interface PricingGridProps {
 
 export function PricingGrid({
   plans,
-  currentTier,
+  currentPlanId,
   showActivateFree = false,
   displayCurrency = "AED",
   rates = {},
@@ -150,26 +151,34 @@ export function PricingGrid({
   }
 
   const isEmployer = plans.some((p) => p.targetRole === "employer");
+  // Single popular card: the paid one of a 2-plan list, else the first tier-1 plan.
+  const popularId = plans.length === 2 ? plans.find((p) => p.price > 0)?._id
+    : plans.length > 2 ? plans.find((p) => p.tier === 1)?._id : undefined;
   const rows = isEmployer ? EMPLOYER_FEATURES : JOB_SEEKER_FEATURES;
 
   if (!plans.length) return null;
 
+  // ponytail: static class strings so Tailwind keeps them; 5+ plans fall back to 4 cols
+  const colClass =
+    plans.length === 1 ? "sm:grid-cols-1"
+    : plans.length === 2 ? "sm:grid-cols-2"
+    : plans.length === 3 ? "sm:grid-cols-2 lg:grid-cols-3"
+    : "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
+
   return (
     <div className="space-y-5">
       {/* ── Plan cards ── */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className={`grid gap-3 ${colClass}`}>
         {plans.map((plan) => {
-          const isActive = currentTier === plan.tier;
+          const isActive = currentPlanId === plan._id;
           const isFreePlan = plan.price === 0;
-          // 2-plan lists (e.g. job seeker: Free/Premium) highlight the paid plan;
-          // 3+-plan lists (e.g. employer: Free/Professional/Enterprise) highlight the middle tier.
-          const isMostPopular = plans.length === 2 ? plan.price > 0 : plan.tier === 1 && plans.length > 2;
+          const isMostPopular = popularId === plan._id;
           const highlights = getPlanHighlights(plan, isEmployer);
 
           return (
             <div
               key={plan._id}
-              className={`relative rounded-2xl border flex flex-col transition-all hover:shadow-md ${ isActive ? "border-sky-500/40 bg-card" : isMostPopular ? "border-2 border-sky-500 bg-sky-500/[0.05] shadow-lg shadow-sky-500/10 sm:scale-[1.03] z-10" : "border-border/60 bg-card" } panel-body`}
+              className={`relative rounded-2xl border flex flex-col transition-all hover:shadow-md p-3.5 ${ isActive ? "border-sky-500/40 bg-card" : isMostPopular ? "border-2 border-sky-500 bg-sky-500/[0.05] shadow-lg shadow-sky-500/10 sm:scale-[1.03] z-10" : "border-border/60 bg-card" } panel-body`}
             >
               {isMostPopular && !isActive && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
@@ -187,14 +196,14 @@ export function PricingGrid({
               )}
 
               {/* Header */}
-              <div className="flex items-center gap-2 mb-3">
+              <div className="flex items-center gap-2 mb-2">
                 <TierIcon tier={plan.tier} />
                 <p className="font-semibold">{plan.name}</p>
               </div>
 
               {/* Price */}
-              <div className="mb-4">
-                <p className="text-3xl font-bold tracking-tight">
+              <div className="mb-3">
+                <p className="text-2xl font-bold tracking-tight">
                   {isFreePlan
                     ? t("free")
                     : convertAndFormat(plan.price, plan.currency, displayCurrency, rates)}
@@ -215,9 +224,9 @@ export function PricingGrid({
               </div>
 
               {/* Feature bullets */}
-              <ul className="space-y-2 mb-5 flex-1">
+              <ul className="space-y-1.5 mb-4 flex-1">
                 {highlights.map((h) => (
-                  <li key={h.label} className="flex items-start gap-2 text-sm">
+                  <li key={h.label} className="flex items-start gap-2 text-[13px]">
                     {h.included ? (
                       <Check className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
                     ) : (
@@ -235,7 +244,7 @@ export function PricingGrid({
                 <Button variant="outline" disabled className="w-full mt-auto">
                   <Check className="h-4 w-4 mr-1.5 text-emerald-500" /> {t("currentPlan")}
                 </Button>
-              ) : isFreePlan && (showActivateFree || currentTier === undefined) ? (
+              ) : plan.isDefault && isFreePlan && (showActivateFree || currentPlanId === undefined) ? (
                 <Button className="w-full mt-auto" onClick={() => selfAssign()} disabled={activating}>
                   {activating ? t("activating") : t("activateFreePlan")}
                 </Button>
@@ -276,7 +285,7 @@ export function PricingGrid({
               <div
                 key={plan._id}
                 className={`p-3 text-center text-xs font-semibold ${
-                  currentTier === plan.tier ? "text-sky-500 bg-sky-500/5" : "text-muted-foreground"
+                  currentPlanId === plan._id ? "text-sky-500 bg-sky-500/5" : "text-muted-foreground"
                 }`}
               >
                 {plan.name}
@@ -297,7 +306,7 @@ export function PricingGrid({
                 return (
                   <div
                     key={plan._id}
-                    className={`p-3 text-center ${currentTier === plan.tier ? "bg-sky-500/5" : ""}`}
+                    className={`p-3 text-center ${currentPlanId === plan._id ? "bg-sky-500/5" : ""}`}
                   >
                     <Cell value={value} format={row.format} />
                   </div>

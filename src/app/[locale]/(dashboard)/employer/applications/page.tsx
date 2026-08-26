@@ -394,7 +394,7 @@ export default function EmployerApplicationsPage() {
     if (skipFilterResetRef.current) { skipFilterResetRef.current = false; return; }
     setPage(1);
     setSelected([]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [statusFilter, scoreRange, daysFilter, searchQuery, jobFilter, experienceRange, skillsFilter, sortOption]);
 
   function updateApplicationStatus(id: string, status: string, reason?: string) {
@@ -453,7 +453,7 @@ export default function EmployerApplicationsPage() {
     if (applications.some((a) => a.aiMatchScore == null)) {
       void handleBulkAiMatch();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [isLoading, applications]);
 
   /** Surface the itemized processed/total/errors result from a bulk action as a toast. */
@@ -848,11 +848,10 @@ export default function EmployerApplicationsPage() {
         ) : undefined}
       />
 
-      {/* Privacy information at the point personal data is first shown, not
-          only behind a footer link. */}
-      <CandidateDataNotice variant="candidateList" />
-
-      <div className="px-3 text-sm text-muted-foreground sm:px-4">
+      <div className="flex flex-wrap items-center gap-x-1 px-3 text-sm text-muted-foreground sm:px-4">
+        {/* Privacy info at the point candidate data is shown, compacted to an
+            icon + popover to keep the list above the fold. */}
+        <CandidateDataNotice variant="candidateList" compact className="-ms-1.5" />
         <span className="font-medium text-foreground">{isLoading ? "—" : filteredApplications.length}</span> {t("applicants")}
         <span className="px-2 text-border">•</span>
         <span className="font-medium text-foreground">{isLoading ? "—" : highMatchCount}</span> {t("highMatch")}

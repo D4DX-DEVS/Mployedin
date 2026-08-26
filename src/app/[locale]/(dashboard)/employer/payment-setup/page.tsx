@@ -93,7 +93,6 @@ export default function EmployerPaymentSetupPage() {
       {/* Hero */}
       <DashboardPageHeader
         icon={CreditCard}
-        eyebrow={t("title")}
         title={t("title")}
         description={t("subtitle")}
         summary={{

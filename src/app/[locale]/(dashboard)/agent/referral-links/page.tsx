@@ -152,7 +152,6 @@ export default function AgentReferralLinksPage() {
 
       <DashboardPageHeader
         icon={Link2}
-        eyebrow={t("agentWorkspaceBadge")}
         title={t("pageTitle")}
         description={t("heroDescription")}
         summary={{
@@ -170,10 +169,10 @@ export default function AgentReferralLinksPage() {
             </button>
         }
         metrics={[
-          { label: t("statTotalLinks"), value: total, note: t("statTotalLinksDesc"), icon: Link2 },
-          { label: tc("active"), value: activeLinks, note: t("statActiveDesc"), icon: Check },
-          { label: t("statRegistrations"), value: totalRegistrations, note: t("statRegistrationsDesc"), icon: Users },
-          { label: t("statConversion"), value: total > 0 ? Math.round((totalRegistrations / total) * 10) / 10 : 0, note: t("statConversionDesc"), icon: Hash },
+          { label: t("statTotalLinks"), value: total, icon: Link2 },
+          { label: tc("active"), value: activeLinks, icon: Check },
+          { label: t("statRegistrations"), value: totalRegistrations, icon: Users },
+          { label: t("statConversion"), value: total > 0 ? Math.round((totalRegistrations / total) * 10) / 10 : 0, icon: Hash },
         ]}
       />
 
@@ -211,19 +210,17 @@ export default function AgentReferralLinksPage() {
         </section>
       )}
 
-      {/* Search */}
-      <section className="workspace-panel-surface rounded-2xl sm:rounded-3xl panel-body">
-        <div className="max-w-xl">
-          <TableToolbar
-            search={search}
-            onSearchChange={(v) => { setSearch(v); pagination.resetPage(); }}
-            searchPlaceholder={t("searchPlaceholder")}
-            onExportCsv={handleExportCsv}
-            onExportExcel={handleExportExcel}
-            onExportPdf={handleExportPdf}
-          />
-        </div>
-      </section>
+      {/* Bare toolbar row, not a panel. The list below is a stack of cards, so
+          wrapping one search box in its own surface added a border and a block
+          of padding for nothing. */}
+      <TableToolbar
+        search={search}
+        onSearchChange={(v) => { setSearch(v); pagination.resetPage(); }}
+        searchPlaceholder={t("searchPlaceholder")}
+        onExportCsv={handleExportCsv}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
+      />
 
       {/* Links list */}
       {isLoading ? (

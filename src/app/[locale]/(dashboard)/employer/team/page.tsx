@@ -224,8 +224,8 @@ export default function TeamManagementPage() {
       {!loading && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {stats.map((s) => (
-              <div className={`p-2.5 rounded-xl border bg-background/80 shrink-0 self-start sm:self-auto w-fit`} style={{ borderColor: 'inherit' }}>
-              <div className={`rounded-xl border bg-background/80 shrink-0 self-start sm:self-auto w-fit chip-pad`} style={{ borderColor: 'inherit' }}>
+              <div key={s.label} className="flex items-center gap-3 rounded-xl border border-border bg-background/80 p-2.5">
+              <div className="shrink-0 rounded-xl border border-border bg-background/80 chip-pad">
                 <s.icon className={`h-5 w-5 ${s.color}`} />
               </div>
               <div className="flex sm:flex-col items-center sm:items-start justify-between sm:justify-start gap-1 flex-1 min-w-0">

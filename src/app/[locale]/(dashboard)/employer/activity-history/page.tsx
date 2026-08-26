@@ -169,12 +169,10 @@ export default function ActivityHistoryPage() {
       {/* Hero + Filters Combined */}
       <DashboardPageHeader
         icon={History}
-        eyebrow={t("title")}
         title={t("title")}
         description={t("description")}
         metrics={[
           { label: t("totalEntries"), value: pagination.total, icon: History },
-          { label: t("pageInfo", { page: pagination.page, totalPages: pagination.totalPages || 1 }), value: entries.length, note: t("onThisPage"), icon: FileText },
         ]}
       >
           <div className="mt-2 flex flex-wrap items-end gap-3 border-t border-border/50 pt-3">
@@ -277,7 +275,7 @@ export default function ActivityHistoryPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-sm text-foreground">{entry.actorName}</span>
-                    <Badge variant="outline" className="text-[10px] font-medium rounded-lg px-2 py-0.5">
+                    <Badge variant="outline" className="text-[11px] font-medium rounded-lg px-2 py-0.5">
                       {roleLabel}
                     </Badge>
                     <Badge variant="outline" className={cn("text-[10px] font-medium rounded-lg px-2 py-0.5", actionMeta.color)}>

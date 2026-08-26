@@ -473,7 +473,6 @@ export default function AgentExhibitionsPage() {
 
       <DashboardPageHeader
         icon={CalendarDays}
-        eyebrow="Exhibition requests"
         title={t("title")}
         description={t("subtitle")}
         actions={
@@ -482,12 +481,12 @@ export default function AgentExhibitionsPage() {
           </Button>
         }
         metrics={!loading && items.length > 0 ? [
-          { label: "Total", value: items.length, note: "All requests", icon: CalendarDays },
-          { label: "Submitted", value: submittedCount, note: "Awaiting review", icon: Send },
-          { label: "Approved", value: approvedCount, note: "Cleared to proceed", icon: Save },
-          { label: "Active", value: items.filter((item) => item.status === "active").length, note: "In progress", icon: Clock },
-          { label: "Completed", value: items.filter((item) => item.status === "completed").length, note: "Finished", icon: Eye },
-          { label: "Revision", value: items.filter((item) => item.status === "revision_requested").length, note: "Needs updates", icon: AlertTriangle },
+          { label: tc("total"), value: items.length, icon: CalendarDays },
+          { label: t("statusSubmitted"), value: submittedCount, icon: Send },
+          { label: t("approved"), value: approvedCount, icon: Save },
+          { label: tc("active"), value: items.filter((item) => item.status === "active").length, icon: Clock },
+          { label: t("statusCompleted"), value: items.filter((item) => item.status === "completed").length, icon: Eye },
+          { label: t("statusRevision"), value: items.filter((item) => item.status === "revision_requested").length, icon: AlertTriangle },
         ] : undefined}
         metricsClassName="xl:grid-cols-6"
       >
@@ -574,19 +573,19 @@ export default function AgentExhibitionsPage() {
                   </td>
                   <td className="px-4 py-3.5 text-right">
                     <div className="flex items-center justify-end gap-0.5">
-                      <Button variant="ghost" size="iconDense" className="rounded-lg text-muted-foreground hover:text-primary" title="View details" onClick={() => setDetailItem(item)}>
+                      <Button variant="ghost" size="iconDense" className="rounded-lg text-muted-foreground hover:text-primary" title={t("viewDetails")} onClick={() => setDetailItem(item)}>
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="iconDense" className="rounded-lg text-muted-foreground hover:text-primary" title="Duplicate request" onClick={() => handleDuplicate(item)}>
+                      <Button variant="ghost" size="iconDense" className="rounded-lg text-muted-foreground hover:text-primary" title={t("duplicateRequest")} onClick={() => handleDuplicate(item)}>
                         <Copy className="h-4 w-4" />
                       </Button>
                       {["draft", "submitted", "revision_requested"].includes(item.status) && (
                         <>
-                          <Button variant="ghost" size="iconDense" className="rounded-lg text-muted-foreground hover:text-primary" title="Edit request" onClick={() => startEdit(item)}>
+                          <Button variant="ghost" size="iconDense" className="rounded-lg text-muted-foreground hover:text-primary" title={t("editRequest")} onClick={() => startEdit(item)}>
                             <Edit className="h-4 w-4" />
                           </Button>
                           {["draft", "submitted"].includes(item.status) && (
-                            <Button variant="ghost" size="iconDense" className="rounded-lg text-muted-foreground hover:text-destructive" title="Delete request" onClick={() => handleDelete(item._id)}>
+                            <Button variant="ghost" size="iconDense" className="rounded-lg text-muted-foreground hover:text-destructive" title={t("deleteRequest")} onClick={() => handleDelete(item._id)}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           )}
@@ -784,7 +783,7 @@ export default function AgentExhibitionsPage() {
               <Textarea
                 value={form.description}
                 onChange={(event) => updateForm("description", event.target.value)}
-                placeholder="Brief description of the exhibition and its purpose..."
+                placeholder={t("descriptionPlaceholder")}
                 rows={3}
               />
             </div>
@@ -802,7 +801,7 @@ export default function AgentExhibitionsPage() {
                     }
                   }}
                   mode="date"
-                  placeholder="Select start date"
+                  placeholder={t("selectStartDate")}
                   minDate={startDateMin}
                   container={dialogContainer}
                   modal
@@ -814,7 +813,7 @@ export default function AgentExhibitionsPage() {
                   value={form.eventEndDate}
                   onChange={(value) => updateForm("eventEndDate", value)}
                   mode="date"
-                  placeholder="Select end date"
+                  placeholder={t("selectEndDate")}
                   minDate={endDateMin}
                   container={dialogContainer}
                   modal
@@ -844,7 +843,7 @@ export default function AgentExhibitionsPage() {
                 <Input
                   value={form.organizerContact}
                   onChange={(event) => updateForm("organizerContact", event.target.value)}
-                  placeholder="Email or phone"
+                  placeholder={t("contactPlaceholder")}
                 />
               </div>
             </div>
@@ -867,7 +866,7 @@ export default function AgentExhibitionsPage() {
                   options={CURRENCY_OPTIONS}
                   value={form.budgetCurrency}
                   onValueChange={handleCurrencyChange}
-                  placeholder="Select currency"
+                  placeholder={t("selectCurrency")}
                   container={dialogContainer}
                   modal
                 />

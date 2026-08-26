@@ -208,6 +208,15 @@ export default function BackgroundChecksPage() {
       : s === "cancelled" ? "bg-gray-100 text-gray-600 border-gray-300"
       : "bg-amber-100 text-amber-700 border-amber-300";
 
+  // Hoisted so the list can tell "no checks yet" apart from "filters match
+  // nothing" — filtering inline rendered an empty grid with no explanation.
+  const filtered = checks.filter((c) => {
+    if (search.trim() && !candidateName(c).toLowerCase().includes(search.toLowerCase())) return false;
+    if (dateFrom && new Date(c.createdAt) < new Date(dateFrom)) return false;
+    if (dateTo && new Date(c.createdAt) > new Date(dateTo)) return false;
+    return true;
+  });
+
   const outcomeColor = (o: Outcome) =>
     o === "clear" ? "bg-emerald-100 text-emerald-700 border-emerald-300"
       : o === "flagged" ? "bg-amber-100 text-amber-700 border-amber-300"
@@ -227,10 +236,6 @@ export default function BackgroundChecksPage() {
           </Button>
         }
       />
-
-      {/* Privacy information at the point personal data is first shown, not
-          only behind a footer link. */}
-      <CandidateDataNotice variant="candidateList" />
 
       {loading ? (
         <div className="grid gap-3">
@@ -264,7 +269,7 @@ export default function BackgroundChecksPage() {
                   aria-label={t("searchPlaceholder")}
                 />
               </div>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2">
                 <DateTimePicker
                   mode="date"
                   value={dateFrom}
@@ -277,28 +282,21 @@ export default function BackgroundChecksPage() {
                   onChange={setDateTo}
                   placeholder={t("toDate")}
                 />
+                {/* Privacy info at the point candidate data is shown, compacted
+                    to an icon + popover to keep the list above the fold. */}
+                <CandidateDataNotice variant="candidateList" compact />
               </div>
             </div>
           </div>
 
+          {filtered.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border/60 py-16 text-center">
+              <Search className="mx-auto h-10 w-10 text-muted-foreground/60" />
+              <p className="mt-3 text-sm text-muted-foreground">{t("noResults")}</p>
+            </div>
+          ) : (
           <div className="grid gap-3">
-          {checks
-            .filter((c) => {
-              if (search.trim()) {
-                const q = search.toLowerCase();
-                if (!candidateName(c).toLowerCase().includes(q)) return false;
-              }
-              if (dateFrom) {
-                const checkDate = new Date(c.createdAt);
-                if (checkDate < new Date(dateFrom)) return false;
-              }
-              if (dateTo) {
-                const checkDate = new Date(c.createdAt);
-                if (checkDate > new Date(dateTo)) return false;
-              }
-              return true;
-            })
-            .map((c) => (
+          {filtered.map((c) => (
             <button
               key={c._id}
               onClick={() => setDetail(c)}
@@ -322,6 +320,7 @@ export default function BackgroundChecksPage() {
             </button>
           ))}
           </div>
+          )}
         </>
       )}
 

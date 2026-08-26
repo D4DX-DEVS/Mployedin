@@ -95,7 +95,6 @@ export default function AgentChatPage() {
     <div className="page-container flex flex-col">
       <DashboardPageHeader
         icon={Users}
-        eyebrow={t("agentWorkspaceBadge")}
         title={t("teamChannelsHeading")}
         description={t("teamChannelsDescription")}
         summary={{

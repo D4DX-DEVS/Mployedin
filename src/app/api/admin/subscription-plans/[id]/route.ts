@@ -50,6 +50,12 @@ async function patchHandler(
   }
 
   const targetRole = body.targetRole ?? plan.targetRole;
+  // findByIdAndUpdate skips the model's pre-validate slug hook — regenerate here on rename
+  const update: Record<string, unknown> = { ...body };
+  if (body.name !== undefined || body.targetRole !== undefined) {
+    const name = body.name ?? plan.name;
+    update.slug = `${targetRole}_${name}`.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
+  }
   const before = plan.toObject();
   const session = await mongoose.startSession();
   try {
@@ -63,7 +69,7 @@ async function patchHandler(
       }
       const updated = await SubscriptionPlan.findByIdAndUpdate(
         plan!._id,
-        { $set: body },
+        { $set: update },
         { new: true, runValidators: true, session },
       );
       if (!updated) throw new Error("PLAN_NOT_FOUND_DURING_UPDATE");

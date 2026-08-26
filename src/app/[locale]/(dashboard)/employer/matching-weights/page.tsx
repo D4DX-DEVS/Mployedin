@@ -3,14 +3,13 @@
 import { useTranslations } from "next-intl";
 
 import { useState, useEffect } from "react";
-import { Sliders, Save, RotateCcw, Loader2, CheckCircle, Sparkles, Target, Scale, BarChart3, BookTemplate, Copy } from "lucide-react";
+import { Sliders, Save, RotateCcw, Loader2, CheckCircle, BookTemplate, Copy } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { FeatureGate } from "@/components/shared/FeatureGate";
 import { useMatchingWeights, useSaveMatchingWeights, type MatchingWeights } from "@/hooks/useMatchingWeights";
-import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import {
   useEmployerMatchingWeightTemplates,
   useCreateEmployerMatchingWeightTemplate,
@@ -119,7 +118,6 @@ export default function EmployerMatchingWeightsPage() {
   const topPriority = weightKeys.reduce((highest, key) => (
     weights[key] > weights[highest] ? key : highest
   ), weightKeys[0]);
-  const saveStateLabel = saveWeights.isPending ? "Saving changes" : saved ? "Weights saved" : "Ready to update";
 
   if (loading) return (
     <div className="page-container">
@@ -138,7 +136,9 @@ export default function EmployerMatchingWeightsPage() {
         title={t("title")}
         description={t("description")}
         actions={
-          <div className="flex w-full min-w-0 flex-nowrap items-center gap-1.5 sm:w-auto sm:gap-2 [&>button]:min-w-0 [&>button]:flex-1 [&>button]:px-2 [&>button]:text-xs sm:[&>button]:flex-none sm:[&>button]:px-3 sm:[&>button]:text-sm [&_svg]:shrink-0">
+          /* One row. Phones use a shorter label rather than a squeezed pill —
+             the full text in a flex-1 button spilled outside its own pill. */
+          <div className="flex w-full min-w-0 flex-nowrap items-center gap-1.5 sm:w-auto sm:gap-2 [&>button]:min-w-0 [&>button]:whitespace-nowrap [&>button]:px-2 [&>button]:text-xs sm:[&>button]:px-3 sm:[&>button]:text-sm [&_svg]:shrink-0">
             <Button
               variant="outline"
               size="sm"
@@ -155,7 +155,8 @@ export default function EmployerMatchingWeightsPage() {
               className="gap-1.5 rounded-xl border-border"
             >
               <Copy className="h-4 w-4" />
-              {t("saveAsTemplate")}
+              <span className="sm:hidden">{t("saveAsTemplateShort")}</span>
+              <span className="hidden sm:inline">{t("saveAsTemplate")}</span>
             </Button>
           </div>
         }
@@ -249,37 +250,31 @@ export default function EmployerMatchingWeightsPage() {
         </div>
       )}
 
-      <DashboardPageHeader
-        icon={Sliders}
-        eyebrow={t("rankingControls")}
-        title={t("rankingControlsDesc")}
-        description={t("totalAllocation")}
-        metrics={[
-          { label: t("totalAt"), value: `${total}%`, note: t("totalMustBe100"), icon: Scale },
-          { label: t("topPriority"), value: t(WEIGHT_LABEL_KEYS[topPriority]), note: `${t("currentStrongest")} ${weights[topPriority]}%.`, icon: Target },
-          { label: saveStateLabel, value: `${weights[topPriority]}%`, note: t("readyToUpdateDesc"), icon: BarChart3 },
-        ]}
-        headingLevel={2}
-      />
-
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.35fr,0.65fr]">
         {/* Sliders */}
         <section className="workspace-panel-surface space-y-5 rounded-3xl panel-body">
-          <div className="flex items-center justify-between">
+          <div className="flex items-start justify-between gap-2">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("weightBuilder")}</p>
               <h3 className="heading-subsection mt-2 flex items-center gap-2 font-semibold text-foreground">
                 <Sliders className="h-4 w-4 text-status-applied" /> {t("weightConfig")}
               </h3>
               <p className="mt-1 text-sm text-muted-foreground">{t("adjustPercentages")}</p>
+              {/* Top priority as one line. It used to be a second full header
+                  whose three tiles restated the total and this same value. */}
+              <p className="mt-1 text-xs text-muted-foreground">
+                {t("topPriority")} {t(WEIGHT_LABEL_KEYS[topPriority])} · {weights[topPriority]}%
+              </p>
             </div>
-            <span className={`rounded-full px-3 py-1 text-sm font-semibold ${isTotalValid ? "bg-emerald-500/10 text-emerald-700" : "bg-red-500/10 text-status-rejected"}`}>
+            {/* nowrap + shrink-0: at 375px this badge was breaking across two
+                lines and shoving itself into the description text. */}
+            <span className={`shrink-0 self-start whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold sm:px-3 sm:text-sm ${isTotalValid ? "bg-emerald-500/10 text-emerald-700" : "bg-red-500/10 text-status-rejected"}`}>
               {t("totalLabel")} {total}% {isTotalValid ? "✓" : t("need100")}
             </span>
           </div>
 
           {weightKeys.map((key) => (
-            <div key={key} className="rounded-3xl border border-border bg-background/60 card-pad">
+            <div key={key} className="rounded-2xl border border-border bg-background/60 p-3 sm:rounded-3xl sm:p-4">
               <div className="max-w-2xl">
                 <label htmlFor={`weight-${key}`} className="text-sm font-semibold text-foreground">{t(WEIGHT_LABEL_KEYS[key])}</label>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">{t(WEIGHT_DESC_KEYS[key])}</p>

@@ -250,7 +250,6 @@ export default function AgentJobsPage() {
       {/* ──────── HERO + UNIFIED FILTERS ──────── */}
       <DashboardPageHeader
         icon={BriefcaseBusiness}
-        eyebrow={common("workspace")}
         title={t("title")}
         description={t("description")}
         summary={{
@@ -268,57 +267,49 @@ export default function AgentJobsPage() {
         }
       />
 
-      <section className="workspace-panel-surface chip-pad" aria-label={t("filters.title")}>
-        <div className="relative min-w-0">
-          <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t("filters.searchPlaceholder")}
-            className="h-11 rounded-xl border-border bg-background ps-9 text-sm shadow-none"
-          />
-        </div>
-        <StatusFilterStrip
-          label={t("filters.title")}
-          className="mt-2"
-          selectedId={statusFilter || "all"}
-          onSelect={(value) => setStatusFilter(value === "all" ? "" : value)}
-          items={[
-            { id: "all", label: common("all"), value: pagination.total },
-            { id: "active", label: statusLabels.active, value: activeJobs },
-            { id: "draft", label: statusLabels.draft, value: draftJobs },
-            { id: "closed", label: statusLabels.closed, value: statusCounts.closed ?? 0 },
-          ]}
-        />
-      </section>
-
-        {/* ── Combined Filter Bar ── */}
+        {/* One panel: search shares a row with the Filters toggle, the status
+            strip sits under it. These were two stacked cards — the second one
+            spent an icon, a heading and a blurb to say "Filters". */}
         <section className="workspace-panel-surface rounded-3xl panel-body">
-          {/* Toggle button */}
-          <button
-            onClick={() => setFiltersOpen((prev) => !prev)}
-            aria-expanded={filtersOpen}
-            aria-controls="agent-job-advanced-filters"
-            className="flex w-full items-center justify-between gap-3"
-          >
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/20 to-sky-500/20">
-                <Filter className="h-4 w-4 text-status-interview" />
-              </div>
-              <div className="text-left">
-                <h2 className="heading-label font-semibold text-foreground">{t("filters.title")}</h2>
-                <p className="text-xs text-muted-foreground">{t("ai.description")}</p>
-              </div>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={t("filters.searchPlaceholder")}
+                className="h-10 rounded-xl border-border bg-background ps-9 text-sm shadow-none"
+              />
             </div>
-            <div className="flex items-center gap-2">
+            <button
+              onClick={() => setFiltersOpen((prev) => !prev)}
+              aria-expanded={filtersOpen}
+              aria-controls="agent-job-advanced-filters"
+              className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl border border-border px-3 text-sm font-medium text-foreground transition-colors hover:border-primary/25"
+            >
+              <Filter className="h-4 w-4 text-status-interview" />
+              {t("filters.title")}
               {(search || statusFilter || employerFilter || activeAiFilters) && (
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-600 text-[10px] font-bold text-white">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-600 text-[11px] font-bold text-white">
                   {[search, statusFilter, employerFilter, activeAiFilters].filter(Boolean).length}
                 </span>
               )}
               <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${filtersOpen ? "rotate-180" : ""}`} />
-            </div>
-          </button>
+            </button>
+          </div>
+
+          <StatusFilterStrip
+            label={t("filters.title")}
+            className="mt-3"
+            selectedId={statusFilter || "all"}
+            onSelect={(value) => setStatusFilter(value === "all" ? "" : value)}
+            items={[
+              { id: "all", label: common("all"), value: pagination.total },
+              { id: "active", label: statusLabels.active, value: activeJobs },
+              { id: "draft", label: statusLabels.draft, value: draftJobs },
+              { id: "closed", label: statusLabels.closed, value: statusCounts.closed ?? 0 },
+            ]}
+          />
 
           {/* Expandable filter content */}
           <div

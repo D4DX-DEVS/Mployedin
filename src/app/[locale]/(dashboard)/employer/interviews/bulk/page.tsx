@@ -107,13 +107,18 @@ export default function EmployerBulkInterviewPage() {
         description={t("description")}
       />
 
-      {/* Privacy information at the point personal data is first shown, not
-          only behind a footer link. */}
-      <CandidateDataNotice variant="candidateList" />
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Candidates Selection */}
         <div className="lg:col-span-2 card-base space-y-3 sm:space-y-4 panel-body">
+          {/* Privacy info at the point candidate data is shown, compacted to
+              an icon + popover to keep the list above the fold. */}
+          <div className="flex items-center gap-2">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              {t("candidateList")}
+            </p>
+            <CandidateDataNotice variant="candidateList" compact />
+          </div>
+
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 flex-1">
               <Search className="h-4 w-4 text-muted-foreground shrink-0" />

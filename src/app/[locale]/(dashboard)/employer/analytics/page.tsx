@@ -168,16 +168,11 @@ export default function EmployerAnalyticsPage() {
 
   const activeTabMeta = ANALYTICS_TABS.find((t) => t.key === activeTab) || ANALYTICS_TABS[0];
 
+  // Only figures the funnel below does NOT already show. "Total applied" and
+  // "Hired" lived here as well as in the Applied→Hired stage cards.
   const headlineMetrics =
     activeTab === "pipeline" && data && pipeline
       ? [
-          {
-            label: t("totalApplied"),
-            value: data.conversion.applied,
-            description: t("totalAppliedDesc"),
-            icon: Users,
-            color: "blue",
-          },
           {
             label: t("inPipeline"),
             value: Math.max(0, data.conversion.applied - data.conversion.hired - (pipeline.perJob.reduce((sum, j) => sum + (j.stages.find((s) => s.status === "rejected")?.count || 0), 0))),
@@ -191,13 +186,6 @@ export default function EmployerAnalyticsPage() {
             description: t("conversionRateDesc"),
             icon: Zap,
             color: "purple",
-          },
-          {
-            label: t("hiredAllTime"),
-            value: data.conversion.hired,
-            description: t("hiredAllTimeDesc"),
-            icon: Sparkles,
-            color: "green",
           },
         ]
       : [];
@@ -338,7 +326,6 @@ export default function EmployerAnalyticsPage() {
     <div className="page-container">
       <DashboardPageHeader
         icon={activeTabMeta.icon}
-        eyebrow={t(activeTab === "response" ? "responseTime" : activeTab)}
         title={t("title")}
         description={t("description")}
         summary={{
@@ -380,7 +367,7 @@ export default function EmployerAnalyticsPage() {
 
       <AnalyticsPanel className="p-2 sm:p-4">
         <div className="flex flex-col gap-1.5 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
-          <div className="flex flex-wrap gap-1 sm:gap-2">
+          <div className="flex flex-wrap gap-1.5 sm:gap-2">
             {ANALYTICS_TABS.map((tab) => {
               const Icon = tab.icon;
 
@@ -402,13 +389,6 @@ export default function EmployerAnalyticsPage() {
             })}
           </div>
 
-          {/* One compact line on phones — label above value cost a whole card. */}
-          <div className="flex flex-wrap items-baseline gap-x-2 rounded-lg border border-border bg-secondary/65/80 px-2 py-1 text-[10px] text-muted-foreground sm:block sm:rounded-2xl sm:px-4 sm:py-3 sm:text-sm">
-            <p className="text-[8px] font-semibold uppercase tracking-[0.1em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">
-              {t("currentLens")}
-            </p>
-            <p className="min-w-0 truncate font-medium text-foreground sm:mt-1">{t(activeTabMeta.key === "response" ? "responseTimeDesc" : `${activeTabMeta.key}Desc`)}</p>
-          </div>
         </div>
       </AnalyticsPanel>
 
@@ -570,51 +550,38 @@ function PipelineTab({
 
   return (
     <div className="space-y-6">
+      {/* One row, not a panel with its own heading and paragraph — this is a
+          single dropdown and the funnel below already says what it scopes. */}
       {jobOptions.length > 0 && (
-        <AnalyticsPanel>
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <AnalyticsSectionHeader
-              title={t("pipelineScope")}
-              description={t("scopeDescription")}
-              icon={Filter}
-              eyebrow={t("jobFilter")}
-            />
-            <div className="min-w-full lg:min-w-[280px] xl:min-w-[340px]">
-              <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                {t("selectedJob")}
-              </label>
-              <SearchableSelect
-                value={selectedJobId}
-                onValueChange={setSelectedJobId}
-                placeholder={t("allJobs")}
-                options={[
-                  { value: "", label: t("allJobs") },
-                  ...jobOptions.map((j) => ({ value: j.jobId, label: `${j.title} (${j.total})` })),
-                ]}
-              />
-            </div>
-          </div>
-        </AnalyticsPanel>
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <Filter className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            {t("selectedJob")}
+          </span>
+          <SearchableSelect
+            className="min-w-0 flex-1 sm:w-72 sm:flex-none"
+            value={selectedJobId}
+            onValueChange={setSelectedJobId}
+            placeholder={t("allJobs")}
+            options={[
+              { value: "", label: t("allJobs") },
+              ...jobOptions.map((j) => ({ value: j.jobId, label: `${j.title} (${j.total})` })),
+            ]}
+          />
+        </div>
       )}
 
+      {/* Compact alert row. Same warning, a third of the height — it used to
+          get the same visual weight as the funnel it sits above. */}
       {pipeline.stalledCount > 0 && (
-        <div className="workspace-panel-surface rounded-2xl border-status-shortlisted/20 sm:rounded-3xl panel-body">
-          <div className="flex items-start gap-2.5 sm:gap-4">
-            <div className="rounded-xl bg-status-shortlisted-bg p-2 text-status-shortlisted sm:rounded-2xl sm:p-3">
-              <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-status-shortlisted sm:text-[11px] sm:tracking-[0.18em]">
-                {t("actionNeeded")}
-              </p>
-              <p className="mt-1 text-sm font-semibold text-amber-950 sm:mt-2 sm:text-lg">
-                {t("stalledCandidates", { count: pipeline.stalledCount })}
-              </p>
-              <p className="mt-1 text-xs leading-5 text-status-shortlisted sm:text-sm sm:leading-6">
-                {t("stalledHint")}
-              </p>
-            </div>
-          </div>
+        <div className="flex items-center gap-2.5 rounded-2xl border border-status-shortlisted/20 bg-status-shortlisted-bg/40 px-3 py-2.5 sm:gap-3 sm:px-4">
+          <AlertTriangle className="h-4 w-4 shrink-0 text-status-shortlisted" aria-hidden="true" />
+          <p className="min-w-0 text-xs leading-5 text-status-shortlisted sm:text-sm">
+            <span className="font-semibold text-amber-950">
+              {t("stalledCandidates", { count: pipeline.stalledCount })}
+            </span>{" "}
+            {t("stalledHint")}
+          </p>
         </div>
       )}
 

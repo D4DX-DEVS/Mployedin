@@ -148,11 +148,14 @@ export function DashboardPageHeader({
                     {metric.label}
                   </p>
                   <div className="mt-1 flex min-w-0 items-baseline gap-2">
-                    <div className="line-clamp-2 text-sm font-semibold leading-tight tracking-tight text-foreground sm:text-2xl sm:leading-none">
+                    {/* The value is a number — it must never wrap. line-clamp-2 here
+                        broke "10" into "1" / "0" once the note squeezed the cell.
+                        The note absorbs the squeeze by truncating instead. */}
+                    <div className="shrink-0 whitespace-nowrap text-sm font-semibold leading-tight tracking-tight text-foreground sm:text-2xl sm:leading-none">
                       {metric.value}
                     </div>
                     {metric.note && (
-                      <div className="hidden truncate text-xs text-muted-foreground sm:block">
+                      <div className="hidden min-w-0 truncate text-xs text-muted-foreground sm:block">
                         {metric.note}
                       </div>
                     )}

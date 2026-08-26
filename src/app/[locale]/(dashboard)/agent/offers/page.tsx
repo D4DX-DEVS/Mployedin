@@ -301,7 +301,6 @@ export default function AgentOffersPage() {
     <div className="page-container">
       <DashboardPageHeader
         icon={Gift}
-        eyebrow={t("header.title")}
         title={t("header.title")}
         description={t("header.description")}
         metrics={[
@@ -312,35 +311,34 @@ export default function AgentOffersPage() {
         ]}
       />
 
-      {/* Filters */}
+      {/* One panel: filters and export share the list header, table below.
+          The filter row was a card of its own stacked above the table. */}
       <section className="workspace-panel-surface rounded-3xl panel-body">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3 sm:gap-3 sm:pb-4">
+          <div className="relative min-w-0 flex-1">
+            <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder={t("filters.searchPlaceholder")}
               value={filters.search}
               onChange={(e) => updateFilter("search", e.target.value)}
-              className="pl-9"
+              className="ps-9"
             />
           </div>
-          <SearchableSelect options={statusOptions} value={filters.status} onValueChange={(v) => updateFilter("status", v)} placeholder={t("filters.status")} className="w-36" />
-          <Button variant="ghost" size="sm" onClick={() => { setFilters(INITIAL_FILTERS); pagination.resetPage(); }}>
-            <RotateCcw className="mr-1 h-4 w-4" /> {t("actions.reset")}
+          <SearchableSelect options={statusOptions} value={filters.status} onValueChange={(v) => updateFilter("status", v)} placeholder={t("filters.status")} className="w-36 shrink-0" />
+          <Button variant="ghost" size="sm" className="shrink-0" onClick={() => { setFilters(INITIAL_FILTERS); pagination.resetPage(); }}>
+            <RotateCcw className="me-1 h-4 w-4" /> {t("actions.reset")}
           </Button>
+          {!loading && offers.length > 0 && (
+            <TableToolbar
+              onExportCsv={handleExportCsv}
+              onExportExcel={handleExportExcel}
+              onExportPdf={handleExportPdf}
+              className="shrink-0"
+            />
+          )}
         </div>
-      </section>
 
-      {/* Table */}
-      <section className="workspace-panel-surface rounded-3xl panel-body">
-        {!loading && offers.length > 0 && (
-          <TableToolbar
-            onExportCsv={handleExportCsv}
-            onExportExcel={handleExportExcel}
-            onExportPdf={handleExportPdf}
-            className="mb-4"
-          />
-        )}
+        <div className="pt-4">
         {loading ? (
           <div className="overflow-x-auto">
             <Table>
@@ -448,6 +446,7 @@ export default function AgentOffersPage() {
             </Table>
           </div>
         )}
+        </div>
       </section>
 
       <PaginationControls

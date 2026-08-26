@@ -100,7 +100,7 @@ function CandidateAvatar({ ref, size = "sm" }: { ref: PooledCandidateRef | null;
   const label = candidateLabel(ref);
   const initials = label !== "—" ? label.slice(0, 2).toUpperCase() : "?";
   if (avatar) {
-    // eslint-disable-next-line @next/next/no-img-element
+     
     return <img src={avatar} alt={label} className={`${dims} rounded-full border-2 border-background object-cover`} />;
   }
   return (
@@ -169,7 +169,6 @@ export default function EmployerTalentPoolsPage() {
       <DashboardPageHeader
         inlineActions
         icon={Layers}
-        eyebrow={t("title")}
         title={t("title")}
         description={t("subtitle")}
         actions={pools.length > 0 ? (
@@ -184,10 +183,6 @@ export default function EmployerTalentPoolsPage() {
           { label: t("statAddedThisMonth"), value: stats.addedThisMonth, icon: Plus },
         ] : undefined}
       />
-
-      {/* Privacy information at the point personal data is first shown, not
-          only behind a footer link. */}
-      <CandidateDataNotice variant="candidateList" />
 
       {pools.length > 0 && (
         <section className="workspace-panel-surface rounded-2xl panel-body">
@@ -208,6 +203,9 @@ export default function EmployerTalentPoolsPage() {
                 <SelectItem value="name">{t("sortAlphabetical")}</SelectItem>
               </SelectContent>
             </Select>
+            {/* Privacy info at the point candidate data is shown, compacted to
+                an icon + popover to keep the list above the fold. */}
+            <CandidateDataNotice variant="candidateList" compact />
           </div>
         </section>
       )}

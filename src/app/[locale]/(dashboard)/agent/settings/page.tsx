@@ -1429,7 +1429,6 @@ export default function AgentSettingsPage() {
     <div className="page-container">
       <PageHero
         icon={Settings}
-        eyebrow={common("workspace")}
         title={t("hero.title")}
         description={t("hero.description")}
       />

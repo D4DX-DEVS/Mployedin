@@ -69,7 +69,7 @@ function Stat({ icon, label, value }: { icon: ReactNode; label: string; value: n
     <div className="rounded-xl bg-muted/50 px-2 py-2 text-center">
       <div className="flex items-center justify-center text-muted-foreground">{icon}</div>
       <p className="mt-1 text-sm font-semibold text-foreground">{value}</p>
-      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
     </div>
   );
 }
@@ -112,21 +112,23 @@ export default function EmployerCampaignsPage() {
         }
       />
 
+      {/* Bare toolbar row, not a panel: the card wrapper and its bottom border
+          framed the filters with nothing underneath, and the label just
+          repeated the page title directly above it. */}
       {(total > 0 || search || statusFilter) && (
-        <div className="workspace-panel-surface rounded-3xl panel-body">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <Input
-              placeholder={t("searchPlaceholder") || "Search campaigns..."}
+              placeholder={t("searchPlaceholder")}
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              className="h-10 rounded-xl border-border bg-background sm:flex-1"
-              aria-label={t("searchPlaceholder") || "Search campaigns..."}
+              className="h-10 min-w-0 flex-1 rounded-xl border-border bg-background sm:w-64 sm:flex-none"
+              aria-label={t("searchPlaceholder")}
             />
             <Select
               value={statusFilter || "all"}
               onValueChange={(v) => { setStatusFilter(v === "all" ? null : v); setPage(1); }}
             >
-              <SelectTrigger className="h-10 rounded-xl border-border bg-background">
+              <SelectTrigger className="h-10 w-44 shrink-0 rounded-xl border-border bg-background">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -137,7 +139,6 @@ export default function EmployerCampaignsPage() {
                 <SelectItem value="completed">{t("completed")}</SelectItem>
               </SelectContent>
             </Select>
-          </div>
         </div>
       )}
 

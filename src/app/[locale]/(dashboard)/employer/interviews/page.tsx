@@ -338,7 +338,12 @@ export default function EmployerInterviewsPage() {
       {/* ── Page header ───────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">{tn("interviews")}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">{tn("interviews")}</h1>
+            {/* Privacy info at the point candidate data is shown, compacted to
+                an icon + popover to keep the list above the fold. */}
+            <CandidateDataNotice variant="candidateList" compact />
+          </div>
           <p className="mt-0.5 text-sm text-muted-foreground">
             {formatNumber(deduplicatedInterviews.length, locale)} {t("active")} · {formatNumber(total, locale)} {t("total")}
           </p>
@@ -385,10 +390,6 @@ export default function EmployerInterviewsPage() {
           </Button>
         </div>
       </div>
-
-      {/* Privacy information at the point personal data is first shown, not
-          only behind a footer link. */}
-      <CandidateDataNotice variant="candidateList" />
 
       {/* ── Stat row — tap a tile to filter the list by that status ────── */}
       <div className="grid grid-cols-4 gap-1.5 sm:gap-2">

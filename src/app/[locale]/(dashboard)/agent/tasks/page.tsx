@@ -181,7 +181,6 @@ export default function AgentTasksPage() {
       {/* Hero */}
       <DashboardPageHeader
         icon={CheckSquare}
-        eyebrow={t("pageTitle")}
         title={t("pageTitle")}
         description={t("pageDescription")}
         actions={
@@ -215,24 +214,23 @@ export default function AgentTasksPage() {
         </section>
       )}
 
-      {/* Filters */}
+      {/* One panel: the filter row was a card of its own holding nothing but a
+          search box, a select and Reset, stacked above the list it filters. */}
       <section className="workspace-panel-surface rounded-3xl panel-body">
         {/* Wraps rather than stacks on phones, so the status dropdown and Reset
             share a line with the search box (see [data-table-toolbar] in globals.css). */}
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3" data-table-toolbar="simple">
+        <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3 sm:gap-3 sm:pb-4" data-table-toolbar="simple">
           <div className="relative toolbar-search-field flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder={t("searchPlaceholder")} value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+            <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input placeholder={t("searchPlaceholder")} value={search} onChange={(e) => setSearch(e.target.value)} className="ps-9" />
           </div>
           <SearchableSelect options={getStatusOptions(t)} value={statusFilter} onValueChange={setStatusFilter} placeholder={tc("status")} className="w-36" />
           <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setStatusFilter("all"); }}>
-            <RotateCcw className="mr-1 h-4 w-4" /> {t("resetButton")}
+            <RotateCcw className="me-1 h-4 w-4" /> {t("resetButton")}
           </Button>
         </div>
-      </section>
 
-      {/* Task List */}
-      <section className="workspace-panel-surface rounded-3xl panel-body">
+        <div className="pt-4">
         {loading ? (
           <div className="space-y-3">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -314,6 +312,7 @@ export default function AgentTasksPage() {
             ))}
           </div>
         )}
+        </div>
       </section>
 
       {total > 0 && (

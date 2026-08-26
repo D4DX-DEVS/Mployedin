@@ -8,9 +8,10 @@ import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Users, Briefcase, TrendingUp, Inbox, CircleCheckBig, ClipboardList, ChevronDown } from "lucide-react";
+import { Users, Briefcase, Inbox, CircleCheckBig, ClipboardList, ChevronDown } from "lucide-react";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { TableToolbar } from "@/components/shared/TableToolbar";
@@ -38,25 +39,35 @@ export default function EmployerPlacementsPage() {
   const [filter, setFilter] = useState("all");
   const [visaFilter, setVisaFilter] = useState("all");
 
+  const STATUS_OPTIONS = [
+    { value: "all", label: t("filterAll") },
+    { value: "active", label: t("filterActive") },
+    { value: "completed", label: t("filterCompleted") },
+    { value: "terminated", label: t("filterTerminated") },
+  ];
+  const VISA_OPTIONS = [
+    { value: "all", label: t("visaAll") },
+    { value: "not_required", label: t("visaNotRequired") },
+    { value: "pending", label: t("visaPending") },
+    { value: "approved", label: t("visaApproved") },
+    { value: "rejected", label: t("visaRejected") },
+    { value: "stamped", label: t("visaStamped") },
+  ];
+
   const { data, isLoading: loading, error, refetch } = usePlacements({ page, limit, status: filter, visaStatus: visaFilter });
   const placements = data?.placements ?? [];
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / limit));
 
   // Compute stats from API-level statusCounts (accurate totals across all pages)
+  // Only API-wide counts here. A "this month" tile computed from the current
+  // page counted one page of results and read as a global total.
   const statusCounts = data?.statusCounts;
-  const stats = useMemo(() => {
-    return {
-      total,
-      active: statusCounts?.active ?? 0,
-      completed: statusCounts?.completed ?? 0,
-      thisMonth: placements.filter((p) => {
-        const now = new Date();
-        const d = new Date(p.createdAt);
-        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-      }).length,
-    };
-  }, [statusCounts, total, placements]);
+  const stats = useMemo(() => ({
+    total,
+    active: statusCounts?.active ?? 0,
+    completed: statusCounts?.completed ?? 0,
+  }), [statusCounts, total]);
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
     { header: t("candidate"), key: "candidateName", formatter: (v) => String(v ?? t("candidateFallback")) },
@@ -93,82 +104,22 @@ export default function EmployerPlacementsPage() {
   useEffect(() => {
     if (skipFilterResetRef.current) { skipFilterResetRef.current = false; return; }
     setPage(1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [filter, visaFilter]);
 
   return (
     <div className="page-container">
       <DashboardPageHeader
         icon={ClipboardList}
-        eyebrow={t("totalHired")}
-        title={t("totalHired")}
+        title={t("workspace")}
+        description={t("subtitle")}
+        compactOnMobile
         metrics={[
           { label: t("totalHired"), value: stats.total, note: t("totalHiredNote"), icon: Users },
           { label: t("currentlyActive"), value: stats.active, note: t("currentlyActiveNote"), icon: Briefcase },
           { label: t("completed"), value: stats.completed, note: t("completedNote"), icon: CircleCheckBig },
-          { label: t("thisMonth"), value: stats.thisMonth, note: t("thisMonthNote"), icon: TrendingUp },
         ]}
       />
-
-      {/* Privacy information at the point personal data is first shown, not
-          only behind a footer link. */}
-      <CandidateDataNotice variant="candidateList" />
-
-      <section className="workspace-panel-surface rounded-3xl panel-body">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("filterOutcomes")}</p>
-            <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("filterTitle")}</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-              {t("filterDescription")}
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            {(["all", "active", "completed", "terminated"] as const).map((statusOption) => {
-              const labelMap = { all: "filterAll", active: "filterActive", completed: "filterCompleted", terminated: "filterTerminated" } as const;
-              return (
-              <Button
-                key={statusOption}
-                onClick={() => setFilter(statusOption)}
-                variant="ghost"
-                size="sm"
-                className={filter === statusOption
-                  ? "rounded-full bg-primary px-4 text-white hover:bg-primary/90"
-                  : "rounded-full border border-border bg-background/80 px-4 text-muted-foreground hover:bg-background"
-                }
-              >
-                {t(labelMap[statusOption])}
-              </Button>
-              );
-            })}
-          </div>
-        </div>
-        {/* Visa status filter (GCC) — no scroll, text/padding shrink hard
-            enough on phones that all 6 chips stay on one wrapped row. */}
-        <div className="mt-4 flex flex-col gap-2 border-t border-border/40 pt-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("filterVisaTitle")}</p>
-          <div className="flex flex-wrap gap-1 sm:gap-2">
-            {(["all", "not_required", "pending", "approved", "rejected", "stamped"] as const).map((visaOption) => {
-              const visaLabelMap = { all: "visaAll", not_required: "visaNotRequired", pending: "visaPending", approved: "visaApproved", rejected: "visaRejected", stamped: "visaStamped" } as const;
-              return (
-                <Button
-                  key={visaOption}
-                  onClick={() => setVisaFilter(visaOption)}
-                  variant="ghost"
-                  size="sm"
-                  className={`h-auto whitespace-nowrap rounded-full px-1.5 py-0.5 text-[9px] leading-tight sm:h-9 sm:px-4 sm:py-1.5 sm:text-sm ${visaFilter === visaOption
-                    ? "bg-emerald-600 text-white hover:bg-emerald-700 hover:text-white"
-                    : "border border-border bg-background/80 text-muted-foreground hover:bg-background"
-                  }`}
-                >
-                  {t(visaLabelMap[visaOption])}
-                </Button>
-              );
-            })}
-          </div>
-        </div>
-      </section>
 
       {error ? (
         <section className="workspace-panel-surface rounded-3xl border border-red-500/20 panel-body">
@@ -187,22 +138,35 @@ export default function EmployerPlacementsPage() {
         </section>
       ) : (
       <section className="workspace-panel-surface rounded-3xl panel-body">
-        <div className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
-          <div>
+        {/* Single toolbar row: label, both filters and export inline. The old
+            filter panel and table blurb cost a full screen before any hire. */}
+        <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3 sm:gap-3 sm:pb-4">
+          <div className="flex w-full items-center gap-1.5 sm:me-auto sm:w-auto">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("placementList")}</p>
-            <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("tableTitle")}</h2>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              {t("tableDescription")}
-            </p>
+            {/* Privacy info at the point candidate data is shown, compacted to
+                an icon + popover to keep the list above the fold. */}
+            <CandidateDataNotice variant="candidateList" compact />
           </div>
-          <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end sm:gap-2">
-            <p className="text-sm text-muted-foreground">{t("placementsOnPage", { count: placements.length })}</p>
-            <TableToolbar
-              onExportCsv={handleExportCsv}
-              onExportExcel={handleExportExcel}
-              onExportPdf={handleExportPdf}
-            />
-          </div>
+          <SearchableSelect
+            className="min-w-0 flex-1 sm:w-44 sm:flex-none"
+            options={STATUS_OPTIONS}
+            value={filter}
+            onValueChange={setFilter}
+            placeholder={t("filterAll")}
+          />
+          <SearchableSelect
+            className="min-w-0 flex-1 sm:w-44 sm:flex-none"
+            options={VISA_OPTIONS}
+            value={visaFilter}
+            onValueChange={setVisaFilter}
+            placeholder={t("visaAll")}
+          />
+          <TableToolbar
+            onExportCsv={handleExportCsv}
+            onExportExcel={handleExportExcel}
+            onExportPdf={handleExportPdf}
+            className="shrink-0"
+          />
         </div>
 
         {/* Phones get compact expandable rows — the shared <Table> stacks every

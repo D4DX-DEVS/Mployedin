@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
-import { DollarSign, CalendarDays, Clock3, CircleCheckBig, Eye, X, FileText, FileDown, ChevronDown } from "lucide-react";
+import { DollarSign, Eye, X, FileDown, ChevronDown } from "lucide-react";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { Button } from "@/components/ui/button";
@@ -93,7 +93,7 @@ export default function EmployerOffersPage() {
   useEffect(() => {
     if (skipFilterResetRef.current) { skipFilterResetRef.current = false; return; }
     setPage(1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [statusFilter, jobFilter]);
 
   async function handleWithdraw(offerId: string) {
@@ -113,11 +113,6 @@ export default function EmployerOffersPage() {
 
   const isExpired = (offer: Offer) =>
     new Date(offer.expiresAt) < new Date() && offer.status === "pending";
-
-  const pendingCount = offers.filter((o) => o.status === "pending").length;
-  const acceptedCount = offers.filter((o) => o.status === "accepted").length;
-  const expiringSoonCount = offers.filter((offer) => isExpiring(offer)).length;
-  const respondedCount = offers.filter((offer) => offer.respondedAt).length;
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
     { header: t("candidate"), key: "jobSeekerId", formatter: (_v, r) => { const o = r as unknown as Offer; return candidateName(o); } },
@@ -156,60 +151,53 @@ export default function EmployerOffersPage() {
   return (
     <div className="page-container">
       <DashboardPageHeader
-        icon={DollarSign}
-        eyebrow={t("pending")}
         title={t("title")}
-        metrics={[
-          { label: t("pending"), value: pendingCount, note: t("pendingNote"), icon: Clock3 },
-          { label: t("accepted"), value: acceptedCount, note: t("acceptedNote"), icon: CircleCheckBig },
-          { label: t("expired"), value: expiringSoonCount, note: t("expiringNote"), icon: CalendarDays },
-          { label: t("responded"), value: respondedCount, note: t("respondedNote"), icon: FileText },
-        ]}
+        description={t("subtitle")}
+        compactOnMobile
       />
 
-      {/* Privacy information at the point personal data is first shown, not
-          only behind a footer link. */}
-      <CandidateDataNotice variant="candidateList" />
-
+      {/* One panel: filters + export in the list header, states swap below.
+          The old separate filter card and metric tiles duplicated this info. */}
       <section className="workspace-panel-surface rounded-3xl panel-body">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          {/* Phones keep only the label — the long title + blurb pushed the
-              list below the fold (jobs page hides the same copy on mobile). */}
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("filterDecisions")}</p>
-            <h2 className="heading-section mt-2 hidden font-semibold tracking-tight text-foreground sm:block">{t("filterTitle")}</h2>
-            <p className="mt-2 hidden max-w-2xl text-sm leading-6 text-muted-foreground sm:block">
-              {t("filterDescription")}
+        {/* Single toolbar row: label, filters and export inline. Offer count
+            lives in the pagination footer, not repeated here. */}
+        <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3 sm:gap-3 sm:pb-4">
+          <div className="flex w-full items-center gap-1.5 sm:me-auto sm:w-auto">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              {t("offerList")}
             </p>
+            {/* Privacy info at the point candidate data is shown, compacted to
+                an icon + popover to keep the list above the fold. */}
+            <CandidateDataNotice variant="candidateList" compact />
           </div>
-
-          {/* Both selects share one row — full-width stacking pushed the offer
-              list a whole screen down on phones. */}
-          <div className="grid grid-cols-2 items-center gap-2 sm:flex sm:flex-wrap sm:gap-3">
-            <SearchableSelect
-              className="w-full min-w-0 sm:w-60"
-              options={jobOptions}
-              value={jobFilter}
-              onValueChange={setJobFilter}
-              placeholder={t("allJobs")}
+          <SearchableSelect
+            className="min-w-0 flex-1 sm:w-52 sm:flex-none"
+            options={jobOptions}
+            value={jobFilter}
+            onValueChange={setJobFilter}
+            placeholder={t("allJobs")}
+          />
+          <SearchableSelect
+            className="min-w-0 flex-1 sm:w-44 sm:flex-none"
+            options={STATUS_OPTIONS}
+            value={statusFilter}
+            onValueChange={setStatusFilter}
+            placeholder={t("allStatuses")}
+          />
+          {offers.length > 0 && (
+            <TableToolbar
+              onExportCsv={handleExportCsv}
+              onExportExcel={handleExportExcel}
+              onExportPdf={handleExportPdf}
+              className="shrink-0"
             />
-            <SearchableSelect
-              className="w-full min-w-0 sm:w-60"
-              options={STATUS_OPTIONS}
-              value={statusFilter}
-              onValueChange={setStatusFilter}
-              placeholder={t("allStatuses")}
-            />
-          </div>
+          )}
         </div>
-      </section>
 
-      {error ? (
-        <section className="workspace-panel-surface rounded-3xl border border-red-500/20 panel-body">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        {error ? (
+          <div className="flex flex-col gap-4 pt-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-rejected">{t("offerList")}</p>
-              <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{tc("somethingWentWrong")}</h2>
+              <h2 className="heading-section font-semibold tracking-tight text-foreground">{tc("somethingWentWrong")}</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
                 {t("loadError")}
               </p>
@@ -218,23 +206,13 @@ export default function EmployerOffersPage() {
               {tc("tryAgain")}
             </Button>
           </div>
-        </section>
-      ) : loading ? (
-        <section className="workspace-panel-surface rounded-3xl panel-body">
-          <div className="mb-5 flex items-center justify-between gap-4">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("offerList")}</p>
-              <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{tc("loading")}</h2>
-            </div>
-          </div>
-          <div className="space-y-3">
+        ) : loading ? (
+          <div className="space-y-3 pt-5">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="h-24 animate-pulse rounded-2xl border border-border bg-background/60" />
             ))}
           </div>
-        </section>
-      ) : offers.length === 0 ? (
-        <section className="workspace-panel-surface rounded-3xl panel-body">
+        ) : offers.length === 0 ? (
           <div className="flex flex-col items-center py-8 text-center sm:py-14">
             <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-status-applied-bg text-status-applied">
               <DollarSign className="h-7 w-7" />
@@ -247,28 +225,8 @@ export default function EmployerOffersPage() {
               <Link href={`/${locale}/employer/applications`}>{t("openPipeline")}</Link>
             </Button>
           </div>
-        </section>
-      ) : (
-        <section className="workspace-panel-surface rounded-3xl panel-body">
-          {/* Export sits on the heading row and the filter blurb (already shown
-              verbatim in the filter card above) is desktop-only — together they
-              cost ~120px of phone height for nothing. */}
-          <div className="flex flex-row items-start justify-between gap-3 border-b border-border pb-3 sm:items-end sm:pb-5">
-            <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("offerList")}</p>
-              <h2 className="heading-section mt-1 font-semibold tracking-tight text-foreground sm:mt-2">{t("offerListDesc")}</h2>
-              <p className="mt-2 hidden text-sm leading-6 text-muted-foreground sm:block">
-                {t("filterDescription")}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground sm:mt-2 sm:text-sm">{offers.length} {t("offersCount")}</p>
-            </div>
-            <TableToolbar
-              onExportCsv={handleExportCsv}
-              onExportExcel={handleExportExcel}
-              onExportPdf={handleExportPdf}
-              className="shrink-0"
-            />
-          </div>
+        ) : (
+          <>
 
           {/* Phones get compact expandable rows. The shared <Table> stacks every
               cell into a labelled block, which turned one offer into a screenful. */}
@@ -408,8 +366,9 @@ export default function EmployerOffersPage() {
               </TableBody>
             </Table>
           </div>
-        </section>
-      )}
+          </>
+        )}
+      </section>
 
       {total > 0 && (
       <PaginationControls

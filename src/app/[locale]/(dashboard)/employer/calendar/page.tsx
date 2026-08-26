@@ -174,7 +174,6 @@ export default function EmployerCalendarPage() {
       {/* Hero */}
       <DashboardPageHeader
         icon={CalendarDays}
-        eyebrow={t("title")}
         title={t("title")}
         description={t("description")}
         metrics={[

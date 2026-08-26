@@ -201,7 +201,7 @@ export default function AgentTargetManagementPage() {
             <Input
               value={leaderboardSearch}
               onChange={(e) => setLeaderboardSearch(e.target.value)}
-              placeholder="Search agents"
+              placeholder={t("searchAgents")}
               className="h-11 rounded-xl border-border bg-background pl-9 text-sm"
             />
           </div>
@@ -214,7 +214,7 @@ export default function AgentTargetManagementPage() {
             ]}
             value={leaderboardCompletionFilter}
             onValueChange={(value) => setLeaderboardCompletionFilter(value as "all" | CompletionStage)}
-            placeholder="Stage"
+            placeholder={t("stage")}
             className="h-11 rounded-xl"
           />
           <SearchableSelect
@@ -226,7 +226,7 @@ export default function AgentTargetManagementPage() {
             ]}
             value={leaderboardRiskFilter}
             onValueChange={(value) => setLeaderboardRiskFilter(value as "all" | "high" | "medium" | "low")}
-            placeholder="Risk"
+            placeholder={t("risk")}
             className="h-11 rounded-xl"
           />
         </div>
@@ -392,10 +392,10 @@ export default function AgentTargetManagementPage() {
             <div className="space-y-4">
               <div className="workspace-glass-panel rounded-2xl panel-body">
                 <div className="flex flex-wrap items-center justify-center gap-8">
-                  <ProgressRing value={profile.employerProgress} label="Employer" sublabel={`${profile.employerAchieved}/${profile.employerTarget}`} />
-                  <ProgressRing value={profile.employeeProgress} label="Employee" sublabel={`${profile.employeeAchieved}/${profile.employeeTarget}`} />
-                  <ProgressRing value={profile.financeProgress} label="Finance" sublabel={`${profile.currency} ${formatCount(profile.financeAchieved)}`} />
-                  <ProgressRing value={profile.overallProgress} label="Overall" sublabel="Annual" color="#3b82f6" />
+                  <ProgressRing value={profile.employerProgress} label={t("labelEmployer")} sublabel={`${profile.employerAchieved}/${profile.employerTarget}`} />
+                  <ProgressRing value={profile.employeeProgress} label={t("labelEmployee")} sublabel={`${profile.employeeAchieved}/${profile.employeeTarget}`} />
+                  <ProgressRing value={profile.financeProgress} label={t("labelFinance")} sublabel={`${profile.currency} ${formatCount(profile.financeAchieved)}`} />
+                  <ProgressRing value={profile.overallProgress} label={t("labelOverall")} sublabel={t("sublabelAnnual")} color="#3b82f6" />
                 </div>
               </div>
 
@@ -475,7 +475,7 @@ export default function AgentTargetManagementPage() {
                     <TableCell colSpan={8} className="py-16 text-center">
                       <TargetEmptyState
                         title={t("noAgentsMatchFilters")}
-                        description="Try a different search, risk level, or completion stage."
+                        description={t("noMatchHint")}
                         action={
                           <Button
                             size="sm"

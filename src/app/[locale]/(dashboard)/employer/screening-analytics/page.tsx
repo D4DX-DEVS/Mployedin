@@ -73,17 +73,20 @@ export default function ScreeningAnalyticsPage() {
     <div className="page-container">
       <PageHero icon={FileQuestion} title={t("title")} description={t("description")} />
 
-      {/* Job Selector */}
-      <div className="bg-card border border-border rounded-xl card-pad">
-        <label className="text-sm font-medium text-foreground mb-2 block">{t("selectJob")}</label>
-        <div className="max-w-md">
-          <SearchableSelect
-            value={selectedJobId}
-            onValueChange={setSelectedJobId}
-            placeholder={t("chooseJob")}
-            options={jobs.map((j) => ({ value: j._id, label: j.title }))}
-          />
-        </div>
+      {/* Bare toolbar row, not a panel: the card wrapper and its bottom border
+          framed a single dropdown with nothing underneath. */}
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          {t("selectJob")}
+        </p>
+        <SearchableSelect
+          className="min-w-0 flex-1 sm:w-64 sm:flex-none"
+          value={selectedJobId}
+          onValueChange={setSelectedJobId}
+          placeholder={t("chooseJob")}
+          options={jobs.map((j) => ({ value: j._id, label: j.title }))}
+          aria-label={t("selectJob")}
+        />
       </div>
 
       {loading && (
