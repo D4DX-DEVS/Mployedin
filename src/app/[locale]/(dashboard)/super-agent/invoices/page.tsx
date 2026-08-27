@@ -26,7 +26,7 @@ import { RevenueAnalyticsPanel } from "@/components/features/invoices/RevenueAna
 import {
   SuperAgentPageIntro,
 } from "@/components/features/super-agent/WorkspacePage";
-import { formatCount, formatDate } from "@/lib/ui/intlFormat";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface Invoice {
@@ -73,11 +73,6 @@ export default function SuperAgentInvoicesPage() {
   const [analyticsPeriod, setAnalyticsPeriod] = useState("30d");
   const { data: analyticsData, loading: analyticsLoading, refresh: refreshAnalytics } = useInvoiceAnalytics(analyticsPeriod);
 
-  const [summary, setSummary] = useState({
-    draft: 0, pending_approval: 0, issued: 0, paid: 0, partially_paid: 0, overdue: 0,
-    totalAmount: 0, totalPaid: 0, totalBalance: 0,
-  });
-
   const fetchInvoices = useCallback(async () => {
     setLoading(true);
     setErrorMessage(null);
@@ -92,7 +87,6 @@ export default function SuperAgentInvoicesPage() {
       const data = await res.json();
       setInvoices(data.invoices ?? []);
       updateTotal(data.total ?? 0);
-      if (data.summary) setSummary(data.summary);
     } catch (err) {
       const msg = t("failedToLoad");
       setErrorMessage(msg);
@@ -106,7 +100,6 @@ export default function SuperAgentInvoicesPage() {
   useEffect(() => { document.title = t("pageTitle"); }, [t]);
 
   const hasActiveFilters = Boolean(statusFilter || categoryFilter || dateFrom || dateTo);
-  const fmt = (v: number) => `${displayCurrency} ${formatCount(v)}`;
 
   const exportColumns: ExportColumn<Invoice>[] = [
     { header: t("invoiceNumber"), key: "invoiceNumber" },
@@ -161,8 +154,6 @@ export default function SuperAgentInvoicesPage() {
       <SuperAgentPageIntro
         title={t("heroTitle")}
         description={t("heroDescription")}
-        summaryTitle={t("summaryTitle")}
-        summaryDescription={t("summaryDescription", { total: formatCount(total), paid: fmt(summary.totalPaid) })}
       >
         <div className="flex items-center gap-2">
           <Button onClick={() => router.push(`/${locale}/super-agent/invoices/new`)} className="h-10 gap-1.5 rounded-xl text-xs font-semibold">

@@ -98,8 +98,6 @@ export default function MarketIntelligencePage() {
       <SuperAgentPageIntro
         title={t("pageTitle")}
         description={t("pageDescription")}
-        summaryTitle={t("summaryTitle")}
-        summaryDescription={t("summaryDescription")}
       />
 
       <SuperAgentSection

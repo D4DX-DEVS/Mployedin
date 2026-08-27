@@ -213,19 +213,19 @@ export default function AdminApplicationsPage() {
   };
 
   const exportColumns: ExportColumn<Application>[] = [
-    { header: "Applicant", key: "jobSeekerId" as keyof Application, formatter: (_v, r) => { const a = r as unknown as Application; return a.jobSeekerId?.fullName ?? a.jobSeekerId?.userId?.name ?? "—"; } },
-    { header: "Job", key: "jobId" as keyof Application, formatter: (_v, r) => (r as unknown as Application).jobId?.title ?? "—" },
-    { header: "Company", key: "jobId" as keyof Application, formatter: (_v, r) => (r as unknown as Application).jobId?.employerId?.companyName ?? "—" },
-    { header: "Status", key: "status" },
-    { header: "Source", key: "source", formatter: (v) => sourceLabel(v as string) },
-    { header: "AI Score", key: "aiMatchScore", formatter: (v) => v != null ? `${v}%` : "—" },
-    { header: "Applied", key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "—" },
+    { header: t("exportHeaderApplicant"), key: "jobSeekerId" as keyof Application, formatter: (_v, r) => { const a = r as unknown as Application; return a.jobSeekerId?.fullName ?? a.jobSeekerId?.userId?.name ?? "—"; } },
+    { header: t("exportHeaderJob"), key: "jobId" as keyof Application, formatter: (_v, r) => (r as unknown as Application).jobId?.title ?? "—" },
+    { header: t("exportHeaderCompany"), key: "jobId" as keyof Application, formatter: (_v, r) => (r as unknown as Application).jobId?.employerId?.companyName ?? "—" },
+    { header: t("status"), key: "status" },
+    { header: t("exportHeaderSource"), key: "source", formatter: (v) => sourceLabel(v as string) },
+    { header: t("exportHeaderAIScore"), key: "aiMatchScore", formatter: (v) => v != null ? `${v}%` : "—" },
+    { header: t("exportHeaderApplied"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: applications as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "applications",
-    title: "Applications",
+    title: t("applications"),
   });
 
   /* ---- Fetch applications ---- */
@@ -270,13 +270,13 @@ export default function AdminApplicationsPage() {
       if (res.ok) setAiInsights(await res.json());
       else {
         const e = await res.json().catch(() => ({}));
-        toast.error(e.error ?? "Failed to load AI insights");
+        toast.error(e.error ?? t("failedToLoadAiInsights"));
       }
     } catch {
-      toast.error("Failed to load AI insights");
+      toast.error(t("failedToLoadAiInsights"));
     }
     setAiLoading(false);
-  }, []);
+  }, [t]);
 
   /* ---- AI Search ---- */
   const scoreBandToRange: Record<string, string> = {
@@ -336,14 +336,14 @@ export default function AdminApplicationsPage() {
         body: JSON.stringify({ status: newStatus }),
       });
       if (res.ok) {
-        toast.success("Status updated");
+        toast.success(t("statusUpdated"));
         setApplications((prev) => prev.map((a) => (a._id === id ? { ...a, status: newStatus } : a)));
       } else {
         const e = await res.json().catch(() => ({}));
-        toast.error(e.error ?? "Failed to update status");
+        toast.error(e.error ?? t("failedToUpdateStatus"));
       }
     } catch {
-      toast.error("Failed to update status");
+      toast.error(t("failedToUpdateStatus"));
     } finally {
       setUpdatingId(null);
     }
@@ -366,7 +366,7 @@ export default function AdminApplicationsPage() {
   };
 
   const employerOptions = [
-    { value: "", label: "All Employers" },
+    { value: "", label: t("filterAllEmployers") },
     ...employers.map((e) => ({ value: e._id, label: e.companyName })),
   ];
 
@@ -375,14 +375,8 @@ export default function AdminApplicationsPage() {
 
       {/* ─── Compact page header ──────────────────────────────────────── */}
       <DashboardPageHeader
-        eyebrow={t("recruitmentControl")}
         title={t("applications")}
         description={t("applicationsDescription")}
-        summary={{
-          label: t("pipeline"),
-          value: `${stats?.totalAll ?? total} ${t("total")}`,
-          note: `${t("avgScore")} ${stats?.avgAiScore ?? 0}%`,
-        }}
         actions={(
           <Button
             variant={showAiPanel ? "default" : "outline"}
@@ -403,6 +397,7 @@ export default function AdminApplicationsPage() {
           { label: t("aiScored"), value: stats?.scoredCount ?? 0, note: `${t("avgColon")} ${stats?.avgAiScore ?? 0}%`, icon: Brain, iconClassName: "text-status-interview", iconSurfaceClassName: "bg-status-interview-bg" },
           { label: t("inShortlist"), value: stats?.byStatus?.["shortlisted"] ?? 0, note: t("pipelineLabel"), icon: Users, iconClassName: "text-status-shortlisted", iconSurfaceClassName: "bg-status-shortlisted-bg" },
         ]}
+        compactOnMobile
         footer={(
           <>
             <button
@@ -662,9 +657,6 @@ export default function AdminApplicationsPage() {
           </div>
         )}
       </DashboardPageHeader>
-      {/* Privacy information where candidate personal data is first shown,
-          rather than only behind a footer link. */}
-      <CandidateDataNotice variant="candidateList" />
 
       {/* ─── Application List ─────────────────────────────────────────── */}
       {loading ? (
@@ -697,6 +689,14 @@ export default function AdminApplicationsPage() {
         </div>
       ) : (
         <section className="workspace-panel-surface overflow-hidden rounded-3xl">
+          {/* List header with privacy notice */}
+          <div className="flex flex-wrap items-center gap-2 border-b border-border/70 bg-background/50 px-4 py-3 sm:gap-3 sm:px-5 sm:py-4">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("candidate")}</span>
+              <CandidateDataNotice variant="candidateList" compact />
+            </div>
+          </div>
+
           {/* Column headers */}
           <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] items-center gap-4 border-b border-border/70 bg-background/50 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground lg:grid">
             <span>{t("candidate")}</span>

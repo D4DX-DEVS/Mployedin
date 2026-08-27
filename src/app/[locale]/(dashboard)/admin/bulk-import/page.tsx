@@ -183,7 +183,6 @@ export default function AdminBulkImportPage() {
     <div className="page-container">
       <DashboardPageHeader
         icon={Upload}
-        eyebrow={t("title")}
         title={t("title")}
         description={t("subtitle")}
       >

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,10 +55,10 @@ export default function AdminUserImpersonatePage() {
         setUsers(data.users ?? []);
       } else {
         const err = await res.json().catch(() => ({}));
-        toast.error(err.error || "Failed to load users");
+        toast.error(err.error || t("toastFailedLoadUsers"));
       }
     } catch (error) {
-      toast.error("Failed to load users");
+      toast.error(t("toastFailedLoadUsers"));
     } finally {
       setLoading(false);
     }
@@ -82,8 +82,8 @@ export default function AdminUserImpersonatePage() {
         setImpersonateResult(data);
         toast.success(
           data.companyName
-            ? `Now working inside ${data.companyName}`
-            : "Impersonation session started"
+            ? t("toastNowWorkingInside", { companyName: data.companyName })
+            : t("toastImpersonationSessionStarted")
         );
         // The session only takes effect once we navigate into the employer
         // workspace — withAuth swaps identity per request from the signed cookie.
@@ -91,10 +91,10 @@ export default function AdminUserImpersonatePage() {
         // the server re-resolves identity instead of reusing admin-rendered RSC.
         if (data.redirectTo) window.location.href = data.redirectTo;
       } else {
-        toast.error(data.error || "Failed to start impersonation");
+        toast.error(data.error || t("toastFailedStartImpersonation"));
       }
     } catch (error) {
-      toast.error("Failed to start impersonation");
+      toast.error(t("toastFailedStartImpersonation"));
     } finally {
       setImpersonating(null);
     }
@@ -123,13 +123,13 @@ export default function AdminUserImpersonatePage() {
                 });
                 if (res.ok) {
                   setImpersonateResult(null);
-                  toast.success("Impersonation session ended");
+                  toast.success(t("toastImpersonationSessionEnded"));
                 } else {
                   const err = await res.json().catch(() => ({}));
-                  toast.error(err.error || "Failed to exit impersonation");
+                  toast.error(err.error || t("toastFailedExitImpersonation"));
                 }
               } catch (error) {
-                toast.error("Failed to exit impersonation");
+                toast.error(t("toastFailedExitImpersonation"));
               }
             }}
             className="h-8 px-3 text-xs bg-amber-600 hover:bg-amber-700 text-white"
@@ -139,10 +139,16 @@ export default function AdminUserImpersonatePage() {
         </div>
       )}
 
+      {/* Page Header */}
+      <DashboardPageHeader
+        title={t("title")}
+        description={t("description")}
+        compactOnMobile
+      />
+
       <section className="workspace-panel-surface overflow-hidden rounded-3xl">
         {/* Compact header row */}
         <div className="flex flex-col gap-3 border-b border-border/80 sm:flex-row sm:items-center sm:justify-between panel-head">
-          <PageHeader title={t("title")} description={t("description")} />
           <div className="flex items-center gap-2">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />

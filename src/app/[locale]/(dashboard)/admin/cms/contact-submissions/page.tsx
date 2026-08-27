@@ -127,7 +127,7 @@ export default function ContactSubmissionsPage() {
       {ConfirmDialogNode}
 
       <DashboardPageHeader
-        eyebrow={t("cmsWorkspace")}
+        compactOnMobile
         title={t("contactInbox")}
         description={t("heroDescription")}
         summary={{

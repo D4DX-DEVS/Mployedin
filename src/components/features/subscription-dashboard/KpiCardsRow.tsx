@@ -96,7 +96,7 @@ export function KpiCardsRow({ overview, comparisons, revenueTrend }: KpiCardsRow
           <span className={`inline-flex items-center gap-0.5 text-xs font-semibold px-1.5 py-0.5 rounded ${comparisons.mrrChange >= 0 ? "bg-emerald-500/10 text-emerald-600" : "bg-red-500/10 text-red-500"}`}>
             {comparisons.mrrChange >= 0 ? "↑" : "↓"} {Math.abs(comparisons.mrrChange)}%
           </span>
-          <span className="text-xs text-muted-foreground">vs last month · {formatCurrency(overview.arr)} AED ARR</span>
+          <span className="text-xs text-muted-foreground">{t("vsLastMonth")} · {formatCurrency(overview.arr)} AED ARR</span>
         </div>
         <MiniSparkline data={sparkData} color="#10b981" />
         <SplitBar employer={overview.employerActive} jobSeeker={overview.jobSeekerActive} t={t} />
@@ -157,7 +157,7 @@ export function KpiCardsRow({ overview, comparisons, revenueTrend }: KpiCardsRow
           <span className={`inline-flex items-center gap-0.5 text-xs font-semibold px-1.5 py-0.5 rounded ${comparisons.churnChange <= 0 ? "bg-emerald-500/10 text-emerald-600" : "bg-red-500/10 text-red-500"}`}>
             {comparisons.churnChange <= 0 ? "↓" : "↑"} {Math.abs(comparisons.churnChange)}%
           </span>
-          <span className="text-xs text-muted-foreground">vs last month</span>
+          <span className="text-xs text-muted-foreground">{t("vsLastMonth")}</span>
         </div>
         <p className="text-xs text-rose-500 mt-3 font-medium">
           {t("expiringLabel", { count: overview.expiringSoon })}

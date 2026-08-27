@@ -315,14 +315,8 @@ export default function AdminJobsPage() {
 
       {/* ─── Compact page header ──────────────────────────────────────── */}
       <DashboardPageHeader
-        eyebrow={t("recruitmentControl")}
         title={t("jobListings")}
         description={t("jobListingsDescription")}
-        summary={{
-          label: t("platformTotal"),
-          value: t("jobsCount", { total: formatCount(total) }),
-          note: t("acrossPages", { totalPages }),
-        }}
         actions={(
           <Link href={`/${locale}/admin/jobs/new`}>
             <Button size="lg" className="h-10 gap-2 rounded-xl px-4">
@@ -337,6 +331,7 @@ export default function AdminJobsPage() {
           { label: t("draftJobs"), value: draftJobs, note: t("draftJobsNote"), icon: FileText, iconClassName: "text-status-shortlisted", iconSurfaceClassName: "bg-status-shortlisted-bg" },
           { label: t("applicants"), value: totalApplicants, note: t("applicantsNote"), icon: Users, iconClassName: "text-status-interview", iconSurfaceClassName: "bg-status-interview-bg" },
         ]}
+        compactOnMobile
         footer={(
           <>
             <button
@@ -571,7 +566,7 @@ export default function AdminJobsPage() {
                       items={[
                         { label: t("source"), value: getSourceLabel(job, t) },
                         { label: t("applicantsCountLabel"), value: job.applicantsCount ?? 0 },
-                        { label: t("capacityLabel"), value: job.vacancies ?? "Open" },
+                        { label: t("capacityLabel"), value: job.vacancies ?? t("open") },
                       ]}
                     />
                     <button
@@ -583,8 +578,9 @@ export default function AdminJobsPage() {
                         return next;
                       })}
                       aria-label={t(isExpanded ? "collapseJobDetails" : "expandJobDetails", { title: job.title })}
-                      className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg border border-border/60 bg-background/60 py-1 text-[11px] font-medium text-muted-foreground sm:hidden"
+                      className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-border/60 bg-background/60 py-1 px-2 text-[11px] font-medium text-muted-foreground sm:hidden"
                     >
+                      <span>{isExpanded ? t("less") : t("more")}</span>
                       {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                     </button>
                   </div>

@@ -108,14 +108,14 @@ export default function AuditLogsPage() {
         updateTotal(data.pagination.total);
       } else {
         const err = await res.json().catch(() => ({}));
-        toast.error(err.error || "Failed to load audit logs");
+        toast.error(err.error || t("failedToLoadAuditLogs"));
       }
     } catch (error) {
-      toast.error("Failed to load audit logs");
+      toast.error(t("failedToLoadAuditLogs"));
     } finally {
       setLoading(false);
     }
-  }, [resource, action, country, fromDate, toDate, page, limit]);
+  }, [resource, action, country, fromDate, toDate, page, limit, t]);
 
   useEffect(() => { fetchLogs(); }, [fetchLogs]);
 
@@ -124,7 +124,6 @@ export default function AuditLogsPage() {
       <PageHero
         title={t("auditLogs")}
         description={`${formatCount(total)} ${t("logEntriesDescription")}`}
-        eyebrow={t("adminWorkspace")}
       />
 
       <TableToolbar

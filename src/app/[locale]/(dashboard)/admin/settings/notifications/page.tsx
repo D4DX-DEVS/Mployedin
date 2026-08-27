@@ -140,7 +140,6 @@ export default function AdminNotificationsPage() {
     <div className="page-container">
       <PageHero
         icon={Bell}
-        eyebrow={t("adminWorkspaceLabel")}
         title={t("notificationControlCenter")}
         description={t("notificationControlCenterDescription")}
         actions={

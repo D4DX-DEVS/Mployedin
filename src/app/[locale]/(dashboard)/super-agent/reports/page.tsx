@@ -155,8 +155,6 @@ export default function SuperAgentReportsPage() {
       <SuperAgentPageIntro
         title={t("pageTitle")}
         description={t("pageDescription")}
-        summaryTitle={t("reportingSurface")}
-        summaryDescription={t("reportingSurfaceDescription")}
       />
 
       {loading ? (

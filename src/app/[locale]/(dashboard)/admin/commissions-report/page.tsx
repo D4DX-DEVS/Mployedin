@@ -173,15 +173,15 @@ export default function AdminCommissionsReportPage() {
 
   // Export config
   const exportColumns: ExportColumn<AgentRow>[] = [
-    { header: "Agent", key: "agentName" },
-    { header: "Email", key: "agentEmail" },
-    { header: "Super-Agent", key: "superAgentName" },
-    { header: "Total (AED)", key: "total" },
-    { header: "Pending (AED)", key: "pending" },
-    { header: "Approved (AED)", key: "approved" },
-    { header: "Paid (AED)", key: "paid" },
-    { header: "Commission Count", key: "count" },
-    { header: "Avg Rate (%)", key: "avgRate" },
+    { header: t("exportHeaderAgent"), key: "agentName" },
+    { header: t("exportHeaderEmail"), key: "agentEmail" },
+    { header: t("exportHeaderSuperAgent"), key: "superAgentName" },
+    { header: t("exportHeaderTotal"), key: "total" },
+    { header: t("exportHeaderPending"), key: "pending" },
+    { header: t("exportHeaderApproved"), key: "approved" },
+    { header: t("exportHeaderPaid"), key: "paid" },
+    { header: t("exportHeaderCommissionCount"), key: "count" },
+    { header: t("exportHeaderAvgRate"), key: "avgRate" },
   ];
   const { handleExportCsv, handleExportExcel } = useTableExport({ data: filteredAgents, columns: exportColumns, filename: `commissions-report-${yearFilter}` });
 
@@ -205,7 +205,6 @@ export default function AdminCommissionsReportPage() {
   return (
     <div className="page-container">
       <DashboardPageHeader
-        eyebrow={t("adminWorkspace")}
         title={t("commissionReportTitle")}
         description={t("reportDescription", { year: yearFilter })}
         actions={(
@@ -233,6 +232,7 @@ export default function AdminCommissionsReportPage() {
           { label: t("paidOut"), value: loading ? <span className="inline-block h-6 w-20 animate-pulse rounded bg-muted" /> : s ? fmt(s.totalPaid, s.currency) : "—", icon: Wallet, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50" },
           { label: t("avgRate"), value: loading ? <span className="inline-block h-6 w-20 animate-pulse rounded bg-muted" /> : s ? `${s.avgRate}%` : "—", icon: TrendingUp, iconClassName: "text-violet-600", iconSurfaceClassName: "bg-violet-50" },
         ]}
+        compactOnMobile
       />
 
       {/* ── Monthly Trend Chart + Type Breakdown ── */}

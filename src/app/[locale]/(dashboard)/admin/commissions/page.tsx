@@ -274,19 +274,19 @@ export default function AdminCommissionsPage() {
   const hasActiveFilters = Boolean(status || typeFilter || searchTerm || dateFrom || dateTo || currencyFilter);
 
   const exportColumns: ExportColumn<Commission>[] = [
-    { header: "Agent", key: "agentId" as keyof Commission, formatter: (_v, r) => { const c = r as unknown as Commission; return c.agentName ?? c.agentId?.fullName ?? "—"; } },
-    { header: "Type", key: "type", formatter: (v) => String(v ?? "—") },
-    { header: "Amount", key: "amount", formatter: (v) => String(v ?? 0) },
-    { header: "Currency", key: "currency", formatter: (v) => String(v ?? "AED") },
-    { header: "Rate %", key: "rate", formatter: (v) => v != null ? `${v}%` : "—" },
-    { header: "Status", key: "status" },
-    { header: "Created", key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "—" },
+    { header: t("exportHeaderAgent"), key: "agentId" as keyof Commission, formatter: (_v, r) => { const c = r as unknown as Commission; return c.agentName ?? c.agentId?.fullName ?? "—"; } },
+    { header: t("exportHeaderType"), key: "type", formatter: (v) => String(v ?? "—") },
+    { header: t("exportHeaderAmount"), key: "amount", formatter: (v) => String(v ?? 0) },
+    { header: t("exportHeaderCurrency"), key: "currency", formatter: (v) => String(v ?? "AED") },
+    { header: t("exportHeaderRate"), key: "rate", formatter: (v) => v != null ? `${v}%` : "—" },
+    { header: t("exportHeaderStatus"), key: "status" },
+    { header: t("exportHeaderCreated"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: commissions as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "commissions",
-    title: "Commissions",
+    title: t("exportTitle"),
   });
 
   return (
@@ -294,7 +294,7 @@ export default function AdminCommissionsPage() {
       {ConfirmDialogNode}
 
       <DashboardPageHeader
-        eyebrow={t("financeWorkspace")}
+        compactOnMobile
         title={t("commissionsTitle")}
         description={t("commissionsDescription")}
         summary={{

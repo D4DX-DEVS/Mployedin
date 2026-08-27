@@ -189,8 +189,8 @@ export default function AdminGdprPage() {
   return (
     <div className="page-container">
       <DashboardPageHeader
+        compactOnMobile
         icon={Shield}
-        eyebrow={t("pageTitle")}
         title={t("pageTitle")}
         description={t("pageDescription")}
         metrics={[

@@ -165,7 +165,7 @@ export default function AdminTargetProfileDetailPage() {
             <div>
               <h1 className="text-xl font-semibold tracking-tight">{profile.assigneeName}</h1>
               <p className="mt-0.5 text-sm text-muted-foreground">
-                {profile.year} · {profile.assigneeRole === "super_agent" ? "Supervisor" : "Agent"} · {profile.assigneeEmail}
+                {profile.year} · {profile.assigneeRole === "super_agent" ? t("supervisorHeader") : t("agentDescription")} · {profile.assigneeEmail}
               </p>
               <div className="mt-1 flex items-center gap-2 flex-wrap">
                 {profile.region && (
@@ -204,23 +204,23 @@ export default function AdminTargetProfileDetailPage() {
         <div className="flex flex-wrap items-center justify-center gap-8">
           <ProgressRing
             value={profile.employerProgress}
-            label="Employer"
+            label={t("employerLabel")}
             sublabel={`${profile.employerAchieved}/${profile.employerTarget}`}
           />
           <ProgressRing
             value={profile.employeeProgress}
-            label="Employee"
+            label={t("employeeLabel")}
             sublabel={`${profile.employeeAchieved}/${profile.employeeTarget}`}
           />
           <ProgressRing
             value={profile.financeProgress}
-            label="Finance"
+            label={t("financeLabel")}
             sublabel={`${profile.currency} ${formatCount(profile.financeAchieved)}/${formatCount(profile.financeTarget)}`}
           />
           <ProgressRing
             value={profile.overallProgress}
-            label="Overall"
-            sublabel="Combined progress"
+            label={t("labelOverall")}
+            sublabel={t("labelOverall")}
             color="#3b82f6"
           />
         </div>
@@ -255,9 +255,9 @@ export default function AdminTargetProfileDetailPage() {
       {agentProfiles.length > 0 && (
         <section className="space-y-4">
           <div>
-            <h2 className="heading-section font-semibold tracking-tight">Team Breakdown</h2>
+            <h2 className="heading-section font-semibold tracking-tight">{t("teamBreakdownTitle")}</h2>
             <p className="text-sm text-muted-foreground">
-              Agent target profiles under this supervisor
+              {t("teamBreakdownDescription")}
             </p>
           </div>
           <div className="rounded-2xl border border-border/60 bg-card overflow-x-auto">

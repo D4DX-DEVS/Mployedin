@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { TableToolbar } from "@/components/shared/TableToolbar";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
@@ -307,7 +308,7 @@ export default function AdminTargetManagementPage() {
 
   const handleExport = () => {
     const csvRows = [
-      ["Supervisor", "Email", "Region", "Team Size", "Currency", "Employer Target", "Employer Achieved", "Employee Target", "Employee Achieved", "Finance Target", "Finance Achieved", "Overall %", "Risk"].join(","),
+      [t("csvHeaderSupervisor"), t("csvHeaderEmail"), t("csvHeaderRegion"), t("csvHeaderTeamSize"), t("csvHeaderCurrency"), t("csvHeaderEmployerTarget"), t("csvHeaderEmployerAchieved"), t("csvHeaderEmployeeTarget"), t("csvHeaderEmployeeAchieved"), t("csvHeaderFinanceTarget"), t("csvHeaderFinanceAchieved"), t("csvHeaderOverallPercent"), t("csvHeaderRisk")].join(","),
       ...filteredProfiles.map((r) =>
         [
           `"${r.assigneeName}"`, `"${r.assigneeEmail}"`, `"${r.region ?? ""}"`, r.teamSize,
@@ -329,15 +330,38 @@ export default function AdminTargetManagementPage() {
     toast.success(t("csvExported"));
   };
 
-  const pct = (a: number, tgt: number) => tgt > 0 ? Math.round((a / tgt) * 100) : 0;
   const reassignTarget = profiles.find((profile) => profile._id === reassigningId) ?? null;
 
   return (
     <div className="page-container">
-      {/* Toolbar */}
-      <TableToolbar
+      {/* The page heading is the shared hero, and it carries the totals. The two
+          KPI card rows that used to sit between the toolbar and the table repeated
+          these same six numbers and rendered 3-4 per row on a phone. */}
+      <DashboardPageHeader
+        compactOnMobile
+        icon={Crosshair}
         title={t("title")}
         description={t("description")}
+        metrics={[
+          { label: t("supervisorCount"), value: totals?.supervisors ?? 0, note: t("totalAgentsNote", { count: totals?.totalTeamSize ?? 0 }), icon: UsersRound, iconClassName: "text-sky-600", iconSurfaceClassName: "bg-sky-50" },
+          { label: t("employerLabel"), value: `${totals?.employer.achieved ?? 0}/${totals?.employer.target ?? 0}`, note: t("balanceNote", { value: formatCount(Math.max(0, (totals?.employer.target ?? 0) - (totals?.employer.achieved ?? 0))) }), icon: Building2, iconClassName: "text-sky-600", iconSurfaceClassName: "bg-sky-50" },
+          { label: t("employeeLabel"), value: `${totals?.employee.achieved ?? 0}/${totals?.employee.target ?? 0}`, note: t("balanceNote", { value: formatCount(Math.max(0, (totals?.employee.target ?? 0) - (totals?.employee.achieved ?? 0))) }), icon: Users, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50" },
+          { label: t("financeLabel"), value: `${formatCount(totals?.finance.achieved ?? 0)}/${formatCount(totals?.finance.target ?? 0)}`, note: t("balanceNote", { value: `${profiles[0]?.currency ?? "AED"} ${formatCount(Math.max(0, (totals?.finance.target ?? 0) - (totals?.finance.achieved ?? 0)))}` }), icon: DollarSign, iconClassName: "text-amber-600", iconSurfaceClassName: "bg-amber-50" },
+          { label: t("avgPerformanceLabel"), value: `${totals?.avgPerformance ?? 0}%`, icon: Activity, iconClassName: "text-violet-600", iconSurfaceClassName: "bg-violet-50" },
+          { label: t("activeProfilesLabel"), value: totals?.totalProfiles ?? 0, icon: BarChart3, iconClassName: "text-sky-600", iconSurfaceClassName: "bg-sky-50" },
+        ]}
+        footer={
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("riskOverview")}</span>
+            <span className="chip-pad rounded-full bg-status-rejected-bg text-xs font-semibold text-status-rejected">{t("riskHighCount", { count: totals?.riskBreakdown.high ?? 0 })}</span>
+            <span className="chip-pad rounded-full bg-status-shortlisted-bg text-xs font-semibold text-status-shortlisted">{t("riskMediumCount", { count: totals?.riskBreakdown.medium ?? 0 })}</span>
+            <span className="chip-pad rounded-full bg-status-selected-bg text-xs font-semibold text-status-selected">{t("riskLowCount", { count: totals?.riskBreakdown.low ?? 0 })}</span>
+          </div>
+        }
+      />
+
+      {/* Toolbar */}
+      <TableToolbar
         search={searchQuery}
         onSearchChange={setSearchQuery}
         searchPlaceholder={t("searchSupervisors")}
@@ -345,12 +369,6 @@ export default function AdminTargetManagementPage() {
           <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
             <Sparkles className="h-3.5 w-3.5" />
             {t("enterpriseTargets")}
-          </div>
-        }
-        right={
-          <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">
-            <ArrowRight className="h-3.5 w-3.5 text-primary" />
-            {totals?.supervisors ?? 0} supervisors · {totals?.totalTeamSize ?? 0} agents · {totals?.totalProfiles ?? 0} profiles
           </div>
         }
         actions={
@@ -388,49 +406,49 @@ export default function AdminTargetManagementPage() {
                 <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <SearchableSelect
                   options={[
-                    { value: "", label: "All Regions" },
+                    { value: "", label: t("allRegions") },
                     ...regionOptions.map((region) => ({ value: region, label: region })),
                   ]}
                   value={regionFilter}
                   onValueChange={setRegionFilter}
-                  placeholder="Region"
+                  placeholder={t("regionLabel")}
                   className="h-11 w-40 rounded-xl"
                 />
               </div>
             )}
             <SearchableSelect
               options={[
-                { value: "all", label: "All stages" },
-                { value: "not_started", label: "Not started" },
-                { value: "in_progress", label: "In progress" },
-                { value: "completed", label: "Completed" },
+                { value: "all", label: t("allStages") },
+                { value: "not_started", label: t("notStarted") },
+                { value: "in_progress", label: t("inProgress") },
+                { value: "completed", label: t("completed") },
               ]}
               value={completionFilter}
               onValueChange={(value) => setCompletionFilter(value as "all" | CompletionStage)}
-              placeholder="Stage"
+              placeholder={t("stageLabel")}
               className="h-11 w-40 rounded-xl"
             />
             <SearchableSelect
               options={[
-                { value: "all", label: "All risk" },
-                { value: "high", label: "High risk" },
-                { value: "medium", label: "Medium risk" },
-                { value: "low", label: "Low risk" },
+                { value: "all", label: t("allRisk") },
+                { value: "high", label: t("highRisk") },
+                { value: "medium", label: t("mediumRisk") },
+                { value: "low", label: t("lowRisk") },
               ]}
               value={riskFilter}
               onValueChange={(value) => setRiskFilter(value as "all" | "high" | "medium" | "low")}
-              placeholder="Risk"
+              placeholder={t("riskLabel")}
               className="h-11 w-36 rounded-xl"
             />
             <Button variant="outline" size="sm" onClick={() => { setYearFilter(currentYear); setRegionFilter(""); setRiskFilter("all"); setCompletionFilter("all"); }} className="rounded-lg">
-              <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Reset
+              <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> {t("resetFilters")}
             </Button>
             <div className="ml-auto flex rounded-xl border border-border/60 bg-card p-0.5">
               <Button variant={tab === "dashboard" ? "default" : "ghost"} size="sm" onClick={() => setTab("dashboard")} className="rounded-lg gap-1.5">
-                <BarChart3 className="h-3.5 w-3.5" /> Dashboard
+                <BarChart3 className="h-3.5 w-3.5" /> {t("dashboardTab")}
               </Button>
               <Button variant={tab === "leaderboard" ? "default" : "ghost"} size="sm" onClick={() => setTab("leaderboard")} className="rounded-lg gap-1.5">
-                <Award className="h-3.5 w-3.5" /> Leaderboard
+                <Award className="h-3.5 w-3.5" /> {t("leaderboardTab")}
               </Button>
             </div>
           </div>
@@ -438,66 +456,7 @@ export default function AdminTargetManagementPage() {
         hasActiveFilters={yearFilter !== currentYear || !!regionFilter || riskFilter !== "all" || completionFilter !== "all"}
       />
 
-      {/* KPI Summary Row 1 */}
-      <section className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiCard
-          label="Supervisors"
-          value={totals?.supervisors ?? 0}
-          subtext={`${totals?.totalTeamSize ?? 0} total agents`}
-          icon={<UsersRound className="h-5 w-5" />}
-          toneClassName="workspace-tone-sky"
-        />
-        <KpiCard
-          label="Employer"
-          value={<>{totals?.employer.achieved ?? 0}<span className="text-lg text-muted-foreground">/{totals?.employer.target ?? 0}</span></>}
-          subtext={`Assigned ${totals?.employer.target ?? 0} · Balance ${Math.max(0, (totals?.employer.target ?? 0) - (totals?.employer.achieved ?? 0))}`}
-          icon={<Building2 className="h-5 w-5" />}
-          toneClassName="workspace-tone-sky"
-        />
-        <KpiCard
-          label="Employee"
-          value={<>{totals?.employee.achieved ?? 0}<span className="text-lg text-muted-foreground">/{totals?.employee.target ?? 0}</span></>}
-          subtext={`Assigned ${totals?.employee.target ?? 0} · Balance ${Math.max(0, (totals?.employee.target ?? 0) - (totals?.employee.achieved ?? 0))}`}
-          icon={<Users className="h-5 w-5" />}
-          toneClassName="workspace-tone-emerald"
-        />
-        <KpiCard
-          label="Finance"
-          value={<>{formatCount((totals?.finance.achieved ?? 0))}<span className="text-lg text-muted-foreground">/{formatCount((totals?.finance.target ?? 0))}</span></>}
-          subtext={`Assigned ${(profiles[0]?.currency ?? "AED")} ${formatCount((totals?.finance.target ?? 0))} · Balance ${(profiles[0]?.currency ?? "AED")} ${formatCount(Math.max(0, (totals?.finance.target ?? 0) - (totals?.finance.achieved ?? 0)))}`}
-          icon={<DollarSign className="h-5 w-5" />}
-          toneClassName="workspace-tone-amber"
-        />
-      </section>
 
-      {/* KPI Summary Row 2 */}
-      <section className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-3">
-        <KpiCard
-          label="Avg Performance"
-          value={`${totals?.avgPerformance ?? 0}%`}
-          icon={<Activity className="h-5 w-5" />}
-          toneClassName="workspace-tone-violet"
-        />
-        <div className="workspace-glass-panel card-pad flex items-center gap-4 rounded-2xl">
-          <div className="rounded-2xl bg-red-500/10 p-2.5 text-red-600">
-            <ShieldAlert className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Risk Overview</p>
-            <div className="mt-1 flex items-center gap-3 text-xs font-semibold">
-              <span className="text-red-600">{totals?.riskBreakdown.high ?? 0} High</span>
-              <span className="text-amber-600">{totals?.riskBreakdown.medium ?? 0} Med</span>
-              <span className="text-emerald-600">{totals?.riskBreakdown.low ?? 0} Low</span>
-            </div>
-          </div>
-        </div>
-        <KpiCard
-          label="Active Profiles"
-          value={totals?.totalProfiles ?? 0}
-          icon={<BarChart3 className="h-5 w-5" />}
-          toneClassName="workspace-tone-sky"
-        />
-      </section>
 
       {/* ============= DASHBOARD TAB ============= */}
       {tab === "dashboard" && (
@@ -506,9 +465,9 @@ export default function AdminTargetManagementPage() {
             <section className="workspace-glass-panel card-pad rounded-2xl">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold">Reassign target profile</p>
+                  <p className="text-sm font-semibold">{t("reassignTargetProfile")}</p>
                   <p className="text-xs text-muted-foreground">
-                    Move {reassignTarget.assigneeName}'s {reassignTarget.year} target to another available supervisor.
+                    {t("reassignHint", { name: reassignTarget.assigneeName, year: reassignTarget.year })}
                   </p>
                 </div>
                 <SearchableSelect
@@ -518,19 +477,19 @@ export default function AdminTargetManagementPage() {
                   }))}
                   value={reassignAssigneeId}
                   onValueChange={setReassignAssigneeId}
-                  placeholder={reassignLoading ? "Loading supervisors" : "Select supervisor"}
+                  placeholder={reassignLoading ? t("loadingSupervisors") : t("selectSupervisor")}
                   loading={reassignLoading}
                   className="h-11 min-w-64 rounded-xl"
                 />
                 <Input
                   value={reassignReason}
                   onChange={(event) => setReassignReason(event.target.value)}
-                  placeholder="Reason"
+                  placeholder={t("reasonLabel")}
                   className="h-11 rounded-xl lg:w-64"
                 />
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="h-11 rounded-lg" onClick={closeReassign}>Cancel</Button>
-                  <Button size="sm" className="h-11 rounded-lg" onClick={handleReassign} disabled={!reassignAssigneeId}>Reassign</Button>
+                  <Button variant="outline" size="sm" className="h-11 rounded-lg" onClick={closeReassign}>{t("cancelButton")}</Button>
+                  <Button size="sm" className="h-11 rounded-lg" onClick={handleReassign} disabled={!reassignAssigneeId}>{t("reassignButton")}</Button>
                 </div>
               </div>
             </section>
@@ -542,22 +501,22 @@ export default function AdminTargetManagementPage() {
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="w-8" />
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Supervisor</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Region</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Team</TableHead>
+                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("supervisorHeader")}</TableHead>
+                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("regionHeader")}</TableHead>
+                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("teamHeader")}</TableHead>
                   <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-                    <div className="flex items-center gap-1"><Building2 className="h-3.5 w-3.5" /> Employer</div>
+                    <div className="flex items-center gap-1"><Building2 className="h-3.5 w-3.5" /> {t("employerHeader")}</div>
                   </TableHead>
                   <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-                    <div className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> Employee</div>
+                    <div className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {t("employeeHeader")}</div>
                   </TableHead>
                   <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-                    <div className="flex items-center gap-1"><DollarSign className="h-3.5 w-3.5" /> Finance</div>
+                    <div className="flex items-center gap-1"><DollarSign className="h-3.5 w-3.5" /> {t("financeHeader")}</div>
                   </TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Monthly</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Performance</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Risk</TableHead>
-                  <TableHead className="text-right text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Actions</TableHead>
+                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("monthlyHeader")}</TableHead>
+                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("performanceHeader")}</TableHead>
+                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("riskHeader")}</TableHead>
+                  <TableHead className="text-right text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("actionsHeader")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -574,11 +533,11 @@ export default function AdminTargetManagementPage() {
                     <TableCell colSpan={11} className="py-16 text-center">
                       <TargetEmptyState
                         title={t("noTargets")}
-                        description="Create unified target profiles for your supervisors to begin annual planning"
+                        description={t("emptyStateTargetProfile")}
                         action={
                           <Link href={`/${locale}/admin/target-management/create`}>
                             <Button size="sm" className="mt-2 gap-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90">
-                              <Plus className="h-4 w-4" /> New Target Profile
+                              <Plus className="h-4 w-4" /> {t("newTargetProfileButton")}
                             </Button>
                           </Link>
                         }
@@ -694,7 +653,7 @@ export default function AdminTargetManagementPage() {
             <section className="space-y-3">
               <h3 className="heading-label flex items-center gap-2 font-semibold">
                 <ShieldAlert className="h-4 w-4 text-red-500" />
-                Underperformance Alerts
+                {t("underperformanceAlerts")}
               </h3>
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {underperformers.slice(0, 6).map((u) => (

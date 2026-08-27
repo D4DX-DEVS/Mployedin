@@ -8,9 +8,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { PageHeader } from "@/components/shared/PageHeader";
 import { usePagination } from "@/hooks/usePagination";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
@@ -114,12 +114,12 @@ export default function AdminReferralLinksPage() {
     data: links as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "referral-links",
-    title: "Referral Links",
+    title: t("exportTitle"),
   });
 
   return (
     <div className="page-container">
-      <PageHeader title={t("pageTitle")} description={t("pageDescription")} />
+      <DashboardPageHeader title={t("pageTitle")} description={t("pageDescription")} compactOnMobile />
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">

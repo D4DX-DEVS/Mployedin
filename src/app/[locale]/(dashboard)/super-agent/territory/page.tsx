@@ -100,8 +100,6 @@ export default function SuperAgentTerritoryPage() {
       <SuperAgentPageIntro
         title={t("pageTitle")}
         description={t("pageDescription")}
-        summaryTitle={t("summaryTitle")}
-        summaryDescription={t("summaryDescription", { count: coverageSummary.high + coverageSummary.good, total: regions.length })}
       />
 
       <SuperAgentMetricsGrid items={metricsItems} />

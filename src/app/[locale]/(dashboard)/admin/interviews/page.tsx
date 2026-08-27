@@ -163,38 +163,38 @@ export default function AdminInterviewOversightPage() {
         if (empRes.ok) {
           const data = await empRes.json();
           const list = (data.employers ?? data.items ?? data ?? []) as { _id: string; companyName?: string }[];
-          setEmployers([{ value: "all", label: "All employers" }, ...list.map((e) => ({ value: e._id, label: e.companyName ?? e._id }))]);
+          setEmployers([{ value: "all", label: t("filterAllEmployers") }, ...list.map((e) => ({ value: e._id, label: e.companyName ?? e._id }))]);
         } else {
           const err = await empRes.json().catch(() => ({}));
-          toast.error(err.error || "Failed to load employers");
+          toast.error(err.error || t("failedToLoadFilterOptions"));
         }
         if (agentRes.ok) {
           const data = await agentRes.json();
           const list = (data.agents ?? data.items ?? data ?? []) as { _id: string; userId?: { name?: string; email?: string } | string; name?: string }[];
-          setAgents([{ value: "all", label: "All agents" }, ...list.map((a) => {
+          setAgents([{ value: "all", label: t("filterAllAgents") }, ...list.map((a) => {
             const label = typeof a.userId === "object" ? (a.userId?.name ?? a.userId?.email ?? a._id) : (a.name ?? a._id);
             return { value: a._id, label };
           })]);
         } else {
           const err = await agentRes.json().catch(() => ({}));
-          toast.error(err.error || "Failed to load agents");
+          toast.error(err.error || t("failedToLoadFilterOptions"));
         }
         if (saRes.ok) {
           const data = await saRes.json();
           const list = (data.superAgents ?? data.items ?? data ?? []) as { _id: string; userId?: { name?: string; email?: string } | string; name?: string }[];
-          setSuperAgents([{ value: "all", label: "All super agents" }, ...list.map((s) => {
+          setSuperAgents([{ value: "all", label: t("filterAllSuperAgents") }, ...list.map((s) => {
             const label = typeof s.userId === "object" ? (s.userId?.name ?? s.userId?.email ?? s._id) : (s.name ?? s._id);
             return { value: s._id, label };
           })]);
         } else {
           const err = await saRes.json().catch(() => ({}));
-          toast.error(err.error || "Failed to load super agents");
+          toast.error(err.error || t("failedToLoadFilterOptions"));
         }
       } catch (error) {
-        toast.error("Failed to load filter options");
+        toast.error(t("failedToLoadFilterOptions"));
       }
     })();
-  }, []);
+  }, [t]);
 
   const activeFilterCount = useMemo(() => {
     let n = 0;
@@ -240,31 +240,31 @@ export default function AdminInterviewOversightPage() {
         updateTotal(data.total ?? 0);
       } else {
         const err = await res.json().catch(() => ({}));
-        toast.error(err.error || "Failed to load interviews");
+        toast.error(err.error || t("failedToLoadInterviews"));
       }
     } catch (error) {
-      toast.error("Failed to load interviews");
+      toast.error(t("failedToLoadInterviews"));
     } finally {
       setLoading(false);
     }
-  }, [page, search, statusFilter, typeFilter, dateRange, selectedEmployer, selectedAgent, selectedSuperAgent, limit, updateTotal]);
+  }, [page, search, statusFilter, typeFilter, dateRange, selectedEmployer, selectedAgent, selectedSuperAgent, limit, updateTotal, t]);
 
   useEffect(() => { load(); }, [load]);
 
   const exportColumns: ExportColumn<Interview>[] = [
-    { header: "Candidate", key: "jobSeeker" as keyof Interview, formatter: (_v, r) => (r as unknown as Interview).jobSeeker?.name ?? "—" },
-    { header: "Employer", key: "employer" as keyof Interview, formatter: (_v, r) => (r as unknown as Interview).employer?.companyName ?? "—" },
-    { header: "Job", key: "job" as keyof Interview, formatter: (_v, r) => (r as unknown as Interview).job?.title ?? "—" },
-    { header: "Type", key: "type" },
-    { header: "Status", key: "status" },
-    { header: "Scheduled", key: "scheduledAt", formatter: (v) => v ? formatDateTime(new Date(String(v))) : "—" },
-    { header: "Duration (min)", key: "duration", formatter: (v) => String(v ?? "—") },
+    { header: t("candidate"), key: "jobSeeker" as keyof Interview, formatter: (_v, r) => (r as unknown as Interview).jobSeeker?.name ?? "—" },
+    { header: t("exportHeaderEmployer"), key: "employer" as keyof Interview, formatter: (_v, r) => (r as unknown as Interview).employer?.companyName ?? "—" },
+    { header: t("exportHeaderJob"), key: "job" as keyof Interview, formatter: (_v, r) => (r as unknown as Interview).job?.title ?? "—" },
+    { header: t("type"), key: "type" },
+    { header: t("status"), key: "status" },
+    { header: t("exportHeaderScheduled"), key: "scheduledAt", formatter: (v) => v ? formatDateTime(new Date(String(v))) : "—" },
+    { header: t("exportHeaderDurationMin"), key: "duration", formatter: (v) => String(v ?? "—") },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: interviews as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "interviews",
-    title: "Interviews",
+    title: t("interviewOversight"),
   });
 
   // Platform-wide hero stats from the API; fall back to current-page data.
@@ -282,14 +282,8 @@ export default function AdminInterviewOversightPage() {
 
       {/* ─── Compact page header ──────────────────────────────────────── */}
       <DashboardPageHeader
-        eyebrow={t("recruitmentControl")}
         title={t("interviewOversight")}
         description={t("monitorAllInterviews")}
-        summary={{
-          label: t("platformTotal"),
-          value: t("interviewsCount", { count: total }),
-          note: t("acrossAllEmployers"),
-        }}
         actions={(
           <Button
             variant={showInsights ? "default" : "outline"}
@@ -307,6 +301,7 @@ export default function AdminInterviewOversightPage() {
           { label: t("cancelled"), value: cancelledCount, note: t("calledOff"), icon: RotateCcw, iconClassName: "text-status-shortlisted", iconSurfaceClassName: "bg-status-shortlisted-bg" },
           { label: t("noShows"), value: noShowCount, note: t("missed"), icon: AlertTriangle, iconClassName: "text-red-500", iconSurfaceClassName: "bg-status-rejected-bg" },
         ]}
+        compactOnMobile
         footer={(
           <>
             <button

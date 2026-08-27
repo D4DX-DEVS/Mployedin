@@ -536,10 +536,16 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
     stages: Array<{ _id: { tier: number; name: string }; count: number }>,
     totalActive: number,
   ) => {
-    const result = [{ name: "Total", count: totalActive, percentage: 100 }];
+    // `name` carries the real plan name, which is content and stays as stored.
+    // The two synthetic rows — the roll-up and the nameless-tier fallback — are
+    // UI labels, so they travel as a key the client translates instead.
+    const result: Array<{ name: string; labelKey?: string; tier?: number; count: number; percentage: number }> = [
+      { name: "Total", labelKey: "stageTotal", count: totalActive, percentage: 100 },
+    ];
     for (const s of stages) {
       result.push({
-        name: s._id.name || `Tier ${s._id.tier}`,
+        name: s._id.name || "",
+        ...(s._id.name ? {} : { labelKey: "stageTierFallback", tier: s._id.tier }),
         count: s.count,
         percentage: totalActive > 0 ? Math.round((s.count / totalActive) * 1000) / 10 : 0,
       });

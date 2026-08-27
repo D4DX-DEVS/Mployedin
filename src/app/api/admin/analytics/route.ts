@@ -378,21 +378,21 @@ export const GET = withAuth(async () => {
     const jobsWithoutApplications = jobsWithoutApplicationsAgg[0]?.count ?? 0;
     const applicationRate = totalJobs > 0 ? totalApplications / totalJobs : 0;
     const placementRate = totalApplications > 0 ? totalPlacements / totalApplications : 0;
+    // Alerts carry an id and the numbers behind them, never rendered copy: this
+    // route has no locale, so composing the sentence here would print English
+    // into an Arabic admin's dashboard. The reports page maps each id to its
+    // message keys and interpolates `values`.
     const alerts: Array<{
       id: string;
       level: "critical" | "warning" | "positive";
-      title: string;
-      description: string;
-      metric: string;
+      values: Record<string, number>;
     }> = [];
 
     if (jobsWithoutApplications > 0) {
       alerts.push({
         id: "jobs-without-applications",
         level: jobsWithoutApplications >= 5 ? "critical" : "warning",
-        title: "Jobs without demand",
-        description: `${jobsWithoutApplications} published roles still have no applications and need stronger sourcing or distribution.`,
-        metric: `${jobsWithoutApplications} roles`,
+        values: { count: jobsWithoutApplications },
       });
     }
 
@@ -400,9 +400,7 @@ export const GET = withAuth(async () => {
       alerts.push({
         id: "stale-open-applications",
         level: staleOpenApplications >= 3 ? "critical" : "warning",
-        title: "Open applications are aging",
-        description: `${staleOpenApplications} active applications have been sitting for more than 48 hours without being resolved.`,
-        metric: `${staleOpenApplications} delayed`,
+        values: { count: staleOpenApplications },
       });
     }
 
@@ -410,9 +408,7 @@ export const GET = withAuth(async () => {
       alerts.push({
         id: "zero-placement-momentum",
         level: "critical",
-        title: "No recent placement momentum",
-        description: "Applications are arriving, but none converted into placements in the last 30 days.",
-        metric: `${currentApplications} recent applications`,
+        values: { count: currentApplications },
       });
     }
 
@@ -420,9 +416,7 @@ export const GET = withAuth(async () => {
       alerts.push({
         id: "demand-softening",
         level: "warning",
-        title: "Demand is softening",
-        description: "Jobs published stayed steady or increased, but application volume fell compared with the previous 30 days.",
-        metric: `${buildTrend(currentApplications, previousApplications).delta}% applications`,
+        values: { delta: buildTrend(currentApplications, previousApplications).delta },
       });
     }
 
@@ -430,9 +424,7 @@ export const GET = withAuth(async () => {
       alerts.push({
         id: "platform-stable",
         level: "positive",
-        title: "Platform is stable",
-        description: "No urgent operational alerts are currently blocking hiring momentum.",
-        metric: `${Math.round(placementRate * 100)}% placement rate`,
+        values: { rate: Math.round(placementRate * 100) },
       });
     }
 

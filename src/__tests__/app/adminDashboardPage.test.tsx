@@ -155,8 +155,9 @@ describe("AdminDashboardPage", () => {
   it("renders the admin dashboard with key sections and data", async () => {
     const { container } = render(await AdminDashboardPage({ params: Promise.resolve({ locale: "en" }) }));
 
-    // Core headings and workspace badge
-    expect(screen.getByText(/admin workspace/i)).toBeInTheDocument();
+    // Core headings. The "Admin workspace" eyebrow above the title was dropped —
+    // it restated the sidebar section the user had just clicked, and the h1
+    // below already identifies the page.
     expect(screen.getByRole("heading", { name: /admin dashboard/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /recommended next/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /platform at a glance/i })).toBeInTheDocument();

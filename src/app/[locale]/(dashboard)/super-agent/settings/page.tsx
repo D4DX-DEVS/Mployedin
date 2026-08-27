@@ -195,7 +195,7 @@ function ProfileTab() {
       })
       .catch(() => {})
       .finally(() => setProfileLoading(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, []);
 
   const profileHasChanges = profileSnap ? JSON.stringify({ name, phone }) !== profileSnap : false;
@@ -709,7 +709,7 @@ function NotificationsTab() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, []);
 
   const handleSave = async () => {
@@ -1432,8 +1432,6 @@ export default function SuperAgentSettingsPage() {
       <SuperAgentPageIntro
         title={t("settingsTitle")}
         description={t("settingsDescription")}
-        summaryTitle={t("workspaceSettings")}
-        summaryDescription={t("workspaceSettingsDesc")}
       />
 
       {/* Sidebar + Content Layout */}

@@ -101,7 +101,6 @@ export default function AdminSystemHealthPage() {
     <div className="page-container">
       <DashboardPageHeader
         icon={Activity}
-        eyebrow={t("pageTitle")}
         title={t("pageTitle")}
         description={t("pageDescription")}
         actions={

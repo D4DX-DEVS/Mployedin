@@ -149,8 +149,6 @@ export default function SuperAgentCommissionsReportPage() {
         title={t("pageTitle")}
         description={t("pageDescription", { year: yearFilter })}
         eyebrow={t("pageEyebrow")}
-        summaryTitle={t("summaryTitle")}
-        summaryDescription={s ? t("summaryDescription", { grandTotal: fmt(s.grandTotal, s.currency), overrideTotal: fmt(s.overrideTotal, s.currency) }) : t("loadingData")}
       >
         <div className="flex items-center gap-2">
           <Select value={String(yearFilter)} onValueChange={(v) => setYearFilter(Number(v))}>

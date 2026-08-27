@@ -6,7 +6,7 @@ import {
   Scale, Plus, Trash2, Edit2, Save, X, Loader2, Shield,
   ChevronDown, ChevronUp,
 } from "lucide-react";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -142,7 +142,7 @@ export default function AdminMatchingWeightTemplatesPage() {
   if (isLoading) {
     return (
       <div className="page-container">
-        <PageHeader title={tr("pageTitle")} description={tr("pageDescription")} />
+        <DashboardPageHeader title={tr("pageTitle")} description={tr("pageDescription")} />
         {[1, 2, 3].map((i) => (
           <div key={i} className="h-24 animate-pulse rounded-2xl border border-border bg-background/70" />
         ))}
@@ -152,7 +152,7 @@ export default function AdminMatchingWeightTemplatesPage() {
 
   return (
     <div className="page-container">
-      <PageHeader
+      <DashboardPageHeader
         title={tr("pageTitle")}
         description={tr("pageDescription")}
         actions={
@@ -160,6 +160,7 @@ export default function AdminMatchingWeightTemplatesPage() {
             <Plus className="h-4 w-4" /> {tr("newTemplateButton")}
           </Button>
         }
+        compactOnMobile
       />
 
       {/* ─── Create / Edit Form ─── */}

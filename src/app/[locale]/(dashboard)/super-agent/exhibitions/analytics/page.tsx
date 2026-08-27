@@ -218,39 +218,17 @@ export default function SuperAgentExhibitionAnalyticsPage() {
                 />
               </div>
         }
+        /* One home per metric. These used to be repeated immediately below in a
+           second row of cards — "Requests" and "Total Requests" were the same
+           number twice. Budget variance went with them: it is approved minus
+           actual spend, and the summary above already shows both halves. */
         metrics={[
           { label: t("requestsLabel"), value: kpis.totalRequests, note: strongestMonth ? t("busiestMonthSub", { month: strongestMonth.month }) : t("noMonthlyData"), icon: CalendarDays },
           { label: t("approvalRateLabel"), value: `${kpis.approvalRate}%`, note: t("approvalRateSub", { approved: kpis.approved, rejected: kpis.rejected }), icon: Percent },
-          { label: t("roiLabel"), value: `${performance.roi}%`, note: performance.eventsReported > 0 ? t("eventsReportedSub", { count: performance.eventsReported }) : t("awaitingPerformanceReports"), icon: TrendingUp },
+          { label: t("avgRequestBudgetLabel"), value: formatCurrency(kpis.avgBudget, currencyCode), note: t("estimatedTotalSub", { total: formatCurrency(kpis.totalEstimatedBudget, currencyCode) }), icon: DollarSign },
+          { label: t("completionRateLabel"), value: `${kpis.totalRequests > 0 ? Math.round((kpis.completed / kpis.totalRequests) * 100) : 0}%`, note: t("completedExhibitionsSub", { count: kpis.completed }), icon: CheckCircle2 },
         ]}
       />
-
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard
-          label={t("totalRequestsLabel")}
-          value={kpis.totalRequests}
-          icon={<CalendarDays className="h-5 w-5" />}
-          sub={t("newlySubmittedSub", { count: kpis.submitted })}
-        />
-        <MetricCard
-          label={t("avgRequestBudgetLabel")}
-          value={formatCurrency(kpis.avgBudget, currencyCode)}
-          icon={<DollarSign className="h-5 w-5" />}
-          sub={t("estimatedTotalSub", { total: formatCurrency(kpis.totalEstimatedBudget, currencyCode) })}
-        />
-        <MetricCard
-          label={t("budgetVarianceLabel")}
-          value={formatCurrency(kpis.budgetVariance, currencyCode)}
-          icon={<TrendingUp className="h-5 w-5" />}
-          sub={kpis.budgetVariance >= 0 ? t("underspendSub") : t("overspendSub")}
-        />
-        <MetricCard
-          label={t("completionRateLabel")}
-          value={`${kpis.totalRequests > 0 ? Math.round((kpis.completed / kpis.totalRequests) * 100) : 0}%`}
-          icon={<CheckCircle2 className="h-5 w-5" />}
-          sub={t("completedExhibitionsSub", { count: kpis.completed })}
-        />
-      </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.4fr_0.8fr]">
         <div className="rounded-3xl border bg-card shadow-sm card-pad">
@@ -416,7 +394,9 @@ export default function SuperAgentExhibitionAnalyticsPage() {
             </TableBody>
           </Table>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          {/* ROI sits with revenue and cost because it is computed from them.
+              In the hero it was an outcome metric stranded among process ones. */}
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <MiniSummaryCard
               label={t("revenueLabel")}
               value={formatCurrency(performance.totalRevenue, currencyCode)}
@@ -428,6 +408,11 @@ export default function SuperAgentExhibitionAnalyticsPage() {
               icon={<Percent className="h-4 w-4" />}
             />
             <MiniSummaryCard
+              label={t("roiLabel")}
+              value={`${performance.roi}%`}
+              icon={<TrendingUp className="h-4 w-4" />}
+            />
+            <MiniSummaryCard
               label={t("teamReachLabel")}
               value={performance.totalEmployers + performance.totalCandidates}
               icon={<Users className="h-4 w-4" />}
@@ -435,31 +420,6 @@ export default function SuperAgentExhibitionAnalyticsPage() {
           </div>
         </div>
       </section>
-    </div>
-  );
-}
-
-function MetricCard({
-  label,
-  value,
-  icon,
-  sub,
-}: {
-  label: string;
-  value: string | number;
-  icon: ReactNode;
-  sub: string;
-}) {
-  return (
-    <div className="rounded-3xl border bg-card shadow-sm card-pad">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-          <p className="mt-2 text-2xl font-semibold tracking-tight">{value}</p>
-          <p className="mt-2 text-sm text-muted-foreground">{sub}</p>
-        </div>
-        <div className="rounded-2xl bg-primary/10 p-3 text-primary">{icon}</div>
-      </div>
     </div>
   );
 }

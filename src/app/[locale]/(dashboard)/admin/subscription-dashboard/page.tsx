@@ -101,8 +101,8 @@ export default function AdminSubscriptionDashboardPage() {
           exportCSV(
             buildExportRows(data),
             [
-              { header: "Metric", key: "metric" },
-              { header: "Value", key: "value" },
+              { header: t("exportHeaderMetric"), key: "metric" },
+              { header: t("exportHeaderValue"), key: "value" },
             ],
             "subscription-dashboard.csv",
           )

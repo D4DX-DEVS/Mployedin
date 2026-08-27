@@ -308,7 +308,6 @@ export default function AdminCommunicationsPage() {
       <PageHero
         title={tr("communicationsCenterHeading")}
         description={tr("communicationsCenterDesc")}
-        eyebrow={tr("adminWorkspace")}
       />
 
       {/* ── Tab Navigation ── */}
@@ -721,7 +720,7 @@ export default function AdminCommunicationsPage() {
                           </Select>
                         </div>
                         <div className="space-y-2 md:col-span-2">
-                          <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Subject</label>
+                          <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tr("subjectLabel")}</label>
                           <input
                             required
                             value={templateForm.subject}

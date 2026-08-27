@@ -87,7 +87,6 @@ export default function EditStaticPage() {
   return (
     <div className="page-container">
       <DashboardPageHeader
-        eyebrow={t("cmsWorkspace")}
         title={t("editStaticPageTitle")}
         description={`${t("editingLabel")} ${slug || "..."}`}
         actions={(

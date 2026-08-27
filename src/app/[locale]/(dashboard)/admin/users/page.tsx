@@ -82,14 +82,14 @@ export default function AdminUsersPage() {
     { header: t("roleTableHeader"), key: "role" },
     { header: t("statusTableHeader"), key: "isActive", formatter: (v) => v ? t("active") : t("inactive") },
     { header: t("localeTableHeader"), key: "locale" },
-    { header: "Last Login", key: "lastLogin", formatter: (v) => v ? formatDate(new Date(String(v))) : "—" },
+    { header: t("exportHeaderLastLogin"), key: "lastLogin", formatter: (v) => v ? formatDate(new Date(String(v))) : "—" },
     { header: t("joinedTableHeader"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: users as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "users",
-    title: "Users",
+    title: t("exportTitle"),
   });
 
   const fetchUsers = useCallback(async () => {
@@ -106,7 +106,7 @@ export default function AdminUsersPage() {
         setUsers(data.users);
         updateTotal(data.pagination.total);
       } else {
-        toast.error("Failed to load users");
+        toast.error(t("toastFailedLoadUsers"));
       }
     } finally {
       setLoading(false);
@@ -128,7 +128,7 @@ export default function AdminUsersPage() {
       fetchUsers();
     } else {
       const err = await res.json().catch(() => ({}));
-      toast.error(err.error || "Failed to update user");
+      toast.error(err.error || t("toastFailedUpdateUser"));
     }
   }
 
@@ -154,13 +154,13 @@ export default function AdminUsersPage() {
       };
       const failed = data.results.filter((r) => r.status !== "updated");
       if (failed.length === 0) {
-        toast.success(`${data.affected}/${data.total} user(s) updated`);
+        toast.success(t("toastBulkUpdated", { affected: data.affected, total: data.total }));
       } else if (data.affected > 0) {
         const reasons = [...new Set(failed.map((r) => r.reason).filter(Boolean))].join("; ");
-        toast(`${data.affected}/${data.total} updated, ${failed.length} skipped: ${reasons}`);
+        toast(t("toastBulkPartialUpdated", { affected: data.affected, total: data.total, failed: failed.length, reasons }));
       } else {
         const reasons = [...new Set(failed.map((r) => r.reason).filter(Boolean))].join("; ");
-        toast.error(`No users updated: ${reasons}`);
+        toast.error(t("toastBulkNoUpdates", { reasons }));
       }
       setBulkAction("__none__"); setSelected([]);
       fetchUsers();
@@ -230,7 +230,7 @@ export default function AdminUsersPage() {
         toast.error(err.error || "Failed to save permissions");
         return;
       }
-      toast.success("Permissions updated");
+      toast.success(t("toastPermissionsUpdated"));
       setPermUser(null);
       fetchUsers();
     } finally {
@@ -253,7 +253,6 @@ export default function AdminUsersPage() {
     <div className="page-container">
       <PageHero
         icon={Users}
-        eyebrow={t("adminWorkspace")}
         title={t("userManagement")}
         description={t("userManagementDesc", { total: formatCount(total) })}
       />
@@ -446,6 +445,7 @@ export default function AdminUsersPage() {
                         variant="ghost"
                         className="h-7 text-xs"
                         title={t("managePermissions")}
+                        aria-label={t("managePermissions")}
                         onClick={() => openPermissions(user)}
                       >
                         <Shield className="w-3.5 h-3.5 text-primary" />
@@ -455,6 +455,7 @@ export default function AdminUsersPage() {
                         variant="ghost"
                         className="h-7 text-xs"
                         title={user.isActive ? t("deactivate_user") : t("activate_user")}
+                        aria-label={user.isActive ? t("deactivate_user") : t("activate_user")}
                         onClick={() => updateUser(user._id, { isActive: !user.isActive })}
                       >
                         {user.isActive ? (

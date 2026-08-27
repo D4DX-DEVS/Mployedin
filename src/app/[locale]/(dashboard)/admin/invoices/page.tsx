@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -23,7 +24,6 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { useTableExport } from "@/hooks/useTableExport";
-import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
 
 import { InvoiceDetailView } from "@/components/features/invoices/InvoiceDetailView";
@@ -200,104 +200,48 @@ export default function AdminInvoicesPage() {
 
   // Export columns
   const exportColumns: ExportColumn<Invoice>[] = [
-    { header: "Invoice #", key: "invoiceNumber" },
-    { header: "Employer", key: "employerId" as keyof Invoice, formatter: (_v, r) => (r as unknown as Invoice).employerId?.companyName ?? "—" },
-    { header: "Job", key: "jobId" as keyof Invoice, formatter: (_v, r) => (r as unknown as Invoice).jobId?.title ?? "—" },
-    { header: "Category", key: "category" },
-    { header: "Type", key: "type" },
-    { header: "Subtotal", key: "subtotal", formatter: v => String(v ?? 0) },
-    { header: "Tax", key: "taxAmount", formatter: v => String(v ?? 0) },
-    { header: "Total", key: "totalAmount", formatter: v => String(v ?? 0) },
-    { header: "Paid", key: "paidAmount", formatter: v => String(v ?? 0) },
-    { header: "Balance", key: "balanceDue", formatter: v => String(v ?? 0) },
-    { header: "Agent Commission", key: "commissions" as keyof Invoice, formatter: (_v, r) => {
+    { header: t("exportHeaderInvoiceNumber"), key: "invoiceNumber" },
+    { header: t("tableHeaderEmployer"), key: "employerId" as keyof Invoice, formatter: (_v, r) => (r as unknown as Invoice).employerId?.companyName ?? "—" },
+    { header: t("tableHeaderJob"), key: "jobId" as keyof Invoice, formatter: (_v, r) => (r as unknown as Invoice).jobId?.title ?? "—" },
+    { header: t("exportHeaderCategory"), key: "category" },
+    { header: t("exportHeaderType"), key: "type" },
+    { header: t("exportHeaderSubtotal"), key: "subtotal", formatter: v => String(v ?? 0) },
+    { header: t("exportHeaderTax"), key: "taxAmount", formatter: v => String(v ?? 0) },
+    { header: t("exportHeaderTotal"), key: "totalAmount", formatter: v => String(v ?? 0) },
+    { header: t("exportHeaderPaid"), key: "paidAmount", formatter: v => String(v ?? 0) },
+    { header: t("exportHeaderBalance"), key: "balanceDue", formatter: v => String(v ?? 0) },
+    { header: t("exportHeaderAgentCommission"), key: "commissions" as keyof Invoice, formatter: (_v, r) => {
       const inv = r as unknown as Invoice;
       const ac = inv.commissions?.find(c => c.role === "agent");
       return ac ? `${ac.rate}% = ${ac.amount}` : "—";
     }},
-    { header: "SA Commission", key: "platformRevenue" as keyof Invoice, formatter: (_v, r) => {
+    { header: t("exportHeaderSuperAgentCommission"), key: "platformRevenue" as keyof Invoice, formatter: (_v, r) => {
       const inv = r as unknown as Invoice;
       const sc = inv.commissions?.find(c => c.role === "super_agent");
       return sc ? `${sc.rate}% = ${sc.amount}` : "—";
     }},
-    { header: "Company Revenue", key: "platformRevenue" as keyof Invoice, formatter: v => String(v ?? 0) },
-    { header: "Currency", key: "currency" },
-    { header: "Status", key: "status" },
-    { header: "Due Date", key: "dueDate" as keyof Invoice, formatter: v => v ? formatDate(new Date(String(v))) : "—" },
-    { header: "Issued", key: "issuedAt", formatter: v => v ? formatDate(new Date(String(v))) : "—" },
+    { header: t("exportHeaderCompanyRevenue"), key: "platformRevenue" as keyof Invoice, formatter: v => String(v ?? 0) },
+    { header: t("exportHeaderCurrency"), key: "currency" },
+    { header: t("exportHeaderStatus"), key: "status" },
+    { header: t("exportHeaderDueDate"), key: "dueDate" as keyof Invoice, formatter: v => v ? formatDate(new Date(String(v))) : "—" },
+    { header: t("exportHeaderIssued"), key: "issuedAt", formatter: v => v ? formatDate(new Date(String(v))) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: invoices as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "invoices-finance",
-    title: "Invoice & Finance Report",
+    title: t("exportTitle"),
   });
 
   return (
     <div className="page-container">
       {ConfirmDialogNode}
 
-      {/* Header Toolbar */}
-      <TableToolbar
+      {/* Page Header */}
+      <DashboardPageHeader
         title={t("title")}
         description={t("description")}
-        search={searchTerm}
-        onSearchChange={(v) => { setSearchTerm(v); resetPage(); }}
-        searchPlaceholder={t("searchPlaceholder")}
-        left={
-          <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
-            <Sparkles className="h-3.5 w-3.5" />
-            {t("workspaceLabel")}
-          </div>
-        }
-        right={
-          <div className="flex items-center gap-2">
-            <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">
-              <ArrowRight className="h-3.5 w-3.5 text-primary" />
-              {t("invoiceCount", { count: formatCount(total) })}
-            </div>
-            {/* View Toggle */}
-            <div className="inline-flex rounded-lg border border-border/70 bg-card">
-              <button onClick={() => setActiveView("queue")} className={`rounded-l-lg px-3 py-1.5 text-xs font-medium transition-colors ${activeView === "queue" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-                <ClipboardList className="mr-1 inline-block h-3.5 w-3.5" /> {t("queueTab")}
-              </button>
-              <button onClick={() => setActiveView("table")} className={`px-3 py-1.5 text-xs font-medium transition-colors ${activeView === "table" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-                <FileText className="mr-1 inline-block h-3.5 w-3.5" /> {t("invoicesTab")}
-              </button>
-              <button onClick={() => setActiveView("analytics")} className={`rounded-r-lg px-3 py-1.5 text-xs font-medium transition-colors ${activeView === "analytics" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-                <BarChart3 className="mr-1 inline-block h-3.5 w-3.5" /> {t("analyticsTab")}
-              </button>
-            </div>
-          </div>
-        }
-        actions={can("subscriptions", "create") ? (
-          <Button onClick={() => router.push(`/${locale}/admin/invoices/new`)} size="sm" className="h-9 gap-2 rounded-lg px-4">
-            <Plus className="h-4 w-4" /> {t("createInvoice")}
-          </Button>
-        ) : undefined}
-        onExportCsv={handleExportCsv}
-        onExportExcel={handleExportExcel}
-        onExportPdf={handleExportPdf}
-        filterContent={
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-5">
-              <SearchableSelect id="adm-inv-status" className="h-11 w-full rounded-xl border-border bg-card" options={STATUS_OPTIONS} value={statusFilter || "all"} onValueChange={v => { setStatusFilter(v === "all" ? "" : v); resetPage(); }} placeholder="All Statuses" />
-              <SearchableSelect id="adm-inv-cat" className="h-11 w-full rounded-xl border-border bg-card" options={CATEGORY_OPTIONS} value={categoryFilter || "all"} onValueChange={v => { setCategoryFilter(v === "all" ? "" : v); resetPage(); }} placeholder="All Categories" />
-              <SearchableSelect id="adm-inv-type" className="h-11 w-full rounded-xl border-border bg-card" options={TYPE_OPTIONS} value={typeFilter || "all"} onValueChange={v => { setTypeFilter(v === "all" ? "" : v); resetPage(); }} placeholder="All Types" />
-              <div className="flex items-center gap-2 xl:col-span-2">
-                <DateTimePicker mode="date" value={dateFrom} onChange={v => { setDateFrom(v); resetPage(); }} placeholder={t("dateRangeSeparator")} className="h-11 rounded-xl border-border bg-card text-sm flex-1" />
-                <span className="text-xs text-muted-foreground">{t("dateRangeSeparator")}</span>
-                <DateTimePicker mode="date" value={dateTo} onChange={v => { setDateTo(v); resetPage(); }} placeholder={t("dateRangeSeparator")} className="h-11 rounded-xl border-border bg-card text-sm flex-1" />
-              </div>
-            </div>
-            <div className="flex justify-end">
-              <Button type="button" variant="outline" onClick={() => { setStatusFilter(""); setCategoryFilter(""); setTypeFilter(""); setSearchTerm(""); setDateFrom(""); setDateTo(""); resetPage(); }} disabled={!hasActiveFilters} className="h-11 rounded-xl">
-                <RotateCcw className="mr-2 h-4 w-4" /> {t("clearFilters")}
-              </Button>
-            </div>
-          </div>
-        }
-        hasActiveFilters={hasActiveFilters}
+        compactOnMobile
       />
 
       {/* KPI Cards */}
@@ -338,9 +282,34 @@ export default function AdminInvoicesPage() {
             <div className="rounded-2xl border border-rose-200 bg-rose-50/90 px-4 py-3 text-sm text-rose-700">{errorMessage}</div>
           )}
 
-          <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-3xl">
+          <section className="workspace-panel-surface overflow-hidden rounded-3xl">
+            {/* Toolbar: search, filters, export */}
+            <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3 sm:gap-3 sm:pb-4 panel-head">
+              <div className="flex w-full items-center gap-1.5 sm:me-auto sm:w-auto">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  {t("invoiceLedger")}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto">
+                <div className="relative flex-1 sm:flex-none sm:min-w-0 sm:w-52">
+                  <Input
+                    value={searchTerm}
+                    onChange={(v) => { setSearchTerm(v.target.value); resetPage(); }}
+                    placeholder={t("searchPlaceholder")}
+                    className="h-9 rounded-lg text-sm"
+                  />
+                </div>
+                <SearchableSelect id="adm-inv-status" className="h-9 w-32 sm:w-40 rounded-lg text-sm" options={STATUS_OPTIONS} value={statusFilter || "all"} onValueChange={v => { setStatusFilter(v === "all" ? "" : v); resetPage(); }} placeholder={t("statusAllStatuses")} />
+                <SearchableSelect id="adm-inv-cat" className="h-9 w-32 sm:w-40 rounded-lg text-sm" options={CATEGORY_OPTIONS} value={categoryFilter || "all"} onValueChange={v => { setCategoryFilter(v === "all" ? "" : v); resetPage(); }} placeholder={t("categoryAllCategories")} />
+                {invoices.length > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <Button size="sm" variant="outline" onClick={handleExportCsv} className="h-9 text-xs rounded-lg">{t("exportLabel")}</Button>
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="flex flex-col gap-2 border-b border-border/80 panel-head">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("invoiceLedger")}</p>
               <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                 <h3 className="heading-subsection font-semibold text-foreground">{t("allInvoices")}</h3>
                 <p className="text-sm text-muted-foreground">{t("recordsCount", { shown: invoices.length, total: formatCount(total) })}</p>

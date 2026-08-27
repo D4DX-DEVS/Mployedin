@@ -723,16 +723,13 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
 
   return (
     <div className="page-container dashboard-overview-page">
+      {/* No summary here: it restated the active-job and application counts that
+          DashboardSignalStrip renders directly below. */}
       <DashboardPageHeader
         icon={Activity}
-        eyebrow={t("hero.eyebrow")}
         title={t("hero.title")}
         description={t("hero.description")}
-        summary={{
-          label: t("systemWatch.eyebrow"),
-          value: t("systemWatch.activeJobs", { count: stats.activeJobs }),
-          note: t("systemWatch.applications", { count: stats.totalApplications }),
-        }}
+        compactOnMobile
       />
 
       <DashboardNextAction
@@ -778,14 +775,16 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    {/* flex-wrap so the badge drops to its own line instead of truncating
-                        ("72 INACTIVE EMPLOY…") when it can't fit beside the label on phones. */}
+                    {/* The label keeps a flex-basis so a long nowrap badge ("90 INACTIVE
+                        EMPLOYERS") wraps to its own line instead of squeezing the label —
+                        squeezed text breaks mid-word here because .page-container sets
+                        overflow-wrap:anywhere, which rendered "User Mana/geme/nt". */}
                     <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                      <p className="min-w-0 flex-1 text-sm font-semibold leading-5 text-foreground">
+                      <p className="min-w-0 grow basis-32 text-sm font-semibold leading-5 text-foreground">
                         {action.label}
                       </p>
                       {action.badgeNode ?? (
-                        <span className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] ${action.badgeClassName}`}>
+                        <span className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] ${action.badgeClassName}`}>
                           {action.badge}
                         </span>
                       )}
@@ -929,13 +928,16 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
 
           {/* Chart takes the slack so this panel matches its taller neighbour
               instead of ending in dead whitespace. */}
+          {/* preserveAspectRatio is uniform on purpose: "none" stretched the viewBox
+              to the panel box, and the month labels and axis numbers live inside the
+              SVG, so they were squashed or smeared along with it. */}
           <div className="mt-4 flex flex-1 rounded-2xl border border-border/70 bg-card/95 shadow-sm backdrop-blur-sm chip-pad">
             <svg
               viewBox={`0 0 ${chartWidth} ${chartHeight}`}
               role="img"
               aria-label={t("sections.trends.chartAria")}
               className="h-full min-h-[190px] w-full text-muted-foreground"
-              preserveAspectRatio="none"
+              preserveAspectRatio="xMidYMid meet"
             >
               {[0.25, 0.5, 0.75, 1].map((tick) => {
                 const y = chartHeight - chartPadding - (chartHeight - chartPadding * 2) * tick;

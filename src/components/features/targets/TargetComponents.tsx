@@ -56,18 +56,18 @@ export function RiskBadge({ risk }: { risk: "high" | "medium" | "low" }) {
   const t = useTranslations("targetComponents");
   if (risk === "high")
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-red-600">
+      <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-red-600">
         <AlertTriangle className="h-3 w-3" /> {t("high")}
       </span>
     );
   if (risk === "medium")
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-600">
+      <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-600">
         <Clock className="h-3 w-3" /> {t("medium")}
       </span>
     );
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600">
+    <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600">
       <CheckCircle2 className="h-3 w-3" /> {t("low")}
     </span>
   );
@@ -89,7 +89,7 @@ export function CompletionBadge({ stage }: { stage: CompletionStage }) {
   const t = useTranslations("targetComponents");
   if (stage === "completed") {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600">
+      <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600">
         <CheckCircle2 className="h-3 w-3" /> {t("completed")}
       </span>
     );
@@ -97,14 +97,14 @@ export function CompletionBadge({ stage }: { stage: CompletionStage }) {
 
   if (stage === "in_progress") {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-sky-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-sky-600">
+      <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-sky-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-sky-600">
         <Clock className="h-3 w-3" /> {t("inProgress")}
       </span>
     );
   }
 
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+    <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
       <Target className="h-3 w-3" /> {t("notStarted")}
     </span>
   );
@@ -115,6 +115,7 @@ export function CompletionBadge({ stage }: { stage: CompletionStage }) {
 /* ------------------------------------------------------------------ */
 
 export function IncentiveTierBadge({ tier }: { tier: IncentiveTier }) {
+  const t = useTranslations("targetComponents");
   if (tier === "none") return null;
 
   const toneMap: Record<Exclude<IncentiveTier, "none">, string> = {
@@ -125,8 +126,9 @@ export function IncentiveTierBadge({ tier }: { tier: IncentiveTier }) {
   };
 
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${toneMap[tier]}`}>
-      <Award className="h-3 w-3" /> {tier}
+    <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${toneMap[tier]}`}>
+      {/* The raw enum used to render here, so an Arabic admin saw "PLATINUM". */}
+      <Award className="h-3 w-3 shrink-0" /> {t(`tier_${tier}`)}
     </span>
   );
 }

@@ -118,7 +118,22 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const { status: _statusFilter, ...statusAggQuery } = query;
   void _statusFilter;
 
-  const [placements, total, aggregation, statusAgg] = await Promise.all([
+  // Same reasoning for the commission tile: with the paid/unpaid filter on it
+  // would otherwise read back either `total` or 0, which is not a metric.
+  const { commissionPaid: _paidFilter, ...paidAggQuery } = query;
+  void _paidFilter;
+
+  // Visa strip doubles as a filter, so selecting one visa status must not
+  // collapse the other four to zero.
+  const { visaStatus: _visaFilter, ...visaAggQuery } = query;
+  void _visaFilter;
+
+  // Header tiles are workspace totals, not page totals — counting the returned
+  // rows only ever described the current page.
+  const upcomingFrom = new Date();
+  const upcomingTo = new Date(upcomingFrom.getTime() + 14 * 24 * 60 * 60 * 1000);
+
+  const [placements, total, aggregation, statusAgg, visaAgg, commissionPaidCount, scopeAgg] = await Promise.all([
     Placement.find(query)
       .populate("jobId", "title location")
       .populate("jobSeekerId", "userId")
@@ -140,6 +155,24 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     Placement.aggregate([
       { $match: statusAggQuery },
       { $group: { _id: { $ifNull: ["$status", "active"] }, count: { $sum: 1 } } },
+    ]),
+    Placement.aggregate([
+      { $match: visaAggQuery },
+      { $group: { _id: { $ifNull: ["$visaStatus", "pending"] }, count: { $sum: 1 } } },
+    ]),
+    Placement.countDocuments({ ...paidAggQuery, commissionPaid: true }),
+    // Distinct employers + upcoming starts across the whole filtered set.
+    Placement.aggregate([
+      { $match: query },
+      {
+        $facet: {
+          employers: [{ $group: { _id: "$employerId" } }, { $count: "n" }],
+          upcomingStarts: [
+            { $match: { startDate: { $gte: upcomingFrom, $lte: upcomingTo } } },
+            { $count: "n" },
+          ],
+        },
+      },
     ]),
   ]);
 
@@ -198,6 +231,12 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     totalSalaryValue,
     salaryByCurrency,
     statusCounts: Object.fromEntries(statusAgg.map((s) => [s._id ?? "unknown", s.count])),
+    visaCounts: Object.fromEntries(visaAgg.map((v) => [v._id ?? "pending", v.count])),
+    totals: {
+      commissionPaid: commissionPaidCount,
+      employers: scopeAgg[0]?.employers?.[0]?.n ?? 0,
+      upcomingStarts: scopeAgg[0]?.upcomingStarts?.[0]?.n ?? 0,
+    },
     pagination: { page, limit, total: search ? filtered.length : total, pages: Math.ceil((search ? filtered.length : total) / limit) },
   }, {
     headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=120" },

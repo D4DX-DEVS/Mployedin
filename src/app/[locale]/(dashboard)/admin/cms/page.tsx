@@ -109,7 +109,7 @@ export default function CmsOverviewPage() {
   return (
     <div className="page-container">
       <DashboardPageHeader
-        eyebrow={t("cmsWorkspaceLabel")}
+        compactOnMobile
         title={t("pageTitle")}
         description={t("pageDescription")}
         summary={{

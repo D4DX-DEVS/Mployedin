@@ -104,7 +104,7 @@ export default function AdminEmployersPage() {
     data: employers as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "employers",
-    title: "Employers",
+    title: t("exportTitle"),
   });
 
   const fetchEmployers = useCallback(async () => {
@@ -217,7 +217,7 @@ export default function AdminEmployersPage() {
       setVerifyReason("");
     } else {
       const data = await res.json();
-      setVerifyError(data.error ?? "Verification failed");
+      setVerifyError(data.error ?? t("toastVerificationFailed"));
     }
     setVerifyLoading(false);
   };
@@ -242,7 +242,6 @@ export default function AdminEmployersPage() {
       <PageHero
         title={t("pageTitle")}
         description={t("pageDescription")}
-        eyebrow={t("adminWorkspace")}
       />
 
       <section className="workspace-panel-surface overflow-hidden rounded-3xl">

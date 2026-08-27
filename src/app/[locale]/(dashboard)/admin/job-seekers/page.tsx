@@ -135,41 +135,41 @@ export default function AdminJobSeekersPage() {
 
   // ── Export columns (comprehensive) ──────────────────────
   const exportColumns: ExportColumn<JobSeeker>[] = useMemo(() => [
-    { header: "Name", key: "fullName", formatter: (v, r) => String(v || (r as unknown as JobSeeker).userId?.name || "—") },
-    { header: "Email", key: "email", formatter: (v, r) => String(v ?? (r as unknown as JobSeeker).userId?.email ?? "—") },
-    { header: "Phone", key: "phone", formatter: (v) => String(v ?? "—") },
-    { header: "Headline", key: "headline", formatter: (v) => String(v ?? "—") },
-    { header: "Nationality", key: "nationality", formatter: (v) => String(v ?? "—") },
-    { header: "Location", key: "currentLocation", formatter: (v) => String(v ?? "—") },
-    { header: "Skills", key: "skills", formatter: (v) => Array.isArray(v) ? v.join(", ") : "—" },
-    { header: "Experience (Years)", key: "totalExperienceYears", formatter: (v) => v != null ? String(v) : "—" },
-    { header: "Current Role", key: "experience", formatter: (v) => {
+    { header: tr("tableHeaderName"), key: "fullName", formatter: (v, r) => String(v || (r as unknown as JobSeeker).userId?.name || "—") },
+    { header: tr("tableHeaderEmail"), key: "email", formatter: (v, r) => String(v ?? (r as unknown as JobSeeker).userId?.email ?? "—") },
+    { header: tr("exportColumnHeaderPhone"), key: "phone", formatter: (v) => String(v ?? "—") },
+    { header: tr("exportColumnHeaderHeadline"), key: "headline", formatter: (v) => String(v ?? "—") },
+    { header: tr("tableHeaderNationality"), key: "nationality", formatter: (v) => String(v ?? "—") },
+    { header: tr("tableHeaderLocation"), key: "currentLocation", formatter: (v) => String(v ?? "—") },
+    { header: tr("tableHeaderSkills"), key: "skills", formatter: (v) => Array.isArray(v) ? v.join(", ") : "—" },
+    { header: tr("tableHeaderExp"), key: "totalExperienceYears", formatter: (v) => v != null ? String(v) : "—" },
+    { header: tr("exportHeaderCurrentRole"), key: "experience", formatter: (v) => {
       const exp = v as JobSeeker["experience"];
       const current = exp?.find((e) => e.isCurrent);
       return current ? `${current.jobTitle} at ${current.company}` : exp?.[0]?.jobTitle || "—";
     }},
-    { header: "Education", key: "education", formatter: (v) => {
+    { header: tr("exportColumnHeaderEducation"), key: "education", formatter: (v) => {
       const edu = v as JobSeeker["education"];
       return edu?.[0] ? `${edu[0].degree}${edu[0].field ? ` - ${edu[0].field}` : ""}${edu[0].institution ? ` (${edu[0].institution})` : ""}` : "—";
     }},
-    { header: "Languages", key: "languages", formatter: (v) => {
+    { header: tr("exportColumnHeaderLanguages"), key: "languages", formatter: (v) => {
       const langs = v as JobSeeker["languages"];
       return langs?.length ? langs.map((l) => `${l.language} (${l.proficiency})`).join(", ") : "—";
     }},
-    { header: "Certifications", key: "certifications", formatter: (v) => Array.isArray(v) && v.length ? v.join(", ") : "—" },
-    { header: "Availability", key: "availabilityStatus", formatter: (v) => String(v ?? "—").replace(/_/g, " ") },
-    { header: "Job Type Preference", key: "preferredJobType", formatter: (v) => String(v ?? "—") },
-    { header: "Preferred Locations", key: "preferredLocations", formatter: (v) => Array.isArray(v) ? v.join(", ") : "—" },
-    { header: "Profile %", key: "profileCompleteness", formatter: (v) => v != null ? `${v}%` : "—" },
-    { header: "Has CV", key: "cv", formatter: (v) => (v as JobSeeker["cv"])?.originalUrl ? "Yes" : "No" },
-    { header: "Status", key: "status", formatter: (v) => String(v ?? "active") },
-    { header: "Joined", key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "—" },
-  ], []);
+    { header: tr("exportColumnHeaderCertifications"), key: "certifications", formatter: (v) => Array.isArray(v) && v.length ? v.join(", ") : "—" },
+    { header: tr("tableHeaderAvailability"), key: "availabilityStatus", formatter: (v) => String(v ?? "—").replace(/_/g, " ") },
+    { header: tr("exportHeaderJobTypePreference"), key: "preferredJobType", formatter: (v) => String(v ?? "—") },
+    { header: tr("exportHeaderPreferredLocations"), key: "preferredLocations", formatter: (v) => Array.isArray(v) ? v.join(", ") : "—" },
+    { header: tr("tableHeaderProfilePercent"), key: "profileCompleteness", formatter: (v) => v != null ? `${v}%` : "—" },
+    { header: tr("exportColumnHeaderHasCv"), key: "cv", formatter: (v) => (v as JobSeeker["cv"])?.originalUrl ? tr("exportYes") : tr("exportNo") },
+    { header: tr("tableHeaderStatus"), key: "status", formatter: (v) => String(v ?? "active") },
+    { header: tr("tableHeaderJoined"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "—" },
+  ], [tr]);
 
   // PDF fits ~10 columns in landscape A4; the full 17-column set is unreadable
   const pdfColumns = useMemo(() => {
-    const keep = ["Name", "Email", "Phone", "Nationality", "Location", "Experience (Years)", "Availability", "Profile %", "Has CV", "Joined"];
-    return exportColumns.filter((c) => keep.includes(c.header));
+    const keepKeys = ["fullName", "email", "phone", "nationality", "currentLocation", "totalExperienceYears", "availabilityStatus", "profileCompleteness", "cv", "createdAt"];
+    return exportColumns.filter((c) => keepKeys.includes(c.key));
   }, [exportColumns]);
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
@@ -177,7 +177,7 @@ export default function AdminJobSeekersPage() {
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     pdfColumns: pdfColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "job-seekers-search-results",
-    title: "Job Seekers — Search Results",
+    title: tr("exportTitle"),
   });
 
   // ── Fetch job seekers ───────────────────────────────────
@@ -306,8 +306,8 @@ export default function AdminJobSeekersPage() {
   // ── Bulk CV Download (single ZIP: CVs + details sheet) ──
   const handleBulkCvDownload = async () => {
     const ok = await confirmDialog({
-      message: "Download the matching CVs (up to 50) as one ZIP file with a candidate details sheet?",
-      confirmLabel: "Download ZIP",
+      message: tr("bulkCvDownloadConfirmMessage"),
+      confirmLabel: tr("downloadCvsButton"),
     });
     if (!ok) return;
     setCvDownloading(true);
@@ -348,7 +348,7 @@ export default function AdminJobSeekersPage() {
         : ct?.includes("png") ? "png"
         : ct?.includes("jpeg") ? "jpg"
         : "pdf";
-      const rows: string[][] = [["Name", "Email", "Nationality", "Location", "Experience (Years)", "Headline", "CV File"]];
+      const rows: string[][] = [[tr("bulkCvExcelSheetHeaderName"), tr("bulkCvExcelSheetHeaderEmail"), tr("bulkCvExcelSheetHeaderNationality"), tr("bulkCvExcelSheetHeaderLocation"), tr("bulkCvExcelSheetHeaderExperience"), tr("bulkCvExcelSheetHeaderHeadline"), tr("bulkCvExcelSheetHeaderCvFile")]];
       let added = 0;
       for (const cv of cvs.slice(0, 50)) {
         try {
@@ -405,8 +405,8 @@ export default function AdminJobSeekersPage() {
     const ok = await confirmDialog({ message: tr("confirmDeactivateMessage"), confirmLabel: tr("confirmDeactivateButton") });
     if (!ok) return;
     const res = await fetch(`/api/job-seekers/${id}`, { method: "DELETE" });
-    if (res.ok) toast.success("Account deactivated");
-    else { const e = await res.json().catch(() => ({})); toast.error(e.error ?? "Failed to deactivate"); }
+    if (res.ok) toast.success(tr("toastAccountDeactivated"));
+    else { const e = await res.json().catch(() => ({})); toast.error(e.error ?? tr("toastFailedDeactivate")); }
     fetchJobSeekers();
   };
 
@@ -416,8 +416,8 @@ export default function AdminJobSeekersPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isActive: true }),
     });
-    if (res.ok) toast.success("Account reactivated");
-    else { const e = await res.json().catch(() => ({})); toast.error(e.error ?? "Failed to reactivate"); }
+    if (res.ok) toast.success(tr("toastAccountReactivated"));
+    else { const e = await res.json().catch(() => ({})); toast.error(e.error ?? tr("toastFailedReactivate")); }
     fetchJobSeekers();
   };
 
@@ -425,8 +425,8 @@ export default function AdminJobSeekersPage() {
     const ok = await confirmDialog({ title: tr("confirmDeleteTitle"), message: tr("confirmDeleteMessage"), confirmLabel: tr("confirmDeleteButton") });
     if (!ok) return;
     const res = await fetch(`/api/job-seekers/${id}?permanent=true`, { method: "DELETE" });
-    if (res.ok) toast.success("Job seeker permanently deleted");
-    else { const e = await res.json().catch(() => ({})); toast.error(e.error ?? "Failed to delete"); }
+    if (res.ok) toast.success(tr("toastJobSeekerDeletedPermanently"));
+    else { const e = await res.json().catch(() => ({})); toast.error(e.error ?? tr("toastFailedDelete")); }
     fetchJobSeekers();
   };
 
@@ -448,13 +448,9 @@ export default function AdminJobSeekersPage() {
       {ConfirmDialogNode}
 
       <PageHero
-        eyebrow={tr("heroAdminWorkspace")}
         title={tr("heroTitle")}
         description={tr("heroDescription")}
       />
-      {/* Privacy information where candidate personal data is first shown,
-          rather than only behind a footer link. */}
-      <CandidateDataNotice variant="candidateList" />
 
       {/* ── AI Search Bar ─────────────────────────────────── */}
       <section className="workspace-panel-surface rounded-3xl panel-body">
@@ -714,7 +710,12 @@ export default function AdminJobSeekersPage() {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
-              <TableHead>{tr("tableHeaderName")}</TableHead>
+              <TableHead>
+                <div className="flex items-center gap-1.5">
+                  <span>{tr("tableHeaderName")}</span>
+                  <CandidateDataNotice variant="candidateList" compact />
+                </div>
+              </TableHead>
               <TableHead>{tr("tableHeaderProfession")}</TableHead>
               <TableHead>{tr("tableHeaderNationality")}</TableHead>
               <TableHead>{tr("tableHeaderSkills")}</TableHead>
@@ -806,7 +807,7 @@ export default function AdminJobSeekersPage() {
                       )}
                       {can("job_seekers", "delete") && (
                         js.userId?.isActive === false ? (
-                          <Button variant="ghost" size="xs" onClick={() => handleReactivate(js._id)} title="Reactivate">
+                          <Button variant="ghost" size="xs" onClick={() => handleReactivate(js._id)} title={tr("actionReactivateTitle")} aria-label={tr("actionReactivateTitle")}>
                             <RotateCcw className="h-3.5 w-3.5 text-emerald-600" />
                           </Button>
                         ) : (

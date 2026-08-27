@@ -56,7 +56,6 @@ export default function NewStaticPage() {
   return (
     <div className="page-container">
       <DashboardPageHeader
-        eyebrow={t("workspaceLabel")}
         title={t("pageTitle")}
         description={t("pageDescription")}
         actions={(

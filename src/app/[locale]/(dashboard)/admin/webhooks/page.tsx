@@ -18,9 +18,12 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Label } from "@/components/ui/label";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { PageHero } from "@/components/shared/PageHero";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { useConfirm } from "@/hooks/useConfirm";
 import { toast } from "sonner";
@@ -188,7 +191,7 @@ export default function AdminWebhooksPage() {
       });
 
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "Request failed" }));
+        const err = await res.json().catch(() => ({ error: t("requestFailed") }));
         toast.error(err.error || t("saveFailed"));
         return;
       }
@@ -212,7 +215,7 @@ export default function AdminWebhooksPage() {
   };
 
   const handleDelete = async (id: string) => {
-    const ok = await confirmDialog("Are you sure you want to delete this webhook? This action cannot be undone.");
+    const ok = await confirmDialog(t("deleteConfirmPrompt"));
     if (!ok) return;
     try {
       const res = await csrfFetch(`/api/admin/webhooks/${id}`, { method: "DELETE" });
@@ -259,7 +262,7 @@ export default function AdminWebhooksPage() {
   };
 
   const handleRotateSecret = async (id: string) => {
-    const ok = await confirmDialog("Rotate the signing secret? The old secret will stop working immediately.");
+    const ok = await confirmDialog(t("rotateSecretConfirm"));
     if (!ok) return;
     try {
       const res = await csrfFetch(`/api/admin/webhooks/${id}/rotate-secret`, { method: "POST" });
@@ -312,29 +315,43 @@ export default function AdminWebhooksPage() {
   return (
     <div className="page-container">
 
-      <PageHero
+      <DashboardPageHeader
+        compactOnMobile
         icon={WebhookIcon}
-        eyebrow="Integration Hub"
-        title="Webhooks"
-        description="Manage outbound webhook integrations for your accounting system — track delivery status, retry failures, and monitor endpoint health."
+        title={t("title")}
+        description={t("description")}
+        metrics={[
+          { label: t("active"), value: activeCount, icon: CheckCircle2, iconClassName: "text-status-selected", iconSurfaceClassName: "bg-status-selected-bg" },
+          { label: t("inactive"), value: inactiveCount, icon: XCircle, iconClassName: "text-muted-foreground", iconSurfaceClassName: "bg-muted/30" },
+          { label: t("healthy"), value: healthyCount, icon: Activity, iconClassName: "text-status-selected", iconSurfaceClassName: "bg-status-selected-bg" },
+          { label: t("failed"), value: failedCount, icon: AlertCircle, iconClassName: "text-status-rejected", iconSurfaceClassName: "bg-status-rejected-bg" },
+        ]}
         actions={
           <>
             <Dialog open={infoOpen} onOpenChange={setInfoOpen}>
               <DialogTrigger asChild>
-                <Button size="lg"
-                  variant="outline"
-                  className="w-11 rounded-xl p-0"
-                  title="How webhooks work"
-                  aria-label="How webhooks work"
-                >
-                  <Info className="h-4 w-4" />
-                </Button>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button size="lg"
+                        variant="outline"
+                        className="w-11 rounded-xl p-0"
+                        aria-label={t("howWebhooksWork")}
+                      >
+                        <Info className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {t("howWebhooksWork")}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </DialogTrigger>
               <DialogContent className="max-w-lg">
                 <DialogHeader>
                   <DialogTitle className="flex items-center gap-2">
                     <Info className="h-4 w-4 text-sky-500" />
-                    How webhooks work
+                    {t("helpDialogTitle")}
                   </DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 text-sm leading-relaxed">
@@ -346,37 +363,28 @@ export default function AdminWebhooksPage() {
                   </p>
                   <ol className="list-decimal space-y-2.5 pl-5">
                     <li>
-                      <span className="font-medium text-foreground">Prepare a receiver.</span>{" "}
-                      You need a public HTTPS endpoint on the other system that accepts POST JSON
-                      and responds with 2xx. Don&apos;t have one yet? Create a free test URL at{" "}
-                      <span className="font-mono text-xs">webhook.site</span> to try it out.
+                      <span className="font-medium text-foreground">{t("helpStep1Title")}</span>{" "}
+                      {t("helpStep1Body")}
                     </li>
                     <li>
-                      <span className="font-medium text-foreground">Click Add Webhook.</span>{" "}
-                      Give it a name and paste the endpoint URL — it must be a real public domain
-                      (e.g. <span className="font-mono text-xs">https://api.yourcompany.com/hooks</span>),
-                      not a placeholder.
+                      <span className="font-medium text-foreground">{t("helpStep2Title")}</span>{" "}
+                      {t("helpStep2Body")}
                     </li>
                     <li>
-                      <span className="font-medium text-foreground">Pick events.</span>{" "}
-                      Only the selected invoice / commission events are delivered to that URL.
+                      <span className="font-medium text-foreground">{t("helpStep3Title")}</span>{" "}
+                      {t("helpStep3Body")}
                     </li>
                     <li>
-                      <span className="font-medium text-foreground">Save the signing secret.</span>{" "}
-                      It is shown once after creation. The receiver uses it to verify the{" "}
-                      <span className="font-mono text-xs">X-Webhook-Signature</span> header
-                      (HMAC-SHA256 of the request body) — proof the call really came from Mployedin.
+                      <span className="font-medium text-foreground">{t("helpStep4Title")}</span>{" "}
+                      {t("helpStep4Body")}
                     </li>
                     <li>
-                      <span className="font-medium text-foreground">Test it.</span>{" "}
-                      Use the <Send className="inline h-3 w-3" /> button on the row to send a test
-                      ping, and the <Eye className="inline h-3 w-3" /> button to view the delivery
-                      log with errors and response times.
+                      <span className="font-medium text-foreground">{t("helpStep5Title")}</span>{" "}
+                      {t("helpStep5Body")}
                     </li>
                   </ol>
                   <p className="rounded-lg bg-muted/40 p-3 text-xs text-muted-foreground">
-                    Until a real external system is connected, webhooks simply stay idle — failed
-                    test deliveries to placeholder URLs are expected and harmless.
+                    {t("helpNote")}
                   </p>
                 </div>
               </DialogContent>
@@ -388,12 +396,12 @@ export default function AdminWebhooksPage() {
                   className="gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90 border-0"
                 >
                   <Plus className="h-4 w-4" />
-                  Add Webhook
+                  {t("addWebhookButton")}
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-lg">
                 <DialogHeader>
-                  <DialogTitle>{editId ? "Edit Webhook" : "New Webhook"}</DialogTitle>
+                  <DialogTitle>{editId ? t("editWebhookDialog") : t("newWebhookDialog")}</DialogTitle>
                 </DialogHeader>
 
                 {/* Secret display (only on create success) */}
@@ -401,7 +409,7 @@ export default function AdminWebhooksPage() {
                   <div className="rounded-lg border border-status-shortlisted/20 bg-status-shortlisted-bg mb-4 card-pad">
                     <p className="text-sm font-medium text-status-shortlisted mb-2">
                       <AlertCircle className="h-4 w-4 inline mr-1" />
-                      Save this signing secret — it won&apos;t be shown again:
+                      {t("secretWarning")}
                     </p>
                     <div className="flex items-center gap-2">
                       <code className="flex-1 text-xs break-all font-mono bg-card p-2 rounded">
@@ -424,7 +432,7 @@ export default function AdminWebhooksPage() {
                 {!newSecret && (
                   <div className="space-y-4 mt-2">
                     <div className="field">
-                      <Label>Name</Label>
+                      <Label>{t("nameLabel")}</Label>
                       <Input
                         value={form.name}
                         onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -432,7 +440,7 @@ export default function AdminWebhooksPage() {
                       />
                     </div>
                     <div className="field">
-                      <Label>Endpoint URL</Label>
+                      <Label>{t("endpointUrlLabel")}</Label>
                       <Input
                         value={form.url}
                         onChange={(e) => setForm({ ...form, url: e.target.value })}
@@ -440,7 +448,7 @@ export default function AdminWebhooksPage() {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label>Events</Label>
+                      <Label>{t("eventsLabel")}</Label>
                       <div className="flex flex-wrap gap-2">
                         {EVENTS.map((ev) => (
                           <Badge
@@ -455,7 +463,7 @@ export default function AdminWebhooksPage() {
                       </div>
                     </div>
                     <div className="field">
-                      <Label>Retry Count</Label>
+                      <Label>{t("retryCountLabel")}</Label>
                       <Input
                         type="number"
                         min={0}
@@ -472,10 +480,10 @@ export default function AdminWebhooksPage() {
                         onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
                         className="rounded"
                       />
-                      <Label htmlFor="isActive">Active</Label>
+                      <Label htmlFor="isActive">{t("activeLabel")}</Label>
                     </div>
                     <Button onClick={handleSubmit} className="w-full">
-                      {editId ? "Update" : "Create"} Webhook
+                      {editId ? t("editWebhookDialog") : t("addWebhookButton")}
                     </Button>
                   </div>
                 )}
@@ -487,29 +495,6 @@ export default function AdminWebhooksPage() {
 
       <section className="workspace-panel-surface overflow-hidden rounded-3xl panel-body">
 
-        {/* Stats Row */}
-        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {([
-            { label: "Active", value: activeCount, note: "Listening for events", icon: CheckCircle2, tone: "text-status-selected", chip: "bg-status-selected-bg" },
-            { label: "Inactive", value: inactiveCount, note: "Paused endpoints", icon: XCircle, tone: "text-muted-foreground", chip: "bg-muted/30" },
-            { label: "Healthy", value: healthyCount, note: "Last delivery OK", icon: Activity, tone: "text-status-applied", chip: "bg-status-applied-bg" },
-            { label: "Failed", value: failedCount, note: "Needs attention", icon: AlertCircle, tone: "text-red-500", chip: "bg-status-rejected-bg" },
-          ] as const).map(({ label, value, note, icon: Icon, tone, chip }) => (
-            <div key={label} className="workspace-glass-panel card-pad rounded-2xl">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-                  <p className="mt-3 text-4xl font-semibold tracking-tight text-foreground">{value}</p>
-                </div>
-                <span className={`flex h-12 w-12 items-center justify-center rounded-2xl ${chip}`}>
-                  <Icon className={`h-5 w-5 ${tone}`} />
-                </span>
-              </div>
-              <p className="mt-3 text-sm leading-5 text-muted-foreground">{note}</p>
-            </div>
-          ))}
-        </div>
-
         {/* ─── Filter toggle bar ──────────────────────────────────────── */}
         <div className="mt-6 flex items-center justify-between">
           <button
@@ -518,20 +503,20 @@ export default function AdminWebhooksPage() {
             className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-white/10"
           >
             <Filter className="h-4 w-4 text-muted-foreground" />
-            {showFilters ? "Hide Filters" : "Show Filters"}
-            {activeFilterCount > 0 && <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">{activeFilterCount} active</Badge>}
+            {showFilters ? t("hideFilters") : t("showFilters")}
+            {activeFilterCount > 0 && <Badge variant="secondary" className="px-1.5 py-0 text-xs">{activeFilterCount} active</Badge>}
             {showFilters ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
           </button>
           <div className="flex items-center gap-2">
             {activeFilterCount > 0 && (
               <Button variant="ghost" size="sm" onClick={clearAllFilters} className="gap-1.5 text-xs text-muted-foreground">
                 <RotateCcw className="h-3 w-3" />
-                Clear {activeFilterCount} filter{activeFilterCount > 1 ? "s" : ""}
+                {t("clearNFilters", { count: activeFilterCount })}
               </Button>
             )}
             <Button variant="outline" size="sm" onClick={fetchWebhooks} disabled={loading} className="gap-1.5">
               <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-              Refresh
+              {t("refresh")}
             </Button>
           </div>
         </div>
@@ -544,7 +529,7 @@ export default function AdminWebhooksPage() {
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by name or URL…"
+                placeholder={t("searchPlaceholder")}
                 className="h-11 w-full rounded-xl border border-border bg-card pl-9 pr-4 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2"
               />
             </div>
@@ -554,24 +539,24 @@ export default function AdminWebhooksPage() {
                 id="webhook-status-filter"
                 className="h-11 w-full rounded-xl border-border bg-card"
                 options={[
-                  { value: "all", label: "All statuses" },
-                  { value: "active", label: "Active" },
-                  { value: "inactive", label: "Inactive" },
+                  { value: "all", label: t("allStatuses") },
+                  { value: "active", label: t("active") },
+                  { value: "inactive", label: t("inactive") },
                 ]}
                 value={statusFilter}
                 onValueChange={setStatusFilter}
-                placeholder="All statuses"
+                placeholder={t("allStatuses")}
               />
               <SearchableSelect
                 id="webhook-event-filter"
                 className="h-11 w-full rounded-xl border-border bg-card"
                 options={[
-                  { value: "all", label: "All events" },
+                  { value: "all", label: t("allEvents") },
                   ...EVENTS.map((ev) => ({ value: ev, label: ev })),
                 ]}
                 value={eventFilter}
                 onValueChange={setEventFilter}
-                placeholder="All events"
+                placeholder={t("allEvents")}
               />
             </div>
           </div>
@@ -584,12 +569,12 @@ export default function AdminWebhooksPage() {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
-                <TableHead className="min-w-[160px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">Name</TableHead>
-                <TableHead className="min-w-[200px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">URL</TableHead>
-                <TableHead className="min-w-[180px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">Events</TableHead>
-                <TableHead className="min-w-[80px] px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.12em]">Status</TableHead>
-                <TableHead className="min-w-[110px] px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.12em]">Last Fired</TableHead>
-                <TableHead className="min-w-[180px] px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.12em]">Actions</TableHead>
+                <TableHead className="min-w-[160px] px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em]">{t("name")}</TableHead>
+                <TableHead className="min-w-[200px] px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em]">{t("url")}</TableHead>
+                <TableHead className="min-w-[180px] px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em]">{t("events")}</TableHead>
+                <TableHead className="min-w-[80px] px-4 py-3 text-center text-xs font-semibold uppercase tracking-[0.12em]">{t("active")}</TableHead>
+                <TableHead className="min-w-[110px] px-4 py-3 text-center text-xs font-semibold uppercase tracking-[0.12em]">{t("lastTriggered")}</TableHead>
+                <TableHead className="min-w-[180px] px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.12em]">{t("actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -611,14 +596,14 @@ export default function AdminWebhooksPage() {
                         <Inbox className="h-7 w-7 opacity-40" />
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-foreground">No webhooks found</p>
+                        <p className="text-sm font-semibold text-foreground">{t("noWebhooksFound")}</p>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          {activeFilterCount > 0 ? "Try adjusting the filters above." : "Webhooks will appear here once configured."}
+                          {activeFilterCount > 0 ? t("tryAdjustingFilters") : t("webhooksWillAppearWhenConfigured")}
                         </p>
                       </div>
                       {activeFilterCount > 0 && (
                         <Button variant="outline" size="dense" onClick={clearAllFilters} className="mt-1 rounded-lg text-xs">
-                          Clear filters
+                          {t("clearFiltersButton")}
                         </Button>
                       )}
                     </div>
@@ -640,18 +625,27 @@ export default function AdminWebhooksPage() {
                     </div>
                   </TableCell>
                   <TableCell className="px-4 py-3 text-center">
-                    <button
-                      type="button"
-                      onClick={() => handleToggleActive(wh)}
-                      className="inline-flex items-center gap-1 text-xs"
-                      title={wh.isActive ? "Click to disable" : "Click to enable"}
-                    >
-                      {wh.isActive ? (
-                        <ToggleRight className="h-5 w-5 text-emerald-500" />
-                      ) : (
-                        <ToggleLeft className="h-5 w-5 text-muted-foreground" />
-                      )}
-                    </button>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleActive(wh)}
+                            className="inline-flex items-center gap-1 text-xs"
+                            aria-label={wh.isActive ? t("clickToDisable") : t("clickToEnable")}
+                          >
+                            {wh.isActive ? (
+                              <ToggleRight className="h-5 w-5 text-emerald-500" />
+                            ) : (
+                              <ToggleLeft className="h-5 w-5 text-muted-foreground" />
+                            )}
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {wh.isActive ? t("clickToDisable") : t("clickToEnable")}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </TableCell>
                   <TableCell className="px-4 py-3 text-center text-xs text-muted-foreground">
                     {wh.lastTriggeredAt
@@ -694,7 +688,7 @@ export default function AdminWebhooksPage() {
                         <KeyRound className="h-3.5 w-3.5" />
                       </Button>
                       <Button variant="ghost" size="sm" onClick={() => openEdit(wh)} className="h-8 px-2 text-xs">
-                        Edit
+                        {t("edit")}
                       </Button>
                       <Button
                         variant="ghost"
@@ -736,10 +730,10 @@ export default function AdminWebhooksPage() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <Activity className="h-4 w-4 text-sky-500 shrink-0" />
-                  <h2 className="heading-section font-semibold truncate">Delivery Log</h2>
+                  <h2 className="heading-section font-semibold truncate">{t("deliveryLog")}</h2>
                 </div>
                 <p className="mt-0.5 truncate text-xs text-muted-foreground">{logWebhook?.name}</p>
-                <p className="truncate text-[10px] font-mono text-muted-foreground">{logWebhook?.url}</p>
+                <p className="truncate text-xs font-mono text-muted-foreground">{logWebhook?.url}</p>
               </div>
               <Button variant="ghost" size="sm" onClick={() => setLogDrawerOpen(false)} className="h-8 w-8 shrink-0 rounded-lg p-0">
                 <X className="h-4 w-4" />
@@ -774,8 +768,8 @@ export default function AdminWebhooksPage() {
                   <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-muted/50 mb-4">
                     <Clock className="h-7 w-7 opacity-40" />
                   </div>
-                  <p className="text-sm font-semibold text-foreground">No deliveries yet</p>
-                  <p className="mt-1 text-xs">Deliveries will appear here after events fire.</p>
+                  <p className="text-sm font-semibold text-foreground">{t("noDeliveriesYet")}</p>
+                  <p className="mt-1 text-xs">{t("deliveriesWillAppearAfterEventsFire")}</p>
                 </div>
               ) : (
                 <div className="space-y-2.5">
@@ -794,7 +788,7 @@ export default function AdminWebhooksPage() {
                           )}
                           <Badge variant="secondary" className="text-[10px] font-medium">{entry.event}</Badge>
                         </div>
-                        <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
                           {formatDateTime(new Date(entry.deliveredAt))}
                         </span>
                       </div>

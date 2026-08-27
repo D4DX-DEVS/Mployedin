@@ -171,14 +171,14 @@ export default function AdminAgentsPage() {
         body: JSON.stringify({ userId: id, isActive: true }),
       });
       if (res.ok) {
-        toast.success("Agent activated successfully");
+        toast.success(tr("toastAgentActivated"));
         fetchAgents();
       } else {
         const err = await res.json().catch(() => ({}));
-        toast.error(err.error || "Failed to activate agent");
+        toast.error(err.error || tr("toastFailedActivateAgent"));
       }
     } catch (error) {
-      toast.error("Failed to activate agent");
+      toast.error(tr("toastFailedActivateAgent"));
     }
   };
 
@@ -227,7 +227,7 @@ export default function AdminAgentsPage() {
       setAddForm({ name: "", email: "", password: "", superAgentId: "", commissionRate: "0" });
       setAddCityIds([]);
       setAddStateIds([]);
-      toast.success("Agent created successfully");
+      toast.success(tr("toastAgentCreated"));
       fetchAgents();
     } catch {
       setAddError(tr("networkError"));
@@ -289,7 +289,7 @@ export default function AdminAgentsPage() {
         return;
       }
       setEditAgent(null);
-      toast.success("Agent updated successfully");
+      toast.success(tr("toastAgentUpdated"));
       fetchAgents();
     } catch {
       setEditError(tr("networkError"));
@@ -309,12 +309,12 @@ export default function AdminAgentsPage() {
       });
       if (!res.ok) {
         const e = await res.json().catch(() => ({}));
-        toast.error(e.error ?? "Failed to deactivate agent");
+        toast.error(e.error ?? tr("toastFailedDeactivateAgent"));
         return;
       }
-      toast.success("Agent deactivated successfully");
+      toast.success(tr("toastAgentDeactivated"));
     } catch {
-      toast.error("Failed to deactivate agent");
+      toast.error(tr("toastFailedDeactivateAgent"));
     }
     fetchAgents();
   };
@@ -330,12 +330,12 @@ export default function AdminAgentsPage() {
       });
       if (!res.ok) {
         const e = await res.json().catch(() => ({}));
-        toast.error(e.error ?? "Failed to permanently delete agent");
+        toast.error(e.error ?? tr("toastFailedDeleteAgent"));
         return;
       }
-      toast.success("Agent permanently deleted");
+      toast.success(tr("toastAgentDeletedPermanently"));
     } catch {
-      toast.error("Failed to permanently delete agent");
+      toast.error(tr("toastFailedDeleteAgent"));
     }
     fetchAgents();
   };
@@ -364,7 +364,6 @@ export default function AdminAgentsPage() {
       <PageHero
         title={tr("agents")}
         description={tr("heroDescription")}
-        eyebrow={tr("adminWorkspace")}
       />
 
       <section className="workspace-panel-surface overflow-hidden rounded-3xl">

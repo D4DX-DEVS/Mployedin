@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { apiErrorMessage } from "@/lib/utils";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CascadingLocationPicker } from "@/components/shared/CascadingLocationPicker";
@@ -103,7 +103,7 @@ export default function AdminSuperAgentsPage() {
       try {
         const res = await fetch("/api/admin/agents?limit=200");
         if (!res.ok) {
-          toast.error("Failed to load available agents");
+          toast.error(t("toastFailedLoadAgents"));
           return;
         }
         const data = await res.json();
@@ -114,7 +114,7 @@ export default function AdminSuperAgentsPage() {
         }));
         setAvailableAgents(agents);
       } catch (e) {
-        toast.error("Failed to load available agents");
+        toast.error(t("toastFailedLoadAgents"));
       }
     })();
   }, []);
@@ -133,10 +133,10 @@ export default function AdminSuperAgentsPage() {
         setSuperAgents(data.superAgents ?? []);
         updateTotal(data.pagination?.total ?? 0);
       } else {
-        toast.error("Failed to load super agents");
+        toast.error(t("toastFailedLoadSuperAgents"));
       }
     } catch (error) {
-      toast.error("Failed to load super agents");
+      toast.error(t("toastFailedLoadSuperAgents"));
     } finally {
       setLoading(false);
     }
@@ -165,7 +165,7 @@ export default function AdminSuperAgentsPage() {
     data: superAgents as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "super-agents",
-    title: "Super Agents",
+    title: t("exportTitle"),
   });
 
   const handleCreate = async () => {
@@ -204,10 +204,10 @@ export default function AdminSuperAgentsPage() {
       setAddCityIds([]);
       setAddStateIds([]);
       setAddAgentIds([]);
-      toast.success("Super agent created successfully");
+      toast.success(t("toastSuperAgentCreated"));
       fetchSuperAgents();
     } catch (error) {
-      const msg = "Failed to create super agent";
+      const msg = t("toastFailedCreateSuperAgent");
       setAddError(msg);
       toast.error(msg);
     } finally {
@@ -258,10 +258,10 @@ export default function AdminSuperAgentsPage() {
         return;
       }
       setEditSA(null);
-      toast.success("Super agent updated successfully");
+      toast.success(t("toastSuperAgentUpdated"));
       fetchSuperAgents();
     } catch (error) {
-      const msg = "Failed to update super agent";
+      const msg = t("toastFailedUpdateSuperAgent");
       setEditError(msg);
       toast.error(msg);
     } finally {
@@ -279,14 +279,14 @@ export default function AdminSuperAgentsPage() {
         body: JSON.stringify({ userId: id }),
       });
       if (res.ok) {
-        toast.success("Super agent deactivated successfully");
+        toast.success(t("toastSuperAgentDeactivated"));
         fetchSuperAgents();
       } else {
         const err = await res.json().catch(() => ({}));
-        toast.error(err.error || "Failed to deactivate super agent");
+        toast.error(err.error || t("toastFailedDeactivateSuperAgent"));
       }
     } catch (error) {
-      toast.error("Failed to deactivate super agent");
+      toast.error(t("toastFailedDeactivateSuperAgent"));
     }
   };
 
@@ -298,14 +298,14 @@ export default function AdminSuperAgentsPage() {
         body: JSON.stringify({ userId: id, isActive: true }),
       });
       if (res.ok) {
-        toast.success("Super agent activated successfully");
+        toast.success(t("toastSuperAgentActivated"));
         fetchSuperAgents();
       } else {
         const err = await res.json().catch(() => ({}));
-        toast.error(err.error || "Failed to activate super agent");
+        toast.error(err.error || t("toastFailedActivateSuperAgent"));
       }
     } catch (error) {
-      toast.error("Failed to activate super agent");
+      toast.error(t("toastFailedActivateSuperAgent"));
     }
   };
 
@@ -319,14 +319,14 @@ export default function AdminSuperAgentsPage() {
         body: JSON.stringify({ userId: id, permanent: true }),
       });
       if (res.ok) {
-        toast.success("Super agent deleted permanently");
+        toast.success(t("toastSuperAgentDeletedPermanently"));
         fetchSuperAgents();
       } else {
         const err = await res.json().catch(() => ({}));
-        toast.error(err.error || "Failed to delete super agent");
+        toast.error(err.error || t("toastFailedDeleteSuperAgent"));
       }
     } catch (error) {
-      toast.error("Failed to delete super agent");
+      toast.error(t("toastFailedDeleteSuperAgent"));
     }
   };
 
@@ -370,9 +370,16 @@ export default function AdminSuperAgentsPage() {
   return (
     <div className="page-container">
       {ConfirmDialogNode}
+
+      {/* Page Header */}
+      <DashboardPageHeader
+        title={t("pageTitle")}
+        description={t("pageSubtitle")}
+        compactOnMobile
+      />
+
       <section className="workspace-panel-surface overflow-hidden rounded-3xl">
         <div className="flex flex-col gap-3 border-b border-border/80 sm:flex-row sm:items-center sm:justify-between panel-head">
-          <PageHeader title={t("pageTitle")} description={t("pageSubtitle")} />
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />

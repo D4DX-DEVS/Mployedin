@@ -59,10 +59,40 @@ interface FunnelPoint {
 interface AlertItem {
   id: string;
   level: "critical" | "warning" | "positive";
-  title: string;
-  description: string;
-  metric: string;
+  values?: Record<string, number>;
 }
+
+/* `/api/admin/analytics` has no locale, so it sends an alert id plus the numbers
+   behind it rather than a finished sentence. The mapping lives here, spelled out
+   per id so the keys stay statically greppable. An id this map doesn't know is
+   skipped rather than rendered — next-intl throws on an unknown key. */
+const ALERT_COPY: Record<string, { titleKey: string; descriptionKey: string; metricKey: string }> = {
+  "jobs-without-applications": {
+    titleKey: "alertJobsWithoutDemandTitle",
+    descriptionKey: "alertJobsWithoutDemandDescription",
+    metricKey: "alertJobsWithoutDemandMetric",
+  },
+  "stale-open-applications": {
+    titleKey: "alertStaleApplicationsTitle",
+    descriptionKey: "alertStaleApplicationsDescription",
+    metricKey: "alertStaleApplicationsMetric",
+  },
+  "zero-placement-momentum": {
+    titleKey: "alertNoPlacementMomentumTitle",
+    descriptionKey: "alertNoPlacementMomentumDescription",
+    metricKey: "alertNoPlacementMomentumMetric",
+  },
+  "demand-softening": {
+    titleKey: "alertDemandSofteningTitle",
+    descriptionKey: "alertDemandSofteningDescription",
+    metricKey: "alertDemandSofteningMetric",
+  },
+  "platform-stable": {
+    titleKey: "alertPlatformStableTitle",
+    descriptionKey: "alertPlatformStableDescription",
+    metricKey: "alertPlatformStableMetric",
+  },
+};
 
 interface RecentJob {
   id: string;
@@ -133,33 +163,37 @@ const ALERT_STYLES: Record<AlertItem["level"], {
   title: string;
   description: string;
   metric: string;
+  labelKey: string;
 }> = {
   critical: {
     Icon: AlertTriangle,
-    card: "border border-red-200 border-l-4 border-l-red-500 bg-white shadow-sm",
-    iconWrap: "bg-red-100 text-red-600",
-    eyebrow: "text-red-600",
-    title: "text-gray-900",
-    description: "text-gray-600",
-    metric: "bg-red-600 text-white shadow-sm",
+    card: "border border-status-rejected/25 border-l-4 border-l-status-rejected bg-card shadow-sm",
+    iconWrap: "bg-status-rejected-bg text-status-rejected",
+    eyebrow: "text-status-rejected",
+    title: "text-foreground",
+    description: "text-muted-foreground",
+    metric: "bg-status-rejected text-white shadow-sm",
+    labelKey: "alertLevelCritical",
   },
   warning: {
     Icon: Clock3,
-    card: "border border-yellow-200 border-l-4 border-l-yellow-500 bg-white shadow-sm",
-    iconWrap: "bg-yellow-100 text-yellow-600",
-    eyebrow: "text-yellow-600",
-    title: "text-gray-900",
-    description: "text-gray-600",
-    metric: "bg-yellow-600 text-white shadow-sm",
+    card: "border border-status-shortlisted/25 border-l-4 border-l-status-shortlisted bg-card shadow-sm",
+    iconWrap: "bg-status-shortlisted-bg text-status-shortlisted",
+    eyebrow: "text-status-shortlisted",
+    title: "text-foreground",
+    description: "text-muted-foreground",
+    metric: "bg-status-shortlisted text-white shadow-sm",
+    labelKey: "alertLevelWarning",
   },
   positive: {
     Icon: CheckCircle2,
-    card: "border border-emerald-200 border-l-4 border-l-emerald-500 bg-white shadow-sm",
-    iconWrap: "bg-emerald-100 text-emerald-600",
-    eyebrow: "text-emerald-600",
-    title: "text-gray-900",
-    description: "text-gray-600",
-    metric: "bg-emerald-600 text-white shadow-sm",
+    card: "border border-status-selected/25 border-l-4 border-l-status-selected bg-card shadow-sm",
+    iconWrap: "bg-status-selected-bg text-status-selected",
+    eyebrow: "text-status-selected",
+    title: "text-foreground",
+    description: "text-muted-foreground",
+    metric: "bg-status-selected text-white shadow-sm",
+    labelKey: "alertLevelPositive",
   },
 };
 
@@ -186,9 +220,9 @@ function TrendBadge({ trend }: { trend: TrendData }) {
       ? ArrowDownRight
       : Minus;
   const className = trend.direction === "up"
-    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+    ? "border-status-selected/25 bg-status-selected-bg text-status-selected"
     : trend.direction === "down"
-      ? "border-red-200 bg-red-50 text-red-700"
+      ? "border-status-rejected/25 bg-status-rejected-bg text-status-rejected"
       : "border-border bg-secondary/80 text-muted-foreground";
 
   return (
@@ -310,7 +344,6 @@ export default function AdminReportsPage() {
   return (
     <div className="page-container">
       <PageHero
-        eyebrow={t("adminWorkspace")}
         title={t("reportsAndAnalytics")}
         description={t("platformDemandDescription")}
       />
@@ -358,8 +391,7 @@ export default function AdminReportsPage() {
             <section className="workspace-panel-surface rounded-3xl panel-body" aria-label={t("a11yPlatformAlerts")}>
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("actionQueue")}</p>
-                  <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("platformAlerts")}</h2>
+                  <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("platformAlerts")}</h2>
                   <p className="mt-1 text-sm text-muted-foreground">{t("platformAlertsDescription")}</p>
                 </div>
                 <div className="workspace-tone-amber rounded-2xl p-2.5">
@@ -371,6 +403,9 @@ export default function AdminReportsPage() {
                 {alerts.map((alert) => {
                   const alertStyle = ALERT_STYLES[alert.level];
                   const AlertIcon = alertStyle.Icon;
+                  const copy = ALERT_COPY[alert.id];
+                  if (!copy) return null;
+                  const values = alert.values ?? {};
 
                   return (
                   <div
@@ -383,11 +418,11 @@ export default function AdminReportsPage() {
                         <AlertIcon className="h-4.5 w-4.5" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${alertStyle.eyebrow}`}>{alert.level}</p>
-                        <p className={`mt-2 text-base font-semibold ${alertStyle.title}`}>{alert.title}</p>
-                        <p className={`mt-1 text-sm leading-6 ${alertStyle.description}`}>{alert.description}</p>
+                        <p className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${alertStyle.eyebrow}`}>{t(alertStyle.labelKey)}</p>
+                        <p className={`mt-2 text-base font-semibold ${alertStyle.title}`}>{t(copy.titleKey)}</p>
+                        <p className={`mt-1 text-sm leading-6 ${alertStyle.description}`}>{t(copy.descriptionKey, values)}</p>
                       </div>
-                      <span className={`rounded-full px-3 py-1.5 text-xs font-semibold ${alertStyle.metric}`}>{alert.metric}</span>
+                      <span className={`rounded-full px-3 py-1.5 text-xs font-semibold ${alertStyle.metric}`}>{t(copy.metricKey, values)}</span>
                     </div>
                   </div>
                   );
@@ -398,8 +433,7 @@ export default function AdminReportsPage() {
             <section className="workspace-panel-surface rounded-3xl panel-body" aria-label={t("a11yJobsVsApplications")}>
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("demandTrend")}</p>
-                  <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("jobsVsApplications")}</h2>
+                  <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("jobsVsApplications")}</h2>
                   <p className="mt-1 text-sm text-muted-foreground">{t("jobsVsApplicationsDescription")}</p>
                 </div>
                 <div className="workspace-tone-sky rounded-2xl p-2.5">
@@ -412,20 +446,22 @@ export default function AdminReportsPage() {
                 <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-violet-500" /> {t("applicationsChartLabel")}</div>
               </div>
 
+              {/* Capped at 3 columns: this panel is half-width, so six columns left each
+                  count label ~22px and "Jobs" broke to "Job"/"s". */}
               {activitySeries.length ? (
-                <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6">
+                <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
                   {activitySeries.map((point) => (
-                    <div key={point.label} className="rounded-3xl border border-slate-200/80 bg-slate-50/80 px-3 py-4">
+                    <div key={point.label} className="rounded-3xl border border-border bg-secondary/40 px-3 py-4">
                       <div className="flex h-32 items-end justify-center gap-2" aria-label={t("jobsDemandChart", { label: point.label })}>
+                        {/* No title= tooltips: both values are printed as labelled text
+                            directly below, and a native title is invisible on touch. */}
                         <div
                           className="w-4 rounded-t-full bg-blue-500"
                           style={{ height: `${Math.max(10, (point.jobs / maxActivityValue) * 100)}%` }}
-                          title={`${point.jobs} jobs`}
                         />
                         <div
                           className="w-4 rounded-t-full bg-violet-500"
                           style={{ height: `${Math.max(10, (point.applications / maxActivityValue) * 100)}%` }}
-                          title={`${point.applications} applications`}
                         />
                       </div>
                       <p className="mt-4 text-center text-sm font-semibold text-foreground">{point.label}</p>
@@ -454,8 +490,7 @@ export default function AdminReportsPage() {
             <section className="workspace-panel-surface rounded-3xl panel-body" aria-label={t("a11yApplicationsByStatus")}>
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("pipelineMix")}</p>
-                  <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("applicationsByStatus")}</h2>
+                  <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("applicationsByStatus")}</h2>
                   <p className="mt-1 text-sm text-muted-foreground">{t("applicationsByStatusDescription")}</p>
                 </div>
                 <div className="workspace-tone-violet rounded-2xl p-2.5">
@@ -501,8 +536,7 @@ export default function AdminReportsPage() {
             <section className="workspace-panel-surface rounded-3xl panel-body" aria-label={t("a11yConversionFunnel")}>
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("flowEfficiency")}</p>
-                  <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("conversionFunnel")}</h2>
+                  <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("conversionFunnel")}</h2>
                   <p className="mt-1 text-sm text-muted-foreground">{t("conversionFunnelDescription")}</p>
                 </div>
                 <div className="workspace-tone-emerald rounded-2xl p-2.5">
@@ -550,8 +584,7 @@ export default function AdminReportsPage() {
             <section className="workspace-panel-surface rounded-3xl panel-body" aria-label={t("a11yRecentJobs")}>
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("recentActivity")}</p>
-                  <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("recentJobs")}</h2>
+                  <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("recentJobs")}</h2>
                 </div>
                 <div className="workspace-tone-sky rounded-2xl p-2.5">
                   <Briefcase className="h-5 w-5" />
@@ -597,8 +630,7 @@ export default function AdminReportsPage() {
             <section className="workspace-panel-surface rounded-3xl panel-body" aria-label={t("a11yRecentApplications")}>
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("recentActivity")}</p>
-                  <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("recentApplications")}</h2>
+                  <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("recentApplications")}</h2>
                 </div>
                 <div className="workspace-tone-violet rounded-2xl p-2.5">
                   <FileText className="h-5 w-5" />
@@ -644,8 +676,7 @@ export default function AdminReportsPage() {
             <section className="workspace-panel-surface rounded-3xl panel-body" aria-label={t("a11yTopAgents")}>
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("ownership")}</p>
-                  <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("topAgents")}</h2>
+                  <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("topAgents")}</h2>
                 </div>
                 <div className="workspace-tone-emerald rounded-2xl p-2.5">
                   <CheckCircle2 className="h-5 w-5" />
@@ -695,13 +726,12 @@ export default function AdminReportsPage() {
           <section className="workspace-panel-surface rounded-3xl panel-body" aria-label={t("a11yOperationalHighlights")}>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("decisionSupport")}</p>
-                <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("operationalHighlights")}</h2>
+                <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("operationalHighlights")}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">{t("operationalHighlightsDescription")}</p>
               </div>
             </div>
 
-            <div className="mt-6 grid gap-4 md:grid-cols-3">
+            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <div className="workspace-subtle-surface card-pad rounded-3xl">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Clock3 className="h-4 w-4" />

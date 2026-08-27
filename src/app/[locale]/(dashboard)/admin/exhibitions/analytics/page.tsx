@@ -221,7 +221,7 @@ export default function AdminExhibitionAnalyticsPage() {
     return (
       <div className="page-container">
         <DashboardPageHeader
-          eyebrow={t("adminAnalyticsBadge")}
+          compactOnMobile
           title={t("pageTitle")}
           description={t("pageDescription")}
           metrics={[
@@ -255,7 +255,8 @@ export default function AdminExhibitionAnalyticsPage() {
   return (
     <div className="page-container">
       <DashboardPageHeader
-        eyebrow={`${t("adminAnalyticsBadge")} · ${t("yearBadge", { year: data.year })}`}
+        compactOnMobile
+        eyebrow={t("yearBadge", { year: data.year })}
         title={t("pageTitle")}
         description={t("pageDescription")}
         summary={{
@@ -278,40 +279,45 @@ export default function AdminExhibitionAnalyticsPage() {
           { label: t("approvalRateLabel"), value: `${kpis.approvalRate}%`, note: t("approvalRateSub", { approved: kpis.approved, rejected: kpis.rejected }), icon: Percent, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50" },
           { label: t("roiLabel"), value: `${performance.roi}%`, note: performance.eventsReported > 0 ? t("roiEventsReported", { eventsReported: performance.eventsReported }) : t("roiAwaitingReports"), icon: TrendingUp, iconClassName: "text-violet-600", iconSurfaceClassName: "bg-violet-50" },
         ]}
-      >
-        <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
-          <MiniMetric label={t("leadsGeneratedLabel")} value={performance.totalLeads} />
-          <MiniMetric label={t("employersEngagedLabel")} value={performance.totalEmployers} />
-          <MiniMetric label={t("candidatesSourchedLabel")} value={performance.totalCandidates} />
-          <MiniMetric label={t("hiresGeneratedLabel")} value={performance.totalHires} />
-        </div>
-      </DashboardPageHeader>
+      />
 
-      <section className="grid grid-cols-2 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard
-          label={t("totalRequestsLabel")}
-          value={kpis.totalRequests}
-          icon={<CalendarDays className="h-5 w-5" />}
-          sub={t("totalRequestsSub", { submitted: kpis.submitted })}
-        />
-        <MetricCard
-          label={t("avgBudgetLabel")}
-          value={formatCurrency(kpis.avgBudget, currencyCode)}
-          icon={<DollarSign className="h-5 w-5" />}
-          sub={t("avgBudgetSub", { total: formatCurrency(kpis.totalEstimatedBudget, currencyCode) })}
-        />
-        <MetricCard
-          label={t("budgetVarianceLabel")}
-          value={formatCurrency(kpis.budgetVariance, currencyCode)}
-          icon={<TrendingUp className="h-5 w-5" />}
-          sub={kpis.budgetVariance >= 0 ? t("budgetVarianceUnderspend") : t("budgetVarianceOverspend")}
-        />
-        <MetricCard
-          label={t("completionRateLabel")}
-          value={`${kpis.totalRequests > 0 ? Math.round((kpis.completed / kpis.totalRequests) * 100) : 0}%`}
-          icon={<CheckCircle2 className="h-5 w-5" />}
-          sub={t("completionRateSub", { completed: kpis.completed })}
-        />
+      {/* One panel instead of four floating metric cards plus four tiles inside
+          the hero. The old "Total requests" card printed the hero's own
+          Requests figure a second time, and its "N newly submitted" note is the
+          Submitted row of the pipeline panel further down — three prints of two
+          numbers. Budget and outcome figures are grouped and labelled here so
+          the hero carries only the headline trio. */}
+      <section className="workspace-panel-surface rounded-3xl panel-body panel-stack">
+        <div className="panel-stack">
+          <p className="heading-label">{t("budgetDeliveryGroupLabel")}</p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <MiniMetric
+              label={t("avgBudgetLabel")}
+              value={formatCurrency(kpis.avgBudget, currencyCode)}
+              sub={t("avgBudgetSub", { total: formatCurrency(kpis.totalEstimatedBudget, currencyCode) })}
+            />
+            <MiniMetric
+              label={t("budgetVarianceLabel")}
+              value={formatCurrency(kpis.budgetVariance, currencyCode)}
+              sub={kpis.budgetVariance >= 0 ? t("budgetVarianceUnderspend") : t("budgetVarianceOverspend")}
+            />
+            <MiniMetric
+              label={t("completionRateLabel")}
+              value={`${kpis.totalRequests > 0 ? Math.round((kpis.completed / kpis.totalRequests) * 100) : 0}%`}
+              sub={t("completionRateSub", { completed: kpis.completed })}
+            />
+          </div>
+        </div>
+
+        <div className="panel-stack">
+          <p className="heading-label">{t("outcomesGroupLabel")}</p>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <MiniMetric label={t("leadsGeneratedLabel")} value={performance.totalLeads} />
+            <MiniMetric label={t("employersEngagedLabel")} value={performance.totalEmployers} />
+            <MiniMetric label={t("candidatesSourchedLabel")} value={performance.totalCandidates} />
+            <MiniMetric label={t("hiresGeneratedLabel")} value={performance.totalHires} />
+          </div>
+        </div>
       </section>
 
       <section className="grid grid-cols-1 gap-3 sm:gap-6 xl:grid-cols-[1.4fr_0.8fr]">
@@ -526,11 +532,12 @@ function MetricCard({
   );
 }
 
-function MiniMetric({ label, value }: { label: string; value: number }) {
+function MiniMetric({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
     <div className="rounded-2xl border border-border/60 bg-muted/30 chip-pad">
       <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
       <p className="mt-2 text-lg font-semibold text-foreground">{value}</p>
+      {sub ? <p className="mt-1 text-xs text-muted-foreground">{sub}</p> : null}
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Progress } from "@/components/ui/progress";
 import {
   Select,
@@ -29,6 +30,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { cn } from "@/lib/utils";
 import { useConfirm } from "@/hooks/useConfirm";
 import {
   AlertTriangle,
@@ -61,6 +63,7 @@ import {
   Search,
   Send,
   ShieldAlert,
+  SlidersHorizontal,
   Target,
   Undo2,
   UserPlus,
@@ -139,19 +142,34 @@ const STATUS_BADGES: Record<string, string> = {
   cancelled: "border-gray-200 bg-gray-50 text-gray-600",
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  draft: "Draft",
-  submitted: "Submitted",
-  under_review: "Pending Review",
-  approved: "Finance Review",
-  revision_requested: "Needs Revision",
-  budget_approved: "Approved",
-  resources_assigned: "Approved",
-  active: "Completed",
-  completed: "Completed",
-  rejected: "Rejected",
-  archived: "Cancelled",
-  cancelled: "Cancelled",
+/* One status-to-key map for the whole file. The status text used to be spelled
+   out three times — as English literals here, and as two inline `t()` maps in
+   the toast and the drawer badge — which is how the table cell kept printing
+   "Pending Review" to an Arabic admin. */
+const STATUS_LABEL_KEYS: Record<string, string> = {
+  draft: "draft",
+  submitted: "submitted",
+  under_review: "underReview",
+  approved: "financeReviewStatus",
+  revision_requested: "needsRevision",
+  budget_approved: "approved",
+  resources_assigned: "approved",
+  active: "completedStatus",
+  completed: "completedStatus",
+  rejected: "rejected",
+  archived: "archivedStatus",
+  cancelled: "cancelledStatus",
+};
+
+const CATEGORY_LABEL_KEYS: Record<string, string> = {
+  career_fair: "careerFair",
+  recruitment_expo: "recruitmentExpo",
+  employer_branding: "employerBranding",
+  hiring_drive: "hiringDrive",
+  university_event: "universityEvent",
+  gcc_recruitment: "gccRecruitment",
+  job_fair: "jobFair",
+  other: "otherCategory",
 };
 
 const PRIORITY_BADGES: Record<string, string> = {
@@ -159,41 +177,6 @@ const PRIORITY_BADGES: Record<string, string> = {
   medium: "border-blue-200 bg-blue-50 text-blue-700",
   high: "border-orange-200 bg-orange-50 text-orange-700",
   critical: "border-red-200 bg-red-50 text-red-700",
-};
-
-const CATEGORY_LABELS: Record<string, string> = {
-  career_fair: "Career Fair",
-  recruitment_expo: "Recruitment Expo",
-  employer_branding: "Employer Branding",
-  hiring_drive: "Hiring Drive",
-  university_event: "University Event",
-  gcc_recruitment: "GCC Recruitment",
-  job_fair: "Job Fair",
-  other: "Other",
-};
-
-const PARTICIPATION_LABELS: Record<string, string> = {
-  standee: "Standee",
-  stall: "Stall",
-  booth: "Booth",
-  sponsorship: "Sponsorship",
-  flyers: "Flyers",
-  recruitment_desk: "Recruitment Desk",
-  branding_package: "Branding Package",
-  other: "Other",
-};
-
-const RESOURCE_LABELS: Record<string, string> = {
-  brochures: "Brochures",
-  standee: "Standee",
-  flyers: "Flyers",
-  presentation_deck: "Presentation Deck",
-  employer_catalog: "Employer Catalog",
-  candidate_forms: "Candidate Forms",
-  branding_banners: "Branding Banners",
-  video_assets: "Video Assets",
-  business_cards: "Business Cards",
-  booth_design: "Booth Design",
 };
 
 const RESOURCE_TYPE_TO_CATEGORY: Record<string, string> = {
@@ -209,103 +192,33 @@ const RESOURCE_TYPE_TO_CATEGORY: Record<string, string> = {
   booth_design: "booth_designs",
 };
 
-const STATUS_OPTIONS = [
-  { value: "all", label: "All Status" },
-  { value: "submitted", label: "Submitted" },
-  { value: "under_review", label: "Pending Review" },
-  { value: "approved", label: "Finance Review" },
-  { value: "revision_requested", label: "Needs Revision" },
-  { value: "budget_approved", label: "Approved" },
-  { value: "completed", label: "Completed" },
-  { value: "rejected", label: "Rejected" },
-  { value: "archived", label: "Cancelled" },
-];
-
-const PRIORITY_OPTIONS = [
-  { value: "all", label: "All Priority" },
-  { value: "low", label: "Low" },
-  { value: "medium", label: "Medium" },
-  { value: "high", label: "High" },
-  { value: "critical", label: "Critical" },
-];
-
-const STAGE_OPTIONS = [
-  { value: "all", label: "All Stages" },
-  { value: "team_leader", label: "Team Leader Review" },
-  { value: "finance", label: "Finance Review" },
-  { value: "super_agent", label: "Super Agent Approval" },
-  { value: "admin", label: "Admin Approval" },
-  { value: "completed", label: "Completed" },
-];
-
-const DATE_OPTIONS = [
-  { value: "all", label: "Any Date" },
-  { value: "7", label: "Last 7 days" },
-  { value: "30", label: "Last 30 days" },
-  { value: "90", label: "Last 90 days" },
-];
-
-const BUDGET_OPTIONS = [
-  { value: "all", label: "Any Budget" },
-  { value: "0-10000", label: "Under 10K" },
-  { value: "10000-50000", label: "10K-50K" },
-  { value: "50000-999999999", label: "50K+" },
-];
-
-const REVIEWER_OPTIONS = [
-  { value: "all", label: "Any Reviewer" },
-  { value: "unassigned", label: "Unassigned" },
-  { value: "assigned", label: "Assigned" },
-];
-
-const ADMIN_TRANSITIONS: Record<string, { label: string; value: string; variant: "default" | "destructive" | "outline" }[]> = {
-  submitted: [
-    { label: "Start Review", value: "under_review", variant: "default" },
-    { label: "Approve", value: "approved", variant: "default" },
-    { label: "Reject", value: "rejected", variant: "destructive" },
-  ],
-  under_review: [
-    { label: "Approve", value: "approved", variant: "default" },
-    { label: "Request Changes", value: "revision_requested", variant: "outline" },
-    { label: "Reject", value: "rejected", variant: "destructive" },
-  ],
-  revision_requested: [{ label: "Re-review", value: "under_review", variant: "default" }],
-  approved: [
-    { label: "Approve Budget", value: "budget_approved", variant: "default" },
-    { label: "Reject", value: "rejected", variant: "destructive" },
-  ],
-  budget_approved: [{ label: "Assign Resources", value: "resources_assigned", variant: "default" }],
-  resources_assigned: [{ label: "Mark Active", value: "active", variant: "default" }],
-  active: [{ label: "Complete", value: "completed", variant: "default" }],
-  completed: [{ label: "Archive", value: "archived", variant: "outline" }],
-  rejected: [{ label: "Archive", value: "archived", variant: "outline" }],
-};
-
-function formatDate(date: string | undefined | null) {
+function formatDate(date: string | undefined | null, locale: string) {
   if (!date) return "-";
   const parsed = new Date(date);
   if (Number.isNaN(parsed.getTime())) return "-";
-  return parsed.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  return parsed.toLocaleDateString(locale, { day: "2-digit", month: "short", year: "numeric" });
 }
 
-function formatDateTime(date: string | undefined | null) {
+function formatDateTime(date: string | undefined | null, locale: string) {
   if (!date) return "-";
   const parsed = new Date(date);
   if (Number.isNaN(parsed.getTime())) return "-";
-  return parsed.toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+  return parsed.toLocaleString(locale, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
-function relativeTime(date: string | undefined | null) {
+type ExhibitionsTranslator = ReturnType<typeof useTranslations<"adminExhibitions">>;
+
+function relativeTime(date: string | undefined | null, locale: string, t: ExhibitionsTranslator) {
   if (!date) return "-";
   const parsed = new Date(date);
   if (Number.isNaN(parsed.getTime())) return "-";
   const diffMs = Date.now() - parsed.getTime();
   const diffHours = Math.max(0, Math.floor(diffMs / 3600000));
   const diffDays = Math.floor(diffHours / 24);
-  if (diffHours < 1) return "just now";
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return formatDate(date);
+  if (diffHours < 1) return t("justNow");
+  if (diffHours < 24) return t("hoursAgo", { hours: diffHours });
+  if (diffDays < 7) return t("daysAgo", { days: diffDays });
+  return formatDate(date, locale);
 }
 
 function dayCount(start: string | undefined | null, end: string | undefined | null) {
@@ -330,26 +243,47 @@ function initials(name?: string) {
     .slice(0, 2);
 }
 
+// Both helpers return a message key plus its values rather than a finished
+// string: they run at module scope, where no translator is in scope, and the
+// same result is consumed by the table, the drawer and the CSV export.
+const PRIORITY_LABEL_KEYS: Record<string, string> = {
+  low: "low",
+  medium: "medium",
+  high: "high",
+  critical: "critical",
+};
+
 function getStage(item: ExhibitionRequest) {
-  if (item.status === "submitted" || item.status === "under_review") return { value: "team_leader", label: "Team Leader Review" };
-  if (item.status === "approved") return { value: "finance", label: "Finance Review" };
-  if (item.status === "budget_approved") return { value: "super_agent", label: "Super Agent Approval" };
-  if (item.status === "resources_assigned" || item.status === "active") return { value: "admin", label: "Admin Approval" };
-  if (item.status === "completed") return { value: "completed", label: "Completed" };
-  if (item.status === "rejected") return { value: "completed", label: "Rejected" };
-  return { value: "team_leader", label: "Pending Review" };
+  if (item.status === "submitted" || item.status === "under_review") return { value: "team_leader", labelKey: "teamLeaderReview" };
+  if (item.status === "approved") return { value: "finance", labelKey: "financeReviewStage" };
+  if (item.status === "budget_approved") return { value: "super_agent", labelKey: "superAgentApproval" };
+  if (item.status === "resources_assigned" || item.status === "active") return { value: "admin", labelKey: "adminApproval" };
+  if (item.status === "completed") return { value: "completed", labelKey: "completedStage" };
+  if (item.status === "rejected") return { value: "completed", labelKey: "rejected" };
+  return { value: "team_leader", labelKey: "underReview" };
 }
 
 function getSla(item: ExhibitionRequest) {
   if (["completed", "rejected", "archived"].includes(item.status)) {
-    return { label: item.status === "rejected" ? "Stopped" : "Closed", className: "text-muted-foreground", tone: "bg-muted" };
+    return {
+      labelKey: item.status === "rejected" ? "slaStopped" : "slaClosed",
+      days: 0,
+      className: "text-muted-foreground",
+      tone: "bg-muted",
+    };
   }
   const created = new Date(item.createdAt);
   const ageDays = Number.isNaN(created.getTime()) ? 0 : Math.floor((Date.now() - created.getTime()) / 86400000);
   const remaining = 5 - ageDays;
-  if (remaining < 0) return { label: `Overdue by ${Math.abs(remaining)}d`, className: "text-red-600", tone: "bg-red-500" };
-  if (remaining <= 1) return { label: `${remaining}d remaining`, className: "text-orange-600", tone: "bg-orange-500" };
-  return { label: `${remaining}d remaining`, className: "text-emerald-600", tone: "bg-emerald-500" };
+  // Status tokens, not the literal palette — these chips sit on the table
+  // surface and have to stay legible in dark mode.
+  if (remaining < 0) {
+    return { labelKey: "slaOverdueByDays", days: Math.abs(remaining), className: "text-status-rejected", tone: "bg-status-rejected" };
+  }
+  if (remaining <= 1) {
+    return { labelKey: "slaDaysRemaining", days: remaining, className: "text-status-shortlisted", tone: "bg-status-shortlisted" };
+  }
+  return { labelKey: "slaDaysRemaining", days: remaining, className: "text-status-selected", tone: "bg-status-selected" };
 }
 
 function quoteCsv(value: string | number | undefined | null) {
@@ -357,6 +291,7 @@ function quoteCsv(value: string | number | undefined | null) {
 }
 
 export default function AdminExhibitionsPage() {
+  const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
   const t = useTranslations("adminExhibitions");
@@ -478,7 +413,7 @@ export default function AdminExhibitionsPage() {
     if (skipFilterResetRef.current) { skipFilterResetRef.current = false; return; }
     setPage(1);
     setSelectedIds(new Set());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [statusFilter, priorityFilter, stageFilter, dateRange, countryFilter, budgetRange, reviewerFilter, search]);
 
   const pageSize = 10;
@@ -494,18 +429,6 @@ export default function AdminExhibitionsPage() {
   const totalBudgetReq = summary.budgetRequested;
   const totalBudgetApp = summary.budgetApproved;
   const totalBudgetUsed = summary.budgetUtilized;
-
-  const kpis = [
-    { label: "Total Requests", value: summary.total, trend: "+8.4%", subtitle: "All time", icon: ClipboardCheck, tone: "text-blue-600", bg: "bg-blue-50" },
-    { label: "Pending Review", value: summary.pendingReview, trend: "-2.1%", subtitle: "Needs first action", icon: Clock, tone: "text-orange-600", bg: "bg-orange-50" },
-    { label: "Finance Review", value: summary.financeReview, trend: "+3", subtitle: "In finance queue", icon: CircleDollarSign, tone: "text-purple-600", bg: "bg-purple-50" },
-    { label: "Awaiting Approval", value: summary.awaitingApproval, trend: "Stable", subtitle: "Final approvers", icon: ShieldAlert, tone: "text-blue-600", bg: "bg-blue-50" },
-    { label: "Approved", value: summary.approved, trend: "+5.2%", subtitle: "Ready or active", icon: CheckCircle2, tone: "text-green-600", bg: "bg-green-50" },
-    { label: "Rejected", value: summary.rejected, trend: "-1", subtitle: "Declined requests", icon: XCircle, tone: "text-red-600", bg: "bg-red-50" },
-    { label: "Budget Requested", value: formatMoney(totalBudgetReq, "AED"), trend: "+12%", subtitle: "Pipeline total", icon: Wallet, tone: "text-blue-600", bg: "bg-blue-50" },
-    { label: "Budget Approved", value: formatMoney(totalBudgetApp, "AED"), trend: "+9%", subtitle: "Approved total", icon: Target, tone: "text-emerald-600", bg: "bg-emerald-50" },
-    { label: "Budget Utilized", value: formatMoney(totalBudgetUsed, "AED"), trend: `${totalBudgetApp ? Math.round((totalBudgetUsed / totalBudgetApp) * 100) : 0}%`, subtitle: "Actual spend", icon: Percent, tone: "text-purple-600", bg: "bg-purple-50" },
-  ];
 
   const openAction = (item: ExhibitionRequest, status: string) => {
     setActionItem(item);
@@ -538,21 +461,8 @@ export default function AdminExhibitionsPage() {
         body: JSON.stringify(payload),
       });
       if (response.ok) {
-        const statusMap: Record<string, string> = {
-          draft: t("draft"),
-          submitted: t("submitted"),
-          under_review: t("underReview"),
-          approved: t("financeReviewStatus"),
-          revision_requested: t("needsRevision"),
-          budget_approved: t("approved"),
-          resources_assigned: t("approved"),
-          active: t("completedStatus"),
-          completed: t("completedStatus"),
-          rejected: t("rejected"),
-          archived: t("archivedStatus"),
-          cancelled: t("cancelledStatus"),
-        };
-        toast.success(t("requestMovedTo", { status: statusMap[actionStatus] ?? actionStatus }));
+        const statusKey = STATUS_LABEL_KEYS[actionStatus];
+        toast.success(t("requestMovedTo", { status: statusKey ? t(statusKey) : actionStatus }));
         setActionItem(null);
         fetchItems();
       } else {
@@ -615,13 +525,13 @@ export default function AdminExhibitionsPage() {
           item.eventName,
           item.agentId?.name,
           `${item.eventLocation}${item.country ? `, ${item.country}` : ""}`,
-          `${formatDate(item.eventStartDate)} - ${formatDate(item.eventEndDate)}`,
-          getStage(item).label,
+          `${formatDate(item.eventStartDate, locale)} - ${formatDate(item.eventEndDate, locale)}`,
+          t(getStage(item).labelKey),
           item.estimatedBudget,
           item.approvedBudget ?? "",
-          item.priority,
-          formatDate(item.createdAt),
-          sla.label,
+          t(PRIORITY_LABEL_KEYS[item.priority] ?? "medium"),
+          formatDate(item.createdAt, locale),
+          t(sla.labelKey, { days: sla.days }),
         ];
       }),
     ];
@@ -643,6 +553,15 @@ export default function AdminExhibitionsPage() {
     });
     setSelectedIds(next);
   };
+
+  // Drives the "More filters" badge and disables Reset when nothing is applied,
+  // so moving four controls behind a popover never hides an active filter.
+  const advancedFilterCount = [dateRange, countryFilter, budgetRange, reviewerFilter]
+    .filter((value) => value !== "all").length;
+  const activeFilterCount =
+    advancedFilterCount +
+    [statusFilter, priorityFilter, stageFilter].filter((value) => value !== "all").length +
+    (search.trim() ? 1 : 0);
 
   const resetFilters = () => {
     setSearch("");
@@ -685,7 +604,7 @@ export default function AdminExhibitionsPage() {
   }, [actionItem, detailItem, handleDetailOpen, nextDetailItem, previousDetailItem]);
 
   return (
-    <div className="page-container">
+    <div className="page-container pb-20 lg:pb-16">
       <DashboardPageHeader
         icon={CalendarDays}
         eyebrow={t("adminOperations")}
@@ -704,18 +623,41 @@ export default function AdminExhibitionsPage() {
               </Button>
             </a>
         )}
-        metricsClassName="xl:grid-cols-9"
+        compactOnMobile
+        metricsClassName="grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-6 [&_p]:min-h-[30px]"
         metrics={[
-          { label: t("totalRequests"), value: summary.total, note: t("allTime"), icon: ClipboardCheck, iconClassName: "text-blue-600", iconSurfaceClassName: "bg-blue-50" },
-          { label: t("pendingReview"), value: summary.pendingReview, note: t("needsFirstAction"), icon: Clock, iconClassName: "text-orange-600", iconSurfaceClassName: "bg-orange-50" },
-          { label: t("financeReview"), value: summary.financeReview, note: t("inFinanceQueue"), icon: CircleDollarSign, iconClassName: "text-purple-600", iconSurfaceClassName: "bg-purple-50" },
-          { label: t("awaitingApproval"), value: summary.awaitingApproval, note: t("finalApprovers"), icon: ShieldAlert, iconClassName: "text-blue-600", iconSurfaceClassName: "bg-blue-50" },
-          { label: t("approved"), value: summary.approved, note: t("readyOrActive"), icon: CheckCircle2, iconClassName: "text-green-600", iconSurfaceClassName: "bg-green-50" },
-          { label: t("rejected"), value: summary.rejected, note: t("declinedRequests"), icon: XCircle, iconClassName: "text-red-600", iconSurfaceClassName: "bg-red-50" },
-          { label: t("budgetRequested"), value: formatMoney(totalBudgetReq, "AED"), note: t("pipelineTotal"), icon: Wallet, iconClassName: "text-blue-600", iconSurfaceClassName: "bg-blue-50" },
-          { label: t("budgetApproved"), value: formatMoney(totalBudgetApp, "AED"), note: t("approvedTotal"), icon: Target, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50" },
-          { label: t("budgetUtilized"), value: formatMoney(totalBudgetUsed, "AED"), note: t("actualSpend"), icon: Percent, iconClassName: "text-purple-600", iconSurfaceClassName: "bg-purple-50" },
+          // No `note` on any metric. The notes ("All time", "Needs first action",
+          // "Final approvers") repeated what the label already said, and the header
+          // renders a note inline beside the value, where it truncated to
+          // "Needs fir…" / "Final appro…" at every width below 1440. Measured
+          // 2026-08-27. Dropping them removes the truncation and shortens the hero
+          // so the request queue — the actual work surface — sits higher.
+          { label: t("totalRequests"), value: summary.total, icon: ClipboardCheck, iconClassName: "text-blue-600", iconSurfaceClassName: "bg-blue-50" },
+          { label: t("pendingReview"), value: summary.pendingReview, icon: Clock, iconClassName: "text-orange-600", iconSurfaceClassName: "bg-orange-50" },
+          { label: t("financeReview"), value: summary.financeReview, icon: CircleDollarSign, iconClassName: "text-purple-600", iconSurfaceClassName: "bg-purple-50" },
+          { label: t("awaitingApproval"), value: summary.awaitingApproval, icon: ShieldAlert, iconClassName: "text-blue-600", iconSurfaceClassName: "bg-blue-50" },
+          { label: t("approved"), value: summary.approved, icon: CheckCircle2, iconClassName: "text-green-600", iconSurfaceClassName: "bg-green-50" },
+          { label: t("rejected"), value: summary.rejected, icon: XCircle, iconClassName: "text-red-600", iconSurfaceClassName: "bg-red-50" },
         ]}
+        footer={
+          <div className="flex w-full min-w-0 flex-wrap items-center gap-x-6 gap-y-2">
+            {[
+              { label: t("budgetRequested"), value: formatMoney(totalBudgetReq, "AED"), icon: Wallet, iconClassName: "text-blue-600", surface: "bg-blue-50" },
+              { label: t("budgetApproved"), value: formatMoney(totalBudgetApp, "AED"), icon: Target, iconClassName: "text-emerald-600", surface: "bg-emerald-50" },
+              { label: t("budgetUtilized"), value: formatMoney(totalBudgetUsed, "AED"), icon: Percent, iconClassName: "text-purple-600", surface: "bg-purple-50" },
+            ].map(({ label, value, icon: BudgetIcon, iconClassName, surface }) => (
+              <div key={label} className="flex min-w-0 items-center gap-2">
+                <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${surface}`}>
+                  <BudgetIcon className={`h-3.5 w-3.5 ${iconClassName}`} aria-hidden="true" />
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
+                  <p className="whitespace-nowrap text-sm font-semibold leading-tight text-foreground">{value}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        }
       />
 
       <section className="workspace-panel-surface rounded-3xl panel-body">
@@ -725,11 +667,9 @@ export default function AdminExhibitionsPage() {
             <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("allExhibitionRequests")}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{t("reviewAssignApproveAndExport")}</p>
           </div>
+          {/* Reset moved down into the filter row it acts on; Export stays here
+              because it acts on the queue, not on the filters. */}
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" className="rounded-lg" onClick={resetFilters}>
-              <RotateCcw className="h-4 w-4" />
-              {t("resetFilters")}
-            </Button>
             <Button variant="outline" size="sm" className="rounded-lg" onClick={handleExport}>
               <Download className="h-4 w-4" />
               {t("export")}
@@ -737,17 +677,23 @@ export default function AdminExhibitionsPage() {
           </div>
         </div>
 
-        <div className="mt-5 rounded-2xl border border-border/60 bg-background shadow-sm shadow-black/[0.03] chip-pad">
-          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-[minmax(240px,1.5fr)_repeat(7,minmax(130px,1fr))]">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder={t("searchRequestsAgentsEvents")}
-                className="h-9 rounded-lg pl-9 text-sm"
-              />
-            </div>
+        {/* Progressive disclosure. Eight controls in one strip wrapped into three
+            ragged rows at 1440 and five at 1024, always leaving "Any Reviewer"
+            orphaned on a row of its own. The four high-traffic controls stay
+            inline; the rest move behind a popover that carries an active count so
+            nothing hides silently. Measured 2026-08-27. */}
+        <div className="mt-5 flex flex-col gap-2 rounded-2xl border border-border/60 bg-background shadow-sm shadow-black/[0.03] chip-pad xl:flex-row xl:items-center">
+          <div className="relative min-w-0 flex-1 xl:max-w-md">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={t("searchRequestsAgentsEvents")}
+              className="h-9 rounded-lg pl-9 text-sm"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-center xl:flex-1 xl:flex-nowrap xl:justify-end">
             <FilterSelect value={statusFilter} onChange={setStatusFilter} options={[
               { value: "all", label: t("allStatus") },
               { value: "submitted", label: t("submitted") },
@@ -758,14 +704,14 @@ export default function AdminExhibitionsPage() {
               { value: "completed", label: t("completedStatus") },
               { value: "rejected", label: t("rejected") },
               { value: "archived", label: t("archivedStatus") },
-            ]} placeholder={t("status")} />
+            ]} placeholder={t("status")} className="md:w-[136px]" />
             <FilterSelect value={priorityFilter} onChange={setPriorityFilter} options={[
               { value: "all", label: t("allPriority") },
               { value: "low", label: t("low") },
               { value: "medium", label: t("medium") },
               { value: "high", label: t("high") },
               { value: "critical", label: t("critical") },
-            ]} placeholder={t("priority")} />
+            ]} placeholder={t("priority")} className="md:w-[132px]" />
             <FilterSelect value={stageFilter} onChange={setStageFilter} options={[
               { value: "all", label: t("allStages") },
               { value: "team_leader", label: t("teamLeaderReview") },
@@ -773,33 +719,74 @@ export default function AdminExhibitionsPage() {
               { value: "super_agent", label: t("superAgentApproval") },
               { value: "admin", label: t("adminApproval") },
               { value: "completed", label: t("completedStage") },
-            ]} placeholder={t("approvalStage")} />
-            <FilterSelect value={dateRange} onChange={setDateRange} options={[
-              { value: "all", label: t("anyDate") },
-              { value: "7", label: t("last7Days") },
-              { value: "30", label: t("last30Days") },
-              { value: "90", label: t("last90Days") },
-            ]} placeholder={t("dateRange")} />
-            <FilterSelect
-              value={countryFilter}
-              onChange={setCountryFilter}
-              options={[
-                { value: "all", label: "All Countries" },
-                ...countryOptions.map((country) => ({ value: country, label: country })),
-              ]}
-              placeholder={t("country")}
-            />
-            <FilterSelect value={budgetRange} onChange={setBudgetRange} options={[
-              { value: "all", label: t("anyBudget") },
-              { value: "0-10000", label: t("under10k") },
-              { value: "10000-50000", label: t("from10kTo50k") },
-              { value: "50000-999999999", label: t("from50kPlus") },
-            ]} placeholder={t("budgetRange")} />
-            <FilterSelect value={reviewerFilter} onChange={setReviewerFilter} options={[
-              { value: "all", label: t("anyReviewer") },
-              { value: "unassigned", label: t("unassigned") },
-              { value: "assigned", label: t("assignedStatus") },
-            ]} placeholder={t("assignedReviewer")} />
+            ]} placeholder={t("approvalStage")} className="md:w-[140px]" />
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9 justify-center rounded-lg font-normal">
+                  <SlidersHorizontal className="h-4 w-4" />
+                  {t("moreFilters")}
+                  {advancedFilterCount > 0 && (
+                    <span className="ms-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
+                      {advancedFilterCount}
+                    </span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-72 space-y-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-muted-foreground">{t("dateRange")}</Label>
+                  <FilterSelect value={dateRange} onChange={setDateRange} options={[
+                    { value: "all", label: t("anyDate") },
+                    { value: "7", label: t("last7Days") },
+                    { value: "30", label: t("last30Days") },
+                    { value: "90", label: t("last90Days") },
+                  ]} placeholder={t("dateRange")} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-muted-foreground">{t("country")}</Label>
+                  <FilterSelect
+                    value={countryFilter}
+                    onChange={setCountryFilter}
+                    options={[
+                      { value: "all", label: t("allCountries") },
+                      ...countryOptions.map((country) => ({ value: country, label: country })),
+                    ]}
+                    placeholder={t("country")}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-muted-foreground">{t("budgetRange")}</Label>
+                  <FilterSelect value={budgetRange} onChange={setBudgetRange} options={[
+                    { value: "all", label: t("anyBudget") },
+                    { value: "0-10000", label: t("under10k") },
+                    { value: "10000-50000", label: t("from10kTo50k") },
+                    { value: "50000-999999999", label: t("from50kPlus") },
+                  ]} placeholder={t("budgetRange")} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-muted-foreground">{t("assignedReviewer")}</Label>
+                  <FilterSelect value={reviewerFilter} onChange={setReviewerFilter} options={[
+                    { value: "all", label: t("anyReviewer") },
+                    { value: "unassigned", label: t("unassigned") },
+                    { value: "assigned", label: t("assignedStatus") },
+                  ]} placeholder={t("assignedReviewer")} />
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-9 rounded-lg text-muted-foreground hover:text-foreground"
+              onClick={resetFilters}
+              disabled={activeFilterCount === 0}
+              aria-label={t("resetFilters")}
+              title={t("resetFilters")}
+            >
+              <RotateCcw className="h-4 w-4" />
+              <span className="hidden xl:inline">{t("resetFilters")}</span>
+            </Button>
           </div>
         </div>
 
@@ -853,24 +840,32 @@ export default function AdminExhibitionsPage() {
             </div>
           ) : (
             <div className="workspace-panel-surface overflow-hidden rounded-2xl">
-              <div>
-                <table className="w-full table-fixed text-sm">
+              {/* The column widths were 52px + (27+19+17+13+11+13)% + 112px, i.e.
+                  100% *plus* 164px, on a `table-fixed` table inside an
+                  `overflow-hidden` parent with no scroller of its own. Below
+                  ~1400px the overflow was clipped rather than scrolled: the
+                  Review buttons were cut off at 1280 and the headers broke
+                  mid-word ("BUDG/ET", "CURREN T STAGE") at 1024. Fixed widths
+                  that sum to the min-width, plus a real horizontal scroller.
+                  Measured 2026-08-27. */}
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[1052px] table-fixed text-sm">
                   <thead className="sticky top-0 z-10">
                     <tr className="border-b bg-muted/50">
-                      <TableHead className="w-[52px]">
+                      <TableHead className="w-[44px]">
                         <Checkbox
                           checked={partiallySelected ? "indeterminate" : allVisibleSelected}
                           onCheckedChange={toggleVisibleSelection}
                           aria-label={t("selectVisibleRows")}
                         />
                       </TableHead>
-                      <TableHead className="w-[28%]">{t("event")}</TableHead>
-                      <TableHead className="w-[19%]">{t("agent")}</TableHead>
-                      <TableHead className="w-[17%]">{t("currentStage")}</TableHead>
-                      <TableHead className="w-[13%]">{t("budget")}</TableHead>
-                      <TableHead className="w-[10%]">{t("priority")}</TableHead>
-                      <TableHead className="w-[13%]">{t("sla")}</TableHead>
-                      <TableHead className="w-[112px] text-right">{t("action")}</TableHead>
+                      <TableHead className="w-[232px]">{t("event")}</TableHead>
+                      <TableHead className="w-[148px]">{t("agent")}</TableHead>
+                      <TableHead className="w-[184px]">{t("currentStage")}</TableHead>
+                      <TableHead className="w-[120px]">{t("budget")}</TableHead>
+                      <TableHead className="w-[88px] whitespace-nowrap">{t("priority")}</TableHead>
+                      <TableHead className="w-[124px] whitespace-nowrap">{t("sla")}</TableHead>
+                      <TableHead className="w-[112px] whitespace-nowrap text-right">{t("action")}</TableHead>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/60">
@@ -889,7 +884,7 @@ export default function AdminExhibitionsPage() {
                                 : "bg-muted/15"
                           }`}
                         >
-                          <td className="px-4 py-4 align-middle">
+                          <td className="px-4 py-3 align-middle">
                             <Checkbox
                               checked={selectedIds.has(item._id)}
                               onCheckedChange={(checked) => {
@@ -901,15 +896,15 @@ export default function AdminExhibitionsPage() {
                               aria-label={`Select ${item.eventName}`}
                             />
                           </td>
-                          <td className="px-4 py-4 align-middle">
+                          <td className="px-4 py-3 align-middle">
                             <button className="block min-w-0 text-left" onClick={() => handleDetailOpen(item)}>
                               <span className="block truncate font-semibold text-foreground hover:text-primary">{item.eventName}</span>
                               <span className="mt-1 block truncate text-xs text-muted-foreground">
-                                {t(`${Object.entries({ career_fair: "careerFair", recruitment_expo: "recruitmentExpo", employer_branding: "employerBranding", hiring_drive: "hiringDrive", university_event: "universityEvent", gcc_recruitment: "gccRecruitment", job_fair: "jobFair", other: "otherCategory" }).find(([k]) => k === item.eventCategory)?.[1] || "otherCategory"}`)} · {item._id.slice(-12).toUpperCase()}
+                                {t(CATEGORY_LABEL_KEYS[item.eventCategory] ?? "otherCategory")} · {item._id.slice(-12).toUpperCase()}
                               </span>
                             </button>
                           </td>
-                          <td className="px-4 py-4 align-middle">
+                          <td className="px-4 py-3 align-middle">
                             <div className="flex items-center gap-3">
                               <Avatar className="h-8 w-8 ring-1 ring-border">
                                 <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">{initials(item.agentId?.name)}</AvatarFallback>
@@ -920,30 +915,30 @@ export default function AdminExhibitionsPage() {
                               </div>
                             </div>
                           </td>
-                          <td className="px-4 py-4 align-middle">
-                            <Badge className={`${STATUS_BADGES[item.status]} rounded-md px-2.5 py-1 text-[11px] font-semibold`} dot>
-                              {stage.label}
+                          <td className="px-4 py-3 align-middle">
+                            <Badge className={`${STATUS_BADGES[item.status]} whitespace-nowrap rounded-md px-2.5 py-1 text-[11px] font-semibold`} dot>
+                              {t(stage.labelKey)}
                             </Badge>
-                            <p className="mt-1 text-[11px] text-muted-foreground">{STATUS_LABELS[item.status] ?? item.status}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">{STATUS_LABEL_KEYS[item.status] ? t(STATUS_LABEL_KEYS[item.status]) : item.status}</p>
                           </td>
-                          <td className="whitespace-nowrap px-4 py-4 align-middle">
+                          <td className="whitespace-nowrap px-4 py-3 align-middle">
                             <p className="font-semibold text-foreground">{formatMoney(item.estimatedBudget, item.budgetCurrency)}</p>
                             <p className={item.approvedBudget ? "mt-1 text-xs font-medium text-emerald-600" : "mt-1 text-xs text-muted-foreground"}>
-                              Approved: {formatMoney(item.approvedBudget, item.budgetCurrency)}
+                              {t("approved")}: {formatMoney(item.approvedBudget, item.budgetCurrency)}
                             </p>
                           </td>
-                          <td className="px-4 py-4 align-middle">
-                            <Badge className={`${PRIORITY_BADGES[item.priority] ?? PRIORITY_BADGES.medium} rounded-md px-2 py-0.5 text-[11px] font-semibold capitalize`}>
-                              {item.priority}
+                          <td className="px-4 py-3 align-middle">
+                            <Badge className={`${PRIORITY_BADGES[item.priority] ?? PRIORITY_BADGES.medium} whitespace-nowrap rounded-md px-2 py-0.5 text-[11px] font-semibold`}>
+                              {t(PRIORITY_LABEL_KEYS[item.priority] ?? "medium")}
                             </Badge>
                           </td>
-                          <td className="whitespace-nowrap px-4 py-4 align-middle">
+                          <td className="whitespace-nowrap px-4 py-3 align-middle">
                             <div className="flex items-center gap-2">
                               <span className={`h-2 w-2 rounded-full ${sla.tone}`} />
-                              <span className={`text-xs font-semibold ${sla.className}`}>{sla.label}</span>
+                              <span className={`text-xs font-semibold ${sla.className}`}>{t(sla.labelKey, { days: sla.days })}</span>
                             </div>
                           </td>
-                          <td className="px-4 py-4 text-right align-middle">
+                          <td className="px-4 py-3 text-right align-middle">
                             <Button variant={isSelected ? "default" : "outline"} size="dense" className="rounded-lg" onClick={() => handleDetailOpen(item)}>
                               {t("review")}
                               <ArrowRight className="h-4 w-4" />
@@ -1078,15 +1073,17 @@ function FilterSelect({
   onChange,
   options,
   placeholder,
+  className,
 }: {
   value: string;
   onChange: (value: string) => void;
   options: { value: string; label: string }[];
   placeholder: string;
+  className?: string;
 }) {
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className="h-9 rounded-lg text-sm">
+      <SelectTrigger className={cn("h-9 rounded-lg text-sm", className)}>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
@@ -1126,12 +1123,15 @@ function DetailDrawer({
   onNext: () => void;
 }) {
   const tr = useTranslations("adminExhibitions");
+  const locale = useLocale();
   const budgetApproved = item?.approvedBudget ?? 0;
   const actualSpend = item?.actualSpend ?? 0;
   const variance = budgetApproved ? ((budgetApproved - actualSpend) / budgetApproved) * 100 : 0;
   const utilization = budgetApproved ? Math.min(100, Math.round((actualSpend / budgetApproved) * 100)) : 0;
 
   if (!item) return null;
+
+  const sla = getSla(item);
 
   return (
     <aside
@@ -1160,35 +1160,19 @@ function DetailDrawer({
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <h2 className="heading-section truncate font-semibold tracking-tight text-foreground">{item.eventName}</h2>
             <Badge className={`${STATUS_BADGES[item.status]} rounded-md px-2 py-0.5 text-[11px] font-semibold`}>
-              {(() => {
-                const statusMap: Record<string, string> = {
-                  draft: tr("draft"),
-                  submitted: tr("submitted"),
-                  under_review: tr("underReview"),
-                  approved: tr("financeReviewStatus"),
-                  revision_requested: tr("needsRevision"),
-                  budget_approved: tr("approved"),
-                  resources_assigned: tr("approved"),
-                  active: tr("completedStatus"),
-                  completed: tr("completedStatus"),
-                  rejected: tr("rejected"),
-                  archived: tr("archivedStatus"),
-                  cancelled: tr("cancelledStatus"),
-                };
-                return statusMap[item.status] ?? item.status;
-              })()}
+              {STATUS_LABEL_KEYS[item.status] ? tr(STATUS_LABEL_KEYS[item.status]) : item.status}
             </Badge>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            {tr(`${Object.entries({ career_fair: "careerFair", recruitment_expo: "recruitmentExpo", employer_branding: "employerBranding", hiring_drive: "hiringDrive", university_event: "universityEvent", gcc_recruitment: "gccRecruitment", job_fair: "jobFair", other: "otherCategory" }).find(([k]) => k === item.eventCategory)?.[1] || "otherCategory"}`)}
+            {tr(CATEGORY_LABEL_KEYS[item.eventCategory] ?? "otherCategory")}
             {item.eventLocation ? ` · ${item.eventLocation}` : ""}
           </p>
         </div>
 
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-          <InfoChip icon={<Flag className="h-3.5 w-3.5" />} label={tr("priority")} value={item.priority} />
-          <InfoChip icon={<Clock className="h-3.5 w-3.5" />} label={tr("sla")} value={getSla(item).label} />
-          <InfoChip icon={<CalendarDays className="h-3.5 w-3.5" />} label={tr("submittedHeader")} value={formatDate(item.createdAt)} />
+          <InfoChip icon={<Flag className="h-3.5 w-3.5" />} label={tr("priority")} value={tr(PRIORITY_LABEL_KEYS[item.priority] ?? "medium")} />
+          <InfoChip icon={<Clock className="h-3.5 w-3.5" />} label={tr("sla")} value={tr(sla.labelKey, { days: sla.days })} />
+          <InfoChip icon={<CalendarDays className="h-3.5 w-3.5" />} label={tr("submittedHeader")} value={formatDate(item.createdAt, locale)} />
         </div>
       </div>
 
@@ -1204,7 +1188,7 @@ function DetailDrawer({
             <div className="grid grid-cols-1 sm:grid-cols-2 overflow-hidden rounded-xl border border-border/60 text-sm">
               <DetailCell label={tr("location")} value={item.eventLocation || "-"} />
               <DetailCell label={tr("organizer")} value={item.organizerName || item.agentId?.name || "-"} />
-              <DetailCell label={tr("dates")} value={`${formatDate(item.eventStartDate)} - ${formatDate(item.eventEndDate)}`} />
+              <DetailCell label={tr("dates")} value={`${formatDate(item.eventStartDate, locale)} - ${formatDate(item.eventEndDate, locale)}`} />
               <DetailCell label={tr("expectedLeads")} value={String(item.expectedLeads ?? "-")} />
               <DetailCell label={tr("duration")} value={`${dayCount(item.eventStartDate, item.eventEndDate) ?? 1} ${tr("days")}`} />
               <DetailCell label={tr("participants")} value={String(item.assignedTeam?.length ?? 1)} />
@@ -1315,7 +1299,7 @@ function DetailDrawer({
 
           <SectionBlock title={tr("comments")} tr={tr}>
             <div className="space-y-4">
-              <ThreadedComment role={tr("agentRole")} name={item.agentId?.name ?? tr("agentRole")} time={relativeTime(item.createdAt)} text={tr("submitTheExhibitionRequest")} />
+              <ThreadedComment role={tr("agentRole")} name={item.agentId?.name ?? tr("agentRole")} time={relativeTime(item.createdAt, locale, tr)} text={tr("submitTheExhibitionRequest")} />
               <ThreadedComment role={tr("financeReviewerRole")} name={tr("financeReviewer")} time="1d ago" text={tr("pleaseConfirmWhetherVenue")} />
               <ThreadedComment role={tr("adminOpsRole")} name={tr("adminOps")} time="4h ago" text={tr("resourcesTeamIsChecking")} />
               <div className="rounded-2xl border border-border/60 chip-pad">
@@ -1406,32 +1390,23 @@ function SectionBlock({ title, children }: { title: string; children: React.Reac
 
 function RequestSummaryCard({ item, tr }: { item: ExhibitionRequest; tr?: any }) {
   const t = tr || useTranslations("adminExhibitions");
-  const categoryMap: Record<string, string> = {
-    career_fair: t("careerFair"),
-    recruitment_expo: t("recruitmentExpo"),
-    employer_branding: t("employerBranding"),
-    hiring_drive: t("hiringDrive"),
-    university_event: t("universityEvent"),
-    gcc_recruitment: t("gccRecruitment"),
-    job_fair: t("jobFair"),
-    other: t("otherCategory"),
-  };
+  const locale = useLocale();
   return (
     <div className="rounded-2xl border border-border/60 bg-muted/15 card-pad">
       <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-foreground">
-        <span>{categoryMap[item.eventCategory] ?? item.eventCategory}</span>
+        <span>{t(CATEGORY_LABEL_KEYS[item.eventCategory] ?? "otherCategory")}</span>
         <span className="text-muted-foreground">·</span>
         <span>{item.country || item.eventLocation || t("locationTbd")}</span>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <SummaryMetric label={t("budget")} value={formatMoney(item.estimatedBudget, item.budgetCurrency)} />
-        <SummaryMetric label={t("dates")} value={`${formatDate(item.eventStartDate)} - ${formatDate(item.eventEndDate)}`} />
+        <SummaryMetric label={t("dates")} value={`${formatDate(item.eventStartDate, locale)} - ${formatDate(item.eventEndDate, locale)}`} />
         <SummaryMetric label={t("agent")} value={item.agentId?.name ?? t("agentRole")} />
         <SummaryMetric label={t("expectedLeads")} value={String(item.expectedLeads ?? "-")} />
         <SummaryMetric label={t("duration")} value={`${dayCount(item.eventStartDate, item.eventEndDate) ?? 1} ${t("days")}`} />
-        <SummaryMetric label={t("priority")} value={item.priority} />
+        <SummaryMetric label={t("priority")} value={t(PRIORITY_LABEL_KEYS[item.priority] ?? "medium")} />
         <SummaryMetric label={t("venue")} value={item.venue ?? t("tbd")} />
-        <SummaryMetric label={t("submittedHeader")} value={formatDate(item.createdAt)} />
+        <SummaryMetric label={t("submittedHeader")} value={formatDate(item.createdAt, locale)} />
       </div>
     </div>
   );
@@ -1508,6 +1483,7 @@ function FileCard({ title, subtitle, icon, actionLabel, onClick }: { title: stri
 
 function WorkflowTimeline({ item, compact = false, tr }: { item: ExhibitionRequest; compact?: boolean; tr?: any }) {
   const t = tr || useTranslations("adminExhibitions");
+  const locale = useLocale();
   const workflowIndexByStatus: Record<string, number> = {
     draft: 0,
     submitted: 1,
@@ -1552,7 +1528,7 @@ function WorkflowTimeline({ item, compact = false, tr }: { item: ExhibitionReque
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-foreground">{step.label}</p>
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      {timestamp ? formatDateTime(timestamp) : t("pendingAction")} · {history?.changedBy?.name ?? step.owner}
+                      {timestamp ? formatDateTime(timestamp, locale) : t("pendingAction")} · {history?.changedBy?.name ?? step.owner}
                     </p>
                   </div>
                   <Badge className={`${isRejected ? "border-red-200 bg-red-50 text-red-700" : isCurrent ? "border-blue-200 bg-blue-50 text-blue-700" : isDone ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-gray-200 bg-gray-50 text-gray-600"} rounded-md px-2 py-0.5 text-[10px]`}>
@@ -1580,7 +1556,7 @@ function WorkflowTimeline({ item, compact = false, tr }: { item: ExhibitionReque
                   {statusLabel}
                 </Badge>
               </div>
-              <p className="mt-2 text-xs text-muted-foreground">{timestamp ? formatDateTime(timestamp) : t("pendingAction")}</p>
+              <p className="mt-2 text-xs text-muted-foreground">{timestamp ? formatDateTime(timestamp, locale) : t("pendingAction")}</p>
               <p className="mt-2 rounded-lg bg-muted/40 px-3 py-2 text-xs leading-5 text-muted-foreground">
                 {history?.note || history?.statusReason || (isCurrent ? t("currentApprovalOwnerIsReviewing") : isDone ? t("stepCompletedWithoutBlockingNotes") : t("noActivityRecordedYet"))}
               </p>

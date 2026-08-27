@@ -258,8 +258,6 @@ export default function SuperAgentTargetReportPage() {
       <SuperAgentPageIntro
         title={t("targetReportTitle")}
         description={t("teamReportHeroDescription", { year: yearFilter })}
-        summaryTitle="Team coverage"
-        summaryDescription={`${data.teamBreakdown.length} agents tracked across employer, employee, and finance targets with ${data.summary.avgProgress}% average performance.`}
       />
 
       {/* ═══════ KPI Summary ═══════ */}

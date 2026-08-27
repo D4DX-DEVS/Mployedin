@@ -160,6 +160,9 @@ export default function SuperAgentExhibitionsPage() {
   } = usePagination();
 
   const [items, setItems] = useState<ExhibitionRequest[]>([]);
+  // Queue depth comes from the API's scope-wide aggregate. Counting `items`
+  // only ever saw the current page, so the header under-reported past page 1.
+  const [pendingReview, setPendingReview] = useState(0);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
@@ -188,6 +191,7 @@ export default function SuperAgentExhibitionsPage() {
       if (res.ok) {
         const data = await res.json();
         setItems(data.items ?? []);
+        setPendingReview(data.summary?.pendingReview ?? 0);
         updateTotal(data.total ?? 0);
       }
     } catch { toast.error(t("fetchError")); } finally { setLoading(false); }
@@ -232,9 +236,6 @@ export default function SuperAgentExhibitionsPage() {
     return Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86400000) + 1);
   };
 
-  // Stats
-  const pendingCount = items.filter((i) => i.status === "submitted").length;
-  const reviewCount = items.filter((i) => i.status === "under_review").length;
   const hasActiveFilters = exhibitionFiltersAreActive(search, statusFilter, priorityFilter, categoryFilter);
   const clearFilters = () => {
     setSearch("");
@@ -246,10 +247,9 @@ export default function SuperAgentExhibitionsPage() {
     <div className="page-container">
       <DashboardPageHeader
         icon={CalendarDays}
-        
         title={t("exhibitionManagement")}
         description={t("exhibitionManagementDesc")}
-        summary={{ label: "Queue health", value: `${pendingCount + reviewCount} requests`, note: "Awaiting your review" }}
+        summary={{ label: t("queueHealth"), value: formatCount(pendingReview), note: t("queueHealthNote") }}
         actions={
           <div className="flex items-center gap-1">
             <ExhibitionFilterTrigger
@@ -274,7 +274,7 @@ export default function SuperAgentExhibitionsPage() {
           categoryFilter={categoryFilter}
           onCategoryChange={setCategoryFilter}
           categoryOptions={CATEGORY_OPTIONS}
-          searchPlaceholder="Search events, agents, locations…"
+          searchPlaceholder={t("searchPlaceholder")}
         />
       </DashboardPageHeader>
 

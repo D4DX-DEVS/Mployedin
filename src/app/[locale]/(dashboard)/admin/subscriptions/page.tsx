@@ -112,15 +112,15 @@ export default function AdminSubscriptionsPage() {
   );
 
   const exportColumns: ExportColumn<SearchUser>[] = [
-    { header: "Name", key: "name" as keyof SearchUser },
-    { header: "Role", key: "role" as keyof SearchUser, formatter: (v) => v === "employer" ? "Employer" : "Job Seeker" },
-    { header: "Company", key: "companyName" as keyof SearchUser, formatter: (v) => String(v || "—") },
+    { header: t("exportHeaderName"), key: "name" as keyof SearchUser },
+    { header: t("tableHeaderRole"), key: "role" as keyof SearchUser, formatter: (v) => v === "employer" ? t("employerBadge") : t("jobSeekerBadge") },
+    { header: t("exportHeaderCompany"), key: "companyName" as keyof SearchUser, formatter: (v) => String(v || "—") },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: filteredResults as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "subscriptions-users",
-    title: "Subscription Users",
+    title: t("exportTitleUsers"),
   });
 
   const overview = stats?.overview;
@@ -182,7 +182,7 @@ export default function AdminSubscriptionsPage() {
       {/* ── Search & Manage (existing flow) ── */}
       {activeTab === "manage" && (
         <>
-          <section className="rounded-2xl border border-border/60 bg-card space-y-4 panel-body">
+          <section className="workspace-panel-surface rounded-3xl space-y-4 panel-body">
             <h3 className="heading-label font-semibold text-muted-foreground uppercase tracking-wider">
               {t("searchUserLabel")}
             </h3>
@@ -283,15 +283,15 @@ function SubscribersTable() {
   // Export columns
   const subExportColumns: ExportColumn<AdminSubscriptionItem>[] = useMemo(() => [
     { header: t("tableHeaderUser"), key: "userId" as keyof AdminSubscriptionItem, formatter: (_v, r) => (r as unknown as AdminSubscriptionItem).userId?.name ?? "—" },
-    { header: "Email", key: "userId" as keyof AdminSubscriptionItem, formatter: (_v, r) => (r as unknown as AdminSubscriptionItem).userId?.email ?? "—" },
+    { header: t("exportHeaderEmail"), key: "userId" as keyof AdminSubscriptionItem, formatter: (_v, r) => (r as unknown as AdminSubscriptionItem).userId?.email ?? "—" },
     { header: t("tableHeaderRole"), key: "targetRole" as keyof AdminSubscriptionItem, formatter: (v) => v === "employer" ? t("employerBadge") : t("jobSeekerBadge") },
     { header: t("tableHeaderPlan"), key: "planSnapshot" as keyof AdminSubscriptionItem, formatter: (_v, r) => (r as unknown as AdminSubscriptionItem).planSnapshot?.name ?? "—" },
     { header: t("tierLabel"), key: "planSnapshot" as keyof AdminSubscriptionItem, formatter: (_v, r) => String((r as unknown as AdminSubscriptionItem).planSnapshot?.tier ?? 0) },
     { header: t("tableHeaderPrice"), key: "planSnapshot" as keyof AdminSubscriptionItem, formatter: (_v, r) => { const s = (r as unknown as AdminSubscriptionItem).planSnapshot; return s?.price > 0 ? `${s.price} ${s.currency}` : t("priceFreeLabel"); } },
-    { header: "Billing Cycle", key: "planSnapshot" as keyof AdminSubscriptionItem, formatter: (_v, r) => (r as unknown as AdminSubscriptionItem).planSnapshot?.billingCycle ?? "—" },
+    { header: t("exportHeaderBillingCycle"), key: "planSnapshot" as keyof AdminSubscriptionItem, formatter: (_v, r) => (r as unknown as AdminSubscriptionItem).planSnapshot?.billingCycle ?? "—" },
     { header: t("tableHeaderStatus"), key: "status" as keyof AdminSubscriptionItem },
-    { header: "Start Date", key: "startDate" as keyof AdminSubscriptionItem, formatter: (v) => formatDate(v as string) },
-    { header: "End Date", key: "endDate" as keyof AdminSubscriptionItem, formatter: (v) => formatDate(v as string) },
+    { header: t("tableHeaderStart"), key: "startDate" as keyof AdminSubscriptionItem, formatter: (v) => formatDate(v as string) },
+    { header: t("tableHeaderEnd"), key: "endDate" as keyof AdminSubscriptionItem, formatter: (v) => formatDate(v as string) },
     { header: t("tableHeaderAutoRenew"), key: "autoRenew" as keyof AdminSubscriptionItem, formatter: (v) => v ? t("autoRenewYes") : t("autoRenewNo") },
     { header: t("tableHeaderDaysLeft"), key: "endDate" as keyof AdminSubscriptionItem, formatter: (v, r) => (r as unknown as AdminSubscriptionItem).status === "active" ? String(daysUntil(v as string)) : "—" },
   ], [t]);
@@ -300,7 +300,7 @@ function SubscribersTable() {
     data: subscriptions as unknown as Record<string, unknown>[],
     columns: subExportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "subscribers-export",
-    title: "Subscribers Report",
+    title: t("exportTitleSubscribers"),
   });
 
   return (
@@ -328,7 +328,7 @@ function SubscribersTable() {
       </div>
 
       {/* ── Table Card ── */}
-      <div className="rounded-2xl border border-border/60 bg-card">
+      <div className="workspace-panel-surface overflow-hidden rounded-3xl">
         <TableToolbar
           search={searchInput}
           onSearchChange={(v) => { setSearchInput(v); resetPage(); }}
@@ -826,7 +826,7 @@ function UserSubscriptionPanel({
       {isLoadingSub ? (
         <div className="h-32 animate-pulse rounded-2xl bg-background/70" />
       ) : subscription && subscription.status === "active" ? (
-        <section className="rounded-2xl border border-border/60 bg-card space-y-4 panel-body">
+        <section className="workspace-panel-surface rounded-3xl space-y-4 panel-body">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Crown className="h-5 w-5 text-amber-500" />
@@ -956,7 +956,7 @@ function UserSubscriptionPanel({
         </section>
       ) : (
         /* ── No Active Subscription ── */
-        <section className="rounded-2xl border border-border/60 bg-card space-y-4 panel-body">
+        <section className="workspace-panel-surface rounded-3xl space-y-4 panel-body">
           <div className="text-center py-6">
             <Crown className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
             <p className="font-medium text-muted-foreground">{t("noActiveSubscriptionMsg")}</p>
@@ -1251,7 +1251,7 @@ function HistoryTimeline({ history }: { history: HistoryItem[] }) {
   const t = useTranslations("adminSubscriptions");
   if (!history.length) {
     return (
-      <section className="rounded-2xl border border-border/60 bg-card text-center panel-body">
+      <section className="workspace-panel-surface rounded-3xl text-center panel-body">
         <Clock className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
         <p className="text-sm text-muted-foreground">{t("noHistoryYet")}</p>
       </section>
@@ -1259,7 +1259,7 @@ function HistoryTimeline({ history }: { history: HistoryItem[] }) {
   }
 
   return (
-    <section className="rounded-2xl border border-border/60 bg-card space-y-4 panel-body">
+    <section className="workspace-panel-surface rounded-3xl space-y-4 panel-body">
       <h4 className="font-semibold flex items-center gap-2">
         <Clock className="h-4 w-4 text-muted-foreground" />
         {t("subscriptionHistoryTitle")}
@@ -1340,7 +1340,7 @@ function BulkAssignSection() {
   }, [selectedPlanId, userIds, bulkMut]);
 
   return (
-    <section className="rounded-2xl border border-border/60 bg-card">
+    <section className="workspace-panel-surface rounded-3xl">
       <button
         onClick={() => setExpanded(!expanded)}
         className="w-full flex items-center justify-between p-6 hover:bg-sky-500/5 transition-colors"

@@ -114,7 +114,7 @@ export function TwoFactorCard() {
           <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("security")}</div>
           <h2 className="heading-section mt-1 font-semibold tracking-tight text-foreground">{t("twoFactorAuthentication")}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Protect this account with a 6-digit code from an authenticator app (Google Authenticator, Authy, 1Password).
+            {t("protectAccountDescription")}
           </p>
         </div>
         {phase === "enabled" ? (
@@ -188,7 +188,7 @@ export function TwoFactorCard() {
         <div className="mt-5 space-y-4">
           <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 card-pad">
             <p className="text-sm font-semibold text-amber-700">
-              Save these recovery codes now — they will not be shown again.
+              {t("saveRecoveryCodesWarning")}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               Each code can be used once to sign in if you lose access to your authenticator app.
@@ -223,7 +223,7 @@ export function TwoFactorCard() {
             </Button>
           ) : (
             <div className="space-y-3 rounded-xl border border-border/70 card-pad">
-              <p className="text-sm font-medium text-foreground">Confirm with your password and a current code:</p>
+              <p className="text-sm font-medium text-foreground">{t("confirmDisablePrompt")}</p>
               <div className="grid gap-2 sm:grid-cols-2">
                 <Input
                   type="password"

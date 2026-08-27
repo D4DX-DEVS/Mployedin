@@ -6,7 +6,7 @@ import {
   Plus, Trash2, Edit2, X, Loader2, Crown, ChevronDown, ChevronUp,
   Check, Copy, Users, Briefcase, Sparkles, BarChart3, FileText, ShieldCheck, AlertTriangle,
 } from "lucide-react";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -29,23 +29,23 @@ import { AI_FEATURE_KEYS, type AIFeatureKey } from "@/types/subscription-plan";
 import { convertAndFormat } from "@/lib/currency";
 import { csrfFetch } from "@/lib/security/csrf-client";
 
-// ── Constants ──────────────────────────────────────────────────────
-const AI_FEATURE_LABELS: Record<AIFeatureKey, string> = {
-  ai_chat: "AI Chat",
-  ai_daily_insights: "Daily Insights",
-  ai_job_matching: "Job Matching",
-  ai_cv_extraction: "CV Extraction",
-  ai_interview_questions: "Interview Questions",
-  ai_skills_gap: "Skills Gap Analysis",
-  ai_candidate_screening: "Candidate Screening",
-  ai_salary_benchmark: "Salary Benchmark",
-  ai_job_description: "Job Description Gen",
-  ai_hiring_reports: "Hiring Reports",
-  ai_voice_input: "Voice Input",
-  ai_skills_suggest: "Skills Suggest",
-  ai_profile_fill: "Profile Fill",
-  ai_enhance_text: "Enhance Text",
-  ai_generate_summary: "Generate Summary",
+// ── Feature label key mapping (labels resolved at render) ──
+const AI_FEATURE_LABEL_KEYS: Record<AIFeatureKey, string> = {
+  ai_chat: "aiChatLabel",
+  ai_daily_insights: "aiDailyInsightsLabel",
+  ai_job_matching: "aiJobMatchingLabel",
+  ai_cv_extraction: "aiCvExtractionLabel",
+  ai_interview_questions: "aiInterviewQuestionsLabel",
+  ai_skills_gap: "aiSkillsGapLabel",
+  ai_candidate_screening: "aiCandidateScreeningLabel",
+  ai_salary_benchmark: "aiSalaryBenchmarkLabel",
+  ai_job_description: "aiJobDescriptionLabel",
+  ai_hiring_reports: "aiHiringReportsLabel",
+  ai_voice_input: "aiVoiceInputLabel",
+  ai_skills_suggest: "aiSkillsSuggestLabel",
+  ai_profile_fill: "aiProfileFillLabel",
+  ai_enhance_text: "aiEnhanceTextLabel",
+  ai_generate_summary: "aiGenerateSummaryLabel",
 };
 
 const TIER_COLORS: Record<number, string> = {
@@ -324,7 +324,7 @@ export default function AdminSubscriptionPlansPage() {
   if (isLoading) {
     return (
       <div className="page-container">
-        <PageHeader title={t("pageTitle")} description={t("pageDescription")} />
+        <DashboardPageHeader title={t("pageTitle")} description={t("pageDescription")} />
         {[1, 2, 3].map((i) => (
           <div key={i} className="h-28 animate-pulse rounded-2xl border border-border bg-background/70" />
         ))}
@@ -334,7 +334,7 @@ export default function AdminSubscriptionPlansPage() {
 
   return (
     <div className="page-container">
-      <PageHeader
+      <DashboardPageHeader
         title={t("pageTitle")}
         description={t("pageDescription")}
         actions={
@@ -342,6 +342,7 @@ export default function AdminSubscriptionPlansPage() {
             <Plus className="h-4 w-4" /> {t("newPlanButton")}
           </Button>
         }
+        compactOnMobile
       />
 
       {/* ─── Subscription Enforcement Toggle ─── */}
@@ -373,7 +374,7 @@ export default function AdminSubscriptionPlansPage() {
 
       {/* ─── Create / Edit Form ─── */}
       {showForm && (
-        <section className="rounded-2xl border border-sky-500/30 bg-sky-500/5 space-y-5 panel-body">
+        <section className="workspace-panel-surface rounded-3xl panel-body space-y-5">
           <div className="flex items-center justify-between">
             <h3 className="heading-subsection font-semibold text-foreground">
               {editId ? t("editPlanTitle") : t("createNewPlanTitle")}
@@ -384,15 +385,15 @@ export default function AdminSubscriptionPlansPage() {
           </div>
 
           {/* Section tabs */}
-          <div className="flex gap-2 border-b border-border pb-2">
+          <div className="flex gap-1 border-b border-border pb-2">
             {(["basic", "limits", "ai"] as const).map((s) => (
               <button
                 key={s}
                 onClick={() => setActiveSection(s)}
-                className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-colors ${
                   activeSection === s
                     ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
                 }`}
               >
                 {s === "basic" ? t("basicInfoTab") : s === "limits" ? t("featureLimitsTab") : t("aiFeaturesTab")}
@@ -682,7 +683,7 @@ export default function AdminSubscriptionPlansPage() {
                     />
                     <div className="flex-1">
                       <span className="text-sm font-medium">
-                        {AI_FEATURE_LABELS[af.feature] ?? af.feature}
+                        {t(AI_FEATURE_LABEL_KEYS[af.feature] ?? af.feature)}
                       </span>
                     </div>
                     {af.enabled && (
@@ -915,9 +916,9 @@ export default function AdminSubscriptionPlansPage() {
                             .map((a) => (
                               <div
                                 key={a.feature}
-                                className="flex items-center justify-between rounded-lg border border-sky-500/20 bg-sky-500/5 chip-pad"
+                                className="flex items-center justify-between rounded-lg border border-border/50 bg-background/60 chip-pad"
                               >
-                                <span className="text-sm">{AI_FEATURE_LABELS[a.feature] ?? a.feature}</span>
+                                <span className="text-sm">{t(AI_FEATURE_LABEL_KEYS[a.feature] ?? a.feature)}</span>
                                 <span className="text-xs font-medium text-muted-foreground">
                                   {a.monthlyLimit === 0 ? t("unlimitedValue") : t("monthlyLimitFormat", { limit: a.monthlyLimit })}
                                 </span>

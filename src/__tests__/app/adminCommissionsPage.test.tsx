@@ -124,7 +124,8 @@ describe("AdminCommissionsPage", () => {
       render(<AdminCommissionsPage />);
     });
 
-    expect(screen.getByText(/finance workspace/i)).toBeInTheDocument();
+    // The "Finance workspace" eyebrow above the title was dropped — it restated
+    // the sidebar section, and the h1 below already identifies the page.
     expect(screen.getByRole("heading", { level: 1, name: "Commissions" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /add commission/i })).toBeInTheDocument();
 

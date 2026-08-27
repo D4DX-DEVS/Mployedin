@@ -1825,6 +1825,14 @@ table.workspace-list-table tbody tr:focus-visible {
     gap: 0.5rem;
   }
 
+  /* Row actions are the smallest things anyone taps on a phone, and pages ship
+     them as h-7 (28px) icon buttons sized for a desktop table. Floor them here
+     so the touch target is honest without every page restating it. */
+  table.responsive-card-table > tbody > tr > td[data-mobile-actions] :where(button, a),
+  table.responsive-card-table > tfoot > tr > td[data-mobile-actions] :where(button, a) {
+    min-height: 2.75rem;
+  }
+
   table.responsive-card-table > tbody > tr > td[data-mobile-actions] :where(button, a)[title]:not([data-table-action]),
   table.responsive-card-table > tfoot > tr > td[data-mobile-actions] :where(button, a)[title]:not([data-table-action]) {
     width: auto;
@@ -1836,13 +1844,15 @@ table.workspace-list-table tbody tr:focus-visible {
   table.responsive-card-table > tbody > tr > td[data-mobile-actions] :where(button, a)[title]:not([data-table-action])::after,
   table.responsive-card-table > tfoot > tr > td[data-mobile-actions] :where(button, a)[title]:not([data-table-action])::after {
     content: attr(title);
-    max-width: 6.5rem;
-    overflow: hidden;
     color: currentColor;
     font-size: 0.75rem;
     line-height: 1rem;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    /* Wrap rather than clip. At 6.5rem with an ellipsis, "Manage permissions"
+       rendered as "Manage permissi…" — a primary action nobody can read. The
+       actions row is flex-wrap, so a longer label takes its own line instead. */
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   table.responsive-card-table > tbody > tr[data-mobile-spanning-row],
@@ -2241,6 +2251,11 @@ table.workspace-list-table tbody tr:focus-visible {
     align-items: center;
     gap: 0.125rem 0.375rem;
     text-align: start;
+    /* The generic label/value rule further down sets justify-content:flex-end on
+       every labelled cell. It does not lose to this block (which never set the
+       property), so the identity block still packed to the right edge while its
+       own text-align said start. State it here. */
+    justify-content: flex-start;
   }
 
   table.responsive-card-table > tbody > tr[data-mobile-collapsible] > td:first-child:not([data-label=""])::before,
@@ -2253,6 +2268,12 @@ table.workspace-list-table tbody tr:focus-visible {
     justify-self: start;
   }
 
+  /* `div` and not `[class*="flex"]`: the name/email/status are usually wrapped in
+     an unclassed <div>, which the generic "plain div in a cell" rule above turns
+     into a flex row justified to the end. Matching on the element beats that rule
+     on specificity and keeps the identity block reading left-to-right. */
+  table.responsive-card-table > tbody > tr[data-mobile-collapsible] > td:first-child:not([data-label=""]) div,
+  table.responsive-card-table > tbody > tr[data-mobile-collapsible] > td[data-label=""]:first-child + td div,
   table.responsive-card-table > tbody > tr[data-mobile-collapsible] > td:first-child:not([data-label=""]) [class*="flex"],
   table.responsive-card-table > tbody > tr[data-mobile-collapsible] > td[data-label=""]:first-child + td [class*="flex"] {
     justify-content: flex-start;
@@ -2283,6 +2304,23 @@ table.workspace-list-table tbody tr:focus-visible {
     align-items: center;
     justify-content: flex-end;
     gap: 0.125rem 0.375rem;
+  }
+
+  /* Identity cell, stated last so it wins the specificity tie with the rule
+     directly above. It deliberately matches that rule's weight rather than
+     exceeding it: a heavier selector would also outrank the collapse rule
+     (`td:nth-child(n + 3) { display: none }`) and re-expand every card. */
+  table.responsive-card-table > tbody > tr > td[data-mobile-primary] {
+    justify-content: flex-start;
+    text-align: start;
+  }
+
+  table.responsive-card-table > tbody > tr > td[data-mobile-primary]::before {
+    display: none;
+  }
+
+  table.responsive-card-table > tbody > tr > td[data-mobile-primary] div {
+    justify-content: flex-start;
   }
 
   table.responsive-card-table > tbody > tr > td:not([data-label=""])::before,
@@ -2839,3 +2877,6 @@ table.workspace-list-table tbody tr:focus-visible {
 /* rhythm pass: 1787649926 */
 
 /* rebuild-nudge */
+
+
+

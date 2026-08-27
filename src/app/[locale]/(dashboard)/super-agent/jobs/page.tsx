@@ -454,8 +454,6 @@ export default function SuperAgentJobsPage() {
       <SuperAgentPageIntro
         title={t("pageTitle")}
         description={t("pageDescription")}
-        summaryTitle={t("aiPoweredTitle")}
-        summaryDescription={t("aiPoweredDescription")}
       />
 
       <SuperAgentMetricsGrid items={kpis} />

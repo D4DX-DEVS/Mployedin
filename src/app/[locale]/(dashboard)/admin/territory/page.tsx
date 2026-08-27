@@ -144,7 +144,6 @@ export default function AdminTerritoryPage() {
     <div className="page-container">
       <PageHero
         icon={MapPin}
-        eyebrow={tr("adminWorkspaceBadge")}
         title={tr("pageTitle")}
         description={tr("pageDescription")}
         actions={

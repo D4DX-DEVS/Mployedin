@@ -32,6 +32,21 @@ const DEFAULT_STAGES: WorkflowStage[] = [
   { id: "rejected", label: "Rejected", enabled: true, autoProgress: false, order: 8 },
 ];
 
+/* The `label` on a stage is persisted with the template, so DEFAULT_STAGES keeps its
+   English strings — writing the admin's own locale into stored data would make the
+   record locale-dependent. Display is translated by id instead; a stage id that isn't
+   one of these built-ins falls back to whatever label was stored. */
+const DEFAULT_STAGE_LABEL_KEYS: Record<string, string> = {
+  new: "stageNewApplication",
+  screening: "stageAiScreening",
+  shortlisted: "stageShortlisted",
+  interview_scheduled: "stageInterviewScheduled",
+  interview_completed: "stageInterviewCompleted",
+  offer_extended: "stageOfferExtended",
+  accepted: "stageOfferAccepted",
+  rejected: "stageRejected",
+};
+
 const DEFAULT_SETTINGS: WorkflowSettings = {
   aiAutoScreen: true,
   notifyOnStageChange: true,
@@ -71,6 +86,8 @@ function templateToForm(t: WorkflowTemplateItem): TemplateFormState {
 
 export default function AdminWorkflowTemplatesPage() {
   const tr = useTranslations("adminWorkflowTemplates");
+  const stageLabel = (stage: WorkflowStage) =>
+    DEFAULT_STAGE_LABEL_KEYS[stage.id] ? tr(DEFAULT_STAGE_LABEL_KEYS[stage.id]) : stage.label;
   const { data: templates, isLoading } = useAdminWorkflowTemplates();
   const createMut = useCreateAdminWorkflowTemplate();
   const updateMut = useUpdateAdminWorkflowTemplate();
@@ -156,7 +173,6 @@ export default function AdminWorkflowTemplatesPage() {
       <div className="page-container">
         <PageHero
           icon={GitBranch}
-          eyebrow={tr("adminWorkspaceLabel")}
           title={tr("pageTitle")}
           description={tr("pageDescription")}
         />
@@ -171,7 +187,6 @@ export default function AdminWorkflowTemplatesPage() {
     <div className="page-container">
       <PageHero
         icon={GitBranch}
-        eyebrow={tr("adminWorkspaceLabel")}
         title={tr("pageTitle")}
         description={tr("pageDescription")}
         actions={
@@ -295,7 +310,7 @@ export default function AdminWorkflowTemplatesPage() {
                     <ChevronDown className="h-3.5 w-3.5" />
                   </button>
                 </div>
-                <span className="min-w-[6rem] text-sm font-medium">{stage.label}</span>
+                <span className="min-w-[6rem] text-sm font-medium">{stageLabel(stage)}</span>
                 <div className="ml-auto flex items-center gap-4">
                   <label className="flex items-center gap-1.5 text-xs">
                     <Switch
@@ -423,7 +438,7 @@ export default function AdminWorkflowTemplatesPage() {
                         <div key={stage.id} className="flex items-center gap-1.5">
                           <div className="flex items-center gap-1.5 rounded-full border border-border bg-background/70 px-3 py-1.5 text-xs font-medium">
                             <span className="h-2 w-2 rounded-full bg-sky-500" />
-                            {stage.label}
+                            {stageLabel(stage)}
                             {stage.autoProgress && (
                               <Sparkles className="h-3 w-3 text-amber-500" />
                             )}

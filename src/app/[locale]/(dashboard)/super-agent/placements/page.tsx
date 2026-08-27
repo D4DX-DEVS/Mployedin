@@ -149,6 +149,10 @@ export default function SuperAgentPlacementsPage() {
   const [agents, setAgents] = useState<AgentOption[]>([]);
   const [employers, setEmployers] = useState<{ _id: string; companyName: string }[]>([]);
   const [salaryByCurrency, setSalaryByCurrency] = useState<Record<string, number>>({});
+  // Tiles and the visa strip describe the whole filtered set, so they come from
+  // the API's aggregates. Counting `placements` only ever saw the current page.
+  const [visaCounts, setVisaCounts] = useState<Record<string, number>>({});
+  const [totals, setTotals] = useState({ commissionPaid: 0, employers: 0, upcomingStarts: 0 });
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
 
   const visaLabels: Record<VisaStatus, string> = {
@@ -212,6 +216,8 @@ export default function SuperAgentPlacementsPage() {
         setPlacements(data.items ?? data.placements ?? []);
         updateTotal(data.total ?? data.totalCount ?? ((data.totalPages ?? data.pagination?.pages ?? 1) * limit));
         if (data.salaryByCurrency) setSalaryByCurrency(data.salaryByCurrency);
+        setVisaCounts(data.visaCounts ?? {});
+        setTotals(data.totals ?? { commissionPaid: 0, employers: 0, upcomingStarts: 0 });
       }
     } catch { /* ignore */ }
     setLoading(false);
@@ -239,28 +245,6 @@ export default function SuperAgentPlacementsPage() {
     }));
     resetPage();
   }, [resetPage]);
-
-  /* -- Computed counts -- */
-  const visaCounts = useMemo(() => {
-    return VISA_STATUSES.reduce((acc, s) => {
-      acc[s] = placements.filter((p) => getVisaStatus(p) === s).length;
-      return acc;
-    }, {} as Record<VisaStatus, number>);
-  }, [placements]);
-
-  const upcomingStarts = useMemo(() => placements.filter((p) => {
-    const d = p.startDate;
-    if (!d) return false;
-    const start = new Date(d).getTime();
-    if (Number.isNaN(start)) return false;
-    const now = Date.now();
-    return start >= now && start <= now + 14 * 24 * 60 * 60 * 1000;
-  }).length, [placements]);
-
-  const employerCount = useMemo(
-    () => new Set(placements.map((p) => getCompanyName(p)).filter((n) => n !== "—")).size,
-    [placements],
-  );
 
   const totalSalary = useMemo(
     () => Object.entries(salaryByCurrency).map(([cur, val]) => `${cur} ${formatCount(val)}`).join(" · ") || "—",
@@ -299,21 +283,21 @@ export default function SuperAgentPlacementsPage() {
     },
     {
       label: t("kpiUpcomingStarts"),
-      value: upcomingStarts,
+      value: totals.upcomingStarts,
       helper: t("kpiUpcomingStartsHelper"),
       icon: <CalendarClock className="h-5 w-5" />,
       toneClassName: "workspace-tone-emerald",
     },
     {
       label: t("kpiCommissionPaid"),
-      value: placements.filter((p) => p.commissionPaid).length,
+      value: totals.commissionPaid,
       helper: t("kpiCommissionPaidHelper"),
       icon: <DollarSign className="h-5 w-5" />,
       toneClassName: "workspace-tone-indigo",
     },
     {
       label: t("kpiEmployers"),
-      value: employerCount,
+      value: totals.employers,
       helper: t("kpiEmployersHelper"),
       icon: <Users2 className="h-5 w-5" />,
       toneClassName: "workspace-tone-amber",
@@ -353,8 +337,6 @@ export default function SuperAgentPlacementsPage() {
       <SuperAgentPageIntro
         title={t("pageTitle")}
         description={t("pageDescription")}
-        summaryTitle={t("summaryTitle")}
-        summaryDescription={t("summaryDescription")}
       />
 
       <SuperAgentMetricsGrid items={kpis} />
@@ -376,7 +358,7 @@ export default function SuperAgentPlacementsPage() {
                 className={`rounded-2xl border px-4 py-3 text-left transition-all ${filters.visaStatus === s ? "border-primary/35 bg-primary/10 shadow-sm shadow-primary/15" : "border-border/70 bg-background/85 hover:border-border hover:bg-secondary/80"}`}
               >
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{visaLabels[s]}</p>
-                <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{visaCounts[s]}</p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{visaCounts[s] ?? 0}</p>
               </button>
             ))}
           </div>

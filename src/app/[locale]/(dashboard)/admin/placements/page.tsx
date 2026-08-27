@@ -115,10 +115,10 @@ export default function AdminPlacementsPage() {
         setSalaryByCurrency(data.salaryByCurrency ?? {});
       } else {
         const err = await res.json().catch(() => ({}));
-        toast.error(err.error || "Failed to load placements");
+        toast.error(err.error || t("toastLoadFailed"));
       }
     } catch (error) {
-      toast.error("Failed to load placements");
+      toast.error(t("toastLoadFailed"));
     } finally {
       setLoading(false);
     }
@@ -154,11 +154,11 @@ export default function AdminPlacementsPage() {
         setAiInsights(text.trim() || "No insights available.");
       } else {
         const err = await res.json().catch(() => ({}));
-        toast.error(err.error || "Failed to generate insights");
+        toast.error(err.error || t("toastGenerateInsightsFailed"));
         setAiInsights(null);
       }
     } catch (error) {
-      toast.error("Failed to generate insights");
+      toast.error(t("toastGenerateInsightsFailed"));
       setAiInsights(null);
     } finally {
       setAiLoading(false);
@@ -173,14 +173,14 @@ export default function AdminPlacementsPage() {
         body: JSON.stringify({ commissionPaid: paid }),
       });
       if (res.ok) {
-        toast.success(paid ? "Commission marked as paid" : "Commission marked as unpaid");
+        toast.success(paid ? t("toastCommissionMarkedPaid") : t("toastCommissionMarkedUnpaid"));
         load();
       } else {
         const err = await res.json().catch(() => ({}));
-        toast.error(err.error || "Failed to update commission status");
+        toast.error(err.error || t("toastUpdateCommissionStatusFailed"));
       }
     } catch (error) {
-      toast.error("Failed to update commission status");
+      toast.error(t("toastUpdateCommissionStatusFailed"));
     }
   };
 
@@ -193,14 +193,14 @@ export default function AdminPlacementsPage() {
       });
       if (!res.ok) {
         const e = await res.json().catch(() => ({}));
-        toast.error(e.error || "Failed to update placement");
+        toast.error(e.error || t("toastUpdatePlacementFailed"));
         return;
       }
-      toast.success("Placement updated successfully");
+      toast.success(t("toastPlacementUpdated"));
       setEditItem(null);
       load();
     } catch (error) {
-      toast.error("Failed to update placement");
+      toast.error(t("toastUpdatePlacementFailed"));
     }
   };
 
@@ -210,14 +210,14 @@ export default function AdminPlacementsPage() {
     try {
       const res = await fetch(`/api/placements/${id}`, { method: "DELETE" });
       if (res.ok) {
-        toast.success("Placement deleted successfully");
+        toast.success(t("toastPlacementDeleted"));
         load();
       } else {
         const err = await res.json().catch(() => ({}));
-        toast.error(err.error || "Failed to delete placement");
+        toast.error(err.error || t("toastDeletePlacementFailed"));
       }
     } catch (error) {
-      toast.error("Failed to delete placement");
+      toast.error(t("toastDeletePlacementFailed"));
     }
   };
 
@@ -231,6 +231,8 @@ export default function AdminPlacementsPage() {
 
   const EDIT_FIELDS: CrudField[] = [
     { name: "salary", label: t("salary"), type: "number" },
+    // ISO 4217 codes are the label on purpose: they read the same in every
+    // locale, and every other currency picker in the product shows the code.
     { name: "currency", label: t("currency"), type: "select", options: [
       { value: "AED", label: "AED" }, { value: "USD", label: "USD" }, { value: "EUR", label: "EUR" }, { value: "SAR", label: "SAR" }
     ]},
@@ -242,20 +244,20 @@ export default function AdminPlacementsPage() {
   const unpaidCommissions = placements.filter((p) => !p.commissionPaid).length;
 
   const exportColumns: ExportColumn<Placement>[] = [
-    { header: "Candidate", key: "candidateName", formatter: (v) => String(v ?? "—") },
-    { header: "Company", key: "companyName", formatter: (v) => String(v ?? "—") },
-    { header: "Job Title", key: "jobTitle", formatter: (v) => String(v ?? "—") },
-    { header: "Agent", key: "agentName", formatter: (v) => String(v ?? "—") },
-    { header: "Salary", key: "salary", formatter: (v, r) => `${v ?? 0} ${(r as unknown as Placement).currency ?? "AED"}` },
-    { header: "Visa Status", key: "visaStatus" },
-    { header: "Commission Paid", key: "commissionPaid", formatter: (v) => v ? "Yes" : "No" },
-    { header: "Start Date", key: "startDate", formatter: (v) => v ? formatDate(new Date(String(v))) : "—" },
+    { header: t("exportHeaderCandidate"), key: "candidateName", formatter: (v) => String(v ?? "—") },
+    { header: t("exportHeaderCompany"), key: "companyName", formatter: (v) => String(v ?? "—") },
+    { header: t("exportHeaderJobTitle"), key: "jobTitle", formatter: (v) => String(v ?? "—") },
+    { header: t("exportHeaderAgent"), key: "agentName", formatter: (v) => String(v ?? "—") },
+    { header: t("exportHeaderSalary"), key: "salary", formatter: (v, r) => `${v ?? 0} ${(r as unknown as Placement).currency ?? "AED"}` },
+    { header: t("exportHeaderVisaStatus"), key: "visaStatus" },
+    { header: t("exportHeaderCommissionPaid"), key: "commissionPaid", formatter: (v) => v ? t("exportYes") : t("exportNo") },
+    { header: t("exportHeaderStartDate"), key: "startDate", formatter: (v) => v ? formatDate(new Date(String(v))) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: placements as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "placements",
-    title: "Placements",
+    title: t("exportTitle"),
   });
 
   return (
@@ -264,14 +266,8 @@ export default function AdminPlacementsPage() {
 
       {/* ─── Compact page header ──────────────────────────────────────── */}
       <DashboardPageHeader
-        eyebrow={t("recruitmentControl")}
         title={t("placementTracking")}
         description={t("placementTrackingDescription")}
-        summary={{
-          label: t("portfolio"),
-          value: t("placementsCount", { count: total }),
-          note: formatCurrencyBreakdown(salaryByCurrency, t),
-        }}
         actions={(
           <Button
             onClick={fetchAiInsights}
@@ -288,6 +284,7 @@ export default function AdminPlacementsPage() {
           { label: t("unpaidCommission"), value: unpaidCommissions, note: t("needsCollection"), icon: DollarSign, iconClassName: "text-red-500", iconSurfaceClassName: "bg-status-rejected-bg" },
           { label: t("totalSalaryValue"), value: formatSalaryValue(totalValue), note: Object.keys(salaryByCurrency).length > 0 ? Object.entries(salaryByCurrency).slice(0, 2).map(([c, v]) => `${formatSalaryValue(v)} ${c}`).join(t("currencyBreakdownSeparator")) : t("noData"), icon: TrendingUp, iconClassName: "text-status-selected", iconSurfaceClassName: "bg-status-selected-bg" },
         ]}
+        compactOnMobile
         footer={(
           <>
             <button
