@@ -8,6 +8,7 @@ import { getTranslations } from "next-intl/server";
 import { Building2, MapPin, Globe, Users, Briefcase, CheckCircle2, Calendar, ExternalLink } from "lucide-react";
 import RelativeDate from "@/components/shared/RelativeDate";
 import CompanyReviews from "@/components/features/public/CompanyReviews";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 interface PageProps {
   params: Promise<{ locale: string; id: string }>;
@@ -123,7 +124,7 @@ export default async function PublicCompanyDetailPage({ params }: PageProps) {
       {/* Open Jobs */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
+          <h2 className="heading-section font-semibold text-foreground flex items-center gap-2">
             <Briefcase className="w-5 h-5" />
             {t("openPositionsCount", { count: jobCount })}
           </h2>
@@ -143,7 +144,7 @@ export default async function PublicCompanyDetailPage({ params }: PageProps) {
                 <Link
                   key={String(job._id)}
                   href={`/${locale}/jobs/${String(job._id)}`}
-                  className="block p-4 bg-card border border-border rounded-xl hover:shadow-sm hover:border-primary/30 transition-all"
+                  className="block bg-card border border-border rounded-xl hover:shadow-sm hover:border-primary/30 transition-all card-pad"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div>
@@ -168,8 +169,8 @@ export default async function PublicCompanyDetailPage({ params }: PageProps) {
                           </span>
                         ) : null}
                         {sal && (sal.min || sal.max) ? (
-                          <span className="text-green-600 dark:text-green-400">
-                            {(sal.currency as string) ?? "AED"} {sal.min ? Number(sal.min).toLocaleString() : ""}{sal.max ? ` – ${Number(sal.max).toLocaleString()}` : ""}/mo
+                          <span className="text-green-600">
+                            {(sal.currency as string) ?? "AED"} {sal.min ? formatCount(Number(sal.min)) : ""}{sal.max ? ` – ${formatCount(Number(sal.max))}` : ""}/mo
                           </span>
                         ) : null}
                       </div>

@@ -31,6 +31,7 @@ import {
   Weight,
   WandSparkles,
 } from "lucide-react";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -430,7 +431,7 @@ export function TeamAllocationDialog({
       onOpenChange(false);
       await onSuccess();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to distribute");
+      toast.error("We couldn't distribute these targets. Existing assignments are unchanged. Review the allocation and try again.");
     } finally {
       setSaving(false);
     }
@@ -486,7 +487,7 @@ export function TeamAllocationDialog({
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
           <div className="space-y-4">
             {/* Budget summary — horizontal cards */}
-            <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5">
+            <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/20 chip-pad">
               {budgetCards.map((c, idx) => {
                 const status =
                   c.total === 0
@@ -653,13 +654,13 @@ export function TeamAllocationDialog({
                           {t("total")} ({validRows.length} {t(validRows.length !== 1 ? "agents" : "agent")})
                         </td>
                         <td className="px-3 py-2.5 text-center text-sm font-bold text-foreground tabular-nums">
-                          {totals.employer.toLocaleString()}
+                          {formatCount(totals.employer)}
                         </td>
                         <td className="px-3 py-2.5 text-center text-sm font-bold text-foreground tabular-nums">
-                          {totals.employee.toLocaleString()}
+                          {formatCount(totals.employee)}
                         </td>
                         <td className="px-3 py-2.5 text-center text-sm font-bold text-foreground tabular-nums">
-                          {totals.finance.toLocaleString()}
+                          {formatCount(totals.finance)}
                         </td>
                         <td className="px-3 py-2.5" />
                       </tr>
@@ -668,13 +669,13 @@ export function TeamAllocationDialog({
                           {t("remaining")}
                         </td>
                         <td className={`px-3 py-2 text-center text-xs font-semibold tabular-nums ${remaining.emp < 0 ? "text-red-500" : "text-emerald-600"}`}>
-                          {remaining.emp.toLocaleString()}
+                          {formatCount(remaining.emp)}
                         </td>
                         <td className={`px-3 py-2 text-center text-xs font-semibold tabular-nums ${remaining.ee < 0 ? "text-red-500" : "text-emerald-600"}`}>
-                          {remaining.ee.toLocaleString()}
+                          {formatCount(remaining.ee)}
                         </td>
                         <td className={`px-3 py-2 text-center text-xs font-semibold tabular-nums ${remaining.fin < 0 ? "text-red-500" : "text-emerald-600"}`}>
-                          {remaining.fin.toLocaleString()}
+                          {formatCount(remaining.fin)}
                         </td>
                         <td className="px-3 py-2" />
                       </tr>
@@ -700,17 +701,17 @@ export function TeamAllocationDialog({
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
-              size="sm"
-              className="h-8"
+              size="dense"
+              className=""
               onClick={() => onOpenChange(false)}
             >
               {t("cancel")}
             </Button>
             <Button
-              size="sm"
+              size="dense"
               onClick={handleSubmit}
               disabled={saving || validRows.length === 0 || !supervisorProfile}
-              className="h-8 gap-1.5 bg-sky-600 text-white hover:bg-sky-700"
+              className="gap-1.5 bg-sky-600 text-white hover:bg-sky-700"
             >
               <Target className="h-3.5 w-3.5" />
               {saving
@@ -753,7 +754,7 @@ function AgentTargetRow({
 
   return (
     <>
-      <tr className={`transition-colors ${hasTarget ? "bg-sky-50/50 dark:bg-sky-950/20" : "hover:bg-muted/20"}`}>
+      <tr className={`transition-colors ${hasTarget ? "bg-sky-50/50" : "hover:bg-muted/20"}`}>
         {/* Agent Info */}
         <td className="px-4 py-2.5">
           <div>
@@ -811,8 +812,8 @@ function AgentTargetRow({
           <Button
             type="button"
             variant={row.showMonthly ? "default" : "outline"}
-            size="sm"
-            className="rounded-lg h-8 text-xs gap-1"
+            size="dense"
+            className="rounded-lg text-xs gap-1"
             onClick={() => onToggleMonthly(agent._id)}
             disabled={!hasTarget}
           >
@@ -953,4 +954,3 @@ function MonthlyDistributionTable({
     </div>
   );
 }
-

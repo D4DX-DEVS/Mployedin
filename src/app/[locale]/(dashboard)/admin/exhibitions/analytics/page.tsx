@@ -221,7 +221,7 @@ export default function AdminExhibitionAnalyticsPage() {
     return (
       <div className="page-container">
         <DashboardPageHeader
-          eyebrow={t("adminAnalyticsBadge")}
+          compactOnMobile
           title={t("pageTitle")}
           description={t("pageDescription")}
           metrics={[
@@ -236,8 +236,8 @@ export default function AdminExhibitionAnalyticsPage() {
           ))}
         </div>
         <div className="grid gap-4 lg:grid-cols-2">
-          <Skeleton className="h-72 rounded-[28px]" />
-          <Skeleton className="h-72 rounded-[28px]" />
+          <Skeleton className="h-72 rounded-3xl" />
+          <Skeleton className="h-72 rounded-3xl" />
         </div>
       </div>
     );
@@ -255,7 +255,8 @@ export default function AdminExhibitionAnalyticsPage() {
   return (
     <div className="page-container">
       <DashboardPageHeader
-        eyebrow={`${t("adminAnalyticsBadge")} · ${t("yearBadge", { year: data.year })}`}
+        compactOnMobile
+        eyebrow={t("yearBadge", { year: data.year })}
         title={t("pageTitle")}
         description={t("pageDescription")}
         summary={{
@@ -274,51 +275,56 @@ export default function AdminExhibitionAnalyticsPage() {
           </div>
         )}
         metrics={[
-          { label: t("requestsLabel"), value: kpis.totalRequests, note: strongestMonth ? t("requestsBusiestMonth", { month: strongestMonth.month }) : t("requestsNoData"), icon: Target, iconClassName: "text-sky-600", iconSurfaceClassName: "bg-sky-50 dark:bg-sky-950/30" },
-          { label: t("approvalRateLabel"), value: `${kpis.approvalRate}%`, note: t("approvalRateSub", { approved: kpis.approved, rejected: kpis.rejected }), icon: Percent, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50 dark:bg-emerald-950/30" },
-          { label: t("roiLabel"), value: `${performance.roi}%`, note: performance.eventsReported > 0 ? t("roiEventsReported", { eventsReported: performance.eventsReported }) : t("roiAwaitingReports"), icon: TrendingUp, iconClassName: "text-violet-600", iconSurfaceClassName: "bg-violet-50 dark:bg-violet-950/30" },
+          { label: t("requestsLabel"), value: kpis.totalRequests, note: strongestMonth ? t("requestsBusiestMonth", { month: strongestMonth.month }) : t("requestsNoData"), icon: Target, iconClassName: "text-sky-600", iconSurfaceClassName: "bg-sky-50" },
+          { label: t("approvalRateLabel"), value: `${kpis.approvalRate}%`, note: t("approvalRateSub", { approved: kpis.approved, rejected: kpis.rejected }), icon: Percent, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50" },
+          { label: t("roiLabel"), value: `${performance.roi}%`, note: performance.eventsReported > 0 ? t("roiEventsReported", { eventsReported: performance.eventsReported }) : t("roiAwaitingReports"), icon: TrendingUp, iconClassName: "text-violet-600", iconSurfaceClassName: "bg-violet-50" },
         ]}
-      >
-        <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
-          <MiniMetric label={t("leadsGeneratedLabel")} value={performance.totalLeads} />
-          <MiniMetric label={t("employersEngagedLabel")} value={performance.totalEmployers} />
-          <MiniMetric label={t("candidatesSourchedLabel")} value={performance.totalCandidates} />
-          <MiniMetric label={t("hiresGeneratedLabel")} value={performance.totalHires} />
-        </div>
-      </DashboardPageHeader>
+      />
 
-      <section className="grid grid-cols-2 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard
-          label={t("totalRequestsLabel")}
-          value={kpis.totalRequests}
-          icon={<CalendarDays className="h-5 w-5" />}
-          sub={t("totalRequestsSub", { submitted: kpis.submitted })}
-        />
-        <MetricCard
-          label={t("avgBudgetLabel")}
-          value={formatCurrency(kpis.avgBudget, currencyCode)}
-          icon={<DollarSign className="h-5 w-5" />}
-          sub={t("avgBudgetSub", { total: formatCurrency(kpis.totalEstimatedBudget, currencyCode) })}
-        />
-        <MetricCard
-          label={t("budgetVarianceLabel")}
-          value={formatCurrency(kpis.budgetVariance, currencyCode)}
-          icon={<TrendingUp className="h-5 w-5" />}
-          sub={kpis.budgetVariance >= 0 ? t("budgetVarianceUnderspend") : t("budgetVarianceOverspend")}
-        />
-        <MetricCard
-          label={t("completionRateLabel")}
-          value={`${kpis.totalRequests > 0 ? Math.round((kpis.completed / kpis.totalRequests) * 100) : 0}%`}
-          icon={<CheckCircle2 className="h-5 w-5" />}
-          sub={t("completionRateSub", { completed: kpis.completed })}
-        />
+      {/* One panel instead of four floating metric cards plus four tiles inside
+          the hero. The old "Total requests" card printed the hero's own
+          Requests figure a second time, and its "N newly submitted" note is the
+          Submitted row of the pipeline panel further down — three prints of two
+          numbers. Budget and outcome figures are grouped and labelled here so
+          the hero carries only the headline trio. */}
+      <section className="workspace-panel-surface rounded-3xl panel-body panel-stack">
+        <div className="panel-stack">
+          <p className="heading-label">{t("budgetDeliveryGroupLabel")}</p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <MiniMetric
+              label={t("avgBudgetLabel")}
+              value={formatCurrency(kpis.avgBudget, currencyCode)}
+              sub={t("avgBudgetSub", { total: formatCurrency(kpis.totalEstimatedBudget, currencyCode) })}
+            />
+            <MiniMetric
+              label={t("budgetVarianceLabel")}
+              value={formatCurrency(kpis.budgetVariance, currencyCode)}
+              sub={kpis.budgetVariance >= 0 ? t("budgetVarianceUnderspend") : t("budgetVarianceOverspend")}
+            />
+            <MiniMetric
+              label={t("completionRateLabel")}
+              value={`${kpis.totalRequests > 0 ? Math.round((kpis.completed / kpis.totalRequests) * 100) : 0}%`}
+              sub={t("completionRateSub", { completed: kpis.completed })}
+            />
+          </div>
+        </div>
+
+        <div className="panel-stack">
+          <p className="heading-label">{t("outcomesGroupLabel")}</p>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <MiniMetric label={t("leadsGeneratedLabel")} value={performance.totalLeads} />
+            <MiniMetric label={t("employersEngagedLabel")} value={performance.totalEmployers} />
+            <MiniMetric label={t("candidatesSourchedLabel")} value={performance.totalCandidates} />
+            <MiniMetric label={t("hiresGeneratedLabel")} value={performance.totalHires} />
+          </div>
+        </div>
       </section>
 
       <section className="grid grid-cols-1 gap-3 sm:gap-6 xl:grid-cols-[1.4fr_0.8fr]">
-        <div className="workspace-panel-surface min-w-0 rounded-[28px] panel-body">
+        <div className="workspace-panel-surface min-w-0 rounded-3xl panel-body">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold tracking-tight">{t("monthlyRequestFlowTitle")}</h2>
+              <h2 className="heading-section font-semibold tracking-tight">{t("monthlyRequestFlowTitle")}</h2>
               <p className="text-sm text-muted-foreground">{t("monthlyRequestFlowDescription")}</p>
             </div>
             <Badge variant="outline">{t("monthlyRequestFlowBadge")}</Badge>
@@ -343,17 +349,17 @@ export default function AdminExhibitionAnalyticsPage() {
           </div>
         </div>
 
-        <div className="workspace-panel-surface rounded-[28px] panel-body">
+        <div className="workspace-panel-surface rounded-3xl panel-body">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold tracking-tight">{t("requestPipelineTitle")}</h2>
+              <h2 className="heading-section font-semibold tracking-tight">{t("requestPipelineTitle")}</h2>
               <p className="text-sm text-muted-foreground">{t("requestPipelineDescription")}</p>
             </div>
             <Activity className="h-5 w-5 text-primary" />
           </div>
           <div className="space-y-4">
             {statusBreakdown.map((item) => (
-              <div key={item.key} className="space-y-2 rounded-2xl border bg-muted/25 p-4">
+              <div key={item.key} className="space-y-2 rounded-2xl border bg-muted/25 card-pad">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <span className={`h-2.5 w-2.5 rounded-full ${item.color}`} />
@@ -369,10 +375,10 @@ export default function AdminExhibitionAnalyticsPage() {
       </section>
 
       <section className="grid grid-cols-1 gap-3 sm:gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <div className="workspace-panel-surface min-w-0 rounded-[28px] panel-body">
+        <div className="workspace-panel-surface min-w-0 rounded-3xl panel-body">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold tracking-tight">{t("participationMixTitle")}</h2>
+              <h2 className="heading-section font-semibold tracking-tight">{t("participationMixTitle")}</h2>
               <p className="text-sm text-muted-foreground">{t("participationMixDescription")}</p>
             </div>
             <Target className="h-5 w-5 text-primary" />
@@ -400,7 +406,7 @@ export default function AdminExhibitionAnalyticsPage() {
               </div>
               <div className="mt-4 space-y-3">
                 {participation.map((item, index) => (
-                  <div key={item.type} className="rounded-2xl border bg-muted/20 p-3">
+                  <div key={item.type} className="rounded-2xl border bg-muted/20 chip-pad">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2">
                         <span
@@ -428,10 +434,10 @@ export default function AdminExhibitionAnalyticsPage() {
           )}
         </div>
 
-        <div className="workspace-panel-surface rounded-[28px] panel-body">
+        <div className="workspace-panel-surface rounded-3xl panel-body">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold tracking-tight">{t("topAgentsTitle")}</h2>
+              <h2 className="heading-section font-semibold tracking-tight">{t("topAgentsTitle")}</h2>
               <p className="text-sm text-muted-foreground">{t("topAgentsDescription")}</p>
             </div>
             <Trophy className="h-5 w-5 text-primary" />
@@ -513,7 +519,7 @@ function MetricCard({
   sub: string;
 }) {
   return (
-    <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-sm">
+    <div className="rounded-2xl border border-border/80 bg-card shadow-sm panel-body">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
@@ -526,11 +532,12 @@ function MetricCard({
   );
 }
 
-function MiniMetric({ label, value }: { label: string; value: number }) {
+function MiniMetric({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
-    <div className="rounded-2xl border border-border/60 bg-muted/30 p-3">
+    <div className="rounded-2xl border border-border/60 bg-muted/30 chip-pad">
       <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
       <p className="mt-2 text-lg font-semibold text-foreground">{value}</p>
+      {sub ? <p className="mt-1 text-xs text-muted-foreground">{sub}</p> : null}
     </div>
   );
 }
@@ -545,7 +552,7 @@ function MiniSummaryCard({
   icon: ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border bg-muted/20 p-4">
+    <div className="rounded-2xl border bg-muted/20 card-pad">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{label}</p>

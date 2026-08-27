@@ -87,17 +87,17 @@ interface ExhibitionRequest {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  draft: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
-  submitted: "bg-blue-100 text-blue-800 dark:bg-blue-950/30 dark:text-blue-400",
-  under_review: "bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-400",
-  approved: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400",
-  revision_requested: "bg-orange-100 text-orange-800 dark:bg-orange-950/30 dark:text-orange-400",
-  budget_approved: "bg-teal-100 text-teal-800 dark:bg-teal-950/30 dark:text-teal-400",
-  resources_assigned: "bg-indigo-100 text-indigo-800 dark:bg-indigo-950/30 dark:text-indigo-400",
-  active: "bg-purple-100 text-purple-800 dark:bg-purple-950/30 dark:text-purple-400",
-  completed: "bg-green-100 text-green-800 dark:bg-green-950/30 dark:text-green-400",
-  rejected: "bg-red-100 text-red-800 dark:bg-red-950/30 dark:text-red-400",
-  archived: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400",
+  draft: "bg-gray-100 text-gray-700",
+  submitted: "bg-blue-100 text-blue-800",
+  under_review: "bg-amber-100 text-amber-800",
+  approved: "bg-emerald-100 text-emerald-800",
+  revision_requested: "bg-orange-100 text-orange-800",
+  budget_approved: "bg-teal-100 text-teal-800",
+  resources_assigned: "bg-indigo-100 text-indigo-800",
+  active: "bg-purple-100 text-purple-800",
+  completed: "bg-green-100 text-green-800",
+  rejected: "bg-red-100 text-red-800",
+  archived: "bg-slate-100 text-slate-600",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -115,10 +115,10 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
-  low: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
-  medium: "bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400",
-  high: "bg-orange-100 text-orange-700 dark:bg-orange-950/30 dark:text-orange-400",
-  critical: "bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400",
+  low: "bg-gray-100 text-gray-600",
+  medium: "bg-blue-100 text-blue-700",
+  high: "bg-orange-100 text-orange-700",
+  critical: "bg-red-100 text-red-700",
 };
 
 const EVENT_CATEGORIES = [
@@ -473,21 +473,20 @@ export default function AgentExhibitionsPage() {
 
       <DashboardPageHeader
         icon={CalendarDays}
-        eyebrow="Exhibition requests"
         title={t("title")}
         description={t("subtitle")}
         actions={
-          <Button onClick={openNewRequest} size="lg" className="h-11 shrink-0 rounded-xl px-5 shadow-sm">
+          <Button onClick={openNewRequest} size="lg" className="shrink-0 rounded-xl px-5 shadow-sm">
             <Plus className="mr-2 h-4 w-4" /> {t("newRequest")}
           </Button>
         }
         metrics={!loading && items.length > 0 ? [
-          { label: "Total", value: items.length, note: "All requests", icon: CalendarDays },
-          { label: "Submitted", value: submittedCount, note: "Awaiting review", icon: Send },
-          { label: "Approved", value: approvedCount, note: "Cleared to proceed", icon: Save },
-          { label: "Active", value: items.filter((item) => item.status === "active").length, note: "In progress", icon: Clock },
-          { label: "Completed", value: items.filter((item) => item.status === "completed").length, note: "Finished", icon: Eye },
-          { label: "Revision", value: items.filter((item) => item.status === "revision_requested").length, note: "Needs updates", icon: AlertTriangle },
+          { label: tc("total"), value: items.length, icon: CalendarDays },
+          { label: t("statusSubmitted"), value: submittedCount, icon: Send },
+          { label: t("approved"), value: approvedCount, icon: Save },
+          { label: tc("active"), value: items.filter((item) => item.status === "active").length, icon: Clock },
+          { label: t("statusCompleted"), value: items.filter((item) => item.status === "completed").length, icon: Eye },
+          { label: t("statusRevision"), value: items.filter((item) => item.status === "revision_requested").length, icon: AlertTriangle },
         ] : undefined}
         metricsClassName="xl:grid-cols-6"
       >
@@ -504,10 +503,10 @@ export default function AgentExhibitionsPage() {
         />
       </DashboardPageHeader>
 
-      <section className="workspace-panel-surface rounded-[28px] panel-body">
+      <section className="workspace-panel-surface rounded-3xl panel-body">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Your requests</p>
-          <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Request history</h2>
+          <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">Request history</h2>
           <p className="mt-1 text-sm text-muted-foreground">Open details or continue editing drafts from the table below.</p>
         </div>
 
@@ -518,14 +517,14 @@ export default function AgentExhibitionsPage() {
         </div>
       ) : items.length === 0 ? (
         <div className="workspace-empty-state flex flex-col items-center gap-3 px-6 py-14 text-center">
-          <div className="workspace-muted-pill rounded-[20px] p-3"><Inbox className="h-8 w-8 text-muted-foreground" /></div>
+          <div className="workspace-muted-pill rounded-3xl p-3"><Inbox className="h-8 w-8 text-muted-foreground" /></div>
           <p className="text-sm font-semibold text-foreground">{t("noRequests")}</p>
           <Button variant="outline" className="mt-2 rounded-xl" onClick={openNewRequest}>
             <Plus className="mr-2 h-4 w-4" /> Create your first request
           </Button>
         </div>
       ) : (
-        <div className="workspace-panel-surface overflow-hidden rounded-[24px]">
+        <div className="workspace-panel-surface overflow-hidden rounded-3xl">
           <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -574,19 +573,19 @@ export default function AgentExhibitionsPage() {
                   </td>
                   <td className="px-4 py-3.5 text-right">
                     <div className="flex items-center justify-end gap-0.5">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-primary" title="View details" onClick={() => setDetailItem(item)}>
+                      <Button variant="ghost" size="iconDense" className="rounded-lg text-muted-foreground hover:text-primary" title={t("viewDetails")} onClick={() => setDetailItem(item)}>
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-primary" title="Duplicate request" onClick={() => handleDuplicate(item)}>
+                      <Button variant="ghost" size="iconDense" className="rounded-lg text-muted-foreground hover:text-primary" title={t("duplicateRequest")} onClick={() => handleDuplicate(item)}>
                         <Copy className="h-4 w-4" />
                       </Button>
                       {["draft", "submitted", "revision_requested"].includes(item.status) && (
                         <>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-primary" title="Edit request" onClick={() => startEdit(item)}>
+                          <Button variant="ghost" size="iconDense" className="rounded-lg text-muted-foreground hover:text-primary" title={t("editRequest")} onClick={() => startEdit(item)}>
                             <Edit className="h-4 w-4" />
                           </Button>
                           {["draft", "submitted"].includes(item.status) && (
-                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-destructive" title="Delete request" onClick={() => handleDelete(item._id)}>
+                            <Button variant="ghost" size="iconDense" className="rounded-lg text-muted-foreground hover:text-destructive" title={t("deleteRequest")} onClick={() => handleDelete(item._id)}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           )}
@@ -616,7 +615,7 @@ export default function AgentExhibitionsPage() {
         <DialogContent className="max-h-[90vh] max-w-4xl overflow-hidden p-0">
           {detailItem && (
             <>
-              <DialogHeader className="border-b bg-gradient-to-r from-primary/8 via-background to-emerald-50/60 px-6 pb-5 pr-12 pt-6 dark:to-emerald-950/10">
+              <DialogHeader className="border-b bg-gradient-to-r from-primary/8 via-background to-emerald-50/60 px-6 pb-5 pr-12 pt-6">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
@@ -629,11 +628,11 @@ export default function AgentExhibitionsPage() {
                     </DialogDescription>
                   </div>
                   <div className="grid grid-cols-2 gap-3 text-sm sm:min-w-[20rem]">
-                    <div className="rounded-xl border bg-background/80 p-3">
+                    <div className="rounded-xl border bg-background/80 chip-pad">
                       <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Budget</p>
                       <p className="mt-1 font-semibold">{formatCurrency(detailItem.estimatedBudget, detailItem.budgetCurrency)}</p>
                     </div>
-                    <div className="rounded-xl border bg-background/80 p-3">
+                    <div className="rounded-xl border bg-background/80 chip-pad">
                       <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Expected Leads</p>
                       <p className="mt-1 font-semibold">{detailItem.expectedLeads ?? "-"}</p>
                     </div>
@@ -642,11 +641,11 @@ export default function AgentExhibitionsPage() {
               </DialogHeader>
               <div className="max-h-[68vh] space-y-6 overflow-y-auto px-6 py-5 text-sm">
                 {detailItem.status === "revision_requested" && detailItem.reviewNote && (
-                  <div className="rounded-lg border border-orange-200 bg-orange-50 p-3 dark:border-orange-800 dark:bg-orange-950/20">
-                    <p className="mb-1 flex items-center gap-1 font-medium text-orange-800 dark:text-orange-400">
+                  <div className="rounded-lg border border-orange-200 bg-orange-50 chip-pad">
+                    <p className="mb-1 flex items-center gap-1 font-medium text-orange-800">
                       <AlertTriangle className="h-4 w-4" /> Revision Requested
                     </p>
-                    <p className="text-orange-700 dark:text-orange-300">{detailItem.reviewNote}</p>
+                    <p className="text-orange-700">{detailItem.reviewNote}</p>
                   </div>
                 )}
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -660,14 +659,14 @@ export default function AgentExhibitionsPage() {
                     { label: "Category", value: labelFor(EVENT_CATEGORIES, detailItem.eventCategory) },
                     { label: "Status", value: STATUS_LABELS[detailItem.status] ?? detailItem.status },
                   ].map((item) => (
-                    <div key={item.label} className="rounded-xl border bg-card p-4">
+                    <div key={item.label} className="rounded-xl border bg-card card-pad">
                       <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{item.label}</p>
                       <p className="mt-2 font-medium text-foreground">{item.value}</p>
                     </div>
                   ))}
                 </div>
                 {detailItem.participationTypes.length > 0 && (
-                  <div className="rounded-xl border bg-card p-4">
+                  <div className="rounded-xl border bg-card card-pad">
                     <p className="mb-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">Participation</p>
                     <div className="flex flex-wrap gap-1">
                       {detailItem.participationTypes.map((participationType) => (
@@ -679,7 +678,7 @@ export default function AgentExhibitionsPage() {
                   </div>
                 )}
                 {detailItem.objectives.length > 0 && (
-                  <div className="rounded-xl border bg-card p-4">
+                  <div className="rounded-xl border bg-card card-pad">
                     <p className="mb-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">Objectives</p>
                     <div className="flex flex-wrap gap-1">
                       {detailItem.objectives.map((objective) => (
@@ -689,7 +688,7 @@ export default function AgentExhibitionsPage() {
                   </div>
                 )}
                 {detailItem.requiredResources.length > 0 && (
-                  <div className="rounded-xl border bg-card p-4">
+                  <div className="rounded-xl border bg-card card-pad">
                     <p className="mb-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">Requirement Tags</p>
                     <div className="flex flex-wrap gap-1">
                       {detailItem.requiredResources.map((resource) => (
@@ -699,7 +698,7 @@ export default function AgentExhibitionsPage() {
                   </div>
                 )}
                 {detailItem.budgetBreakdown && (
-                  <div className="rounded-xl border bg-card p-4">
+                  <div className="rounded-xl border bg-card card-pad">
                     <p className="mb-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">Legacy Budget Breakdown</p>
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                       {Object.entries(detailItem.budgetBreakdown).map(([key, value]) => (
@@ -712,22 +711,22 @@ export default function AgentExhibitionsPage() {
                   </div>
                 )}
                 {detailItem.approvedBudget != null && (
-                  <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 dark:border-emerald-800 dark:bg-emerald-950/20">
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 card-pad">
                     <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Approved Budget</p>
-                    <p className="mt-2 text-lg font-bold text-emerald-700 dark:text-emerald-400">{formatCurrency(detailItem.approvedBudget, detailItem.budgetCurrency)}</p>
+                    <p className="mt-2 text-lg font-bold text-emerald-700">{formatCurrency(detailItem.approvedBudget, detailItem.budgetCurrency)}</p>
                     {detailItem.approvedBudget !== detailItem.estimatedBudget && (
                       <p className="mt-1 text-xs text-muted-foreground">Estimated was {formatCurrency(detailItem.estimatedBudget, detailItem.budgetCurrency)}</p>
                     )}
                   </div>
                 )}
                 {detailItem.description && (
-                  <div className="rounded-xl border bg-card p-4">
+                  <div className="rounded-xl border bg-card card-pad">
                     <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Description</p>
                     <p className="mt-2 leading-6">{detailItem.description}</p>
                   </div>
                 )}
                 {detailItem.statusHistory && detailItem.statusHistory.length > 0 && (
-                  <div className="rounded-xl border bg-card p-4">
+                  <div className="rounded-xl border bg-card card-pad">
                     <p className="mb-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">Approval History</p>
                     <ApprovalTimeline entries={detailItem.statusHistory} />
                   </div>
@@ -784,7 +783,7 @@ export default function AgentExhibitionsPage() {
               <Textarea
                 value={form.description}
                 onChange={(event) => updateForm("description", event.target.value)}
-                placeholder="Brief description of the exhibition and its purpose..."
+                placeholder={t("descriptionPlaceholder")}
                 rows={3}
               />
             </div>
@@ -802,7 +801,7 @@ export default function AgentExhibitionsPage() {
                     }
                   }}
                   mode="date"
-                  placeholder="Select start date"
+                  placeholder={t("selectStartDate")}
                   minDate={startDateMin}
                   container={dialogContainer}
                   modal
@@ -814,7 +813,7 @@ export default function AgentExhibitionsPage() {
                   value={form.eventEndDate}
                   onChange={(value) => updateForm("eventEndDate", value)}
                   mode="date"
-                  placeholder="Select end date"
+                  placeholder={t("selectEndDate")}
                   minDate={endDateMin}
                   container={dialogContainer}
                   modal
@@ -844,7 +843,7 @@ export default function AgentExhibitionsPage() {
                 <Input
                   value={form.organizerContact}
                   onChange={(event) => updateForm("organizerContact", event.target.value)}
-                  placeholder="Email or phone"
+                  placeholder={t("contactPlaceholder")}
                 />
               </div>
             </div>
@@ -867,7 +866,7 @@ export default function AgentExhibitionsPage() {
                   options={CURRENCY_OPTIONS}
                   value={form.budgetCurrency}
                   onValueChange={handleCurrencyChange}
-                  placeholder="Select currency"
+                  placeholder={t("selectCurrency")}
                   container={dialogContainer}
                   modal
                 />

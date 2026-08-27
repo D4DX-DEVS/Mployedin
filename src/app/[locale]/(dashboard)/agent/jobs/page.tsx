@@ -14,8 +14,6 @@ import {
   ArrowRight,
   BriefcaseBusiness,
   Building2,
-  Check,
-  ChevronsUpDown,
   ChevronDown,
   Eye,
   Filter,
@@ -23,7 +21,6 @@ import {
   Loader2,
   Plus,
   Search,
-  ShieldCheck,
   Sparkles,
   Users,
   X,
@@ -36,17 +33,8 @@ import type { ExportColumn } from "@/lib/export";
 import { useTranslations } from "next-intl";
 import { TableActionLink } from "@/components/shared/TableActionLink";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
-import { cn } from "@/lib/utils";
+import { StatusFilterStrip } from "@/components/shared/StatusFilterStrip";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -82,8 +70,6 @@ interface AiFilters {
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
 
-const STATUS_TABS = ["", "draft", "active", "closed"] as const;
-
 const AI_SUGGESTION_KEYS = ["activeApplicants", "draftReview", "postedThisWeek", "kochiRoles"] as const;
 
 /* ------------------------------------------------------------------ */
@@ -100,7 +86,6 @@ export default function AgentJobsPage() {
   /* ----- Job list state ----- */
   const [jobs, setJobs] = useState<JobItem[]>([]);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
-  const [portfolioStats, setPortfolioStats] = useState<{ employerCount: number; totalApplicants: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -153,7 +138,6 @@ export default function AgentJobsPage() {
         const data = await res.json();
         setJobs(data.jobs ?? []);
         setStatusCounts(data.statusCounts ?? {});
-        setPortfolioStats(data.portfolioStats ?? null);
         pagination.updateTotal(data.pagination?.total ?? 0);
       }
     } finally {
@@ -241,20 +225,6 @@ export default function AgentJobsPage() {
   const draftJobs = hasStatusCounts
     ? (statusCounts.draft ?? 0)
     : jobs.filter((j) => j.status === "draft").length;
-  const uniqueEmployers = portfolioStats
-    ? portfolioStats.employerCount
-    : new Set(jobs.map((j) => j.employerId?._id ?? j.employerId).filter(Boolean)).size;
-  const totalApplicants = portfolioStats
-    ? portfolioStats.totalApplicants
-    : jobs.reduce((sum, j) => sum + (j.applicationCount ?? j.applicantIds?.length ?? 0), 0);
-
-  const summaryCards = [
-    { label: t("cards.active.label"), value: activeJobs, description: t("cards.active.description"), icon: ShieldCheck, tone: "workspace-tone-emerald" },
-    { label: t("cards.drafts.label"), value: draftJobs, description: t("cards.drafts.description"), icon: BriefcaseBusiness, tone: "workspace-tone-amber" },
-    { label: t("cards.employers.label"), value: uniqueEmployers, description: t("cards.employers.description"), icon: Building2, tone: "workspace-tone-sky" },
-    { label: t("cards.applicants.label"), value: totalApplicants, description: t("cards.applicants.description"), icon: Users, tone: "workspace-tone-indigo" },
-  ];
-
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
     { header: t("table.title"), key: "title" },
     { header: t("table.employer"), key: "employerId", formatter: (_v, row) => (row.employerId as { companyName?: string })?.companyName ?? "" },
@@ -280,7 +250,6 @@ export default function AgentJobsPage() {
       {/* ──────── HERO + UNIFIED FILTERS ──────── */}
       <DashboardPageHeader
         icon={BriefcaseBusiness}
-        eyebrow={common("workspace")}
         title={t("title")}
         description={t("description")}
         summary={{
@@ -290,48 +259,61 @@ export default function AgentJobsPage() {
         }}
         actions={
             <Link href={`/${locale}/agent/jobs/new`}>
-              <Button className="h-11 gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
+              <Button size="lg" className="gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
                 <Plus className="h-4 w-4" />
                 {t("postJob")}
               </Button>
             </Link>
         }
-        metrics={summaryCards.map((card) => ({
-          label: card.label,
-          value: card.value,
-          note: card.description,
-          icon: card.icon,
-        }))}
       />
 
-        {/* ── Combined Filter Bar ── */}
-        <section className="workspace-panel-surface rounded-[20px] panel-body">
-          {/* Toggle button */}
-          <button
-            onClick={() => setFiltersOpen((prev) => !prev)}
-            className="flex w-full items-center justify-between gap-3"
-          >
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/20 to-sky-500/20">
-                <Filter className="h-4 w-4 text-status-interview dark:text-violet-400" />
-              </div>
-              <div className="text-left">
-                <h2 className="text-sm font-semibold text-foreground">{t("filters.title")}</h2>
-                <p className="text-xs text-muted-foreground">{t("ai.description")}</p>
-              </div>
+        {/* One panel: search shares a row with the Filters toggle, the status
+            strip sits under it. These were two stacked cards — the second one
+            spent an icon, a heading and a blurb to say "Filters". */}
+        <section className="workspace-panel-surface rounded-3xl panel-body">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={t("filters.searchPlaceholder")}
+                className="h-10 rounded-xl border-border bg-background ps-9 text-sm shadow-none"
+              />
             </div>
-            <div className="flex items-center gap-2">
+            <button
+              onClick={() => setFiltersOpen((prev) => !prev)}
+              aria-expanded={filtersOpen}
+              aria-controls="agent-job-advanced-filters"
+              className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl border border-border px-3 text-sm font-medium text-foreground transition-colors hover:border-primary/25"
+            >
+              <Filter className="h-4 w-4 text-status-interview" />
+              {t("filters.title")}
               {(search || statusFilter || employerFilter || activeAiFilters) && (
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-600 text-[10px] font-bold text-white">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-600 text-[11px] font-bold text-white">
                   {[search, statusFilter, employerFilter, activeAiFilters].filter(Boolean).length}
                 </span>
               )}
               <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${filtersOpen ? "rotate-180" : ""}`} />
-            </div>
-          </button>
+            </button>
+          </div>
+
+          <StatusFilterStrip
+            label={t("filters.title")}
+            className="mt-3"
+            selectedId={statusFilter || "all"}
+            onSelect={(value) => setStatusFilter(value === "all" ? "" : value)}
+            items={[
+              { id: "all", label: common("all"), value: pagination.total },
+              { id: "active", label: statusLabels.active, value: activeJobs },
+              { id: "draft", label: statusLabels.draft, value: draftJobs },
+              { id: "closed", label: statusLabels.closed, value: statusCounts.closed ?? 0 },
+            ]}
+          />
 
           {/* Expandable filter content */}
           <div
+            id="agent-job-advanced-filters"
             className={`grid transition-all duration-300 ease-in-out ${filtersOpen ? "mt-4 grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
           >
             <div className="overflow-hidden">
@@ -342,7 +324,7 @@ export default function AgentJobsPage() {
                 aria-expanded={aiOpen}
                 className={`mb-3 inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${
                   aiOpen
-                    ? "border-violet-500/30 bg-violet-500/10 text-status-interview dark:text-violet-300"
+                    ? "border-violet-500/30 bg-violet-500/10 text-status-interview"
                     : "border-border/60 text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -394,10 +376,10 @@ export default function AgentJobsPage() {
 
                 {/* AI summary banner */}
                 {aiSummary && (
-                  <div className="flex items-center gap-2 rounded-xl border border-status-interview/20 bg-violet-50/60 px-3 py-2 dark:border-violet-800/40 dark:bg-violet-950/30">
-                    <Sparkles className="h-3.5 w-3.5 shrink-0 text-status-interview dark:text-violet-400" />
-                    <p className="flex-1 text-xs text-status-interview dark:text-violet-300">{aiSummary}</p>
-                    <button onClick={clearAiFilters} className="shrink-0 rounded p-0.5 hover:bg-violet-200/60 dark:hover:bg-violet-800/40">
+                  <div className="flex items-center gap-2 rounded-xl border border-status-interview/20 bg-violet-50/60 chip-pad">
+                    <Sparkles className="h-3.5 w-3.5 shrink-0 text-status-interview" />
+                    <p className="flex-1 text-xs text-status-interview">{aiSummary}</p>
+                    <button onClick={clearAiFilters} className="shrink-0 rounded p-0.5 hover:bg-violet-200/60">
                       <X className="h-3.5 w-3.5 text-violet-500" />
                     </button>
                   </div>
@@ -409,40 +391,7 @@ export default function AgentJobsPage() {
               {/* Manual Filters */}
               {/* Wraps on phones so the status tabs and the employer dropdown
                   share a line instead of each claiming a row. */}
-              <div className="flex flex-wrap items-center gap-2 lg:grid lg:gap-3 lg:grid-cols-[minmax(0,1fr)_auto]" data-table-toolbar="simple">
-                {/* Text search */}
-                {/* Keeps its own line — the shared .toolbar-search-field rule
-                    would shrink it into the tab row. */}
-                <div className="relative min-w-0 basis-full lg:basis-auto">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder={t("filters.searchPlaceholder")}
-                    className="h-11 rounded-xl border-border bg-secondary/65 pl-9 text-sm text-foreground shadow-none placeholder:text-muted-foreground"
-                  />
-                </div>
-                {/* Status tabs — share the line with the employer dropdown. */}
-                <div className="flex flex-1 basis-[56%] flex-wrap items-center gap-1.5 sm:basis-auto sm:gap-2">
-                  {STATUS_TABS.map((value) => {
-                    const isSelected = statusFilter === value;
-                    return (
-                      <Button
-                        key={value || "all"}
-                        onClick={() => setStatusFilter(value)}
-                        variant="outline"
-                        size="sm"
-                        className={isSelected
-                          ? "h-11 rounded-xl border-primary/20 bg-primary/10 !px-2 !text-[10px] text-primary hover:bg-primary/15 sm:!px-4 sm:!text-sm"
-                          : "h-11 rounded-xl border-border bg-secondary/65 !px-2 !text-[10px] text-muted-foreground hover:bg-card sm:!px-4 sm:!text-sm"
-                        }
-                      >
-                        {value ? statusLabels[value] ?? value : common("all")}
-                      </Button>
-                    );
-                  })}
-                </div>
-
+              <div className="flex flex-wrap items-center gap-2" data-table-toolbar="simple">
                 {/* Employer filter */}
                 {employers.length > 0 && (
                   <div className="flex min-w-0 max-w-[40%] shrink flex-nowrap items-center gap-1 sm:max-w-none sm:gap-1.5">
@@ -466,11 +415,11 @@ export default function AgentJobsPage() {
         </section>
 
       {/* ──────── JOB TABLE ──────── */}
-      <section className="workspace-panel-surface rounded-[28px] panel-body">
+      <section className="workspace-panel-surface rounded-3xl panel-body">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("results.eyebrow")}</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("results.title")}</h2>
+            <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("results.title")}</h2>
           </div>
           {/* Export sits beside the result count. On its own line above the
               table it read as an orphaned button floating in empty space. */}
@@ -487,7 +436,7 @@ export default function AgentJobsPage() {
           </div>
         </div>
 
-        <div className="mt-5 overflow-hidden rounded-[24px] border border-border bg-card">
+        <div className="mt-5 overflow-hidden rounded-3xl border border-border bg-card">
           {loading ? (
             <Table>
               <TableHeader>

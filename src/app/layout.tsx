@@ -1,16 +1,15 @@
 import type { Metadata, Viewport } from "next";
 import type React from "react";
-import { Inter, Noto_Sans_Arabic, Noto_Sans_Malayalam } from "next/font/google";
+import { Manrope, Noto_Sans_Arabic, Noto_Sans_Malayalam } from "next/font/google";
 import { headers } from "next/headers";
-import { ThemeProvider } from "@/components/shared/ThemeProvider";
 import { ServiceWorkerRegistration } from "@/components/shared/ServiceWorkerRegistration";
 import { ResponsiveTables } from "@/components/shared/ResponsiveTables";
 import "@/app/globals.css";
-import { getThemeInitializationScript } from "@/lib/theme";
+import { getStorageFallbackScript } from "@/lib/storage-fallback";
 
-const inter = Inter({
+const manrope = Manrope({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-manrope",
   display: "swap",
   preload: true,
 });
@@ -30,10 +29,7 @@ const notoMalayalam = Noto_Sans_Malayalam({
 });
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#0f172a" },
-  ],
+  themeColor: "#ffffff",
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
@@ -90,7 +86,7 @@ export default async function RootLayout({
             browsers blank out the nonce content attribute after load, which
             otherwise produces a server/client hydration mismatch. */}
         <script
-          id="theme-init"
+          id="storage-fallback-init"
           async
           suppressHydrationWarning
           nonce={nonce}
@@ -98,19 +94,19 @@ export default async function RootLayout({
             // __webpack_nonce__ lets runtime style injectors (react-style-singleton,
             // used by Radix dialogs for scroll-lock) tag their <style> with the CSP
             // nonce — without it the app's own CSP blocks those styles.
-            __html: getThemeInitializationScript() + (nonce ? `;window.__webpack_nonce__=${JSON.stringify(nonce)};` : ""),
+            __html:
+              getStorageFallbackScript() +
+              (nonce ? `;window.__webpack_nonce__=${JSON.stringify(nonce)};` : ""),
           }}
         />
       </head>
       <body
         suppressHydrationWarning
-        className={`${inter.variable} ${notoArabic.variable} ${notoMalayalam.variable} font-sans antialiased`}
+        className={`${manrope.variable} ${notoArabic.variable} ${notoMalayalam.variable} font-sans antialiased`}
         {...(nonce ? { "data-nonce": nonce } : {})}
       >
-        <ThemeProvider>
-          {children}
-          <ResponsiveTables />
-        </ThemeProvider>
+        {children}
+        <ResponsiveTables />
         <ServiceWorkerRegistration />
       </body>
     </html>

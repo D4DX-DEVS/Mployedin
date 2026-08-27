@@ -26,6 +26,7 @@ import { RevenueAnalyticsPanel } from "@/components/features/invoices/RevenueAna
 import {
   SuperAgentPageIntro,
 } from "@/components/features/super-agent/WorkspacePage";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface Invoice {
@@ -72,11 +73,6 @@ export default function SuperAgentInvoicesPage() {
   const [analyticsPeriod, setAnalyticsPeriod] = useState("30d");
   const { data: analyticsData, loading: analyticsLoading, refresh: refreshAnalytics } = useInvoiceAnalytics(analyticsPeriod);
 
-  const [summary, setSummary] = useState({
-    draft: 0, pending_approval: 0, issued: 0, paid: 0, partially_paid: 0, overdue: 0,
-    totalAmount: 0, totalPaid: 0, totalBalance: 0,
-  });
-
   const fetchInvoices = useCallback(async () => {
     setLoading(true);
     setErrorMessage(null);
@@ -91,9 +87,8 @@ export default function SuperAgentInvoicesPage() {
       const data = await res.json();
       setInvoices(data.invoices ?? []);
       updateTotal(data.total ?? 0);
-      if (data.summary) setSummary(data.summary);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : t("failedToLoad");
+      const msg = t("failedToLoad");
       setErrorMessage(msg);
       toast.error(msg);
     } finally {
@@ -105,7 +100,6 @@ export default function SuperAgentInvoicesPage() {
   useEffect(() => { document.title = t("pageTitle"); }, [t]);
 
   const hasActiveFilters = Boolean(statusFilter || categoryFilter || dateFrom || dateTo);
-  const fmt = (v: number) => `${displayCurrency} ${v.toLocaleString()}`;
 
   const exportColumns: ExportColumn<Invoice>[] = [
     { header: t("invoiceNumber"), key: "invoiceNumber" },
@@ -122,7 +116,7 @@ export default function SuperAgentInvoicesPage() {
       return sc ? `${sc.rate}% = ${sc.amount}` : "—";
     }},
     { header: tc("status"), key: "status" },
-    { header: t("dueDate"), key: "dueDate" as keyof Invoice, formatter: v => v ? new Date(String(v)).toLocaleDateString() : "—" },
+    { header: t("dueDate"), key: "dueDate" as keyof Invoice, formatter: v => v ? formatDate(new Date(String(v))) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: invoices as unknown as Record<string, unknown>[],
@@ -160,9 +154,6 @@ export default function SuperAgentInvoicesPage() {
       <SuperAgentPageIntro
         title={t("heroTitle")}
         description={t("heroDescription")}
-        eyebrow={tc("superAgentWorkspace")}
-        summaryTitle={t("summaryTitle")}
-        summaryDescription={t("summaryDescription", { total: total.toLocaleString(), paid: fmt(summary.totalPaid) })}
       >
         <div className="flex items-center gap-2">
           <Button onClick={() => router.push(`/${locale}/super-agent/invoices/new`)} className="h-10 gap-1.5 rounded-xl text-xs font-semibold">
@@ -215,7 +206,7 @@ export default function SuperAgentInvoicesPage() {
                 <button key={p} onClick={() => setAnalyticsPeriod(p)} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${analyticsPeriod === p ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}>{p === "1y" ? t("periodOneYear") : p}</button>
               ))}
             </div>
-            <Button variant="outline" size="sm" onClick={refreshAnalytics} className="h-8 gap-1.5 rounded-lg text-xs"><RefreshCw className="h-3.5 w-3.5" /> {t("refresh")}</Button>
+            <Button variant="outline" size="dense" onClick={refreshAnalytics} className="gap-1.5 rounded-lg text-xs"><RefreshCw className="h-3.5 w-3.5" /> {t("refresh")}</Button>
           </div>
           {analyticsData && <RevenueAnalyticsPanel data={analyticsData} currency={displayCurrency} />}
           {analyticsLoading && <div className="py-12 text-center text-sm text-muted-foreground">{tc("loading")}</div>}
@@ -225,12 +216,12 @@ export default function SuperAgentInvoicesPage() {
       {/* Table View */}
       {activeView === "table" && (
         <>
-          {errorMessage && <div className="rounded-2xl border border-rose-200 bg-rose-50/90 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">{errorMessage}</div>}
+          {errorMessage && <div className="rounded-2xl border border-rose-200 bg-rose-50/90 px-4 py-3 text-sm text-rose-700">{errorMessage}</div>}
 
-          <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-[24px]">
+          <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-3xl">
             <div className="flex flex-col gap-2 border-b border-border/80 panel-head">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("ledgerLabel")}</p>
-              <h3 className="text-lg font-semibold text-foreground">{t("tableTitle")}</h3>
+              <h3 className="heading-subsection font-semibold text-foreground">{t("tableTitle")}</h3>
             </div>
             <InvoiceTable
               invoices={invoices}

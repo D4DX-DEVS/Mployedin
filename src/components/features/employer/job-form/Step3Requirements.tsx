@@ -85,9 +85,9 @@ export function Step3Requirements({ suggestedSkills = [] }: Step3RequirementsPro
       transition={{ duration: 0.25 }}
       className="space-y-3 sm:space-y-5"
     >
-      <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-muted/20 p-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-muted/20 lg:flex-row lg:items-center lg:justify-between card-pad">
         <div className="space-y-1">
-          <h2 className="text-lg font-semibold text-foreground">{t("title")}</h2>
+          <h2 className="heading-section font-semibold text-foreground">{t("title")}</h2>
           <p className="text-sm text-muted-foreground">
             {t("description")}
           </p>
@@ -109,7 +109,7 @@ export function Step3Requirements({ suggestedSkills = [] }: Step3RequirementsPro
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(17rem,0.9fr)]">
-        <div className="space-y-3 rounded-2xl border border-border bg-background p-4 shadow-sm">
+        <div className="space-y-3 rounded-2xl border border-border bg-background shadow-sm card-pad">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-foreground">{t("requiredSkills")}</p>
@@ -133,7 +133,7 @@ export function Step3Requirements({ suggestedSkills = [] }: Step3RequirementsPro
           />
 
           {quickAddChips.length > 0 && (
-            <div className="space-y-2 rounded-xl border border-dashed border-primary/30 bg-primary/[0.03] p-3">
+            <div className="space-y-2 rounded-xl border border-dashed border-primary/30 bg-primary/[0.03] chip-pad">
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Zap className="w-3.5 h-3.5 text-primary" />
                 <span className="font-medium">{t("suggestedFromAi")}</span>
@@ -160,7 +160,7 @@ export function Step3Requirements({ suggestedSkills = [] }: Step3RequirementsPro
         </div>
 
         {/* Preferred / Nice-to-have Skills */}
-        <div className="space-y-3 rounded-2xl border border-dashed border-border/70 bg-background/60 p-4 shadow-sm">
+        <div className="space-y-3 rounded-2xl border border-dashed border-border/70 bg-background/60 shadow-sm card-pad">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-foreground">
@@ -186,7 +186,7 @@ export function Step3Requirements({ suggestedSkills = [] }: Step3RequirementsPro
           />
         </div>
 
-        <div className="space-y-3 rounded-2xl border border-border bg-background p-4 shadow-sm">
+        <div className="space-y-3 rounded-2xl border border-border bg-background shadow-sm card-pad">
           <div>
             <Label className="text-sm font-semibold">{t("experienceRange")}</Label>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -195,7 +195,7 @@ export function Step3Requirements({ suggestedSkills = [] }: Step3RequirementsPro
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
+            <div className="field">
               <Label htmlFor="exp-min" className="text-xs text-muted-foreground">
                 {t("minimumYears")}
               </Label>
@@ -208,7 +208,7 @@ export function Step3Requirements({ suggestedSkills = [] }: Step3RequirementsPro
                 className={cn(errors.requirements?.experienceMin && "border-destructive")}
               />
             </div>
-            <div className="space-y-1.5">
+            <div className="field">
               <Label htmlFor="exp-max" className="text-xs text-muted-foreground">
                 {t("maximumYears")}
               </Label>
@@ -250,7 +250,7 @@ export function Step3Requirements({ suggestedSkills = [] }: Step3RequirementsPro
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="rounded-xl border border-border/70 bg-muted/30 p-3"
+              className="rounded-xl border border-border/70 bg-muted/30 chip-pad"
             >
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>{t("candidateFitRange")}</span>
@@ -275,7 +275,7 @@ export function Step3Requirements({ suggestedSkills = [] }: Step3RequirementsPro
         </div>
 
         {/* Education / Minimum Qualification */}
-        <div className="space-y-3 rounded-2xl border border-border bg-background p-4 shadow-sm">
+        <div className="space-y-3 rounded-2xl border border-border bg-background shadow-sm card-pad">
           <div>
             <Label htmlFor="education" className="text-sm font-semibold">
               {t("education")}{" "}

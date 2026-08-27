@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { signIn, getSession } from "next-auth/react";
 import { signInWithPopup } from "firebase/auth";
 import { firebaseAuth, googleProvider } from "@/lib/firebase/client";
@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowRight, Eye, EyeOff, Loader2, LockKeyhole, ShieldCheck } from "lucide-react";
+import { AlertCircle, ArrowRight, Eye, EyeOff, Loader2, LockKeyhole, ShieldCheck } from "lucide-react";
 
 const REMEMBER_ME_KEY = "mployedin_remember_email";
 const ROLE_REDIRECTS: Record<string, string> = {
@@ -22,6 +22,20 @@ const ROLE_REDIRECTS: Record<string, string> = {
   agent: "agent",
   super_agent: "super-agent",
 };
+
+type LoginErrorKind =
+  | "credentials"
+  | "two-factor"
+  | "locked"
+  | "rate-limit"
+  | "service"
+  | "session"
+  | "oauth";
+
+interface LoginErrorState {
+  kind: LoginErrorKind;
+  message: string;
+}
 
 function getPostSignInPath(locale: string, role: string, isOnboarded: boolean): string {
   if (role === "job_seeker" && !isOnboarded) {
@@ -57,7 +71,7 @@ export default function LoginPage() {
   const t = useTranslations("auth");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState<LoginErrorState | null>(null);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [linkedInLoading, setLinkedInLoading] = useState(false);
@@ -66,6 +80,7 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [totpCode, setTotpCode] = useState("");
   const [requires2fa, setRequires2fa] = useState(false);
+  const errorRef = useRef<HTMLDivElement>(null);
   const anyLoading = loading || googleLoading || linkedInLoading || appleLoading;
 
   useEffect(() => {
@@ -82,18 +97,22 @@ export default function LoginPage() {
 
     const reason = params.get("reason");
     if (reason === "idle") {
-      setError(t("sessionExpiredInactivity"));
+      setError({ kind: "session", message: t("sessionExpiredInactivity") });
     }
     const oauthError = params.get("error");
     if (oauthError === "OAuthAccountNotLinked") {
-      setError(t("oauthAccountNotLinked"));
+      setError({ kind: "oauth", message: t("oauthAccountNotLinked") });
     } else if (oauthError) {
-      setError(t("oauthError"));
+      setError({ kind: "oauth", message: t("oauthError") });
     }
   }, [t]);
 
+  useEffect(() => {
+    if (error) errorRef.current?.focus();
+  }, [error]);
+
   async function handleGoogleSignIn() {
-    setError("");
+    setError(null);
     setGoogleLoading(true);
     try {
       const result = await signInWithPopup(firebaseAuth, googleProvider);
@@ -101,7 +120,7 @@ export default function LoginPage() {
 
       const res = await signIn("firebase", { idToken, redirect: false });
       if (res?.error) {
-        setError(t("googleSignInFailed"));
+        setError({ kind: "oauth", message: t("googleSignInFailed") });
         return;
       }
 
@@ -110,7 +129,7 @@ export default function LoginPage() {
       const isOnboarded = (session?.user as Record<string, unknown>)?.isOnboarded as boolean ?? true;
       router.replace(getSafeCallbackPath(locale) ?? getPostSignInPath(locale, role, isOnboarded));
     } catch {
-      setError(t("googleSignInFailed"));
+      setError({ kind: "oauth", message: t("googleSignInFailed") });
     } finally {
       setGoogleLoading(false);
     }
@@ -118,7 +137,7 @@ export default function LoginPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
+    setError(null);
     setLoading(true);
 
     if (rememberMe) {
@@ -144,18 +163,26 @@ export default function LoginPage() {
         }
         if (code === "2fa_invalid") {
           setRequires2fa(true);
-          setError(t("invalidTwoFactorCode"));
+          setError({ kind: "two-factor", message: t("invalidTwoFactorCode") });
           return;
         }
         if (code === "account_locked") {
-          setError(t("accountLocked"));
+          setError({ kind: "locked", message: t("accountLocked") });
           return;
         }
         if (code === "login_rate_limited") {
-          setError(t("loginRateLimited"));
+          setError({ kind: "rate-limit", message: t("loginRateLimited") });
           return;
         }
-        setError(t("invalidCredentials"));
+        if (code === "authentication_unavailable") {
+          setError({ kind: "service", message: t("authenticationUnavailable") });
+          return;
+        }
+        if (!code || code === "credentials") {
+          setError({ kind: "credentials", message: t("invalidCredentials") });
+          return;
+        }
+        setError({ kind: "service", message: t("authenticationUnavailable") });
         return;
       }
 
@@ -164,7 +191,7 @@ export default function LoginPage() {
       const isOnboarded = (session?.user as Record<string, unknown>)?.isOnboarded as boolean ?? true;
       router.replace(getSafeCallbackPath(locale) ?? getPostSignInPath(locale, role, isOnboarded));
     } catch {
-      setError(t("somethingWentWrong"));
+      setError({ kind: "service", message: t("somethingWentWrong") });
     } finally {
       setLoading(false);
     }
@@ -198,10 +225,10 @@ export default function LoginPage() {
         </p>
       </div>
 
-      <Button
+      <Button size="lg"
         variant="outline"
         type="button"
-        className="h-11 w-full rounded-xl border-border bg-card font-semibold shadow-sm transition-all hover:border-primary/30 hover:bg-primary/[0.04]"
+        className="w-full rounded-xl border-border bg-card font-semibold shadow-sm transition-all hover:border-primary/30 hover:bg-primary/[0.04]"
         onClick={handleGoogleSignIn}
         disabled={anyLoading}
       >
@@ -228,7 +255,7 @@ export default function LoginPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-3">
-        <div className="space-y-1.5">
+        <div className="field">
           <Label htmlFor="email" className="text-sm font-medium">{t("emailAddress")}</Label>
           <Input
             id="email"
@@ -239,8 +266,6 @@ export default function LoginPage() {
             required
             autoComplete="email"
             autoFocus
-            aria-invalid={Boolean(error)}
-            aria-describedby={error ? "login-error" : undefined}
             className="h-11 rounded-xl border-border/70 bg-background/70 px-4 transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/15"
           />
         </div>
@@ -264,14 +289,12 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               autoComplete="current-password"
-              aria-invalid={Boolean(error)}
-              aria-describedby={error ? "login-error" : undefined}
               className="h-11 rounded-xl border-border/70 bg-background/70 px-4 pe-11 transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/15"
             />
             <button
               type="button"
               onClick={() => setShowPassword((v) => !v)}
-              className="absolute inset-y-0 end-3 flex items-center text-muted-foreground transition-colors hover:text-foreground"
+              className="absolute inset-y-0 end-0 flex min-h-11 min-w-11 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
               aria-label={showPassword ? t("hidePassword") : t("showPassword")}
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -280,7 +303,7 @@ export default function LoginPage() {
         </div>
 
         {requires2fa && (
-          <div className="space-y-2 rounded-xl border border-primary/20 bg-primary/[0.04] p-4">
+          <div className="field rounded-xl border border-primary/20 bg-primary/[0.04] card-pad">
             <Label htmlFor="totp-code" className="text-sm font-medium">{t("twoFactorCode")}</Label>
             <p className="text-xs text-muted-foreground">{t("twoFactorPrompt")}</p>
             <Input
@@ -295,6 +318,8 @@ export default function LoginPage() {
               required
               maxLength={6}
               pattern="[0-9]{6}"
+              aria-invalid={error?.kind === "two-factor"}
+              aria-describedby={error?.kind === "two-factor" ? "login-error" : undefined}
               className="h-11 rounded-xl border-border/70 bg-background/70 px-4 text-center text-lg tracking-[0.4em] transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/15"
             />
           </div>
@@ -312,14 +337,42 @@ export default function LoginPage() {
         </div>
 
         {error && (
-          <div id="login-error" role="alert" aria-live="polite" className="rounded-xl border border-destructive/20 bg-destructive/10 p-3">
-            <p className="text-center text-sm font-medium text-destructive">{error}</p>
+          <div
+            ref={errorRef}
+            id="login-error"
+            role="alert"
+            aria-live="assertive"
+            tabIndex={-1}
+            className="rounded-xl border border-destructive/30 bg-destructive/10 p-3.5 outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2"
+          >
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" aria-hidden="true" />
+              <div className="min-w-0 space-y-2">
+                <p className="text-sm font-medium leading-5 text-destructive">{error.message}</p>
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  {(error.kind === "credentials" || error.kind === "locked" || error.kind === "rate-limit") && (
+                    <Link
+                      href={`/${locale}/forgot-password`}
+                      className="inline-flex min-h-11 items-center text-sm font-semibold text-destructive underline underline-offset-4"
+                    >
+                      {t("resetPasswordAction")}
+                    </Link>
+                  )}
+                  <Link
+                    href={`/${locale}/contact`}
+                    className="inline-flex min-h-11 items-center text-sm font-semibold text-destructive underline underline-offset-4"
+                  >
+                    {t("getSignInHelp")}
+                  </Link>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
-        <Button
+        <Button size="lg"
           type="submit"
-          className="h-11 w-full rounded-xl text-sm font-semibold shadow-lg shadow-primary/20 transition-all hover:-translate-y-0.5"
+          className="w-full rounded-xl text-sm font-semibold shadow-lg shadow-primary/20 transition-all hover:-translate-y-0.5"
           disabled={anyLoading}
         >
           {loading ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : <ArrowRight className="me-2 h-4 w-4" />}
@@ -328,11 +381,11 @@ export default function LoginPage() {
       </form>
 
       <div className="grid grid-cols-2 gap-3">
-        <Button
+        <Button size="lg"
           variant="outline"
           type="button"
-          className="h-10 rounded-xl border-border/70 bg-background/60 text-sm font-medium transition-colors hover:bg-muted/60"
-          onClick={() => { setAppleLoading(true); setError(""); signIn("apple", { callbackUrl: getOAuthRedirectUrl(locale) }); }}
+          className="rounded-xl border-border/70 bg-background/60 text-sm font-medium transition-colors hover:bg-muted/60"
+          onClick={() => { setAppleLoading(true); setError(null); signIn("apple", { callbackUrl: getOAuthRedirectUrl(locale) }); }}
           disabled={anyLoading}
         >
           {appleLoading ? (
@@ -344,11 +397,11 @@ export default function LoginPage() {
           )}
           Apple
         </Button>
-        <Button
+        <Button size="lg"
           variant="outline"
           type="button"
-          className="h-10 rounded-xl border-border/70 bg-background/60 text-sm font-medium transition-colors hover:bg-muted/60"
-          onClick={() => { setLinkedInLoading(true); setError(""); signIn("linkedin", { callbackUrl: getOAuthRedirectUrl(locale) }); }}
+          className="rounded-xl border-border/70 bg-background/60 text-sm font-medium transition-colors hover:bg-muted/60"
+          onClick={() => { setLinkedInLoading(true); setError(null); signIn("linkedin", { callbackUrl: getOAuthRedirectUrl(locale) }); }}
           disabled={anyLoading}
         >
           {linkedInLoading ? (

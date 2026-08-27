@@ -97,7 +97,7 @@ export default function EmployerSubscriptionPage() {
             <span>{t("displayCurrency")}</span>
             <CurrencySelector value={displayCurrency} onChange={setDisplayCurrency} />
             {rateSource === "live" && (
-              <span className="text-[10px] text-emerald-500" title={t("a11yLiveExchangeRates")}>● live</span>
+              <span className="text-[11px] text-emerald-500" title={t("a11yLiveExchangeRates")}>● live</span>
             )}
           </div>
         }
@@ -136,7 +136,6 @@ function ActiveView({
   const limits = snap?.employerLimits as Record<string, unknown> | undefined;
   const usage = subscription.usage;
   const remaining = daysUntil(subscription.endDate);
-  const currentTier = snap?.tier ?? 0;
 
   const usageItems = [
     { label: t("activeJobs"), icon: <Briefcase className="h-5 w-5" />, used: usage?.activeJobs ?? 0, max: (limits?.maxActiveJobs as number) ?? 0 },
@@ -166,7 +165,7 @@ function ActiveView({
   return (
     <div className="space-y-3 sm:space-y-6">
       {/* ── 1. Current Plan ── */}
-      <section className="rounded-2xl border border-border/60 bg-card p-6">
+      <section className="rounded-2xl border border-border/60 bg-card panel-body">
         <div className="flex flex-col sm:flex-row sm:items-start gap-4">
           <div className="flex items-start gap-3 flex-1">
             <div className="h-12 w-12 rounded-2xl bg-sky-500/10 flex items-center justify-center shrink-0">
@@ -174,7 +173,7 @@ function ActiveView({
             </div>
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <h3 className="text-xl font-bold">{snap?.name ?? "Unknown"}</h3>
+                <h3 className="heading-subsection font-bold">{snap?.name ?? "Unknown"}</h3>
                 <Badge className={subscription.status === "active" ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/30" : "bg-amber-500/10 text-amber-600 border border-amber-500/30"}>
                   {subscription.status === "active" ? t("active") : subscription.status}
                 </Badge>
@@ -191,11 +190,12 @@ function ActiveView({
               <p className="font-medium">{formatDate(subscription.endDate)} {t("daysRemaining", { days: remaining })}</p>
             </div>
             <div>
-              <p className="text-muted-foreground text-xs">{t("autoRenew")}</p>
+              <p className="text-muted-foreground text-xs" id="autoRenewLabel">{t("autoRenew")}</p>
               <div className="flex items-center gap-2 mt-0.5">
                 <Switch
                   checked={subscription.autoRenew}
                   onCheckedChange={() => toast.info(t("autoRenewAdminOnly"))}
+                  aria-labelledby="autoRenewLabel"
                 />
                 <span className="text-sm font-medium">{subscription.autoRenew ? t("enabled") : t("disabled")}</span>
               </div>
@@ -216,27 +216,28 @@ function ActiveView({
       </section>
 
       {/* ── 2. Usage Overview ── */}
-      <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-3 sm:space-y-4">
+      <section className="rounded-2xl border border-border/60 bg-card space-y-2 sm:space-y-3 panel-body">
         <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
           <BarChart3 className="h-4 w-4" /> {t("usageOverview")}
         </h4>
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-3">
           {usageItems.map((u) => {
             const unlimited = u.max === -1;
             const pct = unlimited ? 0 : pctUsed(u.used, u.max);
             return (
-              <div key={u.label} className={`rounded-xl border p-4 ${pct >= 80 ? "border-amber-500/40" : "border-border/40"}`}>
-                <div className="flex items-center gap-2 mb-3">
-                  <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${barBg(pct)}`}>{u.icon}</div>
-                  <span className="text-sm font-medium">{u.label}</span>
-                </div>
-                <div className="flex items-baseline justify-between mb-2">
-                  <p className="text-2xl font-bold">{u.used}<span className="text-sm font-normal text-muted-foreground"> / {unlimited ? "∞" : u.max}</span></p>
+              <div key={u.label} className={`rounded-xl border ${pct >= 80 ? "border-amber-500/40" : "border-border/40"} chip-pad`}>
+                {/* Icon, label, count and percentage share one row; only the
+                    bar sits below. Stacked in three blocks these cards ran
+                    104px tall for two short numbers. */}
+                <div className="flex items-center gap-2">
+                  <div className={`h-8 w-8 shrink-0 rounded-lg flex items-center justify-center ${barBg(pct)}`}>{u.icon}</div>
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{u.label}</span>
+                  <p className="shrink-0 text-lg font-bold leading-none">{u.used}<span className="text-xs font-normal text-muted-foreground"> / {unlimited ? "∞" : u.max}</span></p>
                   {!unlimited && u.max > 0 && (
-                    <span className={`text-xs font-medium ${pct >= 100 ? "text-red-500" : pct >= 80 ? "text-amber-500" : "text-muted-foreground"}`}>{pct}% used</span>
+                    <span className={`shrink-0 text-[11px] font-medium ${pct >= 100 ? "text-red-500" : pct >= 80 ? "text-amber-500" : "text-muted-foreground"}`}>{pct}%</span>
                   )}
                 </div>
-                <div className="h-2 rounded-full bg-muted">
+                <div className="mt-2 h-2 rounded-full bg-muted">
                   <div className={`h-full rounded-full transition-all ${barColor(pct)}`} style={{ width: `${unlimited ? 5 : Math.max(pct, 2)}%` }} />
                 </div>
               </div>
@@ -244,7 +245,7 @@ function ActiveView({
           })}
         </div>
         {hasWarning && (
-          <div className="flex items-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3">
+          <div className="flex items-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 chip-pad">
             <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
             <p className="text-sm text-muted-foreground flex-1">{t("nearingLimitsWarning")}</p>
             <Button size="sm" variant="outline" className="shrink-0 border-amber-500/40 text-amber-600 hover:bg-amber-500/10" onClick={() => toast.info(t("contactAdminToUpgrade"))}>{t("upgradePlanButton")}</Button>
@@ -254,15 +255,15 @@ function ActiveView({
 
       {/* ── 3. Choose Your Plan ── */}
       {plans.length > 0 && (
-        <section className="space-y-3 sm:space-y-4">
+        <section className="space-y-2 sm:space-y-3">
           <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><Crown className="h-4 w-4" /> {t("chooseYourPlan")}</h4>
-          <PricingGrid plans={plans} currentTier={currentTier} displayCurrency={displayCurrency} rates={rates} />
+          <PricingGrid plans={plans} currentPlanId={subscription.planId} displayCurrency={displayCurrency} rates={rates} />
         </section>
       )}
 
       {/* ── 4. Included / Locked Features ── */}
       <div className="grid gap-4 lg:grid-cols-2">
-        <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-3">
+        <section className="rounded-2xl border border-border/60 bg-card space-y-3 panel-body">
           <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><Check className="h-4 w-4 text-emerald-500" /> {t("includedInPlan")}</h4>
           <ul className="space-y-2.5">
             {included.map((f) => (
@@ -277,7 +278,7 @@ function ActiveView({
           </ul>
         </section>
         {locked.length > 0 && (
-          <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-3">
+          <section className="rounded-2xl border border-border/60 bg-card space-y-3 panel-body">
             <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><X className="h-4 w-4 text-muted-foreground/50" /> {t("notIncluded")}</h4>
             <ul className="space-y-2.5">
               {locked.map((f) => (
@@ -298,7 +299,7 @@ function ActiveView({
       {invoices.length > 0 && <InvoiceSection invoices={invoices} displayCurrency={displayCurrency} rates={rates} />}
 
       {/* ── 6. Payment Method ── */}
-      <section className="rounded-2xl border border-border/60 bg-card p-6">
+      <section className="rounded-2xl border border-border/60 bg-card panel-body">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <CreditCard className="h-5 w-5 text-muted-foreground" />
@@ -321,10 +322,10 @@ function NoPlanView({ plans, displayCurrency, rates }: { plans: AvailablePlan[];
   const { mutate: selfAssign, isPending } = useSelfAssignFreePlan();
   return (
     <div className="space-y-3 sm:space-y-6">
-      <section className="rounded-2xl border border-sky-500/30 bg-gradient-to-br from-sky-500/5 to-transparent p-6 flex items-start gap-4">
+      <section className="rounded-2xl border border-sky-500/30 bg-gradient-to-br from-sky-500/5 to-transparent flex items-start gap-4 panel-body">
         <div className="h-12 w-12 rounded-2xl bg-sky-500/10 flex items-center justify-center shrink-0"><Crown className="h-6 w-6 text-sky-500" /></div>
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-lg">{t("welcomeToMployedin")}</h3>
+          <h3 className="heading-subsection font-semibold">{t("welcomeToMployedin")}</h3>
           <p className="text-sm text-muted-foreground mt-1">{t("activateFreeDescription")}</p>
         </div>
         <Button onClick={() => selfAssign()} disabled={isPending} className="shrink-0">{isPending ? t("activating") : t("activateFreePlan")}</Button>
@@ -347,12 +348,12 @@ function InvoiceSection({ invoices, displayCurrency, rates }: { invoices: Invoic
   const visible = expanded ? invoices : invoices.slice(0, 3);
 
   return (
-    <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-3 sm:space-y-4">
+    <section className="rounded-2xl border border-border/60 bg-card space-y-3 sm:space-y-4 panel-body">
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><FileText className="h-4 w-4" /> {t("billingAndInvoices")}</h4>
         <span className="text-xs text-muted-foreground">{t("invoiceCountLabel", { count: invoices.length })}</span>
       </div>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto" tabIndex={0}>
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-xs text-muted-foreground border-b border-border/40">

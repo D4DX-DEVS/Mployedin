@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Filter } from "lucide-react";
 import type { FunnelStage } from "./useSubscriptionDashboard";
 
@@ -19,18 +19,19 @@ const TIER_COLORS: Record<string, string> = {
   Platinum: "bg-violet-500",
 };
 
-function formatNumber(n: number) {
-  return new Intl.NumberFormat("en-US").format(n);
+function formatNumber(n: number, locale: string) {
+  return new Intl.NumberFormat(locale).format(n);
 }
 
 export function SubscriptionFunnel({ employer, jobSeeker }: SubscriptionFunnelProps) {
   const t = useTranslations("subscriptionFunnel");
+  const locale = useLocale();
   const [tab, setTab] = useState<"employer" | "jobSeeker">("employer");
   const stages = tab === "employer" ? employer : jobSeeker;
   const maxCount = stages.length > 0 ? Math.max(...stages.map((s) => s.count)) : 1;
 
   return (
-    <section className="rounded-2xl border border-border/60 bg-card p-6">
+    <section className="rounded-2xl border border-border/60 bg-card panel-body">
       <div className="flex items-center justify-between mb-6">
         <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
           <Filter className="h-4 w-4" /> {t("planSplit")}
@@ -61,13 +62,16 @@ export function SubscriptionFunnel({ employer, jobSeeker }: SubscriptionFunnelPr
         <div className="space-y-3">
           {stages.map((stage, i) => {
             const widthPct = maxCount > 0 ? (stage.count / maxCount) * 100 : 0;
-            const color = TIER_COLORS[stage.name] ?? "bg-sky-500";
+            const label = stage.labelKey
+              ? t(stage.labelKey, { tier: stage.tier ?? 0 })
+              : stage.name;
+            const color = TIER_COLORS[stage.labelKey === "stageTotal" ? "Total" : stage.name] ?? "bg-sky-500";
             return (
-              <div key={stage.name} className="group">
+              <div key={`${stage.labelKey ?? stage.name}-${i}`} className="group">
                 <div className="flex items-center justify-between text-sm mb-1.5">
-                  <span className="font-medium">{stage.name}</span>
+                  <span className="font-medium">{label}</span>
                   <div className="flex items-center gap-3">
-                    <span className="font-semibold">{formatNumber(stage.count)}</span>
+                    <span className="font-semibold">{formatNumber(stage.count, locale)}</span>
                     <span className="text-muted-foreground text-xs w-14 text-right">
                       ({stage.percentage}%)
                     </span>

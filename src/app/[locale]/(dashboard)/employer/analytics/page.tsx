@@ -168,16 +168,11 @@ export default function EmployerAnalyticsPage() {
 
   const activeTabMeta = ANALYTICS_TABS.find((t) => t.key === activeTab) || ANALYTICS_TABS[0];
 
+  // Only figures the funnel below does NOT already show. "Total applied" and
+  // "Hired" lived here as well as in the Applied→Hired stage cards.
   const headlineMetrics =
     activeTab === "pipeline" && data && pipeline
       ? [
-          {
-            label: t("totalApplied"),
-            value: data.conversion.applied,
-            description: t("totalAppliedDesc"),
-            icon: Users,
-            color: "blue",
-          },
           {
             label: t("inPipeline"),
             value: Math.max(0, data.conversion.applied - data.conversion.hired - (pipeline.perJob.reduce((sum, j) => sum + (j.stages.find((s) => s.status === "rejected")?.count || 0), 0))),
@@ -191,13 +186,6 @@ export default function EmployerAnalyticsPage() {
             description: t("conversionRateDesc"),
             icon: Zap,
             color: "purple",
-          },
-          {
-            label: t("hiredAllTime"),
-            value: data.conversion.hired,
-            description: t("hiredAllTimeDesc"),
-            icon: Sparkles,
-            color: "green",
           },
         ]
       : [];
@@ -296,12 +284,12 @@ export default function EmployerAnalyticsPage() {
           {[1, 2, 3, 4].map((i) => (
             <div
               key={i}
-              className="workspace-panel-surface h-[120px] animate-pulse rounded-[28px]"
+              className="workspace-panel-surface h-[120px] animate-pulse rounded-3xl"
             />
           ))}
         </div>
 
-        <div className="workspace-panel-surface h-[360px] animate-pulse rounded-[28px]" />
+        <div className="workspace-panel-surface h-[360px] animate-pulse rounded-3xl" />
       </div>
     );
   }
@@ -317,13 +305,13 @@ export default function EmployerAnalyticsPage() {
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-red-500">
                 {tc("somethingWentWrong")}
               </p>
-              <p className="mt-2 text-sm leading-6 text-status-rejected dark:text-red-200">
-                Error: {error instanceof Error ? error.message : String(error)}
+              <p className="mt-2 text-sm leading-6 text-status-rejected">
+                {t("loadError")}
               </p>
             </div>
             <button
               onClick={handleRefresh}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-background/80 px-4 py-2 text-sm font-semibold text-status-rejected transition hover:bg-red-500/10 dark:text-red-200"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-background/80 px-4 py-2 text-sm font-semibold text-status-rejected transition hover:bg-red-500/10"
             >
               <RefreshCw className="h-4 w-4" />
               {tc("tryAgain")}
@@ -338,7 +326,6 @@ export default function EmployerAnalyticsPage() {
     <div className="page-container">
       <DashboardPageHeader
         icon={activeTabMeta.icon}
-        eyebrow={t(activeTab === "response" ? "responseTime" : activeTab)}
         title={t("title")}
         description={t("description")}
         summary={{
@@ -351,7 +338,7 @@ export default function EmployerAnalyticsPage() {
                 <button
                   onClick={handleRefresh}
                   disabled={refreshing}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background/80 text-muted-foreground transition hover:border-sky-500/25 hover:text-status-applied dark:hover:text-sky-300 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background/80 text-muted-foreground transition hover:border-sky-500/25 hover:text-status-applied disabled:cursor-not-allowed disabled:opacity-60"
                   title={t("refreshNow")}
                   aria-label={t("refreshNow")}
                 >
@@ -361,7 +348,7 @@ export default function EmployerAnalyticsPage() {
                 </button>
                 <button
                   onClick={handleExportCSV}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background/80 text-muted-foreground transition hover:border-emerald-500/25 hover:text-status-selected dark:hover:text-emerald-300"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background/80 text-muted-foreground transition hover:border-emerald-500/25 hover:text-status-selected"
                   title={t("exportCsv")}
                   aria-label={t("exportCsv")}
                 >
@@ -380,7 +367,7 @@ export default function EmployerAnalyticsPage() {
 
       <AnalyticsPanel className="p-2 sm:p-4">
         <div className="flex flex-col gap-1.5 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
-          <div className="flex flex-wrap gap-1 sm:gap-2">
+          <div className="flex flex-wrap gap-1.5 sm:gap-2">
             {ANALYTICS_TABS.map((tab) => {
               const Icon = tab.icon;
 
@@ -402,13 +389,6 @@ export default function EmployerAnalyticsPage() {
             })}
           </div>
 
-          {/* One compact line on phones — label above value cost a whole card. */}
-          <div className="flex flex-wrap items-baseline gap-x-2 rounded-lg border border-border bg-secondary/65/80 px-2 py-1 text-[10px] text-muted-foreground sm:block sm:rounded-2xl sm:px-4 sm:py-3 sm:text-sm">
-            <p className="text-[8px] font-semibold uppercase tracking-[0.1em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">
-              {t("currentLens")}
-            </p>
-            <p className="min-w-0 truncate font-medium text-foreground sm:mt-1">{t(activeTabMeta.key === "response" ? "responseTimeDesc" : `${activeTabMeta.key}Desc`)}</p>
-          </div>
         </div>
       </AnalyticsPanel>
 
@@ -483,7 +463,7 @@ export default function EmployerAnalyticsPage() {
 
 function TabLoadingSkeleton() {
   return (
-    <div className="workspace-panel-surface rounded-[28px] space-y-4 animate-pulse panel-body">
+    <div className="workspace-panel-surface rounded-3xl space-y-4 animate-pulse panel-body">
       <div className="h-5 w-48 bg-muted rounded" />
       <div className="grid gap-3 sm:grid-cols-3">
         {[1, 2, 3].map((i) => (
@@ -570,51 +550,38 @@ function PipelineTab({
 
   return (
     <div className="space-y-6">
+      {/* One row, not a panel with its own heading and paragraph — this is a
+          single dropdown and the funnel below already says what it scopes. */}
       {jobOptions.length > 0 && (
-        <AnalyticsPanel>
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <AnalyticsSectionHeader
-              title={t("pipelineScope")}
-              description={t("scopeDescription")}
-              icon={Filter}
-              eyebrow={t("jobFilter")}
-            />
-            <div className="min-w-full lg:min-w-[280px] xl:min-w-[340px]">
-              <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                {t("selectedJob")}
-              </label>
-              <SearchableSelect
-                value={selectedJobId}
-                onValueChange={setSelectedJobId}
-                placeholder={t("allJobs")}
-                options={[
-                  { value: "", label: t("allJobs") },
-                  ...jobOptions.map((j) => ({ value: j.jobId, label: `${j.title} (${j.total})` })),
-                ]}
-              />
-            </div>
-          </div>
-        </AnalyticsPanel>
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <Filter className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            {t("selectedJob")}
+          </span>
+          <SearchableSelect
+            className="min-w-0 flex-1 sm:w-72 sm:flex-none"
+            value={selectedJobId}
+            onValueChange={setSelectedJobId}
+            placeholder={t("allJobs")}
+            options={[
+              { value: "", label: t("allJobs") },
+              ...jobOptions.map((j) => ({ value: j.jobId, label: `${j.title} (${j.total})` })),
+            ]}
+          />
+        </div>
       )}
 
+      {/* Compact alert row. Same warning, a third of the height — it used to
+          get the same visual weight as the funnel it sits above. */}
       {pipeline.stalledCount > 0 && (
-        <div className="workspace-panel-surface rounded-2xl border-status-shortlisted/20 sm:rounded-[28px] panel-body">
-          <div className="flex items-start gap-2.5 sm:gap-4">
-            <div className="rounded-xl bg-status-shortlisted-bg p-2 text-status-shortlisted sm:rounded-2xl sm:p-3">
-              <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-status-shortlisted sm:text-[11px] sm:tracking-[0.18em]">
-                {t("actionNeeded")}
-              </p>
-              <p className="mt-1 text-sm font-semibold text-amber-950 sm:mt-2 sm:text-lg">
-                {t("stalledCandidates", { count: pipeline.stalledCount })}
-              </p>
-              <p className="mt-1 text-xs leading-5 text-status-shortlisted sm:text-sm sm:leading-6">
-                {t("stalledHint")}
-              </p>
-            </div>
-          </div>
+        <div className="flex items-center gap-2.5 rounded-2xl border border-status-shortlisted/20 bg-status-shortlisted-bg/40 px-3 py-2.5 sm:gap-3 sm:px-4">
+          <AlertTriangle className="h-4 w-4 shrink-0 text-status-shortlisted" aria-hidden="true" />
+          <p className="min-w-0 text-xs leading-5 text-status-shortlisted sm:text-sm">
+            <span className="font-semibold text-amber-950">
+              {t("stalledCandidates", { count: pipeline.stalledCount })}
+            </span>{" "}
+            {t("stalledHint")}
+          </p>
         </div>
       )}
 
@@ -703,13 +670,14 @@ function PipelineTab({
                 value={perJobSearchInput}
                 onChange={(e) => setPerJobSearchInput(e.target.value)}
                 placeholder={t("searchJobs")}
+                aria-label={t("searchJobs")}
                 className="w-full rounded-lg border border-border bg-background/80 py-1.5 pe-3 ps-8 text-xs text-foreground placeholder:text-muted-foreground focus:border-sky-500/40 focus:outline-none focus:ring-2 focus:ring-sky-500/20 sm:rounded-xl sm:py-2 sm:ps-9 sm:text-sm"
               />
             </div>
           </div>
 
           {/* Desktop: full comparison table */}
-          <div className="hidden overflow-x-auto sm:block">
+          <div className="hidden overflow-x-auto sm:block" tabIndex={0}>
             <table className="w-full min-w-[860px] text-sm">
               <thead>
                 <tr className="border-b border-border/60 bg-background/60">
@@ -735,7 +703,7 @@ function PipelineTab({
                       <Link
                         href={`/${locale}/employer/applications?jobId=${job.jobId}`}
                         title={t("viewApplications", { title: job.title })}
-                        className="hover:text-status-applied hover:underline dark:hover:text-sky-300"
+                        className="hover:text-status-applied hover:underline"
                       >
                         {job.title}
                       </Link>
@@ -815,7 +783,7 @@ function PipelineTab({
                       </span>
                       <Link
                         href={`/${locale}/employer/applications?jobId=${job.jobId}`}
-                        className="mt-1 block w-full text-[10px] font-semibold text-status-applied hover:underline dark:text-sky-300"
+                        className="mt-1 block w-full text-[10px] font-semibold text-status-applied hover:underline"
                       >
                         {t("viewApplications", { title: job.title })}
                       </Link>
@@ -839,7 +807,7 @@ function PipelineTab({
                 <button
                   onClick={() => setPerJobPage(Math.max(1, perJobPage - 1))}
                   disabled={perJobMeta.page <= 1}
-                  className="inline-flex items-center gap-1 rounded-lg border border-border bg-background/80 px-2 py-1 text-[10px] font-semibold text-foreground transition hover:border-sky-500/25 hover:text-status-applied disabled:cursor-not-allowed disabled:opacity-50 dark:hover:text-sky-300 sm:rounded-xl sm:px-3 sm:py-1.5 sm:text-xs"
+                  className="inline-flex items-center gap-1 rounded-lg border border-border bg-background/80 text-[10px] font-semibold text-foreground transition hover:border-sky-500/25 hover:text-status-applied disabled:cursor-not-allowed disabled:opacity-50 sm:rounded-xl sm:text-xs chip-pad"
                 >
                   <ChevronLeft className="h-3 w-3 rtl:rotate-180 sm:h-3.5 sm:w-3.5" />
                   <span className="hidden sm:inline">{t("previousPage")}</span>
@@ -850,7 +818,7 @@ function PipelineTab({
                 <button
                   onClick={() => setPerJobPage(Math.min(perJobMeta.totalPages, perJobPage + 1))}
                   disabled={perJobMeta.page >= perJobMeta.totalPages}
-                  className="inline-flex items-center gap-1 rounded-lg border border-border bg-background/80 px-2 py-1 text-[10px] font-semibold text-foreground transition hover:border-sky-500/25 hover:text-status-applied disabled:cursor-not-allowed disabled:opacity-50 dark:hover:text-sky-300 sm:rounded-xl sm:px-3 sm:py-1.5 sm:text-xs"
+                  className="inline-flex items-center gap-1 rounded-lg border border-border bg-background/80 text-[10px] font-semibold text-foreground transition hover:border-sky-500/25 hover:text-status-applied disabled:cursor-not-allowed disabled:opacity-50 sm:rounded-xl sm:text-xs chip-pad"
                 >
                   <span className="hidden sm:inline">{t("nextPage")}</span>
                   <ChevronRight className="h-3 w-3 rtl:rotate-180 sm:h-3.5 sm:w-3.5" />
@@ -875,7 +843,7 @@ function PipelineTab({
         {data.topJobs.length === 0 ? (
           <p className="px-6 py-12 text-center text-muted-foreground">{t("noJobApplications")}</p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" tabIndex={0}>
             <table className="w-full min-w-[560px] text-sm">
               <thead>
                 <tr className="border-b border-border/60 bg-background/60">
@@ -1191,7 +1159,7 @@ function HistoricalTab({
               </BarChart>
             </ResponsiveContainer>
 
-            <div className="mt-6 overflow-x-auto rounded-[24px] border border-border">
+            <div className="mt-6 overflow-x-auto rounded-3xl border border-border" tabIndex={0}>
               <table className="w-full min-w-[640px] text-sm">
                 <thead>
                   <tr className="border-b border-border bg-secondary/65/80">
@@ -1229,7 +1197,7 @@ function HistoricalTab({
             />
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" tabIndex={0}>
             <table className="w-full min-w-[720px] text-sm">
               <thead>
                 <tr className="border-b border-border bg-secondary/65/80">
@@ -1322,7 +1290,7 @@ function PerformanceTab({ performance }: { performance: PerformanceData }) {
         {jobs.length === 0 ? (
           <p className="px-6 py-12 text-center text-muted-foreground">{t("noJobsCreated")}</p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" tabIndex={0}>
             <table className="w-full min-w-[920px] text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/50">
@@ -1397,11 +1365,7 @@ function PerformanceTab({ performance }: { performance: PerformanceData }) {
               .map((job) => (
                 <div
                   key={job.jobId}
-                  className={`flex items-start gap-3 p-3 rounded-lg ${
-                    job.insight?.includes("Excellent")
-                      ? "border border-status-selected/20 bg-status-selected-bg"
-                      : "border border-status-shortlisted/20 bg-status-shortlisted-bg"
-                  }`}
+                  className={`flex items-start gap-3 rounded-lg ${ job.insight?.includes("Excellent") ? "border border-status-selected/20 bg-status-selected-bg" : "border border-status-shortlisted/20 bg-status-shortlisted-bg" } chip-pad`}
                 >
                   <div className="flex-1">
                     <p className="text-sm font-medium text-foreground">{job.title}</p>
@@ -1493,7 +1457,7 @@ function ResponseTimeTab({ data }: { data: ResponseTimeData }) {
             />
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" tabIndex={0}>
             <table className="w-full min-w-[720px] text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/50">
@@ -1790,7 +1754,7 @@ function AnalyticsPanel({
   return (
     <section
       className={cn(
-        "workspace-panel-surface rounded-2xl p-3 sm:rounded-[28px] sm:p-6",
+        "workspace-panel-surface rounded-2xl p-3 sm:rounded-3xl sm:p-6",
         className
       )}
     >
@@ -1823,7 +1787,7 @@ function AnalyticsSectionHeader({
             {eyebrow}
           </p>
         )}
-        <h2 className="mt-1 text-sm font-semibold tracking-tight text-foreground sm:text-lg">{title}</h2>
+        <h2 className="heading-section mt-1 font-semibold tracking-tight text-foreground">{title}</h2>
         <p className="mt-1 text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6">{description}</p>
       </div>
     </div>
@@ -1874,7 +1838,7 @@ function SummaryCard({
 }) {
   const colors = COLOR_MAP[color] || COLOR_MAP.blue;
   return (
-    <div className={cn("workspace-panel-surface rounded-[28px] border p-4", colors.border)}>
+    <div className={cn("workspace-panel-surface rounded-3xl border p-4", colors.border)}>
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
       <p className={`mt-3 text-3xl font-semibold tracking-tight ${colors.text}`}>{value}</p>
       {description ? <p className="mt-1 text-xs text-muted-foreground">{description}</p> : null}
@@ -1895,17 +1859,17 @@ function ConversionCard({
 }) {
   const colors = COLOR_MAP[color] || COLOR_MAP.blue;
   return (
-    <div className={cn("workspace-panel-surface rounded-xl border p-1.5 transition-all hover:-translate-y-0.5 sm:rounded-[28px] sm:p-4", colors.border)}>
+    <div className={cn("workspace-panel-surface rounded-xl border p-1.5 transition-all hover:-translate-y-0.5 sm:rounded-3xl sm:p-4", colors.border)}>
       <div className="flex items-start justify-between gap-1 sm:gap-3">
         <div className="min-w-0">
-          <p className="truncate text-[7px] font-semibold uppercase tracking-tight text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">{label}</p>
+          <p className="truncate text-[11px] font-semibold uppercase tracking-tight text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">{label}</p>
           <p className={`mt-1 text-sm font-semibold tracking-tight sm:mt-3 sm:text-3xl ${colors.text}`}>{count}</p>
         </div>
         <div className={cn("hidden rounded-2xl p-2.5 sm:block", colors.surface, colors.icon)}>
           <TrendingUp className="h-5 w-5" />
         </div>
       </div>
-      <p className="mt-1 truncate text-[7px] text-muted-foreground sm:mt-3 sm:text-xs">{subtitle}</p>
+      <p className="mt-1 truncate text-[11px] text-muted-foreground sm:mt-3 sm:text-xs">{subtitle}</p>
     </div>
   );
 }
@@ -1923,7 +1887,7 @@ function RateBadge({
     <span
       className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-xs ${
         highlight
-          ? "border border-status-selected/20 bg-status-selected-bg font-semibold text-status-selected dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300"
+          ? "border border-status-selected/20 bg-status-selected-bg font-semibold text-status-selected"
           : "border border-border bg-background/80 text-foreground/85"
       }`}
     >

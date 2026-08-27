@@ -10,7 +10,7 @@ export default function SettingsLoading() {
           <div key={i} className="h-9 w-32 bg-muted/40 rounded-md animate-pulse" />
         ))}
       </div>
-      <div className="rounded-lg border border-border bg-card p-6 space-y-6">
+      <div className="rounded-lg border border-border bg-card space-y-6 panel-body">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="space-y-2">
             <div className="h-4 w-24 bg-muted/50 rounded-md animate-pulse" />

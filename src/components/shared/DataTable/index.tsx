@@ -8,7 +8,7 @@ import {
   type SortingState,
   type ColumnFiltersState,
 } from "@tanstack/react-table";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useId } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,6 +52,8 @@ import {
   Inbox,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useParams } from "next/navigation";
+import { formatNumber } from "@/lib/formatNumber";
 
 export interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -75,6 +77,8 @@ export interface DataTableProps<TData, TValue> {
   toolbarRight?: React.ReactNode;
   /** Row click handler */
   onRowClick?: (row: TData) => void;
+  /** Accessible name for an interactive row/card. */
+  rowActionLabel?: (row: TData, rowIndex: number) => string;
   isLoading?: boolean;
   className?: string;
   searchPlaceholder?: string;
@@ -100,16 +104,20 @@ export function DataTable<TData, TValue>({
   toolbarLeft,
   toolbarRight,
   onRowClick,
+  rowActionLabel,
   isLoading,
   className,
   searchPlaceholder = "Search\u2026",
 }: DataTableProps<TData, TValue>) {
   const t = useTranslations("dataTable");
   const tc = useTranslations("common");
+  const locale = useParams<{ locale?: string }>()?.locale ?? "en";
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [rowSelection, setRowSelection] = useState({});
   const [searchValue, setSearchValue] = useState("");
+  const searchId = useId();
+  const pageSizeLabelId = useId();
 
   const table = useReactTable({
     data,
@@ -159,23 +167,43 @@ export function DataTable<TData, TValue>({
   const to = Math.min((pageIndex + 1) * pageSize, totalCount);
   const hasExport = onExportCsv || onExportExcel || onExportPdf;
 
+  const handleRowKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLElement>, row: TData) => {
+      if (!onRowClick || event.target !== event.currentTarget) return;
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      onRowClick(row);
+    },
+    [onRowClick]
+  );
+
+  const getRowActionLabel = useCallback(
+    (row: TData, rowIndex: number) =>
+      rowActionLabel?.(row, rowIndex) ?? `${tc("view")} ${rowIndex + 1}`,
+    [rowActionLabel, tc]
+  );
+
   return (
     <div className={cn("space-y-4", className)}>
       {/* Toolbar */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex w-full min-w-0 items-center gap-2 sm:w-auto">
           {toolbarLeft}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+          <div className="relative min-w-0 flex-1 sm:flex-none">
+            <label htmlFor={searchId} className="sr-only">
+              {searchPlaceholder}
+            </label>
+            <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/50" aria-hidden="true" />
             <Input
+              id={searchId}
               placeholder={searchPlaceholder}
               value={searchValue}
               onChange={handleSearch}
-              className="h-9 w-full sm:w-[200px] lg:w-[280px] pl-9"
+              className="h-11 w-full rounded-xl ps-9 sm:h-9 sm:w-[200px] lg:w-[280px]"
             />
           </div>
           {onFiltersChange && (
-            <Button variant="outline" size="sm" className="h-9 gap-1.5">
+            <Button variant="outline" size="sm" className="gap-1.5">
               <SlidersHorizontal className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">{t("filters")}</span>
             </Button>
@@ -186,7 +214,7 @@ export function DataTable<TData, TValue>({
           {hasExport && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9 gap-1.5">
+                <Button variant="outline" size="sm" className="gap-1.5">
                   <Download className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">{t("export")}</span>
                 </Button>
@@ -220,10 +248,10 @@ export function DataTable<TData, TValue>({
 
       {/* Mobile card list (<sm) — tables don't fit a phone; each row becomes a
           label/value card built from the same column defs. */}
-      <div className="space-y-3 sm:hidden">
+      <div className="space-y-3 sm:hidden" aria-busy={isLoading || undefined}>
         {isLoading ? (
           Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="rounded-xl border border-border/50 bg-card p-4 shadow-sm space-y-3">
+            <div key={i} className="rounded-xl border border-border/50 bg-card shadow-sm space-y-3 card-pad">
               {Array.from({ length: 3 }).map((_, j) => (
                 <div key={j} className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
               ))}
@@ -234,22 +262,26 @@ export function DataTable<TData, TValue>({
             <div
               key={row.id}
               onClick={() => onRowClick?.(row.original)}
+              onKeyDown={(event) => handleRowKeyDown(event, row.original)}
+              role={onRowClick ? "button" : undefined}
+              tabIndex={onRowClick ? 0 : undefined}
+              aria-label={onRowClick ? getRowActionLabel(row.original, row.index) : undefined}
               className={cn(
-                "rounded-xl border border-border/50 bg-card p-4 shadow-sm shadow-black/[0.03] space-y-2.5",
+                "workspace-panel-surface overflow-hidden rounded-xl p-3 shadow-sm shadow-black/[0.03] space-y-0",
                 onRowClick && "cursor-pointer active:bg-muted/40"
               )}
             >
-              {row.getVisibleCells().map((cell) => {
+              {row.getVisibleCells().map((cell, cellIndex) => {
                 const header = cell.column.columnDef.header;
                 const label = typeof header === "string" ? header : null;
                 return (
-                  <div key={cell.id} className="flex items-start justify-between gap-3">
+                  <div key={cell.id} className="flex min-h-9 items-start justify-between gap-3 border-b border-border/45 py-2 last:border-b-0">
                     {label && (
                       <span className="shrink-0 pt-0.5 text-xs font-medium text-muted-foreground">
                         {label}
                       </span>
                     )}
-                    <div className="min-w-0 text-sm text-end [overflow-wrap:anywhere]">
+                    <div className={cn("min-w-0 text-sm text-end tabular-nums [overflow-wrap:anywhere]", cellIndex === 0 && "font-semibold text-foreground")}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </div>
                   </div>
@@ -267,7 +299,7 @@ export function DataTable<TData, TValue>({
 
       {/* Table (≥sm) */}
       <div className="hidden rounded-xl border border-border/50 overflow-x-auto bg-card shadow-sm shadow-black/[0.03] sm:block">
-        <Table>
+        <Table aria-busy={isLoading || undefined}>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow
@@ -280,17 +312,26 @@ export function DataTable<TData, TValue>({
                   return (
                     <TableHead
                       key={header.id}
-                      className={cn(canSort && "cursor-pointer select-none")}
-                      onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
+                      aria-sort={
+                        canSort
+                          ? sorted === "asc"
+                            ? "ascending"
+                            : sorted === "desc"
+                              ? "descending"
+                              : "none"
+                          : undefined
+                      }
                     >
-                      <div className="flex items-center gap-1.5">
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
-                            )}
-                        {canSort && (
+                      {header.isPlaceholder ? null : canSort ? (
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-1.5 rounded-sm text-start select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                          onClick={header.column.getToggleSortingHandler()}
+                        >
+                          {flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
                           <span className="text-muted-foreground/40">
                             {sorted === "asc" ? (
                               <ArrowUp className="h-3.5 w-3.5" />
@@ -300,8 +341,15 @@ export function DataTable<TData, TValue>({
                               <ArrowUpDown className="h-3 w-3" />
                             )}
                           </span>
-                        )}
-                      </div>
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          {flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                        </div>
+                      )}
                     </TableHead>
                   );
                 })}
@@ -326,6 +374,9 @@ export function DataTable<TData, TValue>({
                   data-state={row.getIsSelected() && "selected"}
                   className={cn(onRowClick && "cursor-pointer")}
                   onClick={() => onRowClick?.(row.original)}
+                  onKeyDown={(event) => handleRowKeyDown(event, row.original)}
+                  tabIndex={onRowClick ? 0 : undefined}
+                  aria-label={onRowClick ? getRowActionLabel(row.original, row.index) : undefined}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
@@ -357,18 +408,18 @@ export function DataTable<TData, TValue>({
       {/* Pagination */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-[13px] text-muted-foreground">
         <div className="flex items-center gap-2">
-          <span>{t("rowsPerPage")}</span>
+          <span id={pageSizeLabelId}>{t("rowsPerPage")}</span>
           <Select
             value={String(pageSize)}
             onValueChange={(v) => onPageSizeChange?.(Number(v))}
           >
-            <SelectTrigger className="h-8 w-[70px]">
+            <SelectTrigger className="h-8 w-[70px]" aria-labelledby={pageSizeLabelId}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {PAGE_SIZE_OPTIONS.map((s) => (
                 <SelectItem key={s} value={String(s)}>
-                  {s}
+                    {formatNumber(s, locale)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -376,8 +427,10 @@ export function DataTable<TData, TValue>({
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="tabular-nums">
-            {totalCount > 0
+          <span className="tabular-nums" role="status" aria-live="polite" aria-atomic="true">
+            {isLoading
+              ? tc("loading")
+              : totalCount > 0
               ? t("showing", { from, to, total: totalCount })
               : t("noRecords")}
           </span>
@@ -391,7 +444,7 @@ export function DataTable<TData, TValue>({
               title={t("firstPage")}
               aria-label={t("firstPage")}
             >
-              <ChevronsLeft className="h-4 w-4" />
+              <ChevronsLeft className="h-4 w-4 rtl:rotate-180" />
             </Button>
             <Button
               variant="outline"
@@ -402,10 +455,10 @@ export function DataTable<TData, TValue>({
               title={t("previousPage")}
               aria-label={t("previousPage")}
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
             </Button>
             <span className="px-2 tabular-nums">
-              {pageIndex + 1} / {pageCount}
+              {formatNumber(pageIndex + 1, locale)} / {formatNumber(pageCount, locale)}
             </span>
             <Button
               variant="outline"
@@ -416,7 +469,7 @@ export function DataTable<TData, TValue>({
               title={t("nextPage")}
               aria-label={t("nextPage")}
             >
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-4 w-4 rtl:rotate-180" />
             </Button>
             <Button
               variant="outline"
@@ -427,7 +480,7 @@ export function DataTable<TData, TValue>({
               title={t("lastPage")}
               aria-label={t("lastPage")}
             >
-              <ChevronsRight className="h-4 w-4" />
+              <ChevronsRight className="h-4 w-4 rtl:rotate-180" />
             </Button>
           </div>
         </div>

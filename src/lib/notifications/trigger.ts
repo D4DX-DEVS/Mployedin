@@ -13,6 +13,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import Notification from "@/models/Notification";
 import { inngest } from "@/lib/inngest/client";
 import logger from "@/lib/logger";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 export type NotificationType =
   | "application_received"
@@ -379,13 +380,13 @@ export async function notifyCommissionApproved(
     userId,
     type: "payment",
     title: "Commission approved",
-    message: `Your commission of ${currency} ${amount.toLocaleString()} has been approved for payout.`,
+    message: `Your commission of ${currency} ${formatCount(amount)} has been approved for payout.`,
     link: getCommissionLink(role, locale),
     sendEmail: true,
     metadata: { amount, currency, role, status: "approved" },
     titleKey: "commissionApprovedTitle",
     bodyKey: "commissionApprovedBody",
-    params: { currency, amount: amount.toLocaleString() },
+    params: { currency, amount: formatCount(amount) },
   });
 }
 
@@ -401,13 +402,13 @@ export async function notifyCommissionPaid(
     userId,
     type: "payment",
     title: "Commission paid",
-    message: `Your commission of ${currency} ${amount.toLocaleString()} has been paid. Reference: ${paymentRef}.`,
+    message: `Your commission of ${currency} ${formatCount(amount)} has been paid. Reference: ${paymentRef}.`,
     link: getCommissionLink(role, locale),
     sendEmail: true,
     metadata: { amount, currency, paymentRef, role, status: "paid" },
     titleKey: "commissionPaidTitle",
     bodyKey: "commissionPaidBody",
-    params: { currency, amount: amount.toLocaleString(), paymentRef },
+    params: { currency, amount: formatCount(amount), paymentRef },
   });
 }
 

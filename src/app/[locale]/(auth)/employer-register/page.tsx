@@ -395,9 +395,9 @@ export default function EmployerRegisterPage() {
           {t("subtitle")}
         </p>
         {referralCode && (
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 mt-1 rounded-full bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 mt-1 rounded-full bg-green-50 border border-green-200">
             <ShieldCheck className="h-3.5 w-3.5 text-green-600" />
-            <span className="text-xs font-medium text-green-700 dark:text-green-400">{t("referral", { code: referralCode })}</span>
+            <span className="text-xs font-medium text-green-700">{t("referral", { code: referralCode })}</span>
           </div>
         )}
       </div>
@@ -454,8 +454,8 @@ export default function EmployerRegisterPage() {
       <div className="space-y-3 sm:space-y-4">
         {/* Step 1: Company Details */}
         {step === 1 && (
-          <div className="space-y-3.5">
-            <h2 className="text-sm font-semibold flex items-center gap-2 text-foreground">
+          <div className="space-y-4">
+            <h2 className="heading-label font-semibold flex items-center gap-2 text-foreground">
               <Building2 className="h-4 w-4 text-primary" /> {t("companyDetails")}
             </h2>
             <div data-registration-field="companyName">
@@ -513,8 +513,8 @@ export default function EmployerRegisterPage() {
 
         {/* Step 2: Verification Level */}
         {step === 2 && (
-          <div className="space-y-3.5">
-            <h2 className="text-sm font-semibold flex items-center gap-2 text-foreground">
+          <div className="space-y-4">
+            <h2 className="heading-label font-semibold flex items-center gap-2 text-foreground">
               <FileCheck className="h-4 w-4 text-primary" /> {t("verificationLevel")}
             </h2>
             <p className="text-xs text-muted-foreground">
@@ -522,7 +522,7 @@ export default function EmployerRegisterPage() {
             </p>
 
             {/* Verification process info */}
-            <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-1.5">
+            <div className="rounded-lg border border-primary/20 bg-primary/5 space-y-1.5 chip-pad">
               <p className="text-xs font-semibold text-foreground">{t("verificationProcess.title")}</p>
               <ol className="text-[11px] text-muted-foreground space-y-1 list-decimal list-inside">
                 <li>{t("verificationProcess.step1")}</li>
@@ -533,11 +533,7 @@ export default function EmployerRegisterPage() {
 
             <div className="space-y-2">
               {verificationLevels.map((lvl) => (
-                <label key={lvl.value} className={`relative flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
-                  step2.verificationLevel === lvl.value
-                    ? "border-primary bg-primary/5 shadow-sm"
-                    : "border-border hover:border-primary/40 hover:bg-muted/30"
-                }`}>
+                <label key={lvl.value} className={`relative flex items-start gap-3 rounded-xl border-2 cursor-pointer transition-all ${ step2.verificationLevel === lvl.value ? "border-primary bg-primary/5 shadow-sm" : "border-border hover:border-primary/40 hover:bg-muted/30" } chip-pad`}>
                   <input type="radio" name="verLevel" value={lvl.value}
                     checked={step2.verificationLevel === lvl.value}
                     onChange={() => setStep2(p => ({ ...p, verificationLevel: lvl.value }))}
@@ -549,7 +545,7 @@ export default function EmployerRegisterPage() {
                         lvl.value === "standard"
                           ? "bg-primary/10 text-primary"
                           : lvl.value === "premium"
-                            ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
+                            ? "bg-amber-100 text-amber-700"
                             : "bg-muted text-muted-foreground"
                       }`}>
                         {lvl.badge}
@@ -593,10 +589,10 @@ export default function EmployerRegisterPage() {
         {/* Step 3: Contact Person */}
         {step === 3 && (
           <form
-            className="space-y-3.5"
+            className="space-y-4"
             onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}
           >
-            <h2 className="text-sm font-semibold flex items-center gap-2 text-foreground">
+            <h2 className="heading-label font-semibold flex items-center gap-2 text-foreground">
               <UserCircle className="h-4 w-4 text-primary" /> {t("contactPerson")}
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -675,7 +671,7 @@ export default function EmployerRegisterPage() {
 
         {/* Error Display */}
         {Object.keys(fieldErrors).length > 0 && (
-          <div role="alert" className="rounded-lg border border-destructive/20 bg-destructive/10 p-3">
+          <div role="alert" className="rounded-lg border border-destructive/20 bg-destructive/10 chip-pad">
             <p className="text-sm font-semibold text-destructive">{t("validation.fixFields")}</p>
             <ul className="mt-1 list-disc space-y-1 pl-5 text-xs text-destructive">
               {Object.values(fieldErrors).map((fieldError) => (
@@ -685,7 +681,7 @@ export default function EmployerRegisterPage() {
           </div>
         )}
         {error && (
-          <div className="flex items-center gap-2 p-2.5 rounded-lg bg-destructive/10 border border-destructive/20">
+          <div className="flex items-center gap-2 rounded-lg bg-destructive/10 border border-destructive/20 chip-pad">
             <span className="text-xs text-destructive font-medium">{error}</span>
           </div>
         )}

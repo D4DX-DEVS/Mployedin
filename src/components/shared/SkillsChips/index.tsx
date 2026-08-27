@@ -123,7 +123,7 @@ export function SkillsChips({
 
       {/* Chips Container */}
       <div
-        className="min-h-12 p-2 rounded-xl border border-border bg-background focus-within:border-primary flex flex-wrap gap-1.5 cursor-text"
+        className="min-h-12 rounded-xl border border-border bg-background focus-within:border-primary flex flex-wrap gap-1.5 cursor-text chip-pad"
         onClick={() => inputRef.current?.focus()}
       >
         {value.map((skill, i) => (

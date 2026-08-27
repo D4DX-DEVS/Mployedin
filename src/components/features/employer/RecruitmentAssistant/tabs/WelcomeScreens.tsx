@@ -208,7 +208,7 @@ function WelcomeScreen({ icon, title, subtitle, actions, onAction, onStartBlank,
     <div className="flex flex-col items-center px-4 py-6 gap-5">
       {icon}
       <div className="text-center">
-        <h3 className="font-semibold text-base text-foreground">{title}</h3>
+        <h3 className="heading-subsection font-semibold text-foreground">{title}</h3>
         <p className="text-sm text-muted-foreground mt-1 max-w-xs leading-relaxed">{subtitle}</p>
       </div>
       <div className="grid grid-cols-2 gap-2.5 w-full">

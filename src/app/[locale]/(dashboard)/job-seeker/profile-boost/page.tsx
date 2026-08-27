@@ -78,13 +78,13 @@ export default function ProfileBoostPage() {
       </div>
 
       {/* Status Card */}
-      <div className={`p-6 rounded-xl border ${isActive ? "border-primary bg-primary/5" : "border-border bg-card"}`}>
+      <div className={`rounded-xl border ${isActive ? "border-primary bg-primary/5" : "border-border bg-card"} panel-body`}>
         <div className="flex items-center gap-4">
           <div className={`p-3 rounded-xl ${isActive ? "bg-primary/10" : "bg-muted"}`}>
             <Zap className={`w-8 h-8 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-foreground">
+            <h2 className="heading-section font-semibold text-foreground">
               {isActive ? t("active") : t("inactive")}
             </h2>
             {isActive && boostedUntil ? (
@@ -102,17 +102,17 @@ export default function ProfileBoostPage() {
 
       {/* Benefits */}
       <div className="grid gap-3 sm:grid-cols-3">
-        <div className="p-4 bg-card border border-border rounded-xl text-center">
+        <div className="bg-card border border-border rounded-xl text-center card-pad">
           <Eye className="w-6 h-6 text-blue-500 mx-auto mb-2" />
           <p className="text-sm font-medium text-foreground">{t("viewsTitle")}</p>
           <p className="text-xs text-muted-foreground">{t("viewsDescription")}</p>
         </div>
-        <div className="p-4 bg-card border border-border rounded-xl text-center">
+        <div className="bg-card border border-border rounded-xl text-center card-pad">
           <TrendingUp className="w-6 h-6 text-green-500 mx-auto mb-2" />
           <p className="text-sm font-medium text-foreground">{t("matchingTitle")}</p>
           <p className="text-xs text-muted-foreground">{t("matchingDescription")}</p>
         </div>
-        <div className="p-4 bg-card border border-border rounded-xl text-center">
+        <div className="bg-card border border-border rounded-xl text-center card-pad">
           <Clock className="w-6 h-6 text-purple-500 mx-auto mb-2" />
           <p className="text-sm font-medium text-foreground">{t("daysTitle")}</p>
           <p className="text-xs text-muted-foreground">{t("daysDescription")}</p>
@@ -121,7 +121,7 @@ export default function ProfileBoostPage() {
 
       {/* Headline Update */}
       {!isActive && (
-        <div className="bg-card border border-border rounded-xl p-5 space-y-3">
+        <div className="bg-card border border-border rounded-xl space-y-3 panel-body">
           <label className="text-sm font-medium text-foreground">
             {t("headlineLabel")}
           </label>
@@ -131,7 +131,7 @@ export default function ProfileBoostPage() {
             onChange={(e) => setHeadline(e.target.value)}
             maxLength={150}
             placeholder={t("headlinePlaceholder")}
-            className="w-full px-3 py-2 border border-border rounded-lg bg-background text-sm"
+            className="w-full border border-border rounded-lg bg-background text-sm chip-pad"
           />
           <p className="text-xs text-muted-foreground">{headline.length}/150</p>
         </div>

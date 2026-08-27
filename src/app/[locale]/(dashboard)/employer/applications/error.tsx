@@ -24,9 +24,9 @@ export default function ApplicationsError({
           <AlertTriangle className="w-6 h-6 text-destructive" />
         </div>
         <div className="space-y-2">
-          <h3 className="text-lg font-semibold text-destructive">{t("failedApplications")}</h3>
+          <h3 className="heading-subsection font-semibold text-destructive">{t("failedApplications")}</h3>
           <p className="text-sm text-muted-foreground">
-            {error.message || t("failedApplicationsDescription")}
+            {t("failedApplicationsDescription")}
           </p>
         </div>
         <RecoveryActions reset={reset} />

@@ -19,6 +19,7 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 interface Commission {
   _id: string;
@@ -90,7 +91,7 @@ export default function AgentCommissionsPage() {
     { header: t("tableHeaderAmount"), key: "amount" },
     { header: t("exportHeaderCurrency"), key: "currency" },
     { header: t("tableHeaderStatus"), key: "status" },
-    { header: t("tableHeaderDate"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: t("tableHeaderDate"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
@@ -161,67 +162,69 @@ export default function AgentCommissionsPage() {
     <div className="page-container">
       <DashboardPageHeader
         icon={DollarSign}
-        eyebrow={t("agentWorkspace")}
         title={t("pageTitle")}
         description={t("pageDescription")}
-        summary={{ label: t("ledgerLabel"), value: `${pagination.total} ${t("commissionRecords")}`, note: t("ledgerDescription") }}
+        summary={{ label: t("ledgerLabel"), value: `${pagination.total} ${t("commissionRecords")}` }}
+        compactOnMobile
         metrics={summary ? [
-          { label: t("summaryCardPendingLabel"), value: formatCurrency(summary.pending, currencyCode), note: t("summaryCardPendingValue"), icon: Clock },
-          { label: t("summaryCardApprovedLabel"), value: formatCurrency(summary.approved, currencyCode), note: t("summaryCardApprovedValue"), icon: TrendingUp },
-          { label: t("summaryCardPaidLabel"), value: formatCurrency(summary.paid, currencyCode), note: t("summaryCardPaidValue"), icon: DollarSign },
-          { label: t("summaryCardDisputedLabel"), value: formatCurrency(summary.disputed ?? 0, currencyCode), note: t("summaryCardDisputedValue"), icon: X },
+          { label: t("summaryCardPendingLabel"), value: formatCurrency(summary.pending, currencyCode), icon: Clock },
+          { label: t("summaryCardApprovedLabel"), value: formatCurrency(summary.approved, currencyCode), icon: TrendingUp },
+          { label: t("summaryCardPaidLabel"), value: formatCurrency(summary.paid, currencyCode), icon: DollarSign },
+          { label: t("summaryCardDisputedLabel"), value: formatCurrency(summary.disputed ?? 0, currencyCode), icon: X },
         ] : undefined}
       />
 
-      {/* ── Search & Filters ── */}
-      <section className="workspace-panel-surface rounded-[28px] space-y-3 sm:space-y-5 panel-body">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("filterLedgerLabel")}</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("filterLedgerHeading")}</h2>
+      {/* One panel: search, advanced toggle and export share the list header;
+          pills sit under it. The filter card announced itself with a label and
+          heading before showing a single search box. */}
+      <section className="workspace-panel-surface rounded-3xl space-y-3 sm:space-y-4 panel-body">
+        <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3 sm:gap-3 sm:pb-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("resultsLabel")}</p>
+          <div className="relative min-w-0 flex-1 sm:ms-auto sm:w-64 sm:flex-none">
+            <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder={t("searchPlaceholder")}
+              defaultValue={search}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="h-10 rounded-xl border-border bg-secondary/65 ps-10 pe-10"
+            />
+            {search && (
+              <button onClick={() => { setSearch(""); const el = document.querySelector<HTMLInputElement>(`[placeholder="${t("searchPlaceholder")}"]`); if (el) el.value = ""; }} className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                <X className="h-4 w-4" />
+              </button>
+            )}
           </div>
-          <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowAdvanced((v) => !v)}
+            aria-expanded={showAdvanced}
+            className={`workspace-muted-pill h-10 shrink-0 rounded-xl px-3 text-xs hover:bg-card ${showAdvanced ? "workspace-tone-sky border-transparent" : ""}`}
+          >
+            <SlidersHorizontal className="me-1.5 h-3.5 w-3.5" />
+            {t("advancedButton")}
+          </Button>
+          {hasActiveFilters && (
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setShowAdvanced((v) => !v)}
-              className={`workspace-muted-pill h-9 rounded-xl px-3 text-xs hover:bg-card ${showAdvanced ? "workspace-tone-sky border-transparent" : ""}`}
+              onClick={clearFilters}
+              className="workspace-muted-pill h-10 shrink-0 rounded-xl px-3 text-xs hover:bg-card"
             >
-              <SlidersHorizontal className="mr-1.5 h-3.5 w-3.5" />
-              {t("advancedButton")}
+              <RotateCcw className="me-1.5 h-3.5 w-3.5" />
+              {t("clearFiltersButton")}
             </Button>
-            {hasActiveFilters && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={clearFilters}
-                className="workspace-muted-pill h-9 rounded-xl px-3 text-xs hover:bg-card"
-              >
-                <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
-                {t("clearFiltersButton")}
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {/* Search input */}
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder={t("searchPlaceholder")}
-            defaultValue={search}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            className="h-11 rounded-xl border-border bg-secondary/65 pl-10 pr-10"
-          />
-          {search && (
-            <button onClick={() => { setSearch(""); const el = document.querySelector<HTMLInputElement>(`[placeholder="${t("searchPlaceholder")}"]`); if (el) el.value = ""; }} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-              <X className="h-4 w-4" />
-            </button>
           )}
+          <TableToolbar
+            onExportCsv={handleExportCsv}
+            onExportExcel={handleExportExcel}
+            onExportPdf={handleExportPdf}
+            className="shrink-0"
+          />
         </div>
 
         {/* Status pills */}
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5 sm:gap-2">
           {["all", "pending", "approved", "paid", "disputed"].map((status) => {
             const isSelected = filter === status;
             return (
@@ -244,7 +247,7 @@ export default function AgentCommissionsPage() {
 
         {/* Advanced filters */}
         {showAdvanced && (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 rounded-2xl workspace-subtle-surface p-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 rounded-2xl workspace-subtle-surface card-pad">
             <div>
               <label htmlFor="agent-commissions-type" className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("typeFilterLabel")}</label>
               <SearchableSelect
@@ -287,18 +290,8 @@ export default function AgentCommissionsPage() {
             </div>
           </div>
         )}
-      </section>
 
-      {/* ── Results table ── */}
-      <section className="workspace-panel-surface rounded-[28px] panel-body">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("resultsLabel")}</p><h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("resultsHeading")}</h2></div><div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium"><ArrowRight className="h-3.5 w-3.5 text-primary" />{t("paginationSummary", { total: pagination.total, pages: pagination.totalPages })}</div></div>
-        <TableToolbar
-          onExportCsv={handleExportCsv}
-          onExportExcel={handleExportExcel}
-          onExportPdf={handleExportPdf}
-          className="mb-4"
-        />
-        <div className="workspace-subtle-surface mt-5 overflow-hidden rounded-[24px]">
+        <div className="workspace-subtle-surface overflow-hidden rounded-3xl">
         <Table>
           <TableHeader>
             <TableRow className="workspace-subtle-surface hover:bg-secondary/70">
@@ -348,7 +341,7 @@ export default function AgentCommissionsPage() {
                 </TableCell>
                 <TableCell><StatusBadge status={c.status} /></TableCell>
                 <TableCell className="text-xs text-muted-foreground">
-                  {new Date(c.paidAt ?? c.createdAt).toLocaleDateString()}
+                  {formatDate(new Date(c.paidAt ?? c.createdAt))}
                 </TableCell>
               </TableRow>
             ))}

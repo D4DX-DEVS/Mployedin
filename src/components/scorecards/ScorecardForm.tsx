@@ -110,10 +110,10 @@ export function ScorecardForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 bg-card border border-border rounded-lg p-6">
+    <form onSubmit={handleSubmit} className="space-y-6 bg-card border border-border rounded-lg panel-body">
       {/* Header */}
       <div>
-        <h3 className="text-lg font-semibold">{t("title")}</h3>
+        <h3 className="heading-subsection font-semibold">{t("title")}</h3>
         <p className="text-sm text-muted-foreground mt-1">
           {t("subtitle")}
         </p>
@@ -172,7 +172,7 @@ export function ScorecardForm({
               key={rec.value}
               type="button"
               onClick={() => setRecommendation(rec.value)}
-              className={`py-2 px-3 rounded-lg font-medium text-sm border-2 transition-all ${
+              className={`chip-pad rounded-lg font-medium text-sm border-2 transition-all ${
                 recommendation === rec.value
                   ? `${rec.color} border-current`
                   : "bg-muted text-muted-foreground border-muted"
@@ -193,7 +193,7 @@ export function ScorecardForm({
           value={strengths}
           onChange={(e) => setStrengths(e.target.value.slice(0, 1000))}
           placeholder={t("strengthsPlaceholder")}
-          className="w-full h-20 px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none"
+          className="w-full h-20 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none chip-pad"
         />
         <div className="text-xs text-muted-foreground text-right mt-1">
           {strengths.length}/1000
@@ -209,7 +209,7 @@ export function ScorecardForm({
           value={concerns}
           onChange={(e) => setConcerns(e.target.value.slice(0, 1000))}
           placeholder={t("concernsPlaceholder")}
-          className="w-full h-20 px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none"
+          className="w-full h-20 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none chip-pad"
         />
         <div className="text-xs text-muted-foreground text-right mt-1">
           {concerns.length}/1000
@@ -225,7 +225,7 @@ export function ScorecardForm({
           value={notes}
           onChange={(e) => setNotes(e.target.value.slice(0, 3000))}
           placeholder={t("additionalNotesPlaceholder")}
-          className="w-full h-24 px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none"
+          className="w-full h-24 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none chip-pad"
         />
         <div className="text-xs text-muted-foreground text-right mt-1">
           {notes.length}/3000

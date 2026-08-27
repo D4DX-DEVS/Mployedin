@@ -26,7 +26,7 @@ export default function JobDetailLoading() {
 
         {/* Sidebar apply box */}
         <div className="space-y-4">
-          <div className="bg-card border border-border rounded-xl p-6 space-y-4">
+          <div className="bg-card border border-border rounded-xl space-y-4 panel-body">
             <div className="h-10 w-full rounded-lg bg-muted" />
             <div className="h-4 w-1/2 rounded bg-muted" />
             <div className="h-4 w-2/3 rounded bg-muted" />

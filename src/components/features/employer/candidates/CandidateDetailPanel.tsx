@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Radar,
   RadarChart,
@@ -29,7 +29,9 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useCandidateDetail, type Candidate, type CandidateJob } from "@/hooks/useCandidates";
-import { ScoreRing } from "./ScoreRing";
+import { ScoreRing, matchBandLabel } from "./ScoreRing";
+import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 // ── Detail response shape (subset of /api/employers/candidates/[id]) ──
 interface DetailLanguage {
@@ -120,12 +122,46 @@ export function CandidateDetailPanel({
   onToggleReviewList,
 }: CandidateDetailPanelProps) {
   const t = useTranslations("employerCandidates");
+  const tMatch = useTranslations("employerCompliance.match");
   const [tab, setTab] = useState<DetailTab>("profile");
   const { data, isLoading } = useCandidateDetail(candidate?._id ?? "");
   const detail = (data as CandidateDetailResponse | undefined)?.candidate;
   const applications = (data as CandidateDetailResponse | undefined)?.applications ?? [];
   const interviews = (data as CandidateDetailResponse | undefined)?.interviews ?? [];
   const notes = (data as CandidateDetailResponse | undefined)?.notes ?? [];
+
+  // ── Escape key handler ──
+  useEffect(() => {
+    if (!candidate || !onClose) return;
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [candidate, onClose]);
+
+  // ── Tab keyboard navigation ──
+  const tabs: DetailTab[] = ["profile", "experience", "education", "activity"];
+  const handleTabKeyDown = (e: React.KeyboardEvent) => {
+    const currentIndex = tabs.indexOf(tab);
+    let nextIndex = currentIndex;
+
+    if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      nextIndex = currentIndex === 0 ? tabs.length - 1 : currentIndex - 1;
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      nextIndex = currentIndex === tabs.length - 1 ? 0 : currentIndex + 1;
+    }
+
+    if (nextIndex !== currentIndex) {
+      setTab(tabs[nextIndex]!);
+    }
+  };
 
   // ── Empty state (nothing selected) ──
   if (!candidate) {
@@ -189,7 +225,7 @@ export function CandidateDetailPanel({
   const salary = detail?.preferredSalary;
   const salaryText =
     salary && (salary.min || salary.max)
-      ? `${salary.currency ?? ""} ${salary.min ? salary.min.toLocaleString() : ""}${salary.min && salary.max ? " – " : ""}${salary.max ? salary.max.toLocaleString() : ""}`.trim()
+      ? `${salary.currency ?? ""} ${salary.min ? formatCount(salary.min) : ""}${salary.min && salary.max ? " – " : ""}${salary.max ? formatCount(salary.max) : ""}`.trim()
       : t("notProvided");
   const noticeText =
     detail?.noticePeriod == null
@@ -225,14 +261,14 @@ export function CandidateDetailPanel({
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
-            <h2 className="truncate text-lg font-bold text-foreground">{name}</h2>
-            <p className="mt-0.5 flex items-center gap-1.5 truncate text-sm text-muted-foreground">
+            <h2 className="heading-section line-clamp-2 font-bold text-foreground">{name}</h2>
+            <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
               <Briefcase className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">{currentRole}</span>
+              <span className="line-clamp-1">{currentRole}</span>
               {currentCompany ? (
                 <>
                   <span className="text-muted-foreground/40">·</span>
-                  <span className="truncate">{currentCompany}</span>
+                  <span className="line-clamp-1">{currentCompany}</span>
                 </>
               ) : null}
             </p>
@@ -255,8 +291,17 @@ export function CandidateDetailPanel({
               {availabilityLabel}
             </span>
           </div>
-          <ScoreRing value={score} size={68} strokeWidth={6} label={t("matchLabel")} emptyLabel="—" />
+          <ScoreRing
+            value={score}
+            size={68}
+            strokeWidth={6}
+            label={t("matchLabel")}
+            emptyLabel="—"
+            bandLabel={matchBandLabel(score, tMatch)}
+          />
         </div>
+
+        <CandidateDataNotice variant="candidateDetail" className="mt-4" />
 
         {/* Actions */}
         <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -287,7 +332,7 @@ export function CandidateDetailPanel({
       {/* Scrollable body */}
       <div className="flex-1 space-y-3 sm:space-y-4 overflow-y-auto p-5">
         {/* Quick facts */}
-        <section className="rounded-xl border border-border bg-muted/20 p-4">
+        <section className="rounded-xl border border-border bg-muted/20 card-pad">
           <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("quickFacts")}</h3>
           <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
             <QuickFact icon={<Wallet className="h-3.5 w-3.5" />} label={t("expectedSalary")} value={salaryText} loading={isLoading} />
@@ -310,7 +355,7 @@ export function CandidateDetailPanel({
         </section>
 
         {/* AI match analysis */}
-        <section className="rounded-xl border border-border bg-card p-4">
+        <section className="rounded-xl border border-border bg-card card-pad">
           <h3 className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             <Sparkles className="h-3.5 w-3.5 text-primary" />
             {t("aiMatchAnalysis")}
@@ -335,7 +380,7 @@ export function CandidateDetailPanel({
               ) : null}
               {strengths.length > 0 ? (
                 <div>
-                  <p className="mb-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">{t("strengths")}</p>
+                  <p className="mb-1.5 text-xs font-semibold text-emerald-600">{t("strengths")}</p>
                   <ul className="space-y-1">
                     {strengths.map((s, i) => (
                       <li key={i} className="flex items-start gap-1.5 text-sm text-foreground/90">
@@ -348,7 +393,7 @@ export function CandidateDetailPanel({
               ) : null}
               {gaps.length > 0 ? (
                 <div>
-                  <p className="mb-1.5 text-xs font-semibold text-rose-600 dark:text-rose-400">{t("gaps")}</p>
+                  <p className="mb-1.5 text-xs font-semibold text-rose-600">{t("gaps")}</p>
                   <ul className="space-y-1">
                     {gaps.map((g, i) => (
                       <li key={i} className="flex items-start gap-1.5 text-sm text-foreground/90">
@@ -365,7 +410,7 @@ export function CandidateDetailPanel({
 
         {/* Top skills */}
         {skills.length > 0 ? (
-          <section className="rounded-xl border border-border bg-card p-4">
+          <section className="rounded-xl border border-border bg-card card-pad">
             <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("keySkills")}</h3>
             <div className="flex flex-wrap gap-1.5">
               {skills.map((skill) => {
@@ -376,7 +421,7 @@ export function CandidateDetailPanel({
                     className={cn(
                       "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium",
                       matched
-                        ? "bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/30 dark:text-emerald-400"
+                        ? "bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/30"
                         : "bg-muted text-foreground/80",
                     )}
                   >
@@ -391,23 +436,47 @@ export function CandidateDetailPanel({
 
         {/* Tabs */}
         <section className="rounded-xl border border-border bg-card">
-          <div className="flex items-center gap-1 overflow-x-auto border-b border-border px-2">
-            <TabButton active={tab === "profile"} onClick={() => setTab("profile")}>
+          <div role="tablist" className="flex items-center gap-1 overflow-x-auto border-b border-border px-2">
+            <TabButton
+              id="tab-profile"
+              ariaControls="panel-profile"
+              active={tab === "profile"}
+              onClick={() => setTab("profile")}
+              onKeyDown={handleTabKeyDown}
+            >
               {t("tabProfile")}
             </TabButton>
-            <TabButton active={tab === "experience"} onClick={() => setTab("experience")}>
+            <TabButton
+              id="tab-experience"
+              ariaControls="panel-experience"
+              active={tab === "experience"}
+              onClick={() => setTab("experience")}
+              onKeyDown={handleTabKeyDown}
+            >
               {t("tabExperience")}
             </TabButton>
-            <TabButton active={tab === "education"} onClick={() => setTab("education")}>
+            <TabButton
+              id="tab-education"
+              ariaControls="panel-education"
+              active={tab === "education"}
+              onClick={() => setTab("education")}
+              onKeyDown={handleTabKeyDown}
+            >
               {t("tabEducation")}
             </TabButton>
-            <TabButton active={tab === "activity"} onClick={() => setTab("activity")}>
+            <TabButton
+              id="tab-activity"
+              ariaControls="panel-activity"
+              active={tab === "activity"}
+              onClick={() => setTab("activity")}
+              onKeyDown={handleTabKeyDown}
+            >
               {t("tabActivity")}
             </TabButton>
           </div>
           <div className="p-4">
             {tab === "profile" ? (
-              <div className="space-y-3 sm:space-y-4">
+              <div id="panel-profile" role="tabpanel" aria-labelledby="tab-profile" className="space-y-3 sm:space-y-4">
                 {detail?.summary || detail?.headline ? (
                   <div>
                     <p className="mb-1 text-xs font-semibold text-muted-foreground">{t("professionalSummary")}</p>
@@ -447,8 +516,9 @@ export function CandidateDetailPanel({
             ) : null}
 
             {tab === "experience" ? (
-              experiences.length > 0 ? (
-                <ol className="space-y-3 sm:space-y-4">
+              <div id="panel-experience" role="tabpanel" aria-labelledby="tab-experience">
+                {experiences.length > 0 ? (
+                  <ol className="space-y-3 sm:space-y-4">
                   {experiences.map((exp, i) => {
                     const start = formatYear(exp.startDate);
                     const end = exp.isCurrent ? t("present") : formatYear(exp.endDate);
@@ -465,15 +535,17 @@ export function CandidateDetailPanel({
                       </li>
                     );
                   })}
-                </ol>
-              ) : (
-                <EmptyTab loading={isLoading} text={t("noExperienceData")} />
-              )
+                  </ol>
+                ) : (
+                  <EmptyTab loading={isLoading} text={t("noExperienceData")} />
+                )}
+              </div>
             ) : null}
 
             {tab === "education" ? (
-              detail?.education && detail.education.length > 0 ? (
-                <ul className="space-y-3">
+              <div id="panel-education" role="tabpanel" aria-labelledby="tab-education">
+                {detail?.education && detail.education.length > 0 ? (
+                  <ul className="space-y-3">
                   {detail.education.map((edu, i) => (
                     <li key={i} className="flex items-start gap-2.5">
                       <GraduationCap className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
@@ -487,15 +559,17 @@ export function CandidateDetailPanel({
                       </div>
                     </li>
                   ))}
-                </ul>
-              ) : (
-                <EmptyTab loading={isLoading} text={t("noEducationData")} />
-              )
+                  </ul>
+                ) : (
+                  <EmptyTab loading={isLoading} text={t("noEducationData")} />
+                )}
+              </div>
             ) : null}
 
             {tab === "activity" ? (
-              applications.length > 0 || interviews.length > 0 || notes.length > 0 ? (
-                <div className="space-y-3 sm:space-y-4">
+              <div id="panel-activity" role="tabpanel" aria-labelledby="tab-activity">
+                {applications.length > 0 || interviews.length > 0 || notes.length > 0 ? (
+                  <div className="space-y-3 sm:space-y-4">
                   {applications.length > 0 ? (
                     <div>
                       <p className="mb-1.5 text-xs font-semibold text-muted-foreground">{t("applicationsLabel")}</p>
@@ -534,10 +608,11 @@ export function CandidateDetailPanel({
                       </ul>
                     </div>
                   ) : null}
-                </div>
-              ) : (
-                <EmptyTab loading={isLoading} text={t("noActivityData")} />
-              )
+                  </div>
+                ) : (
+                  <EmptyTab loading={isLoading} text={t("noActivityData")} />
+                )}
+              </div>
             ) : null}
           </div>
         </section>
@@ -560,11 +635,31 @@ function QuickFact({ icon, label, value, loading }: { icon: React.ReactNode; lab
   );
 }
 
-function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function TabButton({
+  active,
+  onClick,
+  children,
+  id,
+  ariaControls,
+  onKeyDown,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+  id?: string;
+  ariaControls?: string;
+  onKeyDown?: (e: React.KeyboardEvent) => void;
+}) {
   return (
     <button
       type="button"
+      id={id}
+      role="tab"
+      aria-selected={active}
+      aria-controls={ariaControls}
+      tabIndex={active ? 0 : -1}
       onClick={onClick}
+      onKeyDown={onKeyDown}
       className={cn(
         "whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors",
         active ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",

@@ -358,7 +358,7 @@ export function EasyApplyFlowDialog({
             </DialogDescription>
 
             {typeof matchScore === "number" && (
-              <div className="mt-5 inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">
+              <div className="mt-5 inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
                 <Sparkles className="h-3.5 w-3.5" />
                 {t("success.matchBadge", { score: matchScore })}
               </div>
@@ -535,7 +535,7 @@ function CvStep({
   return (
     <div className="space-y-3">
       <div>
-        <h3 className="text-sm font-semibold text-foreground">{t("cv.heading")}</h3>
+        <h3 className="heading-label font-semibold text-foreground">{t("cv.heading")}</h3>
         <p className="text-xs text-muted-foreground">{t("cv.subtitle")}</p>
       </div>
 
@@ -568,10 +568,10 @@ function CvStep({
       <Button
         type="button"
         variant="outline"
-        size="sm"
+        size="dense"
         disabled={uploading}
         onClick={onUploadClick}
-        className="h-8 gap-1.5 rounded-xl text-xs"
+        className="gap-1.5 rounded-xl text-xs"
       >
         {uploading ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -642,7 +642,7 @@ function SkillsStep({
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-sm font-semibold text-foreground">{t("skills.heading")}</h3>
+        <h3 className="heading-label font-semibold text-foreground">{t("skills.heading")}</h3>
         <p className="text-xs text-muted-foreground">{t("skills.subtitle")}</p>
       </div>
 
@@ -661,7 +661,7 @@ function SkillsStep({
                   onClick={() => onToggle(skill)}
                   className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all ${
                     on
-                      ? "border-emerald-400 bg-emerald-100 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200"
+                      ? "border-emerald-400 bg-emerald-100 text-emerald-800"
                       : "border-dashed border-border bg-secondary/60 text-muted-foreground hover:border-primary/50 hover:text-foreground"
                   }`}
                 >
@@ -683,7 +683,7 @@ function SkillsStep({
             {matchedSkills.map((skill) => (
               <span
                 key={skill}
-                className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-300"
+                className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700"
               >
                 <Check className="h-3 w-3" strokeWidth={3} />
                 {skill}
@@ -716,7 +716,7 @@ function QuestionsStep({
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-sm font-semibold text-foreground">{t("questions.heading")}</h3>
+        <h3 className="heading-label font-semibold text-foreground">{t("questions.heading")}</h3>
         <p className="text-xs text-muted-foreground">{t("questions.subtitle")}</p>
       </div>
 
@@ -739,7 +739,7 @@ function QuestionsStep({
 
           {q.type === "textarea" && (
             <textarea
-              className="textarea-field min-h-[80px] w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+              className="textarea-field min-h-[80px] w-full rounded-xl border border-border bg-background text-sm chip-pad"
               placeholder={q.placeholder || ""}
               value={(answers[q.id] as string) ?? ""}
               onChange={(e) => onSet(q.id, e.target.value)}
@@ -860,7 +860,7 @@ function ReviewStep({
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-sm font-semibold text-foreground">{t("review.heading")}</h3>
+        <h3 className="heading-label font-semibold text-foreground">{t("review.heading")}</h3>
         {typeof matchScore === "number" && (
           <p className="text-xs text-muted-foreground">
             {t("review.matchSummary", { score: matchScore })}

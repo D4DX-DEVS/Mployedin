@@ -22,6 +22,7 @@ import {
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { toast } from "sonner";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 type OnboardingStatus = "not_started" | "in_progress" | "completed";
 type DocStatus = "requested" | "submitted" | "signed" | "approved";
@@ -92,7 +93,7 @@ const DOC_STATUS_STYLES: Record<DocStatus, string> = {
 function fmtDate(value?: string): string {
   if (!value) return "";
   try {
-    return new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+    return formatDate(new Date(value), { year: "numeric", month: "short", day: "numeric" });
   } catch {
     return "";
   }
@@ -327,17 +328,17 @@ export default function PlacementOnboardingPage() {
 
       {loading ? (
         <div className="space-y-3 sm:space-y-4">
-          <div className="rounded-2xl border border-border/60 bg-card p-5 space-y-3">
+          <div className="rounded-2xl border border-border/60 bg-card space-y-3 panel-body">
             <div className="flex items-center justify-between">
               <Skeleton className="h-4 w-24" />
               <Skeleton className="h-4 w-16" />
             </div>
             <Skeleton className="h-2 w-full rounded-full" />
           </div>
-          <div className="rounded-2xl border border-border/60 bg-card p-5 space-y-3">
+          <div className="rounded-2xl border border-border/60 bg-card space-y-3 panel-body">
             <Skeleton className="h-5 w-28" />
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3 rounded-xl border border-border/50 px-3 py-2.5">
+              <div key={i} className="flex items-center gap-3 rounded-xl border border-border/50 chip-pad">
                 <Skeleton className="h-4 w-4 rounded" />
                 <Skeleton className="h-4 w-48" />
               </div>
@@ -347,7 +348,7 @@ export default function PlacementOnboardingPage() {
       ) : (
         <>
           {/* Progress */}
-          <div className="rounded-2xl border border-border/60 bg-card p-5">
+          <div className="rounded-2xl border border-border/60 bg-card panel-body">
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium text-foreground">{t("progress")}</p>
               <p className="text-sm text-muted-foreground">{t("tasksDone", { done: doneCount, total: tasks.length })}</p>
@@ -356,9 +357,9 @@ export default function PlacementOnboardingPage() {
           </div>
 
           {/* Tasks */}
-          <div className="rounded-2xl border border-border/60 bg-card p-5">
+          <div className="rounded-2xl border border-border/60 bg-card panel-body">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground">{t("tasks")}</h2>
+              <h2 className="heading-section font-semibold text-foreground">{t("tasks")}</h2>
               {tasks.length === 0 && (
                 <Button size="sm" variant="outline" className="rounded-xl" onClick={seedDefaults} disabled={busy}>
                   <Plus className="mr-2 h-4 w-4" />
@@ -372,7 +373,7 @@ export default function PlacementOnboardingPage() {
             ) : (
               <ul className="mt-4 space-y-2">
                 {tasks.map((task, i) => (
-                  <li key={i} className="flex items-center gap-3 rounded-xl border border-border/50 px-3 py-2.5">
+                  <li key={i} className="flex items-center gap-3 rounded-xl border border-border/50 chip-pad">
                     <Checkbox
                       checked={task.completed}
                       onCheckedChange={(c) => toggleTask(i, Boolean(c))}
@@ -403,7 +404,7 @@ export default function PlacementOnboardingPage() {
                     ) : (
                       <Circle className="h-4 w-4 text-muted-foreground/40" />
                     )}
-                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => removeTask(i)} disabled={busy}>
+                    <Button size="iconDense" variant="ghost" className="" onClick={() => removeTask(i)} disabled={busy}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </li>
@@ -447,14 +448,14 @@ export default function PlacementOnboardingPage() {
           </div>
 
           {/* Documents */}
-          <div className="rounded-2xl border border-border/60 bg-card p-5">
-            <h2 className="text-lg font-semibold text-foreground">{t("documents")}</h2>
+          <div className="rounded-2xl border border-border/60 bg-card panel-body">
+            <h2 className="heading-section font-semibold text-foreground">{t("documents")}</h2>
             {(onboarding?.documents.length ?? 0) === 0 ? (
               <p className="mt-4 text-sm text-muted-foreground">{t("noDocuments")}</p>
             ) : (
               <ul className="mt-4 space-y-2">
                 {onboarding?.documents.map((doc, i) => (
-                  <li key={i} className="flex flex-col gap-2 rounded-xl border border-border/50 px-3 py-2.5 sm:flex-row sm:items-center">
+                  <li key={i} className="flex flex-col gap-2 rounded-xl border border-border/50 sm:flex-row sm:items-center chip-pad">
                     <FileText className="hidden h-4 w-4 shrink-0 text-muted-foreground sm:block" />
                     <div className="flex-1 space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
@@ -504,8 +505,8 @@ export default function PlacementOnboardingPage() {
                         {t("approve")}
                       </Button>
                     )}
-                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => patch({ removeDocumentIndex: i })} disabled={busy}>
-                      <Trash2 className="h-4 w-4" />
+                    <Button size="iconDense" variant="ghost" className="" onClick={() => patch({ removeDocumentIndex: i })} disabled={busy} aria-label={t("removeDocumentLabel", { document: doc.name })}>
+                      <Trash2 className="h-4 w-4" aria-hidden="true" />
                     </Button>
                   </li>
                 ))}
@@ -513,7 +514,7 @@ export default function PlacementOnboardingPage() {
             )}
 
             {/* Add document */}
-            <div className="mt-4 space-y-3 rounded-xl border border-dashed border-border/70 p-4">
+            <div className="mt-4 space-y-3 rounded-xl border border-dashed border-border/70 card-pad">
               <label className="flex items-center gap-2 text-sm font-medium text-foreground">
                 <Checkbox
                   checked={requestFromCandidate}
@@ -554,14 +555,14 @@ export default function PlacementOnboardingPage() {
           </div>
 
           {/* Probation */}
-          <div className="rounded-2xl border border-border/60 bg-card p-5">
-            <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+          <div className="rounded-2xl border border-border/60 bg-card panel-body">
+            <h2 className="heading-section flex items-center gap-2 font-semibold text-foreground">
               <ShieldCheck className="h-5 w-5 text-primary" />
               {t("probation")}
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">{t("probationHint")}</p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
+              <div className="field">
                 <Label htmlFor="prob-end">{t("probationEndDate")}</Label>
                 <DateTimePicker
                   mode="date"
@@ -570,7 +571,7 @@ export default function PlacementOnboardingPage() {
                   placeholder={t("probationEndDate")}
                 />
               </div>
-              <div className="space-y-1.5">
+              <div className="field">
                 <Label htmlFor="prob-status">{t("probationStatus")}</Label>
                 <Select value={probStatus} onValueChange={(v) => setProbStatus(v as ProbationStatus)}>
                   <SelectTrigger id="prob-status">
@@ -585,7 +586,7 @@ export default function PlacementOnboardingPage() {
                 </Select>
               </div>
             </div>
-            <div className="mt-3 space-y-1.5">
+            <div className="mt-3 field">
               <Label htmlFor="prob-notes">{t("probationNotes")}</Label>
               <Textarea
                 id="prob-notes"
@@ -601,8 +602,8 @@ export default function PlacementOnboardingPage() {
           </div>
 
           {/* Notes */}
-          <div className="rounded-2xl border border-border/60 bg-card p-5">
-            <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+          <div className="rounded-2xl border border-border/60 bg-card panel-body">
+            <h2 className="heading-section flex items-center gap-2 font-semibold text-foreground">
               <StickyNote className="h-5 w-5 text-primary" />
               {t("notes")}
             </h2>

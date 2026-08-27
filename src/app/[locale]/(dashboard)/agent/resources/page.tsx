@@ -16,6 +16,7 @@ import {
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { useTranslations } from "next-intl";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 interface ResourceFile { fileName: string; url: string; key: string; contentType: string; size: number; }
 interface Resource {
@@ -76,11 +77,10 @@ export default function ResourceDownloadsPage() {
   };
 
   return (
-    <div className="page-container pb-6">
+    <div className="page-container">
       {/* Hero Section */}
       <DashboardPageHeader
         icon={FolderOpen}
-        eyebrow="Resources"
         title={t("downloadsTitle")}
         description={t("downloadsSubtitle")}
         footer={
@@ -89,8 +89,8 @@ export default function ResourceDownloadsPage() {
               <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input placeholder={t("searchPlaceholder")} value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 pl-9 text-sm" />
             </div>
-            <SearchableSelect options={CATEGORY_OPTIONS} value={categoryFilter} onValueChange={setCategoryFilter} placeholder="Category" />
-            <SearchableSelect options={SORT_OPTIONS} value={sortBy} onValueChange={setSortBy} placeholder="Sort" />
+            <SearchableSelect options={CATEGORY_OPTIONS} value={categoryFilter} onValueChange={setCategoryFilter} placeholder={t("filterCategory")} />
+            <SearchableSelect options={SORT_OPTIONS} value={sortBy} onValueChange={setSortBy} placeholder={t("sortLabel")} />
             {categoryFilter !== "all" && (
               <button onClick={() => setCategoryFilter("all")} className="shrink-0 text-xs text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground">Clear</button>
             )}
@@ -104,12 +104,12 @@ export default function ResourceDownloadsPage() {
           {[1, 2, 3].map((i) => (<div key={i} className="h-48 animate-pulse rounded-2xl bg-background/70" />))}
         </div>
       ) : items.length === 0 ? (
-        <section className="workspace-panel-surface rounded-[28px] p-10 sm:p-14 text-center">
+        <section className="workspace-panel-surface rounded-3xl p-10 sm:p-14 text-center">
           <div className="flex flex-col items-center">
-            <div className="workspace-glass-panel rounded-2xl p-4 mb-5">
+            <div className="workspace-glass-panel card-pad rounded-2xl mb-5">
               <Inbox className="h-8 w-8 text-muted-foreground/50" />
             </div>
-            <h3 className="text-lg font-semibold text-foreground">{t("noResources")}</h3>
+            <h3 className="heading-subsection font-semibold text-foreground">{t("noResources")}</h3>
             <p className="mt-2 text-sm text-muted-foreground max-w-sm">
               Resources uploaded by your team will appear here for download.
             </p>
@@ -123,11 +123,11 @@ export default function ResourceDownloadsPage() {
               <article key={item._id} className="workspace-glass-panel rounded-2xl overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_24px_50px_-38px_rgba(2,132,199,0.38)]">
                 <div className="p-5 space-y-4">
                   <div className="flex items-start gap-3">
-                    <div className="rounded-2xl p-2 ring-1 ring-inset ring-border/60 bg-background/80 shrink-0">
+                    <div className="rounded-2xl ring-1 ring-inset ring-border/60 bg-background/80 shrink-0 chip-pad">
                       <CatIcon className="h-4 w-4 text-muted-foreground" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h3 className="text-[15px] font-semibold text-foreground truncate">{item.title}</h3>
+                      <h3 className="heading-subsection font-semibold text-foreground truncate">{item.title}</h3>
                       <p className="text-xs text-muted-foreground">{CATEGORY_LABELS[item.category] ?? item.category}</p>
                     </div>
                   </div>
@@ -150,7 +150,7 @@ export default function ResourceDownloadsPage() {
 
                   <div className="space-y-2">
                     {item.files.map((file) => (
-                      <div key={file.key} className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-background/60 px-3 py-2.5 text-xs">
+                      <div key={file.key} className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-background/60 text-xs chip-pad">
                         <span className="truncate font-medium text-foreground">{file.fileName} <span className="text-muted-foreground">({formatFileSize(file.size)})</span></span>
                         <div className="flex gap-1 shrink-0">
                           {(file.contentType?.startsWith("image/") || file.contentType === "application/pdf") && (
@@ -162,7 +162,7 @@ export default function ResourceDownloadsPage() {
                     ))}
                   </div>
 
-                  <p className="text-xs text-muted-foreground">{new Date(item.createdAt).toLocaleDateString()}</p>
+                  <p className="text-xs text-muted-foreground">{formatDate(new Date(item.createdAt))}</p>
                 </div>
               </article>
             );

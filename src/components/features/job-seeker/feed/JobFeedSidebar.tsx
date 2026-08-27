@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { ChevronRight, ChevronDown } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -56,7 +57,7 @@ function PrefItem({
         {label}
       </div>
       {value ? (
-        <div className="flex items-center justify-between rounded-2xl border border-border/70 bg-background px-3 py-2.5 text-xs shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
+        <div className="flex items-center justify-between rounded-2xl border border-border/70 bg-background text-xs shadow-[0_8px_24px_rgba(15,23,42,0.04)] chip-pad">
           <span className="truncate font-medium text-foreground">{value}</span>
           <Link
             href={editHref}
@@ -68,7 +69,7 @@ function PrefItem({
       ) : (
         <Link
           href={editHref}
-          className="group flex items-center justify-between rounded-2xl border border-dashed border-primary/30 bg-primary/[0.03] px-3 py-2.5 text-xs text-primary transition-colors hover:bg-primary/[0.06]"
+          className="group flex items-center justify-between rounded-2xl border border-dashed border-primary/30 bg-primary/[0.03] text-xs text-primary transition-colors hover:bg-primary/[0.06] chip-pad"
         >
           <span>{setLabel}</span>
           <ChevronRight className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100 rtl:rotate-180" />
@@ -178,7 +179,7 @@ export function JobFeedSidebar({ filters, onFiltersChange, locale }: SidebarProp
 
   const salaryLabel =
     profile?.preferredSalary
-      ? `${profile.preferredSalary.min.toLocaleString()}–${profile.preferredSalary.max.toLocaleString()} ${profile.preferredSalary.currency}`
+      ? `${formatCount(profile.preferredSalary.min)}–${formatCount(profile.preferredSalary.max)} ${profile.preferredSalary.currency}`
       : undefined;
 
   const activeFilterCount =
@@ -190,10 +191,10 @@ export function JobFeedSidebar({ filters, onFiltersChange, locale }: SidebarProp
   return (
     <div className="space-y-4">
       {/* ── Preferences ── */}
-      <div className="card-base rounded-lg sm:rounded-[26px]">
+      <div className="card-base rounded-lg sm:rounded-3xl">
         <div className="mb-4">
           <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("profileSignal")}</div>
-          <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">{t("preferencesTitle")}</h3>
+          <h3 className="heading-subsection mt-1 font-semibold tracking-tight text-foreground">{t("preferencesTitle")}</h3>
           <p className="mt-1 text-sm text-muted-foreground">{t("preferencesDescription")}</p>
         </div>
         <PrefItem
@@ -229,11 +230,11 @@ export function JobFeedSidebar({ filters, onFiltersChange, locale }: SidebarProp
       </div>
 
       {/* ── Filters ── */}
-      <div className="card-base rounded-lg sm:rounded-[26px]">
+      <div className="card-base rounded-lg sm:rounded-3xl">
         <div className="mb-4 flex items-center justify-between">
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("refineResults")}</div>
-            <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">{t("filters")}</h3>
+            <h3 className="heading-subsection mt-1 font-semibold tracking-tight text-foreground">{t("filters")}</h3>
           </div>
           {activeFilterCount > 0 && (
             <button

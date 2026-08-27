@@ -4,12 +4,16 @@ import { useTranslations } from "next-intl";
 import CmsPage from "@/components/features/admin/CmsPage";
 import type { CrudField } from "@/components/shared/CrudModal";
 import { FileText } from "lucide-react";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 export default function StaticPagesAdminPage() {
   const t = useTranslations("adminCmsStaticPages");
 
   const FIELDS: CrudField[] = [
-    { name: "slug", label: t("slugLabel"), type: "text", required: true, placeholder: "e.g. privacy-policy, terms-and-conditions, cookie-policy, gdpr" },
+    { name: "slug", label: t("slugLabel"), type: "text", required: true, placeholder: t("slugPlaceholder") },
+    /* The four placeholders below stay in their own language on purpose: each
+       shows what belongs in that field, and the English/Arabic pairs are what
+       tell an editor which box takes which language. */
     { name: "title", label: t("titleEnLabel"), type: "text", required: true, placeholder: "Privacy Policy" },
     { name: "titleAr", label: t("titleArLabel"), type: "text", placeholder: "سياسة الخصوصية" },
     { name: "body", label: t("bodyEnLabel"), type: "textarea", required: true, placeholder: "<h2>Privacy Policy</h2><p>...</p>" },
@@ -32,7 +36,7 @@ export default function StaticPagesAdminPage() {
       key: "updatedAt",
       label: t("lastUpdatedColumnLabel"),
       render: (value: unknown) =>
-        value ? new Date(String(value)).toLocaleDateString() : t("emptyDateValue"),
+        value ? formatDate(new Date(String(value))) : t("emptyDateValue"),
     },
     { key: "isActive", label: t("statusLabel") },
   ];

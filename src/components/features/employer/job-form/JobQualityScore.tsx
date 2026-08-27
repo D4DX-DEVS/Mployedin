@@ -96,7 +96,7 @@ export function JobQualityScore({ values }: JobQualityScoreProps) {
         : "[&>div]:bg-orange-500";
 
   return (
-    <div className="space-y-3 rounded-2xl border border-border bg-gradient-to-br from-background via-background to-primary/[0.04] p-3 sm:p-4 shadow-sm">
+    <div className="space-y-3 rounded-2xl border border-border bg-gradient-to-br from-background via-background to-primary/[0.04] shadow-sm card-pad">
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1">
           <div className="flex items-center gap-1.5 text-sm font-semibold">
@@ -167,7 +167,7 @@ export function JobQualityScore({ values }: JobQualityScoreProps) {
                 {pending.map((factor) => (
                   <div
                     key={factor.label}
-                    className="flex items-start gap-2 rounded-xl border border-border/60 bg-muted/40 px-3 py-2 text-xs"
+                    className="flex items-start gap-2 rounded-xl border border-border/60 bg-muted/40 text-xs chip-pad"
                   >
                     <span className="shrink-0 font-semibold text-primary">
                       +{factor.points.toLocaleString(numberLocale)}%

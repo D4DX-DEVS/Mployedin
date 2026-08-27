@@ -136,7 +136,7 @@ function SectionHeader({ icon: Icon, title, description }: { icon: typeof Buildi
           <Icon className="w-4 h-4 text-primary" />
         </div>
         <div>
-          <h3 className="text-sm font-semibold tracking-tight">{title}</h3>
+          <h3 className="heading-label font-semibold tracking-tight">{title}</h3>
           {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
         </div>
       </div>
@@ -144,9 +144,9 @@ function SectionHeader({ icon: Icon, title, description }: { icon: typeof Buildi
   );
 }
 
-function FieldLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
+function FieldLabel({ children, required, htmlFor }: { children: React.ReactNode; required?: boolean; htmlFor?: string }) {
   return (
-    <label className="text-[13px] font-medium text-foreground/80 mb-1.5 block">
+    <label htmlFor={htmlFor} className="text-[13px] font-medium text-foreground/80 mb-1.5 block">
       {children}
       {required && <span className="text-destructive ml-0.5">*</span>}
     </label>
@@ -238,7 +238,7 @@ function CompanySettingsPage() {
     try {
       await uploadDocMutation.mutateAsync(file);
     } catch (err) {
-      setDocError(err instanceof Error ? err.message : "Upload failed");
+      setDocError("We couldn't upload this document. Nothing was added. Check the file type and size, then try again.");
     }
   };
 
@@ -357,7 +357,7 @@ function CompanySettingsPage() {
       setTimeout(() => setSuccess(""), 4000);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update settings.");
+      setError("We couldn't update your settings. Your previous settings are still active. Review the fields and try again.");
     }
   }
 
@@ -369,7 +369,7 @@ function CompanySettingsPage() {
           <div className="h-7 w-48 bg-muted animate-pulse rounded-lg" />
           <div className="h-4 w-72 bg-muted/50 animate-pulse rounded" />
         </div>
-        <div className="rounded-xl border border-border/50 bg-card p-6 animate-pulse">
+        <div className="rounded-xl border border-border/50 bg-card animate-pulse panel-body">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-xl bg-muted" />
             <div className="space-y-2 flex-1">
@@ -433,7 +433,7 @@ function CompanySettingsPage() {
             {/* Info */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2.5 flex-wrap">
-                <h2 className="text-lg font-semibold truncate">{company?.companyName}</h2>
+                <h2 className="heading-section font-semibold truncate">{company?.companyName}</h2>
                 <Badge variant="outline" className={`${vBadge.color} text-[11px] font-medium px-2 py-0.5 border inline-flex items-center leading-none`}>
                   <VBadgeIcon className="w-3 h-3 me-1 shrink-0" />
                   <span>{vBadge.label}</span>
@@ -582,8 +582,9 @@ function CompanySettingsPage() {
                   <div className="p-6 space-y-3 sm:space-y-5">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div data-field="companyName" className="transition-all duration-300">
-                        <FieldLabel required>{t("companyName")}</FieldLabel>
+                        <FieldLabel required htmlFor="companyName">{t("companyName")}</FieldLabel>
                         <Input
+                          id="companyName"
                           value={form.companyName}
                           onChange={(e) => setField("companyName", e.target.value)}
                           placeholder={t("companyNamePlaceholder")}
@@ -591,9 +592,10 @@ function CompanySettingsPage() {
                         />
                       </div>
                       <div data-field="industry" className="transition-all duration-300">
-                        <FieldLabel>{t("industry")}</FieldLabel>
+                        <FieldLabel htmlFor="company-industry">{t("industry")}</FieldLabel>
                         {/* Options come from admin → Platform Data → Industries (merged with seeds) */}
                         <Autocomplete
+                          id="company-industry"
                           type="industries"
                           value={form.industry}
                           onChange={(v) => setField("industry", v)}
@@ -613,8 +615,9 @@ function CompanySettingsPage() {
                         />
                       </div>
                       <div>
-                        <FieldLabel>{t("foundedYear")}</FieldLabel>
+                        <FieldLabel htmlFor="foundedYear">{t("foundedYear")}</FieldLabel>
                         <Input
+                          id="foundedYear"
                           type="number"
                           placeholder={t("foundedYearPlaceholder")}
                           min={1800}
@@ -624,8 +627,9 @@ function CompanySettingsPage() {
                         />
                       </div>
                       <div>
-                        <FieldLabel>{t("yourTitle")}</FieldLabel>
+                        <FieldLabel htmlFor="designation">{t("yourTitle")}</FieldLabel>
                         <Input
+                          id="designation"
                           placeholder={t("yourTitlePlaceholder")}
                           value={form.designation}
                           onChange={(e) => setField("designation", e.target.value)}
@@ -635,8 +639,9 @@ function CompanySettingsPage() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div>
-                        <FieldLabel>{t("address")}</FieldLabel>
+                        <FieldLabel htmlFor="address">{t("address")}</FieldLabel>
                         <Input
+                          id="address"
                           placeholder={t("addressPlaceholder")}
                           value={form.address}
                           onChange={(e) => setField("address", e.target.value)}
@@ -656,16 +661,18 @@ function CompanySettingsPage() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div>
-                        <FieldLabel>{t("registrationNo")}</FieldLabel>
+                        <FieldLabel htmlFor="registrationNo">{t("registrationNo")}</FieldLabel>
                         <Input
+                          id="registrationNo"
                           placeholder={t("registrationNoPlaceholder")}
                           value={form.registrationNo}
                           onChange={(e) => setField("registrationNo", e.target.value)}
                         />
                       </div>
                       <div>
-                        <FieldLabel>{t("taxId")}</FieldLabel>
+                        <FieldLabel htmlFor="taxId">{t("taxId")}</FieldLabel>
                         <Input
+                          id="taxId"
                           placeholder={t("taxIdPlaceholder")}
                           value={form.taxId}
                           onChange={(e) => setField("taxId", e.target.value)}
@@ -677,8 +684,9 @@ function CompanySettingsPage() {
                     <Separator />
 
                     <div>
-                      <FieldLabel>{t("aboutCompany")}</FieldLabel>
+                      <FieldLabel htmlFor="description">{t("aboutCompany")}</FieldLabel>
                       <Textarea
+                        id="description"
                         placeholder={t("aboutCompanyPlaceholder")}
                         value={form.description}
                         onChange={(e) => setField("description", e.target.value)}
@@ -707,10 +715,11 @@ function CompanySettingsPage() {
                   <div className="p-6 space-y-3 sm:space-y-5">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div data-field="companyEmail" className="transition-all duration-300">
-                        <FieldLabel required>{t("companyEmail")}</FieldLabel>
+                        <FieldLabel required htmlFor="companyEmail">{t("companyEmail")}</FieldLabel>
                         <div className="relative">
                           <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
                           <Input
+                            id="companyEmail"
                             type="email"
                             className="pl-10"
                             value={form.companyEmail}
@@ -721,10 +730,11 @@ function CompanySettingsPage() {
                         </div>
                       </div>
                       <div data-field="phone" className="transition-all duration-300">
-                        <FieldLabel required>{t("phone")}</FieldLabel>
+                        <FieldLabel required htmlFor="phone">{t("phone")}</FieldLabel>
                         <div className="relative">
                           <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
                           <Input
+                            id="phone"
                             type="tel"
                             className="pl-10"
                             value={form.phone}
@@ -737,10 +747,11 @@ function CompanySettingsPage() {
                     </div>
 
                     <div data-field="website" className="transition-all duration-300">
-                      <FieldLabel>{t("website")}</FieldLabel>
+                      <FieldLabel htmlFor="website">{t("website")}</FieldLabel>
                       <div className="relative">
                         <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
                         <Input
+                          id="website"
                           type="text"
                           className="pl-10"
                           placeholder={t("websitePlaceholder")}
@@ -757,10 +768,11 @@ function CompanySettingsPage() {
                   <div className="p-6">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div>
-                        <FieldLabel>{t("linkedin")}</FieldLabel>
+                        <FieldLabel htmlFor="linkedin">{t("linkedin")}</FieldLabel>
                         <div className="relative">
                           <Linkedin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#0077B5]" />
                           <Input
+                            id="linkedin"
                             type="text"
                             className="pl-10"
                             placeholder={t("linkedinPlaceholder")}
@@ -770,10 +782,11 @@ function CompanySettingsPage() {
                         </div>
                       </div>
                       <div>
-                        <FieldLabel>{t("twitter")}</FieldLabel>
+                        <FieldLabel htmlFor="twitter">{t("twitter")}</FieldLabel>
                         <div className="relative">
                           <Twitter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#1DA1F2]" />
                           <Input
+                            id="twitter"
                             type="text"
                             className="pl-10"
                             placeholder={t("twitterPlaceholder")}
@@ -783,10 +796,11 @@ function CompanySettingsPage() {
                         </div>
                       </div>
                       <div>
-                        <FieldLabel>{t("facebook")}</FieldLabel>
+                        <FieldLabel htmlFor="facebook">{t("facebook")}</FieldLabel>
                         <div className="relative">
                           <Facebook className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#1877F2]" />
                           <Input
+                            id="facebook"
                             type="text"
                             className="pl-10"
                             placeholder={t("facebookPlaceholder")}
@@ -796,10 +810,11 @@ function CompanySettingsPage() {
                         </div>
                       </div>
                       <div>
-                        <FieldLabel>{t("instagram")}</FieldLabel>
+                        <FieldLabel htmlFor="instagram">{t("instagram")}</FieldLabel>
                         <div className="relative">
                           <Instagram className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#E4405F]" />
                           <Input
+                            id="instagram"
                             type="text"
                             className="pl-10"
                             placeholder={t("instagramPlaceholder")}
@@ -843,10 +858,11 @@ function CompanySettingsPage() {
                   </div>
 
                   <div>
-                    <FieldLabel>{t("preferredHiringLocations")}</FieldLabel>
+                    <FieldLabel htmlFor="preferredLocations">{t("preferredHiringLocations")}</FieldLabel>
                     <div className="relative">
                       <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
                       <Input
+                        id="preferredLocations"
                         className="pl-10"
                         placeholder={t("preferredLocationsPlaceholder")}
                         value={form.preferredLocations}
@@ -872,7 +888,7 @@ function CompanySettingsPage() {
                 <SectionCard>
                   <SectionHeader icon={Shield} title={t("verificationTrust")} description={t("verificationTrustDesc")} />
                   <div className="p-6 space-y-3 sm:space-y-4">
-                    <div className="flex items-start gap-4 p-4 rounded-xl bg-muted/30 border border-border/30">
+                    <div className="flex items-start gap-4 rounded-xl bg-muted/30 border border-border/30 card-pad">
                       <div className={`flex items-center justify-center w-10 h-10 rounded-xl shrink-0 ${
                         company?.verificationLevel === "basic" ? "bg-slate-100" : "bg-emerald-50"
                       }`}>
@@ -930,7 +946,7 @@ function CompanySettingsPage() {
                 <SectionCard>
                   <SectionHeader icon={FileText} title={t("verificationDocuments")} description={t("verificationDocumentsDesc")} />
                   <div className="p-6 space-y-3 sm:space-y-4">
-                    <p className="text-xs text-muted-foreground bg-muted/30 border border-border/30 rounded-lg px-3 py-2 leading-relaxed">
+                    <p className="text-xs text-muted-foreground bg-muted/30 border border-border/30 rounded-lg leading-relaxed chip-pad">
                       {t("verificationProcessNote")}
                     </p>
                     {docError && (
@@ -940,7 +956,7 @@ function CompanySettingsPage() {
                       {(company?.verificationDocs ?? []).map((url) => {
                         const name = url.split("/").pop() ?? url;
                         return (
-                          <div key={url} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-border/40 bg-muted/20">
+                          <div key={url} className="flex items-center justify-between gap-3 rounded-lg border border-border/40 bg-muted/20 chip-pad">
                             <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline truncate flex-1">{name}</a>
                             <Button
                               type="button"
@@ -990,19 +1006,19 @@ function CompanySettingsPage() {
             <CalendarFeedCard />
 
                 {/* Danger Zone */}
-                <div className="rounded-xl border-2 border-dashed border-destructive/25 bg-destructive/[0.02] p-6 space-y-3 sm:space-y-4">
+                <div className="rounded-xl border-2 border-dashed border-destructive/25 bg-destructive/[0.02] space-y-3 sm:space-y-4 panel-body">
                   <div className="flex items-center gap-2.5">
                     <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-destructive/10">
                       <AlertTriangle className="w-4 h-4 text-destructive" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-semibold text-destructive">{t("dangerZone")}</h3>
+                      <h3 className="heading-label font-semibold text-destructive">{t("dangerZone")}</h3>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {t("dangerZoneDesc")}
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between p-4 rounded-lg border border-destructive/15 bg-background">
+                  <div className="flex items-center justify-between rounded-lg border border-destructive/15 bg-background card-pad">
                     <div>
                       <p className="text-sm font-medium">{t("deactivateAccount")}</p>
                       <p className="text-xs text-muted-foreground mt-0.5">
@@ -1192,11 +1208,7 @@ function EmployerNotificationsTab() {
               key={opt.value}
               type="button"
               onClick={() => setPrefs((p) => ({ ...p, emailFrequency: opt.value }))}
-              className={`p-3 rounded-lg border-2 text-left transition-all ${
-                prefs.emailFrequency === opt.value
-                  ? "border-primary bg-primary/5"
-                  : "border-border/50 hover:border-border"
-              }`}
+              className={`rounded-lg border-2 text-left transition-all ${ prefs.emailFrequency === opt.value ? "border-primary bg-primary/5" : "border-border/50 hover:border-border" } chip-pad`}
             >
               <div className="text-sm font-medium">{t(opt.labelKey)}</div>
               <div className="text-[11px] text-muted-foreground mt-1">{t(opt.descKey)}</div>
@@ -1382,11 +1394,11 @@ function EmployerSmtpOverride({ isPremium }: { isPremium: boolean }) {
       <SectionCard>
         <SectionHeader icon={Mail} title={t("customEmailSmtp")} description={t("customEmailSmtpNonPremiumDesc")} />
         <div className="p-6">
-          <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200 dark:bg-amber-500/10 dark:border-amber-500/20">
-            <Sparkles className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
+          <div className="flex items-center gap-3 rounded-xl bg-amber-50 border border-amber-200 card-pad">
+            <Sparkles className="w-5 h-5 text-amber-600 shrink-0" />
             <div>
-              <p className="text-sm font-medium text-amber-800 dark:text-amber-300">{t("premiumFeature")}</p>
-              <p className="text-xs text-amber-700/80 dark:text-amber-400/70 mt-0.5">
+              <p className="text-sm font-medium text-amber-800">{t("premiumFeature")}</p>
+              <p className="text-xs text-amber-700/80 mt-0.5">
                 {t("premiumFeatureDesc")}
               </p>
             </div>

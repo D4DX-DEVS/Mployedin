@@ -136,7 +136,7 @@ export function CreatePosterPage({ jobId }: CreatePosterPageProps) {
         </div>
         <div className="flex items-center gap-3">
           <CreditsBadge credits={credits} />
-          <Button onClick={handleGenerate} disabled={!canGenerate} className="h-10 gap-2 rounded-xl px-5 font-semibold">
+          <Button onClick={handleGenerate} disabled={!canGenerate} className="gap-2 rounded-xl px-5 font-semibold">
             {poster.isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
             {poster.isGenerating ? t("generating") : t("generateNow")}
           </Button>
@@ -147,7 +147,7 @@ export function CreatePosterPage({ jobId }: CreatePosterPageProps) {
           which stays hidden when the very first generate fails — silent failure.
           Surface them here, always. */}
       {poster.error && !poster.isGenerating && (
-        <p className="rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+        <p className="rounded-lg border border-destructive/40 bg-destructive/5 text-sm text-destructive chip-pad">
           {poster.error}
         </p>
       )}
@@ -155,14 +155,14 @@ export function CreatePosterPage({ jobId }: CreatePosterPageProps) {
       {/* Options + results. Result sections only appear once generation starts —
           empty boxes before that are noise, especially on mobile. */}
       <div className={`grid grid-cols-1 gap-4 sm:gap-6 ${showResults ? "lg:grid-cols-4" : "lg:grid-cols-2"}`}>
-        <div className="rounded-xl border bg-card p-4 sm:p-5">
-          <h2 className="text-base font-semibold mb-1">{t("typeTitle")}</h2>
+        <div className="rounded-xl border bg-card panel-body">
+          <h2 className="heading-section font-semibold mb-1">{t("typeTitle")}</h2>
           <p className="text-xs text-muted-foreground mb-4">{t("typeDesc")}</p>
           <PosterTypeSelector selected={selectedType} onSelect={setSelectedType} />
         </div>
 
-        <div className="rounded-xl border bg-card p-4 sm:p-5">
-          <h2 className="text-base font-semibold mb-1">{t("customizeTitle")}</h2>
+        <div className="rounded-xl border bg-card panel-body">
+          <h2 className="heading-section font-semibold mb-1">{t("customizeTitle")}</h2>
           <p className="text-xs text-muted-foreground mb-4">{t("customizeDesc")}</p>
           <PosterCustomizer
             job={job}
@@ -183,8 +183,8 @@ export function CreatePosterPage({ jobId }: CreatePosterPageProps) {
         </div>
 
         {showResults && (
-          <div className="rounded-xl border bg-card p-4 sm:p-5 order-first lg:order-none">
-            <h2 className="text-base font-semibold mb-1">
+          <div className="rounded-xl border bg-card order-first lg:order-none panel-body">
+            <h2 className="heading-section font-semibold mb-1">
               {t("resultsTitle")}{hasResults ? ` (${poster.variations.length})` : ""}
             </h2>
             <p className="text-xs text-muted-foreground mb-4">{t("resultsDesc")}</p>
@@ -205,8 +205,8 @@ export function CreatePosterPage({ jobId }: CreatePosterPageProps) {
         )}
 
         {hasResults && (
-          <div className="rounded-xl border bg-card p-4 sm:p-5 order-first lg:order-none">
-            <h2 className="text-base font-semibold mb-1">{t("downloadTitle")}</h2>
+          <div className="rounded-xl border bg-card order-first lg:order-none panel-body">
+            <h2 className="heading-section font-semibold mb-1">{t("downloadTitle")}</h2>
             <p className="text-xs text-muted-foreground mb-4">{t("downloadDesc")}</p>
             <PosterPreviewPanel
               variation={poster.variations[poster.selectedIndex] ?? null}
@@ -234,7 +234,7 @@ export function CreatePosterPage({ jobId }: CreatePosterPageProps) {
 function ValueProp({ title, desc }: { title: string; desc: string }) {
   return (
     <div className="text-center">
-      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+      <h3 className="heading-label font-semibold text-foreground">{title}</h3>
       <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
     </div>
   );

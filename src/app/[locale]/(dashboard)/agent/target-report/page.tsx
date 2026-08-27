@@ -26,6 +26,7 @@ import {
   ProgressRing, TargetSummaryCard,
 } from "@/components/features/targets/TargetComponents";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -89,7 +90,7 @@ const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "S
 function formatCurrency(value: number, currency = "AED"): string {
   if (value >= 1_000_000) return `${currency} ${(value / 1_000_000).toFixed(1)}M`;
   if (value >= 1_000) return `${currency} ${Math.round(value / 1_000)}K`;
-  return `${currency} ${value.toLocaleString()}`;
+  return `${currency} ${formatCount(value)}`;
 }
 
 function GrowthIndicator({ value }: { value: number }) {
@@ -222,7 +223,7 @@ export default function AgentTargetReportPage() {
   if (loading) {
     return (
       <div className="page-container">
-        <div className="h-20 w-full animate-pulse rounded-[20px] bg-muted/40" />
+        <div className="h-20 w-full animate-pulse rounded-3xl bg-muted/40" />
         <div className="grid gap-4 sm:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="h-28 animate-pulse rounded-2xl bg-muted/50" />
@@ -238,7 +239,7 @@ export default function AgentTargetReportPage() {
       <div className="page-container">
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <Target className="h-12 w-12 text-muted-foreground/40 mb-4" />
-          <h2 className="text-lg font-semibold">{t("noTargetsAssigned")}</h2>
+          <h2 className="heading-section font-semibold">{t("noTargetsAssigned")}</h2>
           <p className="text-sm text-muted-foreground mt-1">{t("contactSupervisor")}</p>
         </div>
       </div>
@@ -253,9 +254,8 @@ export default function AgentTargetReportPage() {
       {/* ═══════ HERO ═══════ */}
       <DashboardPageHeader
         icon={Target}
-        eyebrow="Agent workspace"
-        title="My Target Report"
-        description={`Personal performance report — ${yearFilter}. Track your employer, employee, and finance targets.`}
+        title={t("myTargetReport")}
+        description={t("reportHeroDescription", { year: yearFilter })}
         summary={{
           label: "Performance",
           value: `${profile.overallProgress}% overall`,
@@ -265,7 +265,7 @@ export default function AgentTargetReportPage() {
 
       {/* ═══════ KPI Cards ═══════ */}
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="workspace-glass-panel rounded-2xl p-4">
+        <div className="workspace-glass-panel card-pad rounded-2xl">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Employer</p>
@@ -275,7 +275,7 @@ export default function AgentTargetReportPage() {
             <div className="workspace-tone-sky rounded-2xl p-2.5"><Building2 className="h-5 w-5" /></div>
           </div>
         </div>
-        <div className="workspace-glass-panel rounded-2xl p-4">
+        <div className="workspace-glass-panel card-pad rounded-2xl">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Employee</p>
@@ -285,7 +285,7 @@ export default function AgentTargetReportPage() {
             <div className="workspace-tone-emerald rounded-2xl p-2.5"><Users className="h-5 w-5" /></div>
           </div>
         </div>
-        <div className="workspace-glass-panel rounded-2xl p-4">
+        <div className="workspace-glass-panel card-pad rounded-2xl">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Business Volume</p>
@@ -295,7 +295,7 @@ export default function AgentTargetReportPage() {
             <div className="workspace-tone-amber rounded-2xl p-2.5"><CircleDollarSign className="h-5 w-5" /></div>
           </div>
         </div>
-        <div className="workspace-glass-panel rounded-2xl p-4">
+        <div className="workspace-glass-panel card-pad rounded-2xl">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Overall</p>
@@ -310,7 +310,7 @@ export default function AgentTargetReportPage() {
       {/* ═══════ TOOLBAR ═══════ */}
       <TableToolbar
         title={t("monthlyBreakdownTitle")}
-        description="Filter by quarter or category to drill down."
+        description={t("reportFilterHint")}
         onExportCsv={handleExportCsv}
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
@@ -321,7 +321,7 @@ export default function AgentTargetReportPage() {
           </Button>
         }
         actions={hasActiveFilters ? (
-          <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9 text-xs text-muted-foreground">
+          <Button variant="ghost" size="sm" onClick={clearFilters} className="text-xs text-muted-foreground">
             <X className="h-3.5 w-3.5 mr-1" /> Clear filters
           </Button>
         ) : undefined}
@@ -332,7 +332,7 @@ export default function AgentTargetReportPage() {
               <Input type="number" value={yearFilter} onChange={(e) => setYearFilter(parseInt(e.target.value) || currentYear)} className="h-9 w-24 rounded-lg text-sm" />
             </div>
             <Select value={quarterFilter} onValueChange={setQuarterFilter}>
-              <SelectTrigger className="h-9 w-[130px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder="Quarter" /></SelectTrigger>
+              <SelectTrigger className="h-9 w-[130px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder={t("quarter")} /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Quarters</SelectItem>
                 <SelectItem value="1">Q1 (Jan–Mar)</SelectItem>
@@ -342,7 +342,7 @@ export default function AgentTargetReportPage() {
               </SelectContent>
             </Select>
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="h-9 w-[140px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder="Category" /></SelectTrigger>
+              <SelectTrigger className="h-9 w-[140px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder={t("category")} /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
                 <SelectItem value="employer">Employer</SelectItem>
@@ -358,12 +358,12 @@ export default function AgentTargetReportPage() {
       />
 
       {/* ═══════ Progress Rings ═══════ */}
-      <section className="workspace-glass-panel rounded-2xl p-6">
+      <section className="workspace-glass-panel rounded-2xl panel-body">
         <div className="flex flex-wrap items-center justify-center gap-8">
-          <ProgressRing value={profile.employerProgress} label="Employer" sublabel={`${profile.employerAchieved}/${profile.employerTarget}`} />
-          <ProgressRing value={profile.employeeProgress} label="Employee" sublabel={`${profile.employeeAchieved}/${profile.employeeTarget}`} />
-          <ProgressRing value={profile.financeProgress} label="Finance" sublabel={`${currency} ${profile.financeAchieved.toLocaleString()}`} />
-          <ProgressRing value={profile.overallProgress} label="Overall" sublabel="Annual" color="#3b82f6" />
+          <ProgressRing value={profile.employerProgress} label={t("labelEmployer")} sublabel={`${profile.employerAchieved}/${profile.employerTarget}`} />
+          <ProgressRing value={profile.employeeProgress} label={t("labelEmployee")} sublabel={`${profile.employeeAchieved}/${profile.employeeTarget}`} />
+          <ProgressRing value={profile.financeProgress} label={t("labelFinance")} sublabel={`${currency} ${formatCount(profile.financeAchieved)}`} />
+          <ProgressRing value={profile.overallProgress} label={t("labelOverall")} sublabel={t("sublabelAnnual")} color="#3b82f6" />
         </div>
       </section>
 
@@ -381,7 +381,7 @@ export default function AgentTargetReportPage() {
       {/* ═══════ KPI with YoY ═══════ */}
       {data.yearOverYear && (
         <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="workspace-glass-panel rounded-2xl p-4">
+          <div className="workspace-glass-panel card-pad rounded-2xl">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Employers</p>
@@ -391,7 +391,7 @@ export default function AgentTargetReportPage() {
               <div className="workspace-tone-sky rounded-2xl p-2.5"><Building2 className="h-5 w-5" /></div>
             </div>
           </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
+          <div className="workspace-glass-panel card-pad rounded-2xl">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Employees</p>
@@ -401,7 +401,7 @@ export default function AgentTargetReportPage() {
               <div className="workspace-tone-emerald rounded-2xl p-2.5"><Users className="h-5 w-5" /></div>
             </div>
           </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
+          <div className="workspace-glass-panel card-pad rounded-2xl">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Business Volume</p>
@@ -411,7 +411,7 @@ export default function AgentTargetReportPage() {
               <div className="workspace-tone-amber rounded-2xl p-2.5"><CircleDollarSign className="h-5 w-5" /></div>
             </div>
           </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
+          <div className="workspace-glass-panel card-pad rounded-2xl">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Overall Progress</p>
@@ -426,10 +426,10 @@ export default function AgentTargetReportPage() {
 
       {/* ═══════ Monthly Trend ═══════ */}
       {data.monthlyTrend.length > 0 && (
-        <section className="rounded-3xl border bg-card p-5 shadow-sm print:break-inside-avoid">
+        <section className="rounded-3xl border bg-card shadow-sm print:break-inside-avoid panel-body">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold tracking-tight">Monthly Performance Timeline</h2>
+              <h2 className="heading-section font-semibold tracking-tight">Monthly Performance Timeline</h2>
               <p className="text-sm text-muted-foreground">
                 Target vs achieved{quarterFilter !== "all" ? ` — Q${quarterFilter}` : ""}{categoryFilter !== "all" ? ` — ${categoryFilter} only` : ""}
               </p>
@@ -473,10 +473,10 @@ export default function AgentTargetReportPage() {
 
       {/* ═══════ Business Volume ═══════ */}
       {data.businessVolume.length > 0 && data.totalBusinessVolume > 0 && (
-        <section className="rounded-3xl border bg-card p-5 shadow-sm print:break-inside-avoid">
+        <section className="rounded-3xl border bg-card shadow-sm print:break-inside-avoid panel-body">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold tracking-tight">Business Volume — {yearFilter}</h2>
+              <h2 className="heading-section font-semibold tracking-tight">Business Volume — {yearFilter}</h2>
               <p className="text-sm text-muted-foreground">Monthly revenue & deals (thousands){quarterFilter !== "all" ? ` — Q${quarterFilter}` : ""}</p>
             </div>
             <CircleDollarSign className="h-5 w-5 text-primary" />
@@ -513,10 +513,10 @@ export default function AgentTargetReportPage() {
 
       {/* ═══════ Year-over-Year ═══════ */}
       {data.yearOverYear && (
-        <section className="rounded-3xl border bg-card p-5 shadow-sm print:break-inside-avoid">
+        <section className="rounded-3xl border bg-card shadow-sm print:break-inside-avoid panel-body">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold tracking-tight">Year-over-Year Comparison</h2>
+              <h2 className="heading-section font-semibold tracking-tight">Year-over-Year Comparison</h2>
               <p className="text-sm text-muted-foreground">{data.yearOverYear.previousYear.year} vs {data.yearOverYear.currentYear.year}</p>
             </div>
           </div>

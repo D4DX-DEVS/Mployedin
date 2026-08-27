@@ -128,7 +128,7 @@ export default async function PublicCompaniesPage({ params, searchParams }: Page
             <Link
               key={String(emp._id)}
               href={`/${locale}/companies/${String(emp._id)}`}
-              className="group block p-6 bg-card border border-border rounded-xl hover:shadow-md hover:border-primary/30 transition-all"
+              className="group block bg-card border border-border rounded-xl hover:shadow-md hover:border-primary/30 transition-all panel-body"
             >
               <div className="flex items-start gap-4">
                 {emp.logo ? (

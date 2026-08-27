@@ -12,7 +12,7 @@ export default function CommTemplatesLoading() {
         {Array.from({ length: 6 }).map((_, i) => (
           <div
             key={i}
-            className="rounded-lg border border-border bg-card p-5 h-36 animate-pulse"
+            className="rounded-lg border border-border bg-card h-36 animate-pulse panel-body"
             style={{ opacity: 1 - i * 0.1 }}
           />
         ))}

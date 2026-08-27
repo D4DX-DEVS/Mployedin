@@ -14,6 +14,7 @@ import { TableToolbar } from "@/components/shared/TableToolbar";
 import { usePagination } from "@/hooks/usePagination";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
+import { formatCount, formatDateTime } from "@/lib/ui/intlFormat";
 
 interface AuditLogEntry {
   _id: string;
@@ -75,7 +76,7 @@ export default function AuditLogsPage() {
   ];
 
   const exportColumns: ExportColumn<AuditLogEntry>[] = [
-    { header: t("timestamp"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleString() : "—" },
+    { header: t("timestamp"), key: "createdAt", formatter: (v) => v ? formatDateTime(new Date(String(v))) : "—" },
     { header: t("actor"), key: "actorId" as keyof AuditLogEntry, formatter: (_v, r) => (r as unknown as AuditLogEntry).actorId?.name ?? t("system") },
     { header: t("email"), key: "actorId" as keyof AuditLogEntry, formatter: (_v, r) => (r as unknown as AuditLogEntry).actorId?.email ?? "—" },
     { header: t("onBehalfOf"), key: "onBehalfOfId" as keyof AuditLogEntry, formatter: (_v, r) => (r as unknown as AuditLogEntry).onBehalfOfId?.email ?? "—" },
@@ -107,14 +108,14 @@ export default function AuditLogsPage() {
         updateTotal(data.pagination.total);
       } else {
         const err = await res.json().catch(() => ({}));
-        toast.error(err.error || "Failed to load audit logs");
+        toast.error(err.error || t("failedToLoadAuditLogs"));
       }
     } catch (error) {
-      toast.error("Failed to load audit logs");
+      toast.error(t("failedToLoadAuditLogs"));
     } finally {
       setLoading(false);
     }
-  }, [resource, action, country, fromDate, toDate, page, limit]);
+  }, [resource, action, country, fromDate, toDate, page, limit, t]);
 
   useEffect(() => { fetchLogs(); }, [fetchLogs]);
 
@@ -122,8 +123,7 @@ export default function AuditLogsPage() {
     <div className="page-container">
       <PageHero
         title={t("auditLogs")}
-        description={`${total.toLocaleString()} ${t("logEntriesDescription")}`}
-        eyebrow={t("adminWorkspace")}
+        description={`${formatCount(total)} ${t("logEntriesDescription")}`}
       />
 
       <TableToolbar
@@ -221,7 +221,7 @@ export default function AuditLogsPage() {
                           <p className="font-medium text-foreground">{log.actorId.name ?? t("unknown")}</p>
                           <p className="text-muted-foreground">{log.actorId.email}</p>
                           {log.onBehalfOfId && (
-                            <p className="text-amber-600 dark:text-amber-500">
+                            <p className="text-amber-600">
                               ↳ {t("onBehalfOf")} {log.onBehalfOfId.name ?? log.onBehalfOfId.email ?? log.onBehalfOfRole}
                             </p>
                           )}

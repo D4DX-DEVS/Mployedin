@@ -144,7 +144,6 @@ export default function AdminTerritoryPage() {
     <div className="page-container">
       <PageHero
         icon={MapPin}
-        eyebrow={tr("adminWorkspaceBadge")}
         title={tr("pageTitle")}
         description={tr("pageDescription")}
         actions={
@@ -169,12 +168,12 @@ export default function AdminTerritoryPage() {
         }
       />
 
-      <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
+      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
         {/* Inline create form */}
         {showForm && (
           <div className="border-b border-border/60 bg-secondary/30 px-5 py-4">
             <form onSubmit={handleSubmit} className="space-y-4 max-w-lg">
-              <h3 className="text-sm font-semibold text-foreground">{tr("createTerritoryFormHeading")}</h3>
+              <h3 className="heading-label font-semibold text-foreground">{tr("createTerritoryFormHeading")}</h3>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground">{tr("territoryNameLabel")} <span className="text-destructive">*</span></label>
                 <Input
@@ -231,7 +230,7 @@ export default function AdminTerritoryPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {territories.map((t) => (
-                <div key={t._id} className="group rounded-xl border border-border/60 bg-card p-4 transition-all hover:border-primary/40 hover:shadow-sm">
+                <div key={t._id} className="group rounded-xl border border-border/60 bg-card transition-all hover:border-primary/40 hover:shadow-sm card-pad">
                   <div className="flex items-start justify-between">
                     <div>
                       <h3 className="font-semibold text-foreground">{t.name}</h3>

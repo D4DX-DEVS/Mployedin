@@ -22,13 +22,14 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { useConfirm } from "@/hooks/useConfirm";
+import { formatDate, formatDateTime } from "@/lib/ui/intlFormat";
 
 const USER_ROLES = ["all", "job_seeker", "employer", "agent", "super_agent", "admin"];
 const TEMPLATE_TYPES_ARRAY = ["onboarding", "transactional", "marketing", "system"] as const;
 const fieldClassName =
   "w-full rounded-2xl border border-border bg-muted/50 px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-primary/60 focus:bg-background focus:ring-4 focus:ring-primary/20";
 const panelClassName =
-  "rounded-[28px] border border-border bg-card/95 p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur dark:shadow-[0_24px_60px_-46px_rgba(0,0,0,0.35)]";
+  "rounded-3xl border border-border bg-card/95 p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur";
 
 interface BroadcastForm {
   title: string;
@@ -307,11 +308,10 @@ export default function AdminCommunicationsPage() {
       <PageHero
         title={tr("communicationsCenterHeading")}
         description={tr("communicationsCenterDesc")}
-        eyebrow={tr("adminWorkspace")}
       />
 
       {/* ── Tab Navigation ── */}
-      <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
+      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
         <div className="flex gap-1 overflow-x-auto px-4 py-2">
           {TABS.map((tabOption) => {
             const active = tab === tabOption.key;
@@ -348,7 +348,7 @@ export default function AdminCommunicationsPage() {
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tr("liveBroadcast")}</p>
-                <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{tr("sendMessageTitle")}</h2>
+                <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{tr("sendMessageTitle")}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">{tr("sendMessageDesc")}</p>
               </div>
               <div className="rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground">
@@ -457,7 +457,7 @@ export default function AdminCommunicationsPage() {
                   tr("messagesStored")
                 )}
               </div>
-              <Button type="submit" disabled={sending} size="lg" className="h-11 gap-2 rounded-xl px-5">
+              <Button type="submit" disabled={sending} size="lg" className="gap-2 rounded-xl px-5">
                 <Send className="h-4 w-4" />
                 {sending ? tr("sending") : tr("sendNow")}
               </Button>
@@ -467,7 +467,7 @@ export default function AdminCommunicationsPage() {
           <div className="space-y-3 sm:space-y-6">
             <aside className={panelClassName}>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tr("deliveryNotes")}</p>
-              <h3 className="mt-2 text-lg font-semibold tracking-tight text-foreground">{tr("keepMessageClear")}</h3>
+              <h3 className="heading-subsection mt-2 font-semibold tracking-tight text-foreground">{tr("keepMessageClear")}</h3>
               <div className="mt-4 space-y-3 text-sm text-muted-foreground">
                 <div className="rounded-2xl border border-border bg-muted/70 px-4 py-3">
                   {tr("deliveryNote1")}
@@ -485,7 +485,7 @@ export default function AdminCommunicationsPage() {
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tr("quickStart")}</p>
-                  <h3 className="mt-2 text-lg font-semibold tracking-tight text-foreground">{tr("recentTemplates")}</h3>
+                  <h3 className="heading-subsection mt-2 font-semibold tracking-tight text-foreground">{tr("recentTemplates")}</h3>
                 </div>
                 <button
                   type="button"
@@ -508,7 +508,7 @@ export default function AdminCommunicationsPage() {
                   </div>
                 ) : (
                   quickTemplates.map((template) => (
-                    <div key={template._id} className="rounded-2xl border border-border bg-muted/60 p-4">
+                    <div key={template._id} className="rounded-2xl border border-border bg-muted/60 card-pad">
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="text-sm font-semibold text-foreground">{template.name}</p>
@@ -538,7 +538,7 @@ export default function AdminCommunicationsPage() {
           <div className={`${panelClassName} flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between`}>
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tr("reusableContent")}</p>
-              <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{tr("templateLibrary")}</h2>
+              <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{tr("templateLibrary")}</h2>
               <p className="mt-1 text-sm text-muted-foreground">{tr("templateLibraryDesc")}</p>
             </div>
             <Button
@@ -561,7 +561,7 @@ export default function AdminCommunicationsPage() {
             <form onSubmit={(e) => handleSaveTemplate(e)} className={`${panelClassName} space-y-5`}>
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tr("createTemplateHeading")}</p>
-                <h3 className="mt-2 text-lg font-semibold tracking-tight text-foreground">{tr("createTemplateSub")}</h3>
+                <h3 className="heading-subsection mt-2 font-semibold tracking-tight text-foreground">{tr("createTemplateSub")}</h3>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
@@ -627,7 +627,7 @@ export default function AdminCommunicationsPage() {
               ) : null}
 
               <div className="flex justify-end">
-                <Button type="submit" disabled={templateSaving} size="lg" className="h-11 rounded-xl px-5">
+                <Button type="submit" disabled={templateSaving} size="lg" className="rounded-xl px-5">
                   {templateSaving ? tr("saving") : tr("saveTemplate")}
                 </Button>
               </div>
@@ -646,18 +646,18 @@ export default function AdminCommunicationsPage() {
               </div>
             ) : (
               templates.map((template) => (
-                <div key={template._id} className="rounded-3xl border border-border bg-muted/50 p-5">
+                <div key={template._id} className="rounded-3xl border border-border bg-muted/50 panel-body">
                   <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                     <div className="space-y-3">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-lg font-semibold tracking-tight text-foreground">{template.name}</h3>
+                        <h3 className="heading-subsection font-semibold tracking-tight text-foreground">{template.name}</h3>
                         <span className="rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                           {formatTemplateType(template.type)}
                         </span>
                       </div>
                       <p className="text-sm font-medium text-foreground">{template.subject}</p>
                       <p className="max-w-3xl whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{template.body}</p>
-                      <p className="text-xs text-muted-foreground">Created {new Date(template.createdAt).toLocaleDateString()}</p>
+                      <p className="text-xs text-muted-foreground">Created {formatDate(new Date(template.createdAt))}</p>
                     </div>
 
                     <div className="flex flex-wrap gap-2">
@@ -693,7 +693,7 @@ export default function AdminCommunicationsPage() {
                   </div>
 
                   {editId === template._id ? (
-                    <form onSubmit={(e) => handleSaveTemplate(e, template._id)} className="mt-5 space-y-4 rounded-2xl border border-border bg-card p-4">
+                    <form onSubmit={(e) => handleSaveTemplate(e, template._id)} className="mt-5 space-y-4 rounded-2xl border border-border bg-card card-pad">
                       <div className="grid gap-4 md:grid-cols-2">
                         <div className="space-y-2">
                           <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tr("nameLabel")}</label>
@@ -720,7 +720,7 @@ export default function AdminCommunicationsPage() {
                           </Select>
                         </div>
                         <div className="space-y-2 md:col-span-2">
-                          <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Subject</label>
+                          <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tr("subjectLabel")}</label>
                           <input
                             required
                             value={templateForm.subject}
@@ -767,7 +767,7 @@ export default function AdminCommunicationsPage() {
         <section className={`${panelClassName} space-y-4`}>
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tr("broadcastHistoryHead")}</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{tr("recentActivityHeading")}</h2>
+            <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{tr("recentActivityHeading")}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{tr("recentActivityDesc")}</p>
           </div>
 
@@ -787,11 +787,11 @@ export default function AdminCommunicationsPage() {
             </div>
           ) : (
             history.filter((r) => r.title.toLowerCase().includes(historySearch.toLowerCase()) || r.body?.toLowerCase().includes(historySearch.toLowerCase())).map((record) => (
-              <article key={record._id} className="rounded-3xl border border-border bg-muted/50 p-5">
+              <article key={record._id} className="rounded-3xl border border-border bg-muted/50 panel-body">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-lg font-semibold tracking-tight text-foreground">{record.title}</h3>
+                      <h3 className="heading-subsection font-semibold tracking-tight text-foreground">{record.title}</h3>
                       <span className="rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                         {formatChannelLabel(record.channels?.[0] ?? "in_app")}
                       </span>
@@ -800,7 +800,7 @@ export default function AdminCommunicationsPage() {
                   </div>
                   <div className="rounded-2xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tr("sentLabel")}</p>
-                    <p className="mt-2 font-medium text-foreground">{new Date(record.createdAt).toLocaleString()}</p>
+                    <p className="mt-2 font-medium text-foreground">{formatDateTime(new Date(record.createdAt))}</p>
                   </div>
                 </div>
               </article>

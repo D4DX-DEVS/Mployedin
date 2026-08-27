@@ -13,7 +13,7 @@ export function FormFieldsSkeleton({ fields = 4, showTabs = 0 }: FormFieldsSkele
           ))}
         </div>
       )}
-      <div className="rounded-lg border border-border bg-card p-6 space-y-6">
+      <div className="rounded-lg border border-border bg-card space-y-6 panel-body">
         {Array.from({ length: fields }).map((_, i) => (
           <div key={i} className="space-y-2">
             <div className="h-4 w-24 bg-muted/50 rounded-md animate-pulse" />

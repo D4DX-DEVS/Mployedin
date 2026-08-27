@@ -13,6 +13,7 @@ import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
+import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import { PageHero } from "@/components/shared/PageHero";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { toast } from "sonner";
@@ -176,7 +177,7 @@ export default function BackgroundChecksPage() {
       setCreateOpen(false);
       fetchChecks();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("errors.createFailed"));
+      toast.error(t("errors.createFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -207,6 +208,15 @@ export default function BackgroundChecksPage() {
       : s === "cancelled" ? "bg-gray-100 text-gray-600 border-gray-300"
       : "bg-amber-100 text-amber-700 border-amber-300";
 
+  // Hoisted so the list can tell "no checks yet" apart from "filters match
+  // nothing" — filtering inline rendered an empty grid with no explanation.
+  const filtered = checks.filter((c) => {
+    if (search.trim() && !candidateName(c).toLowerCase().includes(search.toLowerCase())) return false;
+    if (dateFrom && new Date(c.createdAt) < new Date(dateFrom)) return false;
+    if (dateTo && new Date(c.createdAt) > new Date(dateTo)) return false;
+    return true;
+  });
+
   const outcomeColor = (o: Outcome) =>
     o === "clear" ? "bg-emerald-100 text-emerald-700 border-emerald-300"
       : o === "flagged" ? "bg-amber-100 text-amber-700 border-amber-300"
@@ -230,7 +240,7 @@ export default function BackgroundChecksPage() {
       {loading ? (
         <div className="grid gap-3">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card px-4 py-4">
+            <div key={i} className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card card-pad">
               <Skeleton className="h-10 w-10 rounded-full" />
               <div className="flex-1 space-y-2">
                 <Skeleton className="h-4 w-40" />
@@ -247,7 +257,7 @@ export default function BackgroundChecksPage() {
         </div>
       ) : (
         <>
-          <div className="workspace-panel-surface rounded-2xl sm:rounded-[28px] panel-body">
+          <div className="workspace-panel-surface rounded-2xl sm:rounded-3xl panel-body">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -256,9 +266,10 @@ export default function BackgroundChecksPage() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="pl-9 h-10 rounded-xl border-border bg-background"
+                  aria-label={t("searchPlaceholder")}
                 />
               </div>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2">
                 <DateTimePicker
                   mode="date"
                   value={dateFrom}
@@ -271,32 +282,25 @@ export default function BackgroundChecksPage() {
                   onChange={setDateTo}
                   placeholder={t("toDate")}
                 />
+                {/* Privacy info at the point candidate data is shown, compacted
+                    to an icon + popover to keep the list above the fold. */}
+                <CandidateDataNotice variant="candidateList" compact />
               </div>
             </div>
           </div>
 
+          {filtered.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border/60 py-16 text-center">
+              <Search className="mx-auto h-10 w-10 text-muted-foreground/60" />
+              <p className="mt-3 text-sm text-muted-foreground">{t("noResults")}</p>
+            </div>
+          ) : (
           <div className="grid gap-3">
-          {checks
-            .filter((c) => {
-              if (search.trim()) {
-                const q = search.toLowerCase();
-                if (!candidateName(c).toLowerCase().includes(q)) return false;
-              }
-              if (dateFrom) {
-                const checkDate = new Date(c.createdAt);
-                if (checkDate < new Date(dateFrom)) return false;
-              }
-              if (dateTo) {
-                const checkDate = new Date(c.createdAt);
-                if (checkDate > new Date(dateTo)) return false;
-              }
-              return true;
-            })
-            .map((c) => (
+          {filtered.map((c) => (
             <button
               key={c._id}
               onClick={() => setDetail(c)}
-              className="flex flex-col gap-2 rounded-2xl border border-border/60 bg-card px-4 py-4 text-left transition hover:border-primary/40 sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-2 rounded-2xl border border-border/60 bg-card text-left transition hover:border-primary/40 sm:flex-row sm:items-center sm:justify-between card-pad"
             >
               <div className="flex items-center gap-3">
                 <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -316,6 +320,7 @@ export default function BackgroundChecksPage() {
             </button>
           ))}
           </div>
+          )}
         </>
       )}
 
@@ -359,10 +364,10 @@ export default function BackgroundChecksPage() {
             </div>
 
             {(checkType === "reference" || checkType === "both") && (
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{t("fields.references")}</Label>
                 {refs.map((r, i) => (
-                  <div key={i} className="rounded-xl border border-border/60 p-3 space-y-2">
+                  <div key={i} className="rounded-xl border border-border/60 space-y-2 chip-pad">
                     <div className="flex items-center gap-2">
                       <Input placeholder={t("fields.refName")} value={r.name} onChange={(e) => updateRef(i, { name: e.target.value })} />
                       {refs.length > 1 && (
@@ -385,7 +390,7 @@ export default function BackgroundChecksPage() {
               </div>
             )}
 
-            <div className="space-y-1.5">
+            <div className="field">
               <Label>{t("fields.notes")}</Label>
               <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={t("fields.notesPlaceholder")} className="min-h-20" />
             </div>
@@ -434,7 +439,7 @@ export default function BackgroundChecksPage() {
                   <div className="space-y-2">
                     <Label>{t("fields.references")}</Label>
                     {detail.references.map((ref, i) => (
-                      <div key={i} className="rounded-xl border border-border/60 p-3 space-y-2">
+                      <div key={i} className="rounded-xl border border-border/60 space-y-2 chip-pad">
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="text-sm font-medium">{ref.name}</p>
@@ -465,7 +470,7 @@ export default function BackgroundChecksPage() {
                 )}
 
                 {(detail.checkType === "background" || detail.checkType === "both") && (
-                  <div className="space-y-1.5">
+                  <div className="field">
                     <Label>{t("fields.backgroundResults")}</Label>
                     <Textarea
                       defaultValue={detail.backgroundResults}

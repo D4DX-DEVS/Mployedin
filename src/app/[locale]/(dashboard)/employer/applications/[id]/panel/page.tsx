@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { cn } from "@/lib/utils";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 // ── Types ──────────────────────────────────────────────────────────
 interface ScorecardScores {
@@ -191,7 +192,7 @@ export default function HiringPanelPage() {
         <section className="card-base rounded-2xl border mb-6 space-y-3 sm:space-y-4 panel-body">
           <div className="flex items-center gap-2">
             <Users className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold">{t("panelConsensus")}</h2>
+            <h2 className="heading-section font-semibold">{t("panelConsensus")}</h2>
             {consensus.isUnanimous && (
               <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-300">
                 {t("unanimous")}
@@ -206,15 +207,15 @@ export default function HiringPanelPage() {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="rounded-xl border bg-muted/20 p-3 text-center">
+            <div className="rounded-xl border bg-muted/20 text-center chip-pad">
               <div className="text-2xl font-bold text-foreground">{consensus.totalEvaluators}</div>
               <div className="text-xs text-muted-foreground">{t("evaluators")}</div>
             </div>
-            <div className="rounded-xl border bg-muted/20 p-3 text-center">
+            <div className="rounded-xl border bg-muted/20 text-center chip-pad">
               <div className="text-2xl font-bold text-foreground">{consensus.averageOverall}{t("outOf5")}</div>
               <div className="text-xs text-muted-foreground">{t("avgScoreLabel")}</div>
             </div>
-            <div className="col-span-2 rounded-xl border bg-muted/20 p-3">
+            <div className="col-span-2 rounded-xl border bg-muted/20 chip-pad">
               <div className="text-xs text-muted-foreground mb-2">{t("recommendationDist")}</div>
               <div className="flex flex-wrap gap-1.5">
                 {Object.entries(consensus.recommendationDistribution)
@@ -245,7 +246,7 @@ export default function HiringPanelPage() {
           {/* Average Scores Breakdown */}
           <div className="grid grid-cols-5 gap-2">
             {(Object.entries(consensus.averageScores) as [string, number][]).map(([key, val]) => (
-              <div key={key} className="rounded-lg border p-2 text-center">
+              <div key={key} className="rounded-lg border text-center chip-pad">
                 <div className="text-sm font-semibold">{val}</div>
                 <div className="text-[10px] text-muted-foreground capitalize">
                   {key.replace(/([A-Z])/g, " $1").trim()}
@@ -258,7 +259,7 @@ export default function HiringPanelPage() {
 
       {/* ── Individual Evaluator Scorecards ───────────────────────── */}
       <section className="space-y-3 mb-6">
-        <h2 className="text-base font-semibold flex items-center gap-2">
+        <h2 className="heading-section font-semibold flex items-center gap-2">
           <Users className="h-4 w-4" />
           {t("individualEvals", { count: scorecards.length })}
         </h2>
@@ -278,7 +279,7 @@ export default function HiringPanelPage() {
       {/* ── Past Decisions ────────────────────────────────────────── */}
       {decisions.length > 0 && (
         <section className="space-y-3 mb-6">
-          <h2 className="text-base font-semibold">{t("pastDecisions")}</h2>
+          <h2 className="heading-section font-semibold">{t("pastDecisions")}</h2>
           <div className="space-y-2">
             {decisions.map((d) => {
               const iconConfig = OUTCOME_ICONS[d.outcome] ?? OUTCOME_ICONS.no_decision;
@@ -297,7 +298,7 @@ export default function HiringPanelPage() {
                     </div>
                     {d.reasoning && <p className="text-xs text-muted-foreground mt-1">{d.reasoning}</p>}
                     <div className="text-[11px] text-muted-foreground mt-1">
-                      By {d.decidedBy?.name ?? "Unknown"} · {new Date(d.createdAt).toLocaleDateString()}
+                      By {d.decidedBy?.name ?? "Unknown"} · {formatDate(new Date(d.createdAt))}
                     </div>
                   </div>
                 </div>
@@ -310,7 +311,7 @@ export default function HiringPanelPage() {
       {/* ── Make Decision ─────────────────────────────────────────── */}
       {!submitted && (
         <section className="card-base rounded-2xl border space-y-3 sm:space-y-4 panel-body">
-          <h2 className="text-base font-semibold">{t("recordDecision")}</h2>
+          <h2 className="heading-section font-semibold">{t("recordDecision")}</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {(["advance", "hire", "hold", "reject"] as const).map((outcome) => {
               const iconConfig = OUTCOME_ICONS[outcome];
@@ -336,10 +337,11 @@ export default function HiringPanelPage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">
+            <label htmlFor="reasoning-textarea" className="text-sm font-medium">
               {t("reasoning")}
             </label>
             <Textarea
+              id="reasoning-textarea"
               placeholder={t("reasoningPlaceholder")}
               value={reasoning}
               onChange={(e) => setReasoning(e.target.value)}
@@ -419,13 +421,13 @@ function EvaluatorCard({ scorecard: sc }: { scorecard: EvaluatorScorecard }) {
       <div className="flex items-center gap-3 text-xs text-muted-foreground">
         <span>{t("overall")}: <strong className="text-foreground">{sc.overallScore.toFixed(1)}{t("outOf5")}</strong></span>
         <span>·</span>
-        <span>{new Date(sc.createdAt).toLocaleDateString()}</span>
+        <span>{formatDate(new Date(sc.createdAt))}</span>
       </div>
 
       {(sc.strengths || sc.concerns) && (
         <div className="grid grid-cols-2 gap-2">
           {sc.strengths && (
-            <div className="rounded-lg border border-emerald-100 bg-emerald-50/50 p-2">
+            <div className="rounded-lg border border-emerald-100 bg-emerald-50/50 chip-pad">
               <div className="flex items-center gap-1 text-[10px] font-medium text-emerald-700 mb-1">
                 <ThumbsUp className="h-3 w-3" /> {t("strengthsLabel")}
               </div>
@@ -433,7 +435,7 @@ function EvaluatorCard({ scorecard: sc }: { scorecard: EvaluatorScorecard }) {
             </div>
           )}
           {sc.concerns && (
-            <div className="rounded-lg border border-red-100 bg-red-50/50 p-2">
+            <div className="rounded-lg border border-red-100 bg-red-50/50 chip-pad">
               <div className="flex items-center gap-1 text-[10px] font-medium text-red-700 mb-1">
                 <ThumbsDown className="h-3 w-3" /> {t("concerns")}
               </div>

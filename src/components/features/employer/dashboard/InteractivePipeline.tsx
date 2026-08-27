@@ -10,8 +10,8 @@ import {
   ClipboardCheck,
   FileText,
   Gift,
-  Sparkles,
 } from "lucide-react";
+import { DashboardSection } from "@/components/shared/DashboardOverview";
 
 interface PipelineStage {
   labelKey: string;
@@ -22,8 +22,6 @@ interface PipelineStage {
   href: string;
   /** Label + icon accent colour. */
   accent: string;
-  /** Card surface (tinted bg + border). */
-  surface: string;
 }
 
 interface InteractivePipelineProps {
@@ -47,11 +45,9 @@ export function InteractivePipeline({
   offers,
   offersSent,
   placements,
-  avgMatchScore,
   locale,
 }: InteractivePipelineProps) {
   const t = useTranslations("employerDashboard.interactivePipeline");
-  const tInsights = useTranslations("employerDashboard.quickInsights");
 
   const stages: PipelineStage[] = [
     {
@@ -61,8 +57,7 @@ export function InteractivePipeline({
       subLabelKey: "new",
       icon: FileText,
       href: `/${locale}/employer/applications?status=applied`,
-      accent: "text-sky-600 dark:text-sky-300",
-      surface: "bg-sky-50/70 border-sky-200 dark:bg-sky-500/10 dark:border-sky-500/25",
+      accent: "text-sky-600",
     },
     {
       labelKey: "screening",
@@ -71,8 +66,7 @@ export function InteractivePipeline({
       subLabelKey: "inReview",
       icon: ClipboardCheck,
       href: `/${locale}/employer/applications?status=shortlisted`,
-      accent: "text-violet-600 dark:text-violet-300",
-      surface: "bg-violet-50/70 border-violet-200 dark:bg-violet-500/10 dark:border-violet-500/25",
+      accent: "text-violet-600",
     },
     {
       labelKey: "interviews",
@@ -81,8 +75,7 @@ export function InteractivePipeline({
       subLabelKey: "scheduled",
       icon: Calendar,
       href: `/${locale}/employer/interviews`,
-      accent: "text-amber-600 dark:text-amber-300",
-      surface: "bg-amber-50/70 border-amber-200 dark:bg-amber-500/10 dark:border-amber-500/25",
+      accent: "text-amber-600",
     },
     {
       labelKey: "offers",
@@ -91,8 +84,7 @@ export function InteractivePipeline({
       subLabelKey: "sent",
       icon: Gift,
       href: `/${locale}/employer/offers`,
-      accent: "text-emerald-600 dark:text-emerald-300",
-      surface: "bg-emerald-50/70 border-emerald-200 dark:bg-emerald-500/10 dark:border-emerald-500/25",
+      accent: "text-emerald-600",
     },
     {
       labelKey: "hired",
@@ -101,64 +93,58 @@ export function InteractivePipeline({
       subLabelKey: "placed",
       icon: BriefcaseBusiness,
       href: `/${locale}/employer/placements`,
-      accent: "text-teal-600 dark:text-teal-300",
-      surface: "bg-teal-50/70 border-teal-200 dark:bg-teal-500/10 dark:border-teal-500/25",
+      accent: "text-teal-600",
     },
   ];
 
   return (
-    <section className="workspace-panel-surface overflow-hidden rounded-2xl">
-      <div className="panel-head flex-wrap justify-between">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-foreground sm:gap-2 sm:text-[11px] sm:tracking-[0.14em]">
-            <Sparkles className="h-3.5 w-3.5 shrink-0" />
-            {t("hiringPipeline")}
-          </span>
-          <span className="hidden text-sm text-muted-foreground sm:inline">{t("trackMovement")}</span>
-        </div>
-        <div className="flex items-center gap-1 sm:gap-2">
-          <span className="rounded-md bg-primary/5 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-foreground sm:px-2 sm:py-1 sm:text-xs">
-            {Math.round(avgMatchScore)}%
-            <span className="ms-1 font-normal text-muted-foreground">{tInsights("avgFitScore")}</span>
-          </span>
-          <Link
-            href={`/${locale}/employer/applications`}
-            aria-label={t("stageLinksDesc")}
-            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-sky-700 hover:bg-sky-50 hover:text-sky-800 dark:text-sky-300 dark:hover:bg-sky-500/10"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Link>
-        </div>
-      </div>
-
-      {/* Under lg the five stages snap-scroll sideways; at lg they are a plain
-          5-up grid. The old layout went flex-nowrap with `gap-0` from sm up,
-          so on a tablet the "Hired" tile was clipped 30px off the edge with
-          nothing to show the row could scroll. */}
-      <div className="panel-body flex items-stretch gap-[var(--panel-gap)] snap-x overflow-x-auto lg:grid lg:grid-cols-5 lg:overflow-visible">
-        {stages.map((stage) => {
+    <DashboardSection
+      headingId="employer-hiring-pipeline"
+      title={t("hiringPipeline")}
+      description={t("trackMovement")}
+      action={
+        <Link
+          href={`/${locale}/employer/applications`}
+          className="inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-sky-700 hover:bg-sky-50 hover:text-sky-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 sm:text-sm"
+        >
+          {t("viewAllApplications")}
+          <ChevronRight className="h-4 w-4 rtl:rotate-180" aria-hidden="true" />
+        </Link>
+      }
+      bodyClassName="relative"
+    >
+      <nav
+        aria-label={t("hiringPipeline")}
+        className="grid grid-cols-6 gap-px bg-border/60 md:grid-cols-5"
+      >
+        {stages.map((stage, index) => {
           const Icon = stage.icon;
+          const detail = stage.subCount === stage.value
+            ? t(stage.subLabelKey)
+            : `${stage.subCount} ${t(stage.subLabelKey).toLowerCase()}`;
           return (
             <Link
               key={stage.labelKey}
               href={stage.href}
-              className={`group flex min-w-[132px] flex-1 shrink-0 snap-start flex-col rounded-xl border p-3 transition-colors hover:brightness-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${stage.surface}`}
+              aria-label={t("stageAriaLabel", { stage: t(stage.labelKey), value: stage.value, detail })}
+              className={`${index < 3 ? "col-span-2" : "col-span-3"} group relative flex min-h-[76px] min-w-0 flex-col justify-center bg-background px-2.5 py-3 transition-colors hover:bg-secondary/60 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-500 md:col-span-1 md:min-h-[92px] md:px-4`}
             >
+              <span className={`absolute inset-x-2.5 top-0 h-0.5 rounded-full bg-current opacity-70 md:inset-x-3 ${stage.accent}`} aria-hidden="true" />
               <div className="flex items-center gap-2">
                 <Icon className={`h-4 w-4 shrink-0 ${stage.accent}`} />
-                <span className={`truncate text-[11px] font-semibold sm:text-sm ${stage.accent}`}>{t(stage.labelKey)}</span>
+                <span className={`truncate text-[11px] font-semibold sm:text-xs md:text-sm ${stage.accent}`}>{t(stage.labelKey)}</span>
               </div>
-              <div className="mt-2 flex items-baseline justify-between gap-2">
-                <AnimatedNumber value={stage.value} className="text-base font-semibold tabular-nums tracking-tight text-foreground sm:text-xl" />
-                <span className="truncate text-[9px] font-medium text-muted-foreground sm:text-[11px]">
-                  {stage.subCount} {t(stage.subLabelKey).toLowerCase()}
+              <div className="mt-1.5 flex items-baseline justify-between gap-2 md:mt-2">
+                <AnimatedNumber value={stage.value} className="text-lg font-semibold tabular-nums tracking-tight text-foreground md:text-xl" />
+                <span className="hidden truncate text-xs font-medium text-muted-foreground md:inline">
+                  {detail}
                 </span>
               </div>
             </Link>
           );
         })}
-      </div>
-    </section>
+      </nav>
+    </DashboardSection>
   );
 }
 

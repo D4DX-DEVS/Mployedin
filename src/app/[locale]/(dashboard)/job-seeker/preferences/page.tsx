@@ -186,7 +186,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-w-0 rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
+    <div className="min-w-0 rounded-xl border border-border bg-card shadow-sm panel-body">
       <div className="mb-5 flex items-start gap-3">
         <div className="mt-0.5 rounded-lg bg-primary/10 p-2 text-primary">
           {icon}
@@ -222,7 +222,7 @@ function MatchScoreCard({
   const delta = prevScore !== null ? score - prevScore : null;
 
   return (
-    <div className="min-w-0 rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 via-card to-card p-4 shadow-sm sm:p-5">
+    <div className="min-w-0 rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 via-card to-card shadow-sm panel-body">
       <div className="flex min-w-0 flex-col items-start gap-4 min-[420px]:flex-row min-[420px]:justify-between">
         <div className="min-w-0 flex items-center gap-3">
           <div className="rounded-xl bg-primary/10 p-2.5 text-primary shrink-0">
@@ -273,7 +273,7 @@ function MatchScoreCard({
       )}
 
       {score === 100 && (
-        <div className="mt-3 flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-xs font-medium text-green-700 dark:bg-green-950 dark:border-green-800 dark:text-green-300">
+        <div className="mt-3 flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 text-xs font-medium text-green-700 chip-pad">
           <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
           {t("optimized")}
         </div>
@@ -741,7 +741,7 @@ export default function JobPreferencesPage() {
         </div>
 
         {/* ── Recommended Jobs Preview ──────────────────────────────────── */}
-        <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+        <div className="rounded-xl border border-border bg-card shadow-sm panel-body">
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="rounded-lg bg-primary/10 p-1.5 text-primary">

@@ -21,6 +21,7 @@ import {
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
+import { formatDateTime } from "@/lib/ui/intlFormat";
 
 interface Interview {
   _id: string;
@@ -162,38 +163,38 @@ export default function AdminInterviewOversightPage() {
         if (empRes.ok) {
           const data = await empRes.json();
           const list = (data.employers ?? data.items ?? data ?? []) as { _id: string; companyName?: string }[];
-          setEmployers([{ value: "all", label: "All employers" }, ...list.map((e) => ({ value: e._id, label: e.companyName ?? e._id }))]);
+          setEmployers([{ value: "all", label: t("filterAllEmployers") }, ...list.map((e) => ({ value: e._id, label: e.companyName ?? e._id }))]);
         } else {
           const err = await empRes.json().catch(() => ({}));
-          toast.error(err.error || "Failed to load employers");
+          toast.error(err.error || t("failedToLoadFilterOptions"));
         }
         if (agentRes.ok) {
           const data = await agentRes.json();
           const list = (data.agents ?? data.items ?? data ?? []) as { _id: string; userId?: { name?: string; email?: string } | string; name?: string }[];
-          setAgents([{ value: "all", label: "All agents" }, ...list.map((a) => {
+          setAgents([{ value: "all", label: t("filterAllAgents") }, ...list.map((a) => {
             const label = typeof a.userId === "object" ? (a.userId?.name ?? a.userId?.email ?? a._id) : (a.name ?? a._id);
             return { value: a._id, label };
           })]);
         } else {
           const err = await agentRes.json().catch(() => ({}));
-          toast.error(err.error || "Failed to load agents");
+          toast.error(err.error || t("failedToLoadFilterOptions"));
         }
         if (saRes.ok) {
           const data = await saRes.json();
           const list = (data.superAgents ?? data.items ?? data ?? []) as { _id: string; userId?: { name?: string; email?: string } | string; name?: string }[];
-          setSuperAgents([{ value: "all", label: "All super agents" }, ...list.map((s) => {
+          setSuperAgents([{ value: "all", label: t("filterAllSuperAgents") }, ...list.map((s) => {
             const label = typeof s.userId === "object" ? (s.userId?.name ?? s.userId?.email ?? s._id) : (s.name ?? s._id);
             return { value: s._id, label };
           })]);
         } else {
           const err = await saRes.json().catch(() => ({}));
-          toast.error(err.error || "Failed to load super agents");
+          toast.error(err.error || t("failedToLoadFilterOptions"));
         }
       } catch (error) {
-        toast.error("Failed to load filter options");
+        toast.error(t("failedToLoadFilterOptions"));
       }
     })();
-  }, []);
+  }, [t]);
 
   const activeFilterCount = useMemo(() => {
     let n = 0;
@@ -239,31 +240,31 @@ export default function AdminInterviewOversightPage() {
         updateTotal(data.total ?? 0);
       } else {
         const err = await res.json().catch(() => ({}));
-        toast.error(err.error || "Failed to load interviews");
+        toast.error(err.error || t("failedToLoadInterviews"));
       }
     } catch (error) {
-      toast.error("Failed to load interviews");
+      toast.error(t("failedToLoadInterviews"));
     } finally {
       setLoading(false);
     }
-  }, [page, search, statusFilter, typeFilter, dateRange, selectedEmployer, selectedAgent, selectedSuperAgent, limit, updateTotal]);
+  }, [page, search, statusFilter, typeFilter, dateRange, selectedEmployer, selectedAgent, selectedSuperAgent, limit, updateTotal, t]);
 
   useEffect(() => { load(); }, [load]);
 
   const exportColumns: ExportColumn<Interview>[] = [
-    { header: "Candidate", key: "jobSeeker" as keyof Interview, formatter: (_v, r) => (r as unknown as Interview).jobSeeker?.name ?? "—" },
-    { header: "Employer", key: "employer" as keyof Interview, formatter: (_v, r) => (r as unknown as Interview).employer?.companyName ?? "—" },
-    { header: "Job", key: "job" as keyof Interview, formatter: (_v, r) => (r as unknown as Interview).job?.title ?? "—" },
-    { header: "Type", key: "type" },
-    { header: "Status", key: "status" },
-    { header: "Scheduled", key: "scheduledAt", formatter: (v) => v ? new Date(String(v)).toLocaleString() : "—" },
-    { header: "Duration (min)", key: "duration", formatter: (v) => String(v ?? "—") },
+    { header: t("candidate"), key: "jobSeeker" as keyof Interview, formatter: (_v, r) => (r as unknown as Interview).jobSeeker?.name ?? "—" },
+    { header: t("exportHeaderEmployer"), key: "employer" as keyof Interview, formatter: (_v, r) => (r as unknown as Interview).employer?.companyName ?? "—" },
+    { header: t("exportHeaderJob"), key: "job" as keyof Interview, formatter: (_v, r) => (r as unknown as Interview).job?.title ?? "—" },
+    { header: t("type"), key: "type" },
+    { header: t("status"), key: "status" },
+    { header: t("exportHeaderScheduled"), key: "scheduledAt", formatter: (v) => v ? formatDateTime(new Date(String(v))) : "—" },
+    { header: t("exportHeaderDurationMin"), key: "duration", formatter: (v) => String(v ?? "—") },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: interviews as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "interviews",
-    title: "Interviews",
+    title: t("interviewOversight"),
   });
 
   // Platform-wide hero stats from the API; fall back to current-page data.
@@ -281,14 +282,8 @@ export default function AdminInterviewOversightPage() {
 
       {/* ─── Compact page header ──────────────────────────────────────── */}
       <DashboardPageHeader
-        eyebrow={t("recruitmentControl")}
         title={t("interviewOversight")}
         description={t("monitorAllInterviews")}
-        summary={{
-          label: t("platformTotal"),
-          value: t("interviewsCount", { count: total }),
-          note: t("acrossAllEmployers"),
-        }}
         actions={(
           <Button
             variant={showInsights ? "default" : "outline"}
@@ -301,11 +296,12 @@ export default function AdminInterviewOversightPage() {
           </Button>
         )}
         metrics={[
-          { label: t("scheduled"), value: scheduledCount, note: t("upcoming"), icon: Calendar, iconClassName: "text-status-applied", iconSurfaceClassName: "bg-status-applied-bg dark:bg-sky-950/30" },
-          { label: t("completed"), value: completedCount, note: t("finished"), icon: CheckCircle2, iconClassName: "text-status-selected", iconSurfaceClassName: "bg-status-selected-bg dark:bg-emerald-950/30" },
-          { label: t("cancelled"), value: cancelledCount, note: t("calledOff"), icon: RotateCcw, iconClassName: "text-status-shortlisted", iconSurfaceClassName: "bg-status-shortlisted-bg dark:bg-amber-950/30" },
-          { label: t("noShows"), value: noShowCount, note: t("missed"), icon: AlertTriangle, iconClassName: "text-red-500", iconSurfaceClassName: "bg-status-rejected-bg dark:bg-red-950/30" },
+          { label: t("scheduled"), value: scheduledCount, note: t("upcoming"), icon: Calendar, iconClassName: "text-status-applied", iconSurfaceClassName: "bg-status-applied-bg" },
+          { label: t("completed"), value: completedCount, note: t("finished"), icon: CheckCircle2, iconClassName: "text-status-selected", iconSurfaceClassName: "bg-status-selected-bg" },
+          { label: t("cancelled"), value: cancelledCount, note: t("calledOff"), icon: RotateCcw, iconClassName: "text-status-shortlisted", iconSurfaceClassName: "bg-status-shortlisted-bg" },
+          { label: t("noShows"), value: noShowCount, note: t("missed"), icon: AlertTriangle, iconClassName: "text-red-500", iconSurfaceClassName: "bg-status-rejected-bg" },
         ]}
+        compactOnMobile
         footer={(
           <>
             <button
@@ -337,15 +333,15 @@ export default function AdminInterviewOversightPage() {
 
         {/* ─── AI Insights inline ─────────────────────────────────────── */}
         {showInsights && (
-          <div className="mt-6 rounded-[20px] border border-border/30 bg-background/40 p-5 backdrop-blur-sm dark:bg-background/20">
+          <div className="mt-6 rounded-3xl border border-border/30 bg-background/40 backdrop-blur-sm panel-body">
             <div className="mb-4 flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-sky-500" />
-              <h3 className="text-lg font-semibold">{t("aiInterviewInsights")}</h3>
+              <h3 className="heading-subsection font-semibold">{t("aiInterviewInsights")}</h3>
             </div>
             <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {loading ? (
                 Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="workspace-glass-panel space-y-2 rounded-2xl p-3 sm:p-4">
+                  <div key={i} className="workspace-glass-panel card-pad space-y-2 rounded-2xl">
                     <div className="h-4 w-24 animate-shimmer rounded bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
                     <div className="h-3 w-full animate-shimmer rounded bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
                   </div>
@@ -354,7 +350,7 @@ export default function AdminInterviewOversightPage() {
                 aiInsights.map((insight, i) => {
                   const Icon = INSIGHT_ICONS[insight.icon];
                   return (
-                    <div key={i} className="workspace-glass-panel space-y-1.5 rounded-2xl p-4">
+                    <div key={i} className="workspace-glass-panel card-pad space-y-1.5 rounded-2xl">
                       <div className="flex items-center gap-2">
                         <Icon className={`h-4 w-4 ${insight.color}`} />
                         <span className="text-sm font-semibold text-foreground">{insight.title}</span>
@@ -364,7 +360,7 @@ export default function AdminInterviewOversightPage() {
                   );
                 })
               ) : (
-                <div className="workspace-glass-panel col-span-full rounded-2xl p-4 text-center">
+                <div className="workspace-glass-panel card-pad col-span-full rounded-2xl text-center">
                   <p className="text-sm text-muted-foreground">{t("noInterviewDataYet")}</p>
                 </div>
               )}
@@ -374,7 +370,7 @@ export default function AdminInterviewOversightPage() {
 
         {/* ─── Expandable Filters ─────────────────────────────────────── */}
         {showFilters && (
-          <div className="mt-4 space-y-3 rounded-[20px] border border-border/30 bg-background/40 p-4 backdrop-blur-sm dark:bg-background/20">
+          <div className="mt-4 space-y-3 rounded-3xl border border-border/30 bg-background/40 backdrop-blur-sm card-pad">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
@@ -465,7 +461,7 @@ export default function AdminInterviewOversightPage() {
       </DashboardPageHeader>
 
       {/* ─── Table ────────────────────────────────────────────────────── */}
-      <section className="workspace-panel-surface overflow-hidden rounded-[28px]">
+      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -502,7 +498,7 @@ export default function AdminInterviewOversightPage() {
                         </p>
                       </div>
                       {activeFilterCount > 0 && (
-                        <Button variant="outline" size="sm" onClick={clearAllFilters} className="mt-1 h-8 rounded-lg text-xs">
+                        <Button variant="outline" size="dense" onClick={clearAllFilters} className="mt-1 rounded-lg text-xs">
                           {t("clearFilters")}
                         </Button>
                       )}

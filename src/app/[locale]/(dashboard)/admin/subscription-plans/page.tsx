@@ -6,7 +6,7 @@ import {
   Plus, Trash2, Edit2, X, Loader2, Crown, ChevronDown, ChevronUp,
   Check, Copy, Users, Briefcase, Sparkles, BarChart3, FileText, ShieldCheck, AlertTriangle,
 } from "lucide-react";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -29,30 +29,30 @@ import { AI_FEATURE_KEYS, type AIFeatureKey } from "@/types/subscription-plan";
 import { convertAndFormat } from "@/lib/currency";
 import { csrfFetch } from "@/lib/security/csrf-client";
 
-// ── Constants ──────────────────────────────────────────────────────
-const AI_FEATURE_LABELS: Record<AIFeatureKey, string> = {
-  ai_chat: "AI Chat",
-  ai_daily_insights: "Daily Insights",
-  ai_job_matching: "Job Matching",
-  ai_cv_extraction: "CV Extraction",
-  ai_interview_questions: "Interview Questions",
-  ai_skills_gap: "Skills Gap Analysis",
-  ai_candidate_screening: "Candidate Screening",
-  ai_salary_benchmark: "Salary Benchmark",
-  ai_job_description: "Job Description Gen",
-  ai_hiring_reports: "Hiring Reports",
-  ai_voice_input: "Voice Input",
-  ai_skills_suggest: "Skills Suggest",
-  ai_profile_fill: "Profile Fill",
-  ai_enhance_text: "Enhance Text",
-  ai_generate_summary: "Generate Summary",
+// ── Feature label key mapping (labels resolved at render) ──
+const AI_FEATURE_LABEL_KEYS: Record<AIFeatureKey, string> = {
+  ai_chat: "aiChatLabel",
+  ai_daily_insights: "aiDailyInsightsLabel",
+  ai_job_matching: "aiJobMatchingLabel",
+  ai_cv_extraction: "aiCvExtractionLabel",
+  ai_interview_questions: "aiInterviewQuestionsLabel",
+  ai_skills_gap: "aiSkillsGapLabel",
+  ai_candidate_screening: "aiCandidateScreeningLabel",
+  ai_salary_benchmark: "aiSalaryBenchmarkLabel",
+  ai_job_description: "aiJobDescriptionLabel",
+  ai_hiring_reports: "aiHiringReportsLabel",
+  ai_voice_input: "aiVoiceInputLabel",
+  ai_skills_suggest: "aiSkillsSuggestLabel",
+  ai_profile_fill: "aiProfileFillLabel",
+  ai_enhance_text: "aiEnhanceTextLabel",
+  ai_generate_summary: "aiGenerateSummaryLabel",
 };
 
 const TIER_COLORS: Record<number, string> = {
-  0: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300",
-  1: "bg-slate-200 text-foreground dark:bg-slate-700 dark:text-slate-200",
-  2: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
-  3: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300",
+  0: "bg-zinc-100 text-zinc-700",
+  1: "bg-slate-200 text-foreground",
+  2: "bg-amber-100 text-amber-700",
+  3: "bg-violet-100 text-violet-700",
 };
 
 function defaultEmployerLimits(): IEmployerFeatureLimits {
@@ -180,14 +180,14 @@ function EnforcementToggleCard() {
   };
 
   return (
-    <div className="rounded-2xl border border-border bg-background/70 p-5">
+    <div className="rounded-2xl border border-border bg-background/70 panel-body">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3">
           <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${enabled ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
             <ShieldCheck className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-foreground">{t("subscriptionEnforcement")}</h3>
+            <h3 className="heading-label font-semibold text-foreground">{t("subscriptionEnforcement")}</h3>
             <p className="mt-0.5 max-w-xl text-sm text-muted-foreground">
               {enabled
                 ? t("enforcementEnabledDescription")
@@ -210,7 +210,7 @@ function EnforcementToggleCard() {
       </div>
 
       {enabled && (
-        <div className="mt-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+        <div className="mt-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 text-xs text-amber-800 chip-pad">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>{t("enforcementWarning")}</span>
         </div>
@@ -324,7 +324,7 @@ export default function AdminSubscriptionPlansPage() {
   if (isLoading) {
     return (
       <div className="page-container">
-        <PageHeader title={t("pageTitle")} description={t("pageDescription")} />
+        <DashboardPageHeader title={t("pageTitle")} description={t("pageDescription")} />
         {[1, 2, 3].map((i) => (
           <div key={i} className="h-28 animate-pulse rounded-2xl border border-border bg-background/70" />
         ))}
@@ -334,7 +334,7 @@ export default function AdminSubscriptionPlansPage() {
 
   return (
     <div className="page-container">
-      <PageHeader
+      <DashboardPageHeader
         title={t("pageTitle")}
         description={t("pageDescription")}
         actions={
@@ -342,6 +342,7 @@ export default function AdminSubscriptionPlansPage() {
             <Plus className="h-4 w-4" /> {t("newPlanButton")}
           </Button>
         }
+        compactOnMobile
       />
 
       {/* ─── Subscription Enforcement Toggle ─── */}
@@ -373,9 +374,9 @@ export default function AdminSubscriptionPlansPage() {
 
       {/* ─── Create / Edit Form ─── */}
       {showForm && (
-        <section className="rounded-2xl border border-sky-500/30 bg-sky-500/5 p-6 space-y-5">
+        <section className="workspace-panel-surface rounded-3xl panel-body space-y-5">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-foreground">
+            <h3 className="heading-subsection font-semibold text-foreground">
               {editId ? t("editPlanTitle") : t("createNewPlanTitle")}
             </h3>
             <button onClick={closeForm} className="text-muted-foreground hover:text-foreground">
@@ -384,15 +385,15 @@ export default function AdminSubscriptionPlansPage() {
           </div>
 
           {/* Section tabs */}
-          <div className="flex gap-2 border-b border-border pb-2">
+          <div className="flex gap-1 border-b border-border pb-2">
             {(["basic", "limits", "ai"] as const).map((s) => (
               <button
                 key={s}
                 onClick={() => setActiveSection(s)}
-                className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-colors ${
                   activeSection === s
                     ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
                 }`}
               >
                 {s === "basic" ? t("basicInfoTab") : s === "limits" ? t("featureLimitsTab") : t("aiFeaturesTab")}
@@ -674,9 +675,7 @@ export default function AdminSubscriptionPlansPage() {
                 ).map((af, idx) => (
                   <div
                     key={af.feature}
-                    className={`flex items-center gap-3 rounded-xl border p-3 transition-colors ${
-                      af.enabled ? "border-sky-500/30 bg-sky-500/5" : "border-border"
-                    }`}
+                    className={`flex items-center gap-3 rounded-xl border transition-colors ${ af.enabled ? "border-sky-500/30 bg-sky-500/5" : "border-border" } chip-pad`}
                   >
                     <Switch
                       checked={af.enabled}
@@ -684,7 +683,7 @@ export default function AdminSubscriptionPlansPage() {
                     />
                     <div className="flex-1">
                       <span className="text-sm font-medium">
-                        {AI_FEATURE_LABELS[af.feature] ?? af.feature}
+                        {t(AI_FEATURE_LABEL_KEYS[af.feature] ?? af.feature)}
                       </span>
                     </div>
                     {af.enabled && (
@@ -724,7 +723,7 @@ export default function AdminSubscriptionPlansPage() {
       {!plans?.length ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border py-16 text-center">
           <Crown className="mb-4 h-12 w-12 text-muted-foreground/40" />
-          <h3 className="text-lg font-semibold text-foreground">{t("noPlanEmptyState")}</h3>
+          <h3 className="heading-subsection font-semibold text-foreground">{t("noPlanEmptyState")}</h3>
           <p className="mt-1 text-sm text-muted-foreground">
             {t("noPlanEmptyDescription", {
               role: activeTab === "employer" ? t("noPlanEmptyDescriptionEmployer") : t("noPlanEmptyDescriptionJobSeeker")
@@ -759,7 +758,7 @@ export default function AdminSubscriptionPlansPage() {
                         {t("tierBadge", { tier: p.tier })}
                       </Badge>
                       {p.isDefault && (
-                        <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 text-xs">
+                        <Badge className="bg-emerald-100 text-emerald-700 text-xs">
                           {t("defaultBadge")}
                         </Badge>
                       )}
@@ -857,7 +856,7 @@ export default function AdminSubscriptionPlansPage() {
                           ["teamSeatsDetail", p.employerLimits.maxTeamMembers],
                           ["featuredJobsDetail", p.employerLimits.featuredJobListings],
                         ] as [string, number][]).map(([labelKey, val]) => (
-                          <div key={labelKey} className="rounded-xl border border-border bg-background p-3">
+                          <div key={labelKey} className="rounded-xl border border-border bg-background chip-pad">
                             <p className="text-xs text-muted-foreground">{t(labelKey)}</p>
                             <p className="text-lg font-semibold">{val === -1 ? t("unlimitedValue") : val}</p>
                           </div>
@@ -867,7 +866,7 @@ export default function AdminSubscriptionPlansPage() {
 
                     {p.targetRole === "job_seeker" && p.jobSeekerLimits && (
                       <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
-                        <div className="rounded-xl border border-border bg-background p-3">
+                        <div className="rounded-xl border border-border bg-background chip-pad">
                           <p className="text-xs text-muted-foreground">{t("maxApplicationsJobSeekerLabel")}</p>
                           <p className="text-lg font-semibold">
                             {p.jobSeekerLimits.maxApplicationsPerMonth === -1
@@ -917,9 +916,9 @@ export default function AdminSubscriptionPlansPage() {
                             .map((a) => (
                               <div
                                 key={a.feature}
-                                className="flex items-center justify-between rounded-lg border border-sky-500/20 bg-sky-500/5 px-3 py-2"
+                                className="flex items-center justify-between rounded-lg border border-border/50 bg-background/60 chip-pad"
                               >
-                                <span className="text-sm">{AI_FEATURE_LABELS[a.feature] ?? a.feature}</span>
+                                <span className="text-sm">{t(AI_FEATURE_LABEL_KEYS[a.feature] ?? a.feature)}</span>
                                 <span className="text-xs font-medium text-muted-foreground">
                                   {a.monthlyLimit === 0 ? t("unlimitedValue") : t("monthlyLimitFormat", { limit: a.monthlyLimit })}
                                 </span>
@@ -955,7 +954,7 @@ function FeatureBadge({
     <span
       className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${
         value
-          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+          ? "bg-emerald-100 text-emerald-700"
           : "bg-muted text-muted-foreground line-through"
       }`}
     >

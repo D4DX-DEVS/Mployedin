@@ -130,7 +130,7 @@ export function SaveSearchDialog({
 
         <div className="space-y-4">
           {/* Criteria being saved */}
-          <div className="rounded-xl border border-border/60 bg-muted/30 px-3 py-2.5 text-xs text-muted-foreground">
+          <div className="rounded-xl border border-border/60 bg-muted/30 text-xs text-muted-foreground chip-pad">
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1 font-medium text-foreground">
                 <Search className="h-3.5 w-3.5" /> {trimmedQuery || t("noKeyword")}

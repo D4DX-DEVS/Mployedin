@@ -1,7 +1,6 @@
 /**
  * @jest-environment jsdom
  */
-import React from "react";
 import { render, screen } from "@testing-library/react";
 import SuperAgentDashboard from "@/app/[locale]/(dashboard)/super-agent/page";
 
@@ -19,16 +18,6 @@ jest.mock("next/navigation", () => ({
 jest.mock("@/lib/db/mongoose", () => ({
   connectDB: jest.fn().mockResolvedValue(undefined),
 }));
-
-function makeMockModel(overrides = {}) {
-  return {
-    findOne: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue(null) }),
-    find: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue([]) }),
-    countDocuments: jest.fn().mockResolvedValue(0),
-    aggregate: jest.fn().mockResolvedValue([]),
-    ...overrides,
-  };
-}
 
 jest.mock("@/models/SuperAgent", () => ({ __esModule: true, default: { findOne: jest.fn().mockReturnValue({ select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue({ _id: "sa-1", name: "SA", agentIds: [], assignedCityIds: [], assignedStateIds: [], commissions: [], overrideRate: 0, currencyCode: "AED" }) }), lean: jest.fn().mockResolvedValue({ _id: "sa-1", name: "SA", agentIds: [], region: {} }) }), find: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue([]) }), countDocuments: jest.fn().mockResolvedValue(0), aggregate: jest.fn().mockResolvedValue([]) } }));
 jest.mock("@/models/Agent", () => ({ __esModule: true, default: { findOne: jest.fn().mockReturnValue({ select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue(null) }), lean: jest.fn().mockResolvedValue(null) }), find: jest.fn().mockReturnValue({ select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue([]) }), lean: jest.fn().mockResolvedValue([]) }), countDocuments: jest.fn().mockResolvedValue(0), aggregate: jest.fn().mockResolvedValue([]) } }));
@@ -59,5 +48,7 @@ describe("SuperAgentDashboard", () => {
 
     expect(screen.getByText(/super agent workspace/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /super agent dashboard/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /recommended next/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /region at a glance/i })).toBeInTheDocument();
   });
 });

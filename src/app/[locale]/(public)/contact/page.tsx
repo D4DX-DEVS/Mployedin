@@ -58,7 +58,7 @@ export default function ContactPage() {
 
         <div className="grid gap-10 lg:grid-cols-5">
           <div className="lg:col-span-2 space-y-6">
-            <div className="rounded-xl border bg-card p-6 space-y-6">
+            <div className="rounded-xl border bg-card space-y-6 panel-body">
               <div className="flex items-start gap-4">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
                   <MapPin className="h-5 w-5" />
@@ -96,11 +96,11 @@ export default function ContactPage() {
           </div>
 
           <div className="lg:col-span-3">
-            <div className="rounded-xl border bg-card p-6">
+            <div className="rounded-xl border bg-card panel-body">
               {success ? (
                 <div className="text-center py-10">
                   <CheckCircle className="mx-auto h-12 w-12 text-green-500 mb-4" />
-                  <h3 className="text-xl font-semibold">{t("messageSentHeading")}</h3>
+                  <h3 className="heading-subsection font-semibold">{t("messageSentHeading")}</h3>
                   <p className="text-muted-foreground mt-2">{t("messageSentBody")}</p>
                   <Button className="mt-6" onClick={() => setSuccess(false)}>
                     {t("sendAnotherMessage")}

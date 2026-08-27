@@ -14,6 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { formatDateTime } from "@/lib/ui/intlFormat";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -139,7 +140,6 @@ export default function AdminNotificationsPage() {
     <div className="page-container">
       <PageHero
         icon={Bell}
-        eyebrow={t("adminWorkspaceLabel")}
         title={t("notificationControlCenter")}
         description={t("notificationControlCenterDescription")}
         actions={
@@ -160,7 +160,7 @@ export default function AdminNotificationsPage() {
       />
 
       {/* ── Tab Navigation ── */}
-      <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
+      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
         <div className="flex gap-1 overflow-x-auto px-4 py-2">
           {TABS.map((t) => (
             <button
@@ -217,7 +217,7 @@ function OverviewTab({ stats, loading }: { stats: NotifStats | null; loading: bo
         <SectionCard title={t("emailsBySourceTitle")} icon={Activity}>
           <div className="p-5 flex flex-wrap gap-2">
             {Object.entries(stats.bySource7d).sort(([, a], [, b]) => b - a).map(([src, cnt]) => (
-              <div key={src} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/40 border border-border/30">
+              <div key={src} className="inline-flex items-center gap-2 rounded-lg bg-muted/40 border border-border/30 chip-pad">
                 <span className="text-xs font-medium">{src}</span>
                 <Badge variant="secondary" className="text-[10px] px-1.5">{cnt}</Badge>
               </div>
@@ -261,14 +261,14 @@ function CronJobsTab({
 
   return (
     <div className="space-y-6">
-      <div className={`rounded-xl border-2 p-5 ${config?.globalDefaults.maintenanceMode ? "border-red-300 bg-red-50/50" : "border-border/50 bg-card"}`}>
+      <div className={`rounded-xl border-2 ${config?.globalDefaults.maintenanceMode ? "border-red-300 bg-red-50/50" : "border-border/50 bg-card"} panel-body`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className={`flex items-center justify-center w-10 h-10 rounded-lg ${config?.globalDefaults.maintenanceMode ? "bg-red-100" : "bg-muted/60"}`}>
               <PowerOff className={`w-5 h-5 ${config?.globalDefaults.maintenanceMode ? "text-red-600" : "text-muted-foreground"}`} />
             </div>
             <div>
-              <h3 className="text-sm font-bold">{t("maintenanceModeKillSwitch")}</h3>
+              <h3 className="heading-label font-bold">{t("maintenanceModeKillSwitch")}</h3>
               <p className="text-xs text-muted-foreground mt-0.5">{t("maintenanceModeDescription")}</p>
             </div>
           </div>
@@ -296,7 +296,7 @@ function CronJobsTab({
                   <p className="text-xs text-muted-foreground mt-0.5">{meta.desc}</p>
                   {state?.lastRunAt && (
                     <p className="text-[10px] text-muted-foreground/70 mt-1">
-                      {t("lastRunTime", { time: new Date(state.lastRunAt).toLocaleString(), message: state.lastRunMessage ? ` — ${state.lastRunMessage}` : "" })}
+                      {t("lastRunTime", { time: formatDateTime(new Date(state.lastRunAt)), message: state.lastRunMessage ? ` — ${state.lastRunMessage}` : "" })}
                     </p>
                   )}
                 </div>
@@ -408,7 +408,7 @@ function EmailLogsTab() {
                 <tr><td colSpan={5} className="text-center py-8 text-muted-foreground">{t("emailLogsEmptyMessage")}</td></tr>
               ) : logs.map((log) => (
                 <tr key={log._id} className="hover:bg-muted/20">
-                  <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">{new Date(log.sentAt).toLocaleString()}</td>
+                  <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">{formatDateTime(new Date(log.sentAt))}</td>
                   <td className="px-3 py-2 max-w-[180px] truncate">{log.to}</td>
                   <td className="px-3 py-2 max-w-[200px] truncate">{log.subject}</td>
                   <td className="px-3 py-2"><Badge variant="outline" className="text-[10px] px-1.5 py-0">{log.source}</Badge></td>
@@ -574,7 +574,7 @@ function SectionCard({ title, icon: Icon, children }: { title: string; icon: typ
     <div className="rounded-xl border border-border/50 bg-card shadow-sm overflow-hidden">
       <div className="border-b border-border/40 flex items-center gap-2.5 panel-head">
         <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary/10"><Icon className="w-3.5 h-3.5 text-primary" /></div>
-        <h3 className="text-sm font-semibold tracking-tight">{title}</h3>
+        <h3 className="heading-label font-semibold tracking-tight">{title}</h3>
       </div>
       {children}
     </div>
@@ -583,7 +583,7 @@ function SectionCard({ title, icon: Icon, children }: { title: string; icon: typ
 
 function StatCard({ icon: Icon, label, value, loading, color = "text-foreground" }: { icon: typeof Users; label: string; value: string | number; loading: boolean; color?: string }) {
   return (
-    <div className="rounded-xl border border-border/50 bg-card p-4 shadow-sm">
+    <div className="rounded-xl border border-border/50 bg-card shadow-sm card-pad">
       <div className="flex items-center gap-2 text-muted-foreground mb-2"><Icon className="w-4 h-4" /><span className="text-xs font-medium">{label}</span></div>
       {loading ? <div className="h-7 w-16 bg-muted animate-pulse rounded" /> : <p className={`text-2xl font-bold ${color}`}>{value}</p>}
     </div>

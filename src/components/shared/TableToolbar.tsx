@@ -75,14 +75,14 @@ export function TableToolbar({
     // (e.g. an inline AI search box) must not match that rule, or they get
     // forced full-width inside a non-wrapping row and overlap their sibling.
     <div className="relative toolbar-search-field">
-      <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+      <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/50" aria-hidden="true" />
       <Input
         aria-label={resolvedSearchPlaceholder}
         placeholder={resolvedSearchPlaceholder}
         value={search ?? ""}
         onChange={(e) => onSearchChange(e.target.value)}
         className={cn(
-          "h-9 w-full ps-9",
+          "h-11 w-full rounded-xl border-border bg-background ps-9 shadow-none sm:h-9",
           usesCompactAdminLayout ? "rounded-lg border-border bg-secondary/65 shadow-none sm:w-[220px] lg:w-[260px]" : "sm:w-[200px] lg:w-[280px]"
         )}
       />
@@ -92,7 +92,7 @@ export function TableToolbar({
   const exportMenu = hasExport ? (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="h-10 w-10 justify-center gap-1.5 rounded-xl p-0 sm:h-9 sm:w-auto sm:px-3">
+        <Button variant="outline" size="sm" className="h-11 w-11 justify-center gap-1.5 rounded-xl p-0 sm:w-auto sm:px-3">
           <Download className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">{t("export")}</span>
         </Button>
@@ -125,18 +125,23 @@ export function TableToolbar({
   if (usesCompactAdminLayout) {
     return (
       <section
-        className={cn("workspace-panel-surface overflow-hidden rounded-[20px]", className)}
+        className={cn("workspace-panel-surface overflow-hidden rounded-3xl", className)}
         data-table-toolbar="compact-admin"
       >
-        <div className="flex flex-col gap-3 px-3 py-3 sm:px-5 sm:py-4 xl:flex-row xl:items-start xl:justify-between">
-          <div className="min-w-0 xl:max-w-2xl">
-            {title && <h2 className="text-lg font-semibold text-foreground">{title}</h2>}
-            {description && <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>}
-            {left && <div className="mt-3">{left}</div>}
-          </div>
+        <div className="flex flex-col gap-3 px-3 py-3 sm:px-4 sm:py-4 xl:flex-row xl:items-start xl:justify-between">
+          {/* Only render the heading column when there is something in it.
+              Empty, it still claimed `xl:max-w-2xl`, leaving a wide dead gap to
+              the left of the search/filter/export controls. */}
+          {(title || description || left) && (
+            <div className="min-w-0 xl:max-w-2xl">
+              {title && <h2 className="heading-section font-semibold text-foreground">{title}</h2>}
+              {description && <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>}
+              {left && <div className="mt-3">{left}</div>}
+            </div>
+          )}
 
           <div className="flex w-full flex-col gap-2 xl:w-auto xl:min-w-[320px] xl:items-end">
-            <div className="flex w-full min-w-0 flex-wrap items-center gap-2 xl:justify-end">
+            <div className="flex w-full min-w-0 flex-wrap items-center gap-2 xl:justify-end [&_.toolbar-search-field]:min-w-0 [&_.toolbar-search-field]:flex-1 sm:[&_.toolbar-search-field]:flex-none">
               {searchControl}
               {filterContent && (
                 <Button
@@ -146,7 +151,7 @@ export function TableToolbar({
                   onClick={() => setFiltersOpen((open) => !open)}
                   aria-expanded={filtersOpen}
                   className={cn(
-                    "h-9 gap-1.5 rounded-lg border-border px-3 text-sm font-medium",
+                    "h-11 gap-1.5 rounded-xl border-border px-3 text-sm font-medium sm:h-9 sm:rounded-lg",
                     filtersOpen ? "border-primary/30 bg-primary/10 text-primary" : "bg-card text-foreground hover:bg-secondary"
                   )}
                 >

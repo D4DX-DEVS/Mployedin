@@ -47,6 +47,7 @@ import {
   Eye, SlidersHorizontal, CircleDollarSign,
   ChevronLeft, ChevronRight, BarChart3,
 } from "lucide-react";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -158,7 +159,7 @@ const METRIC_TONE_CLASS_MAP: Record<MetricTone, string> = {
 function formatCompactCurrency(value: number, currency = "AED"): string {
   if (value >= 1_000_000) return `${currency} ${(value / 1_000_000).toFixed(1)}M`;
   if (value >= 1_000) return `${currency} ${Math.round(value / 1_000)}K`;
-  return `${currency} ${value.toLocaleString()}`;
+  return `${currency} ${formatCount(value)}`;
 }
 
 function getProgressColor(progress: number): string {
@@ -168,9 +169,9 @@ function getProgressColor(progress: number): string {
 }
 
 function getProgressTextColor(progress: number): string {
-  if (progress >= 75) return "text-emerald-600 dark:text-emerald-400";
-  if (progress >= 40) return "text-amber-600 dark:text-amber-400";
-  return "text-red-500 dark:text-red-400";
+  if (progress >= 75) return "text-emerald-600";
+  if (progress >= 40) return "text-amber-600";
+  return "text-red-500";
 }
 
 function formatShortDate(value?: string): string {
@@ -229,7 +230,7 @@ function DashboardMetricCard({
   tone = "blue",
 }: DashboardMetricCardProps) {
   return (
-    <div className="workspace-glass-panel rounded-xl p-3">
+    <div className="workspace-glass-panel card-pad rounded-xl">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
@@ -252,7 +253,7 @@ function DashboardMetricCard({
 
 function SideListCard({ title, actionLabel, onAction, children }: SideListCardProps) {
   return (
-    <aside className="workspace-glass-panel rounded-xl p-4">
+    <aside className="workspace-glass-panel card-pad rounded-xl">
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">{title}</h3>
         {actionLabel && onAction ? (
@@ -451,7 +452,6 @@ export default function SuperAgentTargetProfilesPage() {
     <div className="page-container">
       <PageHero
         icon={Target}
-        eyebrow={t("eyebrow")}
         title={t("title")}
         description={t("superAgentDescription")}
         actions={
@@ -461,7 +461,7 @@ export default function SuperAgentTargetProfilesPage() {
         }
       />
 
-      <div className="rounded-2xl border border-border/60 bg-card/95 p-3 shadow-sm">
+      <div className="rounded-2xl border border-border/60 bg-card/95 shadow-sm chip-pad">
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative">
             <CalendarDays className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -516,7 +516,7 @@ export default function SuperAgentTargetProfilesPage() {
                 <Input
                   value={teamSearch}
                   onChange={(e) => setTeamSearch(e.target.value)}
-                  placeholder="Search agents, email, territory"
+                  placeholder={t("searchAgentsTerritory")}
                   className="h-10 rounded-xl border-border bg-background pl-9 text-sm"
                 />
               </div>
@@ -524,7 +524,7 @@ export default function SuperAgentTargetProfilesPage() {
                 options={territoryOptions}
                 value={teamTerritoryFilter}
                 onValueChange={setTeamTerritoryFilter}
-                placeholder="Territory"
+                placeholder={t("territory")}
                 className="h-10 w-40 rounded-xl"
               />
               <SearchableSelect
@@ -536,7 +536,7 @@ export default function SuperAgentTargetProfilesPage() {
                 ]}
                 value={teamCompletionFilter}
                 onValueChange={(value) => setTeamCompletionFilter(value as "all" | CompletionStage)}
-                placeholder="Stage"
+                placeholder={t("stage")}
                 className="h-10 w-36 rounded-xl"
               />
               <SearchableSelect
@@ -548,7 +548,7 @@ export default function SuperAgentTargetProfilesPage() {
                 ]}
                 value={teamRiskFilter}
                 onValueChange={(value) => setTeamRiskFilter(value as "all" | "high" | "medium" | "low")}
-                placeholder="Risk"
+                placeholder={t("risk")}
                 className="h-10 w-32 rounded-xl"
               />
               <Button variant="outline" size="sm" className="h-10 gap-0 rounded-xl sm:gap-2" onClick={handleExport} disabled={teamProfiles.length === 0}>
@@ -556,7 +556,7 @@ export default function SuperAgentTargetProfilesPage() {
               </Button>
             </>
           ) : null}
-          <Button className="h-10 gap-0 rounded-xl bg-blue-700 px-3 text-white hover:bg-blue-800 sm:gap-2 sm:px-4" onClick={() => setShowDistribute(true)}>
+          <Button className="gap-0 rounded-xl bg-blue-700 px-3 text-white hover:bg-blue-800 sm:gap-2 sm:px-4" onClick={() => setShowDistribute(true)}>
             <SplitSquareVertical className="h-4 w-4" /> <span className="hidden sm:inline">Distribute</span>
           </Button>
         </div>
@@ -566,7 +566,7 @@ export default function SuperAgentTargetProfilesPage() {
         <>
         <section className="grid grid-cols-2 gap-3 xl:grid-cols-3 2xl:grid-cols-6">
           <DashboardMetricCard
-            label="Team completion"
+            label={t("teamCompletion")}
             value={`${filteredTotals.avgPerformance}%`}
             helper={`${filteredStageCounts.in_progress} active · ${filteredStageCounts.completed} completed`}
             icon={<TrendingUp className="h-5 w-5" />}
@@ -574,7 +574,7 @@ export default function SuperAgentTargetProfilesPage() {
             tone="blue"
           />
           <DashboardMetricCard
-            label="Employer target"
+            label={t("employerTarget")}
             value={<>{filteredTotals.employer.achieved}<span className="text-base text-muted-foreground"> / {filteredTotals.employer.target}</span></>}
             helper={`${Math.max(0, filteredTotals.employer.target - filteredTotals.employer.achieved)} balance`}
             icon={<Building2 className="h-5 w-5" />}
@@ -582,7 +582,7 @@ export default function SuperAgentTargetProfilesPage() {
             tone="green"
           />
           <DashboardMetricCard
-            label="Employee target"
+            label={t("employeeTarget")}
             value={<>{filteredTotals.employee.achieved}<span className="text-base text-muted-foreground"> / {filteredTotals.employee.target}</span></>}
             helper={`${Math.max(0, filteredTotals.employee.target - filteredTotals.employee.achieved)} balance`}
             icon={<Users className="h-5 w-5" />}
@@ -590,7 +590,7 @@ export default function SuperAgentTargetProfilesPage() {
             tone="violet"
           />
           <DashboardMetricCard
-            label="Revenue target"
+            label={t("revenueTarget")}
             value={formatCompactCurrency(filteredTotals.finance.achieved, ownProfile?.currency ?? "AED")}
             helper={`${formatCompactCurrency(filteredTotals.finance.target, ownProfile?.currency ?? "AED")} assigned`}
             icon={<DollarSign className="h-5 w-5" />}
@@ -598,16 +598,16 @@ export default function SuperAgentTargetProfilesPage() {
             tone="amber"
           />
           <DashboardMetricCard
-            label="At risk"
+            label={t("atRisk")}
             value={filteredTotals.riskHigh}
-            helper="Agents need attention"
+            helper={t("atRiskHelper")}
             icon={<AlertCircle className="h-5 w-5" />}
             tone="red"
           />
           <DashboardMetricCard
-            label="Pending actions"
+            label={t("pendingActions")}
             value={pendingActionsCount}
-            helper="Agents still not completed"
+            helper={t("pendingActionsHelper")}
             icon={<ClipboardList className="h-5 w-5" />}
             tone="blue"
           />
@@ -695,31 +695,31 @@ export default function SuperAgentTargetProfilesPage() {
             <>
               <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
                 <DashboardMetricCard
-                  label="Team agents"
+                  label={t("teamAgents")}
                   value={analytics.teamSummary.totalAgents}
-                  helper="Agents with target profiles"
+                  helper={t("teamAgentsHelper")}
                   icon={<Users className="h-5 w-5" />}
                   tone="blue"
                 />
                 <DashboardMetricCard
-                  label="Avg performance"
+                  label={t("avgPerformance")}
                   value={`${analytics.teamSummary.avgPerformance}%`}
-                  helper="Across distributed agent profiles"
+                  helper={t("avgPerformanceHelper")}
                   icon={<TrendingUp className="h-5 w-5" />}
                   progress={analytics.teamSummary.avgPerformance}
                   tone="green"
                 />
                 <DashboardMetricCard
-                  label="High risk"
+                  label={t("highRisk")}
                   value={analytics.teamSummary.highRiskCount}
-                  helper="Agents needing action"
+                  helper={t("highRiskHelper")}
                   icon={<AlertCircle className="h-5 w-5" />}
                   tone="red"
                 />
                 <DashboardMetricCard
-                  label="Platinum"
+                  label={t("platinum")}
                   value={analytics.teamSummary.incentiveBreakdown.platinum}
-                  helper="Agents at or above 100%"
+                  helper={t("platinumHelper")}
                   icon={<CheckCircle2 className="h-5 w-5" />}
                   tone="violet"
                 />
@@ -815,7 +815,7 @@ export default function SuperAgentTargetProfilesPage() {
                     <TableCell colSpan={10} className="py-16 text-center">
                       <TargetEmptyState
                         title={t("noAgentTargets")}
-                        description="Distribute your targets to agents using the button above"
+                        description={t("distributeEmptyHint")}
                         action={
                           <Button size="sm" onClick={() => setShowDistribute(true)} className="mt-2 gap-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90">
                             <SplitSquareVertical className="h-4 w-4" /> Distribute
@@ -829,7 +829,7 @@ export default function SuperAgentTargetProfilesPage() {
                     <TableCell colSpan={10} className="py-16 text-center">
                       <TargetEmptyState
                         title={t("noAgentsMatchFilters")}
-                        description="Try a different search, risk level, or completion stage."
+                        description={t("noMatchHint")}
                         action={
                           <Button
                             size="sm"
@@ -901,8 +901,8 @@ export default function SuperAgentTargetProfilesPage() {
                               <TooltipTrigger asChild>
                                 <Button
                                   variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 rounded-lg"
+                                  size="iconDense"
+                                  className="rounded-lg"
                                   aria-label={`Focus ${agent.assigneeName}`}
                                   onClick={() => setDetailAgent(agent)}
                                 >
@@ -917,8 +917,8 @@ export default function SuperAgentTargetProfilesPage() {
                               <TooltipTrigger asChild>
                                 <Button
                                   variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 rounded-lg"
+                                  size="iconDense"
+                                  className="rounded-lg"
                                   aria-label={`Adjust target for ${agent.assigneeName}`}
                                   onClick={() => setShowDistribute(true)}
                                 >
@@ -954,15 +954,15 @@ export default function SuperAgentTargetProfilesPage() {
               </Select>
             </div>
             <div className="flex items-center gap-1.5">
-              <Button variant="outline" size="sm" className="h-8 gap-1 rounded-lg px-3 text-xs font-medium" onClick={() => setShowInsights(true)}>
+              <Button variant="outline" size="dense" className="gap-1 rounded-lg px-3 text-xs font-medium" onClick={() => setShowInsights(true)}>
                 <BarChart3 className="h-3.5 w-3.5" /> Insights
               </Button>
               <div className="mx-2 h-5 w-px bg-border" />
-              <Button variant="outline" size="icon" className="h-8 w-8" disabled={teamPage <= 1} onClick={() => setTeamPage((p) => p - 1)}>
+              <Button variant="outline" size="iconDense" className="" disabled={teamPage <= 1} onClick={() => setTeamPage((p) => p - 1)}>
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               <span className="min-w-[3rem] text-center text-xs font-medium">{teamPage} / {totalTeamPages}</span>
-              <Button variant="outline" size="icon" className="h-8 w-8" disabled={teamPage >= totalTeamPages} onClick={() => setTeamPage((p) => p + 1)}>
+              <Button variant="outline" size="iconDense" className="" disabled={teamPage >= totalTeamPages} onClick={() => setTeamPage((p) => p + 1)}>
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>

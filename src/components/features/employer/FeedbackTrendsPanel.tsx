@@ -77,7 +77,7 @@ export function FeedbackTrendsPanel() {
 
   if (isLoading) {
     return (
-      <div className="rounded-xl border border-border/50 bg-card p-6 flex items-center justify-center gap-2 text-muted-foreground">
+      <div className="rounded-xl border border-border/50 bg-card flex items-center justify-center gap-2 text-muted-foreground panel-body">
         <Loader2 className="w-4 h-4 animate-spin" />
         <span className="text-sm">{t("loadingFeedbackTrends")}</span>
       </div>
@@ -101,23 +101,23 @@ export function FeedbackTrendsPanel() {
     <div className="space-y-3 sm:space-y-4">
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="rounded-xl border border-border/50 bg-card p-4 text-center">
+        <div className="rounded-xl border border-border/50 bg-card text-center card-pad">
           <Users className="w-5 h-5 text-primary mx-auto mb-1" />
           <div className="text-2xl font-bold">{data.total.toLocaleString(numberLocale)}</div>
           <div className="text-xs text-muted-foreground">{t("totalEvaluations")}</div>
         </div>
-        <div className="rounded-xl border border-border/50 bg-card p-4 text-center">
+        <div className="rounded-xl border border-border/50 bg-card text-center card-pad">
           <TrendingUp className="w-5 h-5 text-emerald-500 mx-auto mb-1" />
           <div className="text-2xl font-bold">{data.averages.overall.toFixed(1)}</div>
           <div className="text-xs text-muted-foreground">{t("avgScore")}</div>
         </div>
-        <div className="rounded-xl border border-border/50 bg-card p-4 text-center">
+        <div className="rounded-xl border border-border/50 bg-card text-center card-pad">
           <Badge className="bg-emerald-100 text-emerald-700 mb-1">
             {(data.recommendations.strong_yes + data.recommendations.yes).toLocaleString(numberLocale)}
           </Badge>
           <div className="text-xs text-muted-foreground mt-1">{t("positiveRecs")}</div>
         </div>
-        <div className="rounded-xl border border-border/50 bg-card p-4 text-center">
+        <div className="rounded-xl border border-border/50 bg-card text-center card-pad">
           <Badge className="bg-red-100 text-red-700 mb-1">
             {(data.recommendations.strong_no + data.recommendations.no).toLocaleString(numberLocale)}
           </Badge>
@@ -127,8 +127,8 @@ export function FeedbackTrendsPanel() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Average Scores by Dimension */}
-        <div className="rounded-xl border border-border/50 bg-card p-5">
-          <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
+        <div className="rounded-xl border border-border/50 bg-card panel-body">
+          <h3 className="heading-label font-semibold mb-4 flex items-center gap-2">
             <BarChart3 className="w-4 h-4 text-primary" />
             {t("averageScoresByDimension")}
           </h3>
@@ -145,8 +145,8 @@ export function FeedbackTrendsPanel() {
         </div>
 
         {/* Recommendation Distribution */}
-        <div className="rounded-xl border border-border/50 bg-card p-5">
-          <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
+        <div className="rounded-xl border border-border/50 bg-card panel-body">
+          <h3 className="heading-label font-semibold mb-4 flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-primary" />
             {t("recommendationDistribution")}
           </h3>
@@ -170,8 +170,8 @@ export function FeedbackTrendsPanel() {
 
       {/* Monthly Trends Table */}
       {data.trends.length > 0 && (
-        <div className="rounded-xl border border-border/50 bg-card p-5">
-          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+        <div className="rounded-xl border border-border/50 bg-card panel-body">
+          <h3 className="heading-label font-semibold mb-3 flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-primary" />
             {t("monthlyScoreTrends")}
           </h3>
@@ -210,8 +210,8 @@ export function FeedbackTrendsPanel() {
 
       {/* Score Distribution */}
       {data.distribution.length > 0 && (
-        <div className="rounded-xl border border-border/50 bg-card p-5">
-          <h3 className="text-sm font-semibold mb-3">{t("scoreDistribution")}</h3>
+        <div className="rounded-xl border border-border/50 bg-card panel-body">
+          <h3 className="heading-label font-semibold mb-3">{t("scoreDistribution")}</h3>
           <div className="flex items-end gap-2 h-24">
             {data.distribution.map((b) => {
               const maxCount = Math.max(...data.distribution.map((d) => d.count), 1);

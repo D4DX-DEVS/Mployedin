@@ -23,22 +23,22 @@ export function InvoiceHealthCards({ data }: InvoiceHealthCardsProps) {
     {
       label: t("paidThisMonth"),
       value: data.paidCount,
-      bg: "bg-emerald-50 dark:bg-emerald-900/20",
-      textColor: "text-emerald-600 dark:text-emerald-400",
+      bg: "bg-emerald-50",
+      textColor: "text-emerald-600",
       href: `${invoicesHref}?status=paid`,
     },
     {
       label: t("pending"),
       value: data.pendingCount,
-      bg: "bg-amber-50 dark:bg-amber-900/20",
-      textColor: "text-amber-600 dark:text-amber-400",
+      bg: "bg-amber-50",
+      textColor: "text-amber-600",
       href: `${invoicesHref}?status=pending`,
     },
     {
       label: t("overdue"),
       value: data.overdueCount,
-      bg: "bg-rose-50 dark:bg-rose-900/20",
-      textColor: "text-rose-600 dark:text-rose-400",
+      bg: "bg-rose-50",
+      textColor: "text-rose-600",
       href: `${invoicesHref}?status=overdue`,
     },
     {
@@ -51,7 +51,7 @@ export function InvoiceHealthCards({ data }: InvoiceHealthCardsProps) {
   ];
 
   return (
-    <section className="rounded-2xl border border-border/60 bg-card p-6">
+    <section className="rounded-2xl border border-border/60 bg-card panel-body">
       <div className="flex items-center justify-between mb-5">
         <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
           <Receipt className="h-4 w-4" /> {t("invoices")}
@@ -66,7 +66,7 @@ export function InvoiceHealthCards({ data }: InvoiceHealthCardsProps) {
           <Link
             key={c.label}
             href={c.href}
-            className={`rounded-xl ${c.bg} p-4 text-center transition-all hover:shadow-md hover:-translate-y-0.5`}
+            className={`rounded-xl ${c.bg} text-center transition-all hover:shadow-md hover:-translate-y-0.5 card-pad`}
           >
             <p className={`text-2xl font-bold ${c.textColor}`}>{c.value}</p>
             <p className="text-[10px] text-muted-foreground mt-1">{c.label}</p>

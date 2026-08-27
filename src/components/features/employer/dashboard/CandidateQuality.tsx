@@ -26,9 +26,9 @@ export function CandidateQuality({
     avgMatchScore >= 50 ? "medium" : "low";
 
   const qualityConfig = {
-    strong: { labelKey: "strong" as const, color: "text-emerald-600 dark:text-emerald-400", ring: "stroke-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-950/20" },
-    medium: { labelKey: "medium" as const, color: "text-amber-600 dark:text-amber-400", ring: "stroke-amber-500", bg: "bg-amber-50 dark:bg-amber-950/20" },
-    low: { labelKey: "low" as const, color: "text-red-500", ring: "stroke-red-500", bg: "bg-red-50 dark:bg-red-950/20" },
+    strong: { labelKey: "strong" as const, color: "text-emerald-600", ring: "stroke-emerald-500", bg: "bg-emerald-50" },
+    medium: { labelKey: "medium" as const, color: "text-amber-600", ring: "stroke-amber-500", bg: "bg-amber-50" },
+    low: { labelKey: "low" as const, color: "text-red-500", ring: "stroke-red-500", bg: "bg-red-50" },
   };
 
   const config = qualityConfig[qualityLevel];
@@ -39,7 +39,7 @@ export function CandidateQuality({
   return (
     <div className="card-base overflow-hidden panel-body">
       <div className="px-5 pt-5 pb-3 sm:px-6 sm:pt-6">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+        <h2 className="heading-label font-semibold text-muted-foreground uppercase tracking-wide">
           {t("candidateQuality")}
         </h2>
       </div>
@@ -67,7 +67,7 @@ export function CandidateQuality({
 
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs">
-              <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+              <span className="flex items-center gap-1.5 text-emerald-600">
                 <TrendingUp className="h-3 w-3" />
                 {t("highMatch")} (&gt;80%)
               </span>

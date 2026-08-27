@@ -157,8 +157,8 @@ export default function SavedSearchesPage() {
       />
 
       {showForm && (
-        <section className="workspace-panel-surface rounded-[28px] space-y-4 panel-body">
-          <h2 className="text-lg font-semibold text-foreground">{t("createTitle")}</h2>
+        <section className="workspace-panel-surface rounded-3xl space-y-4 panel-body">
+          <h2 className="heading-section font-semibold text-foreground">{t("createTitle")}</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             <Input placeholder={t("namePlaceholder")} value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} />
             <Input placeholder={t("queryPlaceholder")} value={form.query} onChange={(e) => setForm((p) => ({ ...p, query: e.target.value }))} />
@@ -188,7 +188,7 @@ export default function SavedSearchesPage() {
         </section>
       )}
 
-      <section className="workspace-panel-surface rounded-[28px] panel-body">
+      <section className="workspace-panel-surface rounded-3xl panel-body">
         {searches.length > 0 && (
           <div className="mb-4 flex gap-2">
             <input
@@ -196,14 +196,14 @@ export default function SavedSearchesPage() {
               placeholder={t("searchPlaceholder") ?? "Search saved searches..."}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1 px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="flex-1 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary chip-pad"
             />
           </div>
         )}
         {loading ? (
           <div className="space-y-3">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="workspace-glass-panel rounded-2xl p-4 space-y-3">
+              <div key={i} className="workspace-glass-panel card-pad rounded-2xl space-y-3">
                 <Skeleton className="h-4 w-40" />
                 <div className="flex gap-2">
                   <Skeleton className="h-3 w-24" />
@@ -223,7 +223,7 @@ export default function SavedSearchesPage() {
         ) : (
           <div className="space-y-3">
             {searches.filter((s) => s.name.toLowerCase().includes(searchTerm.toLowerCase())).map((s) => (
-              <div key={s._id} className="workspace-glass-panel rounded-2xl p-4">
+              <div key={s._id} className="workspace-glass-panel card-pad rounded-2xl">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-sm font-semibold text-foreground">{s.name}</p>

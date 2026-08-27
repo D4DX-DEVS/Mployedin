@@ -17,7 +17,7 @@ export default function CompaniesLoading() {
       {/* Grid */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 9 }).map((_, i) => (
-          <div key={i} className="p-6 bg-card border border-border rounded-xl">
+          <div key={i} className="bg-card border border-border rounded-xl panel-body">
             <div className="flex items-start gap-4">
               <div className="w-14 h-14 rounded-lg bg-muted shrink-0" />
               <div className="flex-1 min-w-0">

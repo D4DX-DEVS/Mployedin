@@ -75,7 +75,7 @@ export function SetupGuide() {
   return (
     <div
       className={cn(
-        "fixed bottom-20 left-4 right-4 z-50 overflow-hidden rounded-[28px] border border-sky-100 bg-white/95 shadow-[0_28px_80px_-48px_rgba(2,132,199,0.45)] backdrop-blur sm:bottom-24 sm:w-[22rem]",
+        "fixed bottom-20 left-4 right-4 z-50 overflow-hidden rounded-3xl border border-sky-100 bg-white/95 shadow-[0_28px_80px_-48px_rgba(2,132,199,0.45)] backdrop-blur sm:bottom-24 sm:w-[22rem]",
         isRtl ? "sm:right-auto sm:left-6" : "sm:left-auto sm:right-6",
         "transition-all duration-300"
       )}
@@ -86,7 +86,7 @@ export function SetupGuide() {
             <Sparkles className="h-3 w-3" />
             {t("setupGuide")}
           </div>
-          <h3 className="mt-3 text-sm font-bold leading-snug text-white">{t("title")}</h3>
+          <h3 className="heading-label mt-3 font-bold leading-snug text-white">{t("title")}</h3>
           <p className="mt-1 text-xs leading-snug text-white/75">
             {t("subtitle")}
           </p>

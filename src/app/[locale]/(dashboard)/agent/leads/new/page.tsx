@@ -67,7 +67,6 @@ export default function NewLeadPage() {
     <div className="page-container">
       <PageHero
         icon={Building2}
-        eyebrow={t("agentWorkspace")}
         title={t("pageTitle")}
         description={t("pageDescription")}
         actions={
@@ -79,7 +78,7 @@ export default function NewLeadPage() {
       />
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <section className="rounded-[28px] border border-border bg-card/90 p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur sm:p-6">
+        <section className="rounded-3xl border border-border bg-card/90 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur panel-body">
           <div className="flex items-center gap-2">
             <Building2 className="h-4 w-4 text-status-applied" />
             <p className="text-sm font-semibold text-foreground">{t("sectionCompanyAndContact")}</p>
@@ -145,7 +144,7 @@ export default function NewLeadPage() {
           </div>
         </section>
 
-        <section className="rounded-[28px] border border-border bg-card/90 p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur sm:p-6 space-y-4">
+        <section className="rounded-3xl border border-border bg-card/90 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur space-y-4 panel-body">
           <div className="flex items-center gap-2">
             <CalendarClock className="h-4 w-4 text-status-applied" />
             <p className="text-sm font-semibold text-foreground">{t("sectionContextAndNotes")}</p>

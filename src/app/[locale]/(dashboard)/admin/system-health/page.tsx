@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatCount, formatDate, formatTime } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -85,9 +86,9 @@ export default function AdminSystemHealthPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "healthy": return "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30";
-      case "warning": return "text-amber-600 bg-amber-50 dark:bg-amber-950/30";
-      case "critical": return "text-red-600 bg-red-50 dark:bg-red-950/30";
+      case "healthy": return "text-emerald-600 bg-emerald-50";
+      case "warning": return "text-amber-600 bg-amber-50";
+      case "critical": return "text-red-600 bg-red-50";
       default: return "text-muted-foreground bg-muted";
     }
   };
@@ -100,7 +101,6 @@ export default function AdminSystemHealthPage() {
     <div className="page-container">
       <DashboardPageHeader
         icon={Activity}
-        eyebrow={t("pageTitle")}
         title={t("pageTitle")}
         description={t("pageDescription")}
         actions={
@@ -116,16 +116,16 @@ export default function AdminSystemHealthPage() {
         }
         footer={
           <p className="text-xs text-muted-foreground">
-            {t("lastUpdatedLabel")} {lastRefresh ? lastRefresh.toLocaleTimeString() : "—"} · {t("autoRefreshLabel")}
+            {t("lastUpdatedLabel")} {lastRefresh ? formatTime(lastRefresh) : "—"} · {t("autoRefreshLabel")}
           </p>
         }
       />
 
       {loading && !health ? (
-        <section className="workspace-panel-surface rounded-[28px] panel-body">
+        <section className="workspace-panel-surface rounded-3xl panel-body">
           <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="workspace-glass-panel space-y-4 rounded-2xl p-3 sm:p-5">
+              <div key={i} className="workspace-glass-panel space-y-4 rounded-2xl panel-body">
                 <div className="flex items-center justify-between">
                   <Skeleton className="h-5 w-28" />
                   <Skeleton className="h-5 w-5 rounded-full" />
@@ -141,11 +141,11 @@ export default function AdminSystemHealthPage() {
       ) : health ? (
         <>
           {/* Core Services */}
-          <section className="workspace-panel-surface rounded-[28px] panel-body">
-            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t("coreServicesHeading")}</h2>
+          <section className="workspace-panel-surface rounded-3xl panel-body">
+            <h2 className="heading-label mb-4 font-semibold uppercase tracking-wider text-muted-foreground">{t("coreServicesHeading")}</h2>
             <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {/* Database */}
-              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-5">
+              <div className="workspace-glass-panel rounded-2xl panel-body">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Database className="h-5 w-5 text-indigo-500" />
@@ -166,7 +166,7 @@ export default function AdminSystemHealthPage() {
               </div>
 
               {/* API */}
-              <div className="workspace-glass-panel rounded-2xl p-5">
+              <div className="workspace-glass-panel rounded-2xl panel-body">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Globe className="h-5 w-5 text-sky-500" />
@@ -185,13 +185,13 @@ export default function AdminSystemHealthPage() {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">{t("requestsTodayLabel")}</span>
-                    <span className="font-medium">{health.api.requestsToday.toLocaleString()}</span>
+                    <span className="font-medium">{formatCount(health.api.requestsToday)}</span>
                   </div>
                 </div>
               </div>
 
               {/* Storage */}
-              <div className="workspace-glass-panel rounded-2xl p-5">
+              <div className="workspace-glass-panel rounded-2xl panel-body">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <HardDrive className="h-5 w-5 text-violet-500" />
@@ -218,39 +218,39 @@ export default function AdminSystemHealthPage() {
           </section>
 
           {/* Platform Metrics */}
-          <section className="workspace-panel-surface rounded-[28px] panel-body">
-            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t("platformMetricsHeading")}</h2>
+          <section className="workspace-panel-surface rounded-3xl panel-body">
+            <h2 className="heading-label mb-4 font-semibold uppercase tracking-wider text-muted-foreground">{t("platformMetricsHeading")}</h2>
             <div className="grid grid-cols-2 gap-2 sm:gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
+              <div className="workspace-glass-panel card-pad rounded-2xl">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Users className="h-4 w-4" />
                   <span className="text-xs font-semibold uppercase tracking-wider">{t("activeUsersLabel")}</span>
                 </div>
-                <p className="mt-2 text-2xl font-semibold">{health.users.totalActive.toLocaleString()}</p>
+                <p className="mt-2 text-2xl font-semibold">{formatCount(health.users.totalActive)}</p>
                 <p className="text-xs text-muted-foreground">{health.users.online} {t("onlineNowLabel")}</p>
               </div>
 
-              <div className="workspace-glass-panel rounded-2xl p-4">
+              <div className="workspace-glass-panel card-pad rounded-2xl">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Zap className="h-4 w-4" />
                   <span className="text-xs font-semibold uppercase tracking-wider">{t("activeJobsLabel")}</span>
                 </div>
-                <p className="mt-2 text-2xl font-semibold">{health.jobs.active.toLocaleString()}</p>
+                <p className="mt-2 text-2xl font-semibold">{formatCount(health.jobs.active)}</p>
                 <p className="text-xs text-muted-foreground">{health.jobs.applicationsToday} {t("applicationsTodayLabel")}</p>
               </div>
 
-              <div className="workspace-glass-panel rounded-2xl p-4">
+              <div className="workspace-glass-panel card-pad rounded-2xl">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <TrendingUp className="h-4 w-4" />
                   <span className="text-xs font-semibold uppercase tracking-wider">{t("uptimeLabel")}</span>
                 </div>
                 <p className="mt-2 text-2xl font-semibold">{health.uptime.percentage}%</p>
                 <p className="text-xs text-muted-foreground">
-                  {health.uptime.lastDowntime ? `${t("lastIncidentLabel")} ${new Date(health.uptime.lastDowntime).toLocaleDateString()}` : t("noIncidentsLabel")}
+                  {health.uptime.lastDowntime ? `${t("lastIncidentLabel")} ${formatDate(new Date(health.uptime.lastDowntime))}` : t("noIncidentsLabel")}
                 </p>
               </div>
 
-              <div className="workspace-glass-panel rounded-2xl p-4">
+              <div className="workspace-glass-panel card-pad rounded-2xl">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <BarChart3 className="h-4 w-4" />
                   <span className="text-xs font-semibold uppercase tracking-wider">{t("cronJobsLabel")}</span>
@@ -259,15 +259,15 @@ export default function AdminSystemHealthPage() {
                   {getStatusIcon(health.cron.failedJobs > 0 ? "warning" : "healthy")}
                   {health.cron.failedJobs === 0 ? t("cronStatusOk") : `${health.cron.failedJobs} ${t("cronStatusFailed")}`}
                 </p>
-                <p className="text-xs text-muted-foreground">{t("lastRunLabel")} {health.cron.lastRun ? new Date(health.cron.lastRun).toLocaleTimeString() : t("neverLabel")}</p>
+                <p className="text-xs text-muted-foreground">{t("lastRunLabel")} {health.cron.lastRun ? formatTime(new Date(health.cron.lastRun)) : t("neverLabel")}</p>
               </div>
             </div>
           </section>
 
           {/* Memory */}
-          <section className="workspace-panel-surface rounded-[28px] panel-body">
-            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t("memoryHeading")}</h2>
-            <div className="workspace-glass-panel rounded-2xl p-5">
+          <section className="workspace-panel-surface rounded-3xl panel-body">
+            <h2 className="heading-label mb-4 font-semibold uppercase tracking-wider text-muted-foreground">{t("memoryHeading")}</h2>
+            <div className="workspace-glass-panel rounded-2xl panel-body">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Cpu className="h-5 w-5 text-amber-500" />

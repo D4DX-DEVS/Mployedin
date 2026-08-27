@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -105,6 +106,7 @@ export default function CmsHeroFilters({
   onToggleFilters,
   searchPlaceholder = "Search...",
 }: CmsHeroFiltersProps) {
+  const t = useTranslations("cms");
   const hasSearch = fields.some((f) => f.type === "search");
   const gridFields = fields.filter(
     (f) => f.type === "status" || f.type === "text" || f.type === "select"
@@ -123,10 +125,10 @@ export default function CmsHeroFilters({
         <button
           type="button"
           onClick={onToggleFilters}
-          className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-white/10 dark:hover:bg-white/5"
+          className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-white/10"
         >
           <Filter className="h-4 w-4 text-muted-foreground" />
-          {showFilters ? "Hide Filters" : "Show Filters"}
+          {showFilters ? t("hideFilters") : t("showFilters")}
           {hasActiveFilters && (
             <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
               Active
@@ -147,13 +149,13 @@ export default function CmsHeroFilters({
             className="gap-1.5 text-xs text-muted-foreground"
           >
             <RotateCcw className="h-3.5 w-3.5" />
-            Clear filters
+            {t("clearFilters")}
           </Button>
         )}
       </div>
 
       {showFilters && (
-        <div className="mt-4 space-y-3 rounded-[20px] border border-border/30 bg-background/40 p-4 backdrop-blur-sm dark:bg-background/20">
+        <div className="mt-4 space-y-3 rounded-3xl border border-border/30 bg-background/40 backdrop-blur-sm card-pad">
           {hasSearch && (
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

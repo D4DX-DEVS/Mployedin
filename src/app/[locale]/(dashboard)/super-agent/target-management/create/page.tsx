@@ -17,6 +17,7 @@ import {
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "next/navigation";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -290,9 +291,8 @@ export default function SuperAgentCreateTargetPage() {
       {/* Header */}
       <DashboardPageHeader
         icon={Target}
-        eyebrow="Target management"
-        title="Assign Agent Targets"
-        description="Set annual targets for your team agents"
+        title={t("assignAgentTargets")}
+        description={t("assignAgentTargetsDesc")}
         actions={
             <div className="flex items-center gap-2">
               <Label className="text-xs font-medium text-muted-foreground">Year</Label>
@@ -340,14 +340,14 @@ export default function SuperAgentCreateTargetPage() {
           <div className="px-4 py-3 bg-muted/20 border-b border-border/50">
             <div className="grid gap-3 sm:grid-cols-2">
               {/* Name Search */}
-              <div className="space-y-1">
+              <div className="field">
                 <Label className="text-[11px] font-medium text-muted-foreground">Name / Email</Label>
                 <div className="relative">
                   <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     value={filterName}
                     onChange={(e) => setFilterName(e.target.value)}
-                    placeholder="Search by name or email..."
+                    placeholder={t("searchByNameEmail")}
                     className="h-8 rounded-lg border-border bg-background pl-8 text-xs"
                   />
                 </div>
@@ -363,7 +363,7 @@ export default function SuperAgentCreateTargetPage() {
                     { value: "", label: "All regions" },
                     ...regionOptions.map((r) => ({ value: r, label: r })),
                   ]}
-                  placeholder="All regions"
+                  placeholder={t("allRegions")}
                   searchPlaceholder="Search regions..."
                   emptyMessage="No regions found"
                   className="h-8 text-xs"
@@ -460,13 +460,13 @@ export default function SuperAgentCreateTargetPage() {
                     Total ({validRows.length} agent{validRows.length !== 1 ? "s" : ""})
                   </td>
                   <td className="px-4 py-3 text-center text-sm font-bold text-foreground tabular-nums">
-                    {totals.employer.toLocaleString()}
+                    {formatCount(totals.employer)}
                   </td>
                   <td className="px-4 py-3 text-center text-sm font-bold text-foreground tabular-nums">
-                    {totals.employee.toLocaleString()}
+                    {formatCount(totals.employee)}
                   </td>
                   <td className="px-4 py-3 text-center text-sm font-bold text-foreground tabular-nums">
-                    {totals.finance.toLocaleString()}
+                    {formatCount(totals.finance)}
                   </td>
                   <td className="px-4 py-3" />
                 </tr>
@@ -516,7 +516,7 @@ function AgentTargetRow({
 
   return (
     <>
-      <tr className={`transition-colors ${hasTarget ? "bg-sky-50/50 dark:bg-sky-950/20" : "hover:bg-muted/20"}`}>
+      <tr className={`transition-colors ${hasTarget ? "bg-sky-50/50" : "hover:bg-muted/20"}`}>
         {/* Agent Info */}
         <td className="px-4 py-3">
           <div>
@@ -574,8 +574,8 @@ function AgentTargetRow({
           <Button
             type="button"
             variant={row.showMonthly ? "default" : "outline"}
-            size="sm"
-            className="rounded-lg h-8 text-xs gap-1"
+            size="dense"
+            className="rounded-lg text-xs gap-1"
             onClick={() => onToggleMonthly(agent.id)}
             disabled={!hasTarget}
           >

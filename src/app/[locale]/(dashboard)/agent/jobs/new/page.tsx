@@ -123,7 +123,6 @@ export default function AgentJobPosterPage() {
     <div className="page-container">
       <PageHero
         icon={Briefcase}
-        eyebrow={common("workspace")}
         title={t("title")}
         description={t("description")}
         actions={
@@ -134,10 +133,10 @@ export default function AgentJobPosterPage() {
         }
       />
 
-      <section className="rounded-[28px] border border-border bg-card/90 p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur sm:p-6 space-y-3">
+      <section className="rounded-3xl border border-border bg-card/90 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur space-y-3 panel-body">
         <div className="flex items-center gap-2">
           <Building2 className="h-4 w-4 text-status-applied" />
-          <h3 className="text-sm font-semibold text-foreground">{t("employer.title")}</h3>
+          <h3 className="heading-label font-semibold text-foreground">{t("employer.title")}</h3>
         </div>
         {loadingEmployers ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -165,10 +164,10 @@ export default function AgentJobPosterPage() {
         )}
       </section>
 
-      <form onSubmit={handleSubmit} className="rounded-[28px] border border-border bg-card/90 p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur sm:p-6 space-y-5">
+      <form onSubmit={handleSubmit} className="rounded-3xl border border-border bg-card/90 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur space-y-5 panel-body">
         <div className="flex items-center gap-2 mb-1">
           <Briefcase className="h-4 w-4 text-status-applied" />
-          <h3 className="text-sm font-semibold text-foreground">{t("form.title")}</h3>
+          <h3 className="heading-label font-semibold text-foreground">{t("form.title")}</h3>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -289,10 +288,10 @@ export default function AgentJobPosterPage() {
           <Button type="button" variant="outline" onClick={() => router.back()} className="h-11 rounded-xl">
             {common("cancel")}
           </Button>
-          <Button
+          <Button size="lg"
             type="submit"
             disabled={submitting || !canSubmit}
-            className="h-11 rounded-xl bg-primary hover:bg-primary/90"
+            className="rounded-xl bg-primary hover:bg-primary/90"
           >
             {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {submitting ? t("form.posting") : t("form.submit")}

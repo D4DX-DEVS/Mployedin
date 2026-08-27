@@ -75,11 +75,11 @@ export function ChangeEmailCard() {
   }, []);
 
   return (
-    <section className="card-base rounded-[28px] panel-body">
+    <section className="card-base rounded-3xl panel-body">
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("account")}</div>
-          <h2 className="mt-1 text-lg font-semibold tracking-tight text-foreground">{t("emailAddress")}</h2>
+          <h2 className="heading-section mt-1 font-semibold tracking-tight text-foreground">{t("emailAddress")}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Changing your email requires your password and a confirmation link sent to the new address.
           </p>
@@ -90,15 +90,15 @@ export function ChangeEmailCard() {
       </div>
 
       {error && (
-        <div className="mt-4 rounded-lg border border-destructive/20 bg-destructive/10 p-3">
+        <div className="mt-4 rounded-lg border border-destructive/20 bg-destructive/10 chip-pad">
           <p className="text-sm font-medium text-destructive">{error}</p>
         </div>
       )}
 
       {pendingEmail && (
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 card-pad">
           <div>
-            <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
+            <p className="text-sm font-semibold text-amber-700">
               Pending change to {pendingEmail}
             </p>
             <p className="mt-0.5 text-xs text-muted-foreground">
@@ -117,9 +117,9 @@ export function ChangeEmailCard() {
             {t("changeEmailAddress")}
           </Button>
         ) : (
-          <div className="mt-5 space-y-3 rounded-xl border border-border/70 p-4">
+          <div className="mt-5 space-y-3 rounded-xl border border-border/70 card-pad">
             <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
+              <div className="field">
                 <Label htmlFor="new-email">{t("newEmailAddress")}</Label>
                 <Input
                   id="new-email"
@@ -131,7 +131,7 @@ export function ChangeEmailCard() {
                   className="h-11"
                 />
               </div>
-              <div className="space-y-1.5">
+              <div className="field">
                 <Label htmlFor="confirm-pwd">{t("currentPassword")}</Label>
                 <Input
                   id="confirm-pwd"

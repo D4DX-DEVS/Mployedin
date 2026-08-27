@@ -435,7 +435,7 @@ export default function JobSeekerProfilePage() {
 
   if (loading) {
     return (
-      <div className="px-3 py-4 sm:p-6 max-w-5xl mx-auto space-y-3 sm:space-y-4">
+      <div className="page-container max-w-5xl">
         {[...Array(4)].map((_, i) => (
           <div key={i} className="card-base animate-pulse space-y-3 panel-body">
             <div className="h-4 bg-muted rounded w-1/3" />
@@ -447,7 +447,7 @@ export default function JobSeekerProfilePage() {
   }
 
   return (
-    <div className="px-3 py-4 sm:p-6 max-w-5xl mx-auto space-y-3 sm:space-y-4">
+    <div className="page-container max-w-5xl">
 
       {/* ── Page Header ────────────────────────────────────────────────── */}
       <PageHeader
@@ -471,7 +471,7 @@ export default function JobSeekerProfilePage() {
               <Sparkles className="h-3.5 w-3.5" />
               {t("aiTools")}
             </div>
-            <h2 className="mt-2 text-base font-semibold text-foreground sm:mt-3 sm:text-xl">{t("aiTitle")}</h2>
+            <h2 className="heading-section mt-2 font-semibold text-foreground sm:mt-3">{t("aiTitle")}</h2>
             {/* Four lines of explainer above the fold on a phone — kept from sm up. */}
             <p className="mt-1.5 hidden text-sm leading-relaxed text-muted-foreground sm:block">
               {t("aiDescription")}
@@ -482,7 +482,7 @@ export default function JobSeekerProfilePage() {
             <button
               onClick={() => router.push("./cv")}
               aria-label={aiExtracted ? t("refreshCvAi") : t("uploadCvAi")}
-              className="group w-full rounded-2xl border border-border/60 bg-background/90 p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
+              className="group w-full rounded-2xl border border-border/60 bg-background/90 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md card-pad"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -515,8 +515,8 @@ export default function JobSeekerProfilePage() {
         className={cn(
           "w-full card-base px-4 py-2.5 flex items-center justify-between text-sm transition-colors",
           visibility === "visible"
-            ? "border-emerald-200 dark:border-emerald-800/40 bg-emerald-50/50 dark:bg-emerald-950/20"
-            : "border-amber-200 dark:border-amber-800/40 bg-amber-50/50 dark:bg-amber-950/20"
+            ? "border-emerald-200 bg-emerald-50/50"
+            : "border-amber-200 bg-amber-50/50"
         )}
       >
         <div className="flex items-center gap-2">
@@ -525,7 +525,7 @@ export default function JobSeekerProfilePage() {
           ) : (
             <EyeOff className="w-4 h-4 text-amber-600" />
           )}
-          <span className={visibility === "visible" ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"}>
+          <span className={visibility === "visible" ? "text-emerald-700" : "text-amber-700"}>
             {visibility === "visible" ? t("visibleBanner") : t("hiddenBanner")}
           </span>
         </div>
@@ -574,7 +574,7 @@ export default function JobSeekerProfilePage() {
           {/* Name + meta */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-lg sm:text-xl font-bold">{name}</h2>
+              <h2 className="heading-section font-bold">{name}</h2>
               <button
                 onClick={() => { setEditName(name); setShowNameModal(true); }}
                 className="p-1 rounded-md hover:bg-muted transition-colors"
@@ -747,7 +747,7 @@ export default function JobSeekerProfilePage() {
                       router.push(field.href);
                     }
                   }}
-                  className="inline-flex items-center gap-1 rounded-full border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-950/20 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/40 transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 hover:bg-amber-100 transition-colors cursor-pointer"
                 >
                   <field.icon className="w-2.5 h-2.5" />
                   {field.label}
@@ -761,10 +761,10 @@ export default function JobSeekerProfilePage() {
 
       {/* ── AI Insight Card ───────────────────────────────────────────── */}
       {completeness < 80 && (
-        <div className="card-base border-violet-200 dark:border-violet-800/40 panel-body"
+        <div className="card-base border-violet-200 panel-body"
           style={{ background: "linear-gradient(135deg, hsl(var(--card)) 0%, hsl(270 60% 98%) 100%)" }}>
           <div className="flex items-start gap-4">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/50">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-100">
               <BrainCircuit className="w-4.5 h-4.5 text-violet-600" style={{ width: "18px", height: "18px" }} />
             </div>
             <div className="flex-1 min-w-0">
@@ -894,7 +894,7 @@ export default function JobSeekerProfilePage() {
                     }
                     <div className={cn(
                       "flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
-                      step.done ? "bg-emerald-100 dark:bg-emerald-950/30" : idx === 0 ? "bg-primary/10" : "bg-muted"
+                      step.done ? "bg-emerald-100" : idx === 0 ? "bg-primary/10" : "bg-muted"
                     )}>
                       <step.icon className={cn("w-3.5 h-3.5", step.done ? "text-emerald-600" : idx === 0 ? "text-primary" : "text-muted-foreground")} />
                     </div>
@@ -948,7 +948,7 @@ export default function JobSeekerProfilePage() {
                             router.push(field.href);
                           }
                         }}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-950/20 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/40 transition-colors cursor-pointer"
+                        className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100 transition-colors cursor-pointer"
                       >
                         <field.icon className="w-3 h-3" />
                         {field.label}
@@ -1537,8 +1537,8 @@ function SectionCard({
               className={cn(
                 "flex items-center gap-1 text-xs px-2 py-1 rounded-md transition-colors",
                 visible !== false
-                  ? "text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
-                  : "text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                  ? "text-emerald-600 hover:bg-emerald-50"
+                  : "text-amber-600 hover:bg-amber-50"
               )}
               title={visible !== false ? t("sectionActions.visibleTitle") : t("sectionActions.hiddenTitle")}
             >

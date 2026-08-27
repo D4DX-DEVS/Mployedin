@@ -74,7 +74,7 @@ export default function ApplicationFeedbackPage() {
       }
       setSubmitted(true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong");
+      setError("We couldn't submit your feedback. Nothing was saved. Review your response and try again.");
     } finally {
       setSubmitting(false);
     }
@@ -101,7 +101,7 @@ export default function ApplicationFeedbackPage() {
       <div className="page-container">
         <div className="max-w-lg mx-auto text-center py-8 sm:py-16 space-y-3 sm:space-y-4">
           <AlertTriangle className="w-12 h-12 text-muted-foreground mx-auto" />
-          <h2 className="text-lg font-semibold">{t("feedbackNotAvailable")}</h2>
+          <h2 className="heading-section font-semibold">{t("feedbackNotAvailable")}</h2>
           <p className="text-sm text-muted-foreground">
             {t("feedbackOnlyAfterDecision")}
           </p>
@@ -120,10 +120,10 @@ export default function ApplicationFeedbackPage() {
     return (
       <div className="page-container">
         <div className="max-w-lg mx-auto text-center py-8 sm:py-16 space-y-3 sm:space-y-4">
-          <div className="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-950/40 flex items-center justify-center mx-auto sm:w-16 sm:h-16">
+          <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center mx-auto sm:w-16 sm:h-16">
             <CheckCircle className="w-7 h-7 text-emerald-600 sm:w-8 sm:h-8" />
           </div>
-          <h2 className="text-lg font-semibold sm:text-xl">{t("thankYou")}</h2>
+          <h2 className="heading-section font-semibold">{t("thankYou")}</h2>
           <p className="text-xs text-muted-foreground sm:text-sm">
             {t("feedbackRecorded", { jobTitle, companyName })}
           </p>
@@ -157,7 +157,7 @@ export default function ApplicationFeedbackPage() {
                 onClick={() => setRating(star)}
                 onMouseEnter={() => setHovered(star)}
                 onMouseLeave={() => setHovered(0)}
-                className="transition-transform hover:scale-110 focus:outline-none"
+                className="rounded-md transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 aria-label={t("rateStarsAria", { count: star })}
               >
                 <Star
@@ -172,7 +172,7 @@ export default function ApplicationFeedbackPage() {
           </div>
 
           {(hovered || rating) > 0 && (
-            <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
+            <p className="text-sm font-medium text-amber-600">
               {starLabels[hovered || rating]}
             </p>
           )}
@@ -190,7 +190,7 @@ export default function ApplicationFeedbackPage() {
               <span className="text-sm text-muted-foreground">{label}</span>
               <div className="flex gap-1">
                 {[1, 2, 3, 4, 5].map((s) => (
-                  <button key={s} type="button" onClick={() => set(s)} className="focus:outline-none">
+                  <button key={s} type="button" onClick={() => set(s)} className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                     <Star className={`w-5 h-5 ${s <= value ? "fill-amber-400 text-amber-400" : "text-muted-foreground/20"}`} />
                   </button>
                 ))}
@@ -200,8 +200,8 @@ export default function ApplicationFeedbackPage() {
           <div className="pt-2 border-t border-border">
             <p className="text-sm text-muted-foreground mb-2">{t("recommendEmployerQuestion")}</p>
             <div className="flex gap-2">
-              <button type="button" onClick={() => setWouldRecommend(true)} className={`px-3 py-1.5 rounded-lg border text-sm ${wouldRecommend === true ? "border-emerald-500 bg-emerald-500/10 text-emerald-600" : "border-border hover:bg-muted"}`}>👍 {tc("yes")}</button>
-              <button type="button" onClick={() => setWouldRecommend(false)} className={`px-3 py-1.5 rounded-lg border text-sm ${wouldRecommend === false ? "border-red-500 bg-red-500/10 text-red-600" : "border-border hover:bg-muted"}`}>👎 {tc("no")}</button>
+              <button type="button" onClick={() => setWouldRecommend(true)} className={`rounded-lg border text-sm ${wouldRecommend === true ? "border-emerald-500 bg-emerald-500/10 text-emerald-600" : "border-border hover:bg-muted"} chip-pad`}>👍 {tc("yes")}</button>
+              <button type="button" onClick={() => setWouldRecommend(false)} className={`rounded-lg border text-sm ${wouldRecommend === false ? "border-red-500 bg-red-500/10 text-red-600" : "border-border hover:bg-muted"} chip-pad`}>👎 {tc("no")}</button>
             </div>
           </div>
         </div>

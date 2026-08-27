@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -38,9 +39,9 @@ interface Task {
 /* ------------------------------------------------------------------ */
 
 const PRIORITY_COLORS: Record<string, string> = {
-  high: "text-red-600 bg-red-50 dark:bg-red-950/30",
-  medium: "text-amber-600 bg-amber-50 dark:bg-amber-950/30",
-  low: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30",
+  high: "text-red-600 bg-red-50",
+  medium: "text-amber-600 bg-amber-50",
+  low: "text-emerald-600 bg-emerald-50",
 };
 
 const getStatusOptions = (t: any) => [
@@ -180,7 +181,6 @@ export default function AgentTasksPage() {
       {/* Hero */}
       <DashboardPageHeader
         icon={CheckSquare}
-        eyebrow={t("pageTitle")}
         title={t("pageTitle")}
         description={t("pageDescription")}
         actions={
@@ -198,8 +198,8 @@ export default function AgentTasksPage() {
 
       {/* New Task Form */}
       {showForm && (
-        <section className="workspace-panel-surface rounded-[28px] space-y-4 panel-body">
-          <h2 className="text-lg font-semibold text-foreground">{t("createTaskHeading")}</h2>
+        <section className="workspace-panel-surface rounded-3xl space-y-4 panel-body">
+          <h2 className="heading-section font-semibold text-foreground">{t("createTaskHeading")}</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             <Input placeholder={t("taskTitlePlaceholder")} value={newTask.title} onChange={(e) => setNewTask((p) => ({ ...p, title: e.target.value }))} className="sm:col-span-2" />
             <Input placeholder={t("taskDescriptionPlaceholder")} value={newTask.description} onChange={(e) => setNewTask((p) => ({ ...p, description: e.target.value }))} className="sm:col-span-2" />
@@ -214,28 +214,27 @@ export default function AgentTasksPage() {
         </section>
       )}
 
-      {/* Filters */}
-      <section className="workspace-panel-surface rounded-[28px] panel-body">
+      {/* One panel: the filter row was a card of its own holding nothing but a
+          search box, a select and Reset, stacked above the list it filters. */}
+      <section className="workspace-panel-surface rounded-3xl panel-body">
         {/* Wraps rather than stacks on phones, so the status dropdown and Reset
             share a line with the search box (see [data-table-toolbar] in globals.css). */}
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3" data-table-toolbar="simple">
+        <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3 sm:gap-3 sm:pb-4" data-table-toolbar="simple">
           <div className="relative toolbar-search-field flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder={t("searchPlaceholder")} value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+            <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input placeholder={t("searchPlaceholder")} value={search} onChange={(e) => setSearch(e.target.value)} className="ps-9" />
           </div>
           <SearchableSelect options={getStatusOptions(t)} value={statusFilter} onValueChange={setStatusFilter} placeholder={tc("status")} className="w-36" />
           <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setStatusFilter("all"); }}>
-            <RotateCcw className="mr-1 h-4 w-4" /> {t("resetButton")}
+            <RotateCcw className="me-1 h-4 w-4" /> {t("resetButton")}
           </Button>
         </div>
-      </section>
 
-      {/* Task List */}
-      <section className="workspace-panel-surface rounded-[28px] panel-body">
+        <div className="pt-4">
         {loading ? (
           <div className="space-y-3">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="workspace-glass-panel rounded-2xl p-4">
+              <div key={i} className="workspace-glass-panel card-pad rounded-2xl">
                 <div className="flex items-start gap-3">
                   <Skeleton className="mt-0.5 h-5 w-5 rounded" />
                   <div className="flex-1 space-y-2">
@@ -257,9 +256,7 @@ export default function AgentTasksPage() {
             {tasks.map((task) => (
               <div
                 key={task._id}
-                className={`workspace-glass-panel rounded-2xl p-4 transition-all ${
-                  task.status === "completed" ? "opacity-60" : ""
-                }`}
+                className={`workspace-glass-panel rounded-2xl transition-all ${ task.status === "completed" ? "opacity-60" : "" } card-pad`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3">
@@ -294,7 +291,7 @@ export default function AgentTasksPage() {
                               : "text-muted-foreground"
                           }`}>
                             <Calendar className="h-3 w-3" />
-                            {new Date(task.dueDate).toLocaleDateString()}
+                            {formatDate(new Date(task.dueDate))}
                           </span>
                         )}
                       </div>
@@ -315,6 +312,7 @@ export default function AgentTasksPage() {
             ))}
           </div>
         )}
+        </div>
       </section>
 
       {total > 0 && (

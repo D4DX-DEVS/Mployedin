@@ -30,6 +30,7 @@ import {
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Search, Inbox, AlertCircle, Loader2, Download, FileSpreadsheet, FileText } from "lucide-react";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 interface AgentProfile {
   _id: string;
@@ -99,7 +100,7 @@ export default function AdminAgentsPage() {
     { header: tr("exportSuperAgent"), key: "agentProfile" as keyof Agent, formatter: (_v, r) => (r as unknown as Agent).agentProfile?.superAgentName ?? "—" },
     { header: tr("exportCommission"), key: "agentProfile" as keyof Agent, formatter: (_v, r) => String((r as unknown as Agent).agentProfile?.commissionRate ?? 0) },
     { header: tr("exportStatus"), key: "isActive", formatter: (v) => v !== false ? tr("active") : tr("inactive") },
-    { header: tr("exportJoined"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
+    { header: tr("exportJoined"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: agents as unknown as Record<string, unknown>[],
@@ -170,14 +171,14 @@ export default function AdminAgentsPage() {
         body: JSON.stringify({ userId: id, isActive: true }),
       });
       if (res.ok) {
-        toast.success("Agent activated successfully");
+        toast.success(tr("toastAgentActivated"));
         fetchAgents();
       } else {
         const err = await res.json().catch(() => ({}));
-        toast.error(err.error || "Failed to activate agent");
+        toast.error(err.error || tr("toastFailedActivateAgent"));
       }
     } catch (error) {
-      toast.error("Failed to activate agent");
+      toast.error(tr("toastFailedActivateAgent"));
     }
   };
 
@@ -226,7 +227,7 @@ export default function AdminAgentsPage() {
       setAddForm({ name: "", email: "", password: "", superAgentId: "", commissionRate: "0" });
       setAddCityIds([]);
       setAddStateIds([]);
-      toast.success("Agent created successfully");
+      toast.success(tr("toastAgentCreated"));
       fetchAgents();
     } catch {
       setAddError(tr("networkError"));
@@ -288,7 +289,7 @@ export default function AdminAgentsPage() {
         return;
       }
       setEditAgent(null);
-      toast.success("Agent updated successfully");
+      toast.success(tr("toastAgentUpdated"));
       fetchAgents();
     } catch {
       setEditError(tr("networkError"));
@@ -308,12 +309,12 @@ export default function AdminAgentsPage() {
       });
       if (!res.ok) {
         const e = await res.json().catch(() => ({}));
-        toast.error(e.error ?? "Failed to deactivate agent");
+        toast.error(e.error ?? tr("toastFailedDeactivateAgent"));
         return;
       }
-      toast.success("Agent deactivated successfully");
+      toast.success(tr("toastAgentDeactivated"));
     } catch {
-      toast.error("Failed to deactivate agent");
+      toast.error(tr("toastFailedDeactivateAgent"));
     }
     fetchAgents();
   };
@@ -329,12 +330,12 @@ export default function AdminAgentsPage() {
       });
       if (!res.ok) {
         const e = await res.json().catch(() => ({}));
-        toast.error(e.error ?? "Failed to permanently delete agent");
+        toast.error(e.error ?? tr("toastFailedDeleteAgent"));
         return;
       }
-      toast.success("Agent permanently deleted");
+      toast.success(tr("toastAgentDeletedPermanently"));
     } catch {
-      toast.error("Failed to permanently delete agent");
+      toast.error(tr("toastFailedDeleteAgent"));
     }
     fetchAgents();
   };
@@ -363,10 +364,9 @@ export default function AdminAgentsPage() {
       <PageHero
         title={tr("agents")}
         description={tr("heroDescription")}
-        eyebrow={tr("adminWorkspace")}
       />
 
-      <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
+      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
         {/* data-table-toolbar opts this hand-rolled header into the shared
             mobile toolbar rules, same as pages built on <TableToolbar>. */}
         <div data-table-toolbar="compact-admin" className="flex flex-wrap items-center gap-2 border-b border-border/80 panel-head">
@@ -393,7 +393,7 @@ export default function AdminAgentsPage() {
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 rounded-lg border-border/80">
+                <Button variant="outline" size="dense" className="rounded-lg border-border/80">
                   <Download className="h-3.5 w-3.5" /> {tr("export")}
                 </Button>
               </DropdownMenuTrigger>
@@ -484,7 +484,7 @@ export default function AdminAgentsPage() {
                 <TableCell className="text-sm">
                   {agent.agentProfile?.commissionRate != null ? `${agent.agentProfile.commissionRate}%` : "—"}
                 </TableCell>
-                <TableCell className="text-muted-foreground text-sm">{new Date(agent.createdAt).toLocaleDateString()}</TableCell>
+                <TableCell className="text-muted-foreground text-sm">{formatDate(new Date(agent.createdAt))}</TableCell>
                 {(can("agents", "update") || can("agents", "delete")) && (
                   <TableCell>
                     <div className="flex items-center gap-1">
@@ -528,25 +528,25 @@ export default function AdminAgentsPage() {
 
           <div className="space-y-4">
             {addError && (
-              <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
+              <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 text-sm text-destructive chip-pad">
                 <AlertCircle className="h-4 w-4 shrink-0" />{addError}
               </div>
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{tr("fullName")} <span className="text-destructive">*</span></Label>
                 <Input value={addForm.name} onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))} />
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{tr("email")} <span className="text-destructive">*</span></Label>
                 <Input type="email" value={addForm.email} onChange={(e) => setAddForm((f) => ({ ...f, email: e.target.value }))} />
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{tr("password")} <span className="text-destructive">*</span></Label>
                 <Input type="text" value={addForm.password} onChange={(e) => setAddForm((f) => ({ ...f, password: e.target.value }))} placeholder={tr("passwordPlaceholder")} />
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{tr("commissionRate")}</Label>
                 <Input type="number" min="0" max="100" value={addForm.commissionRate} onChange={(e) => setAddForm((f) => ({ ...f, commissionRate: e.target.value }))} />
                 <p className="text-xs text-muted-foreground">{tr("commissionRateHelp")}</p>
@@ -609,21 +609,21 @@ export default function AdminAgentsPage() {
 
           <div className="space-y-4">
             {editError && (
-              <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
+              <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 text-sm text-destructive chip-pad">
                 <AlertCircle className="h-4 w-4 shrink-0" />{editError}
               </div>
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{tr("fullName")}</Label>
                 <Input value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} />
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{tr("email")}</Label>
                 <Input type="email" value={editForm.email} onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))} />
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{tr("status")}</Label>
                 <InlineSearchSelect
                   options={[
@@ -634,7 +634,7 @@ export default function AdminAgentsPage() {
                   onValueChange={(v) => setEditForm((f) => ({ ...f, isActive: v }))}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{tr("commissionRate")}</Label>
                 <Input type="number" min="0" max="100" value={editForm.commissionRate} onChange={(e) => setEditForm((f) => ({ ...f, commissionRate: e.target.value }))} />
                 <p className="text-xs text-muted-foreground">{tr("commissionRateEditHelp")}</p>

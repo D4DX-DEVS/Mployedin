@@ -8,14 +8,17 @@ import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Users, Briefcase, TrendingUp, Inbox, CircleCheckBig, ClipboardList, ChevronDown } from "lucide-react";
+import { Users, Briefcase, Inbox, CircleCheckBig, ClipboardList, ChevronDown } from "lucide-react";
+import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { useTableExport } from "@/hooks/useTableExport";
 import { usePlacements, type Placement } from "@/hooks/usePlacements";
 import type { ExportColumn } from "@/lib/export";
+import { formatCount, formatDate as formatIntlDate } from "@/lib/ui/intlFormat";
 
 export default function EmployerPlacementsPage() {
   const router = useRouter();
@@ -36,34 +39,44 @@ export default function EmployerPlacementsPage() {
   const [filter, setFilter] = useState("all");
   const [visaFilter, setVisaFilter] = useState("all");
 
+  const STATUS_OPTIONS = [
+    { value: "all", label: t("filterAll") },
+    { value: "active", label: t("filterActive") },
+    { value: "completed", label: t("filterCompleted") },
+    { value: "terminated", label: t("filterTerminated") },
+  ];
+  const VISA_OPTIONS = [
+    { value: "all", label: t("visaAll") },
+    { value: "not_required", label: t("visaNotRequired") },
+    { value: "pending", label: t("visaPending") },
+    { value: "approved", label: t("visaApproved") },
+    { value: "rejected", label: t("visaRejected") },
+    { value: "stamped", label: t("visaStamped") },
+  ];
+
   const { data, isLoading: loading, error, refetch } = usePlacements({ page, limit, status: filter, visaStatus: visaFilter });
   const placements = data?.placements ?? [];
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / limit));
 
   // Compute stats from API-level statusCounts (accurate totals across all pages)
+  // Only API-wide counts here. A "this month" tile computed from the current
+  // page counted one page of results and read as a global total.
   const statusCounts = data?.statusCounts;
-  const stats = useMemo(() => {
-    return {
-      total,
-      active: statusCounts?.active ?? 0,
-      completed: statusCounts?.completed ?? 0,
-      thisMonth: placements.filter((p) => {
-        const now = new Date();
-        const d = new Date(p.createdAt);
-        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-      }).length,
-    };
-  }, [statusCounts, total, placements]);
+  const stats = useMemo(() => ({
+    total,
+    active: statusCounts?.active ?? 0,
+    completed: statusCounts?.completed ?? 0,
+  }), [statusCounts, total]);
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
     { header: t("candidate"), key: "candidateName", formatter: (v) => String(v ?? t("candidateFallback")) },
     { header: t("position"), key: "jobTitle", formatter: (v) => String(v ?? t("untitledRole")) },
     { header: t("type"), key: "type", formatter: (v) => String(v ?? "\u2014") },
-    { header: t("salary"), key: "salary", formatter: (_v, r) => { const p = r as Record<string, any>; if (!p.salary) return t("notDisclosed"); return `${p.salary.currency} ${p.salary.amount?.toLocaleString()}`; } },
+    { header: t("salary"), key: "salary", formatter: (_v, r) => { const p = r as Record<string, any>; if (!p.salary) return t("notDisclosed"); return `${p.salary.currency} ${formatCount(p.salary.amount)}`; } },
     { header: t("status"), key: "status", formatter: (v) => String(v ?? "\u2014") },
-    { header: t("startDate"), key: "startDate", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : t("notSet") },
-    { header: t("created"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "\u2014" },
+    { header: t("startDate"), key: "startDate", formatter: (v) => v ? formatIntlDate(new Date(String(v))) : t("notSet") },
+    { header: t("created"), key: "createdAt", formatter: (v) => v ? formatIntlDate(new Date(String(v))) : "\u2014" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: placements as unknown as Record<string, unknown>[],
@@ -74,7 +87,7 @@ export default function EmployerPlacementsPage() {
 
   function formatDate(value?: string): string {
     if (!value) return t("notSet");
-    return new Date(value).toLocaleDateString(undefined, {
+    return formatIntlDate(new Date(value), {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -83,7 +96,7 @@ export default function EmployerPlacementsPage() {
 
   function formatSalary(placement: Placement): string {
     if (!placement.salary || placement.salary.amount == null) return t("notDisclosed");
-    return `${placement.salary.currency} ${placement.salary.amount.toLocaleString()}`;
+    return `${placement.salary.currency} ${formatCount(placement.salary.amount)}`;
   }
 
   // Reset page when filters change (skip the initial mount so a page restored from the URL survives)
@@ -91,112 +104,69 @@ export default function EmployerPlacementsPage() {
   useEffect(() => {
     if (skipFilterResetRef.current) { skipFilterResetRef.current = false; return; }
     setPage(1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [filter, visaFilter]);
 
   return (
     <div className="page-container">
       <DashboardPageHeader
         icon={ClipboardList}
-        eyebrow={t("totalHired")}
-        title={t("totalHired")}
+        title={t("workspace")}
+        description={t("subtitle")}
+        compactOnMobile
         metrics={[
           { label: t("totalHired"), value: stats.total, note: t("totalHiredNote"), icon: Users },
           { label: t("currentlyActive"), value: stats.active, note: t("currentlyActiveNote"), icon: Briefcase },
           { label: t("completed"), value: stats.completed, note: t("completedNote"), icon: CircleCheckBig },
-          { label: t("thisMonth"), value: stats.thisMonth, note: t("thisMonthNote"), icon: TrendingUp },
         ]}
       />
 
-      <section className="workspace-panel-surface rounded-[28px] panel-body">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("filterOutcomes")}</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("filterTitle")}</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-              {t("filterDescription")}
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            {(["all", "active", "completed", "terminated"] as const).map((statusOption) => {
-              const labelMap = { all: "filterAll", active: "filterActive", completed: "filterCompleted", terminated: "filterTerminated" } as const;
-              return (
-              <Button
-                key={statusOption}
-                onClick={() => setFilter(statusOption)}
-                variant="ghost"
-                size="sm"
-                className={filter === statusOption
-                  ? "rounded-full bg-primary px-4 text-white hover:bg-primary/90"
-                  : "rounded-full border border-border bg-background/80 px-4 text-muted-foreground hover:bg-background"
-                }
-              >
-                {t(labelMap[statusOption])}
-              </Button>
-              );
-            })}
-          </div>
-        </div>
-        {/* Visa status filter (GCC) — no scroll, text/padding shrink hard
-            enough on phones that all 6 chips stay on one wrapped row. */}
-        <div className="mt-4 flex flex-col gap-2 border-t border-border/40 pt-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("filterVisaTitle")}</p>
-          <div className="flex flex-wrap gap-1 sm:gap-2">
-            {(["all", "not_required", "pending", "approved", "rejected", "stamped"] as const).map((visaOption) => {
-              const visaLabelMap = { all: "visaAll", not_required: "visaNotRequired", pending: "visaPending", approved: "visaApproved", rejected: "visaRejected", stamped: "visaStamped" } as const;
-              return (
-                <Button
-                  key={visaOption}
-                  onClick={() => setVisaFilter(visaOption)}
-                  variant="ghost"
-                  size="sm"
-                  className={`h-auto whitespace-nowrap rounded-full px-1.5 py-0.5 text-[9px] leading-tight sm:h-9 sm:px-4 sm:py-1.5 sm:text-sm ${visaFilter === visaOption
-                    ? "bg-emerald-600 text-white hover:bg-emerald-700 hover:text-white"
-                    : "border border-border bg-background/80 text-muted-foreground hover:bg-background"
-                  }`}
-                >
-                  {t(visaLabelMap[visaOption])}
-                </Button>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
       {error ? (
-        <section className="workspace-panel-surface rounded-[28px] border border-red-500/20 panel-body">
+        <section className="workspace-panel-surface rounded-3xl border border-red-500/20 panel-body">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-rejected">{t("placementList")}</p>
-              <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("unableToLoad")}</h2>
+              <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("unableToLoad")}</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                {error instanceof Error ? error.message : t("loadError")}
+                {t("loadError")}
               </p>
             </div>
-            <Button className="h-11 rounded-xl px-4 text-sm font-semibold" onClick={() => void refetch()}>
+            <Button size="lg" className="rounded-xl px-4 text-sm font-semibold" onClick={() => void refetch()}>
               {t("retry")}
             </Button>
           </div>
         </section>
       ) : (
-      <section className="workspace-panel-surface rounded-[28px] panel-body">
-        <div className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
-          <div>
+      <section className="workspace-panel-surface rounded-3xl panel-body">
+        {/* Single toolbar row: label, both filters and export inline. The old
+            filter panel and table blurb cost a full screen before any hire. */}
+        <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3 sm:gap-3 sm:pb-4">
+          <div className="flex w-full items-center gap-1.5 sm:me-auto sm:w-auto">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("placementList")}</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("tableTitle")}</h2>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              {t("tableDescription")}
-            </p>
+            {/* Privacy info at the point candidate data is shown, compacted to
+                an icon + popover to keep the list above the fold. */}
+            <CandidateDataNotice variant="candidateList" compact />
           </div>
-          <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end sm:gap-2">
-            <p className="text-sm text-muted-foreground">{t("placementsOnPage", { count: placements.length })}</p>
-            <TableToolbar
-              onExportCsv={handleExportCsv}
-              onExportExcel={handleExportExcel}
-              onExportPdf={handleExportPdf}
-            />
-          </div>
+          <SearchableSelect
+            className="min-w-0 flex-1 sm:w-44 sm:flex-none"
+            options={STATUS_OPTIONS}
+            value={filter}
+            onValueChange={setFilter}
+            placeholder={t("filterAll")}
+          />
+          <SearchableSelect
+            className="min-w-0 flex-1 sm:w-44 sm:flex-none"
+            options={VISA_OPTIONS}
+            value={visaFilter}
+            onValueChange={setVisaFilter}
+            placeholder={t("visaAll")}
+          />
+          <TableToolbar
+            onExportCsv={handleExportCsv}
+            onExportExcel={handleExportExcel}
+            onExportPdf={handleExportPdf}
+            className="shrink-0"
+          />
         </div>
 
         {/* Phones get compact expandable rows — the shared <Table> stacks every
@@ -239,10 +209,10 @@ export default function EmployerPlacementsPage() {
                       </span>
                     ) : null}
                     <div className="mt-2 flex gap-2">
-                      <Button asChild variant="outline" size="sm" className="h-8 flex-1 rounded-lg text-[11px] font-semibold">
+                      <Button asChild variant="outline" size="dense" className="flex-1 rounded-lg text-[11px] font-semibold">
                         <Link href={`/${locale}/employer/placements/${placement._id}`}>{t("viewDetails")}</Link>
                       </Button>
-                      <Button asChild variant="outline" size="sm" className="h-8 flex-1 rounded-lg text-[11px] font-semibold">
+                      <Button asChild variant="outline" size="dense" className="flex-1 rounded-lg text-[11px] font-semibold">
                         <Link href={`/${locale}/employer/placements/${placement._id}/onboarding`}>
                           <ClipboardList className="me-1 h-3.5 w-3.5" />
                           {t("onboardingColumn")}
@@ -303,7 +273,7 @@ export default function EmployerPlacementsPage() {
                     <div className="space-y-2">
                       <p className="font-medium text-foreground">{placement.jobTitle ?? t("untitledRole")}</p>
                       {placement.type ? (
-                        <span className="inline-flex rounded-full bg-secondary/75 px-2.5 py-1 text-[11px] font-medium capitalize text-muted-foreground dark:bg-secondary/75 dark:text-muted-foreground">
+                        <span className="inline-flex rounded-full bg-secondary/75 px-2.5 py-1 text-[11px] font-medium capitalize text-muted-foreground">
                           {placement.type}
                         </span>
                       ) : null}

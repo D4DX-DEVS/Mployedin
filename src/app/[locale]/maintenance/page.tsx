@@ -42,7 +42,7 @@ export default async function MaintenancePage({
         <h1 className="text-3xl font-bold text-foreground">{t("title")}</h1>
         <p className="text-lg text-muted-foreground">{t("subtitle")}</p>
 
-        <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
+        <div className="rounded-lg border border-border bg-card text-sm text-muted-foreground card-pad">
           {t("adminHint")}
         </div>
 

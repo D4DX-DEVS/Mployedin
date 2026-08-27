@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2, Search, Inbox, ShieldCheck, ShieldOff, FileText, ExternalLink, Ban, Download, FileSpreadsheet, LogIn, Loader2 } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 interface Employer {
   _id: string;
@@ -97,13 +98,13 @@ export default function AdminEmployersPage() {
     { header: t("exportColumnEmail"), key: "email" },
     { header: t("exportColumnIndustry"), key: "industry" },
     { header: t("exportColumnStatus"), key: "status", formatter: (v, r) => r.status ?? (r.isActive !== false ? "active" : "inactive") },
-    { header: t("exportColumnJoined"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
+    { header: t("exportColumnJoined"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: employers as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "employers",
-    title: "Employers",
+    title: t("exportTitle"),
   });
 
   const fetchEmployers = useCallback(async () => {
@@ -216,7 +217,7 @@ export default function AdminEmployersPage() {
       setVerifyReason("");
     } else {
       const data = await res.json();
-      setVerifyError(data.error ?? "Verification failed");
+      setVerifyError(data.error ?? t("toastVerificationFailed"));
     }
     setVerifyLoading(false);
   };
@@ -241,10 +242,9 @@ export default function AdminEmployersPage() {
       <PageHero
         title={t("pageTitle")}
         description={t("pageDescription")}
-        eyebrow={t("adminWorkspace")}
       />
 
-      <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
+      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
         {/* data-table-toolbar opts this hand-rolled header into the shared
             mobile toolbar rules, same as pages built on <TableToolbar>. */}
         <div data-table-toolbar="compact-admin" className="flex flex-wrap items-center gap-2 border-b border-border/80 panel-head">
@@ -259,7 +259,7 @@ export default function AdminEmployersPage() {
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 rounded-lg border-border/80">
+                <Button variant="outline" size="dense" className="rounded-lg border-border/80">
                   <Download className="h-3.5 w-3.5" /> {t("exportLabel")}
                 </Button>
               </DropdownMenuTrigger>
@@ -324,7 +324,7 @@ export default function AdminEmployersPage() {
                 </TableCell>
                 <TableCell className="text-muted-foreground">{emp.email ?? emp.contactEmail ?? "—"}</TableCell>
                 <TableCell className="text-muted-foreground">{emp.industry ?? "—"}</TableCell>
-                <TableCell className="text-muted-foreground">{new Date(emp.createdAt).toLocaleDateString()}</TableCell>
+                <TableCell className="text-muted-foreground">{formatDate(new Date(emp.createdAt))}</TableCell>
                 {(can("employers", "update") || can("employers", "delete") || can("employers", "approve")) && (
                   <TableCell>
                     <div className="flex items-center gap-1">
@@ -441,7 +441,7 @@ export default function AdminEmployersPage() {
                         href={url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-xs text-primary p-2.5 rounded-lg border border-border/40 hover:bg-muted/30 transition-colors"
+                        className="flex items-center gap-2 text-xs text-primary rounded-lg border border-border/40 hover:bg-muted/30 transition-colors chip-pad"
                       >
                         <FileText className="w-3.5 h-3.5 shrink-0" />
                         <span className="truncate flex-1">{name}</span>
@@ -455,7 +455,7 @@ export default function AdminEmployersPage() {
 
             {/* Error message */}
             {verifyError && (
-              <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">
+              <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg chip-pad">
                 <ShieldOff className="w-4 h-4 shrink-0" />
                 <span>{verifyError}</span>
               </div>
@@ -463,7 +463,7 @@ export default function AdminEmployersPage() {
 
             {/* KYC override (only when no documents and not yet verified) */}
             {!verifyItem?.domainVerified && (verifyItem?.verificationDocs?.length ?? 0) === 0 && (
-              <div className="space-y-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+              <div className="space-y-2 rounded-lg border border-amber-500/30 bg-amber-500/5 chip-pad">
                 <label className="flex items-start gap-2 text-sm text-foreground">
                   <input
                     type="checkbox"

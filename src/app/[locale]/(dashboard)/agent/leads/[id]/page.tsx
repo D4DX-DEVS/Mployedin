@@ -12,6 +12,7 @@ import {
   Sparkles, Target, TrendingUp, User, XCircle,
 } from "lucide-react";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
 /* ─── Types ─────────────────────────────────────────────────────────── */
 
@@ -53,12 +54,12 @@ interface Activity {
 const STAGES: LeadStatus[] = ["new", "contacted", "interested", "negotiating", "converted", "lost"];
 
 const STAGE_CONFIG: Record<LeadStatus, { label: string; color: string; bgColor: string; borderColor: string; icon: React.ReactNode }> = {
-  new: { label: "New", color: "text-status-applied dark:text-sky-300", bgColor: "bg-status-applied-bg dark:bg-sky-500/10", borderColor: "border-border dark:border-sky-500/30", icon: <Sparkles className="h-4 w-4" /> },
-  contacted: { label: "Contacted", color: "text-indigo-700 dark:text-indigo-300", bgColor: "bg-status-interview-bg dark:bg-indigo-500/10", borderColor: "border-status-interview/20 dark:border-indigo-500/30", icon: <Phone className="h-4 w-4" /> },
-  interested: { label: "Interested", color: "text-status-shortlisted dark:text-amber-300", bgColor: "bg-status-shortlisted-bg dark:bg-amber-500/10", borderColor: "border-status-shortlisted/20 dark:border-amber-500/30", icon: <TrendingUp className="h-4 w-4" /> },
-  negotiating: { label: "Negotiating", color: "text-status-interview dark:text-purple-300", bgColor: "bg-purple-50 dark:bg-purple-500/10", borderColor: "border-status-interview/20 dark:border-purple-500/30", icon: <Target className="h-4 w-4" /> },
-  converted: { label: "Won", color: "text-emerald-700 dark:text-emerald-300", bgColor: "bg-status-selected-bg dark:bg-emerald-500/10", borderColor: "border-status-selected/20 dark:border-emerald-500/30", icon: <Building2 className="h-4 w-4" /> },
-  lost: { label: "Lost", color: "text-rose-700 dark:text-rose-300", bgColor: "bg-status-rejected-bg dark:bg-rose-500/10", borderColor: "border-status-rejected/20 dark:border-rose-500/30", icon: <XCircle className="h-4 w-4" /> },
+  new: { label: "New", color: "text-status-applied", bgColor: "bg-status-applied-bg", borderColor: "border-border", icon: <Sparkles className="h-4 w-4" /> },
+  contacted: { label: "Contacted", color: "text-indigo-700", bgColor: "bg-status-interview-bg", borderColor: "border-status-interview/20", icon: <Phone className="h-4 w-4" /> },
+  interested: { label: "Interested", color: "text-status-shortlisted", bgColor: "bg-status-shortlisted-bg", borderColor: "border-status-shortlisted/20", icon: <TrendingUp className="h-4 w-4" /> },
+  negotiating: { label: "Negotiating", color: "text-status-interview", bgColor: "bg-purple-50", borderColor: "border-status-interview/20", icon: <Target className="h-4 w-4" /> },
+  converted: { label: "Won", color: "text-emerald-700", bgColor: "bg-status-selected-bg", borderColor: "border-status-selected/20", icon: <Building2 className="h-4 w-4" /> },
+  lost: { label: "Lost", color: "text-rose-700", bgColor: "bg-status-rejected-bg", borderColor: "border-status-rejected/20", icon: <XCircle className="h-4 w-4" /> },
 };
 
 const ACTIVITY_TYPES = [
@@ -83,10 +84,10 @@ const ACTIVITY_ICONS: Record<string, React.ReactNode> = {
 };
 
 const TEMP_STYLES: Record<string, string> = {
-  hot: "border-status-rejected/20 bg-status-rejected-bg text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-300",
-  warm: "border-status-shortlisted/20 bg-status-shortlisted-bg text-status-shortlisted dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300",
-  cold: "border-sky-300 bg-status-applied-bg text-sky-800 dark:border-sky-500/30 dark:bg-sky-500/15 dark:text-sky-300",
-  qualified: "border-status-selected/20 bg-status-selected-bg text-status-selected dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300",
+  hot: "border-status-rejected/20 bg-status-rejected-bg text-rose-800",
+  warm: "border-status-shortlisted/20 bg-status-shortlisted-bg text-status-shortlisted",
+  cold: "border-sky-300 bg-status-applied-bg text-sky-800",
+  qualified: "border-status-selected/20 bg-status-selected-bg text-status-selected",
 };
 
 /* ─── Page ───────────────────────────────────────────────────────────── */
@@ -181,7 +182,6 @@ export default function LeadDetailPage() {
       {/* Header */}
       <DashboardPageHeader
         icon={Building2}
-        eyebrow={t("backToPipeline")}
         title={lead.companyName}
         description={[lead.contactPerson, lead.country, lead.industry].filter(Boolean).join(" · ")}
         actions={
@@ -218,7 +218,7 @@ export default function LeadDetailPage() {
                     isActive
                       ? `${sConfig.bgColor} ${sConfig.borderColor} ${sConfig.color} border shadow-sm`
                       : isPast
-                        ? "bg-status-selected-bg text-status-selected dark:bg-emerald-500/10 dark:text-emerald-400"
+                        ? "bg-status-selected-bg text-status-selected"
                         : "border border-border/50 text-muted-foreground/50 hover:border-border hover:text-muted-foreground"
                   }`}
                 >
@@ -232,7 +232,7 @@ export default function LeadDetailPage() {
             <button
               onClick={() => updateStatus("lost")}
               disabled={updatingStatus}
-              className="ml-2 inline-flex items-center gap-1 rounded-lg border border-status-rejected/20 px-2.5 py-1.5 text-[11px] font-semibold text-status-rejected transition hover:bg-status-rejected-bg dark:border-rose-500/30 dark:text-rose-400"
+              className="ml-2 inline-flex items-center gap-1 rounded-lg border border-status-rejected/20 text-[11px] font-semibold text-status-rejected transition hover:bg-status-rejected-bg chip-pad"
             >
               <XCircle className="h-3.5 w-3.5" />{t("markLost")}
             </button>
@@ -241,7 +241,7 @@ export default function LeadDetailPage() {
             <button
               onClick={() => updateStatus("new")}
               disabled={updatingStatus}
-              className="ml-2 inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-[11px] font-semibold text-status-applied transition hover:bg-status-applied-bg dark:border-sky-500/30 dark:text-sky-400"
+              className="ml-2 inline-flex items-center gap-1 rounded-lg border border-border text-[11px] font-semibold text-status-applied transition hover:bg-status-applied-bg chip-pad"
             >
               <Sparkles className="h-3.5 w-3.5" />{t("reopen")}
             </button>
@@ -252,8 +252,8 @@ export default function LeadDetailPage() {
       {/* Main content: 2-column layout */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         {/* Left: Contact & Details */}
-        <section className="workspace-panel-surface space-y-5 rounded-[28px] lg:col-span-1 panel-body">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">{t("contactDetails")}</h2>
+        <section className="workspace-panel-surface space-y-5 rounded-3xl lg:col-span-1 panel-body">
+          <h2 className="heading-label font-bold uppercase tracking-wider text-muted-foreground">{t("contactDetails")}</h2>
           <div className="space-y-3 text-sm">
             <InfoRow icon={<User className="h-4 w-4" />} label={t("contactLabel")} value={lead.contactPerson} />
             <InfoRow icon={<Mail className="h-4 w-4" />} label={tc("email")} value={lead.contactEmail} isLink />
@@ -264,12 +264,12 @@ export default function LeadDetailPage() {
             <InfoRow
               icon={<Flame className="h-4 w-4" />}
               label={t("expectedRevenueLabel")}
-              value={lead.expectedRevenue ? `${lead.expectedRevenueCurrency ?? "AED"} ${lead.expectedRevenue.toLocaleString()}` : undefined}
+              value={lead.expectedRevenue ? `${lead.expectedRevenueCurrency ?? "AED"} ${formatCount(lead.expectedRevenue)}` : undefined}
             />
             <InfoRow
               icon={<Calendar className="h-4 w-4" />}
               label={t("followUpLabel")}
-              value={lead.followUpAt ? new Date(lead.followUpAt).toLocaleDateString() : undefined}
+              value={lead.followUpAt ? formatDate(new Date(lead.followUpAt)) : undefined}
               highlight={!!isOverdue}
             />
           </div>
@@ -284,17 +284,17 @@ export default function LeadDetailPage() {
 
           {/* Lost reason */}
           {lead.lostReason && lead.status === "lost" && (
-            <div className="mt-4 rounded-xl border border-status-rejected/20 bg-status-rejected-bg p-3 dark:border-rose-500/30 dark:bg-rose-500/10">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-rose-700 dark:text-rose-300">{t("lostReasonLabel")}</h3>
-              <p className="mt-1 text-sm text-rose-800 dark:text-rose-200">{lead.lostReason}</p>
+            <div className="mt-4 rounded-xl border border-status-rejected/20 bg-status-rejected-bg chip-pad">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-rose-700">{t("lostReasonLabel")}</h3>
+              <p className="mt-1 text-sm text-rose-800">{lead.lostReason}</p>
             </div>
           )}
         </section>
 
         {/* Right: Activity Timeline */}
-        <section className="workspace-panel-surface space-y-5 rounded-[28px] lg:col-span-2 panel-body">
+        <section className="workspace-panel-surface space-y-5 rounded-3xl lg:col-span-2 panel-body">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">{t("activityTimeline")}</h2>
+            <h2 className="heading-label font-bold uppercase tracking-wider text-muted-foreground">{t("activityTimeline")}</h2>
             <Button
               size="sm"
               onClick={() => setShowActivityForm(!showActivityForm)}
@@ -306,17 +306,13 @@ export default function LeadDetailPage() {
 
           {/* Add Activity Form */}
           {showActivityForm && (
-            <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 dark:bg-primary/10">
+            <div className="rounded-2xl border border-primary/20 bg-primary/5 card-pad">
               <div className="flex flex-wrap gap-2">
                 {ACTIVITY_TYPES.map((activityType) => (
                   <button
                     key={activityType.value}
                     onClick={() => setActivityForm((f) => ({ ...f, action: activityType.value }))}
-                    className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition ${
-                      activityForm.action === activityType.value
-                        ? "bg-primary text-primary-foreground shadow-sm"
-                        : "bg-background border border-border text-muted-foreground hover:text-foreground"
-                    }`}
+                    className={`inline-flex items-center gap-1.5 rounded-lg text-xs font-medium transition ${ activityForm.action === activityType.value ? "bg-primary text-primary-foreground shadow-sm" : "bg-background border border-border text-muted-foreground hover:text-foreground" } chip-pad`}
                   >
                     {activityType.icon}{activityType.label}
                   </button>
@@ -330,7 +326,7 @@ export default function LeadDetailPage() {
                 className="mt-3 w-full rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20"
               />
               <div className="mt-3 flex gap-2">
-                <Button size="sm" onClick={addActivity} disabled={addingActivity} className="h-8 rounded-lg px-4 text-xs">
+                <Button size="dense" onClick={addActivity} disabled={addingActivity} className="rounded-lg px-4 text-xs">
                   {addingActivity ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}
                   {t("saveActivity")}
                 </Button>
@@ -361,7 +357,7 @@ export default function LeadDetailPage() {
                       <div className="z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-background text-muted-foreground">
                         {icon}
                       </div>
-                      <div className="min-w-0 flex-1 rounded-xl border border-border/50 bg-background p-3">
+                      <div className="min-w-0 flex-1 rounded-xl border border-border/50 bg-background chip-pad">
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-semibold capitalize text-foreground">
                             {activity.action.replace(/_/g, " ")}
@@ -407,7 +403,7 @@ function InfoRow({ icon, label, value, isLink, highlight }: {
       {isLink ? (
         <a href={`mailto:${value}`} className="ml-auto truncate text-xs font-medium text-primary hover:underline">{value}</a>
       ) : (
-        <span className={`ml-auto truncate text-xs font-medium ${highlight ? "text-status-rejected dark:text-rose-400" : "text-foreground"}`}>{value}</span>
+        <span className={`ml-auto truncate text-xs font-medium ${highlight ? "text-status-rejected" : "text-foreground"}`}>{value}</span>
       )}
     </div>
   );
@@ -422,5 +418,5 @@ function getTimeAgo(date: string, t: ReturnType<typeof useTranslations>): string
   if (hours < 24) return t("hoursAgo", { hours });
   const days = Math.floor(hours / 24);
   if (days < 7) return t("daysAgo", { days });
-  return new Date(date).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return formatDate(new Date(date), { month: "short", day: "numeric" });
 }

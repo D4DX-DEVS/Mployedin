@@ -5,6 +5,7 @@ import type { PosterFormat, DesignStyle, ShowFields, PosterTemplate } from "@/li
 import { FORMAT_DIMENSIONS, TEMPLATES } from "@/lib/composer/types";
 import { CREDITS_PER_GENERATION } from "@/lib/composer/credits";
 import { CheckCircle2, Sparkles } from "lucide-react";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 const DESIGN_STYLES: { id: DesignStyle; label: string }[] = [
   { id: "professional", label: "Professional" },
@@ -69,7 +70,7 @@ export function PosterCustomizer({
     : job?.location?.country || "";
 
   const salaryStr = job?.salary?.min
-    ? `${job.salary.currency || "AED"} ${job.salary.min?.toLocaleString()} - ${job.salary.max?.toLocaleString()}`
+    ? `${job.salary.currency || "AED"} ${formatCount(job.salary.min)} - ${formatCount(job.salary.max)}`
     : "";
 
   const expStr = job?.experienceMin != null
@@ -99,11 +100,7 @@ export function PosterCustomizer({
               key={tpl.id}
               type="button"
               onClick={() => onTemplateChange(tpl.id)}
-              className={`text-left px-2.5 py-2 rounded-lg border transition-all ${
-                template === tpl.id
-                  ? "bg-primary/10 border-primary text-foreground"
-                  : "border-border hover:border-primary/40"
-              }`}
+              className={`text-left rounded-lg border transition-all ${ template === tpl.id ? "bg-primary/10 border-primary text-foreground" : "border-border hover:border-primary/40" } chip-pad`}
             >
               <span className="block text-[11px] font-semibold">{tpl.label}</span>
               <span className="block text-[9px] text-muted-foreground leading-tight mt-0.5">{tpl.description}</span>
@@ -114,15 +111,17 @@ export function PosterCustomizer({
 
       {/* Design Description (optional art direction for the AI background) */}
       <div>
-        <label className="text-xs font-medium text-foreground">{t("styleLabel")}</label>
-        <p className="text-[10px] text-muted-foreground mb-1">{t("styleHelpText")}</p>
+        <label htmlFor="poster-style-description" className="text-xs font-medium text-foreground">{t("styleLabel")}</label>
+        <p id="poster-style-help" className="text-[10px] text-muted-foreground mb-1">{t("styleHelpText")}</p>
         <textarea
+          id="poster-style-description"
+          aria-describedby="poster-style-help"
           value={description}
           onChange={(e) => onDescriptionChange(e.target.value)}
           placeholder={t("stylePlaceholder")}
           maxLength={300}
           rows={3}
-          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-xs resize-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+          className="w-full rounded-lg border border-input bg-background text-xs resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 chip-pad"
         />
         <p className="text-[10px] text-muted-foreground text-right">{description.length} / 300</p>
       </div>
@@ -173,9 +172,7 @@ export function PosterCustomizer({
           <button
             type="button"
             onClick={toggleAll}
-            className={`w-full text-left px-3 py-1.5 rounded-lg border text-[11px] font-medium transition-all ${
-              allSelected ? "bg-primary/10 border-primary text-primary" : "border-border"
-            }`}
+            className={`w-full text-left rounded-lg border text-[11px] font-medium transition-all ${ allSelected ? "bg-primary/10 border-primary text-primary" : "border-border" } chip-pad`}
           >
             {t("allFormats", { count: allFormats.length })}
           </button>
@@ -199,7 +196,7 @@ export function PosterCustomizer({
       </div>
 
       {/* Tips */}
-      <div className="rounded-lg bg-primary/5 border border-primary/10 p-3 space-y-1">
+      <div className="rounded-lg bg-primary/5 border border-primary/10 space-y-1 chip-pad">
         <p className="text-[11px] font-medium text-primary flex items-center gap-1">
           <CheckCircle2 className="h-3.5 w-3.5" /> {t("tipsTitle")}
         </p>

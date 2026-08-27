@@ -25,6 +25,7 @@ import type { ExportColumn } from "@/lib/export";
 import {
   SuperAgentPageIntro, SuperAgentMetricsGrid,
 } from "@/components/features/super-agent/WorkspacePage";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -77,7 +78,7 @@ const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "S
 function fmt(value: number, currency = "AED"): string {
   if (value >= 1_000_000) return `${currency} ${(value / 1_000_000).toFixed(1)}M`;
   if (value >= 1_000) return `${currency} ${Math.round(value / 1_000)}K`;
-  return `${currency} ${value.toLocaleString()}`;
+  return `${currency} ${formatCount(value)}`;
 }
 
 /* ------------------------------------------------------------------ */
@@ -148,8 +149,6 @@ export default function SuperAgentCommissionsReportPage() {
         title={t("pageTitle")}
         description={t("pageDescription", { year: yearFilter })}
         eyebrow={t("pageEyebrow")}
-        summaryTitle={t("summaryTitle")}
-        summaryDescription={s ? t("summaryDescription", { grandTotal: fmt(s.grandTotal, s.currency), overrideTotal: fmt(s.overrideTotal, s.currency) }) : t("loadingData")}
       >
         <div className="flex items-center gap-2">
           <Select value={String(yearFilter)} onValueChange={(v) => setYearFilter(Number(v))}>
@@ -163,7 +162,7 @@ export default function SuperAgentCommissionsReportPage() {
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline" size="icon" onClick={fetchReport} disabled={loading} className="h-10 w-10 rounded-xl border-border/70 bg-background/90">
+          <Button variant="outline" size="icon" onClick={fetchReport} disabled={loading} className="rounded-xl border-border/70 bg-background/90">
             <RotateCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </Button>
         </div>
@@ -175,14 +174,14 @@ export default function SuperAgentCommissionsReportPage() {
           { label: t("kpiGrandTotal"), value: loading ? "—" : s ? fmt(s.grandTotal, s.currency) : "—", helper: t("kpiGrandTotalHelper"), icon: <CircleDollarSign className="h-5 w-5" />, toneClassName: "workspace-tone-indigo" },
           { label: t("kpiMyOverride"), value: loading ? "—" : s ? fmt(s.overrideTotal, s.currency) : "—", helper: t("kpiMyOverrideHelper"), icon: <Layers className="h-5 w-5" />, toneClassName: "workspace-tone-violet" },
           { label: t("kpiTeamEarned"), value: loading ? "—" : s ? fmt(s.teamTotal, s.currency) : "—", helper: t("kpiTeamEarnedHelper"), icon: <Users className="h-5 w-5" />, toneClassName: "workspace-tone-sky" },
-          { label: tc("status"), value: loading ? "—" : s ? fmt(s.overridePending, s.currency) : "—", helper: t("kpiPendingHelper"), icon: <Clock className="h-5 w-5" />, toneClassName: "workspace-tone-amber" },
+          { label: t("kpiPending"), value: loading ? "—" : s ? fmt(s.overridePending, s.currency) : "—", helper: t("kpiPendingHelper"), icon: <Clock className="h-5 w-5" />, toneClassName: "workspace-tone-amber" },
           { label: t("kpiOverridePaid"), value: loading ? "—" : s ? fmt(s.overridePaid, s.currency) : "—", helper: t("kpiOverridePaidHelper"), icon: <Wallet className="h-5 w-5" />, toneClassName: "workspace-tone-emerald" },
         ]}
       />
 
       {/* ── Monthly Trend ── */}
-      <section className="workspace-panel-surface rounded-2xl sm:rounded-[28px] panel-body">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("monthlyTrendHeading", { year: yearFilter })}</h2>
+      <section className="workspace-panel-surface rounded-2xl sm:rounded-3xl panel-body">
+        <h2 className="heading-label mb-4 font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("monthlyTrendHeading", { year: yearFilter })}</h2>
         <ResponsiveContainer width="100%" height={240}>
           <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -200,12 +199,12 @@ export default function SuperAgentCommissionsReportPage() {
       {data && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
-            { label: t("breakdownOverridePending"), value: s ? fmt(s.overridePending, s.currency) : "—", icon: Clock, color: "text-amber-600", chip: "bg-amber-50 dark:bg-amber-950/30" },
-            { label: t("breakdownOverrideApproved"), value: s ? fmt(s.overrideApproved, s.currency) : "—", icon: CheckCircle2, color: "text-blue-600", chip: "bg-blue-50 dark:bg-blue-950/30" },
-            { label: t("breakdownOverridePaid"), value: s ? fmt(s.overridePaid, s.currency) : "—", icon: Wallet, color: "text-emerald-600", chip: "bg-emerald-50 dark:bg-emerald-950/30" },
-            { label: t("breakdownTeamTotalEarned"), value: s ? fmt(s.teamTotal, s.currency) : "—", icon: Users, color: "text-sky-600", chip: "bg-sky-50 dark:bg-sky-950/30" },
+            { label: t("breakdownOverridePending"), value: s ? fmt(s.overridePending, s.currency) : "—", icon: Clock, color: "text-amber-600", chip: "bg-amber-50" },
+            { label: t("breakdownOverrideApproved"), value: s ? fmt(s.overrideApproved, s.currency) : "—", icon: CheckCircle2, color: "text-blue-600", chip: "bg-blue-50" },
+            { label: t("breakdownOverridePaid"), value: s ? fmt(s.overridePaid, s.currency) : "—", icon: Wallet, color: "text-emerald-600", chip: "bg-emerald-50" },
+            { label: t("breakdownTeamTotalEarned"), value: s ? fmt(s.teamTotal, s.currency) : "—", icon: Users, color: "text-sky-600", chip: "bg-sky-50" },
           ].map(({ label, value, icon: Icon, color, chip }) => (
-            <div key={label} className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
+            <div key={label} className="workspace-glass-panel card-pad rounded-2xl">
               <div className="flex items-center gap-2">
                 <span className={`flex h-8 w-8 items-center justify-center rounded-xl ${chip}`}>
                   <Icon className={`h-4 w-4 ${color}`} />
@@ -219,11 +218,11 @@ export default function SuperAgentCommissionsReportPage() {
       )}
 
       {/* ── Agent Breakdown Table ── */}
-      <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-[28px]">
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-3xl">
         <div className="flex items-center justify-between gap-3 panel-head">
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-sm font-semibold">{t("teamBreakdownTitle")}</h2>
+            <h2 className="heading-label font-semibold">{t("teamBreakdownTitle")}</h2>
             {data && <Badge variant="secondary">{t("agentsCount", { count: data.agentBreakdown.length })}</Badge>}
           </div>
           <TableToolbar

@@ -41,7 +41,7 @@ export function DateTimePicker({
   value,
   onChange,
   label,
-  placeholder = "Pick date & time",
+  placeholder,
   minDate,
   className,
   required,
@@ -52,6 +52,10 @@ export function DateTimePicker({
   const t = useTranslations("calendar");
   const locale = useLocale();
   const isRtl = locale === "ar";
+  // The default used to be the English literal "Pick date & time", which stayed
+  // English in /ar and said "time" on date-only pickers.
+  const resolvedPlaceholder =
+    placeholder ?? t(mode === "date" ? "pickDate" : mode === "time" ? "pickTime" : "pickDateTime");
   const parsed = value ? new Date(value) : null;
   const [viewMonth, setViewMonth] = React.useState(
     parsed ?? new Date()
@@ -154,7 +158,7 @@ export function DateTimePicker({
         <PopoverTrigger asChild>
           <button
             type="button"
-            aria-label={label ?? placeholder}
+            aria-label={label ?? resolvedPlaceholder}
             className={cn(
               "w-full h-9 px-3 text-sm text-start flex items-center gap-2 rounded-lg border border-border bg-background transition-colors",
               "hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50",
@@ -163,7 +167,7 @@ export function DateTimePicker({
           >
             <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />
             <span className="flex-1 truncate">
-              {displayValue || placeholder}
+              {displayValue || resolvedPlaceholder}
             </span>
           </button>
         </PopoverTrigger>
@@ -385,7 +389,7 @@ function TimeColumn({
       child?.scrollIntoView({ block: "center", behavior: "instant" });
     }
     // Only on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   return (

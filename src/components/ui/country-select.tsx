@@ -138,7 +138,7 @@ export function CountrySelect({
             <button
               type="button"
               onClick={handleAddCustom}
-              className="flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-sm text-primary hover:bg-primary/5 transition-colors mb-1 border border-dashed border-primary/30"
+              className="flex w-full items-center gap-3 rounded-lg text-sm text-primary hover:bg-primary/5 transition-colors mb-1 border border-dashed border-primary/30 chip-pad"
             >
               <Plus className="h-4 w-4 shrink-0" />
               <span className="font-medium">Add &quot;{search.trim()}&quot;</span>

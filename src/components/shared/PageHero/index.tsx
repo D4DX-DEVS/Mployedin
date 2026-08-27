@@ -7,7 +7,9 @@ interface PageHeroProps {
   title: string;
   /** Supporting sentence shown beneath the title. */
   description?: string;
-  /** Short uppercase label inside the badge. Defaults to `title` (matches existing hero pages). */
+  /** Short uppercase label inside the badge. Omit it unless the label says
+   *  something the title does not — defaulting it to `title` printed every
+   *  page heading twice. */
   eyebrow?: string;
   /** Icon rendered inside the eyebrow badge. Defaults to `Sparkles`. */
   icon?: LucideIcon;
@@ -31,7 +33,7 @@ export function PageHero({
 }: PageHeroProps) {
   return (
     <DashboardPageHeader
-      eyebrow={eyebrow ?? title}
+      eyebrow={eyebrow}
       title={title}
       description={description}
       icon={Icon}

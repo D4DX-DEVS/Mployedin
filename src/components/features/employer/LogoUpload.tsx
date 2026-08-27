@@ -123,9 +123,10 @@ export function LogoUpload({ currentLogo, companyName, onUploadComplete, onRemov
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={uploading}
+          aria-label={t("change")}
           className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center shadow-md hover:bg-primary/90 transition-colors disabled:opacity-50"
         >
-          <Camera className="w-3.5 h-3.5" />
+          <Camera className="w-3.5 h-3.5" aria-hidden="true" />
         </button>
         <input
           ref={inputRef}

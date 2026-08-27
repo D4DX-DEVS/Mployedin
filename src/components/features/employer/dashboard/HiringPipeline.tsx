@@ -53,7 +53,7 @@ export function HiringPipeline({
       value: newApplications,
       icon: FileText,
       color: "text-amber-600",
-      bgColor: "bg-amber-50 dark:bg-amber-950/30",
+      bgColor: "bg-amber-50",
       href: `/${locale}/employer/applications?status=applied`,
     },
     {
@@ -61,7 +61,7 @@ export function HiringPipeline({
       value: inReview,
       icon: FileText,
       color: "text-cyan-600",
-      bgColor: "bg-cyan-50 dark:bg-cyan-950/30",
+      bgColor: "bg-cyan-50",
       href: `/${locale}/employer/applications?status=shortlisted`,
     },
     {
@@ -69,7 +69,7 @@ export function HiringPipeline({
       value: interviews,
       icon: Calendar,
       color: "text-violet-600",
-      bgColor: "bg-violet-50 dark:bg-violet-950/30",
+      bgColor: "bg-violet-50",
       href: `/${locale}/employer/interviews`,
     },
     {
@@ -77,7 +77,7 @@ export function HiringPipeline({
       value: hired,
       icon: UserCheck,
       color: "text-emerald-600",
-      bgColor: "bg-emerald-50 dark:bg-emerald-950/30",
+      bgColor: "bg-emerald-50",
       href: `/${locale}/employer/placements`,
     },
   ];
@@ -87,7 +87,7 @@ export function HiringPipeline({
   return (
     <div className="card-base overflow-hidden panel-body">
       <div className="px-5 pt-5 pb-3 sm:px-6 sm:pt-6">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+        <h2 className="heading-label font-semibold text-muted-foreground uppercase tracking-wide">
           {t("title")}
         </h2>
       </div>

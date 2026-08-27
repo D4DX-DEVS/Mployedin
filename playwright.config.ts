@@ -3,6 +3,10 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./e2e",
   testMatch: "**/*.spec.ts",
+  // Diagnostic measurement harnesses are named _*.spec.ts. They need seeded
+  // logins and take minutes, so they are out of the suite by default.
+  // Run one with: PROBES=1 npx playwright test e2e/_audit-spacing.spec.ts
+  testIgnore: process.env.PROBES ? [] : "**/_*.spec.ts",
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,

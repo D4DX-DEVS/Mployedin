@@ -32,6 +32,7 @@ import { TableToolbar } from "@/components/shared/TableToolbar";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import type { ExportColumn } from "@/lib/export";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
 /* ─── Types ─────────────────────────────────────────────────────────────── */
 
@@ -239,7 +240,7 @@ function LeadCard({
 
   return (
     <div
-      className="group relative cursor-pointer rounded-2xl border border-border/60 bg-background p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-all hover:border-border hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)] dark:hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)]"
+      className="group relative cursor-pointer rounded-2xl border border-border/60 bg-background shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-all hover:border-border hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)] card-pad"
       onClick={() => onEdit(lead)}
     >
       {/* Drag handle */}
@@ -293,33 +294,33 @@ function LeadCard({
         {lead.followUpAt && (
           <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-medium ${
             isOverdue
-              ? "bg-status-rejected-bg text-rose-700 dark:bg-rose-500/10 dark:text-rose-400"
+              ? "bg-status-rejected-bg text-rose-700"
               : "bg-muted text-muted-foreground"
           }`}>
             <Calendar className="h-3 w-3" />
-            {new Date(lead.followUpAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+            {formatDate(new Date(lead.followUpAt), { month: "short", day: "numeric" })}
             {isOverdue && <span className="font-bold"> overdue</span>}
           </span>
         )}
         {exhibition && (
-          <span className="inline-flex items-center gap-1 rounded-md bg-primary/5 px-2 py-0.5 text-[10px] font-medium text-primary dark:bg-primary/10">
+          <span className="inline-flex items-center gap-1 rounded-md bg-primary/5 px-2 py-0.5 text-[10px] font-medium text-primary">
             {exhibition.eventName}
           </span>
         )}
         {lead.expectedRevenue != null && lead.expectedRevenue > 0 && (
           <span className="ml-auto text-[10px] font-semibold text-status-selected">
-            {lead.expectedRevenueCurrency ?? "AED"} {lead.expectedRevenue.toLocaleString()}
+            {lead.expectedRevenueCurrency ?? "AED"} {formatCount(lead.expectedRevenue)}
           </span>
         )}
       </div>
 
       {/* Hover actions */}
-      <div className="absolute -bottom-px left-0 right-0 hidden items-center justify-between rounded-b-2xl border-t border-border/40 bg-muted/80 px-3 py-2 backdrop-blur-sm group-hover:flex dark:bg-muted/40" onClick={(e) => e.stopPropagation()}>
+      <div className="absolute -bottom-px left-0 right-0 hidden items-center justify-between rounded-b-2xl border-t border-border/40 bg-muted/80 px-3 py-2 backdrop-blur-sm group-hover:flex" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-1">
           <button
             onClick={() => onScore(lead._id)}
             disabled={scoring}
-            className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-status-shortlisted-bg hover:text-amber-600 dark:hover:bg-amber-500/15"
+            className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-status-shortlisted-bg hover:text-amber-600"
             title={t("aiScore")}
           >
             {scoring ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Flame className="h-3.5 w-3.5" />}
@@ -386,7 +387,7 @@ function DroppableKanbanColumn({
   const totalRevenue = leads.reduce((sum, l) => sum + (l.expectedRevenue ?? 0), 0);
 
   return (
-    <div className={`flex h-full w-full min-w-0 flex-col rounded-2xl border bg-muted/30 transition-colors dark:bg-muted/10 sm:w-[300px] sm:min-w-[300px] ${isOver ? "border-primary/50 bg-primary/5 dark:bg-primary/10" : "border-border/50"}`}>
+    <div className={`flex h-full w-full min-w-0 flex-col rounded-2xl border bg-muted/30 transition-colors sm:w-[300px] sm:min-w-[300px] ${isOver ? "border-primary/50 bg-primary/5" : "border-border/50"}`}>
       {/* Column Header */}
       <div className={`flex items-center gap-3 rounded-t-2xl border-b px-4 py-3 ${config.bgColor} ${config.borderColor}`}>
         <span className={config.color}>{config.icon}</span>
@@ -399,7 +400,7 @@ function DroppableKanbanColumn({
           </div>
           {totalRevenue > 0 && (
             <p className="mt-0.5 text-[10px] font-medium text-muted-foreground">
-              AED {totalRevenue.toLocaleString()} pipeline
+              AED {formatCount(totalRevenue)} pipeline
             </p>
           )}
         </div>
@@ -608,8 +609,8 @@ export default function AgentLeadsPage() {
     { header: t("exportHeaderExpectedRevenue"), key: "expectedRevenue" },
     { header: t("exportHeaderSource"), key: "source" },
     { header: t("exportHeaderExhibition"), key: "exhibitionId", formatter: (v) => v ? exhibitions.find((e) => e._id === String(v))?.eventName ?? "" : "" },
-    { header: t("exportHeaderFollowUp"), key: "followUpAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
-    { header: t("exportHeaderCreated"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: t("exportHeaderFollowUp"), key: "followUpAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "" },
+    { header: t("exportHeaderCreated"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
@@ -635,7 +636,7 @@ export default function AgentLeadsPage() {
       setScoreResult(data);
       toast.success(t("leadScored", { temperature: data.temperature, score: data.score }));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("aiScoringFailed"));
+      toast.error(t("aiScoringFailed"));
     } finally {
       setScoringLeadId(null);
     }
@@ -664,7 +665,7 @@ export default function AgentLeadsPage() {
       toast.success(t("leadConvertedSuccess", { company: lead.companyName }));
       fetchLeads();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("leadConversionFailed"));
+      toast.error(t("leadConversionFailed"));
     } finally {
       setConvertingLeadId(null);
     }
@@ -699,23 +700,22 @@ export default function AgentLeadsPage() {
       {/* ──── Hero Header ──── */}
       <DashboardPageHeader
         icon={Target}
-        eyebrow={t("heroBadge")}
         title={t("pageTitle")}
         description={t("heroDescription")}
         actions={can("leads", "create") ? (
-          <Button onClick={openAdd} className="h-11 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90">
+          <Button size="lg" onClick={openAdd} className="rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90">
             <Plus className="mr-1.5 h-4 w-4" />{t("newLead")}
           </Button>
         ) : null}
         metrics={[
-          { label: t("kpiOpen"), value: leads.filter((l) => !["converted", "lost"].includes(l.status)).length, note: totalPipelineValue > 0 ? `AED ${totalPipelineValue.toLocaleString()}` : undefined, icon: Flame },
+          { label: t("kpiOpen"), value: leads.filter((l) => !["converted", "lost"].includes(l.status)).length, note: totalPipelineValue > 0 ? `AED ${formatCount(totalPipelineValue)}` : undefined, icon: Flame },
           { label: t("kpiWon"), value: stageCounts.converted, icon: TrendingUp },
           { label: t("kpiTotal"), value: pagination.total, icon: Target },
         ]}
       />
 
       {/* ──── Toolbar ──── */}
-      <section className="workspace-panel-surface rounded-[28px] panel-body">
+      <section className="workspace-panel-surface rounded-3xl panel-body">
         {/* Opt into the shared mobile toolbar rules (see globals.css). Scoped to
             this row, not the whole section — the stage pills below carry leading
             icons too, and the icon-only rule would strip their labels. */}
@@ -724,21 +724,13 @@ export default function AgentLeadsPage() {
           <div className="inline-flex items-center rounded-xl border border-border bg-muted/50 p-1">
             <button
               onClick={() => setViewMode("board")}
-              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition ${
-                viewMode === "board"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
+              className={`inline-flex items-center gap-1.5 rounded-lg text-xs font-semibold transition ${ viewMode === "board" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground" } chip-pad`}
             >
               <LayoutGrid className="h-3.5 w-3.5" />{t("viewBoard")}
             </button>
             <button
               onClick={() => setViewMode("table")}
-              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition ${
-                viewMode === "table"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
+              className={`inline-flex items-center gap-1.5 rounded-lg text-xs font-semibold transition ${ viewMode === "table" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground" } chip-pad`}
             >
               <List className="h-3.5 w-3.5" />{t("viewTable")}
             </button>
@@ -861,7 +853,7 @@ export default function AgentLeadsPage() {
           </section>
           <DragOverlay>
             {activeDragLead ? (
-              <div className="w-[280px] rotate-2 rounded-2xl border border-primary/50 bg-background p-4 shadow-xl">
+              <div className="w-[280px] rotate-2 rounded-2xl border border-primary/50 bg-background shadow-xl card-pad">
                 <h4 className="truncate text-sm font-semibold text-foreground">{activeDragLead.companyName}</h4>
                 <p className="mt-1 text-xs text-muted-foreground">{activeDragLead.contactPerson}</p>
               </div>
@@ -871,7 +863,7 @@ export default function AgentLeadsPage() {
       ) : (
         /* ──── TABLE VIEW ──── */
         <>
-          <section className="workspace-panel-surface overflow-hidden rounded-[28px]">
+          <section className="workspace-panel-surface overflow-hidden rounded-3xl">
             {leads.length === 0 ? (
               <div className="flex flex-col items-center gap-3 py-16 text-center">
                 <div className="rounded-2xl bg-muted/50 p-4">
@@ -974,11 +966,11 @@ export default function AgentLeadsPage() {
                             {lead.followUpAt ? (
                               <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium ${
                                 isOverdue
-                                  ? "bg-status-rejected-bg text-rose-700 dark:bg-rose-500/10 dark:text-rose-400"
+                                  ? "bg-status-rejected-bg text-rose-700"
                                   : "bg-muted text-muted-foreground"
                               }`}>
                                 <Calendar className="h-3 w-3" />
-                                {new Date(lead.followUpAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                                {formatDate(new Date(lead.followUpAt), { month: "short", day: "numeric" })}
                                 {isOverdue && <AlertCircle className="h-3 w-3" />}
                               </span>
                             ) : (
@@ -999,7 +991,7 @@ export default function AgentLeadsPage() {
                               <button
                                 onClick={() => scoreLead(lead._id)}
                                 disabled={scoringLeadId === lead._id}
-                                className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-status-shortlisted-bg hover:text-amber-600 dark:hover:bg-amber-500/10"
+                                className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-status-shortlisted-bg hover:text-amber-600"
                                 title={t("aiScore")}
                               >
                                 {scoringLeadId === lead._id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Flame className="h-4 w-4" />}
@@ -1097,7 +1089,7 @@ export default function AgentLeadsPage() {
                   <div className="min-w-0">
                     <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("detailRevenue")}</span>
                     <p className="mt-1 font-semibold text-status-selected">
-                      {detailLead.expectedRevenue ? `${detailLead.expectedRevenueCurrency ?? "AED"} ${detailLead.expectedRevenue.toLocaleString()}` : "\u2014"}
+                      {detailLead.expectedRevenue ? `${detailLead.expectedRevenueCurrency ?? "AED"} ${formatCount(detailLead.expectedRevenue)}` : "\u2014"}
                     </p>
                   </div>
                   <div className="min-w-0">
@@ -1106,11 +1098,11 @@ export default function AgentLeadsPage() {
                   </div>
                   <div className="min-w-0">
                     <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("detailFollowUp")}</span>
-                    <p className="mt-1 text-foreground">{detailLead.followUpAt ? new Date(detailLead.followUpAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "\u2014"}</p>
+                    <p className="mt-1 text-foreground">{detailLead.followUpAt ? formatDate(new Date(detailLead.followUpAt), { month: "short", day: "numeric", year: "numeric" }) : "\u2014"}</p>
                   </div>
                   <div className="min-w-0">
                     <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("detailCreated")}</span>
-                    <p className="mt-1 text-foreground">{new Date(detailLead.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</p>
+                    <p className="mt-1 text-foreground">{formatDate(new Date(detailLead.createdAt), { month: "short", day: "numeric", year: "numeric" })}</p>
                   </div>
                 </div>
 
@@ -1211,7 +1203,7 @@ export default function AgentLeadsPage() {
           }, 500);
         }}
         warningNode={duplicates.length > 0 ? (
-          <div className="flex items-start gap-2 rounded-lg border border-status-shortlisted/20 bg-status-shortlisted-bg px-3 py-2.5 text-sm text-status-shortlisted dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+          <div className="flex items-start gap-2 rounded-lg border border-status-shortlisted/20 bg-status-shortlisted-bg text-sm text-status-shortlisted chip-pad">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <div>
               <p className="font-semibold">{t("duplicatesFoundWarning")}</p>
@@ -1219,15 +1211,15 @@ export default function AgentLeadsPage() {
                 {duplicates.map((d) => (
                   <li key={d._id}>
                     <span className="font-medium">{d.companyName}</span>
-                    {d.contactEmail && <span className="text-status-shortlisted dark:text-amber-400"> &middot; {d.contactEmail}</span>}
-                    <span className="ml-1 rounded bg-status-shortlisted-bg px-1 py-0.5 text-[10px] font-semibold uppercase dark:bg-amber-500/20">
+                    {d.contactEmail && <span className="text-status-shortlisted"> &middot; {d.contactEmail}</span>}
+                    <span className="ml-1 rounded bg-status-shortlisted-bg px-1 py-0.5 text-[10px] font-semibold uppercase">
                       {d.matchType} match &middot; {d.confidence}
                     </span>
                     <span className="ml-1 text-amber-500">({d.status})</span>
                   </li>
                 ))}
               </ul>
-              <p className="mt-1 text-[11px] text-status-shortlisted dark:text-amber-400">{t("duplicatesWarningOnly")}</p>
+              <p className="mt-1 text-[11px] text-status-shortlisted">{t("duplicatesWarningOnly")}</p>
             </div>
           </div>
         ) : undefined}
@@ -1235,7 +1227,7 @@ export default function AgentLeadsPage() {
 
       {/* ──── AI Score Dialog ──── */}
       <Dialog open={Boolean(scoreResult)} onOpenChange={(open) => { if (!open) setScoreResult(null); }}>
-        <DialogContent className="max-w-lg rounded-[24px] border-border bg-background p-0">
+        <DialogContent className="max-w-lg rounded-3xl border-border bg-background p-0">
           {scoreResult && (
             <>
               <DialogHeader className="border-b border-border px-6 py-5">
@@ -1251,23 +1243,23 @@ export default function AgentLeadsPage() {
                 <p className="mt-1 text-sm text-muted-foreground">{scoreResult.reasoning}</p>
               </DialogHeader>
               <div className="space-y-4 px-6 py-5">
-                <div className="workspace-glass-panel rounded-2xl p-4">
+                <div className="workspace-glass-panel card-pad rounded-2xl">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("recommendedNextAction")}</p>
                   <p className="mt-2 text-sm font-medium text-foreground">{scoreResult.nextAction}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {t("followUpIn", { days: scoreResult.suggestedFollowUpDays })}
                   </p>
                 </div>
-                <div className="workspace-glass-panel rounded-2xl p-4">
+                <div className="workspace-glass-panel card-pad rounded-2xl">
                   <div className="flex items-center gap-2">
                     <MessageSquare className="h-4 w-4 text-sky-500" />
                     <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("draftFollowUpMessage")}</p>
                   </div>
                   <p className="mt-2 text-sm text-muted-foreground leading-6">{scoreResult.draftMessage}</p>
                   <Button
-                    size="sm"
+                    size="dense"
                     variant="outline"
-                    className="mt-3 h-8 rounded-lg text-xs"
+                    className="mt-3 rounded-lg text-xs"
                     onClick={() => {
                       navigator.clipboard.writeText(scoreResult.draftMessage);
                       toast.success(t("messageCopied"));
@@ -1277,7 +1269,7 @@ export default function AgentLeadsPage() {
                   </Button>
                 </div>
                 {scoreResult.riskFactors.length > 0 && (
-                  <div className="workspace-glass-panel rounded-2xl p-4">
+                  <div className="workspace-glass-panel card-pad rounded-2xl">
                     <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("riskFactors")}</p>
                     <ul className="mt-2 space-y-1.5">
                       {scoreResult.riskFactors.map((risk) => (

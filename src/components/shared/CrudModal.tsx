@@ -70,7 +70,7 @@ export function CrudModal({ open, onClose, title, description, fields, initialVa
       await onSubmit(values);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      setError("We couldn't save your changes. Nothing was changed. Review the fields and try again.");
     } finally {
       setLoading(false);
     }
@@ -87,7 +87,7 @@ export function CrudModal({ open, onClose, title, description, fields, initialVa
         <form onSubmit={handleSubmit} className="flex flex-col min-h-0 flex-1">
           <div className="overflow-y-auto flex-1 px-6 py-4 space-y-4">
             {error && (
-              <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
+              <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 text-sm text-destructive chip-pad">
                 <AlertCircle className="h-4 w-4 shrink-0" />
                 {error}
               </div>

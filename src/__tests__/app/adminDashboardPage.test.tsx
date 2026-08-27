@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import React from "react";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import AdminDashboardPage from "@/app/[locale]/(dashboard)/admin/page";
 
 const authMock = jest.fn();
@@ -153,11 +153,14 @@ describe("AdminDashboardPage", () => {
   });
 
   it("renders the admin dashboard with key sections and data", async () => {
-    render(await AdminDashboardPage({ params: Promise.resolve({ locale: "en" }) }));
+    const { container } = render(await AdminDashboardPage({ params: Promise.resolve({ locale: "en" }) }));
 
-    // Core headings and workspace badge
-    expect(screen.getByText(/admin workspace/i)).toBeInTheDocument();
+    // Core headings. The "Admin workspace" eyebrow above the title was dropped —
+    // it restated the sidebar section the user had just clicked, and the h1
+    // below already identifies the page.
     expect(screen.getByRole("heading", { name: /admin dashboard/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /recommended next/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /platform at a glance/i })).toBeInTheDocument();
 
     // Key sections exist
     expect(screen.getByRole("heading", { name: /quick actions/i })).toBeInTheDocument();
@@ -171,5 +174,7 @@ describe("AdminDashboardPage", () => {
     // subcomponent with a separate data source, so it isn't asserted here)
     expect(screen.getByText(/employer is still the dominant cohort/i)).toBeInTheDocument();
     expect(screen.getByText(/sara ahmed joined as employer/i)).toBeInTheDocument();
+    expect(container.querySelector(".admin-quick-actions-grid")).toBeInTheDocument();
+    expect(container.querySelector(".admin-quick-actions-grid > a")).toHaveClass("overflow-hidden");
   });
 });

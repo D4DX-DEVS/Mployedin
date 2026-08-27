@@ -17,6 +17,7 @@ void SuperAgent;
 import { notify } from "@/lib/notifications/trigger";
 import type { UserRole } from "@/models/User";
 import logger from "@/lib/logger";
+import { checkAdvert } from "@/lib/compliance/inclusiveWording";
 import { escapeRegex } from "@/lib/security/sanitize";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { validateBody } from "@/lib/validators";
@@ -392,6 +393,25 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
   // ponytail: single source of truth for job status — nothing routes to moderation.
   const approvalStatus: "pending" | "approved" = "approved";
   const resolvedStatus: string = status ?? "active";
+
+  // Advisory only, mirroring the UI panel: the platform cannot know an
+  // employer's context (a genuine occupational requirement, positive action, or
+  // a role-neutral use of a flagged word), so this never blocks a publish. It
+  // exists because every wording check until now was client-side, leaving a
+  // direct API call with no record at all.
+  const wordingFindings = checkAdvert({ title, description, responsibilities, qualifications, benefits });
+  if (wordingFindings.length > 0) {
+    logger.warn(
+      {
+        userId: String(ctx.userId),
+        role: ctx.role,
+        employerId,
+        characteristics: [...new Set(wordingFindings.map((f) => f.characteristic))],
+        count: wordingFindings.length,
+      },
+      "[Compliance] job advert wording flagged"
+    );
+  }
 
   const jobDoc = new Job({
     title,

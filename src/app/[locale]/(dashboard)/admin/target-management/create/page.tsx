@@ -17,6 +17,7 @@ import {
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "next/navigation";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -298,27 +299,27 @@ export default function CreateTargetProfilePage() {
   };
 
   return (
-    <div className="page-container max-w-6xl mx-auto">
+    <div className="page-container">
       {/* Back */}
       <button
         onClick={() => router.push(`/${locale}/admin/target-management`)}
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
-        <ArrowLeft className="h-4 w-4" /> Back to Target Management
+        <ArrowLeft className="h-4 w-4" /> {t("backToTargetManagement")}
       </button>
 
       {/* Header */}
-      <div className="workspace-glass-panel rounded-2xl p-5">
+      <div className="workspace-glass-panel rounded-2xl panel-body">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
             <div className="workspace-tone-sky rounded-xl p-2.5">
               <Target className="h-5 w-5" />
             </div>
-            <PageHeader title="Create Target Profiles" description="Set annual targets for supervisors in a tabular format" />
+            <PageHeader title={t("createTargetProfilesTitle")} description={t("createTargetProfilesDescription")} />
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <Label className="text-xs font-medium text-muted-foreground">Year</Label>
+              <Label className="text-xs font-medium text-muted-foreground">{t("yearLabel")}</Label>
               <Input
                 type="number"
                 value={year}
@@ -340,7 +341,7 @@ export default function CreateTargetProfilePage() {
             className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
             <Filter className="h-4 w-4" />
-            Filters
+            {t("filtersLabel")}
             {hasActiveFilters && (
               <Badge variant="info" className="text-[10px] px-1.5 py-0">
                 {[filterName, filterRegion, filterTeamSize !== "all" ? filterTeamSize : ""].filter(Boolean).length}
@@ -364,14 +365,14 @@ export default function CreateTargetProfilePage() {
           <div className="px-4 py-3 bg-muted/20 border-b border-border/50">
             <div className="grid gap-3 sm:grid-cols-3">
               {/* Name Search */}
-              <div className="space-y-1">
-                <Label className="text-[11px] font-medium text-muted-foreground">Name / Email</Label>
+              <div className="field">
+                <Label className="text-[11px] font-medium text-muted-foreground">{t("nameEmailLabel")}</Label>
                 <div className="relative">
                   <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     value={filterName}
                     onChange={(e) => setFilterName(e.target.value)}
-                    placeholder="Search by name or email..."
+                    placeholder={t("searchByNameEmail")}
                     className="h-8 rounded-lg border-border bg-background pl-8 text-xs"
                   />
                 </div>
@@ -379,34 +380,34 @@ export default function CreateTargetProfilePage() {
 
               {/* Region Filter */}
               <div className="space-y-1">
-                <Label className="text-[11px] font-medium text-muted-foreground">Region</Label>
+                <Label className="text-[11px] font-medium text-muted-foreground">{t("region")}</Label>
                 <SearchableSelect
                   value={filterRegion}
                   onValueChange={(val) => setFilterRegion(val)}
                   options={[
-                    { value: "", label: "All regions" },
+                    { value: "", label: t("allRegionsOption") },
                     ...regionOptions.map((r) => ({ value: r, label: r })),
                   ]}
-                  placeholder="All regions"
-                  searchPlaceholder="Search regions..."
-                  emptyMessage="No regions found"
+                  placeholder={t("allRegionsOption")}
+                  searchPlaceholder={t("searchRegions")}
+                  emptyMessage={t("noRegionsFound")}
                   className="h-8 text-xs"
                 />
               </div>
 
               {/* Team Size Filter */}
               <div className="space-y-1">
-                <Label className="text-[11px] font-medium text-muted-foreground">Team Size</Label>
+                <Label className="text-[11px] font-medium text-muted-foreground">{t("teamSizeLabel")}</Label>
                 <SearchableSelect
                   value={filterTeamSize}
                   onValueChange={(val) => setFilterTeamSize(val as "all" | "small" | "medium" | "large")}
                   options={[
-                    { value: "all", label: "All sizes" },
-                    { value: "small", label: "Small (1–3)" },
-                    { value: "medium", label: "Medium (4–8)" },
-                    { value: "large", label: "Large (9+)" },
+                    { value: "all", label: t("allSizes") },
+                    { value: "small", label: t("smallTeam") },
+                    { value: "medium", label: t("mediumTeam") },
+                    { value: "large", label: t("largeTeam") },
                   ]}
-                  placeholder="All sizes"
+                  placeholder={t("allSizes")}
                   searchPlaceholder="Search sizes..."
                   className="h-8 text-xs"
                 />
@@ -414,7 +415,7 @@ export default function CreateTargetProfilePage() {
             </div>
             {hasActiveFilters && (
               <p className="mt-2 text-[11px] text-muted-foreground">
-                Showing {filteredSupervisors.length} of {supervisors.length} supervisors
+                {t("showingCountMessage", { filtered: filteredSupervisors.length, total: supervisors.length })}
               </p>
             )}
           </div>
@@ -438,7 +439,7 @@ export default function CreateTargetProfilePage() {
         ) : supervisors.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Users className="h-10 w-10 text-muted-foreground/50 mb-3" />
-            <p className="text-sm text-muted-foreground">No supervisors found</p>
+            <p className="text-sm text-muted-foreground">{t("noSupervisorsFound")}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -446,28 +447,28 @@ export default function CreateTargetProfilePage() {
               <thead className="bg-muted/40 border-b border-border/70">
                 <tr>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground min-w-[200px]">
-                    Supervisor
+                    {t("supervisorTableHeader")}
                   </th>
                   <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground min-w-[130px]">
                     <div className="flex items-center justify-center gap-1.5">
                       <Building2 className="h-3.5 w-3.5" />
-                      Employers
+                      {t("employersHeader")}
                     </div>
                   </th>
                   <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground min-w-[130px]">
                     <div className="flex items-center justify-center gap-1.5">
                       <Users className="h-3.5 w-3.5" />
-                      Employees
+                      {t("employeesHeader")}
                     </div>
                   </th>
                   <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground min-w-[140px]">
                     <div className="flex items-center justify-center gap-1.5">
                       <DollarSign className="h-3.5 w-3.5" />
-                      Revenue
+                      {t("revenueHeader")}
                     </div>
                   </th>
                   <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground min-w-[120px]">
-                    Monthly
+                    {t("monthlyTableHeader")}
                   </th>
                 </tr>
               </thead>
@@ -475,7 +476,7 @@ export default function CreateTargetProfilePage() {
                 {filteredSupervisors.length === 0 && !loading ? (
                   <tr>
                     <td colSpan={5} className="px-4 py-10 text-center text-sm text-muted-foreground">
-                      No supervisors match the current filters
+                      {t("noSupervisorsMatchFilters")}
                     </td>
                   </tr>
                 ) : (
@@ -500,16 +501,16 @@ export default function CreateTargetProfilePage() {
               <tfoot className="bg-muted/30 border-t-2 border-border">
                 <tr>
                   <td className="px-4 py-3 text-sm font-semibold text-foreground">
-                    Total ({validRows.length} supervisor{validRows.length !== 1 ? "s" : ""})
+                    {t("totalLabel")} ({validRows.length} {t("supervisorCountLabel", { count: validRows.length })})
                   </td>
                   <td className="px-4 py-3 text-center text-sm font-bold text-foreground tabular-nums">
-                    {totals.employer.toLocaleString()}
+                    {formatCount(totals.employer)}
                   </td>
                   <td className="px-4 py-3 text-center text-sm font-bold text-foreground tabular-nums">
-                    {totals.employee.toLocaleString()}
+                    {formatCount(totals.employee)}
                   </td>
                   <td className="px-4 py-3 text-center text-sm font-bold text-foreground tabular-nums">
-                    {totals.finance.toLocaleString()}
+                    {formatCount(totals.finance)}
                   </td>
                   <td className="px-4 py-3" />
                 </tr>
@@ -527,7 +528,7 @@ export default function CreateTargetProfilePage() {
           className="gap-2 rounded-xl px-6"
         >
           {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          Create Targets ({validRows.length})
+          {t("createTargetsCount", { count: validRows.length })}
         </Button>
       </div>
     </div>
@@ -559,7 +560,7 @@ function SupervisorTargetRow({
 
   return (
     <>
-      <tr className={`transition-colors ${hasTarget ? "bg-sky-50/50 dark:bg-sky-950/20" : "hover:bg-muted/20"}`}>
+      <tr className={`transition-colors ${hasTarget ? "bg-sky-50/50" : "hover:bg-muted/20"}`}>
         {/* Supervisor Info */}
         <td className="px-4 py-3">
           <div>
@@ -617,8 +618,8 @@ function SupervisorTargetRow({
           <Button
             type="button"
             variant={row.showMonthly ? "default" : "outline"}
-            size="sm"
-            className="rounded-lg h-8 text-xs gap-1"
+            size="dense"
+            className="rounded-lg text-xs gap-1"
             onClick={() => onToggleMonthly(supervisor.id)}
             disabled={!hasTarget}
           >
@@ -669,6 +670,7 @@ function MonthlyDistributionTable({
   annualTargets,
   onUpdate,
 }: MonthlyDistributionTableProps) {
+  const t = useTranslations("targets");
   const monthlySum = monthly.reduce(
     (acc, m) => ({
       employer: acc.employer + m.employerTarget,
@@ -686,10 +688,10 @@ function MonthlyDistributionTable({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold text-muted-foreground">Monthly Distribution (editable)</p>
+        <p className="text-xs font-semibold text-muted-foreground">{t("monthlyDistributionLabel")}</p>
         {!isValid && (
           <Badge variant="destructive" className="text-[10px]">
-            Sum mismatch — adjust monthly values
+            {t("sumMismatchError")}
           </Badge>
         )}
       </div>

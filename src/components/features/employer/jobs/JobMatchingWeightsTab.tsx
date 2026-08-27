@@ -93,14 +93,14 @@ export function JobMatchingWeightsTab({ jobId }: Props) {
     <div className="space-y-3 sm:space-y-5">
       {/* Source indicator */}
       {source === "employer" && (
-        <div className="flex items-center gap-2 rounded-2xl border border-sky-500/20 bg-sky-500/10 px-4 py-3 text-sm text-sky-700 dark:text-sky-200">
+        <div className="flex items-center gap-2 rounded-2xl border border-sky-500/20 bg-sky-500/10 px-4 py-3 text-sm text-sky-700">
           <Sliders className="h-4 w-4 shrink-0" />
           Using employer default weights. Customise below to set job-specific scoring.
         </div>
       )}
 
       {error && (
-        <div className="flex items-center justify-between rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">
+        <div className="flex items-center justify-between rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-700">
           <span>{error}</span>
           <button onClick={() => setError(null)} className="font-medium text-red-400 hover:text-red-600">✕</button>
         </div>
@@ -109,17 +109,17 @@ export function JobMatchingWeightsTab({ jobId }: Props) {
       {/* Summary cards */}
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="card-base panel-body">
-          <Scale className="h-5 w-5 text-sky-600 dark:text-sky-300" />
+          <Scale className="h-5 w-5 text-sky-600" />
           <p className="mt-2 text-sm font-semibold text-foreground">{t("totalAt", { total })}</p>
           <p className="mt-1 text-xs text-muted-foreground">{t("mustTotal100PercentBeforeSaving")}</p>
         </div>
         <div className="card-base panel-body">
-          <Target className="h-5 w-5 text-sky-600 dark:text-sky-300" />
+          <Target className="h-5 w-5 text-sky-600" />
           <p className="mt-2 text-sm font-semibold text-foreground">{t("top")}: {WEIGHT_LABELS[topPriority]}</p>
           <p className="mt-1 text-xs text-muted-foreground">{t("strongestInfluenceAt", { percent: weights[topPriority] })}</p>
         </div>
         <div className="card-base panel-body">
-          <BarChart3 className="h-5 w-5 text-sky-600 dark:text-sky-300" />
+          <BarChart3 className="h-5 w-5 text-sky-600" />
           <p className="mt-2 text-sm font-semibold text-foreground">
             {saveWeights.isPending ? t("saving") : saved ? t("weightsSaved") : t("readyToUpdate")}
           </p>
@@ -131,10 +131,10 @@ export function JobMatchingWeightsTab({ jobId }: Props) {
         {/* Weight sliders */}
         <div className="card-base space-y-3 sm:space-y-4 panel-body">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <h3 className="heading-label font-semibold text-foreground flex items-center gap-2">
               <Sliders className="h-4 w-4 text-sky-600" /> {t("weightConfiguration")}
             </h3>
-            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${isTotalValid ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-red-500/10 text-red-600 dark:text-red-300"}`}>
+            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${isTotalValid ? "bg-emerald-500/10 text-emerald-700" : "bg-red-500/10 text-red-600"}`}>
               {total}% {isTotalValid ? "✓" : t("need100Percent")}
             </span>
           </div>
@@ -183,7 +183,7 @@ export function JobMatchingWeightsTab({ jobId }: Props) {
         {/* Distribution overview */}
         <div className="space-y-3 sm:space-y-4">
           <div className="card-base space-y-3 panel-body">
-            <h3 className="text-sm font-semibold text-foreground">{t("weightDistribution")}</h3>
+            <h3 className="heading-label font-semibold text-foreground">{t("weightDistribution")}</h3>
             {weightKeys.map((key) => (
               <div key={key} className="space-y-1">
                 <div className="flex justify-between text-xs">
@@ -197,8 +197,8 @@ export function JobMatchingWeightsTab({ jobId }: Props) {
             ))}
 
             <div className={`mt-3 rounded-xl p-3 text-sm ${isTotalValid
-              ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-              : "bg-amber-500/10 text-amber-700 dark:text-amber-300"}`}>
+              ? "bg-emerald-500/10 text-emerald-700"
+              : "bg-amber-500/10 text-amber-700"}`}>
               {isTotalValid
                 ? t("weightsBalanced")
                 : t("totalIsAdjustTo100", { total })}

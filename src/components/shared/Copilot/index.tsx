@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { ToolProposalCard } from "./ToolProposalCard";
 import type { CopilotStreamFrame, TranscriptItem } from "./types";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 let idCounter = 0;
 const nextId = () => `ci-${Date.now()}-${idCounter++}`;
@@ -74,7 +75,7 @@ function AssistantMarkdown({ content }: { content: string }) {
         ol: ({ ...props }) => <ol className="list-decimal list-inside space-y-0.5 my-1" {...props} />,
         li: ({ ...props }) => <li className="leading-relaxed" {...props} />,
         strong: ({ ...props }) => <strong className="font-semibold" {...props} />,
-        code: ({ ...props }) => <code className="rounded bg-black/10 px-1 font-mono text-[0.88em] dark:bg-white/10" {...props} />,
+        code: ({ ...props }) => <code className="rounded bg-black/10 px-1 font-mono text-[0.88em]" {...props} />,
         a: ({ ...props }) => (
           <a className="text-primary underline underline-offset-2 hover:text-primary/80" target="_blank" rel="noopener noreferrer" {...props} />
         ),
@@ -100,6 +101,7 @@ export function Copilot({ className }: CopilotProps) {
   const pathname = usePathname();
   const locale = useLocale();
   const isRtl = locale === "ar";
+  const usesInlineEmployerLauncher = /^\/(?:en|ar)\/employer(?:\/jobs)?\/?$/.test(pathname);
   const t = useTranslations("copilot");
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -119,12 +121,19 @@ export function Copilot({ className }: CopilotProps) {
 
   useEffect(() => setMounted(true), []);
 
+  useEffect(() => {
+    const openCopilot = () => setOpen(true);
+    window.addEventListener("mployedin:open-copilot", openCopilot);
+    return () => window.removeEventListener("mployedin:open-copilot", openCopilot);
+  }, []);
+
   const clampFabPos = useCallback((x: number, y: number) => {
     const size = 48;
     const margin = 4;
+    const reservedBottom = window.innerWidth < 1024 ? 72 : margin;
     return {
       x: Math.min(Math.max(x, margin), window.innerWidth - size - margin),
-      y: Math.min(Math.max(y, margin), window.innerHeight - size - margin),
+      y: Math.min(Math.max(y, margin), window.innerHeight - size - reservedBottom),
     };
   }, []);
 
@@ -452,8 +461,7 @@ export function Copilot({ className }: CopilotProps) {
       aria-label={t("title")}
       tabIndex={-1}
       className={cn(
-        "fixed bottom-20 right-4 z-[70] flex h-[min(640px,calc(100vh-2rem))] w-[min(400px,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border border-border bg-background shadow-2xl lg:bottom-4",
-        isRtl && "left-4 right-auto",
+        "copilot-panel fixed z-[70] flex h-[min(640px,calc(100dvh-5.5rem))] w-[min(400px,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border border-border bg-background shadow-2xl lg:h-[min(640px,calc(100vh-2rem))]",
         className
       )}
     >
@@ -511,7 +519,7 @@ export function Copilot({ className }: CopilotProps) {
               >
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{chat.title || t("newChat")}</p>
-                  <p className="text-xs text-muted-foreground">{new Date(chat.updatedAt).toLocaleDateString()}</p>
+                  <p className="text-xs text-muted-foreground">{formatDate(new Date(chat.updatedAt))}</p>
                 </div>
                 <button
                   type="button"
@@ -539,7 +547,7 @@ export function Copilot({ className }: CopilotProps) {
                   key={s}
                   type="button"
                   onClick={() => sendMessage(s)}
-                  className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-start text-xs text-foreground transition-colors hover:bg-muted"
+                  className="rounded-lg border border-border bg-muted/40 text-start text-xs text-foreground transition-colors hover:bg-muted chip-pad"
                 >
                   {s}
                 </button>
@@ -610,7 +618,7 @@ export function Copilot({ className }: CopilotProps) {
 
       {/* Input */}
       <div className="border-t border-border p-2.5">
-        <div className="flex items-end gap-2 rounded-lg border border-input bg-background px-2 py-1.5 focus-within:ring-1 focus-within:ring-ring">
+        <div className="flex items-end gap-2 rounded-lg border border-input bg-background focus-within:ring-1 focus-within:ring-ring chip-pad">
           <Textarea
             ref={textareaRef}
             value={input}
@@ -621,8 +629,8 @@ export function Copilot({ className }: CopilotProps) {
             className="min-h-8 flex-1 resize-none border-0 bg-transparent p-1 text-sm shadow-none focus-visible:ring-0"
           />
           <Button
-            size="icon"
-            className="h-8 w-8 shrink-0"
+            size="iconDense"
+            className="shrink-0"
             disabled={!input.trim() || isStreaming}
             onClick={() => sendMessage()}
             aria-label={t("send")}
@@ -633,7 +641,6 @@ export function Copilot({ className }: CopilotProps) {
         <p className="mt-1.5 text-center text-[10px] text-muted-foreground">{t("disclaimer")}</p>
       </div>
     </div>
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   ), [transcript, input, isStreaming, isRtl, hasMessages, t, handleConfirm, handleCancel, suggestions, sendMessage, showHistory, savedChats]);
 
   if (!mounted) return null;
@@ -651,7 +658,8 @@ export function Copilot({ className }: CopilotProps) {
           style={fabPos ? { left: fabPos.x, top: fabPos.y, right: "auto", bottom: "auto" } : undefined}
           className={cn(
             "fixed z-[70] flex h-12 w-12 touch-none items-center justify-center rounded-full bg-white shadow-lg transition-transform hover:scale-105 active:scale-95",
-            !fabPos && cn("bottom-20 right-4 lg:bottom-4", isRtl && "left-4 right-auto")
+            usesInlineEmployerLauncher && "hidden lg:flex",
+            !fabPos && "copilot-fab"
           )}
           aria-label={t("openCopilot")}
         >

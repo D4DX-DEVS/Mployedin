@@ -17,6 +17,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import type { ExportColumn } from "@/lib/export";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
 interface Placement {
   _id: string;
@@ -104,7 +105,7 @@ export default function AgentPlacementsPage() {
     { header: t("tableHeaderSalary"), key: "salary" },
     { header: t("tableHeaderCurrency"), key: "currency" },
     { header: tc("status"), key: "status" },
-    { header: t("tableHeaderStartDate"), key: "startDate", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: t("tableHeaderStartDate"), key: "startDate", formatter: (v) => v ? formatDate(new Date(String(v))) : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
@@ -118,46 +119,37 @@ export default function AgentPlacementsPage() {
     <div className="page-container">
       <DashboardPageHeader
         icon={UserCheck}
-        eyebrow={t("workspaceLabel")}
         title={t("pageTitle")}
         description={t("pageDescription")}
-        summary={{ label: t("placementBook"), value: `${pagination.total} ${t("records")}`, note: t("placementBookDescription") }}
+        summary={{ label: t("placementBook"), value: `${pagination.total} ${t("records")}` }}
         metrics={[
-          { label: t("statCompleted"), value: completedPlacements, note: t("statCompletedDesc"), icon: UserCheck },
-          { label: t("statOfferStage"), value: signedOffers, note: t("statOfferStageDesc"), icon: BriefcaseBusiness },
-          { label: t("statStartDates"), value: startedCount, note: t("statStartDatesDesc"), icon: ArrowRight },
-          { label: t("statSalaryValue"), value: totalCompensation.toLocaleString(), note: t("statSalaryValueDesc"), icon: CircleDollarSign },
+          { label: t("statCompleted"), value: completedPlacements, icon: UserCheck },
+          { label: t("statOfferStage"), value: signedOffers, icon: BriefcaseBusiness },
+          { label: t("statStartDates"), value: startedCount, icon: ArrowRight },
+          { label: t("statSalaryValue"), value: formatCount(totalCompensation), icon: CircleDollarSign },
         ]}
+        compactOnMobile
       />
 
-      {/* data-table-toolbar opts into the shared mobile filter rules (globals.css). */}
-      <section className="workspace-panel-surface rounded-[28px] panel-body" data-table-toolbar="simple">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("filterLabel")}</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("filterSubtitle")}</h2>
+      {/* One panel: search, status and dates inline on the list header, table
+          below. The filter card carried its own label and heading before a
+          single select — two headings for one dropdown. */}
+      <section className="workspace-panel-surface rounded-3xl panel-body" data-table-toolbar="simple">
+        <div className="flex flex-wrap items-end gap-2 border-b border-border pb-3 sm:gap-3 sm:pb-4">
+          <p className="w-full text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground sm:w-auto sm:pb-2.5">
+            {t("resultsLabel")}
+          </p>
+          <div className="relative toolbar-search-field min-w-0 flex-1 sm:ms-auto sm:w-56 sm:flex-none">
+            <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t("searchPlaceholder")}
+              className="h-10 w-full rounded-xl border border-border bg-background/70 ps-10 pe-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground/60 focus:border-ring focus:ring-2 focus:ring-ring/20"
+            />
           </div>
-          {hasActiveFilters && (
-            <Button variant="ghost" size="sm" onClick={clearAllFilters} className="gap-1.5 text-xs text-muted-foreground hover:text-foreground">
-              <X className="h-3.5 w-3.5" />{t("clearAll")}
-            </Button>
-          )}
-        </div>
-
-        <div className="relative toolbar-search-field mt-5 max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t("searchPlaceholder")}
-            className="h-10 w-full rounded-xl border border-border bg-background/70 pl-10 pr-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground/60 focus:border-ring focus:ring-2 focus:ring-ring/20"
-          />
-        </div>
-
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <div>
-            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{tc("status")}</label>
+          <div className="min-w-0 flex-1 sm:w-40 sm:flex-none">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger>
                 <SelectValue />
@@ -167,17 +159,23 @@ export default function AgentPlacementsPage() {
               </SelectContent>
             </Select>
           </div>
-        </div>
-
-        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:max-w-md">
-          <div>
-            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("dateFromLabel")}</label>
-            <DateTimePicker mode="date" value={dateFrom} onChange={setDateFrom} />
+          <div className="min-w-0 flex-1 sm:w-36 sm:flex-none">
+            <DateTimePicker mode="date" value={dateFrom} onChange={setDateFrom} placeholder={t("dateFromLabel")} />
           </div>
-          <div>
-            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("dateToLabel")}</label>
-            <DateTimePicker mode="date" value={dateTo} onChange={setDateTo} />
+          <div className="min-w-0 flex-1 sm:w-36 sm:flex-none">
+            <DateTimePicker mode="date" value={dateTo} onChange={setDateTo} placeholder={t("dateToLabel")} />
           </div>
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" onClick={clearAllFilters} className="h-10 shrink-0 gap-1.5 text-xs text-muted-foreground hover:text-foreground">
+              <X className="h-3.5 w-3.5" />{t("clearAll")}
+            </Button>
+          )}
+          <TableToolbar
+            onExportCsv={handleExportCsv}
+            onExportExcel={handleExportExcel}
+            onExportPdf={handleExportPdf}
+            className="shrink-0"
+          />
         </div>
 
         {hasActiveFilters && (
@@ -202,17 +200,8 @@ export default function AgentPlacementsPage() {
             )}
           </div>
         )}
-      </section>
 
-      <section className="workspace-panel-surface rounded-[28px] panel-body">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("resultsLabel")}</p><h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("resultsSubtitle")}</h2></div><div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium"><ArrowRight className="h-3.5 w-3.5 text-primary" />{t("resultsPagination", { total: pagination.total, pages: pagination.totalPages, plural: pagination.totalPages === 1 ? "" : "s" })}</div></div>
-        <TableToolbar
-          onExportCsv={handleExportCsv}
-          onExportExcel={handleExportExcel}
-          onExportPdf={handleExportPdf}
-          className="mt-4"
-        />
-        <div className="workspace-subtle-surface mt-5 overflow-hidden rounded-[24px]">
+        <div className="workspace-subtle-surface mt-4 overflow-hidden rounded-3xl">
         <Table>
           <TableHeader>
             <TableRow className="workspace-subtle-surface hover:bg-secondary/70">
@@ -253,9 +242,9 @@ export default function AgentPlacementsPage() {
                   <span className="mt-1 block text-xs text-muted-foreground">{p.employerId?.companyName ?? "—"}</span>
                 </TableCell>
                 <TableCell className="text-muted-foreground">
-                  {p.salary ? `${p.currency ?? "USD"} ${p.salary.toLocaleString()}` : "—"}
+                  {p.salary ? `${p.currency ?? "USD"} ${formatCount(p.salary)}` : "—"}
                 </TableCell>
-                <TableCell className="text-muted-foreground">{p.startDate ? new Date(p.startDate).toLocaleDateString() : "—"}</TableCell>
+                <TableCell className="text-muted-foreground">{p.startDate ? formatDate(new Date(p.startDate)) : "—"}</TableCell>
               </TableRow>
             ))}
           </TableBody>

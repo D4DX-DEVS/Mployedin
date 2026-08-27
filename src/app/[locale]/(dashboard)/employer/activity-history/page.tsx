@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { cn } from "@/lib/utils";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -51,18 +52,18 @@ interface PaginationInfo {
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const ACTION_META: Record<string, { label: string; color: string; icon: typeof History }> = {
-  create: { label: "Created", color: "bg-status-selected-bg text-status-selected border-status-selected/20 dark:bg-green-500/15 dark:text-green-300 dark:border-green-500/30", icon: FilePlus },
-  update: { label: "Updated", color: "bg-status-applied-bg text-status-applied border-status-applied/20 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-500/30", icon: FileEdit },
-  delete: { label: "Deleted", color: "bg-status-rejected-bg text-status-rejected border-status-rejected/20 dark:bg-red-500/15 dark:text-red-300 dark:border-red-500/30", icon: Trash2 },
-  start: { label: "Session Started", color: "bg-status-interview-bg text-status-interview border-status-interview/20 dark:bg-purple-500/15 dark:text-purple-300 dark:border-purple-500/30", icon: LogIn },
-  exit: { label: "Session Ended", color: "bg-secondary/75 text-muted-foreground border-border dark:bg-slate-500/15 dark:text-muted-foreground dark:border-slate-500/30", icon: LogOut },
-  write: { label: "Modified", color: "bg-status-shortlisted-bg text-status-shortlisted border-status-shortlisted/20 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30", icon: FileText },
+  create: { label: "Created", color: "bg-status-selected-bg text-status-selected border-status-selected/20", icon: FilePlus },
+  update: { label: "Updated", color: "bg-status-applied-bg text-status-applied border-status-applied/20", icon: FileEdit },
+  delete: { label: "Deleted", color: "bg-status-rejected-bg text-status-rejected border-status-rejected/20", icon: Trash2 },
+  start: { label: "Session Started", color: "bg-status-interview-bg text-status-interview border-status-interview/20", icon: LogIn },
+  exit: { label: "Session Ended", color: "bg-secondary/75 text-muted-foreground border-border", icon: LogOut },
+  write: { label: "Modified", color: "bg-status-shortlisted-bg text-status-shortlisted border-status-shortlisted/20", icon: FileText },
 };
 
 const ROLE_META: Record<string, { label: string; color: string }> = {
-  admin: { label: "Admin", color: "bg-status-interview-bg text-status-interview dark:bg-purple-500/15 dark:text-purple-400" },
-  super_agent: { label: "Super Agent", color: "bg-status-applied-bg text-status-applied dark:bg-blue-500/15 dark:text-blue-400" },
-  agent: { label: "Agent", color: "bg-status-shortlisted-bg text-status-shortlisted dark:bg-amber-500/15 dark:text-amber-400" },
+  admin: { label: "Admin", color: "bg-status-interview-bg text-status-interview" },
+  super_agent: { label: "Super Agent", color: "bg-status-applied-bg text-status-applied" },
+  agent: { label: "Agent", color: "bg-status-shortlisted-bg text-status-shortlisted" },
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -168,12 +169,10 @@ export default function ActivityHistoryPage() {
       {/* Hero + Filters Combined */}
       <DashboardPageHeader
         icon={History}
-        eyebrow={t("title")}
         title={t("title")}
         description={t("description")}
         metrics={[
           { label: t("totalEntries"), value: pagination.total, icon: History },
-          { label: t("pageInfo", { page: pagination.page, totalPages: pagination.totalPages || 1 }), value: entries.length, note: t("onThisPage"), icon: FileText },
         ]}
       >
           <div className="mt-2 flex flex-wrap items-end gap-3 border-t border-border/50 pt-3">
@@ -216,7 +215,7 @@ export default function ActivityHistoryPage() {
             <Button
               variant="outline"
               size="sm"
-              className="rounded-xl h-9 ml-auto"
+              className="rounded-xl ml-auto"
               onClick={handleRefresh}
               disabled={refreshing}
             >
@@ -229,7 +228,7 @@ export default function ActivityHistoryPage() {
       {/* Activity List */}
       <section className="space-y-3">
         {error ? (
-          <div className="flex flex-col items-center justify-center rounded-[28px] border border-dashed border-border py-20 text-center dark:border-slate-700">
+          <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-border py-20 text-center">
             <p className="text-sm font-semibold text-destructive">{tc("somethingWentWrong")}</p>
             <Button variant="outline" size="sm" className="mt-4 rounded-xl" onClick={handleRefresh}>
               {tc("tryAgain")}
@@ -240,14 +239,14 @@ export default function ActivityHistoryPage() {
             {[1, 2, 3, 4, 5].map((i) => (
               <div
                 key={i}
-                className="workspace-panel-surface h-[92px] animate-pulse rounded-[20px] dark:border-slate-800 dark:bg-slate-900/60"
+                className="workspace-panel-surface h-[92px] animate-pulse rounded-3xl"
               />
             ))}
           </div>
         ) : entries.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-[28px] border border-dashed border-border py-20 text-center dark:border-slate-700">
+          <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-border py-20 text-center">
             <History className="h-14 w-14 text-muted-foreground/30 mb-5" />
-            <h3 className="text-lg font-semibold text-foreground">{t("noActivity")}</h3>
+            <h3 className="heading-subsection font-semibold text-foreground">{t("noActivity")}</h3>
             <p className="text-sm text-muted-foreground mt-2 max-w-md">{t("noActivityDescription")}</p>
           </div>
         ) : (
@@ -262,7 +261,7 @@ export default function ActivityHistoryPage() {
             return (
               <div
                 key={entry.id}
-                className="workspace-panel-surface flex items-start gap-4 rounded-[20px] transition-all hover:shadow-[0_6px_20px_-6px_rgba(15,23,42,0.1)] dark:border-slate-800 dark:bg-[linear-gradient(135deg,_rgba(15,23,42,0.98),_rgba(30,41,59,0.94))] panel-body"
+                className="workspace-panel-surface flex items-start gap-4 rounded-3xl transition-all hover:shadow-[0_6px_20px_-6px_rgba(15,23,42,0.1)] panel-body"
               >
                 {/* Action Icon */}
                 <div className={cn(
@@ -276,7 +275,7 @@ export default function ActivityHistoryPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-sm text-foreground">{entry.actorName}</span>
-                    <Badge variant="outline" className="text-[10px] font-medium rounded-lg px-2 py-0.5">
+                    <Badge variant="outline" className="text-[11px] font-medium rounded-lg px-2 py-0.5">
                       {roleLabel}
                     </Badge>
                     <Badge variant="outline" className={cn("text-[10px] font-medium rounded-lg px-2 py-0.5", actionMeta.color)}>
@@ -291,7 +290,7 @@ export default function ActivityHistoryPage() {
                   <div className="flex items-center gap-4 mt-2.5 text-xs text-muted-foreground flex-wrap">
                     <span className="flex items-center gap-1.5">
                       <Calendar className="h-3.5 w-3.5 shrink-0" />
-                      {new Date(entry.createdAt).toLocaleDateString(undefined, {
+                      {formatDate(new Date(entry.createdAt), {
                         weekday: "short",
                         year: "numeric",
                         month: "short",
@@ -307,7 +306,7 @@ export default function ActivityHistoryPage() {
                       </span>
                     )}
                     {entry.path && entry.action !== "start" && entry.action !== "exit" && (
-                      <span className="flex items-center gap-1.5 font-mono text-[11px] bg-secondary/75 dark:bg-slate-500 rounded px-1.5 py-0.5">
+                      <span className="flex items-center gap-1.5 font-mono text-[11px] bg-secondary/75 rounded px-1.5 py-0.5">
                         <ArrowUpRight className="h-3 w-3 shrink-0" />
                         {entry.method} {getResourceFromPath(entry.path)}
                       </span>
@@ -322,7 +321,7 @@ export default function ActivityHistoryPage() {
 
       {/* Pagination */}
       {pagination.totalPages > 1 && (
-        <div className="flex items-center justify-between rounded-[20px] border border-border bg-card/90 px-5 py-3.5 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/80">
+        <div className="flex items-center justify-between rounded-3xl border border-border bg-card/90 px-5 py-3.5 backdrop-blur-sm">
           <p className="text-sm text-muted-foreground">
             {t("showingRange", {
               from: String((pagination.page - 1) * pagination.limit + 1),
@@ -334,8 +333,8 @@ export default function ActivityHistoryPage() {
           <div className="flex items-center gap-1.5">
             <Button
               variant="outline"
-              size="sm"
-              className="rounded-xl h-8 w-8 p-0"
+              size="dense"
+              className="rounded-xl w-8 p-0"
               disabled={!pagination.hasPrev}
               onClick={() => handlePageChange(pagination.page - 1)}
             >
@@ -363,8 +362,8 @@ export default function ActivityHistoryPage() {
 
             <Button
               variant="outline"
-              size="sm"
-              className="rounded-xl h-8 w-8 p-0"
+              size="dense"
+              className="rounded-xl w-8 p-0"
               disabled={!pagination.hasNext}
               onClick={() => handlePageChange(pagination.page + 1)}
             >

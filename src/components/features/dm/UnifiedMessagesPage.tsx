@@ -371,6 +371,7 @@ export function UnifiedMessagesPage({
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                aria-label={searchPlaceholder ?? t("searchPlaceholder")}
                 placeholder={searchPlaceholder ?? t("searchPlaceholder")}
                 className="ps-8 h-8 text-xs"
               />

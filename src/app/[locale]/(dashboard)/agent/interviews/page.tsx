@@ -11,13 +11,14 @@ import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { ArrowRight, CalendarCheck2, CheckCircle, Edit2, Inbox, Search, Video, MapPin, Phone, XCircle, RotateCcw, Filter, X } from "lucide-react";
+import { CalendarCheck2, CheckCircle, Edit2, Inbox, Search, Video, MapPin, Phone, XCircle, RotateCcw, Filter, X } from "lucide-react";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import type { ExportColumn } from "@/lib/export";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 /* ── Types ─────────────────────────────────────────────────────────── */
 
@@ -118,6 +119,10 @@ export default function AgentInterviewsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  // Five selects and two date pickers were always open, filling a screen
+  // before the first interview row. Collapsed by default; the active pills
+  // below still show what is applied.
+  const [showFilters, setShowFilters] = useState(false);
 
   /* Modal state */
   const [modalOpen, setModalOpen] = useState(false);
@@ -231,7 +236,7 @@ export default function AgentInterviewsPage() {
     { header: t("columnJob"), key: "jobId", formatter: (_v, row) => (row.jobId as { title?: string })?.title ?? "" },
     { header: t("columnEmployer"), key: "employerId", formatter: (_v, row) => (row.employerId as { companyName?: string })?.companyName ?? "" },
     { header: t("columnType"), key: "type" },
-    { header: t("columnScheduled"), key: "scheduledAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: t("columnScheduled"), key: "scheduledAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "" },
     { header: t("columnRound"), key: "interviewRound" },
     { header: t("columnStatus"), key: "status" },
     { header: t("columnOutcome"), key: "outcome" },
@@ -255,48 +260,60 @@ export default function AgentInterviewsPage() {
     <div className="page-container">
       <DashboardPageHeader
         icon={CalendarCheck2}
-        eyebrow={t("badgeAgentWorkspace")}
         title={t("pageTitle")}
         description={t("pageSubtitle")}
-        summary={{ label: t("labelCalendar"), value: `${totalAll} ${t("labelInterviews")}`, note: t("descCalendarActivity") }}
+        summary={{ label: t("labelCalendar"), value: `${totalAll} ${t("labelInterviews")}` }}
         metrics={[
-          { label: t("kpiScheduled"), value: scheduledCount, note: t("descScheduled"), icon: CalendarCheck2, active: status === "scheduled", onClick: () => setStatus(status === "scheduled" ? "" : "scheduled") },
-          { label: t("kpiCompleted"), value: completedCount, note: t("descCompleted"), icon: CheckCircle, active: status === "completed", onClick: () => setStatus(status === "completed" ? "" : "completed") },
-          { label: t("kpiCancelled"), value: cancelledCount, note: t("descCancelled"), icon: XCircle, active: status === "cancelled", onClick: () => setStatus(status === "cancelled" ? "" : "cancelled") },
-          { label: t("kpiRescheduled"), value: rescheduledCount, note: t("descRescheduled"), icon: RotateCcw, active: status === "rescheduled", onClick: () => setStatus(status === "rescheduled" ? "" : "rescheduled") },
+          { label: t("kpiScheduled"), value: scheduledCount, icon: CalendarCheck2, active: status === "scheduled", onClick: () => setStatus(status === "scheduled" ? "" : "scheduled") },
+          { label: t("kpiCompleted"), value: completedCount, icon: CheckCircle, active: status === "completed", onClick: () => setStatus(status === "completed" ? "" : "completed") },
+          { label: t("kpiCancelled"), value: cancelledCount, icon: XCircle, active: status === "cancelled", onClick: () => setStatus(status === "cancelled" ? "" : "cancelled") },
+          { label: t("kpiRescheduled"), value: rescheduledCount, icon: RotateCcw, active: status === "rescheduled", onClick: () => setStatus(status === "rescheduled" ? "" : "rescheduled") },
         ]}
+        compactOnMobile
       />
 
-      {/* ── Filter Section ─────────────────────────────────────────── */}
-      {/* data-table-toolbar opts into the shared mobile rules (globals.css):
-          two-up filter grid and a shrinkable search field instead of five
-          full-width rows. */}
-      <section className="workspace-panel-surface rounded-[28px] panel-body" data-table-toolbar="simple">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sectionFilterLabel")}</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("sectionFilterTitle")}</h2>
+      {/* One panel: search, filter toggle and export inline; the filter grid
+          collapses; the table follows. The old filter card announced itself
+          with a label and a heading before showing a single search box. */}
+      <section className="workspace-panel-surface rounded-3xl panel-body" data-table-toolbar="simple">
+        <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3 sm:gap-3 sm:pb-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sectionResultsLabel")}</p>
+          <div className="relative toolbar-search-field min-w-0 flex-1 sm:ms-auto sm:w-60 sm:flex-none">
+            <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t("searchPlaceholder")}
+              className="h-10 w-full rounded-xl border border-border bg-background/70 ps-10 pe-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground/60 focus:border-ring focus:ring-2 focus:ring-ring/20"
+            />
           </div>
+          <Button
+            variant={showFilters ? "default" : "outline"}
+            size="sm"
+            className="h-10 shrink-0 gap-1.5 rounded-xl"
+            onClick={() => setShowFilters((v) => !v)}
+            aria-expanded={showFilters}
+          >
+            <Filter className="h-3.5 w-3.5" />
+            {tc("filter")}
+          </Button>
           {hasActiveFilters && (
-            <Button variant="ghost" size="sm" onClick={clearAllFilters} className="gap-1.5 text-xs text-muted-foreground hover:text-foreground">
+            <Button variant="ghost" size="sm" onClick={clearAllFilters} className="h-10 shrink-0 gap-1.5 text-xs text-muted-foreground hover:text-foreground">
               <X className="h-3.5 w-3.5" />{t("buttonClearAll")}
             </Button>
           )}
-        </div>
-
-        {/* Search bar */}
-        <div className="relative toolbar-search-field mt-5 max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t("searchPlaceholder")}
-            className="h-10 w-full rounded-xl border border-border bg-background/70 pl-10 pr-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground/60 focus:border-ring focus:ring-2 focus:ring-ring/20"
+          <TableToolbar
+            onExportCsv={handleExportCsv}
+            onExportExcel={handleExportExcel}
+            onExportPdf={handleExportPdf}
+            className="shrink-0"
           />
         </div>
 
         {/* Filter row */}
+        {showFilters && (
+        <>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {/* Status */}
           <div>
@@ -370,13 +387,15 @@ export default function AgentInterviewsPage() {
         <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:max-w-md">
           <div>
             <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("labelFromDate")}</label>
-            <DateTimePicker mode="date" value={dateFrom} onChange={setDateFrom} />
+            <DateTimePicker mode="date" value={dateFrom} onChange={setDateFrom} placeholder={t("labelFromDate")} />
           </div>
           <div>
             <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{t("labelToDate")}</label>
-            <DateTimePicker mode="date" value={dateTo} onChange={setDateTo} />
+            <DateTimePicker mode="date" value={dateTo} onChange={setDateTo} placeholder={t("labelToDate")} />
           </div>
         </div>
+        </>
+        )}
 
         {/* Active filter pills */}
         {hasActiveFilters && (
@@ -425,28 +444,8 @@ export default function AgentInterviewsPage() {
             )}
           </div>
         )}
-      </section>
 
-      {/* ── Results Table ──────────────────────────────────────────── */}
-      <section className="workspace-panel-surface rounded-[28px] panel-body">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sectionResultsLabel")}</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("sectionResultsTitle")}</h2>
-          </div>
-          <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">
-            <ArrowRight className="h-3.5 w-3.5 text-primary" />{t("paginationSummary", { total: pagination.total, pages: pagination.totalPages, pageWord: pagination.totalPages === 1 ? t("pageWordSingular") : t("pageWordPlural") })}
-          </div>
-        </div>
-
-        <TableToolbar
-          onExportCsv={handleExportCsv}
-          onExportExcel={handleExportExcel}
-          onExportPdf={handleExportPdf}
-          className="mt-4"
-        />
-
-        <div className="workspace-subtle-surface mt-5 overflow-hidden rounded-[24px]">
+        <div className="workspace-subtle-surface mt-4 overflow-hidden rounded-3xl">
           <Table>
             <TableHeader>
               <TableRow className="workspace-subtle-surface hover:bg-secondary/70">
@@ -506,7 +505,7 @@ export default function AgentInterviewsPage() {
                   </TableCell>
                   <TableCell className="text-muted-foreground whitespace-nowrap">
                     <div>
-                      <p className="text-sm">{new Date(iv.scheduledAt).toLocaleDateString()}</p>
+                      <p className="text-sm">{formatDate(new Date(iv.scheduledAt))}</p>
                       <p className="text-xs text-muted-foreground/70">{new Date(iv.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}{iv.duration ? ` · ${iv.duration}min` : ""}</p>
                       <p className="text-xs text-muted-foreground/70">{t("columnRound")}: {iv.interviewRound ?? 1}</p>
                     </div>

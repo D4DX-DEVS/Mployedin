@@ -73,17 +73,20 @@ export default function ScreeningAnalyticsPage() {
     <div className="page-container">
       <PageHero icon={FileQuestion} title={t("title")} description={t("description")} />
 
-      {/* Job Selector */}
-      <div className="bg-card border border-border rounded-xl p-4">
-        <label className="text-sm font-medium text-foreground mb-2 block">{t("selectJob")}</label>
-        <div className="max-w-md">
-          <SearchableSelect
-            value={selectedJobId}
-            onValueChange={setSelectedJobId}
-            placeholder={t("chooseJob")}
-            options={jobs.map((j) => ({ value: j._id, label: j.title }))}
-          />
-        </div>
+      {/* Bare toolbar row, not a panel: the card wrapper and its bottom border
+          framed a single dropdown with nothing underneath. */}
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          {t("selectJob")}
+        </p>
+        <SearchableSelect
+          className="min-w-0 flex-1 sm:w-64 sm:flex-none"
+          value={selectedJobId}
+          onValueChange={setSelectedJobId}
+          placeholder={t("chooseJob")}
+          options={jobs.map((j) => ({ value: j._id, label: j.title }))}
+          aria-label={t("selectJob")}
+        />
       </div>
 
       {loading && (
@@ -95,7 +98,7 @@ export default function ScreeningAnalyticsPage() {
       {data && !loading && (
         <div className="space-y-3 sm:space-y-4">
           {/* Summary */}
-          <div className="p-4 bg-card border border-border rounded-xl flex items-center gap-4">
+          <div className="bg-card border border-border rounded-xl flex items-center gap-4 card-pad">
             <div className="p-2 bg-primary/10 rounded-lg">
               <BarChart3 className="w-5 h-5 text-primary" />
             </div>
@@ -107,7 +110,7 @@ export default function ScreeningAnalyticsPage() {
 
           {/* Per-Question Analytics */}
           {data.questions.map((q, idx) => (
-            <div key={q.questionId} className="bg-card border border-border rounded-xl p-5">
+            <div key={q.questionId} className="bg-card border border-border rounded-xl panel-body">
               <div className="flex items-start gap-3 mb-4">
                 <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-1 rounded">{t("questionNumber", { number: idx + 1 })}</span>
                 <div>

@@ -53,8 +53,8 @@ export function TenantViewBanner({
   const roleLabel = ROLE_LABELS[actorRole] ?? "Dashboard";
 
   return (
-    <div className="sticky top-0 z-50 flex items-center justify-between gap-3 border-b border-amber-500/40 bg-amber-50 px-4 py-2 text-sm dark:bg-amber-950/30 dark:border-amber-500/30">
-      <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 min-w-0">
+    <div className="sticky top-0 z-50 flex items-center justify-between gap-3 border-b border-amber-500/40 bg-amber-50 px-4 py-2 text-sm">
+      <div className="flex items-center gap-2 text-amber-800 min-w-0">
         <Building2 className="h-4 w-4 shrink-0" />
         <span className="font-medium truncate">
           Viewing as employer:{" "}
@@ -65,7 +65,7 @@ export function TenantViewBanner({
       <Button
         variant="outline"
         size="sm"
-        className="shrink-0 border-amber-500/60 text-amber-800 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900/40"
+        className="shrink-0 border-amber-500/60 text-amber-800 hover:bg-amber-100"
         onClick={handleExit}
         disabled={exiting}
       >

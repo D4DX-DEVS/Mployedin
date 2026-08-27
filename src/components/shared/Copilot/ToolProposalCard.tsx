@@ -32,7 +32,7 @@ export function ToolProposalCard({
   const isBusy = item.status === "confirming" || item.status === "cancelling";
 
   return (
-    <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
+    <div className="rounded-lg border border-primary/30 bg-primary/5 text-sm chip-pad">
       <div className="flex items-center gap-2 font-medium text-foreground">
         <StatusIcon status={item.status} />
         <span>{item.summary}</span>
@@ -68,7 +68,7 @@ export function ToolProposalCard({
       )}
 
       {item.status === "executed" && item.resultMessage && (
-        <p className="mt-2 text-xs text-emerald-600 dark:text-emerald-400">{item.resultMessage}</p>
+        <p className="mt-2 text-xs text-emerald-600">{item.resultMessage}</p>
       )}
       {item.status === "failed" && item.resultMessage && (
         <p className="mt-2 text-xs text-destructive">{item.resultMessage}</p>

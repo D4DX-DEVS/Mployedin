@@ -56,7 +56,7 @@ export function ExhibitionFilterTrigger({ open, onToggle, hasActiveFilters }: Ex
     <button
       type="button"
       onClick={onToggle}
-      className="flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-white/10 dark:hover:bg-white/5 sm:gap-2 sm:px-3 sm:py-2 sm:text-sm"
+      className="flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-white/10 sm:gap-2 sm:px-3 sm:py-2 sm:text-sm"
     >
       <Filter className="h-3.5 w-3.5 text-muted-foreground sm:h-4 sm:w-4" />
       {open ? t("hideFilters") : t("showFilters")}
@@ -133,7 +133,7 @@ export function ExhibitionFilterPanel({
   if (!open) return null;
 
   return (
-    <div className="mt-3 space-y-2.5 rounded-[20px] border border-border/30 bg-background/40 p-3 backdrop-blur-sm dark:bg-background/20 sm:p-4">
+    <div className="mt-3 space-y-2.5 rounded-3xl border border-border/30 bg-background/40 backdrop-blur-sm card-pad">
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input

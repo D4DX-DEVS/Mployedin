@@ -137,7 +137,7 @@ export function ActivityOverview({ appsUsed, appsMax }: ActivityOverviewProps) {
         {cards.map((card) => {
           const hasBar = card.progress !== undefined && card.progress !== null;
           return (
-            <div key={card.key} className="rounded-2xl border border-border/60 bg-card p-4 flex flex-col">
+            <div key={card.key} className="rounded-2xl border border-border/60 bg-card flex flex-col card-pad">
               <div className="flex items-center gap-2.5 mb-3">
                 <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${card.bg}`}>
                   <card.icon className={`h-4 w-4 ${card.tone}`} />

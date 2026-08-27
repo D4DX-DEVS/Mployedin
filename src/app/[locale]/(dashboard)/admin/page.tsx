@@ -9,7 +9,6 @@ import {
   Activity,
   ArrowRight,
   Briefcase,
-  CheckCircle2,
   FileText,
   TrendingUp,
   UserPlus,
@@ -29,6 +28,8 @@ import {
   QuickActionHealthBadge,
 } from "./_components/platform-health";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { DashboardNextAction, DashboardSignalStrip } from "@/components/shared/DashboardOverview";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 interface UsersByRoleRow {
   _id: string | null;
@@ -228,7 +229,7 @@ function getTrendClassName(direction: TrendDirection, positiveWhenDown = false) 
     return "bg-rose-100 text-rose-700";
   }
 
-  return "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300";
+  return "bg-slate-100 text-slate-600";
 }
 
 function formatRoleLabel(role: string | null | undefined, t: DashboardTranslator) {
@@ -487,7 +488,6 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
   const stats = await getFastStats(locale);
   const dominantRole = stats.usersByRole[0];
   const applicationsPerActiveJob = stats.activeJobs > 0 ? stats.totalApplications / stats.activeJobs : 0;
-  const placementRate = stats.totalApplications > 0 ? (stats.totalPlacements / stats.totalApplications) * 100 : 0;
 
   const KNOWN_ROLES = new Set(["admin", "super_agent", "agent", "employer", "job_seeker"]);
   const knownRoles = stats.usersByRole.filter((role) => KNOWN_ROLES.has(String(role._id)));
@@ -521,7 +521,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
       insight: dominantRole
         ? t("kpis.totalUsers.dominant", { role: formatRoleLabel(dominantRole._id, t) })
         : t("kpis.totalUsers.fallback"),
-      toneClassName: "bg-sky-500 text-white ring-sky-400/30 dark:bg-sky-600 dark:text-white dark:ring-sky-400/30",
+      toneClassName: "bg-sky-500 text-white ring-sky-400/30",
       icon: Users,
       trend: usersTrend,
       trendClassName: getTrendClassName(usersTrend.direction),
@@ -536,7 +536,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
           <KpiActiveJobsInsightText />
         </Suspense>
       ),
-      toneClassName: "bg-emerald-500 text-white ring-emerald-400/30 dark:bg-emerald-600 dark:text-white dark:ring-emerald-400/30",
+      toneClassName: "bg-emerald-500 text-white ring-emerald-400/30",
       icon: Briefcase,
       trend: jobsTrend,
       trendClassName: getTrendClassName(jobsTrend.direction),
@@ -547,7 +547,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
       value: stats.totalApplications.toLocaleString(locale),
       detail: t("kpis.totalApplications.detail", { count: stats.applicationsThisMonth }),
       insight: t("kpis.totalApplications.insight", { value: applicationsPerActiveJob.toFixed(1) }),
-      toneClassName: "bg-violet-500 text-white ring-violet-400/30 dark:bg-violet-600 dark:text-white dark:ring-violet-400/30",
+      toneClassName: "bg-violet-500 text-white ring-violet-400/30",
       icon: FileText,
       trend: applicationsTrend,
       trendClassName: getTrendClassName(applicationsTrend.direction),
@@ -560,7 +560,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
       insight: stats.totalInterviews > 0
         ? t("kpis.totalInterviews.active")
         : t("kpis.totalInterviews.empty"),
-      toneClassName: "bg-amber-500 text-white ring-amber-400/30 dark:bg-amber-600 dark:text-white dark:ring-amber-400/30",
+      toneClassName: "bg-amber-500 text-white ring-amber-400/30",
       icon: Activity,
       trend: { direction: stats.totalInterviews > 0 ? "up" : "flat", label: t("trend.total", { count: stats.totalInterviews }) },
       trendClassName: getTrendClassName(stats.totalInterviews > 0 ? "up" : "flat"),
@@ -608,7 +608,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
       badge: t("quickActions.auditLogs.badge"),
       icon: Activity,
       iconClassName: "bg-slate-100 text-slate-600",
-      badgeClassName: "bg-slate-100 text-slate-800 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700",
+      badgeClassName: "bg-slate-100 text-slate-800 ring-1 ring-slate-200",
     },
     {
       label: t("quickActions.analytics.label"),
@@ -617,7 +617,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
       badge: t("quickActions.analytics.badge", { count: stats.totalInterviews }),
       icon: TrendingUp,
       iconClassName: "bg-violet-50 text-violet-600",
-      badgeClassName: "bg-violet-100 text-violet-900 ring-1 ring-violet-200 dark:bg-violet-500/15 dark:text-violet-200 dark:ring-violet-500/20",
+      badgeClassName: "bg-violet-100 text-violet-900 ring-1 ring-violet-200",
     },
 
   ];
@@ -690,32 +690,66 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
   ];
   const funnelMax = Math.max(1, ...funnelStages.map((stage) => stage.count));
 
+  const nextAction = stats.inactiveEmployers > 0
+    ? {
+        title: t("quickActions.userManagement.label"),
+        description: t("quickActions.userManagement.desc"),
+        href: `/${locale}/admin/users`,
+        icon: Users,
+        badge: t("taskFirst.attention"),
+      }
+    : stats.totalInterviews === 0 && stats.totalApplications > 0
+      ? {
+          title: t("quickActions.analytics.label"),
+          description: t("kpis.totalInterviews.empty"),
+          href: `/${locale}/admin/analytics`,
+          icon: TrendingUp,
+          badge: t("taskFirst.investigate"),
+        }
+      : {
+          title: t("quickActions.auditLogs.label"),
+          description: t("quickActions.auditLogs.desc"),
+          href: `/${locale}/admin/audit-logs`,
+          icon: Activity,
+          badge: t("taskFirst.review"),
+        };
+
+  const signals = kpis.map((kpi) => ({
+    label: kpi.label,
+    value: kpi.value,
+    href: kpi.href,
+    icon: kpi.icon,
+  }));
+
   return (
-    <div className="page-container pb-6">
+    <div className="page-container dashboard-overview-page">
+      {/* No summary here: it restated the active-job and application counts that
+          DashboardSignalStrip renders directly below. */}
       <DashboardPageHeader
         icon={Activity}
-        eyebrow={t("hero.eyebrow")}
         title={t("hero.title")}
         description={t("hero.description")}
-        summary={{
-          label: t("systemWatch.eyebrow"),
-          value: t("systemWatch.activeJobs", { count: stats.activeJobs }),
-          note: t("systemWatch.applications", { count: stats.totalApplications }),
-        }}
-        metrics={kpis.map((kpi) => ({
-          label: kpi.label,
-          value: kpi.value,
-          note: kpi.trend.label,
-          icon: kpi.icon,
-          iconClassName: "text-primary",
-          iconSurfaceClassName: "bg-primary/10",
-        }))}
+        compactOnMobile
       />
+
+      <DashboardNextAction
+        headingId="admin-next-action"
+        title={t("taskFirst.recommendedNext")}
+        description={t("taskFirst.nextDescription")}
+        actionTitle={nextAction.title}
+        actionDescription={nextAction.description}
+        actionLabel={t("taskFirst.openAction")}
+        href={nextAction.href}
+        icon={nextAction.icon}
+        badge={nextAction.badge}
+      />
+
+      <DashboardSignalStrip headingId="admin-signals" title={t("taskFirst.atAGlance")} signals={signals} />
 
       <div className="grid items-stretch gap-4 xl:grid-cols-[1.08fr_0.92fr]">
         <section className="workspace-panel-surface flex flex-col rounded-2xl panel-body" data-surface="light-panel">
           <div>
-            <h2 className="text-base font-semibold tracking-tight text-foreground">
+            <h2 className="heading-section font-semibold tracking-tight text-foreground">
               {t("sections.quickActions.title")}
             </h2>
             <p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">
@@ -725,7 +759,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
 
           {/* auto-rows-fr = every card same height; the trailing odd card spans
               both columns instead of leaving a dead half-row gap. */}
-          <div className="mt-3 grid flex-1 auto-rows-fr grid-cols-1 gap-2 sm:grid-cols-2 sm:[&>a:last-child:nth-child(odd)]:col-span-2">
+          <div className="admin-quick-actions-grid mt-3 grid min-w-0 flex-1 auto-rows-fr grid-cols-1 gap-2 sm:grid-cols-2 sm:[&>a:last-child:nth-child(odd)]:col-span-2">
             {quickActions.map((action, idx) => {
               const Icon = action.icon;
 
@@ -733,7 +767,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
                 <Link
                   key={`${action.href}-${idx}`}
                   href={action.href}
-                  className={`${adminInteractiveCardClassName} group flex min-w-0 items-start gap-2.5 p-3`}
+                  className={`${adminInteractiveCardClassName} group flex w-full min-w-0 max-w-full items-start gap-2.5 overflow-hidden p-3`}
                   data-surface="light-card"
                 >
                   <div className={`shrink-0 rounded-lg p-2 ${action.iconClassName}`}>
@@ -741,19 +775,21 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    {/* flex-wrap so the badge drops to its own line instead of truncating
-                        ("72 INACTIVE EMPLOY…") when it can't fit beside the label on phones. */}
+                    {/* The label keeps a flex-basis so a long nowrap badge ("90 INACTIVE
+                        EMPLOYERS") wraps to its own line instead of squeezing the label —
+                        squeezed text breaks mid-word here because .page-container sets
+                        overflow-wrap:anywhere, which rendered "User Mana/geme/nt". */}
                     <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                      <p className="min-w-0 flex-1 text-sm font-semibold leading-5 text-foreground">
+                      <p className="min-w-0 grow basis-32 text-sm font-semibold leading-5 text-foreground">
                         {action.label}
                       </p>
                       {action.badgeNode ?? (
-                        <span className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] ${action.badgeClassName}`}>
+                        <span className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] ${action.badgeClassName}`}>
                           {action.badge}
                         </span>
                       )}
                     </div>
-                    <p className="mt-1 line-clamp-2 text-xs leading-4 text-muted-foreground">
+                    <p className="mt-1 line-clamp-2 [overflow-wrap:anywhere] text-xs leading-4 text-muted-foreground">
                       {action.desc}
                     </p>
                   </div>
@@ -767,7 +803,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
 
         <section className="workspace-panel-surface flex flex-col rounded-2xl panel-body" data-surface="light-panel">
           <div>
-            <h2 className="text-base font-semibold tracking-tight text-foreground">
+            <h2 className="heading-section font-semibold tracking-tight text-foreground">
               {t("sections.recentActivity.title")}
             </h2>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">
@@ -822,12 +858,12 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
         <section className={`${adminPanelClassName} flex flex-col`} data-surface="light-panel">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
             <div>
-              <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">{t("sections.hiringFunnel.title")}</h2>
+              <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("sections.hiringFunnel.title")}</h2>
               <p className="mt-2 text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6">
                 {t("sections.hiringFunnel.description")}
               </p>
             </div>
-            <div className="shrink-0 self-start rounded-2xl border border-emerald-100 bg-emerald-50/80 px-3 py-2 text-emerald-700 shadow-sm dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200">
+            <div className="shrink-0 self-start rounded-2xl border border-emerald-100 bg-emerald-50/80 text-emerald-700 shadow-sm chip-pad">
               <p className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.16em] sm:text-[11px] sm:tracking-[0.18em]">{t("funnel.placements")}</p>
               <p className="mt-1 text-xs font-semibold sm:text-sm">{t("sections.hiringFunnel.closed", { count: stats.totalPlacements })}</p>
             </div>
@@ -845,11 +881,11 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
                 <div
                   key={stage.label}
                   aria-label={t("sections.hiringFunnel.stageAria", { label: stage.label, count: stage.count })}
-                  className="workspace-glass-panel flex flex-col rounded-xl p-3"
+                  className="workspace-glass-panel card-pad flex flex-col rounded-xl"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <span className="text-xs font-semibold text-muted-foreground">{stage.label}</span>
-                    <span className="text-xl font-semibold tracking-tight text-foreground">{stage.count.toLocaleString()}</span>
+                    <span className="text-xl font-semibold tracking-tight text-foreground">{formatCount(stage.count)}</span>
                   </div>
                   <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary">
                     <div
@@ -875,16 +911,16 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
         <section className={`${adminPanelClassName} flex flex-col`} data-surface="light-panel">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h2 className="text-xl font-semibold tracking-tight text-foreground">{t("sections.trends.title")}</h2>
+              <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("sections.trends.title")}</h2>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 {t("sections.trends.description")}
               </p>
             </div>
             <div className="flex flex-wrap gap-2 text-xs font-semibold">
-              <span className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3.5 py-1.5 text-blue-800 shadow-sm dark:border-blue-500/30 dark:bg-blue-500/15 dark:text-blue-100">
+              <span className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3.5 py-1.5 text-blue-800 shadow-sm">
                 <span className="h-2 w-2 rounded-full bg-blue-500" /> {t("funnel.jobs")}
               </span>
-              <span className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-violet-50 px-3.5 py-1.5 text-violet-800 shadow-sm dark:border-violet-500/30 dark:bg-violet-500/15 dark:text-violet-100">
+              <span className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-violet-50 px-3.5 py-1.5 text-violet-800 shadow-sm">
                 <span className="h-2 w-2 rounded-full bg-violet-500" /> {t("funnel.applications")}
               </span>
             </div>
@@ -892,13 +928,16 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
 
           {/* Chart takes the slack so this panel matches its taller neighbour
               instead of ending in dead whitespace. */}
-          <div className="mt-4 flex flex-1 rounded-2xl border border-border/70 bg-card/95 p-3 shadow-sm backdrop-blur-sm">
+          {/* preserveAspectRatio is uniform on purpose: "none" stretched the viewBox
+              to the panel box, and the month labels and axis numbers live inside the
+              SVG, so they were squashed or smeared along with it. */}
+          <div className="mt-4 flex flex-1 rounded-2xl border border-border/70 bg-card/95 shadow-sm backdrop-blur-sm chip-pad">
             <svg
               viewBox={`0 0 ${chartWidth} ${chartHeight}`}
               role="img"
               aria-label={t("sections.trends.chartAria")}
               className="h-full min-h-[190px] w-full text-muted-foreground"
-              preserveAspectRatio="none"
+              preserveAspectRatio="xMidYMid meet"
             >
               {[0.25, 0.5, 0.75, 1].map((tick) => {
                 const y = chartHeight - chartPadding - (chartHeight - chartPadding * 2) * tick;
@@ -960,15 +999,15 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
         <section className={`${adminPanelClassName} flex flex-col`} data-surface="light-panel">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
             <div>
-              <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">{t("sections.usersByRole.title")}</h2>
+              <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("sections.usersByRole.title")}</h2>
               <p className="mt-2 text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6">
                 {t("sections.usersByRole.description")}
               </p>
             </div>
             {dominantRole ? (
-              <div className="shrink-0 self-start rounded-2xl border border-sky-100 bg-sky-50/70 px-3 py-2 text-sky-700 shadow-sm dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-200 sm:text-right">
-                <p className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.16em] text-sky-700 dark:text-sky-200 sm:text-[11px] sm:tracking-[0.18em]">{t("roleInsights.dominant")}</p>
-                <p className="mt-1 text-xs font-semibold text-sky-700 dark:text-sky-100 sm:text-sm">{formatRoleLabel(dominantRole._id, t)}</p>
+              <div className="shrink-0 self-start rounded-2xl border border-sky-100 bg-sky-50/70 text-sky-700 shadow-sm sm:text-right chip-pad">
+                <p className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.16em] text-sky-700 sm:text-[11px] sm:tracking-[0.18em]">{t("roleInsights.dominant")}</p>
+                <p className="mt-1 text-xs font-semibold text-sky-700 sm:text-sm">{formatRoleLabel(dominantRole._id, t)}</p>
               </div>
             ) : null}
           </div>

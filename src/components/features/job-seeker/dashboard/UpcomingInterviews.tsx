@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { Calendar, Video, MapPin, Monitor, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { formatDate, formatTime } from "@/lib/ui/intlFormat";
 
 interface UpcomingInterview {
   _id: string;
@@ -56,7 +57,7 @@ export async function UpcomingInterviews({
   return (
     <div className="card-base panel-body">
       <div className="mb-3 sm:mb-4 flex items-center justify-between">
-        <h3 className="text-sm font-semibold">{t("upcomingInterviews")}</h3>
+        <h3 className="heading-label font-semibold">{t("upcomingInterviews")}</h3>
         <Link
           href={`/${locale}/job-seeker/interviews`}
           className="text-xs font-medium text-primary hover:underline"
@@ -73,7 +74,7 @@ export async function UpcomingInterviews({
           return (
             <div
               key={interview._id}
-              className="rounded-lg border border-border p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-sm"
+              className="rounded-lg border border-border transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-sm card-pad"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
@@ -87,13 +88,13 @@ export async function UpcomingInterviews({
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <span className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Calendar className="h-3 w-3" />
-                      {date.toLocaleDateString(undefined, {
+                      {formatDate(date, {
                         weekday: "short",
                         month: "short",
                         day: "numeric",
                       })}
                       {" at "}
-                      {date.toLocaleTimeString(undefined, {
+                      {formatTime(date, {
                         hour: "2-digit",
                         minute: "2-digit",
                       })}
@@ -114,7 +115,7 @@ export async function UpcomingInterviews({
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    <Button size="sm" className="h-8 text-xs">
+                    <Button size="dense" className="text-xs">
                       <ExternalLink className="mr-1 h-3 w-3" />
                       Join
                     </Button>

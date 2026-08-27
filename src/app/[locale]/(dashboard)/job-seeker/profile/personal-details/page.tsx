@@ -143,7 +143,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-5 sm:p-6 shadow-sm">
+    <div className="rounded-xl border border-border bg-card shadow-sm panel-body">
       <div className="mb-5 flex items-start gap-3">
         <div className="mt-0.5 rounded-lg bg-primary/10 p-2 text-primary shrink-0">
           {icon}
@@ -479,7 +479,7 @@ export default function PersonalDetailsPage() {
         </Section>
 
         {/* ── Save Bar ─────────────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-card px-5 py-4 shadow-sm">
+        <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-card shadow-sm panel-body">
           <div className="flex items-center gap-2 text-sm">
             {saveState === "saved" && (
               <>

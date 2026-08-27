@@ -63,7 +63,7 @@ export function AIEmailDraftButton({ applicationId, candidateName, defaultContex
       const data: EmailDraft = await res.json();
       setDraft(data);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("failedToGenerate"));
+      toast.error(t("failedToGenerate"));
     } finally {
       setLoading(false);
     }
@@ -81,7 +81,7 @@ export function AIEmailDraftButton({ applicationId, candidateName, defaultContex
       <Button
         variant="ghost"
         size="sm"
-        className="h-7 rounded-lg px-2.5 text-[11px] font-semibold text-violet-700 hover:bg-violet-50 dark:text-violet-400 dark:hover:bg-violet-500/10"
+        className="h-7 rounded-lg px-2.5 text-[11px] font-semibold text-violet-700 hover:bg-violet-50"
         onClick={() => setOpen(true)}
         title="AI Email Draft"
       >
@@ -90,7 +90,7 @@ export function AIEmailDraftButton({ applicationId, candidateName, defaultContex
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[88vh] max-w-lg overflow-y-auto rounded-[24px] border-border bg-background p-0">
+        <DialogContent className="max-h-[88vh] max-w-lg overflow-y-auto rounded-3xl border-border bg-background p-0">
           <DialogHeader className="border-b border-border px-6 py-5">
             <div className="flex items-center gap-2">
               <Mail className="h-5 w-5 text-violet-500" />
@@ -125,13 +125,13 @@ export function AIEmailDraftButton({ applicationId, candidateName, defaultContex
                     placeholder={t("customInstructionsPlaceholder")}
                     rows={3}
                     maxLength={300}
-                    className="mt-1 w-full rounded-xl border border-border bg-background/70 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20 resize-none"
+                    className="mt-1 w-full rounded-xl border border-border bg-background/70 text-sm text-foreground placeholder:text-muted-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20 resize-none chip-pad"
                   />
                 </div>
-                <Button
+                <Button size="lg"
                   onClick={generate}
                   disabled={loading}
-                  className="w-full h-11 rounded-xl bg-violet-600 text-sm font-semibold text-white hover:bg-violet-700"
+                  className="w-full rounded-xl bg-violet-600 text-sm font-semibold text-white hover:bg-violet-700"
                 >
                   {loading ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -143,12 +143,12 @@ export function AIEmailDraftButton({ applicationId, candidateName, defaultContex
               </>
             ) : (
               <>
-                <div className="workspace-glass-panel rounded-2xl p-4">
+                <div className="workspace-glass-panel card-pad rounded-2xl">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("subject")}</p>
                   <p className="mt-1 text-sm font-medium text-foreground">{draft.subject}</p>
                 </div>
 
-                <div className="workspace-glass-panel rounded-2xl p-4">
+                <div className="workspace-glass-panel card-pad rounded-2xl">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("emailBody")}</p>
                   <div
                     className="mt-2 text-sm leading-6 text-muted-foreground"
@@ -169,7 +169,7 @@ export function AIEmailDraftButton({ applicationId, candidateName, defaultContex
                   <Button
                     onClick={copyToClipboard}
                     variant="outline"
-                    className="flex-1 h-10 rounded-xl border-border text-sm"
+                    className="flex-1 rounded-xl border-border text-sm"
                   >
                     <Copy className="mr-2 h-3.5 w-3.5" />
                     {tc("copy")}

@@ -30,6 +30,7 @@ import CmsHeroFilters, {
   cmsFiltersAreActive,
   getDefaultCmsFilterValues,
 } from "@/components/features/admin/CmsHeroFilters";
+import { formatCount, formatDate, formatDateTime } from "@/lib/ui/intlFormat";
 
 interface ContactItem {
   _id: string;
@@ -126,18 +127,18 @@ export default function ContactSubmissionsPage() {
       {ConfirmDialogNode}
 
       <DashboardPageHeader
-        eyebrow={t("cmsWorkspace")}
+        compactOnMobile
         title={t("contactInbox")}
         description={t("heroDescription")}
         summary={{
           label: t("totalMessages"),
-          value: total.toLocaleString(),
+          value: formatCount(total),
           note: t("acrossPages", { count: totalPages }),
         }}
         metrics={[
-          { label: t("statTotal"), value: total, note: t("allSubmissions"), icon: Mail, iconClassName: "text-amber-600", iconSurfaceClassName: "bg-amber-50 dark:bg-amber-950/30" },
-          { label: t("statUnread"), value: unreadCount, note: t("awaitingReview"), icon: MessageSquare, iconClassName: "text-sky-600", iconSurfaceClassName: "bg-sky-50 dark:bg-sky-950/30" },
-          { label: t("statRead"), value: items.length - unreadCount, note: t("alreadyReviewed"), icon: MailOpen, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50 dark:bg-emerald-950/30" },
+          { label: t("statTotal"), value: total, note: t("allSubmissions"), icon: Mail, iconClassName: "text-amber-600", iconSurfaceClassName: "bg-amber-50" },
+          { label: t("statUnread"), value: unreadCount, note: t("awaitingReview"), icon: MessageSquare, iconClassName: "text-sky-600", iconSurfaceClassName: "bg-sky-50" },
+          { label: t("statRead"), value: items.length - unreadCount, note: t("alreadyReviewed"), icon: MailOpen, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50" },
         ]}
       >
         <CmsHeroFilters
@@ -152,7 +153,7 @@ export default function ContactSubmissionsPage() {
         />
       </DashboardPageHeader>
 
-      <section className="workspace-panel-surface overflow-hidden rounded-[28px]">
+      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -180,13 +181,13 @@ export default function ContactSubmissionsPage() {
                 <TableRow className="border-border/70 hover:bg-transparent">
                   <TableCell colSpan={6} className="px-6 py-16 text-center">
                     <div className="flex flex-col items-center gap-2">
-                      <div className="workspace-muted-pill mx-auto mb-2 flex h-16 w-16 items-center justify-center rounded-[24px]">
+                      <div className="workspace-muted-pill mx-auto mb-2 flex h-16 w-16 items-center justify-center rounded-3xl">
                         <Inbox className="h-7 w-7 text-muted-foreground" />
                       </div>
                       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                         {hasActiveFilters ? t("emptyStateNoMatchingLabel") : t("emptyStateNoMessagesLabel")}
                       </p>
-                      <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">
+                      <h3 className="heading-subsection mt-1 font-semibold tracking-tight text-foreground">
                         {hasActiveFilters ? t("emptyStateNoMatchingTitle") : t("emptyStateNoContactsTitle")}
                       </h3>
                       <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-muted-foreground">
@@ -195,10 +196,10 @@ export default function ContactSubmissionsPage() {
                           : t("emptyStateNoContactsDesc")}
                       </p>
                       {hasActiveFilters && (
-                        <Button
+                        <Button size="sm"
                           onClick={resetFilters}
                           variant="outline"
-                          className="mt-4 h-9 rounded-xl border-border bg-background/70 px-4 text-sm"
+                          className="mt-4 rounded-xl border-border bg-background/70 px-4 text-sm"
                         >
                           {t("clearFiltersButton")}
                         </Button>
@@ -219,7 +220,7 @@ export default function ContactSubmissionsPage() {
                     <TableCell className="text-muted-foreground">{item.email}</TableCell>
                     <TableCell className="max-w-[200px] truncate">{item.subject || "—"}</TableCell>
                     <TableCell className="text-muted-foreground text-sm">
-                      {new Date(item.createdAt).toLocaleDateString()}
+                      {formatDate(new Date(item.createdAt))}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-end gap-1">
@@ -274,7 +275,7 @@ export default function ContactSubmissionsPage() {
                 </div>
                 <div>
                   <p className="font-medium text-muted-foreground">{t("fieldDate")}</p>
-                  <p>{new Date(viewItem.createdAt).toLocaleString()}</p>
+                  <p>{formatDateTime(new Date(viewItem.createdAt))}</p>
                 </div>
               </div>
               <div>
@@ -283,7 +284,7 @@ export default function ContactSubmissionsPage() {
               </div>
               <div>
                 <p className="font-medium text-muted-foreground text-sm">{t("fieldMessage")}</p>
-                <div className="mt-1 rounded-lg border bg-muted/50 p-4 text-sm whitespace-pre-wrap">
+                <div className="mt-1 rounded-lg border bg-muted/50 text-sm whitespace-pre-wrap card-pad">
                   {viewItem.message}
                 </div>
               </div>

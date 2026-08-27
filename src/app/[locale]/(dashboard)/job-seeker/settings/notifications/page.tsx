@@ -268,14 +268,14 @@ export default function NotificationSettingsPage() {
 
       {/* Global Unsubscribe Banner */}
       {prefs.unsubscribedAll && (
-        <div className="mb-4 p-4 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30">
+        <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 card-pad">
           <div className="flex items-start gap-3">
             <Mail className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
             <div>
-              <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+              <p className="text-sm font-medium text-amber-800">
                 {isAr ? "جميع الإشعارات عبر البريد الإلكتروني متوقفة" : "All email notifications are turned off"}
               </p>
-              <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+              <p className="text-xs text-amber-600 mt-1">
                 {isAr
                   ? "لن تتلقى أي رسائل بريد إلكتروني. ستظل الإشعارات داخل التطبيق تعمل."
                   : "You won't receive any emails. In-app notifications will still work."}
@@ -293,7 +293,7 @@ export default function NotificationSettingsPage() {
               <Clock className="w-4 h-4 text-primary" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold tracking-tight">
+              <h3 className="heading-label font-semibold tracking-tight">
                 {t("globalFrequency")}
               </h3>
               <p className="text-xs text-muted-foreground mt-0.5">
@@ -307,11 +307,7 @@ export default function NotificationSettingsPage() {
             <button
               key={opt.value}
               onClick={() => setPrefs((p) => ({ ...p, emailFrequency: opt.value }))}
-              className={`p-3 rounded-lg border-2 text-left transition-all ${
-                prefs.emailFrequency === opt.value
-                  ? "border-primary bg-primary/5"
-                  : "border-border/50 hover:border-border"
-              }`}
+              className={`rounded-lg border-2 text-left transition-all ${ prefs.emailFrequency === opt.value ? "border-primary bg-primary/5" : "border-border/50 hover:border-border" } chip-pad`}
             >
               <div className="text-sm font-medium">{t(opt.labelKey)}</div>
               <div className="text-[11px] text-muted-foreground mt-1 leading-tight">
@@ -330,7 +326,7 @@ export default function NotificationSettingsPage() {
               <Bell className="w-4 h-4 text-primary" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold tracking-tight">
+              <h3 className="heading-label font-semibold tracking-tight">
                 {t("categories")}
               </h3>
               <p className="text-xs text-muted-foreground mt-0.5">

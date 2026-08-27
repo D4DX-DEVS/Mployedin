@@ -29,6 +29,7 @@ import CmsHeroFilters, {
   getDefaultCmsFilterValues,
 } from "@/components/features/admin/CmsHeroFilters";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 export interface CmsColumn {
   key: string;
@@ -226,7 +227,7 @@ export default function CmsPage({
         eyebrow={t("cmsWorkspace")}
         title={title}
         description={description}
-        summary={{ label: t("totalRecords"), value: total.toLocaleString(), note: t("acrossPages", { count: totalPages }) }}
+        summary={{ label: t("totalRecords"), value: formatCount(total), note: t("acrossPages", { count: totalPages }) }}
         actions={allowCreate && can(resource as "cms", "create") ? (
           <Button
             onClick={() =>
@@ -260,7 +261,7 @@ export default function CmsPage({
         />
       </DashboardPageHeader>
 
-      <section className="workspace-panel-surface overflow-hidden rounded-[20px] sm:rounded-[28px]">
+      <section className="workspace-panel-surface overflow-hidden rounded-3xl sm:rounded-3xl">
         <div className="overflow-x-auto" data-mobile-table="responsive">
           <Table className="responsive-card-table">
             <TableHeader>
@@ -289,13 +290,13 @@ export default function CmsPage({
                 <TableRow>
                   <TableCell colSpan={columns.length + 1} className="px-4 py-8 text-center sm:px-6 sm:py-16">
                     <div className="flex flex-col items-center gap-2">
-                      <div className="workspace-muted-pill mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-[20px] sm:h-16 sm:w-16 sm:rounded-[24px]">
+                      <div className="workspace-muted-pill mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-3xl sm:h-16 sm:w-16 sm:rounded-3xl">
                         <Inbox className="h-5 w-5 text-muted-foreground sm:h-7 sm:w-7" />
                       </div>
                       <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">
                         {hasActiveFilters ? t("noMatchingItems") : t("noItemsYet")}
                       </p>
-                      <h3 className="mt-1 text-base font-semibold tracking-tight text-foreground sm:text-lg">
+                      <h3 className="heading-subsection mt-1 font-semibold tracking-tight text-foreground">
                         {hasActiveFilters
                           ? t("noItemsMatchFilters")
                           : t("noFoundTitle", { title: title.toLowerCase() })}
@@ -306,10 +307,10 @@ export default function CmsPage({
                           : t("clickAddNewMsg")}
                       </p>
                       {hasActiveFilters && (
-                        <Button
+                        <Button size="sm"
                           onClick={resetFilters}
                           variant="outline"
-                          className="mt-3 h-9 rounded-xl border-border bg-background/70 px-3 text-xs sm:mt-4 sm:px-4 sm:text-sm"
+                          className="mt-3 rounded-xl border-border bg-background/70 px-3 text-xs sm:mt-4 sm:px-4 sm:text-sm"
                         >
                           {t("clearFilters")}
                         </Button>

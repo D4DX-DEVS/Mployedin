@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 interface Banner {
   _id: string;
@@ -273,7 +274,7 @@ export default function LandingPage() {
               </p>
 
               {audience === "jobSeeker" ? (
-              <form onSubmit={handleSearch} className="mx-auto mt-8 max-w-2xl rounded-2xl border border-border/70 bg-card p-3 shadow-[0_20px_60px_-30px_rgba(15,23,42,0.35)] dark:shadow-[0_20px_60px_-30px_rgba(0,0,0,0.7)] lg:mx-0">
+              <form onSubmit={handleSearch} className="mx-auto mt-8 max-w-2xl rounded-2xl border border-border/70 bg-card shadow-[0_20px_60px_-30px_rgba(15,23,42,0.35)] lg:mx-0 chip-pad">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <label className="flex min-h-12 flex-col items-start justify-center rounded-xl border border-border/70 px-4 text-start">
                     <span className="text-[11px] font-semibold text-muted-foreground">{t("jobSearchLabel")}</span>
@@ -301,7 +302,7 @@ export default function LandingPage() {
                     </span>
                   </label>
 
-                  <Button type="submit" className="h-12 rounded-xl px-6 text-sm font-semibold sm:col-span-2">
+                  <Button size="lg" type="submit" className="rounded-xl px-6 text-sm font-semibold sm:col-span-2">
                     {t("findJobs2")}
                   </Button>
                 </div>
@@ -351,7 +352,7 @@ export default function LandingPage() {
 
             <div className="relative mx-auto hidden w-full max-w-lg lg:block" aria-hidden="true">
               <div className="absolute -inset-8 rounded-full bg-primary/10 blur-3xl" />
-              <div className="relative rotate-[1deg] rounded-[2rem] border border-white/60 bg-card/90 p-5 shadow-[0_40px_100px_-42px_rgba(30,47,108,0.48)] backdrop-blur dark:border-border/70">
+              <div className="relative rotate-[1deg] rounded-[2rem] border border-white/60 bg-card/90 shadow-[0_40px_100px_-42px_rgba(30,47,108,0.48)] backdrop-blur panel-body">
                 <div className="mb-5 flex items-center justify-between">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
@@ -376,7 +377,7 @@ export default function LandingPage() {
                         <div className="h-3 w-2/3 rounded-full bg-foreground/80" />
                         <div className="mt-2 h-2 w-1/2 rounded-full bg-muted-foreground/25" />
                       </div>
-                      <div className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                      <div className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-700">
                         {score}%
                       </div>
                     </div>
@@ -416,7 +417,7 @@ export default function LandingPage() {
                     />
                   )}
                   <div className="min-w-0 text-white">
-                    <h3 className="truncate text-base font-semibold" aria-live="polite">
+                    <h3 className="heading-subsection truncate font-semibold" aria-live="polite">
                       {isAr ? activeBanner?.titleAr || activeBanner?.title : activeBanner?.title}
                     </h3>
                     <p className="mt-0.5 truncate text-sm text-white/70">
@@ -509,12 +510,12 @@ export default function LandingPage() {
               return (
                 <article
                   key={benefit.title}
-                  className="group rounded-2xl border border-border/70 bg-card p-6 shadow-sm transition-all hover:-translate-y-1 hover:border-primary/25 hover:shadow-[0_20px_50px_-34px_rgba(30,47,108,0.45)]"
+                  className="group rounded-2xl border border-border/70 bg-card shadow-sm transition-all hover:-translate-y-1 hover:border-primary/25 hover:shadow-[0_20px_50px_-34px_rgba(30,47,108,0.45)] panel-body"
                 >
                   <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
                     <Icon className="h-5 w-5" />
                   </span>
-                  <h3 className="mt-5 text-lg font-semibold text-foreground">{benefit.title}</h3>
+                  <h3 className="heading-subsection mt-5 font-semibold text-foreground">{benefit.title}</h3>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">{benefit.description}</p>
                 </article>
               );
@@ -527,7 +528,7 @@ export default function LandingPage() {
         <div className="container mx-auto px-4 sm:px-6">
           <div className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_320px] xl:items-start">
             <div>
-              <h2 className="text-xl font-semibold text-foreground">{t("jobsByFunctionalArea")}</h2>
+              <h2 className="heading-section font-semibold text-foreground">{t("jobsByFunctionalArea")}</h2>
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 {functionalAreas.map((item) => (
                   <Link
@@ -542,7 +543,7 @@ export default function LandingPage() {
             </div>
 
             <div>
-              <h2 className="text-xl font-semibold text-foreground">{t("jobsByIndustry")}</h2>
+              <h2 className="heading-section font-semibold text-foreground">{t("jobsByIndustry")}</h2>
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 {industries.map((item) => (
                   <Link
@@ -556,8 +557,8 @@ export default function LandingPage() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-primary/15 bg-[linear-gradient(160deg,hsl(var(--brand-blue-dark))_0%,hsl(var(--brand-blue))_100%)] p-6 text-white shadow-[0_18px_50px_rgba(15,23,42,0.18)]">
-              <h3 className="text-xl font-semibold">{t("hireFaster")}</h3>
+            <div className="rounded-2xl border border-primary/15 bg-[linear-gradient(160deg,hsl(var(--brand-blue-dark))_0%,hsl(var(--brand-blue))_100%)] text-white shadow-[0_18px_50px_rgba(15,23,42,0.18)] panel-body">
+              <h3 className="heading-subsection font-semibold">{t("hireFaster")}</h3>
               <p className="mt-4 text-sm leading-6 text-white/80">
                 {t("hireFasterDesc")}
               </p>
@@ -597,7 +598,7 @@ export default function LandingPage() {
 
               <div className="grid gap-3">
                 {journeySteps.map((step) => (
-                  <div key={step.number} className="flex gap-4 rounded-2xl border border-white/12 bg-white/[0.07] p-4 backdrop-blur">
+                  <div key={step.number} className="flex gap-4 rounded-2xl border border-white/12 bg-white/[0.07] backdrop-blur card-pad">
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-xs font-bold text-[hsl(var(--brand-blue-dark))]">
                       {step.number}
                     </span>
@@ -618,7 +619,7 @@ export default function LandingPage() {
           <div className="container mx-auto px-4 sm:px-6">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
-                <h2 className="text-2xl font-semibold tracking-tight text-foreground">{t("learnWorkflow")}</h2>
+                <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("learnWorkflow")}</h2>
               </div>
               <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
                 {t("learnWorkflowDesc")}
@@ -627,7 +628,7 @@ export default function LandingPage() {
 
             <div className={`mt-8 grid gap-6 ${data.videos.length === 1 ? "max-w-4xl" : "lg:grid-cols-2 xl:grid-cols-3"}`}>
               {data.videos.slice(0, 3).map((video) => (
-                <div key={video._id} className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm dark:shadow-[0_4px_20px_rgba(0,0,0,0.15)]">
+                <div key={video._id} className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm">
                   <div className="aspect-video bg-black/5">
                     <iframe
                       src={getEmbedUrl(video.url)}
@@ -642,7 +643,7 @@ export default function LandingPage() {
                       <Play className="h-3.5 w-3.5" />
                       {t("watch")}
                     </div>
-                    <h3 className="mt-4 text-lg font-semibold text-foreground">{isAr ? video.titleAr || video.title : video.title}</h3>
+                    <h3 className="heading-subsection mt-4 font-semibold text-foreground">{isAr ? video.titleAr || video.title : video.title}</h3>
                     {(video.description || video.descriptionAr) && (
                       <p className="mt-2 text-sm leading-6 text-muted-foreground">
                         {isAr ? video.descriptionAr || video.description : video.description}
@@ -660,12 +661,12 @@ export default function LandingPage() {
         <section className="py-10 lg:py-12">
           <div className="container mx-auto px-4 sm:px-6">
             <div className="mb-8 text-center">
-              <h2 className="text-2xl font-semibold tracking-tight text-foreground">{t("testimonialHeading")}</h2>
+              <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("testimonialHeading")}</h2>
             </div>
 
             <div className="grid gap-6 lg:grid-cols-3">
               {data.testimonials.slice(0, 3).map((testimonial) => (
-                <div key={testimonial._id} className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm dark:shadow-[0_4px_20px_rgba(0,0,0,0.15)]">
+                <div key={testimonial._id} className="rounded-2xl border border-border/70 bg-card shadow-sm panel-body">
                   <div className="flex gap-1">
                     {Array.from({ length: testimonial.rating }).map((_, index) => (
                       <Star key={index} className="h-4 w-4 fill-amber-400 text-amber-400" />
@@ -704,7 +705,7 @@ export default function LandingPage() {
           <div className="container mx-auto px-4 sm:px-6">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
-                <h2 className="text-2xl font-semibold tracking-tight text-foreground">{t("blogHeading2")}</h2>
+                <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("blogHeading2")}</h2>
               </div>
               <Link href={`/${locale}/blog`}>
                 <Button variant="outline">{t("visitBlog")}</Button>
@@ -713,10 +714,10 @@ export default function LandingPage() {
 
             <div className="mt-8 grid gap-6 lg:grid-cols-3">
               {data.recentPosts.slice(0, 3).map((post) => (
-                <Link key={post._id} href={`/${locale}/blog/${post.slug}`} className="group overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm transition-shadow hover:shadow-md dark:shadow-[0_4px_20px_rgba(0,0,0,0.15)] dark:hover:shadow-[0_8px_28px_rgba(0,0,0,0.25)]">
+                <Link key={post._id} href={`/${locale}/blog/${post.slug}`} className="group overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm transition-shadow hover:shadow-md">
                   {post.coverImage && <img src={post.coverImage} alt="" className="h-52 w-full object-cover" />}
                   <div className="p-6">
-                    <h3 className="text-lg font-semibold tracking-tight text-foreground transition-colors group-hover:text-primary">
+                    <h3 className="heading-subsection font-semibold tracking-tight text-foreground transition-colors group-hover:text-primary">
                       {isAr ? post.titleAr || post.title : post.title}
                     </h3>
                     <p className="mt-3 line-clamp-3 text-sm leading-6 text-muted-foreground">
@@ -724,7 +725,7 @@ export default function LandingPage() {
                     </p>
                     <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                       {post.author && <span>{post.author}</span>}
-                      {post.publishedAt && <span>{new Date(post.publishedAt).toLocaleDateString()}</span>}
+                      {post.publishedAt && <span>{formatDate(new Date(post.publishedAt))}</span>}
                     </div>
                   </div>
                 </Link>
@@ -738,7 +739,7 @@ export default function LandingPage() {
         <section className="py-10 lg:py-12">
           <div className="container mx-auto max-w-4xl px-4 sm:px-6">
             <div className="mb-8 text-center">
-              <h2 className="text-2xl font-semibold tracking-tight text-foreground">{t("faqHeading2")}</h2>
+              <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("faqHeading2")}</h2>
             </div>
 
             <div className="space-y-3">

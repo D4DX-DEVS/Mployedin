@@ -28,6 +28,8 @@ import {
   Eye, Building2, MapPin, DollarSign, Clock, Calendar, Globe, UserCheck,
   Wand2, CheckCircle, ArrowRight, Trash2, Edit2, ClipboardList, Filter, ChevronDown, ChevronUp,
 } from "lucide-react";
+import { toUserFacingError } from "@/lib/errors/user-facing";
+import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -108,11 +110,11 @@ function getSourceLabel(job: Job, t: ReturnType<typeof useTranslations>) {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  active: "bg-status-selected-bg text-emerald-700 border-status-selected/20 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-500/30",
-  draft: "bg-status-shortlisted-bg text-status-shortlisted border-status-shortlisted/20 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-500/30",
-  paused: "bg-sky-100 text-status-applied border-border dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-500/30",
+  active: "bg-status-selected-bg text-emerald-700 border-status-selected/20",
+  draft: "bg-status-shortlisted-bg text-status-shortlisted border-status-shortlisted/20",
+  paused: "bg-sky-100 text-status-applied border-border",
   closed: "bg-muted text-muted-foreground",
-  expired: "bg-status-rejected-bg text-status-rejected border-status-rejected/20 dark:bg-red-950/40 dark:text-red-300 dark:border-red-500/30",
+  expired: "bg-status-rejected-bg text-status-rejected border-status-rejected/20",
 };
 
 const JOB_SUMMARY_MAX_LENGTH = 180;
@@ -123,8 +125,8 @@ function formatSalary(job: Job, t: ReturnType<typeof useTranslations>): string |
   const currency = job.salary?.currency ?? "USD";
   if (min <= 0 && max <= 0) return null;
   if (job.salary?.isNegotiable) return t("negotiable");
-  if (min > 0 && max > 0) return `${min.toLocaleString()} - ${max.toLocaleString()} ${currency}`;
-  return `${Math.max(min, max).toLocaleString()} ${currency}`;
+  if (min > 0 && max > 0) return `${formatCount(min)} - ${formatCount(max)} ${currency}`;
+  return `${formatCount(Math.max(min, max))} ${currency}`;
 }
 
 function getJobSummary(job: Job): string | null {
@@ -219,7 +221,7 @@ export default function AdminJobsPage() {
       setServerApplicants(typeof data.totalApplicants === "number" ? data.totalApplicants : null);
       updateTotal(data.pagination?.total ?? data.total ?? data.totalCount ?? ((data.totalPages ?? 1) * limit));
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : t("jobLoadFailed");
+      const message = toUserFacingError(error, { fallback: t("jobLoadFailed") }).message;
       setErrorMessage(message);
       toast.error(message);
     } finally {
@@ -254,7 +256,7 @@ export default function AdminJobsPage() {
     { header: t("location"), key: "location", formatter: (v) => formatLocation(v as Job["location"]) },
     { header: t("categoryLabel"), key: "category", formatter: (v) => String(v ?? "—") },
     { header: t("applicantsCountLabel"), key: "applicantsCount", formatter: (v) => String(v ?? 0) },
-    { header: t("createdLabel"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
+    { header: t("createdLabel"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: jobs as unknown as Record<string, unknown>[],
@@ -313,14 +315,8 @@ export default function AdminJobsPage() {
 
       {/* ─── Compact page header ──────────────────────────────────────── */}
       <DashboardPageHeader
-        eyebrow={t("recruitmentControl")}
         title={t("jobListings")}
         description={t("jobListingsDescription")}
-        summary={{
-          label: t("platformTotal"),
-          value: t("jobsCount", { total: total.toLocaleString() }),
-          note: t("acrossPages", { totalPages }),
-        }}
         actions={(
           <Link href={`/${locale}/admin/jobs/new`}>
             <Button size="lg" className="h-10 gap-2 rounded-xl px-4">
@@ -330,11 +326,12 @@ export default function AdminJobsPage() {
           </Link>
         )}
         metrics={[
-          { label: t("totalJobs"), value: total, note: t("totalJobsNote"), icon: Briefcase, iconClassName: "text-status-applied", iconSurfaceClassName: "bg-status-applied-bg dark:bg-sky-950/30" },
-          { label: t("active"), value: activeJobs, note: t("activeNote"), icon: ShieldCheck, iconClassName: "text-status-selected", iconSurfaceClassName: "bg-status-selected-bg dark:bg-emerald-950/30" },
-          { label: t("draftJobs"), value: draftJobs, note: t("draftJobsNote"), icon: FileText, iconClassName: "text-status-shortlisted", iconSurfaceClassName: "bg-status-shortlisted-bg dark:bg-amber-950/30" },
-          { label: t("applicants"), value: totalApplicants, note: t("applicantsNote"), icon: Users, iconClassName: "text-status-interview", iconSurfaceClassName: "bg-status-interview-bg dark:bg-violet-950/30" },
+          { label: t("totalJobs"), value: total, note: t("totalJobsNote"), icon: Briefcase, iconClassName: "text-status-applied", iconSurfaceClassName: "bg-status-applied-bg" },
+          { label: t("active"), value: activeJobs, note: t("activeNote"), icon: ShieldCheck, iconClassName: "text-status-selected", iconSurfaceClassName: "bg-status-selected-bg" },
+          { label: t("draftJobs"), value: draftJobs, note: t("draftJobsNote"), icon: FileText, iconClassName: "text-status-shortlisted", iconSurfaceClassName: "bg-status-shortlisted-bg" },
+          { label: t("applicants"), value: totalApplicants, note: t("applicantsNote"), icon: Users, iconClassName: "text-status-interview", iconSurfaceClassName: "bg-status-interview-bg" },
         ]}
+        compactOnMobile
         footer={(
           <>
             <button
@@ -365,7 +362,7 @@ export default function AdminJobsPage() {
 
         {/* ─── Expandable Filters ─────────────────────────────────────── */}
         {showFilters && (
-          <div className="mt-4 space-y-3 rounded-[20px] border border-border/30 bg-background/40 p-4 backdrop-blur-sm dark:bg-background/20">
+          <div className="mt-4 space-y-3 rounded-3xl border border-border/30 bg-background/40 backdrop-blur-sm card-pad">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -494,20 +491,20 @@ export default function AdminJobsPage() {
 
       {/* ─── Error ────────────────────────────────────────────────────── */}
       {errorMessage && (
-        <div className="rounded-2xl border border-status-rejected/20 bg-rose-50/90 px-4 py-3 text-sm text-rose-700 shadow-sm dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">
+        <div className="rounded-2xl border border-status-rejected/20 bg-rose-50/90 px-4 py-3 text-sm text-rose-700 shadow-sm">
           {errorMessage}
         </div>
       )}
 
       {/* ─── Job Cards ────────────────────────────────────────────────── */}
       {loading ? (
-        <ListSkeleton count={5} itemClassName="h-40 rounded-[28px]" className="space-y-4" />
+        <ListSkeleton count={5} itemClassName="h-40 rounded-3xl" className="space-y-4" />
       ) : jobs.length === 0 ? (
         <EmptyState
           icon={Inbox}
           title={hasActiveFilters ? t("noMatchingJobsHeading") : t("noJobsYetHeading")}
           description={hasActiveFilters ? t("noMatchingJobsDescription") : t("noJobsYetDescription")}
-          action={hasActiveFilters ? <Button onClick={resetFilters} variant="outline" className="h-11 rounded-xl border-border bg-background/70 px-4 text-sm">{t("clearFilters")}</Button> : undefined}
+          action={hasActiveFilters ? <Button size="lg" onClick={resetFilters} variant="outline" className="rounded-xl border-border bg-background/70 px-4 text-sm">{t("clearFilters")}</Button> : undefined}
           className="workspace-panel-surface"
         />
       ) : (
@@ -521,41 +518,41 @@ export default function AdminJobsPage() {
             return (
               <article
                 key={job._id}
-                className="workspace-panel-surface rounded-[22px] transition-all hover:-translate-y-0.5 hover:border-border panel-body"
+                className="workspace-panel-surface rounded-3xl transition-all hover:-translate-y-0.5 hover:border-border panel-body"
               >
                 <div className="grid gap-2.5 xl:grid-cols-[minmax(0,1fr)_268px] xl:items-start">
                   {/* Left: Job metadata */}
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <h3 className="text-base font-semibold tracking-tight text-foreground sm:text-lg">{job.title}</h3>
+                      <h3 className="heading-subsection font-semibold tracking-tight text-foreground">{job.title}</h3>
                       <Badge className={`${STATUS_COLORS[job.status] ?? ""} border px-2 py-0 text-[11px] font-medium capitalize`}>{job.status}</Badge>
                     </div>
                     <div className="mt-1.5 flex flex-wrap gap-1">
                       {job.employerId?.companyName && (
-                        <span className="flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-slate-300">
+                        <span className="flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
                           <Building2 className="h-3 w-3" />
                           {job.employerId.companyName}
                         </span>
                       )}
-                      <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-slate-300">{formatLocation(job.location)}</span>
+                      <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground">{formatLocation(job.location)}</span>
                       {job.category && (
-                        <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-slate-300">{job.category}</span>
+                        <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground">{job.category}</span>
                       )}
                       {salaryLabel && (
-                        <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-slate-300">{salaryLabel}</span>
+                        <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground">{salaryLabel}</span>
                       )}
                       {(job.vacancies ?? 0) > 0 && (
-                        <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-slate-300">
+                        <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
                           {t("openings", { count: job.vacancies ?? 0 })}
                         </span>
                       )}
-                      <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground dark:border-border dark:bg-background/80 dark:text-slate-300">{t("posted", { date: posted })}</span>
+                      <span className="rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground">{t("posted", { date: posted })}</span>
                     </div>
 
                     {(job.requirements?.skills?.length ?? 0) > 0 && (
                       <div className={`mt-1.5 flex flex-wrap gap-1 ${isExpanded ? "" : "max-sm:hidden"}`}>
                         {job.requirements!.skills!.slice(0, 4).map((s) => (
-                          <Badge key={s} variant="outline" className="rounded-full border-border bg-secondary/65 px-2 py-0.5 text-[11px] font-normal text-muted-foreground dark:border-border dark:bg-background/80 dark:text-slate-300">{s}</Badge>
+                          <Badge key={s} variant="outline" className="rounded-full border-border bg-secondary/65 px-2 py-0.5 text-[11px] font-normal text-muted-foreground">{s}</Badge>
                         ))}
                       </div>
                     )}
@@ -569,7 +566,7 @@ export default function AdminJobsPage() {
                       items={[
                         { label: t("source"), value: getSourceLabel(job, t) },
                         { label: t("applicantsCountLabel"), value: job.applicantsCount ?? 0 },
-                        { label: t("capacityLabel"), value: job.vacancies ?? "Open" },
+                        { label: t("capacityLabel"), value: job.vacancies ?? t("open") },
                       ]}
                     />
                     <button
@@ -581,18 +578,19 @@ export default function AdminJobsPage() {
                         return next;
                       })}
                       aria-label={t(isExpanded ? "collapseJobDetails" : "expandJobDetails", { title: job.title })}
-                      className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg border border-border/60 bg-background/60 py-1 text-[11px] font-medium text-muted-foreground sm:hidden"
+                      className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-border/60 bg-background/60 py-1 px-2 text-[11px] font-medium text-muted-foreground sm:hidden"
                     >
+                      <span>{isExpanded ? t("less") : t("more")}</span>
                       {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                     </button>
                   </div>
 
                   {/* Right: Action panel */}
-                  <div aria-label={`Actions for ${job.title}`} role="group" className="workspace-subtle-surface rounded-[16px] border border-border p-2 xl:self-start">
+                  <div aria-label={`Actions for ${job.title}`} role="group" className="workspace-subtle-surface rounded-2xl border border-border xl:self-start chip-pad">
                     <div className="grid grid-cols-2 gap-1.5">
                       <Button
                         size="sm"
-                        className="col-span-2 h-9 gap-2 rounded-lg px-3"
+                        className="col-span-2 gap-2 rounded-lg px-3"
                         onClick={() => setSelectedJob(job)}
                       >
                         <Eye className="h-4 w-4" />
@@ -600,25 +598,25 @@ export default function AdminJobsPage() {
                         <ArrowRight className="ml-auto h-4 w-4" />
                       </Button>
                       <Button
-                        size="sm"
+                        size="dense"
                         variant="outline"
-                        className={`h-8 gap-1.5 rounded-lg px-2.5 text-xs font-semibold ${isExpanded ? "" : "max-sm:hidden"}`}
+                        className={`gap-1.5 rounded-lg px-2.5 text-xs font-semibold ${isExpanded ? "" : "max-sm:hidden"}`}
                         onClick={() => router.push(`/${locale}/admin/jobs/${job._id}/edit`)}
                       >
                         <Edit2 className="h-3.5 w-3.5" /> {t("edit")}
                       </Button>
                       <Button
-                        size="sm"
+                        size="dense"
                         variant="outline"
-                        className={`h-8 gap-1.5 rounded-lg px-2.5 text-xs font-semibold ${isExpanded ? "" : "max-sm:hidden"}`}
+                        className={`gap-1.5 rounded-lg px-2.5 text-xs font-semibold ${isExpanded ? "" : "max-sm:hidden"}`}
                         onClick={() => router.push(`/${locale}/admin/applications?jobId=${job._id}`)}
                       >
                         <ClipboardList className="h-3.5 w-3.5" /> {t("applications")}
                       </Button>
                       <Button
-                        size="sm"
+                        size="dense"
                         variant="outline"
-                        className={`col-span-2 h-8 gap-1.5 rounded-lg border-destructive/20 px-2.5 text-xs font-semibold text-destructive hover:bg-destructive/5 ${isExpanded ? "" : "max-sm:hidden"}`}
+                        className={`col-span-2 gap-1.5 rounded-lg border-destructive/20 px-2.5 text-xs font-semibold text-destructive hover:bg-destructive/5 ${isExpanded ? "" : "max-sm:hidden"}`}
                         onClick={() => handleDeleteJob(job._id)}
                       >
                         <Trash2 className="h-3.5 w-3.5" /> {t("delete")}
@@ -673,7 +671,7 @@ export default function AdminJobsPage() {
                     {selectedJob.employmentType && <Fact icon={Clock} label={t("type")} value={selectedJob.employmentType.replace(/_/g, " ")} />}
                     {selectedJob.workMode && <Fact icon={Globe} label={t("workMode")} value={selectedJob.workMode.replace(/_/g, " ")} />}
                     {(selectedJob.vacancies ?? 0) > 0 && <Fact icon={Users} label={t("vacancies")} value={String(selectedJob.vacancies)} />}
-                    <Fact icon={Calendar} label={t("posted")} value={new Date(selectedJob.createdAt).toLocaleDateString()} />
+                    <Fact icon={Calendar} label={t("posted")} value={formatDate(new Date(selectedJob.createdAt))} />
                     <Fact icon={UserCheck} label={t("source")} value={getSourceLabel(selectedJob, t)} />
                   </div>
 

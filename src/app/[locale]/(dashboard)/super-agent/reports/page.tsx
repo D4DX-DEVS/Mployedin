@@ -13,6 +13,7 @@ import {
 } from "@/components/features/super-agent/WorkspacePage";
 import { MarkdownRenderer } from "@/components/shared/MarkdownRenderer";
 import { formatCurrency } from "@/lib/currency";
+import { formatTime } from "@/lib/ui/intlFormat";
 
 
 interface Stats {
@@ -99,9 +100,9 @@ export default function SuperAgentReportsPage() {
       });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
-      setAiResult({ content: data.report ?? data.content ?? JSON.stringify(data), generatedAt: new Date().toLocaleTimeString() });
+      setAiResult({ content: data.report ?? data.content ?? JSON.stringify(data), generatedAt: formatTime(new Date()) });
     } catch (e) {
-      setAiError(e instanceof Error ? e.message : "Failed to generate report");
+      setAiError("We couldn't generate this report. No report was saved. Try again.");
     } finally {
       setAiLoading(false);
     }
@@ -154,14 +155,12 @@ export default function SuperAgentReportsPage() {
       <SuperAgentPageIntro
         title={t("pageTitle")}
         description={t("pageDescription")}
-        summaryTitle={t("reportingSurface")}
-        summaryDescription={t("reportingSurfaceDescription")}
       />
 
       {loading ? (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {Array.from({ length: 4 }).map((_, index) => (
-            <div key={index} className="h-40 animate-pulse rounded-[24px] border border-border/70 bg-card/90 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.18)]" />
+            <div key={index} className="h-40 animate-pulse rounded-3xl border border-border/70 bg-card/90 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.18)]" />
           ))}
         </div>
       ) : (
@@ -175,13 +174,13 @@ export default function SuperAgentReportsPage() {
         description={t("agentPerformanceDescription")}
       >
         {agentBreakdown.length === 0 ? (
-          <div className="rounded-2xl border border-border/70 bg-secondary/50 p-5 text-sm leading-6 text-muted-foreground">
+          <div className="rounded-2xl border border-border/70 bg-secondary/50 text-sm leading-6 text-muted-foreground panel-body">
             {t("noAgentData")}
           </div>
         ) : (
           <div className="space-y-3">
             {agentBreakdown.map((agent) => (
-              <div key={agent.name} className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
+              <div key={agent.name} className="workspace-glass-panel card-pad rounded-2xl">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
@@ -224,7 +223,7 @@ export default function SuperAgentReportsPage() {
         description={t("monthlyTrendsDescription")}
       >
         {monthlyTrends.length === 0 ? (
-          <div className="rounded-2xl border border-border/70 bg-secondary/50 p-5 text-sm leading-6 text-muted-foreground">
+          <div className="rounded-2xl border border-border/70 bg-secondary/50 text-sm leading-6 text-muted-foreground panel-body">
             {t("noMonthlyData")}
           </div>
         ) : (
@@ -275,7 +274,7 @@ export default function SuperAgentReportsPage() {
               key={t.label}
               onClick={() => { setAiQuery(t.query); generateAIReport(t.query); }}
               disabled={aiLoading}
-              className="workspace-subtle-surface rounded-2xl p-4 text-left text-sm transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card hover:shadow-[0_20px_44px_-36px_rgba(2,132,199,0.45)] disabled:opacity-50"
+              className="workspace-subtle-surface card-pad rounded-2xl text-left text-sm transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card hover:shadow-[0_20px_44px_-36px_rgba(2,132,199,0.45)] disabled:opacity-50"
             >
               <BarChart3 className="mb-2 h-4 w-4 text-primary" />
               <div className="font-semibold text-foreground">{t.label}</div>
@@ -307,7 +306,7 @@ export default function SuperAgentReportsPage() {
         </div>
 
         {aiError && (
-          <div className="mt-4 rounded-2xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{aiError}</div>
+          <div className="mt-4 rounded-2xl border border-destructive/30 bg-destructive/10 text-sm text-destructive chip-pad">{aiError}</div>
         )}
 
         {aiResult && (
@@ -316,12 +315,12 @@ export default function SuperAgentReportsPage() {
               <p className="text-sm font-semibold text-primary">{t("reportGeneratedAt", { time: aiResult.generatedAt })}</p>
               <button
                 onClick={downloadAIReport}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:border-primary/25 hover:text-primary"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-border text-xs font-semibold text-muted-foreground transition-colors hover:border-primary/25 hover:text-primary chip-pad"
               >
                 <Download className="h-3.5 w-3.5" />{tc("export")}
               </button>
             </div>
-            <div className="workspace-subtle-surface rounded-2xl p-4">
+            <div className="workspace-subtle-surface card-pad rounded-2xl">
               <MarkdownRenderer content={aiResult.content} />
             </div>
           </div>

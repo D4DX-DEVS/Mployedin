@@ -48,7 +48,7 @@ export function JobStatusQuickFilters({
       countKey: "activeJobs",
       icon: Briefcase,
       accent:
-        "border-emerald-200 bg-emerald-50/70 text-emerald-700 hover:border-emerald-300 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300",
+        "border-emerald-200 bg-emerald-50/70 text-emerald-700 hover:border-emerald-300",
     },
     {
       status: "draft",
@@ -57,7 +57,7 @@ export function JobStatusQuickFilters({
       countKey: "draftJobs",
       icon: FileEdit,
       accent:
-        "border-amber-200 bg-amber-50/70 text-amber-700 hover:border-amber-300 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300",
+        "border-amber-200 bg-amber-50/70 text-amber-700 hover:border-amber-300",
     },
     {
       status: "paused",
@@ -66,7 +66,7 @@ export function JobStatusQuickFilters({
       countKey: "pausedJobs",
       icon: PauseCircle,
       accent:
-        "border-sky-200 bg-sky-50/70 text-sky-700 hover:border-sky-300 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-300",
+        "border-sky-200 bg-sky-50/70 text-sky-700 hover:border-sky-300",
     },
   ];
 
@@ -77,19 +77,19 @@ export function JobStatusQuickFilters({
   };
 
   return (
-    <section aria-label={t("sectionLabel")} className="workspace-panel-surface rounded-2xl sm:rounded-[28px] panel-body">
+    <section aria-label={t("sectionLabel")} className="workspace-panel-surface rounded-2xl sm:rounded-3xl panel-body">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             {t("eyebrow")}
           </p>
-          <h2 className="mt-1.5 text-base font-semibold tracking-tight text-foreground sm:text-lg">
+          <h2 className="heading-section mt-1.5 font-semibold tracking-tight text-foreground">
             {t("heading")}
           </h2>
         </div>
         <Link
           href={jobsHref}
-          className="text-xs font-semibold text-sky-700 transition-colors hover:text-sky-800 dark:text-sky-300 dark:hover:text-sky-200"
+          className="text-xs font-semibold text-sky-700 transition-colors hover:text-sky-800"
         >
           {t("manageAll")}
         </Link>

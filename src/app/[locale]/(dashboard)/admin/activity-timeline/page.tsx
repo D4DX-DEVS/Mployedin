@@ -55,13 +55,13 @@ const ACTION_ICONS: Record<string, React.ReactNode> = {
 };
 
 const ACTION_COLORS: Record<string, string> = {
-  create: "bg-emerald-100 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400",
-  update: "bg-sky-100 text-sky-600 dark:bg-sky-950/40 dark:text-sky-400",
-  delete: "bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-400",
-  login: "bg-indigo-100 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400",
-  approve: "bg-emerald-100 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400",
-  reject: "bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400",
-  export: "bg-violet-100 text-violet-600 dark:bg-violet-950/40 dark:text-violet-400",
+  create: "bg-emerald-100 text-emerald-600",
+  update: "bg-sky-100 text-sky-600",
+  delete: "bg-red-100 text-red-600",
+  login: "bg-indigo-100 text-indigo-600",
+  approve: "bg-emerald-100 text-emerald-600",
+  reject: "bg-rose-100 text-rose-600",
+  export: "bg-violet-100 text-violet-600",
 };
 
 type TimelineTranslator = (key: string, values?: Record<string, string | number>) => string;
@@ -323,13 +323,13 @@ export default function AdminActivityTimelinePage() {
       />
 
       {/* Timeline */}
-      <section className="workspace-panel-surface rounded-[28px] panel-body">
+      <section className="workspace-panel-surface rounded-3xl panel-body">
         {loading ? (
           <div className="relative ml-4 space-y-3 sm:space-y-6 border-l-2 border-muted pl-6">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="relative">
                 <Skeleton className="absolute -left-[31px] h-6 w-6 rounded-full" />
-                <div className="workspace-glass-panel space-y-2 rounded-xl p-3">
+                <div className="workspace-glass-panel card-pad space-y-2 rounded-xl">
                   <Skeleton className="h-4 w-1/3" />
                   <Skeleton className="h-3 w-2/3" />
                 </div>
@@ -358,7 +358,7 @@ export default function AdminActivityTimelinePage() {
                       </div>
 
                       {/* Event card */}
-                      <div className="workspace-glass-panel rounded-xl p-3">
+                      <div className="workspace-glass-panel card-pad rounded-xl">
                         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                           <div className="flex items-center gap-2">
                             <User className="h-3.5 w-3.5 text-muted-foreground" />

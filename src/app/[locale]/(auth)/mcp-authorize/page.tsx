@@ -57,7 +57,7 @@ export default async function McpAuthorizePage({
       <p className="mt-2 text-sm text-muted-foreground">{t("subtitle", { clientName: client.clientName })}</p>
 
       {grantedScopes.length > 0 ? (
-        <ul className="mt-4 space-y-2 rounded-lg border border-border/60 bg-muted/30 p-4">
+        <ul className="mt-4 space-y-2 rounded-lg border border-border/60 bg-muted/30 card-pad">
           {grantedScopes.map((scope) => (
             <li key={scope} className="text-sm text-foreground">
               • {t(SCOPE_TRANSLATION_KEY[scope])}

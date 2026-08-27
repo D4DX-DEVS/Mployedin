@@ -245,7 +245,7 @@ function TagInput({
           placeholder={placeholder ?? "Type and press Enter"}
           className="h-8 text-sm"
         />
-        <Button type="button" variant="outline" size="sm" onClick={add} className="h-8 px-3 shrink-0">
+        <Button type="button" variant="outline" size="dense" onClick={add} className="px-3 shrink-0">
           Add
         </Button>
       </div>
@@ -282,7 +282,7 @@ function getCsrfToken(): string {
  * and uncommenting the TabsTrigger above.
  * ══════════════════════════════════════════════════════════════════════════════
  *
- * <TabsContent value="auto-apply" className="mt-5 space-y-5 focus-visible:outline-none">
+ * <TabsContent value="auto-apply" className="mt-5 space-y-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-4">
  *   <SettingCard
  *     icon={<Zap className="h-4 w-4" />}
  *     title="Auto Apply Mode"
@@ -470,7 +470,7 @@ export default function JobSeekerSettingsPage() {
     return (
       <div className="w-full max-w-4xl mx-auto px-3 sm:px-6 py-4 sm:py-8 space-y-3 sm:space-y-6">
         {/* Header skeleton */}
-        <div className="rounded-2xl border bg-card p-6 shadow-sm">
+        <div className="rounded-2xl border bg-card shadow-sm panel-body">
           <div className="flex items-center gap-4">
             <div className="h-16 w-16 rounded-full bg-muted animate-pulse shrink-0" />
             <div className="flex-1 space-y-2">
@@ -518,7 +518,7 @@ export default function JobSeekerSettingsPage() {
       <form
         id="settings-form"
         onSubmit={handleSubmit(onSubmit)}
-        className="w-full max-w-4xl mx-auto px-6 py-8 space-y-6"
+        className="page-container max-w-4xl"
       >
         {/* ── Back Button ────────────────────────────────────────────── */}
         <Button
@@ -623,7 +623,7 @@ export default function JobSeekerSettingsPage() {
                     type="submit"
                     size="sm"
                     disabled={saving}
-                    className="h-9 min-w-[110px] rounded-xl gap-2"
+                    className="min-w-[110px] rounded-xl gap-2"
                   >
                     {saving ? (
                       <><Loader2 className="h-3.5 w-3.5 animate-spin" />{t("saving")}</>
@@ -648,13 +648,13 @@ export default function JobSeekerSettingsPage() {
 
         {/* ── Mobile save bar ─────────────────────────────────────────────── */}
         {isDirty && (
-          <div className="sm:hidden rounded-2xl border bg-card px-5 py-4 shadow-sm flex items-center justify-between gap-4">
+          <div className="sm:hidden rounded-2xl border bg-card shadow-sm flex items-center justify-between gap-4 panel-body">
             <p className="text-xs text-muted-foreground font-medium">{t("unsavedChanges")}</p>
             <div className="flex gap-2">
               <Button type="button" variant="outline" size="sm" onClick={() => reset()} disabled={saving} className="h-8 rounded-xl">
                 {t("discard")}
               </Button>
-              <Button type="submit" size="sm" disabled={saving} className="h-8 min-w-[100px] rounded-xl gap-1.5">
+              <Button type="submit" size="dense" disabled={saving} className="min-w-[100px] rounded-xl gap-1.5">
                 {saving ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />{t("saving")}</> : <><Save className="h-3.5 w-3.5" />{t("save")}</>}
               </Button>
             </div>
@@ -697,7 +697,7 @@ export default function JobSeekerSettingsPage() {
           {/* TODO: Re-enable when auto-apply feature is ready — uncomment the TabsContent block below */}
 
           {/* ════════════════════ INTERVIEWS TAB ════════════════════ */}
-          <TabsContent value="interviews" className="mt-5 space-y-5 focus-visible:outline-none">
+          <TabsContent value="interviews" className="mt-5 space-y-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-4">
             <SettingCard
               icon={<CalendarDays className="h-4 w-4" />}
               title={t("interviews.title")}
@@ -777,7 +777,7 @@ export default function JobSeekerSettingsPage() {
           </TabsContent>
 
           {/* ════════════════════ PROFILE VISIBILITY TAB ════════════════════ */}
-          <TabsContent value="profile" className="mt-5 space-y-5 focus-visible:outline-none">
+          <TabsContent value="profile" className="mt-5 space-y-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-4">
             <SettingCard
               icon={<ShieldCheck className="h-4 w-4" />}
               title={t("profileVisibility.title")}
@@ -877,7 +877,7 @@ export default function JobSeekerSettingsPage() {
           </TabsContent>
 
           {/* ════════════════════ RESUME & AI TAB ════════════════════ */}
-          <TabsContent value="resume-ai" className="mt-5 space-y-5 focus-visible:outline-none">
+          <TabsContent value="resume-ai" className="mt-5 space-y-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-4">
             <SettingCard
               icon={<BrainCircuit className="h-4 w-4" />}
               title={t("resumeAi.title")}
@@ -973,7 +973,7 @@ export default function JobSeekerSettingsPage() {
           </TabsContent>
 
           {/* ════════════════════ NOTIFICATIONS TAB ════════════════════ */}
-          <TabsContent value="notifications" className="mt-5 space-y-5 focus-visible:outline-none">
+          <TabsContent value="notifications" className="mt-5 space-y-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-4">
             <SettingCard
               icon={<Bell className="h-4 w-4" />}
               title={t("notifications.title")}
@@ -1031,8 +1031,8 @@ export default function JobSeekerSettingsPage() {
         <div
           className={`flex items-center gap-3 rounded-xl border px-4 py-3 shadow-lg text-sm font-medium pointer-events-auto ${
             toast.type === "success"
-              ? "border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200"
-              : "border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200"
+              ? "border-green-200 bg-green-50 text-green-800"
+              : "border-red-200 bg-red-50 text-red-800"
           }`}
         >
           {toast.type === "success" ? (

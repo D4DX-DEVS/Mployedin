@@ -60,7 +60,7 @@ export default function AdminSubscriptionDashboardPage() {
   if (isLoading) {
     return (
       <div className="page-container">
-        <div className="h-32 animate-pulse rounded-[28px] bg-background/70" />
+        <div className="h-32 animate-pulse rounded-3xl bg-background/70" />
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="h-24 animate-pulse rounded-2xl bg-background/70" />
@@ -81,7 +81,7 @@ export default function AdminSubscriptionDashboardPage() {
     return (
       <div className="page-container">
         <SubscriptionHero />
-        <div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-6 text-center">
+        <div className="rounded-2xl border border-red-500/20 bg-red-500/5 text-center panel-body">
           <AlertTriangle className="h-8 w-8 text-red-500 mx-auto mb-2" />
           <p className="text-sm text-muted-foreground">
             {t("failedToLoadDashboardData")}
@@ -101,8 +101,8 @@ export default function AdminSubscriptionDashboardPage() {
           exportCSV(
             buildExportRows(data),
             [
-              { header: "Metric", key: "metric" },
-              { header: "Value", key: "value" },
+              { header: t("exportHeaderMetric"), key: "metric" },
+              { header: t("exportHeaderValue"), key: "value" },
             ],
             "subscription-dashboard.csv",
           )

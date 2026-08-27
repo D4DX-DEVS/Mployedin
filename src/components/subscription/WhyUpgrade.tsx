@@ -23,7 +23,7 @@ export function WhyUpgrade() {
       </h4>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {BENEFITS.map((b) => (
-          <div key={b.titleKey} className="rounded-2xl border border-border/60 bg-card p-5">
+          <div key={b.titleKey} className="rounded-2xl border border-border/60 bg-card panel-body">
             <div className={`h-10 w-10 rounded-xl flex items-center justify-center mb-3 ${b.bg}`}>
               <b.icon className={`h-5 w-5 ${b.tone}`} />
             </div>

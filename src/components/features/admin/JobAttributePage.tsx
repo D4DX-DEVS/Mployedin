@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useTranslations, useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -33,17 +33,17 @@ interface AttributeItem {
 
 interface JobAttributePageProps {
   category: string;
-  title: string;
-  titleAr: string;
-  description?: string;
-  descriptionAr?: string;
 }
 
-export default function JobAttributePage({ category, title, titleAr, description, descriptionAr }: JobAttributePageProps) {
+export default function JobAttributePage({ category }: JobAttributePageProps) {
   const t = useTranslations("adminJobAttributes");
-  const locale = useLocale();
-  const displayTitle = locale === "ar" ? titleAr : title;
-  const displayDescription = locale === "ar" && descriptionAr ? descriptionAr : description;
+  /* Heading copy is derived from the category rather than passed in per page.
+     The five callers used to hand over title/titleAr/description/descriptionAr
+     as literals, which meant each leaf route imported the whole of en.json and
+     ar.json just to read two strings. "job-skills" -> "jobSkills". */
+  const keyPrefix = category.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
+  const displayTitle = t(`${keyPrefix}Title`);
+  const displayDescription = t(`${keyPrefix}Description`);
   const { can } = usePermissions();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
 
@@ -146,11 +146,11 @@ export default function JobAttributePage({ category, title, titleAr, description
     <div className="page-container">
       {ConfirmDialogNode}
 
-      <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
+      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
         {/* Compact header row: mobile stacked, desktop row */}
         <div className="flex flex-col gap-3 border-b border-border/80 sm:flex-row sm:items-center sm:justify-between panel-head">
           <div className="min-w-0">
-            <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-lg">{displayTitle}</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-[1.625rem]">{displayTitle}</h1>
             {displayDescription && (
               <p className="hidden text-xs text-muted-foreground sm:mt-0.5 sm:block">{displayDescription}</p>
             )}

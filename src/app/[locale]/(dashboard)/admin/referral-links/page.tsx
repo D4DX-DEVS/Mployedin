@@ -8,9 +8,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { PageHeader } from "@/components/shared/PageHeader";
 import { usePagination } from "@/hooks/usePagination";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
@@ -114,28 +114,28 @@ export default function AdminReferralLinksPage() {
     data: links as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "referral-links",
-    title: "Referral Links",
+    title: t("exportTitle"),
   });
 
   return (
     <div className="page-container">
-      <PageHeader title={t("pageTitle")} description={t("pageDescription")} />
+      <DashboardPageHeader title={t("pageTitle")} description={t("pageDescription")} compactOnMobile />
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border border-border bg-card p-3.5 sm:p-4">
+        <div className="rounded-xl border border-border bg-card card-pad">
           <p className="text-xs font-medium text-muted-foreground">{t("totalLinks")}</p>
           <p className="mt-1 text-xl sm:text-2xl font-bold">{serverTotal}</p>
         </div>
-        <div className="rounded-xl border border-border bg-card p-3.5 sm:p-4">
+        <div className="rounded-xl border border-border bg-card card-pad">
           <p className="text-xs font-medium text-muted-foreground">{t("activeLinks")}</p>
           <p className="mt-1 text-xl sm:text-2xl font-bold text-green-600">{activeLinks}</p>
         </div>
-        <div className="rounded-xl border border-border bg-card p-3.5 sm:p-4">
+        <div className="rounded-xl border border-border bg-card card-pad">
           <p className="text-xs font-medium text-muted-foreground">{t("totalRegistrations")}</p>
           <p className="mt-1 text-xl sm:text-2xl font-bold text-blue-600">{totalRegistrations}</p>
         </div>
-        <div className="rounded-xl border border-border bg-card p-3.5 sm:p-4">
+        <div className="rounded-xl border border-border bg-card card-pad">
           <p className="text-xs font-medium text-muted-foreground">{t("avgRegistrationsPerLink")}</p>
           <p className="mt-1 text-xl sm:text-2xl font-bold">{serverTotal > 0 ? (totalRegistrations / serverTotal).toFixed(1) : "0"}</p>
         </div>
@@ -221,7 +221,7 @@ export default function AdminReferralLinksPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${link.creatorRole === "super_agent" ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300" : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"}`}>
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${link.creatorRole === "super_agent" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}`}>
                           {link.creatorRole === "super_agent" ? t("roleSuperAgent") : t("roleAgent")}
                         </span>
                       </TableCell>
@@ -271,8 +271,8 @@ export default function AdminReferralLinksPage() {
                           ) : (
                             <div className="grid gap-2 sm:grid-cols-2">
                               {link.registrations.map((reg, i) => (
-                                <div key={i} className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
-                                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-300">
+                                <div key={i} className="flex items-center gap-3 rounded-lg border border-border bg-card chip-pad">
+                                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-blue-600">
                                     <Building2 className="h-4 w-4" />
                                   </div>
                                   <div className="flex-1 min-w-0">

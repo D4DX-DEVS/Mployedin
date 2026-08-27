@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { formatDate as formatIntlDate } from "@/lib/ui/intlFormat";
 
 interface Question {
   question: string;
@@ -133,7 +134,7 @@ export function AIInterviewQuestionsPanel({
         loadHistory();
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("somethingWentWrong"));
+      setError(t("somethingWentWrong"));
     } finally {
       setLoading(false);
     }
@@ -195,7 +196,7 @@ export function AIInterviewQuestionsPanel({
   }
 
   function formatDate(iso: string) {
-    return new Date(iso).toLocaleDateString(undefined, {
+    return formatIntlDate(new Date(iso), {
       month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
     });
   }
@@ -262,7 +263,7 @@ export function AIInterviewQuestionsPanel({
           <div>
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-primary" />
-              <h2 className="font-semibold text-sm">{t("aiInterviewQuestions")}</h2>
+              <h2 className="heading-label font-semibold">{t("aiInterviewQuestions")}</h2>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
               {jobTitle}{candidateName ? ` · ${candidateName}` : ""}
@@ -278,8 +279,8 @@ export function AIInterviewQuestionsPanel({
               </div>
             )}
           </div>
-          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose}>
-            <X className="w-4 h-4" />
+          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose} aria-label={t("closeLabel", { job: jobTitle })}>
+            <X className="w-4 h-4" aria-hidden="true" />
           </Button>
         </div>
 

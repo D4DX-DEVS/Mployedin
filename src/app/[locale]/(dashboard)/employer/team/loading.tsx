@@ -12,7 +12,7 @@ export default function TeamLoading() {
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}
-            className="rounded-lg border border-border bg-card p-4 sm:p-5 h-20 animate-pulse"
+            className="rounded-lg border border-border bg-card h-20 animate-pulse panel-body"
             style={{ opacity: 1 - i * 0.15 }}
           />
         ))}

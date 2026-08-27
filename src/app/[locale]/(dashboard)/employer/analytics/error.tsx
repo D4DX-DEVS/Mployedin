@@ -24,9 +24,9 @@ export default function AnalyticsError({
           <AlertTriangle className="w-6 h-6 text-destructive" />
         </div>
         <div className="space-y-2">
-          <h3 className="text-lg font-semibold text-destructive">{t("failedAnalytics")}</h3>
+          <h3 className="heading-subsection font-semibold text-destructive">{t("failedAnalytics")}</h3>
           <p className="text-sm text-muted-foreground">
-            {error.message || t("failedAnalyticsDescription")}
+            {t("failedAnalyticsDescription")}
           </p>
         </div>
         <RecoveryActions reset={reset} />

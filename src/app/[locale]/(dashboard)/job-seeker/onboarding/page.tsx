@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { formatDate as formatIntlDate } from "@/lib/ui/intlFormat";
 
 type OnboardingStatus = "not_started" | "in_progress" | "completed";
 type DocStatus = "requested" | "submitted" | "signed" | "approved";
@@ -60,7 +61,7 @@ const DOC_STATUS_STYLES: Record<DocStatus, string> = {
 function formatDate(value?: string | null): string {
   if (!value) return "";
   try {
-    return new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+    return formatIntlDate(new Date(value), { year: "numeric", month: "short", day: "numeric" });
   } catch {
     return "";
   }
@@ -117,14 +118,14 @@ export default function JobSeekerOnboardingPage() {
       {loading ? (
         <div className="space-y-6">
           {Array.from({ length: 2 }).map((_, i) => (
-            <div key={i} className="rounded-2xl border border-border/60 bg-card p-5 space-y-4">
+            <div key={i} className="rounded-2xl border border-border/60 bg-card space-y-4 panel-body">
               <div className="flex items-center justify-between">
                 <Skeleton className="h-5 w-40" />
                 <Skeleton className="h-6 w-20 rounded-full" />
               </div>
               <Skeleton className="h-2 w-full rounded-full" />
               {Array.from({ length: 3 }).map((_, j) => (
-                <div key={j} className="flex items-center gap-3 rounded-xl border border-border/50 px-3 py-2.5">
+                <div key={j} className="flex items-center gap-3 rounded-xl border border-border/50 chip-pad">
                   <Skeleton className="h-4 w-4 rounded" />
                   <Skeleton className="h-4 w-48" />
                 </div>
@@ -133,7 +134,7 @@ export default function JobSeekerOnboardingPage() {
           ))}
         </div>
       ) : error ? (
-        <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-6 text-center text-sm text-destructive">
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/5 text-center text-sm text-destructive panel-body">
           {t("loadError")}
         </div>
       ) : onboardings.length === 0 ? (
@@ -171,7 +172,7 @@ function OnboardingCard({ onboarding, onChanged }: { onboarding: Onboarding; onC
       : "bg-amber-100 text-amber-700 border-amber-300";
 
   return (
-    <div className="space-y-4 sm:space-y-5 rounded-[28px] border border-border bg-card p-3 sm:p-6">
+    <div className="space-y-4 sm:space-y-5 rounded-3xl border border-border bg-card panel-body">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
@@ -195,7 +196,7 @@ function OnboardingCard({ onboarding, onChanged }: { onboarding: Onboarding; onC
       </div>
 
       {/* Welcome */}
-      <div className="rounded-2xl border border-blue-200 bg-blue-50/50 p-3 sm:p-4 text-xs sm:text-sm text-blue-900">
+      <div className="rounded-2xl border border-blue-200 bg-blue-50/50 text-xs sm:text-sm text-blue-900 card-pad">
         {t("welcomeMessage", { company })}
       </div>
 
@@ -226,7 +227,7 @@ function OnboardingCard({ onboarding, onChanged }: { onboarding: Onboarding; onC
 
       {/* Probation */}
       {onboarding.probation?.endDate && (
-        <div className="flex items-center gap-2 rounded-2xl border border-border/60 bg-background/60 p-4 text-sm">
+        <div className="flex items-center gap-2 rounded-2xl border border-border/60 bg-background/60 text-sm card-pad">
           <ShieldCheck className="h-4 w-4 text-muted-foreground" />
           <span className="text-muted-foreground">
             {t("probationEnds", { date: formatDate(onboarding.probation.endDate) })}
@@ -236,7 +237,7 @@ function OnboardingCard({ onboarding, onChanged }: { onboarding: Onboarding; onC
 
       {/* Action needed documents */}
       <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-foreground">{t("actionNeeded")}</h3>
+        <h3 className="heading-label font-semibold text-foreground">{t("actionNeeded")}</h3>
         {actionDocs.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("noActionDocs")}</p>
         ) : (
@@ -251,10 +252,10 @@ function OnboardingCard({ onboarding, onChanged }: { onboarding: Onboarding; onC
       {/* Shared documents */}
       {sharedDocs.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-foreground">{t("sharedWithYou")}</h3>
+          <h3 className="heading-label font-semibold text-foreground">{t("sharedWithYou")}</h3>
           <ul className="space-y-2">
             {sharedDocs.map((doc) => (
-              <li key={doc.index} className="flex items-center gap-3 rounded-xl border border-border/50 px-3 py-2.5">
+              <li key={doc.index} className="flex items-center gap-3 rounded-xl border border-border/50 chip-pad">
                 <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <span className="flex-1 text-sm text-foreground">{doc.name}</span>
                 {doc.url && (
@@ -339,7 +340,7 @@ function ActionDocItem({
   }
 
   return (
-    <li className="flex flex-col gap-3 rounded-xl border border-border/50 px-3 py-3 sm:flex-row sm:items-center">
+    <li className="flex flex-col gap-3 rounded-xl border border-border/50 sm:flex-row sm:items-center chip-pad">
       <FileText className="hidden h-4 w-4 shrink-0 text-muted-foreground sm:block" />
       <div className="flex-1 space-y-1">
         <div className="flex flex-wrap items-center gap-2">
@@ -405,7 +406,7 @@ function ActionDocItem({
             <DialogTitle>{t("signTitle")}</DialogTitle>
             <DialogDescription>{t("signDescription", { document: doc.name })}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-2">
+          <div className="field">
             <Label htmlFor={`sign-${doc.index}`}>{t("signNameLabel")}</Label>
             <Input
               id={`sign-${doc.index}`}

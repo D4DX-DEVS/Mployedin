@@ -143,21 +143,14 @@ test.describe("Employer Journey", () => {
       await loginEmployer(page);
     });
 
-    test("employer can choose AI or manual posting from the new job entry page", async ({ page }) => {
+    // The standalone "Create a Job Posting" chooser was retired: /jobs/new now
+    // redirects to the AI creator, which carries the link to the manual form.
+    test("the new job entry point lands on the AI creator and links to the manual form", async ({ page }) => {
       await page.goto("/en/employer/jobs/new");
-
-      await expect(page.getByRole("heading", { name: /Create a Job Posting/i })).toBeVisible();
-
-      const aiLink = page.getByRole("link", { name: /Start AI Job Posting/i });
-      await expect(aiLink).toBeVisible();
-      await expect(page.getByRole("link", { name: /Open Manual Form/i }).first()).toBeVisible();
-
-      await aiLink.click();
       await page.waitForURL(/\/en\/employer\/jobs\/ai-create$/);
       await expect(page.getByRole("heading", { name: /AI Job Creator/i })).toBeVisible();
 
-      await page.goto("/en/employer/jobs/new");
-      await page.getByRole("link", { name: /Open Manual Form/i }).first().click();
+      await page.getByRole("link", { name: /Manual Job Form/i }).click();
       await page.waitForURL(/\/en\/employer\/jobs\/new\?mode=manual/);
       await expect(page.getByRole("heading", { name: /Post a New Job/i })).toBeVisible();
       await expect(page.getByLabel(/Job Title/i)).toBeVisible();
@@ -191,10 +184,10 @@ test.describe("Employer Journey", () => {
       });
 
       await page.goto("/en/employer/jobs/ai-create");
-      await page.getByPlaceholder(/Describe the role you need/i).fill("Senior React developer in Kochi with React and Node skills.");
-      await page.getByRole("button", { name: /Send AI prompt/i }).click();
+      await page.getByPlaceholder(/Describe the role, location, skills/i).fill("Senior React developer in Kochi with React and Node skills.");
+      await page.getByRole("button", { name: /Send message/i }).click();
 
-      await expect(page.getByText(/Senior React Developer/i)).toBeVisible();
+      await expect(page.getByText(/Title: Senior React Developer/i)).toBeVisible();
       await page.getByRole("button", { name: /Review in Full Form/i }).click();
 
       await page.waitForURL(/\/en\/employer\/jobs\/new\?mode=manual&prefill=ai/);
@@ -221,6 +214,9 @@ test.describe("Employer Journey", () => {
                 createdAt: new Date().toISOString(),
                 vacancies: 3,
                 showSalary: true,
+                // Drives getFilledSlots(); without it the card's primary action
+                // falls through to "View job" and there is no applications link.
+                applicationCount: 4,
               },
             ],
             pagination: { total: 1, page: 1, limit: 10, totalPages: 1 },
@@ -228,9 +224,9 @@ test.describe("Employer Journey", () => {
         });
       });
 
+      const applicationRequests: string[] = [];
       await page.route("**/api/applications?**", async (route) => {
-        const url = route.request().url();
-        expect(url).toContain("jobId=job_e2e_001");
+        applicationRequests.push(route.request().url());
         await route.fulfill({
           status: 200,
           contentType: "application/json",
@@ -244,11 +240,15 @@ test.describe("Employer Journey", () => {
       await page.goto("/en/employer/jobs");
       await expect(page.getByText(/Platform Engineer/i)).toBeVisible();
 
-      await page.getByRole("button", { name: /Applications/i }).click();
+      await page.getByRole("link", { name: /Review 4 applicant\(s\) for Platform Engineer/i }).click();
 
       await page.waitForURL(/\/en\/employer\/applications\?jobId=job_e2e_001/);
       await expect(page.getByRole("heading", { name: /Applications/i })).toBeVisible();
-      await expect(page.locator("body")).toContainText(/for this job/i);
+      // What matters is that the filter reaches the API, not that the page
+      // repeats it in prose — the old "for this job" copy is long gone.
+      await expect
+        .poll(() => applicationRequests.some((url) => url.includes("jobId=job_e2e_001")))
+        .toBe(true);
     });
   });
 });

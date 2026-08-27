@@ -66,7 +66,7 @@ export default function CommTemplatesPage() {
       setFormData({ name: "", type: "rejection", subject: "", body: "" });
       setShowForm(false);
     } catch (err: unknown) {
-      toast.error(t("errorCreating", { error: err instanceof Error ? err.message : t("unknownError") }));
+      toast.error(t("errorCreating", { error: t("unknownError") }));
     } finally {
       setSaving(false);
     }
@@ -125,8 +125,8 @@ export default function CommTemplatesPage() {
 
       {/* New Template Form */}
       {showForm && (
-        <div className="border rounded-lg p-6 bg-card space-y-3 sm:space-y-4">
-          <h3 className="font-semibold text-lg">{t("newTemplate")}</h3>
+        <div className="border rounded-lg bg-card space-y-3 sm:space-y-4 panel-body">
+          <h3 className="heading-subsection font-semibold">{t("newTemplate")}</h3>
           <form onSubmit={handleCreateTemplate} className="space-y-3 sm:space-y-4">
             <div>
               <label className="block text-sm font-medium mb-1">{t("templateName")}</label>
@@ -211,7 +211,7 @@ export default function CommTemplatesPage() {
       {loading ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="border rounded-lg p-4 bg-card space-y-3">
+            <div key={i} className="border rounded-lg bg-card space-y-3 card-pad">
               <Skeleton className="h-5 w-32" />
               <Skeleton className="h-5 w-20 rounded-full" />
               <Skeleton className="h-4 w-full" />
@@ -227,7 +227,7 @@ export default function CommTemplatesPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredTemplates.map((template) => (
-            <div key={template._id} className="border rounded-lg p-4 bg-card space-y-3">
+            <div key={template._id} className="border rounded-lg bg-card space-y-3 card-pad">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 space-y-1">
                   <h3 className="font-semibold text-foreground truncate">{template.name}</h3>

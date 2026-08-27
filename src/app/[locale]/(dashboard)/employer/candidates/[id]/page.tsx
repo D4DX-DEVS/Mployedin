@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +15,7 @@ import { useCandidateDetail } from "@/hooks/useCandidates";
 import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
 import { CvInlineFrame } from "@/components/shared/CvInlineFrame";
 import { useTranslations } from "next-intl";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 /* ── Types ── */
 interface CandidateJob {
@@ -151,7 +153,7 @@ export default function UnifiedCandidatePage() {
     return (
       <div className="page-container flex flex-col items-center justify-center py-20">
         <User className="h-12 w-12 text-muted-foreground/40 mb-4" />
-        <h3 className="font-semibold text-lg">{t("notFound")}</h3>
+        <h3 className="heading-subsection font-semibold">{t("notFound")}</h3>
         <Button variant="outline" className="mt-4" onClick={() => router.back()}>
           <ArrowLeft className="h-4 w-4 mr-2" /> {t("goBack")}
         </Button>
@@ -195,11 +197,13 @@ export default function UnifiedCandidatePage() {
     <div className="page-container">
       {/* Back + Header */}
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={() => router.push(`/${locale}/employer/candidates`)}>
-          <ArrowLeft className="h-4 w-4" />
+        <Button variant="ghost" size="sm" onClick={() => router.push(`/${locale}/employer/candidates`)} aria-label={t("goBack")}>
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         </Button>
         <PageHeader title={name} description={t("unifiedProfile")} />
       </div>
+
+      <CandidateDataNotice variant="candidateDetail" />
 
       {/* Profile Card */}
       <div className="card-base panel-body">
@@ -207,7 +211,7 @@ export default function UnifiedCandidatePage() {
           {/* Left — Info */}
           <div className="flex-1 space-y-3">
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-xl font-bold">{name}</h2>
+              <h2 className="heading-section font-bold">{name}</h2>
               {summary.hired && <Badge className="bg-green-100 text-green-800">{t("hired")}</Badge>}
               {candidate.availabilityStatus && (
                 <Badge variant="secondary">{{immediately: t("availableImmediately"), within_month: t("within1Month"), within_3_months: t("within3Months"), not_available: t("notAvailable")}[candidate.availabilityStatus as string] ?? candidate.availabilityStatus}</Badge>
@@ -251,11 +255,11 @@ export default function UnifiedCandidatePage() {
             {/* Resume actions */}
             {cvViewHref && (
               <div className="flex gap-2 pt-2">
-                <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setViewingCv(true)}>
+                <Button size="dense" variant="outline" className="text-xs" onClick={() => setViewingCv(true)}>
                   <Eye className="w-3 h-3 me-1.5" /> {t("viewCV")}
                 </Button>
                 <a href={cvDownloadHref} target="_blank" rel="noopener noreferrer">
-                  <Button size="sm" variant="ghost" className="h-8 text-xs">
+                  <Button size="dense" variant="ghost" className="text-xs">
                     <Download className="w-3 h-3 me-1.5" /> {t("download")}
                   </Button>
                 </a>
@@ -313,7 +317,7 @@ export default function UnifiedCandidatePage() {
           <div className="space-y-3 sm:space-y-6">
             {/* Summary */}
             <div className="card-base space-y-3 panel-body">
-              <h3 className="font-semibold text-sm flex items-center gap-2">
+              <h3 className="heading-label font-semibold flex items-center gap-2">
                 <User className="h-4 w-4 text-primary" /> {t("summary")}
               </h3>
               {candidate.headline && (
@@ -348,7 +352,7 @@ export default function UnifiedCandidatePage() {
                   <div className="col-span-2">
                     <span className="text-xs text-muted-foreground">{t("expectedSalary")}</span>
                     <p className="font-medium">
-                      {candidate.preferredSalary.currency} {candidate.preferredSalary.min?.toLocaleString()} – {candidate.preferredSalary.max?.toLocaleString()}
+                      {candidate.preferredSalary.currency} {formatCount(candidate.preferredSalary.min)} – {formatCount(candidate.preferredSalary.max)}
                     </p>
                   </div>
                 )}
@@ -378,7 +382,7 @@ export default function UnifiedCandidatePage() {
             {/* Work History */}
             {candidate.experience && candidate.experience.length > 0 && (
               <div className="card-base space-y-3 panel-body">
-                <h3 className="font-semibold text-sm flex items-center gap-2">
+                <h3 className="heading-label font-semibold flex items-center gap-2">
                   <Briefcase className="h-4 w-4 text-primary" /> {t("workHistory")}
                 </h3>
                 <div className="space-y-3 sm:space-y-4">
@@ -404,7 +408,7 @@ export default function UnifiedCandidatePage() {
             {/* Education */}
             {candidate.education && candidate.education.length > 0 && (
               <div className="card-base space-y-3 panel-body">
-                <h3 className="font-semibold text-sm flex items-center gap-2">
+                <h3 className="heading-label font-semibold flex items-center gap-2">
                   <GraduationCap className="h-4 w-4 text-primary" /> {t("education")}
                 </h3>
                 <div className="space-y-3">
@@ -425,7 +429,7 @@ export default function UnifiedCandidatePage() {
             {/* Languages */}
             {candidate.languages && candidate.languages.length > 0 && (
               <div className="card-base space-y-3 panel-body">
-                <h3 className="font-semibold text-sm flex items-center gap-2">
+                <h3 className="heading-label font-semibold flex items-center gap-2">
                   <Languages className="h-4 w-4 text-primary" /> {t("languages")}
                 </h3>
                 <div className="flex flex-wrap gap-2">
@@ -442,7 +446,7 @@ export default function UnifiedCandidatePage() {
             {/* Certifications */}
             {candidate.certifications && candidate.certifications.length > 0 && (
               <div className="card-base space-y-3 panel-body">
-                <h3 className="font-semibold text-sm flex items-center gap-2">
+                <h3 className="heading-label font-semibold flex items-center gap-2">
                   <Award className="h-4 w-4 text-primary" /> {t("certifications")}
                 </h3>
                 <div className="flex flex-wrap gap-1.5">
@@ -456,7 +460,7 @@ export default function UnifiedCandidatePage() {
             {/* Full Skills */}
             {candidate.skills && candidate.skills.length > 0 && (
               <div className="card-base space-y-3 panel-body">
-                <h3 className="font-semibold text-sm flex items-center gap-2">
+                <h3 className="heading-label font-semibold flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 text-primary" /> {t("allSkills")}
                 </h3>
                 <div className="flex flex-wrap gap-1.5">
@@ -480,7 +484,7 @@ export default function UnifiedCandidatePage() {
               const missingSkills = jobSkills?.filter((s: string) => !candidateSkills.some((cs: string) => cs.toLowerCase() === s.toLowerCase())) ?? [];
               return (
                 <div className="card-base space-y-3 sm:space-y-4 panel-body">
-                  <h3 className="font-semibold text-sm flex items-center gap-2">
+                  <h3 className="heading-label font-semibold flex items-center gap-2">
                     <Star className="h-4 w-4 text-amber-500" /> {t("aiMatchInsights")}
                     <span className="text-xs text-muted-foreground ms-auto">for {scoredApp.job?.title}</span>
                   </h3>
@@ -542,7 +546,7 @@ export default function UnifiedCandidatePage() {
             {cvViewHref && (
               <div className="card-base overflow-hidden">
                 <div className="px-5 py-3 border-b flex items-center justify-between">
-                  <h3 className="font-semibold text-sm flex items-center gap-2">
+                  <h3 className="heading-label font-semibold flex items-center gap-2">
                     <FileText className="h-4 w-4 text-primary" /> {t("resumeCV")}
                   </h3>
                   <div className="flex gap-1">

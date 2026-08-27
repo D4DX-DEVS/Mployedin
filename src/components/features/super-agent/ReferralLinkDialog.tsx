@@ -26,6 +26,7 @@ import {
   Tag,
 } from "lucide-react";
 import { useCreateReferralLink, useReferralLinks, ReferralLinkItem } from "@/hooks/useReferralLinks";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 interface ReferralLinkDialogProps {
   open: boolean;
@@ -99,11 +100,11 @@ export function ReferralLinkDialog({ open, onClose }: ReferralLinkDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-lg gap-0 overflow-hidden rounded-[24px] p-0">
+      <DialogContent className="max-w-lg gap-0 overflow-hidden rounded-3xl p-0">
         {/* Header */}
-        <DialogHeader className="border-b border-border/60 bg-gradient-to-br from-sky-50/80 to-indigo-50/60 px-6 py-5 dark:from-sky-950/30 dark:to-indigo-950/20">
+        <DialogHeader className="border-b border-border/60 bg-gradient-to-br from-sky-50/80 to-indigo-50/60 px-6 py-5">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-600/10 text-sky-600 dark:bg-sky-400/10 dark:text-sky-400">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-600/10 text-sky-600">
               <Link2 className="h-5 w-5" />
             </div>
             <div>
@@ -119,11 +120,11 @@ export function ReferralLinkDialog({ open, onClose }: ReferralLinkDialogProps) {
 
         <div className="max-h-[60vh] overflow-y-auto">
           {/* ── Verified badge info ──────────────────────────── */}
-          <div className="mx-6 mt-5 flex items-start gap-3 rounded-2xl border border-green-200/60 bg-green-50/60 p-3.5 dark:border-green-800/40 dark:bg-green-950/20">
-            <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-green-600 dark:text-green-400" />
+          <div className="mx-6 mt-5 flex items-start gap-3 rounded-2xl border border-green-200/60 bg-green-50/60 p-3.5">
+            <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-green-600" />
             <div>
-              <p className="text-xs font-semibold text-green-800 dark:text-green-300">{t("verifiedBadgeOnSignup")}</p>
-              <p className="mt-0.5 text-[11px] leading-relaxed text-green-700/80 dark:text-green-400/70">
+              <p className="text-xs font-semibold text-green-800">{t("verifiedBadgeOnSignup")}</p>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-green-700/80">
                 {t("verifiedBadgeDesc")}
               </p>
             </div>
@@ -139,7 +140,7 @@ export function ReferralLinkDialog({ open, onClose }: ReferralLinkDialogProps) {
                 <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("generatingLink")}
               </div>
             ) : legacyLink ? (
-              <div className="mt-2 flex items-center gap-2 rounded-xl border border-border/60 bg-secondary/40 px-3 py-2.5">
+              <div className="mt-2 flex items-center gap-2 rounded-xl border border-border/60 bg-secondary/40 chip-pad">
                 <code className="flex-1 truncate text-xs text-foreground">{legacyLink}</code>
                 <button
                   onClick={() => handleCopy(legacyLink, "legacy")}
@@ -164,16 +165,16 @@ export function ReferralLinkDialog({ open, onClose }: ReferralLinkDialogProps) {
 
           {/* ── Stats ─────────────────────────────────────────── */}
           <div className="mx-6 mt-5 grid grid-cols-3 gap-3">
-            <div className="rounded-xl border border-border/50 bg-secondary/30 p-3 text-center">
+            <div className="rounded-xl border border-border/50 bg-secondary/30 text-center chip-pad">
               <p className="text-lg font-semibold text-foreground">{advancedLinks.length}</p>
               <p className="text-[10px] text-muted-foreground">{t("activeLinks")}</p>
             </div>
-            <div className="rounded-xl border border-border/50 bg-secondary/30 p-3 text-center">
+            <div className="rounded-xl border border-border/50 bg-secondary/30 text-center chip-pad">
               <p className="text-lg font-semibold text-foreground">{totalRegistrations}</p>
               <p className="text-[10px] text-muted-foreground">{t("registrations")}</p>
             </div>
-            <div className="rounded-xl border border-border/50 bg-secondary/30 p-3 text-center">
-              <p className="text-lg font-semibold text-emerald-600 dark:text-emerald-400">
+            <div className="rounded-xl border border-border/50 bg-secondary/30 text-center chip-pad">
+              <p className="text-lg font-semibold text-emerald-600">
                 {totalRegistrations > 0 ? "100%" : "—"}
               </p>
               <p className="text-[10px] text-muted-foreground">{t("verifiedRate")}</p>
@@ -188,7 +189,7 @@ export function ReferralLinkDialog({ open, onClose }: ReferralLinkDialogProps) {
               </p>
               <button
                 onClick={() => setShowCreate(!showCreate)}
-                className="inline-flex items-center gap-1 text-[11px] font-semibold text-sky-600 hover:text-sky-700 dark:text-sky-400"
+                className="inline-flex items-center gap-1 text-[11px] font-semibold text-sky-600 hover:text-sky-700"
               >
                 <Plus className="h-3 w-3" />
                 {t("newLink")}
@@ -197,7 +198,7 @@ export function ReferralLinkDialog({ open, onClose }: ReferralLinkDialogProps) {
 
             {/* Create new link form */}
             {showCreate && (
-              <div className="mt-3 space-y-2.5 rounded-xl border border-sky-200/60 bg-sky-50/40 p-3.5 dark:border-sky-800/40 dark:bg-sky-950/20">
+              <div className="mt-3 space-y-2.5 rounded-xl border border-sky-200/60 bg-sky-50/40 p-3.5">
                 <div>
                   <label className="text-[11px] font-medium text-muted-foreground">
                     <Tag className="mr-1 inline h-3 w-3" />{t("labelOptional")}
@@ -275,28 +276,28 @@ export function ReferralLinkDialog({ open, onClose }: ReferralLinkDialogProps) {
                   return (
                     <div
                       key={link._id}
-                      className="flex items-center gap-3 rounded-xl border border-border/50 bg-secondary/20 p-3 transition-colors hover:bg-secondary/40"
+                      className="flex items-center gap-3 rounded-xl border border-border/50 bg-secondary/20 transition-colors hover:bg-secondary/40 chip-pad"
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <code className="text-xs font-semibold text-foreground">{link.code}</code>
                           {link.label && (
-                            <span className="truncate rounded-full bg-sky-100/60 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:bg-sky-900/30 dark:text-sky-300">
+                            <span className="truncate rounded-full bg-sky-100/60 px-2 py-0.5 text-[10px] font-medium text-sky-700">
                               {link.label}
                             </span>
                           )}
                           {!link.isActive && (
-                            <span className="rounded-full bg-red-100/60 px-2 py-0.5 text-[10px] font-medium text-red-600 dark:bg-red-900/30 dark:text-red-400">
+                            <span className="rounded-full bg-red-100/60 px-2 py-0.5 text-[10px] font-medium text-red-600">
                               {t("disabled")}
                             </span>
                           )}
                           {isExpired && (
-                            <span className="rounded-full bg-amber-100/60 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
+                            <span className="rounded-full bg-amber-100/60 px-2 py-0.5 text-[10px] font-medium text-amber-600">
                               {t("expired")}
                             </span>
                           )}
                           {isMaxed && (
-                            <span className="rounded-full bg-amber-100/60 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
+                            <span className="rounded-full bg-amber-100/60 px-2 py-0.5 text-[10px] font-medium text-amber-600">
                               {t("maxReached")}
                             </span>
                           )}
@@ -308,7 +309,7 @@ export function ReferralLinkDialog({ open, onClose }: ReferralLinkDialogProps) {
                           </span>
                           {link.maxUses > 0 && <span>{t("max")}: {link.maxUses}</span>}
                           {link.expiresAt && (
-                            <span>{t("exp")}: {new Date(link.expiresAt).toLocaleDateString()}</span>
+                            <span>{t("exp")}: {formatDate(new Date(link.expiresAt))}</span>
                           )}
                         </div>
                       </div>
@@ -333,7 +334,7 @@ export function ReferralLinkDialog({ open, onClose }: ReferralLinkDialogProps) {
           <div className="mx-6 mb-6 mt-5">
             <a
               href="/en/super-agent/referral-links"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-sky-600 hover:text-sky-700 dark:text-sky-400"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-sky-600 hover:text-sky-700"
             >
               <ExternalLink className="h-3 w-3" />
               {t("manageAllReferralLinks")}

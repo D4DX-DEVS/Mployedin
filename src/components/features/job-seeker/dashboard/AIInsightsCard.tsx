@@ -63,7 +63,7 @@ export function AIInsightsCard() {
       <div className="mb-3 sm:mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-semibold">{t("aiInsights")}</h3>
+          <h3 className="heading-label font-semibold">{t("aiInsights")}</h3>
         </div>
         <button
           onClick={loadInsights}
@@ -83,7 +83,7 @@ export function AIInsightsCard() {
           return (
             <div
               key={i}
-              className={`rounded-lg border p-4 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-sm ${config.tone}`}
+              className={`rounded-lg border transition-all duration-150 hover:-translate-y-0.5 hover:shadow-sm ${config.tone} card-pad`}
             >
               <div className="flex items-start gap-3">
                 <div className="mt-0.5 rounded-lg border border-border/40 bg-background/80 p-1.5">

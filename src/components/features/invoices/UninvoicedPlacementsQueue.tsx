@@ -21,6 +21,7 @@ import {
   Users, Building2, Briefcase, Receipt, AlertTriangle,
   ChevronDown, ChevronUp, Globe, Calculator,
 } from "lucide-react";
+import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface UninvoicedPlacement {
@@ -133,7 +134,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
       setPlacements(data.placements ?? []);
       setTotal(data.total ?? 0);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to load data");
+      toast.error("We couldn't load uninvoiced placements. Nothing was changed. Try again.");
     } finally {
       setLoading(false);
     }
@@ -197,7 +198,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
         toast.error(result?.reason ?? "Failed to generate invoice");
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed");
+      toast.error("We couldn't create the invoice. No invoice was saved. Review the placement and try again.");
     } finally {
       setQuickGenerating(null);
     }
@@ -235,7 +236,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
         onInvoicesCreated();
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Bulk generation failed");
+      toast.error("We couldn't create the selected invoices. Check the list before trying again to avoid duplicates.");
     } finally {
       setBulkProcessing(false);
     }
@@ -263,14 +264,14 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
   };
 
   const fmt = (amount: number, cur?: string) =>
-    `${cur ?? defaultCurrency} ${amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+    `${cur ?? defaultCurrency} ${formatCount(amount, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 className="text-base font-semibold text-foreground">{t("uninvoicedPlacements")}</h3>
+          <h3 className="heading-subsection font-semibold text-foreground">{t("uninvoicedPlacements")}</h3>
           <p className="text-xs text-muted-foreground">
             {t("placementsPending", { count: total })}
           </p>
@@ -299,26 +300,26 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
 
       {/* Summary bar when items selected */}
       {selected.size > 0 && (
-        <div className="flex flex-wrap items-center gap-4 rounded-xl border border-emerald-200 bg-emerald-50/80 px-4 py-3 dark:border-emerald-900/50 dark:bg-emerald-950/20">
-          <div className="flex items-center gap-2 text-sm font-medium text-emerald-700 dark:text-emerald-300">
+        <div className="flex flex-wrap items-center gap-4 rounded-xl border border-emerald-200 bg-emerald-50/80 px-4 py-3">
+          <div className="flex items-center gap-2 text-sm font-medium text-emerald-700">
             <CheckSquare className="h-4 w-4" />
             {t("selected", { count: selected.size })}
           </div>
-          <div className="h-4 w-px bg-emerald-300 dark:bg-emerald-700" />
-          <div className="text-sm text-emerald-600 dark:text-emerald-400">
+          <div className="h-4 w-px bg-emerald-300" />
+          <div className="text-sm text-emerald-600">
             {t("estTotal")}: <span className="font-semibold">{fmt(selectedTotal)}</span>
           </div>
           {selectedCountries.length > 0 && (
             <>
-              <div className="h-4 w-px bg-emerald-300 dark:bg-emerald-700" />
-              <div className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
+              <div className="h-4 w-px bg-emerald-300" />
+              <div className="flex items-center gap-1 text-xs text-emerald-600">
                 <Globe className="h-3.5 w-3.5" />
                 {selectedCountries.join(", ")}
               </div>
             </>
           )}
           <div className="ml-auto">
-            <Button variant="ghost" size="sm" onClick={() => setSelected(new Set())} className="h-7 text-xs text-emerald-600 hover:text-emerald-800 dark:text-emerald-400">
+            <Button variant="ghost" size="sm" onClick={() => setSelected(new Set())} className="h-7 text-xs text-emerald-600 hover:text-emerald-800">
               {tCommon("delete")}
             </Button>
           </div>
@@ -366,7 +367,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                 <TableRow className="border-border/70 hover:bg-transparent">
                   <TableCell colSpan={10} className="px-6 py-14 text-center">
                     <div className="flex flex-col items-center gap-3">
-                      <div className="rounded-[20px] bg-emerald-50 p-3 dark:bg-emerald-950/30">
+                      <div className="rounded-3xl bg-emerald-50 p-3">
                         <FileText className="h-6 w-6 text-emerald-500" />
                       </div>
                       <div>
@@ -386,7 +387,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                 return (
                   <Fragment key={p._id}>
                     <TableRow
-                      className={`border-border/70 cursor-pointer transition-colors ${isSelected ? "bg-emerald-50/50 dark:bg-emerald-950/10" : "hover:bg-secondary/30"}`}
+                      className={`border-border/70 cursor-pointer transition-colors ${isSelected ? "bg-emerald-50/50" : "hover:bg-secondary/30"}`}
                       onClick={() => toggleSelect(p._id)}
                     >
                       <TableCell onClick={(e) => e.stopPropagation()}>
@@ -402,7 +403,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                         <div>
                           <p className="text-sm font-medium text-foreground">{p.jobTitle}</p>
                           <p className="text-[10px] text-muted-foreground">
-                            {t("placedDate")} {new Date(p.placedAt).toLocaleDateString()}
+                            {t("placedDate")} {formatDate(new Date(p.placedAt))}
                           </p>
                         </div>
                       </TableCell>
@@ -438,9 +439,9 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                       <TableCell>
                         {taxInfo ? (
                           <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                            taxInfo.taxType === "vat" ? "border border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900/50 dark:bg-sky-950/30 dark:text-sky-300" :
-                            taxInfo.taxType === "gst" ? "border border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900/50 dark:bg-violet-950/30 dark:text-violet-300" :
-                            taxInfo.taxType === "reverse_charge" ? "border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300" :
+                            taxInfo.taxType === "vat" ? "border border-sky-200 bg-sky-50 text-sky-700" :
+                            taxInfo.taxType === "gst" ? "border border-violet-200 bg-violet-50 text-violet-700" :
+                            taxInfo.taxType === "reverse_charge" ? "border border-amber-200 bg-amber-50 text-amber-700" :
                             "border border-border bg-secondary text-muted-foreground"
                           }`}>
                             {taxInfo.label}
@@ -472,7 +473,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                             size="sm"
                             onClick={() => handleQuickGenerate(p)}
                             disabled={quickGenerating === p._id}
-                            className="h-7 gap-1 px-2 text-[10px] font-medium text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                            className="h-7 gap-1 px-2 text-[10px] font-medium text-emerald-600 hover:bg-emerald-50"
                           >
                             {quickGenerating === p._id ? (
                               <Loader2 className="h-3 w-3 animate-spin" />
@@ -495,7 +496,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                       <TableRow key={`${p._id}-detail`} className="border-border/70 bg-secondary/20 hover:bg-secondary/20">
                         <TableCell colSpan={10}>
                           <div className="grid grid-cols-1 gap-2 sm:gap-4 py-2 sm:grid-cols-3">
-                            <div className="rounded-lg border border-border/70 bg-card p-3">
+                            <div className="rounded-lg border border-border/70 bg-card chip-pad">
                               <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                                 {t("invoicePreview")}
                               </p>
@@ -517,7 +518,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                                 </div>
                               </div>
                             </div>
-                            <div className="rounded-lg border border-border/70 bg-card p-3">
+                            <div className="rounded-lg border border-border/70 bg-card chip-pad">
                               <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                                 {t("commissionSplit")}
                               </p>
@@ -541,7 +542,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                                 </div>
                               </div>
                             </div>
-                            <div className="rounded-lg border border-border/70 bg-card p-3">
+                            <div className="rounded-lg border border-border/70 bg-card chip-pad">
                               <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                                 {t("employerBilling")}
                               </p>
@@ -591,7 +592,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
           {!bulkResults ? (
             <div className="space-y-4">
               {/* Preview summary */}
-              <div className="rounded-xl border border-border/70 bg-secondary/30 p-4">
+              <div className="rounded-xl border border-border/70 bg-secondary/30 card-pad">
                 <div className="grid grid-cols-3 gap-4 text-center">
                   <div>
                     <p className="text-2xl font-bold text-foreground">{selected.size}</p>
@@ -696,13 +697,13 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
 
               {/* Actions */}
               <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={closeBulkModal} className="h-9 rounded-lg">
+                <Button size="sm" variant="outline" onClick={closeBulkModal} className="rounded-lg">
                   {tCommon("cancel")}
                 </Button>
-                <Button
+                <Button size="sm"
                   onClick={handleBulkGenerate}
                   disabled={bulkProcessing}
-                  className="h-9 gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-700"
+                  className="gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-700"
                 >
                   {bulkProcessing ? (
                     <><Loader2 className="h-4 w-4 animate-spin" /> {t("processing")}</>
@@ -717,17 +718,17 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
             <div className="space-y-4">
               {/* Summary */}
               <div className="grid grid-cols-3 gap-3">
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-3 text-center dark:border-emerald-900/50 dark:bg-emerald-950/20">
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 text-center chip-pad">
                   <p className="text-2xl font-bold text-emerald-600">{bulkResults.summary.created}</p>
-                  <p className="text-[10px] font-medium uppercase text-emerald-700 dark:text-emerald-400">{t("created")}</p>
+                  <p className="text-[10px] font-medium uppercase text-emerald-700">{t("created")}</p>
                 </div>
-                <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-3 text-center dark:border-amber-900/50 dark:bg-amber-950/20">
+                <div className="rounded-xl border border-amber-200 bg-amber-50/80 text-center chip-pad">
                   <p className="text-2xl font-bold text-amber-600">{bulkResults.summary.skipped}</p>
-                  <p className="text-[10px] font-medium uppercase text-amber-700 dark:text-amber-400">{t("skipped")}</p>
+                  <p className="text-[10px] font-medium uppercase text-amber-700">{t("skipped")}</p>
                 </div>
-                <div className="rounded-xl border border-rose-200 bg-rose-50/80 p-3 text-center dark:border-rose-900/50 dark:bg-rose-950/20">
+                <div className="rounded-xl border border-rose-200 bg-rose-50/80 text-center chip-pad">
                   <p className="text-2xl font-bold text-rose-600">{bulkResults.summary.errors}</p>
-                  <p className="text-[10px] font-medium uppercase text-rose-700 dark:text-rose-400">{t("errors")}</p>
+                  <p className="text-[10px] font-medium uppercase text-rose-700">{t("errors")}</p>
                 </div>
               </div>
 
@@ -747,9 +748,9 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                       <tr key={i} className="border-b border-border/50">
                         <td className="px-3 py-1.5">
                           <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                            r.status === "created" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" :
-                            r.status === "skipped" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300" :
-                            "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300"
+                            r.status === "created" ? "bg-emerald-100 text-emerald-700" :
+                            r.status === "skipped" ? "bg-amber-100 text-amber-700" :
+                            "bg-rose-100 text-rose-700"
                           }`}>
                             {r.status}
                           </span>
@@ -764,7 +765,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
               </div>
 
               <div className="flex justify-end">
-                <Button onClick={closeBulkModal} className="h-9 rounded-lg">
+                <Button size="sm" onClick={closeBulkModal} className="rounded-lg">
                   {t("done")}
                 </Button>
               </div>

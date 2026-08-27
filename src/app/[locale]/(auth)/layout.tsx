@@ -11,7 +11,6 @@ import {
   Users,
 } from "lucide-react";
 import { SessionWrapper } from "@/components/shared/SessionWrapper";
-import { ThemeToggle } from "@/components/shared/ThemeToggle";
 
 export default async function AuthLayout({
   children,
@@ -69,7 +68,7 @@ export default async function AuthLayout({
 
               <div className="relative mt-6 max-w-xl">
                 <div className="absolute -inset-5 rounded-[2rem] bg-primary/10 blur-2xl" />
-                <div className="relative overflow-hidden rounded-[1.6rem] border border-white/70 bg-card/88 p-4 shadow-[0_30px_80px_-42px_rgba(30,47,108,0.55)] backdrop-blur dark:border-border/70 xl:p-5">
+                <div className="relative overflow-hidden rounded-[1.6rem] border border-white/70 bg-card/88 shadow-[0_30px_80px_-42px_rgba(30,47,108,0.55)] backdrop-blur card-pad">
                   <div className="flex items-center justify-between gap-4">
                     <div>
                       <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
@@ -78,7 +77,7 @@ export default async function AuthLayout({
                       </p>
                       <h2 className="mt-1.5 text-base font-semibold text-foreground xl:text-lg">{t("matchPanelTitle")}</h2>
                     </div>
-                    <span className="rounded-full bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                    <span className="rounded-full bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-700">
                       {t("matchScore", { score: 92 })}
                     </span>
                   </div>
@@ -136,7 +135,7 @@ export default async function AuthLayout({
 
         <div className="flex min-w-0 flex-1 flex-col bg-background/92 px-3 py-3 sm:px-6 sm:py-4 lg:w-[480px] lg:flex-none xl:w-[520px]">
           <div className="mx-auto flex w-full max-w-md flex-1 items-center">
-            <div className="w-full rounded-2xl border border-border/60 bg-background/86 p-4 shadow-[0_30px_80px_-42px_rgba(15,23,42,0.35)] backdrop-blur dark:shadow-[0_30px_80px_-42px_rgba(0,0,0,0.55)] sm:rounded-[26px] sm:p-5 md:p-6">
+            <div className="w-full rounded-2xl border border-border/60 bg-background/86 shadow-[0_30px_80px_-42px_rgba(15,23,42,0.35)] backdrop-blur sm:rounded-3xl panel-body">
               <SessionWrapper disableIdleTimeout>
                 {children}
               </SessionWrapper>

@@ -28,6 +28,7 @@ import type { ExportColumn } from "@/lib/export";
 import {
   SuperAgentPageIntro, SuperAgentMetricsGrid,
 } from "@/components/features/super-agent/WorkspacePage";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -104,7 +105,7 @@ const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "S
 function formatCurrency(value: number, currency = "AED"): string {
   if (value >= 1_000_000) return `${currency} ${(value / 1_000_000).toFixed(1)}M`;
   if (value >= 1_000) return `${currency} ${Math.round(value / 1_000)}K`;
-  return `${currency} ${value.toLocaleString()}`;
+  return `${currency} ${formatCount(value)}`;
 }
 
 function GrowthIndicator({ value }: { value: number }) {
@@ -237,7 +238,7 @@ export default function SuperAgentTargetReportPage() {
   if (loading) {
     return (
       <div className="page-container">
-        <div className="h-20 w-full animate-pulse rounded-[20px] bg-muted/40" />
+        <div className="h-20 w-full animate-pulse rounded-3xl bg-muted/40" />
         <div className="grid gap-4 sm:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="h-28 animate-pulse rounded-2xl bg-muted/50" />
@@ -255,11 +256,8 @@ export default function SuperAgentTargetReportPage() {
     <div className="page-container print:space-y-4">
       {/* ═══════ HERO ═══════ */}
       <SuperAgentPageIntro
-        title="Target Report"
-        description={`Team performance report — ${yearFilter}. Track your agents' employer, employee, and finance targets.`}
-        eyebrow="Targets workspace"
-        summaryTitle="Team coverage"
-        summaryDescription={`${data.teamBreakdown.length} agents tracked across employer, employee, and finance targets with ${data.summary.avgProgress}% average performance.`}
+        title={t("targetReportTitle")}
+        description={t("teamReportHeroDescription", { year: yearFilter })}
       />
 
       {/* ═══════ KPI Summary ═══════ */}
@@ -275,7 +273,7 @@ export default function SuperAgentTargetReportPage() {
       {/* ═══════ TOOLBAR ═══════ */}
       <TableToolbar
         title={t("performanceDataTitle")}
-        description="Filter by quarter, category, or risk level to narrow results."
+        description={t("reportFilterHintRisk")}
         search={searchQuery}
         onSearchChange={setSearchQuery}
         searchPlaceholder="Search agent name…"
@@ -289,7 +287,7 @@ export default function SuperAgentTargetReportPage() {
           </Button>
         }
         actions={hasActiveFilters ? (
-          <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9 text-xs text-muted-foreground">
+          <Button variant="ghost" size="sm" onClick={clearFilters} className="text-xs text-muted-foreground">
             <X className="h-3.5 w-3.5 mr-1" /> Clear filters
           </Button>
         ) : undefined}
@@ -300,7 +298,7 @@ export default function SuperAgentTargetReportPage() {
               <Input type="number" value={yearFilter} onChange={(e) => setYearFilter(parseInt(e.target.value) || currentYear)} className="h-9 w-24 rounded-lg text-sm" />
             </div>
             <Select value={quarterFilter} onValueChange={setQuarterFilter}>
-              <SelectTrigger className="h-9 w-[130px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder="Quarter" /></SelectTrigger>
+              <SelectTrigger className="h-9 w-[130px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder={t("quarter")} /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Quarters</SelectItem>
                 <SelectItem value="1">Q1 (Jan–Mar)</SelectItem>
@@ -310,7 +308,7 @@ export default function SuperAgentTargetReportPage() {
               </SelectContent>
             </Select>
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="h-9 w-[140px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder="Category" /></SelectTrigger>
+              <SelectTrigger className="h-9 w-[140px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder={t("category")} /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
                 <SelectItem value="employer">Employer</SelectItem>
@@ -319,7 +317,7 @@ export default function SuperAgentTargetReportPage() {
               </SelectContent>
             </Select>
             <Select value={riskFilter} onValueChange={setRiskFilter}>
-              <SelectTrigger className="h-9 w-[130px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder="Risk" /></SelectTrigger>
+              <SelectTrigger className="h-9 w-[130px] rounded-lg border-border bg-card text-sm"><SelectValue placeholder={t("risk")} /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Risks</SelectItem>
                 <SelectItem value="high">High Risk</SelectItem>
@@ -335,10 +333,10 @@ export default function SuperAgentTargetReportPage() {
       />
 
       {/* ═══════ Monthly Trend ═══════ */}
-      <section className="rounded-3xl border bg-card p-3 sm:p-4 lg:p-5 shadow-sm print:break-inside-avoid">
+      <section className="rounded-3xl border bg-card shadow-sm print:break-inside-avoid card-pad">
         <div className="mb-5 flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold tracking-tight">Monthly Performance Timeline</h2>
+            <h2 className="heading-section font-semibold tracking-tight">Monthly Performance Timeline</h2>
             <p className="text-sm text-muted-foreground">
               Target vs achieved{quarterFilter !== "all" ? ` — Q${quarterFilter}` : ""}{categoryFilter !== "all" ? ` — ${categoryFilter} only` : ""}
             </p>
@@ -380,10 +378,10 @@ export default function SuperAgentTargetReportPage() {
       </section>
 
       {/* ═══════ Business Volume ═══════ */}
-      <section className="rounded-3xl border bg-card p-3 sm:p-4 lg:p-5 shadow-sm print:break-inside-avoid">
+      <section className="rounded-3xl border bg-card shadow-sm print:break-inside-avoid card-pad">
         <div className="mb-5 flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold tracking-tight">Business Volume — {yearFilter}</h2>
+            <h2 className="heading-section font-semibold tracking-tight">Business Volume — {yearFilter}</h2>
             <p className="text-sm text-muted-foreground">Monthly revenue (thousands){quarterFilter !== "all" ? ` — Q${quarterFilter}` : ""}</p>
           </div>
           <CircleDollarSign className="h-5 w-5 text-primary" />
@@ -419,10 +417,10 @@ export default function SuperAgentTargetReportPage() {
 
       {/* ═══════ Year-over-Year ═══════ */}
       {data.yearOverYear && (
-        <section className="rounded-3xl border bg-card p-3 sm:p-4 lg:p-5 shadow-sm print:break-inside-avoid">
+        <section className="rounded-3xl border bg-card shadow-sm print:break-inside-avoid card-pad">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold tracking-tight">Year-over-Year Comparison</h2>
+              <h2 className="heading-section font-semibold tracking-tight">Year-over-Year Comparison</h2>
               <p className="text-sm text-muted-foreground">{data.yearOverYear.previousYear.year} vs {data.yearOverYear.currentYear.year}</p>
             </div>
           </div>
@@ -433,13 +431,13 @@ export default function SuperAgentTargetReportPage() {
               { label: "Revenue", curr: data.yearOverYear.currentYear.financeAchieved, prev: data.yearOverYear.previousYear.financeAchieved, growth: data.yearOverYear.growth.financeAchieved, isCurrency: true },
               { label: "Avg Progress", curr: data.yearOverYear.currentYear.avgProgress, prev: data.yearOverYear.previousYear.avgProgress, growth: data.yearOverYear.growth.avgProgress, isPercent: true },
             ] as const).map((item) => (
-              <div key={item.label} className="rounded-xl border border-border/50 p-4 text-center">
+              <div key={item.label} className="rounded-xl border border-border/50 text-center card-pad">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{item.label}</p>
                 <p className="mt-1 text-xl font-bold tabular-nums">
-                  {"isCurrency" in item && item.isCurrency ? formatCurrency(item.curr, currency) : "isPercent" in item && item.isPercent ? `${item.curr}%` : item.curr.toLocaleString()}
+                  {"isCurrency" in item && item.isCurrency ? formatCurrency(item.curr, currency) : "isPercent" in item && item.isPercent ? `${item.curr}%` : formatCount(item.curr)}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  was {"isCurrency" in item && item.isCurrency ? formatCurrency(item.prev, currency) : "isPercent" in item && item.isPercent ? `${item.prev}%` : item.prev.toLocaleString()}
+                  was {"isCurrency" in item && item.isCurrency ? formatCurrency(item.prev, currency) : "isPercent" in item && item.isPercent ? `${item.prev}%` : formatCount(item.prev)}
                 </p>
                 <GrowthIndicator value={item.growth} />
               </div>
@@ -450,10 +448,10 @@ export default function SuperAgentTargetReportPage() {
 
       {/* ═══════ Team Breakdown Table ═══════ */}
       {filteredTeam.length > 0 && (
-        <section className="rounded-3xl border bg-card p-3 sm:p-4 lg:p-5 shadow-sm print:break-inside-avoid">
+        <section className="rounded-3xl border bg-card shadow-sm print:break-inside-avoid card-pad">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold tracking-tight">Team Performance</h2>
+              <h2 className="heading-section font-semibold tracking-tight">Team Performance</h2>
               <p className="text-sm text-muted-foreground">{filteredTeam.length} agents ranked by progress</p>
             </div>
             <Users className="h-5 w-5 text-primary" />

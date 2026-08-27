@@ -6,7 +6,7 @@ import {
   Scale, Plus, Trash2, Edit2, Save, X, Loader2, Shield,
   ChevronDown, ChevronUp,
 } from "lucide-react";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -142,7 +142,7 @@ export default function AdminMatchingWeightTemplatesPage() {
   if (isLoading) {
     return (
       <div className="page-container">
-        <PageHeader title={tr("pageTitle")} description={tr("pageDescription")} />
+        <DashboardPageHeader title={tr("pageTitle")} description={tr("pageDescription")} />
         {[1, 2, 3].map((i) => (
           <div key={i} className="h-24 animate-pulse rounded-2xl border border-border bg-background/70" />
         ))}
@@ -152,7 +152,7 @@ export default function AdminMatchingWeightTemplatesPage() {
 
   return (
     <div className="page-container">
-      <PageHeader
+      <DashboardPageHeader
         title={tr("pageTitle")}
         description={tr("pageDescription")}
         actions={
@@ -160,13 +160,14 @@ export default function AdminMatchingWeightTemplatesPage() {
             <Plus className="h-4 w-4" /> {tr("newTemplateButton")}
           </Button>
         }
+        compactOnMobile
       />
 
       {/* ─── Create / Edit Form ─── */}
       {showForm && (
-        <section className="rounded-2xl border border-sky-500/30 bg-sky-500/5 p-4 sm:p-6 space-y-5">
+        <section className="rounded-2xl border border-sky-500/30 bg-sky-500/5 space-y-5 panel-body">
           <div className="flex items-start justify-between gap-3">
-            <h3 className="text-base sm:text-lg font-semibold text-foreground">
+            <h3 className="heading-subsection font-semibold text-foreground">
               {editId ? tr("editFormTitle") : tr("createFormTitle")}
             </h3>
             <button onClick={closeForm} className="shrink-0 text-muted-foreground hover:text-foreground">
@@ -216,7 +217,7 @@ export default function AdminMatchingWeightTemplatesPage() {
                   className="h-8 w-32"
                   maxLength={50}
                 />
-                <Button size="sm" variant="ghost" onClick={addTag} className="h-8">
+                <Button size="dense" variant="ghost" onClick={addTag} className="">
                   <Plus className="h-3 w-3" />
                 </Button>
               </div>
@@ -239,7 +240,7 @@ export default function AdminMatchingWeightTemplatesPage() {
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               {weightKeys.map((key) => (
-                <div key={key} className="flex items-center gap-3 rounded-xl border border-border bg-background/80 p-3">
+                <div key={key} className="flex items-center gap-3 rounded-xl border border-border bg-background/80 chip-pad">
                   <span className="min-w-[8rem] text-sm">{weightLabels[key]}</span>
                   <Input
                     type="number"
@@ -302,7 +303,7 @@ export default function AdminMatchingWeightTemplatesPage() {
             return (
               <div
                 key={t._id}
-                className="rounded-2xl border border-border bg-background/80 p-5 transition-all hover:border-sky-500/25"
+                className="rounded-2xl border border-border bg-background/80 transition-all hover:border-sky-500/25 panel-body"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0 flex-1">
@@ -363,7 +364,7 @@ export default function AdminMatchingWeightTemplatesPage() {
 
                 {/* Expanded: weight distribution */}
                 {isExpanded && (
-                  <div className="mt-4 rounded-xl border border-border bg-background/60 p-4">
+                  <div className="mt-4 rounded-xl border border-border bg-background/60 card-pad">
                     <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       {tr("weightDistributionExpandedLabel")}
                     </p>

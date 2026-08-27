@@ -23,6 +23,7 @@ import { InvoiceBuilder } from "@/components/features/invoices/InvoiceBuilder";
 import { InvoiceDetailView } from "@/components/features/invoices/InvoiceDetailView";
 import { RevenueKPICards } from "@/components/features/invoices/RevenueKPICards";
 import { RevenueAnalyticsPanel } from "@/components/features/invoices/RevenueAnalyticsPanel";
+import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface Invoice {
@@ -96,7 +97,7 @@ export default function AgentInvoicesPage() {
       updateTotal(data.total ?? 0);
       if (data.summary) setSummary(data.summary);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : t("errorFailedToLoad");
+      const msg = t("errorFailedToLoad");
       setErrorMessage(msg);
       toast.error(msg);
     } finally {
@@ -123,7 +124,7 @@ export default function AgentInvoicesPage() {
       return ac ? `${ac.rate}% = ${ac.amount}` : "—";
     }},
     { header: tc("status"), key: "status" },
-    { header: t("exportHeaderDue"), key: "dueDate" as keyof Invoice, formatter: v => v ? new Date(String(v)).toLocaleDateString() : "—" },
+    { header: t("exportHeaderDue"), key: "dueDate" as keyof Invoice, formatter: v => v ? formatDate(new Date(String(v))) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: invoices as unknown as Record<string, unknown>[],
@@ -146,7 +147,7 @@ export default function AgentInvoicesPage() {
         right={
           <div className="flex items-center gap-2">
             <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">
-              <ArrowRight className="h-3.5 w-3.5 text-primary" /> {total.toLocaleString()} {t("invoicesPill")}
+              <ArrowRight className="h-3.5 w-3.5 text-primary" /> {formatCount(total)} {t("invoicesPill")}
             </div>
             <div className="inline-flex rounded-lg border border-border/70 bg-card">
               <button onClick={() => setActiveView("table")} className={`rounded-l-lg px-3 py-1.5 text-xs font-medium transition-colors ${activeView === "table" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
@@ -196,7 +197,7 @@ export default function AgentInvoicesPage() {
                 <button key={p} onClick={() => setAnalyticsPeriod(p)} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${analyticsPeriod === p ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}>{p === "1y" ? t("periodOneYear") : p}</button>
               ))}
             </div>
-            <Button variant="outline" size="sm" onClick={refreshAnalytics} className="h-8 gap-1.5 rounded-lg text-xs"><RefreshCw className="h-3.5 w-3.5" /> {t("refreshButton")}</Button>
+            <Button variant="outline" size="dense" onClick={refreshAnalytics} className="gap-1.5 rounded-lg text-xs"><RefreshCw className="h-3.5 w-3.5" /> {t("refreshButton")}</Button>
           </div>
           {analyticsData && <RevenueAnalyticsPanel data={analyticsData} currency={displayCurrency} />}
           {analyticsLoading && <div className="py-12 text-center text-sm text-muted-foreground">{tc("loading")}</div>}
@@ -206,12 +207,12 @@ export default function AgentInvoicesPage() {
       {/* Table View */}
       {activeView === "table" && (
         <>
-          {errorMessage && <div className="rounded-2xl border border-rose-200 bg-rose-50/90 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">{errorMessage}</div>}
+          {errorMessage && <div className="rounded-2xl border border-rose-200 bg-rose-50/90 px-4 py-3 text-sm text-rose-700">{errorMessage}</div>}
 
-          <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-[24px]">
+          <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-3xl">
             <div className="flex flex-col gap-2 border-b border-border/80 panel-head">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sectionLabel")}</p>
-              <h3 className="text-lg font-semibold text-foreground">{t("sectionHeading")}</h3>
+              <h3 className="heading-subsection font-semibold text-foreground">{t("sectionHeading")}</h3>
             </div>
             <InvoiceTable
               invoices={invoices}

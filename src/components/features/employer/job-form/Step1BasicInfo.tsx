@@ -171,14 +171,14 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
       transition={{ duration: 0.25 }}
       className="space-y-3 sm:space-y-5"
     >
-      <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-muted/20 sm:flex-row sm:items-center sm:justify-between card-pad">
         <div className="space-y-1">
-          <h2 className="text-lg font-semibold text-foreground">{t("title")}</h2>
+          <h2 className="heading-section font-semibold text-foreground">{t("title")}</h2>
           <p className="text-sm text-muted-foreground">
             {t("description")}
           </p>
         </div>
-        <div className="rounded-xl border border-border/70 bg-background px-3 py-2 text-xs text-muted-foreground sm:max-w-xs">
+        <div className="rounded-xl border border-border/70 bg-background text-xs text-muted-foreground sm:max-w-xs chip-pad">
           {suggestions
             ? t("suggestionHint")
             : t("defaultHint")}
@@ -187,7 +187,7 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(15rem,0.9fr)]">
         {/* Job Title */}
-        <div className="space-y-1.5">
+        <div className="field">
           <Label htmlFor="title" className="text-sm font-medium">
             {t("jobTitle")} <span className="text-destructive">*</span>
           </Label>
@@ -201,6 +201,8 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
               aria-autocomplete="list"
               aria-expanded={showSuggestions && titleSuggestions.length > 0}
               aria-controls={titleSuggestions.length > 0 ? suggestionsListId : undefined}
+              aria-invalid={!!errors.title}
+              aria-describedby={errors.title ? "job-title-error" : undefined}
               onFocus={() => titleSuggestions.length > 0 && setShowSuggestions(true)}
             />
             {fetchingSuggestions && (
@@ -252,7 +254,7 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
             {t("jobTitleHint")}
           </p>
           {errors.title && (
-            <p className="mt-1 text-xs text-destructive">{getTitleError()}</p>
+            <p id="job-title-error" className="mt-1 text-xs text-destructive">{getTitleError()}</p>
           )}
         </div>
 
@@ -289,9 +291,10 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
       </div>
 
       {/* Duration (for internships/contracts) */}
-      <div className="space-y-1.5">
-        <Label className="text-sm font-medium">{t("duration")} <span className="text-xs text-muted-foreground font-normal">({t("optional")})</span></Label>
+      <div className="field">
+        <Label htmlFor="job-duration" className="text-sm font-medium">{t("duration")} <span className="text-xs text-muted-foreground font-normal">({t("optional")})</span></Label>
         <Input
+          id="job-duration"
           {...register("duration")}
           placeholder={t("durationPlaceholder")}
           maxLength={100}
@@ -302,7 +305,7 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
       </div>
 
       {/* Location */}
-      <div className="rounded-2xl border border-border/70 bg-muted/20 p-4">
+      <div className="rounded-2xl border border-border/70 bg-muted/20 card-pad">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-1">
             <Label className="flex items-center gap-1.5 text-sm font-medium">
@@ -314,7 +317,7 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
             </p>
           </div>
 
-          <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-background px-3 py-2">
+          <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-background chip-pad">
             <Wifi className="w-4 h-4 text-muted-foreground shrink-0" />
             <div className="flex gap-1">
               {WORK_MODES.map((mode) => (
@@ -349,6 +352,8 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
               id="location-country"
               options={COUNTRIES.map((country) => ({ value: country, label: getCountryLabel(country) }))}
               value={watch("location.country") ?? ""}
+              aria-invalid={!!errors.location?.country}
+              aria-describedby={errors.location?.country ? "location-country-error" : undefined}
               onValueChange={(v) => {
                 setValue("location.country", v, { shouldValidate: true });
                 // Auto-select currency based on country
@@ -366,12 +371,12 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
               placeholder={t("countryPlaceholder")}
             />
             {errors.location?.country && (
-              <p className="text-xs text-destructive">{t("validation.countryRequired")}</p>
+              <p id="location-country-error" className="text-xs text-destructive">{t("validation.countryRequired")}</p>
             )}
           </div>
 
           {/* City */}
-          <div className="space-y-1.5">
+          <div className="field">
             <Label htmlFor="location-city" className="text-xs text-muted-foreground">
               {t("city")} <span className="text-destructive">*</span>
             </Label>
@@ -380,11 +385,13 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
               {...register("location.city")}
               placeholder={t("cityPlaceholder")}
               className={cn(errors.location?.city && "border-destructive")}
+              aria-invalid={!!errors.location?.city}
+              aria-describedby={errors.location?.city ? "location-city-error" : undefined}
             />
             {errors.location?.city && (
               // Showing "City is required" for a filled-but-invalid city (e.g.
               // "12345") told the user the wrong thing. Prefer the real message.
-              <p className="text-xs text-destructive">
+              <p id="location-city-error" className="text-xs text-destructive">
                 {errors.location.city.message ?? t("validation.cityRequired")}
               </p>
             )}
@@ -394,7 +401,7 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
 
       {/* Assign Agent (optional) */}
       {agents.length > 0 && (
-        <div className="space-y-2 rounded-2xl border border-dashed border-border/80 bg-background/60 p-4">
+        <div className="space-y-2 rounded-2xl border border-dashed border-border/80 bg-background/60 card-pad">
           <Label className="flex items-center gap-1.5 text-sm font-medium">
             <UserCog className="w-3.5 h-3.5" />
             {t("assignAgent")} <span className="text-xs text-muted-foreground font-normal">({t("optional")})</span>

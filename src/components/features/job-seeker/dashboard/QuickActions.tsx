@@ -43,7 +43,7 @@ export async function QuickActions({ locale }: QuickActionsProps) {
         <Link
           key={action.label}
           href={`/${locale}${action.href}`}
-          className={`flex flex-col items-center gap-2 rounded-lg sm:rounded-xl border p-3 sm:p-4 text-center transition-all hover:-translate-y-0.5 hover:shadow-md ${action.tone}`}
+          className={`flex flex-col items-center gap-2 rounded-lg sm:rounded-xl border text-center transition-all hover:-translate-y-0.5 hover:shadow-md ${action.tone} card-pad`}
         >
           <action.icon className="h-5 w-5" />
           <span className="text-xs font-semibold">{action.label}</span>

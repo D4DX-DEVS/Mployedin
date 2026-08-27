@@ -25,6 +25,7 @@ import {
 import { useConfirm } from "@/hooks/useConfirm";
 import { useDebounce } from "@/hooks/useDebounce";
 import RelativeDate from "@/components/shared/RelativeDate";
+import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import {
@@ -99,7 +100,7 @@ function CandidateAvatar({ ref, size = "sm" }: { ref: PooledCandidateRef | null;
   const label = candidateLabel(ref);
   const initials = label !== "—" ? label.slice(0, 2).toUpperCase() : "?";
   if (avatar) {
-    // eslint-disable-next-line @next/next/no-img-element
+     
     return <img src={avatar} alt={label} className={`${dims} rounded-full border-2 border-background object-cover`} />;
   }
   return (
@@ -168,7 +169,6 @@ export default function EmployerTalentPoolsPage() {
       <DashboardPageHeader
         inlineActions
         icon={Layers}
-        eyebrow={t("title")}
         title={t("title")}
         description={t("subtitle")}
         actions={pools.length > 0 ? (
@@ -190,7 +190,7 @@ export default function EmployerTalentPoolsPage() {
           <div className="flex flex-row items-center gap-2 sm:gap-3">
             <div className="relative min-w-0 flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder={t("searchPools")} value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+              <Input placeholder={t("searchPools")} value={search} onChange={(e) => setSearch(e.target.value)} aria-label={t("searchPools")} className="pl-9" />
             </div>
             <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortKey)}>
               <SelectTrigger className="w-[10.5rem] shrink-0 sm:w-[200px]" aria-label={t("sortBy")}>
@@ -203,6 +203,9 @@ export default function EmployerTalentPoolsPage() {
                 <SelectItem value="name">{t("sortAlphabetical")}</SelectItem>
               </SelectContent>
             </Select>
+            {/* Privacy info at the point candidate data is shown, compacted to
+                an icon + popover to keep the list above the fold. */}
+            <CandidateDataNotice variant="candidateList" compact />
           </div>
         </section>
       )}
@@ -210,7 +213,7 @@ export default function EmployerTalentPoolsPage() {
       {isLoading ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-5">
+            <div key={i} className="flex flex-col gap-3 rounded-2xl border border-border bg-card panel-body">
               <div className="flex items-start justify-between gap-3">
                 <Skeleton className="h-5 w-32" />
                 <Skeleton className="h-5 w-12 rounded-full" />
@@ -272,7 +275,7 @@ function PoolCard({
   const color = colorFor(pool._id);
 
   return (
-    <div className="group relative flex h-full flex-col gap-2 rounded-2xl border border-border bg-card p-3.5 transition hover:border-sky-300 hover:shadow-md sm:p-4">
+    <div className="group relative flex h-full flex-col gap-2 rounded-2xl border border-border bg-card transition hover:border-sky-300 hover:shadow-md card-pad">
       <div className="absolute right-3 top-3 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
         <button
           type="button"
@@ -292,13 +295,13 @@ function PoolCard({
         </button>
       </div>
 
-      <button type="button" onClick={onOpen} className="flex flex-1 flex-col gap-2 text-left focus:outline-none">
+      <button type="button" onClick={onOpen} className="flex flex-1 flex-col gap-2 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
         <div className="flex items-start gap-3">
           <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${color.bg} ring-4 ${color.ring}`}>
             <Layers className={`h-5 w-5 ${color.text}`} />
           </div>
           <div className="min-w-0 pr-10">
-            <h3 className="text-base font-semibold text-foreground line-clamp-1">{pool.name}</h3>
+            <h3 className="heading-subsection font-semibold text-foreground line-clamp-1">{pool.name}</h3>
             {pool.description ? (
               <p className="line-clamp-1 text-sm text-muted-foreground">{pool.description}</p>
             ) : (
@@ -307,7 +310,7 @@ function PoolCard({
           </div>
         </div>
 
-        <div className="flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap text-xs text-muted-foreground [&>*]:shrink-0">
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs text-muted-foreground [&>*]:shrink-0">
           <Users className="h-3.5 w-3.5" aria-hidden />
           <span className="font-medium text-foreground">{t("candidateCount", { count })}</span>
           <span aria-hidden>·</span>
@@ -366,7 +369,7 @@ function CreatePoolDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
           <DialogDescription className="sr-only">{t("subtitle")}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="space-y-1.5">
+          <div className="field">
             <Label htmlFor="pool-name">{t("poolName")}</Label>
             <Input
               id="pool-name"
@@ -376,7 +379,7 @@ function CreatePoolDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
               maxLength={100}
             />
           </div>
-          <div className="space-y-1.5">
+          <div className="field">
             <Label htmlFor="pool-description">{t("description")}</Label>
             <Textarea
               id="pool-description"
@@ -387,7 +390,7 @@ function CreatePoolDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
               rows={3}
             />
           </div>
-          <div className="space-y-1.5">
+          <div className="field">
             <Label htmlFor="pool-tags">{t("tags")}</Label>
             <Input
               id="pool-tags"
@@ -442,11 +445,11 @@ function RenamePoolDialog({ pool, onClose }: { pool: TalentPool | null; onClose:
           <DialogTitle>{t("edit")} {pool?.name}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="space-y-1.5">
+          <div className="field">
             <Label htmlFor="rename-pool-name">{t("poolName")}</Label>
             <Input id="rename-pool-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={100} />
           </div>
-          <div className="space-y-1.5">
+          <div className="field">
             <Label htmlFor="rename-pool-description">{t("description")}</Label>
             <Textarea id="rename-pool-description" value={description} onChange={(e) => setDescription(e.target.value)} maxLength={500} rows={3} />
           </div>
@@ -535,7 +538,7 @@ function AddCandidateSection({ pool, onDone }: { pool: TalentPool; onDone: () =>
   }
 
   return (
-    <div className="mb-4 rounded-2xl border border-border bg-muted/20 p-4">
+    <div className="mb-4 rounded-2xl border border-border bg-muted/20 card-pad">
       <div className="mb-2 flex items-center justify-between">
         <p className="text-sm font-semibold text-foreground">{t("addCandidate")}</p>
         <button type="button" onClick={onDone} className="rounded-lg p-1 text-muted-foreground hover:bg-muted">
@@ -554,7 +557,7 @@ function AddCandidateSection({ pool, onDone }: { pool: TalentPool; onDone: () =>
       </div>
 
       {selected.size > 0 && (
-        <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2">
+        <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 chip-pad">
           <span className="text-xs font-medium text-foreground">{t("selectedCount", { count: selected.size })}</span>
           <div className="flex items-center gap-2">
             <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())} disabled={bulkSubmitting}>
@@ -584,7 +587,7 @@ function AddCandidateSection({ pool, onDone }: { pool: TalentPool; onDone: () =>
           <p className="py-4 text-center text-xs text-muted-foreground">{t("noSearchResults")}</p>
         ) : (
           results.map((c) => (
-            <div key={c._id} className="flex items-center gap-3 rounded-xl border border-border bg-background px-3 py-2">
+            <div key={c._id} className="flex items-center gap-3 rounded-xl border border-border bg-background chip-pad">
               <input
                 type="checkbox"
                 checked={selected.has(c._id)}
@@ -740,7 +743,7 @@ function PoolDetailDialog({
                         return (
                           <li
                             key={candidate._id}
-                            className="flex items-start justify-between gap-3 rounded-2xl border border-border bg-background p-4"
+                            className="flex items-start justify-between gap-3 rounded-2xl border border-border bg-background card-pad"
                           >
                             <div className="flex min-w-0 gap-3">
                               <CandidateAvatar ref={ref} />
@@ -776,7 +779,7 @@ function PoolDetailDialog({
                             </div>
                             <div className="flex shrink-0 items-center gap-1">
                               {ref?._id ? (
-                                <Button asChild size="sm" variant="ghost" className="h-8 px-2">
+                                <Button asChild size="dense" variant="ghost" className="px-2">
                                   <Link href={`/${locale}/employer/candidates/${ref._id}`} title={t("viewProfile")}>
                                     <ExternalLink className="h-4 w-4" />
                                     <span className="sr-only">{t("viewProfile")}</span>
@@ -784,9 +787,9 @@ function PoolDetailDialog({
                                 </Button>
                               ) : null}
                               <Button
-                                size="sm"
+                                size="dense"
                                 variant="ghost"
-                                className="h-8 px-2 text-red-600 hover:bg-red-50 hover:text-red-700"
+                                className="px-2 text-red-600 hover:bg-red-50 hover:text-red-700"
                                 onClick={() => handleRemove(candidate)}
                                 disabled={removeCandidate.isPending}
                                 title={t("removeCandidate")}

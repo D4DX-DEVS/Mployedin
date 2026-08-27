@@ -15,6 +15,7 @@ import { SkillInsights } from "@/components/features/job-seeker/skills/SkillInsi
 import RelativeDate from "@/components/shared/RelativeDate";
 import { ShareJob } from "@/components/shared/ShareJob";
 import { serializeJsonLd } from "@/lib/security/jsonLd";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 interface PageProps {
   params: Promise<{ locale: string; id: string }>;
@@ -75,11 +76,11 @@ function salaryLabel(
   if (salary.min && salary.max)
     return t("salaryRangePerMonth", {
       currency: salary.currency ?? "AED",
-      min: salary.min.toLocaleString(),
-      max: salary.max.toLocaleString(),
+      min: formatCount(salary.min),
+      max: formatCount(salary.max),
     });
   if (salary.min)
-    return t("fromSalaryPerMonth", { currency: salary.currency ?? "AED", min: salary.min.toLocaleString() });
+    return t("fromSalaryPerMonth", { currency: salary.currency ?? "AED", min: formatCount(salary.min) });
   return null;
 }
 
@@ -89,9 +90,9 @@ function renderJobDescription(text: string) {
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          h1: ({ ...props }) => <h3 className="mt-4 mb-1.5 text-base font-semibold text-foreground" {...props} />,
-          h2: ({ ...props }) => <h3 className="mt-4 mb-1.5 text-sm font-semibold text-foreground" {...props} />,
-          h3: ({ ...props }) => <h3 className="mt-4 mb-1.5 text-sm font-semibold text-foreground" {...props} />,
+          h1: ({ ...props }) => <h3 className="heading-subsection mt-4 mb-1.5 font-semibold text-foreground" {...props} />,
+          h2: ({ ...props }) => <h3 className="heading-label mt-4 mb-1.5 font-semibold text-foreground" {...props} />,
+          h3: ({ ...props }) => <h3 className="heading-label mt-4 mb-1.5 font-semibold text-foreground" {...props} />,
           p: ({ ...props }) => <p className="leading-relaxed text-justify" {...props} />,
           ul: ({ ...props }) => <ul className="list-disc space-y-1 ps-5" {...props} />,
           ol: ({ ...props }) => <ol className="list-decimal space-y-1 ps-5" {...props} />,
@@ -221,7 +222,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
         </div>
 
         <div className="mx-auto max-w-6xl px-4 py-5 sm:py-8">
-          <section className="overflow-hidden rounded-2xl sm:rounded-[30px] border border-border/60 bg-gradient-to-br from-card via-card to-primary/[0.05] px-4 py-5 shadow-[0_20px_60px_rgba(15,23,42,0.06)] sm:px-8 sm:py-7">
+          <section className="overflow-hidden rounded-2xl sm:rounded-3xl border border-border/60 bg-gradient-to-br from-card via-card to-primary/[0.05] px-4 py-5 shadow-[0_20px_60px_rgba(15,23,42,0.06)] sm:px-8 sm:py-7">
             <div>
               <div>
                 <div className="inline-flex rounded-full border border-primary/10 bg-primary/[0.06] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
@@ -303,9 +304,9 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
 
           <div className="mt-5 sm:mt-6 grid gap-5 sm:gap-6 lg:grid-cols-[minmax(0,1.7fr)_320px]">
             <div className="space-y-5 sm:space-y-6">
-              <section className="card-base rounded-xl sm:rounded-[28px] panel-body">
+              <section className="card-base rounded-xl sm:rounded-3xl panel-body">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("overview")}</div>
-                <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">{t("whatThisRoleCovers")}</h2>
+                <h2 className="heading-section mt-1 font-semibold tracking-tight text-foreground">{t("whatThisRoleCovers")}</h2>
                 <div className="mt-4 space-y-2">
                   {renderJobDescription(job.description ?? "")}
                 </div>
@@ -313,9 +314,9 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
 
               {/* Responsibilities */}
               {job.responsibilities?.length > 0 && (
-                <section className="card-base rounded-xl sm:rounded-[28px] panel-body">
+                <section className="card-base rounded-xl sm:rounded-3xl panel-body">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("responsibilities")}</div>
-                  <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">{t("whatYouWillDo")}</h2>
+                  <h2 className="heading-section mt-1 font-semibold tracking-tight text-foreground">{t("whatYouWillDo")}</h2>
                   <ul className="mt-4 space-y-2">
                     {job.responsibilities.map((r: string, i: number) => (
                       <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
@@ -329,9 +330,9 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
 
               {/* Qualifications */}
               {job.qualifications?.length > 0 && (
-                <section className="card-base rounded-xl sm:rounded-[28px] panel-body">
+                <section className="card-base rounded-xl sm:rounded-3xl panel-body">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("qualifications")}</div>
-                  <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">{t("whatWereLookingFor")}</h2>
+                  <h2 className="heading-section mt-1 font-semibold tracking-tight text-foreground">{t("whatWereLookingFor")}</h2>
                   <ul className="mt-4 space-y-2">
                     {job.qualifications.map((q: string, i: number) => (
                       <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
@@ -345,9 +346,9 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
 
               {/* Benefits */}
               {job.benefits?.length > 0 && (
-                <section className="card-base rounded-xl sm:rounded-[28px] panel-body">
+                <section className="card-base rounded-xl sm:rounded-3xl panel-body">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("benefits")}</div>
-                  <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">{t("whatYouWillGet")}</h2>
+                  <h2 className="heading-section mt-1 font-semibold tracking-tight text-foreground">{t("whatYouWillGet")}</h2>
                   <ul className="mt-4 space-y-2">
                     {job.benefits.map((b: string, i: number) => (
                       <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
@@ -361,9 +362,9 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
 
               {/* Learning Outcomes */}
               {job.learningOutcomes?.length > 0 && (
-                <section className="card-base rounded-xl sm:rounded-[28px] panel-body">
+                <section className="card-base rounded-xl sm:rounded-3xl panel-body">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("learning")}</div>
-                  <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">{t("whatYouWillLearn")}</h2>
+                  <h2 className="heading-section mt-1 font-semibold tracking-tight text-foreground">{t("whatYouWillLearn")}</h2>
                   <ul className="mt-4 space-y-2">
                     {job.learningOutcomes.map((l: string, i: number) => (
                       <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
@@ -379,9 +380,9 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
               <SkillInsights jobId={String(job._id)} source="job_view" />
 
               {job.requirements && (
-                <section className="card-base rounded-xl sm:rounded-[28px] panel-body">
+                <section className="card-base rounded-xl sm:rounded-3xl panel-body">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("requirements")}</div>
-                  <h2 className="mt-1 text-lg sm:text-xl font-semibold tracking-tight text-foreground">{t("whatTheEmployerIsLookingFor")}</h2>
+                  <h2 className="heading-section mt-1 font-semibold tracking-tight text-foreground">{t("whatTheEmployerIsLookingFor")}</h2>
 
                   <div className="mt-5 space-y-5">
                     {job.requirements.skills?.length > 0 && (
@@ -444,9 +445,9 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
               )}
 
               {job.tags?.length > 0 && (
-                <section className="card-base rounded-xl sm:rounded-[28px] panel-body">
+                <section className="card-base rounded-xl sm:rounded-3xl panel-body">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("searchTerms")}</div>
-                  <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">{t("relatedTags")}</h2>
+                  <h2 className="heading-section mt-1 font-semibold tracking-tight text-foreground">{t("relatedTags")}</h2>
                   <div className="mt-4 flex flex-wrap gap-2">
                     {job.tags.map((t: string) => (
                       <Link
@@ -463,12 +464,12 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
             </div>
 
             <div className="space-y-4 sm:space-y-5 lg:self-start">
-              <aside className="rounded-xl sm:rounded-[26px] border border-border/70 bg-background/95 p-4 sm:p-5 shadow-[0_16px_40px_rgba(15,23,42,0.07)]">
+              <aside className="rounded-xl sm:rounded-3xl border border-border/70 bg-background/95 shadow-[0_16px_40px_rgba(15,23,42,0.07)] panel-body">
                 <div>
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("quickApply")}</div>
-                  <h2 className="mt-1 text-lg font-semibold tracking-tight text-foreground">{t("applyWithYourProfile")}</h2>
+                  <h2 className="heading-section mt-1 font-semibold tracking-tight text-foreground">{t("applyWithYourProfile")}</h2>
                 </div>
-                <div className="mt-4 space-y-2 rounded-xl sm:rounded-[22px] border border-border/60 bg-card px-4 py-4 text-sm text-muted-foreground">
+                <div className="mt-4 space-y-2 rounded-xl sm:rounded-3xl border border-border/60 bg-card text-sm text-muted-foreground card-pad">
                   <p>{t("useYourSavedProfile")}</p>
                   {responseTimeDays ? (
                     <p className="font-medium text-green-600">
@@ -486,9 +487,9 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                 </div>
               </aside>
 
-              <section className="card-base rounded-xl sm:rounded-[28px] panel-body">
+              <section className="card-base rounded-xl sm:rounded-3xl panel-body">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("employerProfile")}</div>
-                <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">{t("aboutTheEmployer")}</h3>
+                <h3 className="heading-subsection mt-1 font-semibold tracking-tight text-foreground">{t("aboutTheEmployer")}</h3>
                 <div className="mt-4 space-y-3 text-sm text-muted-foreground">
                   {employer?._id ? (
                     <Link
@@ -530,7 +531,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
 
               <Link
                 href={`/${locale}/job-seeker/jobs`}
-                className="block rounded-xl sm:rounded-[22px] border border-border/70 bg-background/90 px-4 py-3 text-center text-sm font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
+                className="block rounded-xl sm:rounded-3xl border border-border/70 bg-background/90 px-4 py-3 text-center text-sm font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
               >
                 {tc("back")} {t("jobSearch")}
               </Link>

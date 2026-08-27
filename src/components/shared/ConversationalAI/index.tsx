@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { useTranslations } from "next-intl";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 interface Message {
   role: "user" | "assistant";
@@ -56,14 +57,14 @@ function AIMarkdown({ content }: { content: string }) {
       remarkPlugins={[remarkGfm]}
       components={{
         h1: ({ ...props }) => <h1 className="text-base font-bold mt-3 mb-1" {...props} />,
-        h2: ({ ...props }) => <h2 className="text-sm font-bold mt-3 mb-1" {...props} />,
+        h2: ({ ...props }) => <h2 className="heading-label font-bold mt-3 mb-1" {...props} />,
         h3: ({ ...props }) => <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mt-3 mb-1" {...props} />,
         p: ({ ...props }) => <p className="my-1 leading-relaxed" {...props} />,
         ul: ({ ...props }) => <ul className="list-disc list-inside space-y-0.5 my-1" {...props} />,
         ol: ({ ...props }) => <ol className="list-decimal list-inside space-y-0.5 my-1" {...props} />,
         li: ({ ...props }) => <li className="leading-relaxed" {...props} />,
         strong: ({ ...props }) => <strong className="font-semibold" {...props} />,
-        code: ({ ...props }) => <code className="rounded bg-black/10 px-1 font-mono text-[0.88em] dark:bg-white/10" {...props} />,
+        code: ({ ...props }) => <code className="rounded bg-black/10 px-1 font-mono text-[0.88em]" {...props} />,
         a: ({ href: rawHref, ...props }) => {
           const href = normalizeHref(rawHref);
           const isInternal = href?.startsWith("/");
@@ -596,12 +597,12 @@ export function ConversationalAI({
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{th.title || t("untitled")}</p>
                     <p className="text-xs text-muted-foreground">
-                      {new Date(th.updatedAt).toLocaleDateString()}
+                      {formatDate(new Date(th.updatedAt))}
                     </p>
                   </div>
                   <button
                     onClick={(e) => deleteThread(th._id, e)}
-                    className="shrink-0 text-muted-foreground hover:text-red-500 transition-colors p-1 rounded hover:bg-red-50 dark:hover:bg-red-950/30"
+                    className="shrink-0 text-muted-foreground hover:text-red-500 transition-colors p-1 rounded hover:bg-red-50"
                     title={t("deleteConversation")}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -635,7 +636,7 @@ export function ConversationalAI({
                             key={qp.label}
                             onClick={() => sendMessage(qp.label)}
                             disabled={isStreaming}
-                            className="flex items-center gap-2 rounded-xl border border-border/60 bg-background/60 dark:bg-card/40 px-3 py-2 text-xs text-foreground hover:border-primary/40 hover:bg-primary/5 transition-colors text-left disabled:opacity-50"
+                            className="flex items-center gap-2 rounded-xl border border-border/60 bg-background/60 text-xs text-foreground hover:border-primary/40 hover:bg-primary/5 transition-colors text-left disabled:opacity-50 chip-pad"
                           >
                             <span className="text-primary">{qp.icon}</span>
                             <span className="leading-snug">{qp.label}</span>
@@ -645,7 +646,7 @@ export function ConversationalAI({
                     )}
 
                     {profileSummary && (profileSummary.skills.length > 0 || profileSummary.experience) && (
-                      <div className="mt-4 mx-auto max-w-[300px] rounded-2xl border p-4 text-left" style={{ background: '#ffffff', borderColor: '#e5e7eb' }}>
+                      <div className="mt-4 mx-auto max-w-[300px] rounded-2xl border text-left card-pad" style={{ background: '#ffffff', borderColor: '#e5e7eb' }}>
                         <div className="flex items-center gap-1.5 text-sm font-semibold mb-3" style={{ color: '#2563eb' }}>
                           <UserCheck className="h-4 w-4" />
                           {t("usingProfileData")}
@@ -741,7 +742,7 @@ export function ConversationalAI({
               {/* Input */}
               <div className="border-t border-border/70 bg-background/95 p-3 shrink-0">
                 <div className="space-y-3">
-                  <div className="rounded-2xl border border-border/60 bg-background p-2.5 shadow-sm shadow-black/[0.04]">
+                  <div className="rounded-2xl border border-border/60 bg-background shadow-sm shadow-black/[0.04] chip-pad">
                     <Textarea
                       ref={textareaRef}
                       value={input}
@@ -785,7 +786,7 @@ export function ConversationalAI({
                             type="button"
                             variant="outline"
                             onClick={cancelRecording}
-                            className="h-10 flex-1 rounded-xl border-border/60 text-muted-foreground hover:text-foreground"
+                            className="flex-1 rounded-xl border-border/60 text-muted-foreground hover:text-foreground"
                             aria-label={t("cancelVoiceInput")}
                           >
                             <X className="mr-1.5 h-4 w-4" /> {t("cancel")}
@@ -793,7 +794,7 @@ export function ConversationalAI({
                           <Button
                             type="button"
                             onClick={submitRecording}
-                            className="h-10 flex-1 rounded-xl"
+                            className="flex-1 rounded-xl"
                             aria-label={t("sendVoiceInput")}
                           >
                             <Send className="mr-1.5 h-4 w-4" /> {t("send")}
@@ -840,7 +841,7 @@ export function ConversationalAI({
 
                           <Button
                             size="icon"
-                            className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-indigo-600 shadow-sm hover:from-primary/90 hover:to-indigo-600/90"
+                            className="rounded-xl bg-gradient-to-br from-primary to-indigo-600 shadow-sm hover:from-primary/90 hover:to-indigo-600/90"
                             onClick={() => sendMessage()}
                             disabled={!input.trim() || isStreaming || isVoiceProcessing}
                             aria-label={t("sendMessage")}

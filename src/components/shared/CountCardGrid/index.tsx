@@ -21,10 +21,10 @@ export function CountCardGrid({ items, className }: CountCardGridProps) {
     <dl className={cn("flex min-w-0 flex-wrap items-baseline gap-x-4 gap-y-1", className)}>
       {items.map((item, index) => (
         <div key={index} className="flex min-w-0 items-baseline gap-1.5">
-          <dt className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          <dt className="text-[10px] font-semibold uppercase leading-4 tracking-[0.1em] text-muted-foreground [overflow-wrap:anywhere]">
             {item.label}
           </dt>
-          <dd className="truncate text-xs font-semibold text-foreground">
+          <dd className="truncate text-xs font-semibold tabular-nums text-foreground">
             {item.value}
           </dd>
         </div>

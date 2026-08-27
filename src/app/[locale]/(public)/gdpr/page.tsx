@@ -68,25 +68,25 @@ export default function GdprPage() {
 
             {/* Body content */}
             <div
-              className="prose prose-neutral dark:prose-invert max-w-none px-6 py-8 sm:px-8 prose-headings:scroll-mt-20 prose-h2:text-xl prose-h2:font-semibold prose-h2:border-b prose-h2:border-border/40 prose-h2:pb-3 prose-h2:mb-4 prose-h3:text-lg prose-p:text-justify prose-p:leading-7 prose-li:leading-7"
+              className="prose prose-neutral max-w-none px-6 py-8 sm:px-8 prose-headings:scroll-mt-20 prose-h2:text-xl prose-h2:font-semibold prose-h2:border-b prose-h2:border-border/40 prose-h2:pb-3 prose-h2:mb-4 prose-h3:text-lg prose-p:text-justify prose-p:leading-7 prose-li:leading-7"
               dangerouslySetInnerHTML={{ __html: sanitizeHtml(body) }}
             />
 
             {/* Contact footer card */}
             <div className="border-t border-border/60 bg-muted/40 px-6 py-6 rounded-b-2xl sm:px-8">
-              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">
+              <h3 className="heading-label font-semibold uppercase tracking-wider text-muted-foreground mb-4">
                 {t("contactUs")}
               </h3>
               <div className="grid gap-3 sm:grid-cols-3">
-                <div className="flex items-start gap-3 rounded-xl border border-border/50 bg-background p-4">
+                <div className="flex items-start gap-3 rounded-xl border border-border/50 bg-background card-pad">
                   <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                   <span className="text-sm text-foreground leading-5">MPLOYEDIN UK LTD</span>
                 </div>
-                <div className="flex items-start gap-3 rounded-xl border border-border/50 bg-background p-4">
+                <div className="flex items-start gap-3 rounded-xl border border-border/50 bg-background card-pad">
                   <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                   <span className="text-sm text-foreground leading-5">X2 Greenleaf Walk, Southall, UB1 1FR</span>
                 </div>
-                <div className="flex items-start gap-3 rounded-xl border border-border/50 bg-background p-4">
+                <div className="flex items-start gap-3 rounded-xl border border-border/50 bg-background card-pad">
                   <Mail className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                   <a href="mailto:support@mployedin.com" className="text-sm text-primary hover:underline">
                     support@mployedin.com

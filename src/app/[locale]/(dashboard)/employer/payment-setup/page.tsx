@@ -93,7 +93,6 @@ export default function EmployerPaymentSetupPage() {
       {/* Hero */}
       <DashboardPageHeader
         icon={CreditCard}
-        eyebrow={t("title")}
         title={t("title")}
         description={t("subtitle")}
         summary={{
@@ -104,8 +103,8 @@ export default function EmployerPaymentSetupPage() {
       />
 
       {/* Gateway Selection */}
-      <section className="workspace-panel-surface rounded-[28px] panel-body">
-        <h2 className="text-lg font-semibold text-foreground">{t("chooseProvider")}</h2>
+      <section className="workspace-panel-surface rounded-3xl panel-body">
+        <h2 className="heading-section font-semibold text-foreground">{t("chooseProvider")}</h2>
         <p className="mt-1 text-sm text-muted-foreground">{t("chooseProviderDesc")}</p>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -113,11 +112,7 @@ export default function EmployerPaymentSetupPage() {
             <button
               key={gw.id}
               onClick={() => setSelectedGateway(gw.id)}
-              className={`workspace-glass-panel rounded-2xl p-5 text-start transition-all ${
-                selectedGateway === gw.id
-                  ? "ring-2 ring-primary bg-primary/5"
-                  : "hover:bg-muted/50"
-              }`}
+              className={`workspace-glass-panel rounded-2xl text-start transition-all ${ selectedGateway === gw.id ? "ring-2 ring-primary bg-primary/5" : "hover:bg-muted/50" } panel-body`}
             >
               <div className="flex items-center gap-3">
                 <div className="rounded-xl bg-muted p-2">{gw.icon}</div>
@@ -134,17 +129,17 @@ export default function EmployerPaymentSetupPage() {
 
       {/* API Key Configuration */}
       {selectedGateway !== "none" && (
-        <section className="workspace-panel-surface rounded-[28px] space-y-4 panel-body">
+        <section className="workspace-panel-surface rounded-3xl space-y-4 panel-body">
           <div className="flex items-center gap-2">
             <Lock className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-lg font-semibold text-foreground">{t("apiKeysTitle")}</h2>
+            <h2 className="heading-section font-semibold text-foreground">{t("apiKeysTitle")}</h2>
           </div>
           <p className="text-sm text-muted-foreground">
             {t("apiKeysDesc", { gateway: selectedGateway === "stripe" ? t("gatewayStripeName") : t("gatewayTapName") })}
           </p>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
+            <div className="field">
               <Label>{t("publicKeyLabel")}</Label>
               <Input
                 placeholder={selectedGateway === "stripe" ? "pk_live_..." : "pk_live_..."}
@@ -152,7 +147,7 @@ export default function EmployerPaymentSetupPage() {
                 onChange={(e) => setPublicKey(e.target.value)}
               />
             </div>
-            <div className="space-y-2">
+            <div className="field">
               <Label>{t("secretKeyLabel")}</Label>
               <Input
                 type="password"
@@ -180,7 +175,7 @@ export default function EmployerPaymentSetupPage() {
       )}
 
       {/* Info Note */}
-      <section className="workspace-panel-surface rounded-[28px] panel-body">
+      <section className="workspace-panel-surface rounded-3xl panel-body">
         <div className="flex items-start gap-3">
           <Shield className="mt-0.5 h-5 w-5 text-muted-foreground" />
           <div>

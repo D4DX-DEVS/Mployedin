@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { usePageNotifications, useMarkAllRead, useMarkOneRead } from "@/hooks/useNotifications";
 import { EnablePushButton } from "@/components/shared/EnablePushButton";
 import { resolveNotificationText } from "@/lib/notifications/resolve";
+import Link from "next/link";
 
 export default function NotificationsPage() {
   const t = useTranslations("notificationsPage");
@@ -60,7 +61,7 @@ export default function NotificationsPage() {
       {loading ? (
         <div className="space-y-2" aria-busy="true">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="flex gap-3 p-4 rounded-xl border border-border animate-pulse"
+            <div key={i} className="flex gap-3 rounded-xl border border-border animate-pulse card-pad"
               style={{ opacity: 1 - i * 0.12 }}>
               <div className="w-9 h-9 rounded-full bg-muted flex-shrink-0" />
               <div className="flex-1 space-y-2 py-0.5">
@@ -79,16 +80,12 @@ export default function NotificationsPage() {
         <div className="space-y-2">
           {notifications.map((n) => {
             const { title, body } = resolveNotificationText(n, tc, locale);
-            return (
-            <div
-              key={n._id}
-              onClick={() => { if (!n.isRead) markOneReadMutation.mutate(n._id); if (n.actionUrl) window.location.href = n.actionUrl; }}
-              className={`flex gap-3 p-4 rounded-xl border cursor-pointer transition-all hover:shadow-sm ${
+            const cardClassName = `flex w-full gap-3 rounded-xl border p-4 text-start transition-all hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                 n.isRead ? "opacity-70 bg-background" : "bg-primary/5 border-primary/20"
-              }`}
-            >
+              }`;
+            const content = <>
               <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${typeIcon(n.type ?? "system")}`}>
-                <Bell className="h-4 w-4" />
+                <Bell className="h-4 w-4" aria-hidden="true" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold">{title}</p>
@@ -98,10 +95,39 @@ export default function NotificationsPage() {
                 </p>
               </div>
               {!n.isRead && (
-                <div className="w-2 h-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />
+                <div className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-primary" aria-hidden="true" />
               )}
-            </div>
-            );
+            </>;
+
+            if (n.actionUrl) {
+              return (
+                <Link
+                  key={n._id}
+                  href={n.actionUrl}
+                  aria-label={`${title}. ${body}`}
+                  onClick={() => { if (!n.isRead) markOneReadMutation.mutate(n._id); }}
+                  className={cardClassName}
+                >
+                  {content}
+                </Link>
+              );
+            }
+
+            if (!n.isRead) {
+              return (
+                <button
+                  key={n._id}
+                  type="button"
+                  aria-label={t("markAsRead", { title })}
+                  onClick={() => markOneReadMutation.mutate(n._id)}
+                  className={cardClassName}
+                >
+                  {content}
+                </button>
+              );
+            }
+
+            return <article key={n._id} className={cardClassName}>{content}</article>;
           })}
         </div>
       )}

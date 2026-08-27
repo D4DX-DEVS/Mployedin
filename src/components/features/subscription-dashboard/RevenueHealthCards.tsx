@@ -24,7 +24,7 @@ export function RevenueHealthCards({ data }: Props) {
   ];
 
   return (
-    <section className="rounded-2xl border border-border/60 bg-card p-6">
+    <section className="rounded-2xl border border-border/60 bg-card panel-body">
       <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2 mb-5">
         <Sparkles className="h-4 w-4" /> {t("revenueHealth")}
       </h4>
@@ -32,13 +32,7 @@ export function RevenueHealthCards({ data }: Props) {
         {cards.map((card) => (
           <div
             key={card.label}
-            className={`rounded-xl p-4 text-center transition-all ${
-              card.neutral
-                ? "border border-border/40 bg-muted/30"
-                : card.positive
-                  ? "bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200/50 dark:border-emerald-500/20"
-                  : "bg-rose-50 dark:bg-rose-900/20 border border-rose-200/50 dark:border-rose-500/20"
-            }`}
+            className={`rounded-xl text-center transition-all ${ card.neutral ? "border border-border/40 bg-muted/30" : card.positive ? "bg-emerald-50 border border-emerald-200/50" : "bg-rose-50 border border-rose-200/50" } card-pad`}
           >
             <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block mb-2">
               {card.label}
@@ -47,8 +41,8 @@ export function RevenueHealthCards({ data }: Props) {
               card.neutral
                 ? ""
                 : card.positive
-                  ? "text-emerald-600 dark:text-emerald-400"
-                  : "text-rose-600 dark:text-rose-400"
+                  ? "text-emerald-600"
+                  : "text-rose-600"
             }`}>
               {card.value} <span className="text-xs font-medium text-muted-foreground">{card.unit}</span>
             </p>

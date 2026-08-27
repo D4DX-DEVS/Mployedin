@@ -48,9 +48,9 @@ import {
 
 const STATUS_STYLES: Record<SequenceStatus, string> = {
   draft: "bg-muted text-muted-foreground",
-  active: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300",
-  paused: "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
-  completed: "bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300",
+  active: "bg-emerald-50 text-emerald-700",
+  paused: "bg-amber-50 text-amber-700",
+  completed: "bg-sky-50 text-sky-700",
 };
 
 function StatusBadge({ status }: { status: SequenceStatus }) {
@@ -69,7 +69,7 @@ function Stat({ icon, label, value }: { icon: ReactNode; label: string; value: n
     <div className="rounded-xl bg-muted/50 px-2 py-2 text-center">
       <div className="flex items-center justify-center text-muted-foreground">{icon}</div>
       <p className="mt-1 text-sm font-semibold text-foreground">{value}</p>
-      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
     </div>
   );
 }
@@ -112,20 +112,23 @@ export default function EmployerCampaignsPage() {
         }
       />
 
+      {/* Bare toolbar row, not a panel: the card wrapper and its bottom border
+          framed the filters with nothing underneath, and the label just
+          repeated the page title directly above it. */}
       {(total > 0 || search || statusFilter) && (
-        <div className="workspace-panel-surface rounded-[28px] panel-body">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <Input
-              placeholder={t("searchPlaceholder") || "Search campaigns..."}
+              placeholder={t("searchPlaceholder")}
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              className="h-10 rounded-xl border-border bg-background sm:flex-1"
+              className="h-10 min-w-0 flex-1 rounded-xl border-border bg-background sm:w-64 sm:flex-none"
+              aria-label={t("searchPlaceholder")}
             />
             <Select
               value={statusFilter || "all"}
               onValueChange={(v) => { setStatusFilter(v === "all" ? null : v); setPage(1); }}
             >
-              <SelectTrigger className="h-10 rounded-xl border-border bg-background">
+              <SelectTrigger className="h-10 w-44 shrink-0 rounded-xl border-border bg-background">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -136,14 +139,13 @@ export default function EmployerCampaignsPage() {
                 <SelectItem value="completed">{t("completed")}</SelectItem>
               </SelectContent>
             </Select>
-          </div>
         </div>
       )}
 
       {isLoading ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-5">
+            <div key={i} className="flex flex-col gap-3 rounded-2xl border border-border bg-card panel-body">
               <div className="flex items-start justify-between gap-3">
                 <Skeleton className="h-5 w-32" />
                 <Skeleton className="h-5 w-16 rounded-full" />
@@ -215,10 +217,10 @@ function SequenceCard({ sequence, onOpen }: { sequence: EmailSequence; onOpen: (
     <button
       type="button"
       onClick={onOpen}
-      className="flex h-full flex-col gap-3 rounded-2xl border border-border bg-card p-5 text-left transition hover:border-sky-300 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+      className="flex h-full flex-col gap-3 rounded-2xl border border-border bg-card text-left transition hover:border-sky-300 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 panel-body"
     >
       <div className="flex items-start justify-between gap-3">
-        <h3 className="line-clamp-1 text-base font-semibold text-foreground">{sequence.name}</h3>
+        <h3 className="heading-subsection line-clamp-1 font-semibold text-foreground">{sequence.name}</h3>
         <StatusBadge status={sequence.status} />
       </div>
       {sequence.description ? (
@@ -321,7 +323,7 @@ function CreateSequenceDialog({ open, onOpenChange }: { open: boolean; onOpenCha
         </DialogHeader>
 
         <div className="max-h-[62vh] space-y-4 overflow-y-auto px-6 py-4">
-          <div className="space-y-1.5">
+          <div className="field">
             <Label htmlFor="seq-name">{t("name")}</Label>
             <Input
               id="seq-name"
@@ -331,7 +333,7 @@ function CreateSequenceDialog({ open, onOpenChange }: { open: boolean; onOpenCha
               maxLength={100}
             />
           </div>
-          <div className="space-y-1.5">
+          <div className="field">
             <Label htmlFor="seq-description">{t("description")}</Label>
             <Textarea
               id="seq-description"
@@ -343,7 +345,7 @@ function CreateSequenceDialog({ open, onOpenChange }: { open: boolean; onOpenCha
             />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
+            <div className="field">
               <Label htmlFor="seq-from-name">{t("fromName")}</Label>
               <Input
                 id="seq-from-name"
@@ -353,7 +355,7 @@ function CreateSequenceDialog({ open, onOpenChange }: { open: boolean; onOpenCha
                 maxLength={100}
               />
             </div>
-            <div className="space-y-1.5">
+            <div className="field">
               <Label htmlFor="seq-from-email">{t("fromEmail")}</Label>
               <Input
                 id="seq-from-email"
@@ -381,7 +383,7 @@ function CreateSequenceDialog({ open, onOpenChange }: { open: boolean; onOpenCha
               </Button>
             </div>
             {steps.map((step, i) => (
-              <div key={i} className="space-y-2 rounded-2xl border border-border bg-background p-4">
+              <div key={i} className="space-y-2 rounded-2xl border border-border bg-background card-pad">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-muted-foreground">
                     {t("stepLabel", { number: i + 1 })}
@@ -590,7 +592,7 @@ function SequenceDetailDialog({ sequenceId, onClose }: { sequenceId: string | nu
                   </p>
                   <ol className="space-y-2">
                     {sequence.steps.map((s, i) => (
-                      <li key={s._id ?? i} className="rounded-2xl border border-border bg-background p-4">
+                      <li key={s._id ?? i} className="rounded-2xl border border-border bg-background card-pad">
                         <div className="flex items-center justify-between gap-2">
                           <span className="text-xs font-semibold text-muted-foreground">
                             {t("stepLabel", { number: i + 1 })}
@@ -612,7 +614,7 @@ function SequenceDetailDialog({ sequenceId, onClose }: { sequenceId: string | nu
                   <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     {t("recipientCount", { count: sequence.recipients?.length ?? 0 })}
                   </p>
-                  <div className="flex flex-col gap-2 rounded-2xl border border-border bg-background p-3 sm:flex-row">
+                  <div className="flex flex-col gap-2 rounded-2xl border border-border bg-background sm:flex-row chip-pad">
                     <Input
                       value={recName}
                       onChange={(e) => setRecName(e.target.value)}
@@ -647,7 +649,7 @@ function SequenceDetailDialog({ sequenceId, onClose }: { sequenceId: string | nu
                       {sequence.recipients.map((r, i) => (
                         <li
                           key={r._id ?? i}
-                          className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-background p-3"
+                          className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-background chip-pad"
                         >
                           <div className="min-w-0">
                             <p className="truncate text-sm font-semibold text-foreground">{r.name}</p>

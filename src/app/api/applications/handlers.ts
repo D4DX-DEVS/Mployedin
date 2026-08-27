@@ -38,7 +38,6 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const experienceMin = searchParams.get("experienceMin") ?? "";
   const experienceMax = searchParams.get("experienceMax") ?? "";
   const skills = searchParams.get("skills") ?? "";
-  const nationality = searchParams.get("nationality")?.trim() ?? "";
   const scoreMin = searchParams.get("scoreMin") ?? "";
   const scoreMax = searchParams.get("scoreMax") ?? "";
   const fetchJobs = searchParams.get("fetchJobs") === "true";
@@ -216,16 +215,12 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     }
   }
 
-  // Nationality filter — filter by jobSeeker's nationality (case-insensitive, partial)
-  let nationalityFilterSeekerIds: unknown[] | null = null;
-  if (nationality) {
-    const escaped = nationality.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const seekers = await JobSeeker.find({ nationality: new RegExp(escaped, "i") }).select("_id").lean();
-    nationalityFilterSeekerIds = seekers.map((s) => s._id);
-  }
+  // Nationality is a protected characteristic under the Equality Act 2010
+  // (s.9, race including national origin). Filtering applicants by it is not
+  // offered, so no nationality predicate is built here.
 
-  // Combine experience + skills + nationality seeker filters (intersection)
-  const seekerIdFilters = [experienceFilterSeekerIds, skillsFilterSeekerIds, nationalityFilterSeekerIds]
+  // Combine experience + skills seeker filters (intersection)
+  const seekerIdFilters = [experienceFilterSeekerIds, skillsFilterSeekerIds]
     .filter((f): f is unknown[] => f !== null);
   if (seekerIdFilters.length > 0) {
     const combined = seekerIdFilters.reduce((acc, ids) =>

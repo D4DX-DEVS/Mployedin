@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { TrendingUp, DollarSign, MapPin, Briefcase, Search } from "lucide-react";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 interface SalaryData {
   salaryOverview: { _id: { currency: string }; avgMin: number; avgMax: number; count: number; minSalary: number; maxSalary: number }[];
@@ -41,7 +42,7 @@ export default function SalaryExplorerPage() {
   };
 
   const fmt = (num: number, currency = "AED") =>
-    `${currency} ${Math.round(num).toLocaleString()}`;
+    `${currency} ${formatCount(Math.round(num))}`;
 
   return (
     <main className="container mx-auto px-4 py-8 max-w-6xl">
@@ -91,7 +92,7 @@ export default function SalaryExplorerPage() {
           {data.salaryOverview.length > 0 && (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {data.salaryOverview.map((item) => (
-                <div key={item._id.currency} className="p-5 bg-card border border-border rounded-xl">
+                <div key={item._id.currency} className="bg-card border border-border rounded-xl panel-body">
                   <p className="text-sm text-muted-foreground mb-1">{item._id.currency} {t("jobsCountSuffix", { count: item.count })}</p>
                   <p className="text-xl font-bold text-foreground">
                     {fmt(item.avgMin, item._id.currency)} – {fmt(item.avgMax, item._id.currency)}
@@ -105,7 +106,7 @@ export default function SalaryExplorerPage() {
           {/* Top Paying Roles */}
           {data.topPayingRoles.length > 0 && (
             <div>
-              <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+              <h2 className="heading-section font-semibold text-foreground mb-4 flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-primary" />
                 {t("topPayingRoles")}
               </h2>
@@ -123,7 +124,7 @@ export default function SalaryExplorerPage() {
                       {data.topPayingRoles.map((role, i) => (
                         <tr key={i} className="hover:bg-muted/30 transition-colors">
                           <td className="px-4 py-3 font-medium text-foreground">{role._id}</td>
-                          <td className="px-4 py-3 text-green-600 dark:text-green-400">
+                          <td className="px-4 py-3 text-green-600">
                             {fmt(role.avgMin, role.currency)} – {fmt(role.avgMax, role.currency)}
                           </td>
                           <td className="px-4 py-3 text-muted-foreground">{role.count}</td>
@@ -139,15 +140,15 @@ export default function SalaryExplorerPage() {
           {/* By Country */}
           {data.byCountry.length > 0 && (
             <div>
-              <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+              <h2 className="heading-section font-semibold text-foreground mb-4 flex items-center gap-2">
                 <MapPin className="w-5 h-5 text-primary" />
                 {t("countriesSalaries")}
               </h2>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {data.byCountry.map((item, i) => (
-                  <div key={i} className="p-4 bg-card border border-border rounded-xl hover:border-primary/30 transition-colors">
+                  <div key={i} className="bg-card border border-border rounded-xl hover:border-primary/30 transition-colors card-pad">
                     <p className="font-medium text-foreground">{item._id}</p>
-                    <p className="text-sm text-green-600 dark:text-green-400 mt-1">
+                    <p className="text-sm text-green-600 mt-1">
                       {fmt(item.avgMin, item.currency)} – {fmt(item.avgMax, item.currency)}
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">{t("jobsCount", { count: item.count })}</p>

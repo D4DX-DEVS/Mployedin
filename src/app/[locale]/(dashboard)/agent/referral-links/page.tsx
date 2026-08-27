@@ -38,6 +38,7 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { formatDate as formatIntlDate } from "@/lib/ui/intlFormat";
 
 function formatDate(d: string | undefined): string {
   if (!d) return "—";
@@ -134,8 +135,8 @@ export default function AgentReferralLinksPage() {
     { header: tc("active"), key: "isActive", formatter: (v) => v ? t("exportYes") : t("exportNo") },
     { header: t("tableHeaderUsed"), key: "usedCount" },
     { header: t("tableHeaderMaxUses"), key: "maxUses" },
-    { header: tc("date"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
-    { header: t("tableHeaderExpires"), key: "expiresAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: tc("date"), key: "createdAt", formatter: (v) => v ? formatIntlDate(new Date(String(v))) : "" },
+    { header: t("tableHeaderExpires"), key: "expiresAt", formatter: (v) => v ? formatIntlDate(new Date(String(v))) : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
@@ -151,7 +152,6 @@ export default function AgentReferralLinksPage() {
 
       <DashboardPageHeader
         icon={Link2}
-        eyebrow={t("agentWorkspaceBadge")}
         title={t("pageTitle")}
         description={t("heroDescription")}
         summary={{
@@ -169,18 +169,18 @@ export default function AgentReferralLinksPage() {
             </button>
         }
         metrics={[
-          { label: t("statTotalLinks"), value: total, note: t("statTotalLinksDesc"), icon: Link2 },
-          { label: tc("active"), value: activeLinks, note: t("statActiveDesc"), icon: Check },
-          { label: t("statRegistrations"), value: totalRegistrations, note: t("statRegistrationsDesc"), icon: Users },
-          { label: t("statConversion"), value: total > 0 ? Math.round((totalRegistrations / total) * 10) / 10 : 0, note: t("statConversionDesc"), icon: Hash },
+          { label: t("statTotalLinks"), value: total, icon: Link2 },
+          { label: tc("active"), value: activeLinks, icon: Check },
+          { label: t("statRegistrations"), value: totalRegistrations, icon: Users },
+          { label: t("statConversion"), value: total > 0 ? Math.round((totalRegistrations / total) * 10) / 10 : 0, icon: Hash },
         ]}
       />
 
       {/* Create Modal */}
       {createOpen && (
-        <section className="workspace-panel-surface rounded-2xl sm:rounded-[28px] panel-body">
+        <section className="workspace-panel-surface rounded-2xl sm:rounded-3xl panel-body">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground">{t("createModalTitle")}</h2>
+            <h2 className="heading-section font-semibold text-foreground">{t("createModalTitle")}</h2>
             <button onClick={() => setCreateOpen(false)} className="rounded-lg p-1 hover:bg-secondary/80"><X className="h-4 w-4" /></button>
           </div>
           <div className="mt-4 grid gap-4 sm:grid-cols-3">
@@ -210,25 +210,23 @@ export default function AgentReferralLinksPage() {
         </section>
       )}
 
-      {/* Search */}
-      <section className="workspace-panel-surface rounded-2xl sm:rounded-[28px] panel-body">
-        <div className="max-w-xl">
-          <TableToolbar
-            search={search}
-            onSearchChange={(v) => { setSearch(v); pagination.resetPage(); }}
-            searchPlaceholder={t("searchPlaceholder")}
-            onExportCsv={handleExportCsv}
-            onExportExcel={handleExportExcel}
-            onExportPdf={handleExportPdf}
-          />
-        </div>
-      </section>
+      {/* Bare toolbar row, not a panel. The list below is a stack of cards, so
+          wrapping one search box in its own surface added a border and a block
+          of padding for nothing. */}
+      <TableToolbar
+        search={search}
+        onSearchChange={(v) => { setSearch(v); pagination.resetPage(); }}
+        searchPlaceholder={t("searchPlaceholder")}
+        onExportCsv={handleExportCsv}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
+      />
 
       {/* Links list */}
       {isLoading ? (
         <section className="space-y-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="workspace-panel-surface rounded-2xl sm:rounded-[28px] panel-body">
+            <div key={i} className="workspace-panel-surface rounded-2xl sm:rounded-3xl panel-body">
               <div className="flex items-center gap-3">
                 <Skeleton className="h-11 w-11 rounded-2xl" />
                 <div className="space-y-2">
@@ -240,7 +238,7 @@ export default function AgentReferralLinksPage() {
           ))}
         </section>
       ) : links.length === 0 ? (
-        <section className="workspace-empty-state rounded-[28px] p-10 text-center">
+        <section className="workspace-empty-state rounded-3xl p-10 text-center">
           <Link2 className="mx-auto mb-3 h-10 w-10 text-muted-foreground/55" />
           <p className="text-sm font-medium text-foreground">{t("emptyStateTitle")}</p>
           <p className="mt-1 text-sm text-muted-foreground">{t("emptyStateDescription")}</p>
@@ -251,7 +249,7 @@ export default function AgentReferralLinksPage() {
             const status = linkStatus(link);
             const isExpanded = expandedId === link._id;
             return (
-              <div key={link._id} className="workspace-panel-surface rounded-2xl sm:rounded-[28px] transition-all duration-200 panel-body">
+              <div key={link._id} className="workspace-panel-surface rounded-2xl sm:rounded-3xl transition-all duration-200 panel-body">
                 {/* Link header */}
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-3">

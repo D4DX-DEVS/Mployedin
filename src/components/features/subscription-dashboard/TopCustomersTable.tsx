@@ -34,7 +34,7 @@ export function TopCustomersTable({ data }: TopCustomersTableProps) {
   const badge = (tier: number) => tierBadge[tier as keyof typeof tierBadge] ?? tierBadge[0];
 
   return (
-    <section className="rounded-2xl border border-border/60 bg-card p-6">
+    <section className="rounded-2xl border border-border/60 bg-card panel-body">
       <div className="flex items-center justify-between mb-5">
         <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
           <Users className="h-4 w-4" /> {t("topCustomersByMRR")}
@@ -51,7 +51,7 @@ export function TopCustomersTable({ data }: TopCustomersTableProps) {
             return (
               <div
                 key={c.userId}
-                className="flex items-center gap-3 rounded-xl border border-border/40 p-3"
+                className="flex items-center gap-3 rounded-xl border border-border/40 chip-pad"
               >
                 <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary shrink-0">
                   {c.name.charAt(0).toUpperCase()}

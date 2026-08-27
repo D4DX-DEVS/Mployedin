@@ -25,15 +25,15 @@ export function PageHeader({
       )}
     >
       <div className="min-w-0 space-y-1.5">
-        <Heading className="page-header-title text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+        <Heading className="page-header-title text-xl sm:text-[1.625rem] font-bold tracking-tight text-foreground">
           {title}
         </Heading>
         {description && (
-          <p className="page-header-description text-[15px] font-medium text-muted-foreground/80">{description}</p>
+          <p className="page-header-description text-sm font-medium text-muted-foreground/80">{description}</p>
         )}
       </div>
       {actions && (
-        <div className="page-header-actions flex w-full min-w-0 items-center gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>*]:shrink-0 sm:w-auto sm:shrink-0 sm:flex-wrap sm:overflow-visible">{actions}</div>
+        <div className="page-header-actions flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto sm:shrink-0">{actions}</div>
       )}
     </div>
   );

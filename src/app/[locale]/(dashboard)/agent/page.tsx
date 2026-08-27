@@ -18,6 +18,7 @@ import {
   Users,
 } from "lucide-react";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { DashboardNextAction, DashboardSignalStrip } from "@/components/shared/DashboardOverview";
 
 export default async function AgentDashboard({ params }: { params: Promise<{ locale: string }> }) {
   const session = await auth();
@@ -169,75 +170,38 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
     {
       label: t("actions.addEmployerLead.label"),
       href: `/${locale}/agent/leads/new`,
-      note: t("actions.addEmployerLead.note"),
       icon: Target,
       tone: "workspace-tone-amber",
     },
     {
       label: t("actions.postJob.label"),
       href: `/${locale}/agent/jobs/new`,
-      note: t("actions.postJob.note"),
       icon: BriefcaseBusiness,
       tone: "workspace-tone-sky",
     },
     {
       label: t("actions.myJobs.label"),
       href: `/${locale}/agent/jobs`,
-      note: t("actions.myJobs.note"),
       icon: BarChart3,
       tone: "workspace-tone-indigo",
     },
     {
       label: t("actions.candidates.label"),
       href: `/${locale}/agent/candidates`,
-      note: t("actions.candidates.note"),
       icon: Users,
       tone: "workspace-tone-emerald",
     },
     {
       label: t("actions.jobSeekers.label"),
       href: `/${locale}/agent/job-seekers`,
-      note: t("actions.jobSeekers.note"),
       icon: UserRoundSearch,
       tone: "workspace-tone-violet",
     },
     {
       label: t("actions.performanceReport.label"),
       href: `/${locale}/agent/reports`,
-      note: t("actions.performanceReport.note"),
       icon: CircleDollarSign,
       tone: "workspace-tone-rose",
-    },
-  ];
-
-  const heroStats = [
-    {
-      label: t("heroStats.activeEmployers.label"),
-      value: employerCount,
-      description: t("heroStats.activeEmployers.description"),
-      icon: Building2,
-      tone: "workspace-tone-sky",
-    },
-    {
-      label: t("heroStats.activeJobs.label"),
-      value: activeJobs,
-      description: t("heroStats.activeJobs.description"),
-      icon: BriefcaseBusiness,
-      tone: "workspace-tone-emerald",
-    },
-    {
-      label: t("heroStats.applications.label"),
-      value: totalApps,
-      description: t("heroStats.applications.description"),
-      icon: Users,
-      tone: "workspace-tone-indigo",
-    },
-    {
-      label: t("heroStats.placements.label"),
-      value: (perf as Record<string, number>).placementsCompleted ?? 0,
-      description: t("heroStats.placements.description"),
-      icon: CalendarCheck2,
-      tone: "workspace-tone-amber",
     },
   ];
 
@@ -271,11 +235,41 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
     }
   }
 
+  const nextAction = totalApps > 0
+    ? {
+        title: t("actions.candidates.label"),
+        description: t("actions.candidates.note"),
+        href: `/${locale}/agent/candidates`,
+        icon: Users,
+        badge: t("taskFirst.attention"),
+      }
+    : activeJobs === 0
+      ? {
+          title: t("actions.postJob.label"),
+          description: t("actions.postJob.note"),
+          href: `/${locale}/agent/jobs/new`,
+          icon: BriefcaseBusiness,
+          badge: t("taskFirst.startHere"),
+        }
+      : {
+          title: t("actions.addEmployerLead.label"),
+          description: t("actions.addEmployerLead.note"),
+          href: `/${locale}/agent/leads/new`,
+          icon: Target,
+          badge: t("taskFirst.keepMoving"),
+        };
+
+  const signals = [
+    { label: t("kpis.activeEmployers"), value: employerCount, href: `/${locale}/agent/employers`, icon: Building2 },
+    { label: t("kpis.activeJobs"), value: activeJobs, href: `/${locale}/agent/jobs`, icon: BriefcaseBusiness },
+    { label: t("kpis.totalApplications"), value: totalApps, href: `/${locale}/agent/candidates`, icon: Users },
+    { label: t("kpis.placements"), value: kpis[3]?.value ?? 0, href: `/${locale}/agent/reports`, icon: CalendarCheck2 },
+  ];
+
   return (
-    <div className="page-container">
+    <div className="page-container dashboard-overview-page">
       <DashboardPageHeader
         icon={Target}
-        eyebrow={t("hero.eyebrow")}
         title={t("hero.title")}
         description={t("hero.description")}
         summary={{
@@ -283,24 +277,34 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
           value: t("portfolio.activeAccounts", { count: employerCount }),
           note: t("portfolio.summary", { jobs: activeJobs, applications: totalApps, placements: kpis[3]?.value ?? 0 }),
         }}
-        metrics={heroStats.map((stat) => ({
-          label: stat.label,
-          value: stat.value,
-          note: stat.description,
-          icon: stat.icon,
-          iconClassName: "text-primary",
-          iconSurfaceClassName: "bg-primary/10",
-        }))}
+      />
+
+      <DashboardNextAction
+        headingId="agent-next-action"
+        title={t("taskFirst.recommendedNext")}
+        description={t("taskFirst.nextDescription")}
+        actionTitle={nextAction.title}
+        actionDescription={nextAction.description}
+        actionLabel={t("taskFirst.openAction")}
+        href={nextAction.href}
+        icon={nextAction.icon}
+        badge={nextAction.badge}
+      />
+
+      <DashboardSignalStrip
+        headingId="agent-signals"
+        title={t("taskFirst.atAGlance")}
+        signals={signals}
       />
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,0.94fr)_minmax(0,1.06fr)]">
-        <section className="workspace-panel-surface rounded-[28px] panel-body">
+        <section className="workspace-panel-surface rounded-3xl panel-body">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sections.funnel.eyebrow")}</p>
-              <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("sections.funnel.title")}</h2>
+              <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("sections.funnel.title")}</h2>
             </div>
-            <div className="workspace-subtle-surface rounded-2xl px-3 py-2 text-right text-primary">
+            <div className="workspace-subtle-surface rounded-2xl text-right text-primary chip-pad">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">{t("funnel.offerRate")}</p>
               <p className="mt-1 text-lg font-semibold">{offerRate}%</p>
             </div>
@@ -308,7 +312,7 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
 
           <div className="mt-4 grid grid-cols-2 gap-2.5 xl:grid-cols-3">
             {funnel.map((item) => (
-              <div key={item.label} className="workspace-subtle-surface rounded-xl p-3">
+              <div key={item.label} className="workspace-subtle-surface card-pad rounded-xl">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{item.label}</p>
                 <p className="mt-1.5 text-xl font-semibold tracking-tight text-foreground">{item.value}</p>
               </div>
@@ -319,7 +323,7 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
         <section className="order-1 workspace-panel-surface rounded-2xl xl:order-2 panel-body">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sections.quickActions.eyebrow")}</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("sections.quickActions.title")}</h2>
+            <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("sections.quickActions.title")}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{t("sections.quickActions.description")}</p>
           </div>
 
@@ -331,14 +335,13 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
                 <Link
                   key={action.href}
                   href={action.href}
-                  className="workspace-subtle-surface group relative flex min-h-[96px] flex-col items-start gap-2 rounded-xl p-3 transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card hover:shadow-[0_24px_50px_-38px_rgba(2,132,199,0.38)] sm:min-h-[76px] sm:flex-row sm:items-center sm:gap-3"
+                  className="workspace-subtle-surface card-pad group relative flex min-h-[96px] flex-col items-start gap-2 rounded-xl transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card hover:shadow-[0_24px_50px_-38px_rgba(2,132,199,0.38)] sm:min-h-[76px] sm:flex-row sm:items-center sm:gap-3"
                 >
                   <div className={`shrink-0 rounded-xl p-2.5 ${action.tone}`}>
                     <Icon className="h-5 w-5" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h3 className="pe-5 text-xs font-semibold leading-5 text-foreground sm:truncate sm:pe-0 sm:text-sm">{action.label}</h3>
-                    <p className="mt-1 hidden text-xs leading-5 text-muted-foreground sm:line-clamp-1">{action.note}</p>
+                    <h3 className="heading-label pe-5 font-semibold leading-5 text-foreground sm:truncate sm:pe-0">{action.label}</h3>
                   </div>
                   <ArrowRight className="absolute end-3 top-3 h-4 w-4 shrink-0 text-muted-foreground/55 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-primary sm:static" />
                 </Link>
@@ -352,7 +355,7 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sections.rolePerformance.eyebrow")}</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("sections.rolePerformance.title")}</h2>
+            <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("sections.rolePerformance.title")}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{t("sections.rolePerformance.description")}</p>
           </div>
           <Link

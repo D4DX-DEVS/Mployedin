@@ -57,7 +57,11 @@ export interface RevenueTrendPoint {
 }
 
 export interface FunnelStage {
+  /** Real plan name — content, shown as stored. Empty for synthetic rows. */
   name: string;
+  /** Set only on rows the API synthesised, so the client supplies the copy. */
+  labelKey?: string;
+  tier?: number;
   count: number;
   percentage: number;
 }

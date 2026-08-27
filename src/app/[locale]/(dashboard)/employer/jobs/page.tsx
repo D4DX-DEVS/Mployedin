@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Plus, Edit2, Eye, Clock, CheckCircle, FileText, Trash2, Copy, Users, BriefcaseBusiness, ShieldCheck, BookTemplate, Search, Sparkles, ArrowRight, GitBranch, SlidersHorizontal, PauseCircle, PlayCircle, MoreHorizontal, Image as ImageIcon, Send } from "lucide-react";
+import { Plus, Edit2, Eye, Clock, CheckCircle, FileText, Trash2, Copy, Users, BriefcaseBusiness, BookTemplate, Search, Sparkles, ArrowRight, GitBranch, SlidersHorizontal, PauseCircle, PlayCircle, MoreHorizontal, Image as ImageIcon, Send, MapPin, CalendarDays } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,22 +19,25 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { TableToolbar } from "@/components/shared/TableToolbar";
-import { PageHero } from "@/components/shared/PageHero";
-import { DraftExtractionsCard, DraftJobsCard } from "@/components/features/employer/dashboard";
+import { StatusFilterStrip } from "@/components/shared/StatusFilterStrip";
+import { CopilotLauncher } from "@/components/shared/CopilotLauncher";
+import { DraftExtractionsCard } from "@/components/features/employer/dashboard";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useTableExport } from "@/hooks/useTableExport";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useJobs, useUpdateJobStatus, useCloneJob, useDeleteJob, useSaveAsTemplate, useJobTemplates, type Job } from "@/hooks/useJobs";
 import { useDebounce } from "@/hooks/useDebounce";
 import type { ExportColumn } from "@/lib/export";
+import { toUserFacingError } from "@/lib/errors/user-facing";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 const STATUS_COLORS: Record<string, string> = {
-  active: "bg-status-selected-bg text-emerald-700 border-status-selected/20 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-500/30",
-  draft: "bg-status-shortlisted-bg text-status-shortlisted border-status-shortlisted/20 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-500/30",
-  pending_approval: "bg-status-applied-bg text-status-applied border-status-applied/20 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-500/30",
-  paused: "bg-status-applied-bg text-status-applied border-border dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-500/30",
+  active: "bg-status-selected-bg text-emerald-700 border-status-selected/20",
+  draft: "bg-status-shortlisted-bg text-status-shortlisted border-status-shortlisted/20",
+  pending_approval: "bg-status-applied-bg text-status-applied border-status-applied/20",
+  paused: "bg-status-applied-bg text-status-applied border-border",
   closed: "bg-muted text-muted-foreground",
-  expired: "bg-status-rejected-bg text-status-rejected border-status-rejected/20 dark:bg-red-950/40 dark:text-red-300 dark:border-red-500/30",
+  expired: "bg-status-rejected-bg text-status-rejected border-status-rejected/20",
 };
 
 // Map job.status → human label key. Avoids rendering raw snake_case status strings.
@@ -62,6 +65,10 @@ const STATUS_TONES: Record<string, string> = {
 };
 
 type PendingJobAction = "activate" | "deactivate" | "pause" | "delete" | "publish";
+type ExportJobRecord = Record<string, unknown> & {
+  location?: string | { city?: string; country?: string; isRemote?: boolean };
+  salary?: { min?: number; max?: number; currency?: string };
+};
 
 export default function EmployerJobsPage() {
   const router = useRouter();
@@ -80,11 +87,14 @@ export default function EmployerJobsPage() {
     router.replace(`?${params.toString()}`, { scroll: false });
   }
   const [limit, setLimit] = useState(10);
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState(() => {
+    const status = searchParams.get("status") ?? "all";
+    return ["active", "draft", "paused", "closed", "expired"].includes(status) ? status : "all";
+  });
   const [workModeFilter, setWorkModeFilter] = useState("all");
   const [salaryVisibilityFilter, setSalaryVisibilityFilter] = useState("all");
   const [sortByFilter, setSortByFilter] = useState("default");
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(() => searchParams.get("q") ?? "");
   const [locationFilter, setLocationFilter] = useState("");
   const [skillsFilter, setSkillsFilter] = useState("");
   const [aiQuery, setAiQuery] = useState("");
@@ -92,7 +102,6 @@ export default function EmployerJobsPage() {
   const [isApplyingAiSearch, setIsApplyingAiSearch] = useState(false);
   const [cloningJobId, setCloningJobId] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [jobDraftsCount, setJobDraftsCount] = useState(0);
   const [aiDraftsCount, setAiDraftsCount] = useState(0);
 
   const [pendingJobAction, setPendingJobAction] = useState<{ jobId: string; action: PendingJobAction } | null>(null);
@@ -109,21 +118,16 @@ export default function EmployerJobsPage() {
   useEffect(() => {
     if (skipFilterResetRef.current) { skipFilterResetRef.current = false; return; }
     setPage(1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter, workModeFilter, salaryVisibilityFilter, debouncedSearch, debouncedLocation, debouncedSkills]);
+  }, [statusFilter, workModeFilter, salaryVisibilityFilter, sortByFilter, debouncedSearch, debouncedLocation, debouncedSkills]);
 
-  // Pre-apply status filter from deep-link query (?status=active|draft|paused|closed|expired)
-  // Used by the employer dashboard quick-filter tabs.
+  // Keep the two primary retrieval tools recoverable across refresh, sharing,
+  // and Back navigation. Advanced filter URL coverage can follow this seam.
   useEffect(() => {
-    if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
-    const deepStatus = params.get("status");
-    const valid = ["active", "draft", "paused", "closed", "expired"];
-    if (deepStatus && valid.includes(deepStatus) && deepStatus !== statusFilter) {
-      setStatusFilter(deepStatus);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (statusFilter === "all") params.delete("status"); else params.set("status", statusFilter);
+    if (debouncedSearch.trim()) params.set("q", debouncedSearch.trim()); else params.delete("q");
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }, [debouncedSearch, router, statusFilter]);
 
   useEffect(() => { document.title = t("pageTitle"); }, [t]);
 
@@ -167,24 +171,19 @@ export default function EmployerJobsPage() {
   const draftJobs = data?.statusCounts?.draft ?? jobs.filter((job) => job.status === "draft").length;
   const pausedJobs = data?.statusCounts?.paused ?? jobs.filter((job) => job.status === "paused").length;
   const totalOpenings = data?.totalVacancies ?? jobs.reduce((sum, job) => sum + (job.vacancies ?? 0), 0);
-  // Portfolio-wide, not page-scoped — the API already aggregates it across the
-  // full query. Falls back to the current page only when the aggregate is absent.
-  const totalApplications = data?.portfolioStats?.totalApplicants
-    ?? jobs.reduce((sum, job) => sum + (job.applicationCount ?? 0), 0);
-
-  const exportColumns: ExportColumn<Record<string, unknown>>[] = [
+  const exportColumns: ExportColumn<ExportJobRecord>[] = [
     { header: t("exportTitleCol"), key: "title", formatter: (v) => String(v ?? "") },
     { header: t("exportStatusCol"), key: "status", formatter: (v) => String(v ?? "\u2014") },
-    { header: t("exportLocationCol"), key: "location", formatter: (_v, r) => { const j = r as Record<string, any>; if (!j.location) return t("exportNotSet"); if (typeof j.location === "string") return j.location; if (j.location.isRemote) return t("exportRemote"); return [j.location.city, j.location.country].filter(Boolean).join(", ") || t("exportNotSet"); } },
-    { header: t("exportSalaryMinCol"), key: "salary", formatter: (_v, r) => String((r as Record<string, any>).salary?.min ?? "") },
-    { header: t("exportSalaryMaxCol"), key: "salary", formatter: (_v, r) => String((r as Record<string, any>).salary?.max ?? "") },
-    { header: t("exportCurrencyCol"), key: "salary", formatter: (_v, r) => String((r as Record<string, any>).salary?.currency ?? "USD") },
+    { header: t("exportLocationCol"), key: "location", formatter: (_v, r) => { if (!r.location) return t("exportNotSet"); if (typeof r.location === "string") return r.location; if (r.location.isRemote) return t("exportRemote"); return [r.location.city, r.location.country].filter(Boolean).join(", ") || t("exportNotSet"); } },
+    { header: t("exportSalaryMinCol"), key: "salary", formatter: (_v, r) => String(r.salary?.min ?? "") },
+    { header: t("exportSalaryMaxCol"), key: "salary", formatter: (_v, r) => String(r.salary?.max ?? "") },
+    { header: t("exportCurrencyCol"), key: "salary", formatter: (_v, r) => String(r.salary?.currency ?? "USD") },
     { header: t("exportVacanciesCol"), key: "vacancies", formatter: (v) => String(v ?? 0) },
     { header: t("exportCreatedCol"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString(locale === "ar" ? "ar" : "en-US") : "\u2014" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
-    data: jobs as unknown as Record<string, unknown>[],
-    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    data: jobs as unknown as ExportJobRecord[],
+    columns: exportColumns,
     filename: "jobs",
     title: t("exportFileTitle"),
   });
@@ -204,7 +203,7 @@ export default function EmployerJobsPage() {
       toast.success(t("toastJobCloned"), { id: loadingToastId });
       router.push(`/${locale}/employer/jobs/${clonedJobId}/edit`);
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : t("toastFailedClone"), { id: loadingToastId });
+      toast.error(toUserFacingError(error, { fallback: t("toastFailedClone") }).message, { id: loadingToastId });
     } finally {
       setCloningJobId(null);
     }
@@ -222,19 +221,6 @@ export default function EmployerJobsPage() {
     }
   }
 
-  async function handleActivateJob(job: Job) {
-    setPendingJobAction({ jobId: job._id, action: "activate" });
-
-    try {
-      await updateStatus.mutateAsync({ jobId: job._id, status: "active" });
-      toast.success(t("toastJobActivated"));
-    } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : t("toastFailedActivate"));
-    } finally {
-      setPendingJobAction((current) => (current?.jobId === job._id ? null : current));
-    }
-  }
-
   async function handleDeactivateJob(job: Job) {
     const ok = await confirmDialog(t("confirmDeactivate"));
     if (!ok) return;
@@ -245,7 +231,7 @@ export default function EmployerJobsPage() {
       await updateStatus.mutateAsync({ jobId: job._id, status: "closed" });
       toast.success(t("toastJobDeactivated"));
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : t("toastFailedDeactivate"));
+      toast.error(toUserFacingError(error, { fallback: t("toastFailedDeactivate") }).message);
     } finally {
       setPendingJobAction((current) => (current?.jobId === job._id ? null : current));
     }
@@ -261,7 +247,7 @@ export default function EmployerJobsPage() {
       await updateStatus.mutateAsync({ jobId: job._id, status: "paused" });
       toast.success(t("toastJobPaused"));
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : t("toastFailedPause"));
+      toast.error(toUserFacingError(error, { fallback: t("toastFailedPause") }).message);
     } finally {
       setPendingJobAction((current) => (current?.jobId === job._id ? null : current));
     }
@@ -274,7 +260,7 @@ export default function EmployerJobsPage() {
       await updateStatus.mutateAsync({ jobId: job._id, status: "active" });
       toast.success(t("toastJobResumed"));
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : t("toastFailedResume"));
+      toast.error(toUserFacingError(error, { fallback: t("toastFailedResume") }).message);
     } finally {
       setPendingJobAction((current) => (current?.jobId === job._id ? null : current));
     }
@@ -291,7 +277,7 @@ export default function EmployerJobsPage() {
       await updateStatus.mutateAsync({ jobId: job._id, status: "active" });
       toast.success(t("toastJobPublished"));
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : t("toastFailedPublish"));
+      toast.error(toUserFacingError(error, { fallback: t("toastFailedPublish") }).message);
     } finally {
       setPendingJobAction((current) => (current?.jobId === job._id ? null : current));
     }
@@ -310,7 +296,7 @@ export default function EmployerJobsPage() {
     try {
       await deleteJob.mutateAsync(job._id);
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : t("toastFailedDelete"));
+      toast.error(toUserFacingError(error, { fallback: t("toastFailedDelete") }).message);
     } finally {
       setPendingJobAction((current) => (current?.jobId === job._id ? null : current));
     }
@@ -333,10 +319,10 @@ export default function EmployerJobsPage() {
     if (min <= 0 && max <= 0) return t("salaryNotSet");
 
     if (min > 0 && max > 0) {
-      return `${min.toLocaleString()} - ${max.toLocaleString()} ${currency}`;
+      return `${min.toLocaleString(locale === "ar" ? "ar" : "en-US")} - ${max.toLocaleString(locale === "ar" ? "ar" : "en-US")} ${currency}`;
     }
 
-    return `${Math.max(min, max).toLocaleString()} ${currency}`;
+    return `${Math.max(min, max).toLocaleString(locale === "ar" ? "ar" : "en-US")} ${currency}`;
   }
 
   function resetFilters() {
@@ -386,7 +372,7 @@ export default function EmployerJobsPage() {
       toast.success(data.degraded ? t("toastAiUnavailable") : t("toastAiApplied"));
     } catch {
       setSearch(query);
-      setAiSummary(`AI search was unavailable, so keyword results are being shown for "${query}".`);
+      setAiSummary(t("aiSearchFallbackSummary", { query }));
       toast.error(t("toastAiFallback"));
     } finally {
       setIsApplyingAiSearch(false);
@@ -401,115 +387,88 @@ export default function EmployerJobsPage() {
   return (
     <div className="page-container">
       {ConfirmDialogNode}
-      <PageHero
-        /* ponytail: phones put the action inline with the title instead of a
-           third full-width row — the hero was ~180px tall for one button. */
-        className="[&>div:first-child]:flex-row [&>div:first-child]:items-start [&>div:first-child]:justify-between"
-        title={t("heroTitle")}
-        description={t("heroSubtitle")}
-        eyebrow={t("heroBadge")}
-        actions={(
-          <>
-            {/* Hidden on phones — the same totals sit in the stat grid right below. */}
-            {/* Two rows, no description — the third line pushed the whole hero taller. */}
-            {/* ponytail: one line, h-9 — stacked label+value made the pill
-                twice the height of every button next to it. */}
-            {can("jobs", "create") && (isLoading || jobs.length > 0 || hasActiveFilters) ? (
-              <div className="workspace-glass-panel hidden h-9 shrink-0 items-center gap-2 self-start rounded-xl px-3 sm:flex">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("portfolioLabel")}</span>
-                <span className="text-sm font-semibold leading-none text-foreground">{total} {t("totalJobsSuffix")}</span>
-              </div>
-            ) : null}
-            {/* ponytail: filter + export ride in the hero as compact controls —
-                they used to own a full-width toolbar card of their own. */}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setFiltersOpen((v) => !v)}
-              aria-expanded={filtersOpen}
-              aria-label={t("filterHeading")}
-              title={t("filterHeading")}
-              className="relative h-9 w-9 shrink-0 self-start rounded-xl border-border bg-background/70 p-0"
-            >
-              <SlidersHorizontal className="h-4 w-4 text-primary" />
-              {hasActiveFilters && (
-                <span className="absolute -end-0.5 -top-0.5 h-2 w-2 rounded-full bg-primary" aria-hidden />
-              )}
-            </Button>
-            {jobs.length > 0 && (
-              <TableToolbar
-                className="shrink-0 self-start"
-                onExportCsv={handleExportCsv}
-                onExportExcel={handleExportExcel}
-                onExportPdf={handleExportPdf}
-              />
-            )}
-            {/* Always present when the role can create — it is the page's primary
-                CTA. It used to vanish whenever the list came back empty, which is
-                exactly when an employer most needs it. */}
-            {can("jobs", "create") ? (
-              <Button
-                onClick={() => router.push(`/${locale}/employer/jobs/ai-create`)}
-                aria-label={t("postAJob")}
-                className="h-9 w-9 shrink-0 gap-2 self-start rounded-xl bg-primary p-0 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:h-9 sm:w-auto sm:px-4"
-              >
-                <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">{t("postAJob")}</span>
-              </Button>
-            ) : null}
-          </>
-        )}
-      />
-
-      <div className="space-y-[var(--page-gap)]">
-        {/* One KPI language across all five tiles: uppercase label, big number,
-            one-line description, tinted status icon. Phones drop to two columns
-            and hide the descriptions so the row stays compact.
-            ponytail: no trend deltas — the API returns no period-over-period
-            figures, and a hardcoded "+12% vs last month" is a lie in a UI. */}
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 xl:grid-cols-5">
-          {[
-            { label: t("statActiveLabel"), value: activeJobs, description: t("statActiveDescription"), Icon: ShieldCheck, tone: "workspace-tone-emerald" },
-            { label: t("statDraftsLabel"), value: draftJobs, description: t("statDraftsDescription"), Icon: BriefcaseBusiness, tone: "workspace-tone-amber" },
-            { label: t("statPausedLabel"), value: pausedJobs, description: t("statPausedDescription"), Icon: PauseCircle, tone: "workspace-tone-sky" },
-            { label: t("statOpeningsLabel"), value: totalOpenings, description: t("statOpeningsDescription"), Icon: Users, tone: "workspace-tone-violet" },
-            { label: t("statApplicationsLabel"), value: totalApplications, description: t("statApplicationsDescription"), Icon: FileText, tone: "workspace-tone-sky" },
-          ].map(({ label, value, description, Icon, tone }) => (
-            /* Odd tile count leaves a half-width orphan on the 2-col phone grid —
-               stretch it instead of leaving a hole. */
-            <div key={label} className="workspace-glass-panel p-2.5 last:col-span-2 sm:p-4 sm:last:col-span-1">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">{label}</p>
-                  <p className="mt-1 text-xl font-semibold leading-none tracking-tight text-foreground sm:text-2xl">{value}</p>
-                  <p className="mt-1.5 hidden text-xs leading-4 text-muted-foreground sm:line-clamp-2">{description}</p>
-                </div>
-                <div className={`${tone} flex h-8 w-8 shrink-0 items-center justify-center rounded-lg`}>
-                  <Icon className="h-4 w-4" />
-                </div>
-              </div>
-            </div>
-          ))}
+      <header className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary sm:text-[11px]">{t("heroBadge")}</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">{t("heroTitle")}</h1>
+          <p className="mt-1 hidden max-w-2xl text-sm text-muted-foreground md:block">{t("heroSubtitle")}</p>
         </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <CopilotLauncher />
+          {jobs.length > 0 && (
+            <TableToolbar
+              className="shrink-0"
+              onExportCsv={handleExportCsv}
+              onExportExcel={handleExportExcel}
+              onExportPdf={handleExportPdf}
+            />
+          )}
+          {can("jobs", "create") ? (
+            <Button
+              onClick={() => router.push(`/${locale}/employer/jobs/ai-create`)}
+              aria-label={t("postAJob")}
+              className="min-h-11 min-w-11 shrink-0 gap-2 rounded-xl bg-primary px-0 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:px-4"
+            >
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">{t("postAJob")}</span>
+            </Button>
+          ) : null}
+        </div>
+      </header>
+
+      <div className="workspace-panel-surface chip-pad">
+        <div className="flex gap-2">
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              aria-label={t("searchJobsPlaceholder")}
+              placeholder={t("searchJobsPlaceholder")}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-11 rounded-xl border-border bg-background ps-9 text-sm shadow-none"
+            />
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setFiltersOpen((v) => !v)}
+            aria-expanded={filtersOpen}
+            aria-controls="employer-job-filters"
+            aria-label={t("filterHeading")}
+            title={t("filterHeading")}
+            className="relative h-11 w-11 shrink-0 rounded-xl border-border bg-background p-0"
+          >
+            <SlidersHorizontal className="h-4 w-4 text-primary" />
+            {hasActiveFilters && <span className="absolute end-1 top-1 h-2 w-2 rounded-full bg-primary" aria-hidden />}
+          </Button>
+        </div>
+        <StatusFilterStrip
+          label={t("statusSummaryLabel")}
+          className="mt-2"
+          selectedId={statusFilter}
+          onSelect={setStatusFilter}
+          items={[
+            { id: "all", label: t("allStatusesShort"), value: total },
+            { id: "active", label: t("statActiveLabel"), value: activeJobs },
+            { id: "draft", label: t("statDraftsLabel"), value: draftJobs },
+            { id: "paused", label: t("statPausedLabel"), value: pausedJobs },
+          ]}
+        />
+        <p className="mt-2 px-1 text-xs text-muted-foreground">{t("openingsSummary", { count: totalOpenings })}</p>
+      </div>
+
+      <div>
 
         {/* Filter panel — toggled from the compact hero control above. */}
         {filtersOpen && (
-          <div className="workspace-panel-surface overflow-hidden rounded-2xl">
+          <div id="employer-job-filters" className="workspace-panel-surface overflow-hidden rounded-2xl">
             <div className="p-3 sm:p-5">
               <p className="hidden text-sm text-muted-foreground sm:block">{t("filterDescription")}</p>
 
               {/* Two controls per row on phones — eight stacked full-width inputs
                   turned the open filter panel into three screens of scrolling. */}
-              <div className="mt-3 grid grid-cols-2 gap-2 sm:mt-4 sm:gap-3 xl:grid-cols-[minmax(0,1fr)_220px_220px]">
-                <div className="relative col-span-2 min-w-0 xl:col-span-1">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder={t("searchJobsPlaceholder")}
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="h-10 rounded-xl border-border bg-background/70 pl-9 text-sm shadow-none sm:h-11"
-                  />
-                </div>
+              <div className="mt-3 grid grid-cols-2 gap-2 sm:mt-4 sm:gap-3">
                 <SearchableSelect
                   className="h-10 w-full rounded-xl border-border bg-background/70 sm:h-11"
                   options={[
@@ -597,7 +556,7 @@ export default function EmployerJobsPage() {
                 </div>
               </div>
 
-              <div className="workspace-subtle-surface mt-3 flex flex-col gap-3 rounded-2xl p-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="workspace-subtle-surface card-pad mt-3 flex flex-col gap-3 rounded-2xl sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm font-medium text-foreground">{t("needFasterCut")}</p>
                   <p className="text-sm text-muted-foreground">{t("aiFilterDescription")}</p>
@@ -629,11 +588,9 @@ export default function EmployerJobsPage() {
         )}
       </div>
 
-      {/* ── Resume unfinished work (banners — self-hide when none) ── */}
-      {/* Stays mounted so the children can report their counts, but drops out of
-          layout when both are empty — otherwise it burns two space-y-6 gaps. */}
-      <div className={`gap-3 ${jobDraftsCount === 0 && aiDraftsCount === 0 ? "hidden" : "grid"} ${jobDraftsCount > 0 && aiDraftsCount > 0 ? "sm:grid-cols-2" : "grid-cols-1"}`}>
-        <DraftJobsCard locale={locale} variant="banner" onCountChange={setJobDraftsCount} />
+      {/* Job drafts already appear in the status strip and list. Only the
+          distinct AI-extraction recovery state is promoted here. */}
+      <div className={aiDraftsCount === 0 ? "hidden" : "block"}>
         <DraftExtractionsCard locale={locale} variant="banner" onCountChange={setAiDraftsCount} />
       </div>
 
@@ -656,7 +613,7 @@ export default function EmployerJobsPage() {
             <FileText className="h-7 w-7" />
           </div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{hasActiveFilters ? t("emptyFilteredLabel") : t("emptyNoJobsLabel")}</p>
-          <h3 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
+          <h3 className="heading-subsection mt-3 font-semibold tracking-tight text-foreground">
             {hasActiveFilters ? t("emptyFilteredTitle") : t("emptyNoJobsTitle")}
           </h3>
           <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">
@@ -681,9 +638,7 @@ export default function EmployerJobsPage() {
           )}
         </div>
       ) : (
-        /* One flat, divided list instead of detached cards. Sharing a container
-           border is what lets each row sit at ~80px without reading as cramped. */
-        <div className="workspace-panel-surface divide-y divide-border/70 overflow-hidden">
+        <section aria-label={t("jobListLabel")} className="grid gap-3 md:grid-cols-2">
           {jobs.map((job) => {
             const posted = new Date(job.createdAt).toLocaleDateString(locale === "ar" ? "ar" : "en-US", { month: "short", day: "numeric", year: "numeric" });
             const isActivating = pendingJobAction?.jobId === job._id && pendingJobAction.action === "activate";
@@ -694,79 +649,102 @@ export default function EmployerJobsPage() {
             const isUnpublished = job.status === "draft";
             const jobHref = `/${locale}/employer/jobs/${job._id}`;
             const applicants = getFilledSlots(job);
-            // One text line, not six pills. Pills made every metadata item shout
-            // as loudly as the status badge and cost a whole row of height.
-            const metaLine = [formatLocation(job), job.category, formatSalary(job), `${t("postedPrefix")} ${posted}`]
-              .filter(Boolean)
-              .join(" · ");
+            const primaryAction = job.status === "draft"
+              ? { label: t("continueDraftButton"), href: `${jobHref}/edit`, Icon: Edit2 }
+              : job.status === "paused"
+                ? { label: isActivating ? t("resumingButton") : t("resumeJobButton"), onClick: () => { void handleResumeJob(job); }, Icon: PlayCircle }
+                : applicants > 0
+                  ? { label: t("reviewApplicantsButton", { count: applicants }), href: `/${locale}/employer/applications?jobId=${job._id}`, Icon: Users }
+                  : { label: t("viewJobButton"), href: jobHref, Icon: Eye };
+            const primaryActionAria = t("primaryActionForJob", { action: primaryAction.label, title: job.title });
+            const statusLabel = t(getStatusLabelKey(job.status));
 
             return (
-              /* The row IS the view action. Controls inside stop propagation so
-                 they never fire a navigation the recruiter did not ask for. */
-              <div
+              <article
                 key={job._id}
-                onClick={() => router.push(jobHref)}
-                className="group grid min-h-[78px] cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 px-3 py-2.5 transition-colors hover:bg-primary/[0.04] sm:gap-x-4 sm:px-4 sm:py-3 lg:grid-cols-[minmax(0,1fr)_auto_auto]"
+                className="workspace-panel-surface card-pad group flex min-w-0 flex-col transition-colors hover:border-primary/25"
               >
-                <div className="col-span-2 flex min-w-0 items-center gap-3 lg:col-span-1">
-                  <span className={`${STATUS_TONES[job.status] ?? "workspace-tone-sky"} flex h-9 w-9 shrink-0 items-center justify-center rounded-lg`} aria-hidden>
-                    <BriefcaseBusiness className="h-4 w-4" />
+                <div className="flex min-w-0 items-start gap-3">
+                  <span className={`${STATUS_TONES[job.status] ?? "workspace-tone-sky"} flex h-10 w-10 shrink-0 items-center justify-center rounded-xl`} aria-hidden>
+                    <BriefcaseBusiness className="h-5 w-5" />
                   </span>
-                  <div className="min-w-0">
-                    <div className="flex min-w-0 items-center gap-2">
-                      {/* A real anchor, not just the row handler: keyboard users,
-                          middle-click and open-in-new-tab all need an href. */}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                       <Link
                         href={jobHref}
-                        onClick={(e) => e.stopPropagation()}
-                        className="min-w-0 truncate text-sm font-semibold tracking-tight text-foreground underline-offset-2 group-hover:text-primary group-hover:underline sm:text-[15px]"
+                        className="min-w-0 text-base font-semibold leading-5 tracking-tight text-foreground underline-offset-2 group-hover:text-primary group-hover:underline"
                       >
                         {job.title}
                       </Link>
                       <Badge className={`${STATUS_COLORS[job.status] ?? ""} shrink-0 border px-1.5 py-0 text-[10px] font-medium`}>
-                        {t(getStatusLabelKey(job.status))}
+                        {statusLabel}
                       </Badge>
                       {job.clonedFrom ? (
-                        <Badge variant="outline" className="inline-flex shrink-0 border-status-applied/20 bg-status-applied-bg px-1.5 py-0 text-[10px] font-medium text-status-applied dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                        <Badge variant="outline" className="inline-flex shrink-0 border-status-applied/20 bg-status-applied-bg px-1.5 py-0 text-[10px] font-medium text-status-applied">
                           <Copy className="me-1 h-2.5 w-2.5" />{t("clonedBadge")}
                         </Badge>
                       ) : null}
                     </div>
-                    <p className="mt-0.5 truncate text-xs text-muted-foreground">{metaLine}</p>
+                    <div className="mt-2 space-y-1 text-xs leading-4 text-muted-foreground">
+                      <p className="flex min-w-0 items-center gap-1.5">
+                        <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                        <span className="truncate">{[formatLocation(job), job.category].filter(Boolean).join(" · ")}</span>
+                      </p>
+                      <p className="flex min-w-0 items-center gap-1.5">
+                        <CalendarDays className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                        <span className="truncate">{formatSalary(job)} · {t("postedPrefix")} {posted}</span>
+                      </p>
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 ps-12 text-xs text-muted-foreground lg:shrink-0 lg:ps-0">
-                  <span><span className="font-semibold tabular-nums text-foreground">{job.views?.toLocaleString() ?? 0}</span> {t("viewsStat")}</span>
-                  <span aria-hidden>&middot;</span>
-                  <span><span className="font-semibold tabular-nums text-foreground">{applicants}</span> {t("applicantsStat")}</span>
-                  <span aria-hidden>&middot;</span>
-                  <span>{t("capacityStat")}: <span className="font-semibold text-foreground">{job.maxApplicants ?? t("capacityOpen")}</span></span>
-                </div>
+                <dl aria-label={t("jobMetricsLabel")} className="mt-4 grid grid-cols-3 divide-x divide-border/70 rounded-xl bg-secondary/50 py-2 rtl:divide-x-reverse">
+                  {[
+                    { label: t("viewsStat"), value: formatCount(job.views) ?? "0" },
+                    { label: t("applicantsStat"), value: formatCount(applicants) },
+                    { label: t("statOpeningsLabel"), value: formatCount((job.vacancies ?? 0)) },
+                  ].map((metric) => (
+                    <div key={metric.label} className="min-w-0 px-2 text-center">
+                      <dd className="text-sm font-semibold tabular-nums text-foreground">{metric.value}</dd>
+                      <dt className="truncate text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">{metric.label}</dt>
+                    </div>
+                  ))}
+                </dl>
 
-                <div className="flex shrink-0 items-center justify-end gap-1">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={(e) => { e.stopPropagation(); router.push(`/${locale}/employer/applications?jobId=${job._id}`); }}
-                    className="h-7 gap-1.5 rounded-lg bg-primary/10 px-2 text-xs font-semibold text-primary hover:bg-primary/20 hover:text-primary sm:h-8 sm:px-2.5"
-                  >
-                    {t("applicationsButton")}
-                    <span className="tabular-nums">{applicants}</span>
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </Button>
+                <div className="mt-3 flex items-center gap-2 border-t border-border/70 pt-3">
+                  {primaryAction.href ? (
+                    <Button asChild className="min-h-11 min-w-0 flex-1 justify-between rounded-xl px-3 text-sm font-semibold">
+                      <Link href={primaryAction.href} aria-label={primaryActionAria}>
+                        <span className="inline-flex min-w-0 items-center gap-2">
+                          <primaryAction.Icon className="h-4 w-4 shrink-0" aria-hidden />
+                          <span className="truncate">{primaryAction.label}</span>
+                        </span>
+                        <ArrowRight className="h-4 w-4 shrink-0 rtl:rotate-180" aria-hidden />
+                      </Link>
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={primaryAction.onClick}
+                      disabled={isActivating}
+                      aria-label={primaryActionAria}
+                      className="min-h-11 min-w-0 flex-1 justify-between rounded-xl px-3 text-sm font-semibold"
+                    >
+                      <span className="inline-flex min-w-0 items-center gap-2">
+                        <primaryAction.Icon className="h-4 w-4 shrink-0" aria-hidden />
+                        <span className="truncate">{primaryAction.label}</span>
+                      </span>
+                      <ArrowRight className="h-4 w-4 shrink-0 rtl:rotate-180" aria-hidden />
+                    </Button>
+                  )}
 
-                  {/* Every secondary action lives here now. The old panel stacked
-                      up to six buttons and set the row height on its own. */}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
                         size="sm"
                         variant="ghost"
                         title={t("moreActionsButton")}
-                        aria-label={t("moreActionsButton")}
-                        onClick={(e) => e.stopPropagation()}
-                        className="h-7 w-7 shrink-0 rounded-full p-0 text-muted-foreground hover:bg-secondary hover:text-foreground sm:h-8 sm:w-8"
+                        aria-label={t("moreActionsForJob", { title: job.title, status: statusLabel })}
+                        className="h-11 w-11 shrink-0 rounded-xl border border-border p-0 text-muted-foreground hover:bg-secondary hover:text-foreground"
                       >
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
@@ -849,10 +827,10 @@ export default function EmployerJobsPage() {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-              </div>
+              </article>
             );
           })}
-        </div>
+        </section>
       )}
 
       {total > 0 && (

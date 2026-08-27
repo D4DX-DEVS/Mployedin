@@ -247,7 +247,7 @@ export function JobSeekerBottomNav({ locale }: JobSeekerTopNavProps) {
             onClick={(event) => event.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">
-              <h2 id="job-seeker-more-title" className="text-lg font-semibold">{t("more")}</h2>
+              <h2 id="job-seeker-more-title" className="heading-section font-semibold">{t("more")}</h2>
               <button
                 ref={closeButtonRef}
                 type="button"

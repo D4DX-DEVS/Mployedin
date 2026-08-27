@@ -70,7 +70,7 @@ export default function EditStaticPage() {
       toast.success(t("successToast"));
       router.push(`/${locale}/admin/cms/static-pages`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("somethingWentWrong"));
+      setError(t("somethingWentWrong"));
     } finally {
       setSaving(false);
     }
@@ -87,7 +87,6 @@ export default function EditStaticPage() {
   return (
     <div className="page-container">
       <DashboardPageHeader
-        eyebrow={t("cmsWorkspace")}
         title={t("editStaticPageTitle")}
         description={`${t("editingLabel")} ${slug || "..."}`}
         actions={(
@@ -112,10 +111,10 @@ export default function EditStaticPage() {
         )}
 
         {/* Basic fields */}
-        <section className="workspace-panel-surface rounded-[28px] panel-body">
-          <h2 className="text-lg font-semibold tracking-tight">{t("basicInformationHeading")}</h2>
+        <section className="workspace-panel-surface rounded-3xl panel-body">
+          <h2 className="heading-section font-semibold tracking-tight">{t("basicInformationHeading")}</h2>
           <div className="mt-4 grid gap-5 sm:grid-cols-2">
-            <div className="space-y-2">
+            <div className="field">
               <Label htmlFor="slug">
                 {t("slugLabel")} <span className="text-destructive">{t("required")}</span>
               </Label>
@@ -128,7 +127,7 @@ export default function EditStaticPage() {
                 className="h-11"
               />
             </div>
-            <div className="space-y-2">
+            <div className="field">
               <Label htmlFor="isActive">{t("statusLabel")}</Label>
               <SearchableSelect
                 id="isActive"
@@ -140,7 +139,7 @@ export default function EditStaticPage() {
                 onValueChange={setIsActive}
               />
             </div>
-            <div className="space-y-2">
+            <div className="field">
               <Label htmlFor="title">
                 {t("titleEnLabel")} <span className="text-destructive">{t("required")}</span>
               </Label>
@@ -153,7 +152,7 @@ export default function EditStaticPage() {
                 className="h-11"
               />
             </div>
-            <div className="space-y-2">
+            <div className="field">
               <Label htmlFor="titleAr">{t("titleArLabel")}</Label>
               <Input
                 id="titleAr"
@@ -168,9 +167,9 @@ export default function EditStaticPage() {
         </section>
 
         {/* Body English */}
-        <section className="workspace-panel-surface rounded-[28px] panel-body">
+        <section className="workspace-panel-surface rounded-3xl panel-body">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold tracking-tight">
+            <h2 className="heading-section font-semibold tracking-tight">
               {t("bodyEnHeading")} <span className="text-destructive">{t("required")}</span>
             </h2>
             <div className="flex items-center gap-1 rounded-lg border border-border bg-secondary/50 p-0.5">
@@ -210,9 +209,9 @@ export default function EditStaticPage() {
                 className="min-h-[300px] font-mono text-sm leading-relaxed"
               />
             ) : (
-              <div className="min-h-[300px] rounded-xl border border-border bg-background p-6 overflow-auto">
+              <div className="min-h-[300px] rounded-xl border border-border bg-background overflow-auto panel-body">
                 <div
-                  className="prose prose-neutral dark:prose-invert max-w-none prose-headings:scroll-mt-20 prose-h2:text-xl prose-h2:font-semibold prose-h3:text-lg prose-p:leading-7"
+                  className="prose prose-neutral max-w-none prose-headings:scroll-mt-20 prose-h2:text-xl prose-h2:font-semibold prose-h3:text-lg prose-p:leading-7"
                   dangerouslySetInnerHTML={{ __html: body }}
                 />
               </div>
@@ -221,10 +220,10 @@ export default function EditStaticPage() {
         </section>
 
         {/* Body Arabic */}
-        <section className="workspace-panel-surface rounded-[28px] panel-body">
+        <section className="workspace-panel-surface rounded-3xl panel-body">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold tracking-tight">{t("bodyArHeading")}</h2>
-            <div className="flex items-center gap-1 rounded-lg border border-border bg-secondary/50 p-0.5">
+            <h2 className="heading-section font-semibold tracking-tight">{t("bodyArHeading")}</h2>
+            <div className="flex items-center gap-1 rounded-lg border border-border bg-secondary/50 chip-pad">
               <button
                 type="button"
                 onClick={() => setBodyArTab("code")}
@@ -261,9 +260,9 @@ export default function EditStaticPage() {
                 dir="rtl"
               />
             ) : (
-              <div className="min-h-[300px] rounded-xl border border-border bg-background p-6 overflow-auto" dir="rtl">
+              <div className="min-h-[300px] rounded-xl border border-border bg-background overflow-auto panel-body" dir="rtl">
                 <div
-                  className="prose prose-neutral dark:prose-invert max-w-none prose-headings:scroll-mt-20 prose-h2:text-xl prose-h2:font-semibold prose-h3:text-lg prose-p:leading-7"
+                  className="prose prose-neutral max-w-none prose-headings:scroll-mt-20 prose-h2:text-xl prose-h2:font-semibold prose-h3:text-lg prose-p:leading-7"
                   dangerouslySetInnerHTML={{ __html: bodyAr }}
                 />
               </div>
@@ -272,7 +271,7 @@ export default function EditStaticPage() {
         </section>
 
         {/* Actions */}
-        <section className="workspace-panel-surface rounded-[28px] panel-body">
+        <section className="workspace-panel-surface rounded-3xl panel-body">
           <div className="flex items-center justify-end gap-3">
             <Button
               type="button"
@@ -287,7 +286,7 @@ export default function EditStaticPage() {
               type="submit"
               disabled={saving}
               size="lg"
-              className="h-11 gap-2 rounded-xl px-6"
+              className="gap-2 rounded-xl px-6"
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               {saving ? t("savingButton") : t("updatePageButton")}

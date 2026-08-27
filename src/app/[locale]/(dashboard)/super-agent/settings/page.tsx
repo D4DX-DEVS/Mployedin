@@ -34,6 +34,7 @@ import {
   SUPPORTED_CURRENCIES,
   currencyForCountry,
 } from "@/lib/currency";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -115,7 +116,7 @@ function SectionHeader({ icon: Icon, title, description }: { icon: typeof Globe;
           <Icon className="w-4 h-4 text-primary" />
         </div>
         <div>
-          <h3 className="text-sm font-semibold tracking-tight">{title}</h3>
+          <h3 className="heading-label font-semibold tracking-tight">{title}</h3>
           {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
         </div>
       </div>
@@ -134,7 +135,7 @@ function SaveFeedback({ saving, saved, hasChanges, onSave, label = "Save Changes
         {saving ? tc("saving") : label}
       </Button>
       {saved && (
-        <span className="text-sm text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+        <span className="text-sm text-emerald-600 flex items-center gap-1">
           <CheckCircle2 className="w-3.5 h-3.5" /> {tc("saved")}
         </span>
       )}
@@ -194,7 +195,7 @@ function ProfileTab() {
       })
       .catch(() => {})
       .finally(() => setProfileLoading(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, []);
 
   const profileHasChanges = profileSnap ? JSON.stringify({ name, phone }) !== profileSnap : false;
@@ -336,7 +337,7 @@ function ProfileTab() {
           {/* Name + badge */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2.5 flex-wrap">
-              <h3 className="text-lg font-semibold tracking-tight truncate">{name || userName}</h3>
+              <h3 className="heading-subsection font-semibold tracking-tight truncate">{name || userName}</h3>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-primary">
                 <Shield className="w-3 h-3" />
                 {t("superAgentRole")}
@@ -383,7 +384,7 @@ function ProfileTab() {
           ) : (
             <>
               <div className="grid gap-5 sm:grid-cols-2">
-                <div className="space-y-2">
+                <div className="field">
                   <Label htmlFor="sa-name" className="text-sm font-medium text-foreground">
                     {tc("name")} <span className="text-destructive">*</span>
                   </Label>
@@ -398,7 +399,7 @@ function ProfileTab() {
                     {t("nameDesc")}
                   </p>
                 </div>
-                <div className="space-y-2">
+                <div className="field">
                   <Label htmlFor="sa-phone" className="text-sm font-medium text-foreground">
                     {tc("phone")}
                   </Label>
@@ -501,7 +502,7 @@ function RegionTab() {
         <SectionHeader icon={Globe} title={t("countryAndCurrency")} description={t("countryAndCurrencyDesc")} />
         <div className="p-6 space-y-3 sm:space-y-4">
           <div className="grid gap-6 sm:grid-cols-2">
-            <div className="space-y-2">
+            <div className="field">
               <Label htmlFor="country" className="flex items-center gap-2 text-sm font-medium text-foreground">
                 <Globe className="h-4 w-4 text-muted-foreground" />
                 {tc("country")}
@@ -522,7 +523,7 @@ function RegionTab() {
               </p>
             </div>
 
-            <div className="space-y-2">
+            <div className="field">
               <Label htmlFor="currency" className="flex items-center gap-2 text-sm font-medium text-foreground">
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
                 {t("displayCurrency")}
@@ -558,10 +559,10 @@ function RegionTab() {
               const info = SUPPORTED_CURRENCIES.find((c) => c.code === currencyCode);
               const symbol = info?.symbol ?? currencyCode;
               return (
-                <div key={amount} className="rounded-xl border border-border/50 bg-muted/20 p-4">
+                <div key={amount} className="rounded-xl border border-border/50 bg-muted/20 card-pad">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sample")}</p>
                   <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
-                    {symbol} {amount.toLocaleString()}
+                    {symbol} {formatCount(amount)}
                   </p>
                 </div>
               );
@@ -615,12 +616,12 @@ function CommissionTab() {
             </p>
           </div>
 
-          <div className="rounded-xl border border-blue-200/60 bg-blue-50/50 dark:border-blue-800/40 dark:bg-blue-950/20 p-4">
+          <div className="rounded-xl border border-blue-200/60 bg-blue-50/50 card-pad">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+              <AlertTriangle className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
               <div>
-                <p className="text-sm font-medium text-blue-800 dark:text-blue-300">{t("howItWorks")}</p>
-                <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">
+                <p className="text-sm font-medium text-blue-800">{t("howItWorks")}</p>
+                <p className="text-xs text-blue-700 mt-1">
                   {t("commissionRateExplain")}
                 </p>
               </div>
@@ -638,12 +639,12 @@ function CommissionTab() {
               {[50000, 120000, 300000].map((salary) => {
                 const commission = salary * (overrideRate / 100);
                 return (
-                  <div key={salary} className="rounded-xl border border-border/50 bg-muted/20 p-4">
+                  <div key={salary} className="rounded-xl border border-border/50 bg-muted/20 card-pad">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                      {t("onPlacement", { amount: salary.toLocaleString() })}
+                      {t("onPlacement", { amount: formatCount(salary) })}
                     </p>
                     <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
-                      {commission.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      {formatCount(commission, { maximumFractionDigits: 0 })}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">{t("percentCommission", { rate: overrideRate })}</p>
                   </div>
@@ -708,7 +709,7 @@ function NotificationsTab() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, []);
 
   const handleSave = async () => {
@@ -735,13 +736,13 @@ function NotificationsTab() {
     <>
       {/* Global kill switch */}
       {prefs.unsubscribedAll && (
-        <div className="rounded-xl border border-amber-200/60 bg-amber-50/50 dark:border-amber-800/40 dark:bg-amber-950/20 p-4">
+        <div className="rounded-xl border border-amber-200/60 bg-amber-50/50 card-pad">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+              <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
               <div>
-                <p className="text-sm font-medium text-amber-800 dark:text-amber-300">{t("notificationsPaused")}</p>
-                <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+                <p className="text-sm font-medium text-amber-800">{t("notificationsPaused")}</p>
+                <p className="text-xs text-amber-700 mt-1">
                   {t("notificationsPausedDesc")}
                 </p>
               </div>
@@ -763,11 +764,7 @@ function NotificationsTab() {
               key={opt.value}
               type="button"
               onClick={() => setPrefs((p) => ({ ...p, emailFrequency: opt.value }))}
-              className={`p-3 rounded-lg border-2 text-left transition-all ${
-                prefs.emailFrequency === opt.value
-                  ? "border-primary bg-primary/5"
-                  : "border-border/50 hover:border-border"
-              }`}
+              className={`rounded-lg border-2 text-left transition-all ${ prefs.emailFrequency === opt.value ? "border-primary bg-primary/5" : "border-border/50 hover:border-border" } chip-pad`}
             >
               <div className="text-sm font-medium">{opt.label}</div>
               <div className="text-[11px] text-muted-foreground mt-1">{opt.desc}</div>
@@ -781,7 +778,7 @@ function NotificationsTab() {
         <SectionCard>
           <SectionHeader icon={Clock} title={t("digestSchedule")} description={t("digestScheduleDesc")} />
           <div className="p-6 grid gap-6 sm:grid-cols-2">
-            <div className="space-y-2">
+            <div className="field">
               <Label className="text-sm font-medium text-foreground">{t("digestTime")}</Label>
               <DateTimePicker
                 mode="time"
@@ -790,7 +787,7 @@ function NotificationsTab() {
               />
               <p className="text-xs text-muted-foreground">{t("digestTimeDesc")}</p>
             </div>
-            <div className="space-y-2">
+            <div className="field">
               <Label className="text-sm font-medium text-foreground">{t("timezone")}</Label>
               <Select value={prefs.timezone} onValueChange={(v) => setPrefs((p) => ({ ...p, timezone: v }))}>
                 <SelectTrigger className="h-10 text-sm">
@@ -1200,7 +1197,7 @@ function InvoiceDefaultsTab({ apiBase = "/api/super-agent/settings/invoice-defau
   return (
     <>
       {/* Info Banner */}
-      <div className="rounded-xl border border-primary/20 bg-primary/[0.04] p-4">
+      <div className="rounded-xl border border-primary/20 bg-primary/[0.04] card-pad">
         <div className="flex items-start gap-3">
           <Receipt className="h-5 w-5 text-primary mt-0.5 shrink-0" />
           <div>
@@ -1217,29 +1214,29 @@ function InvoiceDefaultsTab({ apiBase = "/api/super-agent/settings/invoice-defau
         <SectionHeader icon={FileText} title={t("billingEntity")} description={t("billingEntityDesc")} />
         <div className="p-6 space-y-5">
           <div className="grid gap-5 sm:grid-cols-2">
-            <div className="space-y-2">
+            <div className="field">
               <Label htmlFor="inv-company" className="text-sm font-medium">{t("companyName")}</Label>
               <Input id="inv-company" placeholder={t("companyNamePlaceholder")} value={form.billingCompanyName} onChange={(e) => update("billingCompanyName", e.target.value)} maxLength={200} />
             </div>
-            <div className="space-y-2">
+            <div className="field">
               <Label htmlFor="inv-contact" className="text-sm font-medium">{t("contactPerson")}</Label>
               <Input id="inv-contact" placeholder={t("contactPersonPlaceholder")} value={form.billingContactPerson} onChange={(e) => update("billingContactPerson", e.target.value)} maxLength={200} />
             </div>
-            <div className="space-y-2">
+            <div className="field">
               <Label htmlFor="inv-email" className="text-sm font-medium">{t("billingEmail")}</Label>
               <Input id="inv-email" type="email" placeholder={t("billingEmailPlaceholder")} value={form.billingEmail} onChange={(e) => update("billingEmail", e.target.value)} maxLength={200} />
             </div>
-            <div className="space-y-2">
+            <div className="field">
               <Label htmlFor="inv-phone" className="text-sm font-medium">{t("billingPhone")}</Label>
               <Input id="inv-phone" type="tel" placeholder={t("billingPhonePlaceholder")} value={form.billingPhone} onChange={(e) => update("billingPhone", e.target.value)} maxLength={50} />
             </div>
           </div>
-          <div className="space-y-2">
+          <div className="field">
             <Label htmlFor="inv-address" className="text-sm font-medium">{t("billingAddress")}</Label>
             <Textarea id="inv-address" placeholder={t("billingAddressPlaceholder")} value={form.billingAddress} onChange={(e) => update("billingAddress", e.target.value)} maxLength={500} rows={2} className="resize-none" />
           </div>
           <div className="grid gap-5 sm:grid-cols-2">
-            <div className="space-y-2">
+            <div className="field">
               <Label htmlFor="inv-country" className="text-sm font-medium">{t("billingCountry")}</Label>
               <Select value={form.billingCountry} onValueChange={handleBillingCountryChange}>
                 <SelectTrigger id="inv-country" className="h-11 text-sm">
@@ -1252,7 +1249,7 @@ function InvoiceDefaultsTab({ apiBase = "/api/super-agent/settings/invoice-defau
               </Select>
               <p className="text-[11px] text-muted-foreground">{t("billingCountryAutoUpdate")}</p>
             </div>
-            <div className="space-y-2">
+            <div className="field">
               <Label htmlFor="inv-taxid" className="text-sm font-medium">{t("taxId")}</Label>
               <Input id="inv-taxid" placeholder={t("taxIdPlaceholder")} value={form.billingTaxId} onChange={(e) => update("billingTaxId", e.target.value)} maxLength={50} />
             </div>
@@ -1265,7 +1262,7 @@ function InvoiceDefaultsTab({ apiBase = "/api/super-agent/settings/invoice-defau
         <SectionHeader icon={Receipt} title={t("invoicePreferences")} description={t("invoicePreferencesDesc")} />
         <div className="p-6 space-y-5">
           <div className="grid gap-5 sm:grid-cols-2">
-            <div className="space-y-2">
+            <div className="field">
               <Label htmlFor="inv-category" className="text-sm font-medium">{t("defaultInvoiceType")}</Label>
               <Select value={form.defaultCategory} onValueChange={(val) => update("defaultCategory", val)}>
                 <SelectTrigger id="inv-category" className="h-11 text-sm">
@@ -1276,7 +1273,7 @@ function InvoiceDefaultsTab({ apiBase = "/api/super-agent/settings/invoice-defau
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
+            <div className="field">
               <Label htmlFor="inv-currency" className="text-sm font-medium">{t("defaultCurrency")}</Label>
               <Select value={form.defaultCurrency} onValueChange={(val) => update("defaultCurrency", val)}>
                 <SelectTrigger id="inv-currency" className="h-11 text-sm">
@@ -1290,10 +1287,10 @@ function InvoiceDefaultsTab({ apiBase = "/api/super-agent/settings/invoice-defau
           </div>
 
           {/* Tax Configuration */}
-          <div className="rounded-xl border border-border/50 bg-muted/10 p-4 space-y-4">
+          <div className="rounded-xl border border-border/50 bg-muted/10 space-y-4 card-pad">
             <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("taxConfiguration")}</p>
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
+              <div className="field">
                 <Label htmlFor="inv-taxtype" className="text-sm font-medium">{t("taxType")}</Label>
                 <Select value={form.defaultTaxType} onValueChange={(val) => update("defaultTaxType", val)}>
                   <SelectTrigger id="inv-taxtype" className="h-11 text-sm">
@@ -1304,7 +1301,7 @@ function InvoiceDefaultsTab({ apiBase = "/api/super-agent/settings/invoice-defau
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label htmlFor="inv-taxpct" className="text-sm font-medium">{t("taxRate")}</Label>
                 <Input id="inv-taxpct" type="number" min={0} max={100} step={0.5} value={form.defaultTaxPercent} onChange={(e) => update("defaultTaxPercent", parseFloat(e.target.value) || 0)} />
               </div>
@@ -1312,10 +1309,10 @@ function InvoiceDefaultsTab({ apiBase = "/api/super-agent/settings/invoice-defau
           </div>
 
           {/* Payment Terms */}
-          <div className="rounded-xl border border-border/50 bg-muted/10 p-4 space-y-4">
+          <div className="rounded-xl border border-border/50 bg-muted/10 space-y-4 card-pad">
             <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("paymentTerms")}</p>
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
+              <div className="field">
                 <Label htmlFor="inv-terms" className="text-sm font-medium">{t("defaultTerms")}</Label>
                 <Select value={form.defaultPaymentTerms} onValueChange={(val) => update("defaultPaymentTerms", val)}>
                   <SelectTrigger id="inv-terms" className="h-11 text-sm">
@@ -1327,7 +1324,7 @@ function InvoiceDefaultsTab({ apiBase = "/api/super-agent/settings/invoice-defau
                 </Select>
               </div>
               {form.defaultPaymentTerms === "custom" && (
-                <div className="space-y-2">
+                <div className="field">
                   <Label htmlFor="inv-custom-days" className="text-sm font-medium">{t("customDays")}</Label>
                   <Input id="inv-custom-days" type="number" min={1} max={365} value={form.customPaymentDays} onChange={(e) => update("customPaymentDays", parseInt(e.target.value) || 30)} />
                 </div>
@@ -1336,7 +1333,7 @@ function InvoiceDefaultsTab({ apiBase = "/api/super-agent/settings/invoice-defau
           </div>
 
           {/* Default Notes */}
-          <div className="space-y-2">
+          <div className="field">
             <Label htmlFor="inv-notes" className="text-sm font-medium">{t("defaultInvoiceNotes")}</Label>
             <Textarea
               id="inv-notes"
@@ -1379,7 +1376,7 @@ function SecurityTab() {
               <Shield className="w-4 h-4 text-muted-foreground" />
               <div>
                 <p className="text-[11px] text-muted-foreground">{t("accountStatus")}</p>
-                <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">{tc("active")}</p>
+                <p className="text-sm font-medium text-emerald-600">{tc("active")}</p>
               </div>
             </div>
           </div>
@@ -1389,7 +1386,7 @@ function SecurityTab() {
       <SectionCard>
         <SectionHeader icon={Shield} title={t("security")} description={t("securityDesc")} />
         <div className="p-6 space-y-4">
-          <div className="flex items-center justify-between p-4 rounded-xl border border-border/50 bg-muted/20">
+          <div className="flex items-center justify-between rounded-xl border border-border/50 bg-muted/20 card-pad">
             <div className="flex items-start gap-3">
               <Mail className="w-4 h-4 text-muted-foreground mt-0.5" />
               <div>
@@ -1409,7 +1406,7 @@ function SecurityTab() {
       <SectionCard>
         <SectionHeader icon={AlertTriangle} title={t("dangerZone")} description={t("dangerZoneDesc")} />
         <div className="p-6">
-          <div className="flex items-center justify-between p-4 rounded-xl border border-destructive/20 bg-destructive/5">
+          <div className="flex items-center justify-between rounded-xl border border-destructive/20 bg-destructive/5 card-pad">
             <div>
               <p className="text-sm font-medium text-destructive">{t("deactivateAccount")}</p>
               <p className="text-xs text-muted-foreground mt-0.5">{t("deactivateAccountDesc")}</p>
@@ -1435,8 +1432,6 @@ export default function SuperAgentSettingsPage() {
       <SuperAgentPageIntro
         title={t("settingsTitle")}
         description={t("settingsDescription")}
-        summaryTitle={t("workspaceSettings")}
-        summaryDescription={t("workspaceSettingsDesc")}
       />
 
       {/* Sidebar + Content Layout */}
@@ -1452,15 +1447,7 @@ export default function SuperAgentSettingsPage() {
                 key={item.key}
                 type="button"
                 onClick={() => setActiveTab(item.key)}
-                className={`
-                  flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-left transition-all duration-150
-                  whitespace-nowrap lg:whitespace-normal min-w-0 group
-                  lg:gap-3 lg:px-3.5 lg:py-3 lg:rounded-xl
-                  ${isActive
-                    ? "bg-primary/[0.08] text-primary shadow-sm border border-primary/15"
-                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground border border-transparent"
-                  }
-                `}
+                className={`flex items-center gap-1.5 rounded-lg text-left transition-all duration-150 whitespace-nowrap lg:whitespace-normal min-w-0 group lg:gap-3 lg:rounded-xl ${isActive ? "bg-primary/[0.08] text-primary shadow-sm border border-primary/15" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground border border-transparent" } chip-pad`}
               >
                 <div className={`
                   flex items-center justify-center w-6 h-6 rounded-md shrink-0 transition-colors

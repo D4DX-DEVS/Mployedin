@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 interface StatCard {
   label: string;
@@ -81,13 +82,13 @@ export default function CmsOverviewPage() {
   const totalRecords = Object.values(stats).reduce((s, v) => s + v, 0);
 
   const allCards: StatCard[] = [
-    { label: t("faqsLabel"), count: stats.faqs ?? 0, href: `/${locale}/admin/cms/faqs`, icon: <HelpCircle className="h-5 w-5" />, color: "text-blue-600", chipBg: "bg-blue-50 dark:bg-blue-950/30" },
-    { label: t("blogPostsLabel"), count: stats.blogs ?? 0, href: `/${locale}/admin/cms/blogs`, icon: <Newspaper className="h-5 w-5" />, color: "text-emerald-600", chipBg: "bg-emerald-50 dark:bg-emerald-950/30" },
-    { label: t("testimonialsLabel"), count: stats.testimonials ?? 0, href: `/${locale}/admin/cms/testimonials`, icon: <Quote className="h-5 w-5" />, color: "text-purple-600", chipBg: "bg-purple-50 dark:bg-purple-950/30" },
-    { label: t("bannersLabel"), count: stats.banners ?? 0, href: `/${locale}/admin/cms/banners`, icon: <ImageIcon className="h-5 w-5" />, color: "text-orange-600", chipBg: "bg-orange-50 dark:bg-orange-950/30" },
-    { label: t("videosLabel"), count: stats.videos ?? 0, href: `/${locale}/admin/cms/videos`, icon: <Video className="h-5 w-5" />, color: "text-red-600", chipBg: "bg-red-50 dark:bg-red-950/30" },
-    { label: t("staticPagesLabel"), count: stats.staticPages ?? 0, href: `/${locale}/admin/cms/static-pages`, icon: <FileText className="h-5 w-5" />, color: "text-cyan-600", chipBg: "bg-cyan-50 dark:bg-cyan-950/30" },
-    { label: t("contactInboxLabel"), count: stats.contacts ?? 0, href: `/${locale}/admin/cms/contact-submissions`, icon: <Mail className="h-5 w-5" />, color: "text-amber-600", chipBg: "bg-amber-50 dark:bg-amber-950/30" },
+    { label: t("faqsLabel"), count: stats.faqs ?? 0, href: `/${locale}/admin/cms/faqs`, icon: <HelpCircle className="h-5 w-5" />, color: "text-blue-600", chipBg: "bg-blue-50" },
+    { label: t("blogPostsLabel"), count: stats.blogs ?? 0, href: `/${locale}/admin/cms/blogs`, icon: <Newspaper className="h-5 w-5" />, color: "text-emerald-600", chipBg: "bg-emerald-50" },
+    { label: t("testimonialsLabel"), count: stats.testimonials ?? 0, href: `/${locale}/admin/cms/testimonials`, icon: <Quote className="h-5 w-5" />, color: "text-purple-600", chipBg: "bg-purple-50" },
+    { label: t("bannersLabel"), count: stats.banners ?? 0, href: `/${locale}/admin/cms/banners`, icon: <ImageIcon className="h-5 w-5" />, color: "text-orange-600", chipBg: "bg-orange-50" },
+    { label: t("videosLabel"), count: stats.videos ?? 0, href: `/${locale}/admin/cms/videos`, icon: <Video className="h-5 w-5" />, color: "text-red-600", chipBg: "bg-red-50" },
+    { label: t("staticPagesLabel"), count: stats.staticPages ?? 0, href: `/${locale}/admin/cms/static-pages`, icon: <FileText className="h-5 w-5" />, color: "text-cyan-600", chipBg: "bg-cyan-50" },
+    { label: t("contactInboxLabel"), count: stats.contacts ?? 0, href: `/${locale}/admin/cms/contact-submissions`, icon: <Mail className="h-5 w-5" />, color: "text-amber-600", chipBg: "bg-amber-50" },
   ];
 
   const hasActiveFilters = Boolean(moduleSearch.trim()) || moduleType !== "all";
@@ -108,26 +109,26 @@ export default function CmsOverviewPage() {
   return (
     <div className="page-container">
       <DashboardPageHeader
-        eyebrow={t("cmsWorkspaceLabel")}
+        compactOnMobile
         title={t("pageTitle")}
         description={t("pageDescription")}
         summary={{
           label: t("platformTotal"),
-          value: <>{loading ? <span className="inline-block h-5 w-10 animate-pulse rounded bg-muted" /> : totalRecords.toLocaleString()} {t("recordsText")}</>,
+          value: <>{loading ? <span className="inline-block h-5 w-10 animate-pulse rounded bg-muted" /> : formatCount(totalRecords)} {t("recordsText")}</>,
           note: t("contentModulesLabel", { count: allCards.length }),
         }}
         metrics={[
-          { label: t("totalRecordsLabel"), value: loading ? <span className="inline-block h-7 w-10 animate-pulse rounded bg-muted" /> : totalRecords, note: t("totalRecordsNote"), icon: LayoutDashboard, iconClassName: "text-sky-600", iconSurfaceClassName: "bg-sky-50 dark:bg-sky-950/30" },
-          { label: t("contentModulesCount"), value: loading ? <span className="inline-block h-7 w-10 animate-pulse rounded bg-muted" /> : allCards.length, note: t("contentModulesNote"), icon: FileText, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50 dark:bg-emerald-950/30" },
-          { label: t("blogPostsLabel"), value: loading ? <span className="inline-block h-7 w-10 animate-pulse rounded bg-muted" /> : stats.blogs ?? 0, note: t("blogPostsNote"), icon: Newspaper, iconClassName: "text-violet-600", iconSurfaceClassName: "bg-violet-50 dark:bg-violet-950/30" },
-          { label: t("contactMessagesLabel"), value: loading ? <span className="inline-block h-7 w-10 animate-pulse rounded bg-muted" /> : stats.contacts ?? 0, note: t("contactMessagesNote"), icon: Mail, iconClassName: "text-amber-600", iconSurfaceClassName: "bg-amber-50 dark:bg-amber-950/30" },
+          { label: t("totalRecordsLabel"), value: loading ? <span className="inline-block h-7 w-10 animate-pulse rounded bg-muted" /> : totalRecords, note: t("totalRecordsNote"), icon: LayoutDashboard, iconClassName: "text-sky-600", iconSurfaceClassName: "bg-sky-50" },
+          { label: t("contentModulesCount"), value: loading ? <span className="inline-block h-7 w-10 animate-pulse rounded bg-muted" /> : allCards.length, note: t("contentModulesNote"), icon: FileText, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50" },
+          { label: t("blogPostsLabel"), value: loading ? <span className="inline-block h-7 w-10 animate-pulse rounded bg-muted" /> : stats.blogs ?? 0, note: t("blogPostsNote"), icon: Newspaper, iconClassName: "text-violet-600", iconSurfaceClassName: "bg-violet-50" },
+          { label: t("contactMessagesLabel"), value: loading ? <span className="inline-block h-7 w-10 animate-pulse rounded bg-muted" /> : stats.contacts ?? 0, note: t("contactMessagesNote"), icon: Mail, iconClassName: "text-amber-600", iconSurfaceClassName: "bg-amber-50" },
         ]}
         footer={(
           <>
           <button
             type="button"
             onClick={() => setShowFilters((v) => !v)}
-            className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-white/10 dark:hover:bg-white/5"
+            className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-white/10"
           >
             <Filter className="h-4 w-4 text-muted-foreground" />
             {showFilters ? t("hideFiltersButton") : t("showFiltersButton")}
@@ -162,7 +163,7 @@ export default function CmsOverviewPage() {
       >
 
         {showFilters && (
-          <div className="mt-4 space-y-3 rounded-[20px] border border-border/30 bg-background/40 p-4 backdrop-blur-sm dark:bg-background/20">
+          <div className="mt-4 space-y-3 rounded-3xl border border-border/30 bg-background/40 backdrop-blur-sm card-pad">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -188,9 +189,9 @@ export default function CmsOverviewPage() {
         )}
       </DashboardPageHeader>
 
-      <section className="workspace-panel-surface overflow-hidden rounded-[28px] panel-body">
+      <section className="workspace-panel-surface overflow-hidden rounded-3xl panel-body">
         <div className="mb-5">
-          <h2 className="text-xl font-semibold tracking-tight text-foreground">{t("contentModulesHeading")}</h2>
+          <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("contentModulesHeading")}</h2>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
             {hasActiveFilters
               ? t("contentModulesFilteredDescription", { count: cards.length, total: allCards.length })
@@ -219,7 +220,7 @@ export default function CmsOverviewPage() {
             <Link
               key={card.label}
               href={card.href}
-              className="workspace-subtle-surface group rounded-2xl p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_20px_44px_-36px_rgba(2,132,199,0.45)]"
+              className="workspace-subtle-surface group rounded-2xl transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_20px_44px_-36px_rgba(2,132,199,0.45)] panel-body"
             >
               <div className="flex items-start justify-between gap-3">
                 <span className={`flex h-12 w-12 items-center justify-center rounded-2xl ${card.chipBg}`}>
@@ -227,9 +228,9 @@ export default function CmsOverviewPage() {
                 </span>
                 <ArrowRight className="h-4 w-4 text-muted-foreground/55 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-primary" />
               </div>
-              <h3 className="mt-4 text-sm font-semibold text-foreground">{card.label}</h3>
+              <h3 className="heading-label mt-4 font-semibold text-foreground">{card.label}</h3>
               <div className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
-                {loading ? <div className="h-8 w-12 animate-pulse rounded bg-muted" /> : card.count.toLocaleString()}
+                {loading ? <div className="h-8 w-12 animate-pulse rounded bg-muted" /> : formatCount(card.count)}
               </div>
               <p className="mt-1 text-xs text-muted-foreground">{t("recordsText")}</p>
             </Link>

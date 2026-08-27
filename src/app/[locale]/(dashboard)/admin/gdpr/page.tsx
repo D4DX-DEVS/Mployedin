@@ -19,6 +19,7 @@ import {
   UserCheck, Clock, AlertTriangle, CheckCircle2, XCircle,
   ShieldCheck, Database, Users, CalendarDays,
 } from "lucide-react";
+import { formatDate, formatDateTime } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -188,8 +189,8 @@ export default function AdminGdprPage() {
   return (
     <div className="page-container">
       <DashboardPageHeader
+        compactOnMobile
         icon={Shield}
-        eyebrow={t("pageTitle")}
         title={t("pageTitle")}
         description={t("pageDescription")}
         metrics={[
@@ -198,28 +199,28 @@ export default function AdminGdprPage() {
             value: stats.totalRequests,
             icon: FileText,
             iconClassName: "text-sky-600",
-            iconSurfaceClassName: "bg-sky-50 dark:bg-sky-950/30",
+            iconSurfaceClassName: "bg-sky-50",
           },
           {
             label: t("pendingLabel"),
             value: stats.pendingRequests,
             icon: Clock,
             iconClassName: "text-amber-600",
-            iconSurfaceClassName: "bg-amber-50 dark:bg-amber-950/30",
+            iconSurfaceClassName: "bg-amber-50",
           },
           {
             label: t("completedLabel"),
             value: stats.completedRequests,
             icon: CheckCircle2,
             iconClassName: "text-emerald-600",
-            iconSurfaceClassName: "bg-emerald-50 dark:bg-emerald-950/30",
+            iconSurfaceClassName: "bg-emerald-50",
           },
           {
             label: t("avgResponseDaysLabel"),
             value: stats.avgResponseDays,
             icon: AlertTriangle,
             iconClassName: "text-violet-600",
-            iconSurfaceClassName: "bg-violet-50 dark:bg-violet-950/30",
+            iconSurfaceClassName: "bg-violet-50",
           },
         ]}
       />
@@ -277,7 +278,7 @@ export default function AdminGdprPage() {
       )}
 
       {/* Content */}
-      <section className="workspace-panel-surface rounded-[28px] panel-body">
+      <section className="workspace-panel-surface rounded-3xl panel-body">
         {activeTab === "requests" && (
           <>
             {loading ? (
@@ -342,8 +343,8 @@ export default function AdminGdprPage() {
                           </span>
                         </TableCell>
                         <TableCell><StatusBadge status={r.status} /></TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{new Date(r.createdAt).toLocaleDateString()}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{r.completedAt ? new Date(r.completedAt).toLocaleDateString() : "—"}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{formatDate(new Date(r.createdAt))}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{r.completedAt ? formatDate(new Date(r.completedAt)) : "—"}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
                             {r.status === "pending" && (
@@ -403,7 +404,7 @@ export default function AdminGdprPage() {
                             <span className="inline-flex items-center gap-1 text-sm text-red-600"><XCircle className="h-3.5 w-3.5" /> {t("consentNoLabel")}</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{new Date(c.timestamp).toLocaleString()}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{formatDateTime(new Date(c.timestamp))}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">{c.ipAddress ?? "—"}</TableCell>
                       </TableRow>
                     ))}
@@ -441,7 +442,7 @@ export default function AdminGdprPage() {
                           <span className="text-sm text-muted-foreground">{t("autoDeleteManual")}</span>
                         )}
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{new Date(p.lastReview).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{formatDate(new Date(p.lastReview))}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

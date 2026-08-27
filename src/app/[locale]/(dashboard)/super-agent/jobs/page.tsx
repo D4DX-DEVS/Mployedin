@@ -64,6 +64,7 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import type { ExportColumn } from "@/lib/export";
+import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
 /* ────────────────────────────── Types ────────────────────────────── */
 
@@ -360,7 +361,7 @@ export default function SuperAgentJobsPage() {
         setDetailError(data?.error ?? `HTTP ${res.status}`);
       }
     } catch (err) {
-      setDetailError(err instanceof Error ? err.message : "Network error");
+      setDetailError("We couldn't load this job. Nothing was changed. Check your connection and try again.");
     } finally {
       setDetailLoading(false);
     }
@@ -380,7 +381,7 @@ export default function SuperAgentJobsPage() {
     if (!salary) return "—";
     if (salary.isNegotiable) return t("negotiable");
     if (salary.min && salary.max) {
-      return `${salary.min.toLocaleString()}–${salary.max.toLocaleString()} ${salary.currency ?? ""}`;
+      return `${formatCount(salary.min)}–${formatCount(salary.max)} ${salary.currency ?? ""}`;
     }
     return "—";
   };
@@ -438,7 +439,7 @@ export default function SuperAgentJobsPage() {
     { header: "Work Mode", key: "workMode" },
     { header: "Status", key: "status" },
     { header: "Category", key: "category" },
-    { header: "Date", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: "Date", key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
@@ -453,8 +454,6 @@ export default function SuperAgentJobsPage() {
       <SuperAgentPageIntro
         title={t("pageTitle")}
         description={t("pageDescription")}
-        summaryTitle={t("aiPoweredTitle")}
-        summaryDescription={t("aiPoweredDescription")}
       />
 
       <SuperAgentMetricsGrid items={kpis} />
@@ -510,7 +509,7 @@ export default function SuperAgentJobsPage() {
           </div>
 
           {aiActive && (
-            <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-sm">
+            <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 text-sm chip-pad">
               <Sparkles className="h-4 w-4 text-primary shrink-0" />
               <span className="text-muted-foreground">
                 {t("aiFilterActive")}: <span className="font-medium text-foreground">&quot;{aiQuery}&quot;</span>
@@ -576,7 +575,7 @@ export default function SuperAgentJobsPage() {
                 </button>
               ))}
               {hasFilters && (
-                <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 text-xs text-muted-foreground">
+                <Button variant="ghost" size="dense" onClick={clearFilters} className="text-xs text-muted-foreground">
                   <X className="h-3.5 w-3.5 mr-1" /> {t("clearAllFilters")}
                   {activeFilterCount > 0 && (
                     <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1 text-[10px]">{activeFilterCount}</Badge>
@@ -744,7 +743,7 @@ export default function SuperAgentJobsPage() {
                   <label className="text-xs text-muted-foreground whitespace-nowrap">{t("dateToLabel")}</label>
                   <DateTimePicker mode="date" value={dateTo} onChange={setDateTo} />
                 </div>
-                <Button variant="default" size="sm" className="h-9 gap-1.5 text-xs ml-auto" onClick={() => { resetPage(); loadJobs(); }}>
+                <Button variant="default" size="sm" className="gap-1.5 text-xs ml-auto" onClick={() => { resetPage(); loadJobs(); }}>
                   {t("applyFiltersButton")}
                 </Button>
               </div>
@@ -878,7 +877,7 @@ export default function SuperAgentJobsPage() {
                         <p className="font-medium text-foreground">{job.title}</p>
                         <div className="mt-1 flex flex-wrap items-center gap-1.5">
                           <StatusBadge status={job.status ?? "draft"} />
-                          <span className="text-[10px] text-muted-foreground">{new Date(job.createdAt).toLocaleDateString()}</span>
+                          <span className="text-[10px] text-muted-foreground">{formatDate(new Date(job.createdAt))}</span>
                         </div>
                         {job.tags && job.tags.length > 0 && (
                           <div className="mt-1 flex flex-wrap gap-1">
@@ -925,8 +924,8 @@ export default function SuperAgentJobsPage() {
                       <div className="flex items-center justify-end">
                         <Button
                           variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0"
+                          size="dense"
+                          className="w-8 p-0"
                           title={t("viewJobDetailsButton")}
                           onClick={() => openDetail(job._id)}
                         >
@@ -995,14 +994,14 @@ export default function SuperAgentJobsPage() {
 
               {/* Key facts */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
-                <div className="flex items-start gap-2 rounded-lg border border-border/60 bg-secondary/30 p-3">
+                <div className="flex items-start gap-2 rounded-lg border border-border/60 bg-secondary/30 chip-pad">
                   <MapPin className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
                   <div>
                     <p className="text-xs text-muted-foreground">{t("locationHeader")}</p>
                     <p className="font-medium text-foreground">{formatLocation(selectedJob.location)}</p>
                   </div>
                 </div>
-                <div className="flex items-start gap-2 rounded-lg border border-border/60 bg-secondary/30 p-3">
+                <div className="flex items-start gap-2 rounded-lg border border-border/60 bg-secondary/30 chip-pad">
                   <DollarSign className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
                   <div>
                     <p className="text-xs text-muted-foreground">{t("salaryHeader")}</p>
@@ -1010,12 +1009,12 @@ export default function SuperAgentJobsPage() {
                       {selectedJob.salary?.isNegotiable
                         ? t("negotiable")
                         : selectedJob.salary?.min && selectedJob.salary?.max
-                          ? `${selectedJob.salary.min.toLocaleString()}–${selectedJob.salary.max.toLocaleString()} ${selectedJob.salary.currency ?? ""}`
+                          ? `${formatCount(selectedJob.salary.min)}–${formatCount(selectedJob.salary.max)} ${selectedJob.salary.currency ?? ""}`
                           : "—"}
                     </p>
                   </div>
                 </div>
-                <div className="flex items-start gap-2 rounded-lg border border-border/60 bg-secondary/30 p-3">
+                <div className="flex items-start gap-2 rounded-lg border border-border/60 bg-secondary/30 chip-pad">
                   <Clock className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
                   <div>
                     <p className="text-xs text-muted-foreground">{t("typeHeader")}</p>
@@ -1025,7 +1024,7 @@ export default function SuperAgentJobsPage() {
                   </div>
                 </div>
                 {selectedJob.workMode && (
-                  <div className="flex items-start gap-2 rounded-lg border border-border/60 bg-secondary/30 p-3">
+                  <div className="flex items-start gap-2 rounded-lg border border-border/60 bg-secondary/30 chip-pad">
                     <Globe className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
                     <div>
                       <p className="text-xs text-muted-foreground">{t("workModeHeader")}</p>
@@ -1034,7 +1033,7 @@ export default function SuperAgentJobsPage() {
                   </div>
                 )}
                 {selectedJob.vacancies && (
-                  <div className="flex items-start gap-2 rounded-lg border border-border/60 bg-secondary/30 p-3">
+                  <div className="flex items-start gap-2 rounded-lg border border-border/60 bg-secondary/30 chip-pad">
                     <Users className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
                     <div>
                       <p className="text-xs text-muted-foreground">{t("vacanciesLabel")}</p>
@@ -1042,12 +1041,12 @@ export default function SuperAgentJobsPage() {
                     </div>
                   </div>
                 )}
-                <div className="flex items-start gap-2 rounded-lg border border-border/60 bg-secondary/30 p-3">
+                <div className="flex items-start gap-2 rounded-lg border border-border/60 bg-secondary/30 chip-pad">
                   <Calendar className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
                   <div>
                     <p className="text-xs text-muted-foreground">{t("postedLabel")}</p>
                     <p className="font-medium text-foreground">
-                      {new Date(selectedJob.createdAt).toLocaleDateString()}
+                      {formatDate(new Date(selectedJob.createdAt))}
                     </p>
                   </div>
                 </div>

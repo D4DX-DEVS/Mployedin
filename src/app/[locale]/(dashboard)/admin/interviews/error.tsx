@@ -2,7 +2,9 @@
 
 import { useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { AlertTriangle, RefreshCw } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
+import { RecoveryActions } from "@/components/shared/RecoveryActions";
+import { reportError } from "@/lib/observability/report-error";
 
 export default function AdminInterviewsError({
   error,
@@ -13,7 +15,7 @@ export default function AdminInterviewsError({
 }) {
   const t = useTranslations("errorBoundary");
   useEffect(() => {
-    console.error("[Admin Interviews Error]", error);
+    reportError(error, { source: "admin-interviews-boundary", digest: error.digest });
   }, [error]);
 
   return (
@@ -23,18 +25,12 @@ export default function AdminInterviewsError({
           <AlertTriangle className="w-6 h-6 text-destructive" />
         </div>
         <div className="space-y-2">
-          <h3 className="text-lg font-semibold text-destructive">{t("failedInterviews")}</h3>
+          <h3 className="heading-subsection font-semibold text-destructive">{t("failedInterviews")}</h3>
           <p className="text-sm text-muted-foreground">
-            {error.message || t("failedInterviewsDescription")}
+            {t("failedInterviewsDescription")}
           </p>
         </div>
-        <button
-          onClick={reset}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
-        >
-          <RefreshCw className="w-4 h-4" />
-          {t("tryAgain")}
-        </button>
+        <RecoveryActions reset={reset} />
       </div>
     </div>
   );

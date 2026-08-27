@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { CalendarDays, CheckCircle2, Coins, Info, ReceiptText, Search, Settings2, SlidersHorizontal, Wallet, X } from "lucide-react";
+import { CalendarDays, CheckCircle2, Coins, Info, ReceiptText, Search, Settings2, SlidersHorizontal, X } from "lucide-react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
@@ -30,6 +30,7 @@ import { formatCurrency } from "@/lib/currency";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 interface Commission {
   _id: string;
@@ -50,6 +51,9 @@ export default function SuperAgentCommissionsPage() {
   const tc = useTranslations("common");
   const tt = useTranslations("table");
   const [commissions, setCommissions] = useState<Commission[]>([]);
+  // Per-status record counts over the whole filtered set (from the API's
+  // aggregate), so the KPI tiles don't describe only the visible page.
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("");
   const [showOverrideInfo, setShowOverrideInfo] = useState(false);
@@ -92,6 +96,8 @@ export default function SuperAgentCommissionsPage() {
     if (res.ok) {
       const data = await res.json();
       setCommissions(data.items ?? data.commissions ?? []);
+      // Record counts across the whole filtered set, not just this page.
+      setStatusCounts(data.summary?.counts ?? { pending: 0, approved: 0 });
       updateTotal(data.total ?? data.totalCount ?? data.pagination?.total ?? ((data.totalPages ?? data.pagination?.pages ?? 1) * limit));
     }
     setLoading(false);
@@ -115,8 +121,6 @@ export default function SuperAgentCommissionsPage() {
     fetchCommissions();
   };
 
-  const totalAmount = commissions.reduce((sum, commission) => sum + (commission.amount ?? 0), 0);
-
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
     { header: t("tableHeaderAgent"), key: "agentId", formatter: (_v, row) => { const a = row.agentId as { fullName?: string; userId?: { name?: string } }; return a?.fullName ?? a?.userId?.name ?? ""; } },
     { header: t("tableHeaderType"), key: "type" },
@@ -124,7 +128,7 @@ export default function SuperAgentCommissionsPage() {
     { header: t("tableHeaderAmount"), key: "amount" },
     { header: t("exportHeaderCurrency"), key: "currency" },
     { header: tc("status"), key: "status" },
-    { header: tc("date"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: tc("date"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
@@ -134,83 +138,45 @@ export default function SuperAgentCommissionsPage() {
     title: t("pageTitle"),
   });
 
+  // Two tiles, both real counts over the whole filtered set.
+  // Dropped "Visible payouts" — its own helper admitted it described "the
+  // current results page", and it rendered as "—" whenever the page was empty,
+  // which read as unfinished UI. Dropped "Override rate" too: it is a config
+  // value, not a payout metric, and it is already stated in the row below.
   const kpis = [
     {
-      label: t("kpiVisiblePayouts"),
-      value: totalAmount > 0 ? formatCurrency(totalAmount, currencyCode) : "—",
-      helper: t("kpiVisiblePayoutsHelper"),
-      icon: <Coins className="h-5 w-5" />,
-      toneClassName: "workspace-tone-sky",
-    },
-    {
       label: t("kpiPending"),
-      value: commissions.filter((commission) => commission.status === "pending").length,
+      value: statusCounts.pending ?? 0,
       helper: t("kpiPendingHelper"),
       icon: <ReceiptText className="h-5 w-5" />,
       toneClassName: "workspace-tone-amber",
     },
     {
       label: t("kpiApproved"),
-      value: commissions.filter((commission) => commission.status === "approved").length,
+      value: statusCounts.approved ?? 0,
       helper: t("kpiApprovedHelper"),
       icon: <CheckCircle2 className="h-5 w-5" />,
       toneClassName: "workspace-tone-emerald",
-    },
-    {
-      label: t("kpiOverrideRate"),
-      value: `${overrideRate || 0}%`,
-      helper: t("kpiOverrideRateHelper"),
-      icon: <Wallet className="h-5 w-5" />,
-      toneClassName: "workspace-tone-indigo",
     },
   ];
 
   return (
     <div className="page-container">
+      {/* Hero carries the title and one description. The "Finance lane" summary
+          box restated the page's purpose a second time, side by side with the
+          description that already said it. */}
       <SuperAgentPageIntro
         title={t("pageTitle")}
         description={t("pageDescription")}
-        summaryTitle={t("summaryTitle")}
-        summaryDescription={t("summaryDescription")}
       />
 
       <SuperAgentMetricsGrid items={kpis} />
 
-      <SuperAgentSection
-        eyebrow={t("sectionEyebrow")}
-        title={t("sectionTitle")}
-        description={t("sectionDescription")}
-      >
-        {/* Override rate row — read-only, set by admin. On phones this collapses
-            to one short line (label + rate + ⓘ); the "set by admin" note and the
-            contact-admin sentence only appear when the ⓘ is tapped. */}
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/70 bg-secondary/50 p-2.5 sm:gap-3 sm:rounded-2xl sm:p-4">
-            <div className="flex items-center gap-2">
-              <Settings2 className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <Label className="whitespace-nowrap text-xs font-medium text-foreground sm:text-sm">
-                {t("overrideRateLabel")}
-              </Label>
-            </div>
-            <div className="flex h-8 items-center gap-2 rounded-lg border border-border bg-muted/30 px-2.5 sm:h-11 sm:rounded-xl sm:px-4">
-              <span className="text-sm font-semibold text-foreground sm:text-lg">{overrideRate}%</span>
-              <span className="ml-2 hidden text-[10px] uppercase tracking-wide text-muted-foreground sm:inline">{t("setByAdmin")}</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowOverrideInfo((v) => !v)}
-              aria-expanded={showOverrideInfo}
-              aria-label={t("contactAdminMessage")}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:hidden"
-            >
-              <Info className="h-4 w-4" />
-            </button>
-            <p className={`${showOverrideInfo ? "block" : "hidden"} basis-full text-xs text-muted-foreground sm:block sm:basis-auto`}>
-              {t("setByAdmin")} — {t("contactAdminMessage")}
-            </p>
-          </div>
-        </div>
-
+      {/* No eyebrow/title/description on this section: "CONTROLS / Configure the
+          regional override and filter payout status / Adjust the commission
+          override rate…" was three lines explaining a search box, some status
+          pills and a read-only rate. */}
+      <SuperAgentSection title={t("sectionTitle")} className="[&>div:first-child]:sr-only">
         {/* Search + Quick Filters + Advanced row */}
         <TableToolbar
           search={searchQuery}
@@ -282,9 +248,32 @@ export default function SuperAgentCommissionsPage() {
               )}
             </div>
           }
-          className="mt-4 mb-4"
+          className="mb-3"
         />
-          <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
+
+        {/* Override rate as one compact line, not a bordered panel inside a
+            titled section. It is read-only config, so it states the value and
+            where it comes from; the ⓘ carries the "contact admin" detail. */}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+          <Settings2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          <span className="text-muted-foreground">{t("overrideRateLabel")}</span>
+          <span className="font-semibold text-foreground">{overrideRate}%</span>
+          <span className="text-muted-foreground">· {t("setByAdmin")}</span>
+          <button
+            type="button"
+            onClick={() => setShowOverrideInfo((v) => !v)}
+            aria-expanded={showOverrideInfo}
+            aria-label={t("contactAdminMessage")}
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <Info className="h-3.5 w-3.5" />
+          </button>
+          {showOverrideInfo && (
+            <span className="basis-full text-xs text-muted-foreground">{t("contactAdminMessage")}</span>
+          )}
+        </div>
+
+          <div className="mt-3 overflow-x-auto rounded-3xl border border-border/60">
             <Table>
               <TableHeader>
                 <TableRow className="bg-background/60 hover:bg-background/60">
@@ -308,15 +297,13 @@ export default function SuperAgentCommissionsPage() {
                   ))
                 ) : commissions.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="py-16 text-center">
-                      <div className="flex w-full flex-col items-center gap-3 text-center">
-                        <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-sky-50 text-sky-600">
-                          <Coins className="h-6 w-6" />
-                        </div>
-                        <div className="w-full">
-                          <p className="text-base font-semibold text-foreground">{t("emptyStateTitle")}</p>
-                          <p className="mt-1 text-sm text-muted-foreground">{t("emptyStateMessage")}</p>
-                        </div>
+                    {/* Compact: py-16 plus a 56px icon tile gave "No commissions
+                        found" about 200px of empty table to sit in. */}
+                    <TableCell colSpan={7} className="py-8 text-center">
+                      <div className="flex w-full flex-col items-center gap-1 text-center">
+                        <Coins className="mb-1 h-5 w-5 text-muted-foreground/60" />
+                        <p className="text-sm font-medium text-foreground">{t("emptyStateTitle")}</p>
+                        <p className="text-xs text-muted-foreground">{t("emptyStateMessage")}</p>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -330,7 +317,7 @@ export default function SuperAgentCommissionsPage() {
                       <TableCell className="max-w-xs truncate text-xs text-muted-foreground">{c.notes ?? "—"}</TableCell>
                       <TableCell className="text-right font-semibold text-foreground">{formatCurrency(c.amount, c.currency ?? currencyCode)}</TableCell>
                     <TableCell><StatusBadge status={c.status} /></TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{new Date(c.createdAt).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{formatDate(new Date(c.createdAt))}</TableCell>
                     <TableCell>
                       {c.status === "pending" && (
                         <Button variant="ghost" size="sm" className="h-7 text-xs text-green-700" onClick={() => updateStatus(c._id, "approved")}>

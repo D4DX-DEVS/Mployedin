@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { reportError } from "@/lib/observability/report-error";
+import { RecoveryActions } from "@/components/shared/RecoveryActions";
 
 /**
  * Dashboard-level error boundary (Next.js App Router convention).
@@ -39,10 +40,10 @@ export default function DashboardError({
           </svg>
         </div>
 
-        <h2 className="text-xl font-semibold">{t("title")}</h2>
+        <h2 className="heading-section font-semibold">{t("title")}</h2>
 
         <p className="text-sm text-muted-foreground">
-          {error.message || t("description")}
+          {t("description")}
         </p>
 
         {error.digest && (
@@ -51,20 +52,7 @@ export default function DashboardError({
           </p>
         )}
 
-        <div className="flex gap-3 justify-center pt-2">
-          <button
-            onClick={reset}
-            className="px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-          >
-            {t("tryAgain")}
-          </button>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 text-sm font-medium rounded-md border border-border hover:bg-muted transition-colors"
-          >
-            {t("reloadPage")}
-          </button>
-        </div>
+        <RecoveryActions reset={reset} />
       </div>
     </div>
   );

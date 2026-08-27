@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { Search, Calendar, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 interface BlogPost {
   _id: string;
@@ -109,7 +110,7 @@ export default function BlogListingPage() {
                       </div>
                     )}
                     <div className="p-5 flex-1 flex flex-col">
-                      <h2 className="font-semibold text-lg group-hover:text-primary transition-colors line-clamp-2">
+                      <h2 className="heading-section font-semibold group-hover:text-primary transition-colors line-clamp-2">
                         {isAr ? post.titleAr || post.title : post.title}
                       </h2>
                       <p className="mt-2 text-sm text-muted-foreground line-clamp-3 flex-1">
@@ -125,7 +126,7 @@ export default function BlogListingPage() {
                         {post.publishedAt && (
                           <span className="flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
-                            {new Date(post.publishedAt).toLocaleDateString()}
+                            {formatDate(new Date(post.publishedAt))}
                           </span>
                         )}
                       </div>

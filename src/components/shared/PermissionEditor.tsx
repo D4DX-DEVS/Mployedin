@@ -8,79 +8,88 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Shield, ShieldCheck, ShieldOff, RotateCcw, CheckCircle2 } from "lucide-react";
+import { Shield, ShieldCheck, ShieldOff, RotateCcw, CheckCircle2, ChevronRight } from "lucide-react";
 import type { UserRole, PermissionMode, CustomPermissions, Resource, Action } from "@/types/user";
 import { ALL_RESOURCES, ALL_ACTIONS } from "@/lib/permissions/matrix";
 import { getDefaultPermissionsForRole } from "@/lib/permissions/matrix";
 
-/** Human-readable labels for resources */
-const RESOURCE_LABELS: Record<Resource, string> = {
-  jobs: "Jobs",
-  applications: "Applications",
-  interviews: "Interviews",
-  placements: "Placements",
-  leads: "Leads",
-  commissions: "Commissions",
-  employers: "Employers",
-  agents: "Agents",
-  job_seekers: "Job Seekers",
-  super_agents: "Super Agents",
-  users: "Users",
-  notifications: "Notifications",
-  reports: "Reports",
-  audit_logs: "Audit Logs",
-  ai_cv: "AI CV",
-  ai_match: "AI Match",
-  ai_assistant: "AI Assistant",
-  tasks: "Tasks",
-  job_attributes: "Job Attributes",
-  location_data: "Location Data",
-  cms: "CMS",
-  contact_submissions: "Contact Submissions",
-  offers: "Offers",
-  subscriptions: "Subscriptions",
-  exhibitions: "Exhibitions",
-  resources: "Resources",
-  targets: "Targets",
-  onboarding: "Onboarding",
-  invoices: "Invoices",
+/** Message keys for resource names */
+const RESOURCE_LABEL_KEYS: Record<Resource, string> = {
+  jobs: "resourceJobs",
+  applications: "resourceApplications",
+  interviews: "resourceInterviews",
+  placements: "resourcePlacements",
+  leads: "resourceLeads",
+  commissions: "resourceCommissions",
+  employers: "resourceEmployers",
+  agents: "resourceAgents",
+  job_seekers: "resourceJobSeekers",
+  super_agents: "resourceSuperAgents",
+  users: "resourceUsers",
+  notifications: "resourceNotifications",
+  reports: "resourceReports",
+  audit_logs: "resourceAuditLogs",
+  ai_cv: "resourceAiCv",
+  ai_match: "resourceAiMatch",
+  ai_assistant: "resourceAiAssistant",
+  tasks: "resourceTasks",
+  job_attributes: "resourceJobAttributes",
+  location_data: "resourceLocationData",
+  cms: "resourceCms",
+  contact_submissions: "resourceContactSubmissions",
+  offers: "resourceOffers",
+  subscriptions: "resourceSubscriptions",
+  exhibitions: "resourceExhibitions",
+  resources: "resourceResources",
+  targets: "resourceTargets",
+  onboarding: "resourceOnboarding",
+  invoices: "resourceInvoices",
 };
 
-/** Human-readable labels for actions */
-const ACTION_LABELS: Record<Action, string> = {
-  create: "Create",
-  read: "Read",
-  update: "Update",
-  delete: "Delete",
-  approve: "Approve",
-  export: "Export",
-  impersonate: "Impersonate",
+/* Two keys per action: the full name for the tooltip, and a separate short form
+   for the 40px column header. The header used to be `label.slice(0, 3)`, which
+   only ever produced a readable abbreviation in English — slicing Arabic at
+   three characters cuts a word mid-letterform. */
+const ACTION_LABEL_KEYS: Record<Action, { full: string; short: string }> = {
+  create: { full: "actionCreate", short: "actionCreateShort" },
+  read: { full: "actionRead", short: "actionReadShort" },
+  update: { full: "actionUpdate", short: "actionUpdateShort" },
+  delete: { full: "actionDelete", short: "actionDeleteShort" },
+  approve: { full: "actionApprove", short: "actionApproveShort" },
+  export: { full: "actionExport", short: "actionExportShort" },
+  impersonate: { full: "actionImpersonate", short: "actionImpersonateShort" },
 };
 
-/** Resource categories for grouping */
-const RESOURCE_GROUPS: { label: string; resources: Resource[] }[] = [
+/** Resource categories for grouping. `id` is the stable expand/collapse key. */
+const RESOURCE_GROUPS: { id: string; labelKey: string; resources: Resource[] }[] = [
   {
-    label: "Core Business",
+    id: "core",
+    labelKey: "groupCoreBusiness",
     resources: ["jobs", "applications", "interviews", "placements", "leads", "commissions", "offers", "exhibitions"],
   },
   {
-    label: "People",
+    id: "people",
+    labelKey: "groupPeople",
     resources: ["employers", "agents", "job_seekers", "super_agents", "users"],
   },
   {
-    label: "System",
+    id: "system",
+    labelKey: "groupSystem",
     resources: ["notifications", "reports", "audit_logs", "tasks", "onboarding"],
   },
   {
-    label: "AI & Tools",
+    id: "ai",
+    labelKey: "groupAiTools",
     resources: ["ai_cv", "ai_match", "ai_assistant"],
   },
   {
-    label: "Content & Config",
+    id: "content",
+    labelKey: "groupContentConfig",
     resources: ["job_attributes", "location_data", "cms", "contact_submissions", "resources"],
   },
   {
-    label: "Finance & Performance",
+    id: "finance",
+    labelKey: "groupFinancePerformance",
     resources: ["subscriptions", "invoices", "targets"],
   },
 ];
@@ -107,7 +116,7 @@ export function PermissionEditor({
 }: PermissionEditorProps) {
   const t = useTranslations("permissionEditor");
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
-    new Set(RESOURCE_GROUPS.map((g) => g.label))
+    new Set(RESOURCE_GROUPS.map((g) => g.id))
   );
 
   const isCustom = permissionMode === "custom";
@@ -200,7 +209,7 @@ export function PermissionEditor({
   return (
     <div className="space-y-4">
       {/* Mode toggle */}
-      <div className="flex items-center justify-between rounded-lg border border-border/50 bg-muted/20 p-3">
+      <div className="flex items-center justify-between rounded-lg border border-border/50 bg-muted/20 chip-pad">
         <div className="flex items-center gap-3">
           {isCustom ? (
             <ShieldCheck className="h-5 w-5 text-primary" />
@@ -266,17 +275,17 @@ export function PermissionEditor({
       <div className="rounded-lg border border-border/50 overflow-hidden">
         {/* Header row with action names */}
         <div className="grid grid-cols-[1fr_repeat(7,40px)] items-center gap-0 bg-muted/40 px-3 py-2 text-xs font-medium text-muted-foreground border-b border-border/30">
-          <span>Resource</span>
+          <span>{t("resourceColumnHeader")}</span>
           {ALL_ACTIONS.map((action) => (
             <TooltipProvider key={action} delayDuration={0}>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span className="text-center truncate cursor-default">
-                    {ACTION_LABELS[action].slice(0, 3)}
+                    {t(ACTION_LABEL_KEYS[action].short)}
                   </span>
                 </TooltipTrigger>
                 <TooltipContent side="top">
-                  <p>{ACTION_LABELS[action]}</p>
+                  <p>{t(ACTION_LABEL_KEYS[action].full)}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -285,28 +294,31 @@ export function PermissionEditor({
 
         {/* Resource groups */}
         {RESOURCE_GROUPS.map((group) => (
-          <div key={group.label}>
+          <div key={group.id}>
             {/* Group header */}
             <button
               type="button"
-              onClick={() => toggleGroup(group.label)}
+              onClick={() => toggleGroup(group.id)}
               className="w-full flex items-center gap-2 bg-muted/20 text-xs font-semibold text-muted-foreground hover:bg-muted/30 transition-colors border-b border-border/20 panel-head"
             >
-              <span className={`transition-transform ${expandedGroups.has(group.label) ? "rotate-90" : ""}`}>
-                ▸
-              </span>
-              {group.label}
+              {/* Lucide chevron rather than a "▸" glyph: the glyph always points
+                  right, so in Arabic it pointed away from the content it opens. */}
+              <ChevronRight
+                aria-hidden
+                className={`size-4 shrink-0 transition-transform rtl:-scale-x-100 ${expandedGroups.has(group.id) ? "rotate-90" : ""}`}
+              />
+              {t(group.labelKey)}
             </button>
 
             {/* Resource rows */}
-            {expandedGroups.has(group.label) &&
+            {expandedGroups.has(group.id) &&
               group.resources.map((resource) => (
                 <div
                   key={resource}
                   className="grid grid-cols-[1fr_repeat(7,40px)] items-center gap-0 px-3 py-1.5 border-b border-border/10 hover:bg-muted/10 transition-colors"
                 >
                   <span className="text-sm truncate">
-                    {RESOURCE_LABELS[resource]}
+                    {t(RESOURCE_LABEL_KEYS[resource])}
                   </span>
                   {ALL_ACTIONS.map((action) => {
                     const checked = hasPermission(resource, action);

@@ -86,9 +86,9 @@ export function Step4SalarySettings() {
       transition={{ duration: 0.25 }}
       className="space-y-3 sm:space-y-5"
     >
-      <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-muted/20 p-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-muted/20 lg:flex-row lg:items-center lg:justify-between card-pad">
         <div className="space-y-1">
-          <h2 className="text-lg font-semibold text-foreground">{t("title")}</h2>
+          <h2 className="heading-section font-semibold text-foreground">{t("title")}</h2>
           <p className="text-sm text-muted-foreground">
             {t("description")}
           </p>
@@ -107,13 +107,13 @@ export function Step4SalarySettings() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(17rem,0.9fr)]">
-        <div className="space-y-3 sm:space-y-4 rounded-2xl border border-border bg-background p-4 shadow-sm">
+        <div className="space-y-3 sm:space-y-4 rounded-2xl border border-border bg-background shadow-sm card-pad">
           <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
             <DollarSign className="w-4 h-4 text-muted-foreground" />
             {t("salaryPackage")}
           </div>
 
-          <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/20 p-3">
+          <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/20 chip-pad">
             <div className="flex-1">
               <p className="text-sm font-medium">{t("shareSalary")}</p>
               <p className="text-xs text-muted-foreground">
@@ -184,7 +184,7 @@ export function Step4SalarySettings() {
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-1.5">
+                <div className="field">
                   <Label htmlFor="salary-min" className="text-xs text-muted-foreground">
                     {t("minimum")}
                   </Label>
@@ -196,9 +196,11 @@ export function Step4SalarySettings() {
                     {...register("salary.min", { valueAsNumber: true })}
                     className={cn(errors.salary && "border-destructive")}
                     placeholder="0"
+                    aria-invalid={!!(errors.salary?.min || errors.salary?.message)}
+                    aria-describedby={errors.salary?.min || errors.salary?.message ? "salary-error" : undefined}
                   />
                 </div>
-                <div className="space-y-1.5">
+                <div className="field">
                   <Label htmlFor="salary-max" className="text-xs text-muted-foreground">
                     {t("maximum")}
                   </Label>
@@ -210,6 +212,8 @@ export function Step4SalarySettings() {
                     {...register("salary.max", { valueAsNumber: true })}
                     className={cn(errors.salary && "border-destructive")}
                     placeholder="0"
+                    aria-invalid={!!(errors.salary?.max || errors.salary?.message)}
+                    aria-describedby={errors.salary?.max || errors.salary?.message ? "salary-error" : undefined}
                   />
                 </div>
               </div>
@@ -218,7 +222,7 @@ export function Step4SalarySettings() {
                 <motion.div
                   initial={{ opacity: 0, scale: 0.97 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-sm"
+                  className="rounded-xl border border-primary/20 bg-primary/5 text-sm chip-pad"
                 >
                   <span className="font-semibold text-primary">{formattedRange}</span>
                   <span className="ms-2 text-muted-foreground">{t("shownToCandidates")}</span>
@@ -229,7 +233,7 @@ export function Step4SalarySettings() {
                   string, so a negative minimum was reported as the wrong fault.
                   Prefer the actual field message. */}
               {errors.salary && (
-                <p className="text-xs text-destructive">
+                <p id="salary-error" className="text-xs text-destructive">
                   {errors.salary.min?.message ??
                     errors.salary.max?.message ??
                     errors.salary.message ??
@@ -259,7 +263,7 @@ export function Step4SalarySettings() {
                 </div>
               )}
 
-              <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/20 p-3">
+              <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/20 chip-pad">
                 <div className="flex-1">
                   <p className="text-sm font-medium">{t("negotiable")}</p>
                   <p className="text-xs text-muted-foreground">
@@ -289,11 +293,11 @@ export function Step4SalarySettings() {
             </>
           ) : (
             <div className="space-y-3">
-              <div className="rounded-xl border border-dashed border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+              <div className="rounded-xl border border-dashed border-border bg-muted/30 text-xs text-muted-foreground chip-pad">
                 {t("undisclosedHint")}
               </div>
               {salaryRequired && (
-                <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-400">
+                <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 text-xs text-amber-700 chip-pad">
                   <span className="mt-0.5">⚠️</span>
                   <span>{t("salaryDisclosureWarning", { location: locationStr })}</span>
                 </div>
@@ -302,13 +306,13 @@ export function Step4SalarySettings() {
           )}
         </div>
 
-        <div className="space-y-3 sm:space-y-4 rounded-2xl border border-border bg-background p-4 shadow-sm">
+        <div className="space-y-3 sm:space-y-4 rounded-2xl border border-border bg-background shadow-sm card-pad">
           <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
             <Users className="w-4 h-4 text-muted-foreground" />
             {t("hiringPlan")}
           </div>
 
-          <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/20 p-3">
+          <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/20 chip-pad">
             <div className="flex-1">
               <Label htmlFor="vacancies" className="text-sm font-medium">
                 {t("trackOpenings")}
@@ -328,7 +332,7 @@ export function Step4SalarySettings() {
           </div>
 
           {hasVacancyCount ? (
-            <div className="space-y-3 rounded-xl border border-border/70 bg-background p-3">
+            <div className="space-y-3 rounded-xl border border-border/70 bg-background chip-pad">
               <Input
                 id="vacancies"
                 type="number"
@@ -344,12 +348,12 @@ export function Step4SalarySettings() {
               </p>
             </div>
           ) : (
-            <div className="rounded-xl border border-dashed border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+            <div className="rounded-xl border border-dashed border-border bg-muted/30 text-xs text-muted-foreground chip-pad">
               {t("noOpeningsHint")}
             </div>
           )}
 
-          <div className="rounded-xl border border-border/70 bg-muted/20 p-3 text-xs text-muted-foreground">
+          <div className="rounded-xl border border-border/70 bg-muted/20 text-xs text-muted-foreground chip-pad">
             {t("advancedHint")}
           </div>
         </div>

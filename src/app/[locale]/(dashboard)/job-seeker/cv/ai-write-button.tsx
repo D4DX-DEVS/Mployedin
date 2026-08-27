@@ -75,7 +75,7 @@ export function AIWriteButton({
         toast.error(t("empty"));
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("failed"));
+      toast.error(t("failed"));
     } finally {
       setLoading(false);
     }

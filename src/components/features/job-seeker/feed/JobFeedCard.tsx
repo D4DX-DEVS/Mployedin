@@ -61,12 +61,12 @@ interface JobCardProps {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const LOGO_PALETTES = [
-  { bg: "bg-blue-100 dark:bg-blue-900/40", text: "text-blue-700 dark:text-blue-300" },
-  { bg: "bg-emerald-100 dark:bg-emerald-900/40", text: "text-emerald-700 dark:text-emerald-300" },
-  { bg: "bg-violet-100 dark:bg-violet-900/40", text: "text-violet-700 dark:text-violet-300" },
-  { bg: "bg-amber-100 dark:bg-amber-900/40", text: "text-amber-700 dark:text-amber-300" },
-  { bg: "bg-rose-100 dark:bg-rose-900/40", text: "text-rose-700 dark:text-rose-300" },
-  { bg: "bg-cyan-100 dark:bg-cyan-900/40", text: "text-cyan-700 dark:text-cyan-300" },
+  { bg: "bg-blue-100", text: "text-blue-700" },
+  { bg: "bg-emerald-100", text: "text-emerald-700" },
+  { bg: "bg-violet-100", text: "text-violet-700" },
+  { bg: "bg-amber-100", text: "text-amber-700" },
+  { bg: "bg-rose-100", text: "text-rose-700" },
+  { bg: "bg-cyan-100", text: "text-cyan-700" },
 ];
 
 function logoPalette(name: string) {
@@ -84,9 +84,9 @@ function initials(name: string) {
 }
 
 function matchColor(score: number) {
-  if (score >= 85) return "bg-emerald-600 text-white border-emerald-700 dark:bg-emerald-600 dark:text-white dark:border-emerald-500";
-  if (score >= 70) return "bg-blue-600 text-white border-blue-700 dark:bg-blue-600 dark:text-white dark:border-blue-500";
-  return "bg-amber-500 text-white border-amber-600 dark:bg-amber-500 dark:text-white dark:border-amber-400";
+  if (score >= 85) return "bg-emerald-600 text-white border-emerald-700";
+  if (score >= 70) return "bg-blue-600 text-white border-blue-700";
+  return "bg-amber-500 text-white border-amber-600";
 }
 
 function relativeTime(iso: string): { key: "justNow" | "hoursAgo" | "daysAgo" | "weeksAgo" | "monthsAgo"; value?: number } {
@@ -191,9 +191,9 @@ export const JobFeedCard = memo(function JobFeedCard({
 
   return (
     <div
-      className="card-base group relative overflow-hidden rounded-lg sm:rounded-[26px] border border-border/70 bg-[linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96))] transition-all duration-200 shadow-[0_18px_48px_-38px_rgba(15,23,42,0.35)] hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_24px_60px_-38px_rgba(37,99,235,0.18)]"
+      className="card-base group relative overflow-hidden rounded-lg sm:rounded-3xl border border-border/70 bg-[linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96))] transition-all duration-200 shadow-[0_18px_48px_-38px_rgba(15,23,42,0.35)] hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_24px_60px_-38px_rgba(37,99,235,0.18)]"
     >
-      <div className="flex gap-2 sm:gap-3.5">
+      <div className="flex gap-2 sm:gap-4">
         {/* Card body */}
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 flex-col gap-3 min-[420px]:flex-row min-[420px]:items-start min-[420px]:justify-between">
@@ -329,7 +329,7 @@ export const JobFeedCard = memo(function JobFeedCard({
                     key={skill}
                     className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
                       isMatched
-                        ? "border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200"
+                        ? "border-emerald-300 bg-emerald-100 text-emerald-800"
                         : "border-border/60 bg-secondary text-secondary-foreground"
                     }`}
                   >
@@ -373,7 +373,7 @@ export const JobFeedCard = memo(function JobFeedCard({
               />
               <button
                 onClick={onHide}
-                className="inline-flex items-center gap-1 rounded-xl border border-border bg-secondary/80 px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground sm:px-3 sm:py-2"
+                className="inline-flex items-center gap-1 rounded-xl border border-border bg-secondary/80 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground chip-pad"
               >
                 <EyeOff className="h-3 w-3" />
                 <span className="hidden sm:inline">{t("hide")}</span>
@@ -381,11 +381,7 @@ export const JobFeedCard = memo(function JobFeedCard({
               <button
                 onClick={onSave}
                 disabled={savePending}
-                className={`inline-flex items-center gap-1 rounded-xl border px-2.5 py-1.5 text-xs transition-colors disabled:opacity-60 sm:px-3 sm:py-2 ${
-                  isSaved
-                    ? "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-400"
-                    : "border-border bg-secondary/80 text-muted-foreground hover:bg-accent hover:text-foreground"
-                }`}
+                className={`inline-flex items-center gap-1 rounded-xl border text-xs transition-colors disabled:opacity-60 ${ isSaved ? "border-amber-300 bg-amber-50 text-amber-700" : "border-border bg-secondary/80 text-muted-foreground hover:bg-accent hover:text-foreground" } chip-pad`}
               >
                 {savePending
                   ? <Loader2 className="h-3 w-3 animate-spin" />

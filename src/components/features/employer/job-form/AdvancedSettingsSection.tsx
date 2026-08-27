@@ -145,7 +145,7 @@ export function AdvancedSettingsSection() {
             <div className="space-y-3 sm:space-y-5 border-t border-border px-5 pb-5 pt-4">
 
               <div className="grid gap-4 xl:grid-cols-2">
-                <div className="space-y-1.5 rounded-xl border border-border/70 bg-muted/20 p-4">
+                <div className="space-y-1.5 rounded-xl border border-border/70 bg-muted/20 card-pad">
                   <Label className="text-sm font-medium">{t("applicationMode")}</Label>
                   <SearchableSelect
                     options={[
@@ -159,7 +159,7 @@ export function AdvancedSettingsSection() {
                   />
                 </div>
 
-                <div className="space-y-1.5 rounded-xl border border-border/70 bg-muted/20 p-4">
+                <div className="space-y-1.5 rounded-xl border border-border/70 bg-muted/20 card-pad">
                   <Label className="text-sm font-medium">{t("visibility")}</Label>
                   <SearchableSelect
                     options={[
@@ -177,8 +177,8 @@ export function AdvancedSettingsSection() {
                 </div>
               </div>
 
-              <div className="space-y-3 rounded-xl border border-border/70 bg-background p-4">
-                <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/20 p-3">
+              <div className="space-y-3 rounded-xl border border-border/70 bg-background card-pad">
+                <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/20 chip-pad">
                   <div className="flex-1">
                     <p className="text-sm font-medium">{t("autoScreening")}</p>
                     <p className="text-xs text-muted-foreground">
@@ -237,7 +237,7 @@ export function AdvancedSettingsSection() {
               </div>
 
               <div className="grid gap-4 xl:grid-cols-2">
-                <div className="space-y-1.5 rounded-xl border border-border/70 bg-muted/20 p-4">
+                <div className="space-y-1.5 rounded-xl border border-border/70 bg-muted/20 card-pad">
                   <Label htmlFor="expires-at" className="text-sm font-medium">
                     {t("expiryDate")}
                   </Label>
@@ -252,7 +252,7 @@ export function AdvancedSettingsSection() {
                   </p>
                 </div>
 
-                <div className="space-y-1.5 rounded-xl border border-border/70 bg-muted/20 p-4">
+                <div className="field rounded-xl border border-border/70 bg-muted/20 card-pad">
                   <Label htmlFor="max-applicants" className="text-sm font-medium">
                     {t("maxApplicants")}
                   </Label>
@@ -272,7 +272,7 @@ export function AdvancedSettingsSection() {
               </div>
 
               {agents.length > 0 && (
-                <div className="space-y-1.5 rounded-xl border border-border/70 bg-muted/20 p-4">
+                <div className="space-y-1.5 rounded-xl border border-border/70 bg-muted/20 card-pad">
                   <Label className="text-sm font-medium">{t("assignAgent")}</Label>
                   <SearchableSelect
                     options={[
@@ -291,7 +291,7 @@ export function AdvancedSettingsSection() {
               )}
 
               {/* ─── Workflow & Matching Weight Templates ─── */}
-              <div className="space-y-2 rounded-xl border border-sky-500/20 bg-sky-500/5 p-4">
+              <div className="space-y-2 rounded-xl border border-sky-500/20 bg-sky-500/5 card-pad">
                 <Label className="text-sm font-medium">{t("configurationTemplates")}</Label>
                 <p className="text-xs text-muted-foreground">
                   {t("configurationTemplatesHint")}
@@ -306,7 +306,7 @@ export function AdvancedSettingsSection() {
                 </div>
               </div>
 
-              <div className="space-y-2 rounded-xl border border-border/70 bg-background p-4">
+              <div className="field rounded-xl border border-border/70 bg-background card-pad">
                 <Label className="text-sm font-medium">{t("tags")}</Label>
                 <div className="flex gap-2">
                   <Input

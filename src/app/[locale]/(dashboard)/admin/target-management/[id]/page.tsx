@@ -20,6 +20,7 @@ import {
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -155,7 +156,7 @@ export default function AdminTargetProfileDetailPage() {
       </Link>
 
       {/* Header */}
-      <div className="workspace-glass-panel rounded-2xl p-6">
+      <div className="workspace-glass-panel rounded-2xl panel-body">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-4">
             <div className="workspace-tone-sky rounded-2xl p-3.5">
@@ -164,7 +165,7 @@ export default function AdminTargetProfileDetailPage() {
             <div>
               <h1 className="text-xl font-semibold tracking-tight">{profile.assigneeName}</h1>
               <p className="mt-0.5 text-sm text-muted-foreground">
-                {profile.year} · {profile.assigneeRole === "super_agent" ? "Supervisor" : "Agent"} · {profile.assigneeEmail}
+                {profile.year} · {profile.assigneeRole === "super_agent" ? t("supervisorHeader") : t("agentDescription")} · {profile.assigneeEmail}
               </p>
               <div className="mt-1 flex items-center gap-2 flex-wrap">
                 {profile.region && (
@@ -191,35 +192,35 @@ export default function AdminTargetProfileDetailPage() {
         <div className="mt-6 flex items-center gap-4">
           <Progress value={Math.min(profile.overallProgress, 100)} className="h-3 flex-1" />
           <span className={`text-lg font-bold tabular-nums ${
-            profile.overallProgress >= 75 ? "text-emerald-600 dark:text-emerald-400" :
-            profile.overallProgress >= 40 ? "text-amber-600 dark:text-amber-400" :
+            profile.overallProgress >= 75 ? "text-emerald-600" :
+            profile.overallProgress >= 40 ? "text-amber-600" :
             "text-muted-foreground"
           }`}>{profile.overallProgress}%</span>
         </div>
       </div>
 
       {/* Progress rings */}
-      <section className="workspace-glass-panel rounded-2xl p-6">
+      <section className="workspace-glass-panel rounded-2xl panel-body">
         <div className="flex flex-wrap items-center justify-center gap-8">
           <ProgressRing
             value={profile.employerProgress}
-            label="Employer"
+            label={t("employerLabel")}
             sublabel={`${profile.employerAchieved}/${profile.employerTarget}`}
           />
           <ProgressRing
             value={profile.employeeProgress}
-            label="Employee"
+            label={t("employeeLabel")}
             sublabel={`${profile.employeeAchieved}/${profile.employeeTarget}`}
           />
           <ProgressRing
             value={profile.financeProgress}
-            label="Finance"
-            sublabel={`${profile.currency} ${profile.financeAchieved.toLocaleString()}/${profile.financeTarget.toLocaleString()}`}
+            label={t("financeLabel")}
+            sublabel={`${profile.currency} ${formatCount(profile.financeAchieved)}/${formatCount(profile.financeTarget)}`}
           />
           <ProgressRing
             value={profile.overallProgress}
-            label="Overall"
-            sublabel="Combined progress"
+            label={t("labelOverall")}
+            sublabel={t("labelOverall")}
             color="#3b82f6"
           />
         </div>
@@ -240,7 +241,7 @@ export default function AdminTargetProfileDetailPage() {
       {profile.monthlyAchievements.length > 0 && (
         <section className="space-y-4">
           <div>
-            <h2 className="text-lg font-semibold tracking-tight">{t("monthlyBreakdown")}</h2>
+            <h2 className="heading-section font-semibold tracking-tight">{t("monthlyBreakdown")}</h2>
             <p className="text-sm text-muted-foreground">{t("monthlyBreakdownDescription")}</p>
           </div>
           <MonthlyDistributionGrid
@@ -254,9 +255,9 @@ export default function AdminTargetProfileDetailPage() {
       {agentProfiles.length > 0 && (
         <section className="space-y-4">
           <div>
-            <h2 className="text-lg font-semibold tracking-tight">Team Breakdown</h2>
+            <h2 className="heading-section font-semibold tracking-tight">{t("teamBreakdownTitle")}</h2>
             <p className="text-sm text-muted-foreground">
-              Agent target profiles under this supervisor
+              {t("teamBreakdownDescription")}
             </p>
           </div>
           <div className="rounded-2xl border border-border/60 bg-card overflow-x-auto">

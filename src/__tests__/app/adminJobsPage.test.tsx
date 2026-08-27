@@ -104,7 +104,8 @@ describe("AdminJobsPage", () => {
 
     render(<AdminJobsPage />);
 
-    expect(screen.getByText(/recruitment control/i)).toBeInTheDocument();
+    // The "Recruitment Control" eyebrow above the title was dropped — it
+    // restated the sidebar section, and the heading below identifies the page.
     expect(screen.getByRole("heading", { name: /job listings/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /filter/i })).toBeInTheDocument();
 
@@ -179,9 +180,9 @@ describe("AdminJobsPage", () => {
     render(<AdminJobsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText(/failed to load jobs\. please try again\./i)).toBeInTheDocument();
+      expect(screen.getByText(/we couldn't load jobs\. please try again\./i)).toBeInTheDocument();
     });
 
-    expect(toastErrorMock).toHaveBeenCalledWith("Failed to load jobs. Please try again.");
+    expect(toastErrorMock).toHaveBeenCalledWith("We couldn't load jobs. Please try again.");
   });
 });

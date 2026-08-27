@@ -7,7 +7,7 @@ export default function MessagesLoading() {
       </div>
       <div className="flex gap-4 h-[calc(100vh-220px)]">
         {/* Conversation list skeleton */}
-        <div className="w-80 rounded-lg border border-border bg-card p-3 space-y-2">
+        <div className="w-80 rounded-lg border border-border bg-card space-y-2 chip-pad">
           <div className="h-9 w-full bg-muted/40 rounded-md animate-pulse mb-3" />
           {Array.from({ length: 6 }).map((_, i) => (
             <div

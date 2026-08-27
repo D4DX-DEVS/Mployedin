@@ -26,6 +26,7 @@ import { usePagination } from "@/hooks/usePagination";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
+import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
 interface Placement {
   _id: string;
@@ -57,13 +58,13 @@ function formatSalaryValue(value: number): string {
   if (value === 0) return "0";
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
   if (value >= 1_000) return `${(value / 1_000).toFixed(0)}K`;
-  return value.toLocaleString();
+  return formatCount(value);
 }
 
 function formatCurrencyBreakdown(salaryByCurrency: Record<string, number>, t: any): string {
   const entries = Object.entries(salaryByCurrency).filter(([, v]) => v > 0);
   if (entries.length === 0) return t("noSalaryData");
-  return entries.map(([cur, val]) => `${val.toLocaleString()} ${cur}`).join(t("currencyBreakdownSeparator"));
+  return entries.map(([cur, val]) => `${formatCount(val)} ${cur}`).join(t("currencyBreakdownSeparator"));
 }
 
 export default function AdminPlacementsPage() {
@@ -114,10 +115,10 @@ export default function AdminPlacementsPage() {
         setSalaryByCurrency(data.salaryByCurrency ?? {});
       } else {
         const err = await res.json().catch(() => ({}));
-        toast.error(err.error || "Failed to load placements");
+        toast.error(err.error || t("toastLoadFailed"));
       }
     } catch (error) {
-      toast.error("Failed to load placements");
+      toast.error(t("toastLoadFailed"));
     } finally {
       setLoading(false);
     }
@@ -153,11 +154,11 @@ export default function AdminPlacementsPage() {
         setAiInsights(text.trim() || "No insights available.");
       } else {
         const err = await res.json().catch(() => ({}));
-        toast.error(err.error || "Failed to generate insights");
+        toast.error(err.error || t("toastGenerateInsightsFailed"));
         setAiInsights(null);
       }
     } catch (error) {
-      toast.error("Failed to generate insights");
+      toast.error(t("toastGenerateInsightsFailed"));
       setAiInsights(null);
     } finally {
       setAiLoading(false);
@@ -172,14 +173,14 @@ export default function AdminPlacementsPage() {
         body: JSON.stringify({ commissionPaid: paid }),
       });
       if (res.ok) {
-        toast.success(paid ? "Commission marked as paid" : "Commission marked as unpaid");
+        toast.success(paid ? t("toastCommissionMarkedPaid") : t("toastCommissionMarkedUnpaid"));
         load();
       } else {
         const err = await res.json().catch(() => ({}));
-        toast.error(err.error || "Failed to update commission status");
+        toast.error(err.error || t("toastUpdateCommissionStatusFailed"));
       }
     } catch (error) {
-      toast.error("Failed to update commission status");
+      toast.error(t("toastUpdateCommissionStatusFailed"));
     }
   };
 
@@ -192,14 +193,14 @@ export default function AdminPlacementsPage() {
       });
       if (!res.ok) {
         const e = await res.json().catch(() => ({}));
-        toast.error(e.error || "Failed to update placement");
+        toast.error(e.error || t("toastUpdatePlacementFailed"));
         return;
       }
-      toast.success("Placement updated successfully");
+      toast.success(t("toastPlacementUpdated"));
       setEditItem(null);
       load();
     } catch (error) {
-      toast.error("Failed to update placement");
+      toast.error(t("toastUpdatePlacementFailed"));
     }
   };
 
@@ -209,14 +210,14 @@ export default function AdminPlacementsPage() {
     try {
       const res = await fetch(`/api/placements/${id}`, { method: "DELETE" });
       if (res.ok) {
-        toast.success("Placement deleted successfully");
+        toast.success(t("toastPlacementDeleted"));
         load();
       } else {
         const err = await res.json().catch(() => ({}));
-        toast.error(err.error || "Failed to delete placement");
+        toast.error(err.error || t("toastDeletePlacementFailed"));
       }
     } catch (error) {
-      toast.error("Failed to delete placement");
+      toast.error(t("toastDeletePlacementFailed"));
     }
   };
 
@@ -230,6 +231,8 @@ export default function AdminPlacementsPage() {
 
   const EDIT_FIELDS: CrudField[] = [
     { name: "salary", label: t("salary"), type: "number" },
+    // ISO 4217 codes are the label on purpose: they read the same in every
+    // locale, and every other currency picker in the product shows the code.
     { name: "currency", label: t("currency"), type: "select", options: [
       { value: "AED", label: "AED" }, { value: "USD", label: "USD" }, { value: "EUR", label: "EUR" }, { value: "SAR", label: "SAR" }
     ]},
@@ -241,20 +244,20 @@ export default function AdminPlacementsPage() {
   const unpaidCommissions = placements.filter((p) => !p.commissionPaid).length;
 
   const exportColumns: ExportColumn<Placement>[] = [
-    { header: "Candidate", key: "candidateName", formatter: (v) => String(v ?? "—") },
-    { header: "Company", key: "companyName", formatter: (v) => String(v ?? "—") },
-    { header: "Job Title", key: "jobTitle", formatter: (v) => String(v ?? "—") },
-    { header: "Agent", key: "agentName", formatter: (v) => String(v ?? "—") },
-    { header: "Salary", key: "salary", formatter: (v, r) => `${v ?? 0} ${(r as unknown as Placement).currency ?? "AED"}` },
-    { header: "Visa Status", key: "visaStatus" },
-    { header: "Commission Paid", key: "commissionPaid", formatter: (v) => v ? "Yes" : "No" },
-    { header: "Start Date", key: "startDate", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
+    { header: t("exportHeaderCandidate"), key: "candidateName", formatter: (v) => String(v ?? "—") },
+    { header: t("exportHeaderCompany"), key: "companyName", formatter: (v) => String(v ?? "—") },
+    { header: t("exportHeaderJobTitle"), key: "jobTitle", formatter: (v) => String(v ?? "—") },
+    { header: t("exportHeaderAgent"), key: "agentName", formatter: (v) => String(v ?? "—") },
+    { header: t("exportHeaderSalary"), key: "salary", formatter: (v, r) => `${v ?? 0} ${(r as unknown as Placement).currency ?? "AED"}` },
+    { header: t("exportHeaderVisaStatus"), key: "visaStatus" },
+    { header: t("exportHeaderCommissionPaid"), key: "commissionPaid", formatter: (v) => v ? t("exportYes") : t("exportNo") },
+    { header: t("exportHeaderStartDate"), key: "startDate", formatter: (v) => v ? formatDate(new Date(String(v))) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: placements as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "placements",
-    title: "Placements",
+    title: t("exportTitle"),
   });
 
   return (
@@ -263,30 +266,25 @@ export default function AdminPlacementsPage() {
 
       {/* ─── Compact page header ──────────────────────────────────────── */}
       <DashboardPageHeader
-        eyebrow={t("recruitmentControl")}
         title={t("placementTracking")}
         description={t("placementTrackingDescription")}
-        summary={{
-          label: t("portfolio"),
-          value: t("placementsCount", { count: total }),
-          note: formatCurrencyBreakdown(salaryByCurrency, t),
-        }}
         actions={(
           <Button
             onClick={fetchAiInsights}
             disabled={aiLoading}
-            className="h-10 gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+            className="gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
           >
             {aiLoading ? <RotateCcw className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
             {aiLoading ? t("analyzing") : t("generateInsights")}
           </Button>
         )}
         metrics={[
-          { label: t("totalPlacements"), value: total, note: t("allTime"), icon: Users, iconClassName: "text-status-applied", iconSurfaceClassName: "bg-status-applied-bg dark:bg-sky-950/30" },
-          { label: t("pendingVisa"), value: pendingVisa, note: t("awaitingApproval"), icon: Clock, iconClassName: "text-status-shortlisted", iconSurfaceClassName: "bg-status-shortlisted-bg dark:bg-amber-950/30" },
-          { label: t("unpaidCommission"), value: unpaidCommissions, note: t("needsCollection"), icon: DollarSign, iconClassName: "text-red-500", iconSurfaceClassName: "bg-status-rejected-bg dark:bg-red-950/30" },
-          { label: t("totalSalaryValue"), value: formatSalaryValue(totalValue), note: Object.keys(salaryByCurrency).length > 0 ? Object.entries(salaryByCurrency).slice(0, 2).map(([c, v]) => `${formatSalaryValue(v)} ${c}`).join(t("currencyBreakdownSeparator")) : t("noData"), icon: TrendingUp, iconClassName: "text-status-selected", iconSurfaceClassName: "bg-status-selected-bg dark:bg-emerald-950/30" },
+          { label: t("totalPlacements"), value: total, note: t("allTime"), icon: Users, iconClassName: "text-status-applied", iconSurfaceClassName: "bg-status-applied-bg" },
+          { label: t("pendingVisa"), value: pendingVisa, note: t("awaitingApproval"), icon: Clock, iconClassName: "text-status-shortlisted", iconSurfaceClassName: "bg-status-shortlisted-bg" },
+          { label: t("unpaidCommission"), value: unpaidCommissions, note: t("needsCollection"), icon: DollarSign, iconClassName: "text-red-500", iconSurfaceClassName: "bg-status-rejected-bg" },
+          { label: t("totalSalaryValue"), value: formatSalaryValue(totalValue), note: Object.keys(salaryByCurrency).length > 0 ? Object.entries(salaryByCurrency).slice(0, 2).map(([c, v]) => `${formatSalaryValue(v)} ${c}`).join(t("currencyBreakdownSeparator")) : t("noData"), icon: TrendingUp, iconClassName: "text-status-selected", iconSurfaceClassName: "bg-status-selected-bg" },
         ]}
+        compactOnMobile
         footer={(
           <>
             <button
@@ -318,10 +316,10 @@ export default function AdminPlacementsPage() {
 
         {/* AI Insights inline panel */}
         {aiInsights && (
-          <div className="mt-4 rounded-[20px] border border-sky-200/50 bg-sky-50/50 p-4 dark:border-sky-800/30 dark:bg-sky-950/20">
+          <div className="mt-4 rounded-3xl border border-sky-200/50 bg-sky-50/50 card-pad">
             <div className="mb-2 flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-status-applied dark:text-sky-400" />
-              <span className="text-sm font-semibold text-sky-800 dark:text-sky-300">{t("aiPlacementInsights")}</span>
+              <Sparkles className="h-4 w-4 text-status-applied" />
+              <span className="text-sm font-semibold text-sky-800">{t("aiPlacementInsights")}</span>
             </div>
             <div className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{aiInsights}</div>
           </div>
@@ -329,7 +327,7 @@ export default function AdminPlacementsPage() {
 
         {/* ─── Expandable Filters ─────────────────────────────────────── */}
         {showFilters && (
-          <div className="mt-4 space-y-3 rounded-[20px] border border-border/30 bg-background/40 p-4 backdrop-blur-sm dark:bg-background/20">
+          <div className="mt-4 space-y-3 rounded-3xl border border-border/30 bg-background/40 backdrop-blur-sm card-pad">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -436,7 +434,7 @@ export default function AdminPlacementsPage() {
       </DashboardPageHeader>
 
       {/* ─── Table ────────────────────────────────────────────────────── */}
-      <section className="workspace-panel-surface overflow-hidden rounded-[28px]">
+      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -473,7 +471,7 @@ export default function AdminPlacementsPage() {
                         </p>
                       </div>
                       {activeFilterCount > 0 && (
-                        <Button variant="outline" size="sm" onClick={clearFilters} className="mt-1 h-8 rounded-lg text-xs">
+                        <Button variant="outline" size="dense" onClick={clearFilters} className="mt-1 rounded-lg text-xs">
                           {t("clearFilters")}
                         </Button>
                       )}
@@ -490,7 +488,7 @@ export default function AdminPlacementsPage() {
                   <TableCell className="px-4 py-3">{p.companyName ?? t("dashSeparator")}</TableCell>
                   <TableCell className="px-4 py-3 text-muted-foreground">{p.agentName ?? t("dashSeparator")}</TableCell>
                   <TableCell className="px-4 py-3 font-medium">
-                    {p.salary?.toLocaleString()}{" "}
+                    {formatCount(p.salary)}{" "}
                     <span className="text-xs text-muted-foreground">{p.currency}</span>
                   </TableCell>
                   <TableCell className="px-4 py-3">
@@ -512,7 +510,7 @@ export default function AdminPlacementsPage() {
                           variant="ghost"
                           size="xs"
                           onClick={() => markCommission(p._id, true)}
-                          className="text-emerald-700 hover:bg-status-selected-bg dark:hover:bg-emerald-950/30"
+                          className="text-emerald-700 hover:bg-status-selected-bg"
                         >
                           {t("markPaid")}
                         </Button>
@@ -522,7 +520,7 @@ export default function AdminPlacementsPage() {
                           variant="ghost"
                           size="xs"
                           onClick={() => setEditItem(p)}
-                          className="text-status-applied hover:bg-blue-50 dark:hover:bg-blue-950/30"
+                          className="text-status-applied hover:bg-blue-50"
                           title={t("edit")}
                         >
                           <Pencil className="h-3.5 w-3.5" />
@@ -533,7 +531,7 @@ export default function AdminPlacementsPage() {
                           variant="ghost"
                           size="xs"
                           onClick={() => handleDelete(p._id)}
-                          className="text-status-rejected hover:bg-status-rejected-bg dark:hover:bg-red-950/30"
+                          className="text-status-rejected hover:bg-status-rejected-bg"
                           title={t("delete")}
                         >
                           <Trash2 className="h-3.5 w-3.5" />

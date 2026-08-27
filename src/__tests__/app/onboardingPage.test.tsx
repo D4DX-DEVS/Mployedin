@@ -26,10 +26,6 @@ jest.mock("next-auth/react", () => ({
   }),
 }));
 
-jest.mock("@/components/shared/ThemeToggle", () => ({
-  ThemeToggle: () => <button aria-label="theme-toggle">Theme</button>,
-}));
-
 describe("JobSeekerOnboardingPage", () => {
   beforeEach(() => {
     global.fetch = jest.fn().mockResolvedValue({
@@ -42,12 +38,8 @@ describe("JobSeekerOnboardingPage", () => {
     jest.restoreAllMocks();
   });
 
-  it("renders the shared theme toggle in the onboarding top bar", () => {
+  it("renders the onboarding top bar", () => {
     render(<JobSeekerOnboardingPage />);
-
-    expect(screen.getByRole("button", { name: /theme-toggle/i })).toBeInTheDocument();
-    expect(screen.getByText("App theme")).toBeInTheDocument();
-    expect(screen.getByText("Applies after onboarding")).toBeInTheDocument();
     expect(screen.getByText("Welcome, X Beat")).toBeInTheDocument();
   });
 });

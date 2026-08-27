@@ -8,6 +8,14 @@ body {
   max-width: 100vw;
 }
 
+/* Tailwind v4's generated `font-sans` fallback is independent of the legacy
+   config file. Bind it explicitly to the Next.js Manrope variable so every
+   workspace uses the selected product typeface. Locale wrappers below still
+   replace it with the Arabic or Malayalam families where appropriate. */
+.font-sans {
+  font-family: var(--font-manrope), Manrope, system-ui, sans-serif;
+}
+
 /* Hide number input spinners/arrows */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
@@ -18,9 +26,6 @@ input[type="number"] {
   -moz-appearance: textfield;
   appearance: textfield;
 }
-
-/* Align Tailwind v4 dark: variant with class-based ThemeProvider (.dark on <html>) */
-@variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: hsl(var(--background));
@@ -42,10 +47,27 @@ input[type="number"] {
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
-  --font-sans: var(--font-inter);
+  --font-sans: var(--font-manrope);
   --font-arabic: var(--font-noto-arabic);
   --font-malayalam: var(--font-noto-malayalam);
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+
+  /* ── RADIUS SCALE ──────────────────────────────────────────────────────────
+     Four semantic tiers, one knob each. Before this pass the product carried
+     387 arbitrary `rounded-[Npx]` values across 10 distinct pixel sizes
+     (28/20/24/22/26/18/16/14/30/32) with no semantic meaning — measured
+     2026-08-25. They are now snapped onto these steps:
+
+       control  10px  --workspace-radius-control  small inputs, chips
+       card     12px  rounded-xl                  nested cards, list rows
+       panel    16px  rounded-2xl  (= --radius)   standard card / panel
+       surface  24px  rounded-3xl                 hero / major surface
+
+     `--radius-3xl` is the single knob for the surface tier: the old dominant
+     value was 28px, so set it to 1.75rem to restore that look everywhere at
+     once. Left at the Tailwind default so the 69 pre-existing `rounded-3xl`
+     call sites keep rendering exactly as they did. */
+  --radius-3xl: 1.5rem;
 }
 
 /* ═══════════════════════════════════════════════
@@ -94,6 +116,7 @@ input[type="number"] {
   --border: 214 26% 88%;
   --input: 214 26% 88%;
   --ring: 223 58% 37%;
+  --focus-ring: 223 72% 34%;
   --radius: 1rem;
   /* Rounder corners for modern feel */
 
@@ -154,73 +177,6 @@ input[type="number"] {
   --badge-skilled: 142 71% 45%;
 }
 
-.dark {
-  --brand-blue-pale: 220 30% 16%;
-  --brand-text: 210 25% 96%;
-  --brand-muted: 215 16% 70%;
-
-  --background: 222 39% 11%;
-  --foreground: 210 20% 96%;
-  --card: 222 31% 14%;
-  --card-foreground: 210 20% 96%;
-  --popover: 222 31% 14%;
-  --popover-foreground: 210 20% 96%;
-  --primary: 199 74% 60%;
-  --primary-foreground: 225 57% 15%;
-  --secondary: 217 25% 18%;
-  --secondary-foreground: 210 20% 96%;
-  --muted: 217 25% 18%;
-  --muted-foreground: 215 16% 70%;
-  --accent: 219 30% 21%;
-  --accent-foreground: 210 20% 96%;
-  --destructive: 0 70% 56%;
-  --destructive-foreground: 210 20% 96%;
-  --border: 217 23% 24%;
-  --input: 217 23% 24%;
-  --ring: 199 74% 60%;
-
-  --sidebar-bg: 222 42% 10%;
-  --sidebar-fg: 210 20% 96%;
-  --sidebar-active-bg: 223 40% 18%;
-  --sidebar-active-fg: 199 74% 72%;
-  --sidebar-hover-bg: 218 29% 16%;
-  --sidebar-border: 217 23% 22%;
-  --sidebar-icon: 215 16% 70%;
-
-  --status-applied: 204 82% 70%;
-  --status-applied-bg: 221 39% 19%;
-  --status-shortlisted: 42 94% 64%;
-  --status-shortlisted-bg: 38 48% 20%;
-  --status-interview: 269 85% 72%;
-  --status-interview-bg: 269 32% 20%;
-  --status-selected: 142 67% 61%;
-  --status-selected-bg: 142 36% 18%;
-  --status-rejected: 0 83% 69%;
-  --status-rejected-bg: 0 33% 20%;
-  --status-pending: 215 18% 71%;
-  --status-pending-bg: 217 22% 19%;
-
-  --ai-gradient-from: 223 58% 46%;
-  --ai-gradient-to: 198 74% 62%;
-  --ai-bubble-bg: 221 35% 18%;
-  --ai-bubble-fg: 210 20% 96%;
-  --ai-thinking: 216 15% 44%;
-
-  --surface-1: 222 31% 14%;
-  --surface-2: 222 39% 11%;
-  --surface-3: 220 30% 18%;
-  --surface-elevated: 220 28% 16%;
-  --workspace-shadow-hero: 0 28px 80px -44px rgba(8, 47, 73, 0.5);
-  --workspace-shadow-panel: 0 24px 60px -42px rgba(2, 6, 23, 0.68);
-
-  --badge-basic: 215 16% 70%;
-  --badge-company: 204 82% 70%;
-  --badge-premium: 45 94% 64%;
-  --badge-skilled: 142 67% 61%;
-
-  color-scheme: dark;
-}
-
 .theme-light {
   --brand-text: 224 33% 18%;
   --brand-muted: 218 15% 46%;
@@ -244,6 +200,7 @@ input[type="number"] {
   --border: 214 26% 88%;
   --input: 214 26% 88%;
   --ring: 223 58% 37%;
+  --focus-ring: 223 72% 34%;
 
   --surface-1: 0 0% 100%;
   --surface-2: 210 20% 97%;
@@ -301,6 +258,22 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* A single, surface-independent keyboard focus treatment. Component rings may
+   add emphasis, but this outline remains visible on white, tinted and dark
+   workspace surfaces. */
+:where(
+  a[href],
+  button,
+  input,
+  select,
+  textarea,
+  [role="button"],
+  [tabindex]:not([tabindex="-1"])
+):focus-visible {
+  outline: 2px solid hsl(var(--focus-ring));
+  outline-offset: 2px;
+}
+
 .font-arabic {
   font-family: var(--font-arabic), var(--font-sans), system-ui, sans-serif;
 }
@@ -343,6 +316,16 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+  }
+
   .skeleton-shimmer,
   .animate-pulse {
     animation: none;
@@ -564,7 +547,9 @@ body {
     background-color: hsl(var(--card));
     border: 1px solid hsl(var(--border) / 0.6);
     border-radius: var(--radius);
-    padding: 0.875rem 0.875rem;
+    /* Was a hand-rolled 14/14 against --panel-pad-*'s 14/16, so two cards on
+       one phone screen disagreed by 2px on the x-axis. Measured 2026-08-25. */
+    padding: var(--panel-pad-y) var(--panel-pad-x);
     box-shadow: 0 4px 20px -2px rgb(0 0 0 / 0.05);
     transition: all 0.2s ease-in-out;
     isolation: isolate;
@@ -572,11 +557,7 @@ body {
     box-sizing: border-box;
   }
 
-  @media (min-width: 640px) {
-    .card-base {
-      padding: 1.25rem 1.5rem;
-    }
-  }
+
 
   .card-base:hover {
     box-shadow: 0 12px 24px -4px rgb(0 0 0 / 0.08);
@@ -627,6 +608,9 @@ body {
     --workspace-panel-padding-mobile: 0.75rem;
     --workspace-panel-padding-desktop: 1.25rem;
     --workspace-section-gap: 1rem;
+    --workspace-mobile-nav-height: 4rem;
+    --workspace-copilot-size: 3rem;
+    --workspace-copilot-gap: 0.75rem;
     background:
       radial-gradient(circle at top left, hsl(var(--brand-cyan) / 0.07), transparent 18%),
       linear-gradient(180deg, hsl(var(--surface-2)), hsl(var(--secondary) / 0.96));
@@ -652,8 +636,18 @@ body {
        corner, so full clearance left a ~130px empty band below the last card
        (pagination) on mobile. scroll-padding-bottom
        keeps focus/keyboard scroll clear of the button too. */
-    scroll-padding-bottom: 2.5rem;
-    padding-bottom: max(env(safe-area-inset-bottom), 2.5rem);
+    scroll-padding-bottom: calc(
+      var(--workspace-mobile-nav-height) +
+      var(--workspace-copilot-size) +
+      (var(--workspace-copilot-gap) * 2) +
+      env(safe-area-inset-bottom)
+    );
+    padding-bottom: calc(
+      var(--workspace-mobile-nav-height) +
+      var(--workspace-copilot-size) +
+      (var(--workspace-copilot-gap) * 2) +
+      env(safe-area-inset-bottom)
+    );
   }
 
   @media (min-width: 1024px) {
@@ -663,9 +657,9 @@ body {
     }
   }
 
-  .dashboard-shell-workspace .page-container {
-    max-width: 1440px;
-  }
+  /* Removed a 1440px override that fought the 1400px base container: the same
+     page measured two different content widths depending on the role shell.
+     One max-width, defined once on .page-container. */
 
   .dashboard-shell-admin .admin-cms-page-container {
     padding-inline: var(--page-gutter);
@@ -684,7 +678,10 @@ body {
 
   .dashboard-shell-workspace .page-header-root {
     gap: 0.625rem;
-    padding: 0.875rem 1rem;
+    /* Same tokens as .panel-body. The header used to sit at 14/16 while every
+       panel beneath it was 20/24, so the page's own title card read tighter
+       than its content. Measured 2026-08-25. */
+    padding: var(--panel-pad-y) var(--panel-pad-x);
     border: 1px solid hsl(var(--border) / 0.82);
     border-radius: 1rem;
     background: hsl(var(--card));
@@ -693,7 +690,13 @@ body {
 
   .dashboard-shell-workspace .page-header-title {
     color: hsl(var(--foreground));
-    font-size: clamp(1.35rem, 1.8vw, 1.625rem);
+    /* Was clamp(1.35rem, 1.8vw, 1.625rem). Fluid type meant the page title was
+       a different size at every viewport — measured 20px at 1024, 23.04px at
+       1280, 25.92px at 1440, reaching its 26px ceiling only at ~1444px — and
+       it silently beat the `sm:text-[1.625rem]` the header components declare,
+       making that utility dead. Now the same two-step scale as everything else.
+       Measured 2026-08-25. */
+    font-size: var(--text-page-title);
     line-height: 1.2;
     letter-spacing: -0.04em;
   }
@@ -706,7 +709,7 @@ body {
   }
 
   .dashboard-shell-admin .page-header-root {
-    padding: 0.875rem 1rem;
+    padding: var(--panel-pad-y) var(--panel-pad-x);
     border: 1px solid hsl(var(--border) / 0.82);
     border-radius: 1rem;
     background:
@@ -720,7 +723,7 @@ body {
   }
 
   .dashboard-shell-admin .page-header-title {
-    font-size: clamp(1.35rem, 1.8vw, 1.625rem);
+    font-size: var(--text-page-title);
   }
 
   .dashboard-shell-admin .page-header-description {
@@ -784,7 +787,7 @@ body {
   .dashboard-main .page-container > :nth-child(-n + 3) > div > div > h1,
   .dashboard-main .card-base > h1,
   .dashboard-main .card-base > div > h1 {
-    font-size: clamp(1.25rem, 1.8vw, 1.625rem) !important;
+    font-size: var(--text-page-title) !important;
     line-height: 1.2 !important;
     letter-spacing: -0.025em;
   }
@@ -1276,11 +1279,145 @@ body {
   --panel-pad-y: 0.875rem;
   --panel-gap: 0.75rem;
 }
-@media (min-width: 640px) {
+/* Steps at 768 to match --page-gutter. It used to step at 640, so between
+   640-767px a panel was padded 24px inside a page gutter of 16px — the inside
+   of the card was more generous than the page around it. */
+@media (min-width: 768px) {
   :root {
     --panel-pad-x: 1.5rem;
     --panel-pad-y: 1.25rem;
     --panel-gap: 1rem;
+  }
+}
+
+/* ── HEADING SCALE ────────────────────────────────────────────────────────
+   468 headings across the dashboard routes carry 30+ different size combos.
+   Measured at 1440px: h2 spans 11-26px and h3 spans 12-20px, so the two tiers
+   overlap each other and h1 — `<h2 class="text-sm">` (14px, 28 sites) renders
+   smaller than `<h3 class="text-lg">` (18px, 57 sites).
+   Four steps, defined once — .heading-page / -section / -subsection / -label.
+   Deliberately small headings (uppercase eyebrows at text-[11px], hero/empty
+   states at text-3xl) are left off the scale on purpose. Measured 2026-08-25. */
+:root {
+  --text-page-title: 1.25rem;
+  --text-section: 1rem;
+  --text-subsection: 0.875rem;
+}
+@media (min-width: 768px) {
+  :root {
+    --text-page-title: 1.625rem;
+    --text-section: 1.125rem;
+    --text-subsection: 1rem;
+  }
+}
+
+@layer components {
+  .heading-page {
+    font-size: var(--text-page-title);
+    line-height: 1.2;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .heading-section {
+    font-size: var(--text-section);
+    line-height: 1.3;
+    font-weight: 600;
+  }
+  .heading-subsection {
+    font-size: var(--text-subsection);
+    line-height: 1.4;
+    font-weight: 600;
+  }
+  /* Fourth tier: the title of a dense list row or a small card. 97 headings
+     were already `text-sm` here and they were right — a 16px title inside a
+     56px list row is too loud. Flat 14px, no step. */
+  .heading-label {
+    font-size: 0.875rem;
+    line-height: 1.35;
+    font-weight: 600;
+  }
+}
+
+/* ── THE TWO SPACING SCALES ───────────────────────────────────────────────
+   6,065 rhythm utilities are in use and 1,068 of them (18%) sit on 2px
+   half-steps — `gap-1.5` alone accounts for 674. That reads like a broken 4px
+   grid, but it is not: almost all of it is *intra-component* spacing, an icon
+   next to its label inside a button or chip, where 8px is visibly too much.
+
+   So there are deliberately two scales, and they do not mix:
+
+     LAYOUT  (4px grid)  page gutters, section gaps, card padding, form fields.
+                         Use the tokens: --page-gutter/--page-gap,
+                         --panel-pad-*, --card-pad-*, --field-gap.
+     MICRO   (2px grid)  inside a single control: icon-to-label, badge
+                         internals, chip rows. gap-0.5 / gap-1 / gap-1.5 /
+                         gap-2 are fine here and nowhere else.
+
+   A half-step on a layout container is the bug. A half-step inside a button is
+   correct. Mass-converting gap-1.5 to gap-2 would loosen every icon-label pair
+   in the product and fix nothing anyone can see. Counted 2026-08-25. */
+
+/* ── FIELD RHYTHM (label -> control) ──────────────────────────────────────
+   163 form-field wrappers expressed one intent three ways: `space-y-2` (107),
+   `space-y-1.5` (54), `space-y-1` (2). Measured label->input gaps came out at
+   6px on employer forms and 2px on job-seeker ones. Sibling margins rather
+   than flex+gap, so .field is a drop-in for the space-y-* it replaces. */
+:root {
+  --field-gap: 0.5rem;
+}
+
+@layer components {
+  .field > * + * {
+    margin-top: var(--field-gap);
+  }
+}
+
+/* ── CARD RHYTHM (item cards) ─────────────────────────────────────────────
+   Third tier, between the page rhythm and the panel rhythm. `--panel-pad-*`
+   sizes a full-width *section* panel; this sizes an *item* card — the things
+   inside a grid or list (job cards, invoice rows, stat tiles). They were never
+   given a token, so 182 surfaces carried 36 different padding combos and 116
+   of those expressed this one intent four different ways: `p-4` (58), `p-3
+   sm:p-4` (25), `p-3` (19), `p-5` (14) — i.e. 12/12, 16/16 and 20/20 side by
+   side in the same grid. Employer was the worst case: flat `p-4` at every
+   width, so its cards never responded at all.
+   Measured 2026-08-25 across employer/super-agent/admin at 1440px.
+   Use .card-pad, not raw p-* utilities, on any surface class. */
+:root {
+  --card-pad-x: 0.75rem;
+  --card-pad-y: 0.75rem;
+}
+@media (min-width: 768px) {
+  :root {
+    --card-pad-x: 1rem;
+    --card-pad-y: 1rem;
+  }
+}
+
+@layer components {
+  .card-pad {
+    padding: var(--card-pad-y) var(--card-pad-x);
+  }
+}
+
+/* Third and last tier: a compact row or chip — a filter pill, a stat strip, a
+   selectable list line. Measured surfaces in this tier used p-2 (8/8),
+   px-3 py-2.5 (10/12), px-2 py-1.5, p-1.5 and p-2.5, i.e. five values for one
+   thing. Anything smaller than this is not a surface, it is a control. */
+:root {
+  --chip-pad-x: 0.625rem;
+  --chip-pad-y: 0.5rem;
+}
+@media (min-width: 768px) {
+  :root {
+    --chip-pad-x: 0.75rem;
+    --chip-pad-y: 0.625rem;
+  }
+}
+
+@layer components {
+  .chip-pad {
+    padding: var(--chip-pad-y) var(--chip-pad-x);
   }
 }
 
@@ -1326,6 +1463,61 @@ body {
 .page-container > * {
   min-width: 0;
 }
+
+/* A component that renders `<div></div>` when it has nothing to show is still
+   a flex item, so the container's gap is allocated on BOTH sides of it and the
+   section boundary silently doubles. employer/jobs measured 48px between the
+   filter panel and the results grid where every other boundary on that page
+   was 24px. `display: contents` takes the empty wrapper out of the flex
+   formatting context without hiding anything it may later portal in.
+   Measured 2026-08-25. */
+.page-container > div:empty:not([class]) {
+  display: contents;
+}
+
+/* Task-first dashboards keep closely related operational sections within one
+   viewport on phones and tablets. Role dashboards can opt into this rhythm
+   without adding competing `space-y-*` utilities to `.page-container`. */
+.page-container.dashboard-overview-page {
+  --page-gap: 0.875rem;
+}
+
+/* Steps at 768 to match --page-gutter. It used to step at 1024, so between
+   768-1023 every role dashboard rendered 24px gutters against 14px section
+   gaps. Measured on all 5 dashboards, 2026-08-25. */
+@media (min-width: 768px) {
+  .page-container.dashboard-overview-page {
+    --page-gap: 1.25rem;
+  }
+}
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Job-seeker route frame
+   ═══════════════════════════════════════════════════════════════════════════
+   The job-seeker role layout wraps every page in its own gutter, so the role
+   measured a different page frame from the rest of the product: 32px gutter /
+   1280px max-width, against 24px / 1400px everywhere else. Worse, the reset
+   that was meant to stop the gutter doubling around a nested `.page-container`
+   lived in `@layer components`, which loses to Tailwind's `@layer utilities`
+   (`lg:px-8`) — so it never applied and those pages rendered a 56px gutter.
+
+   These rules are deliberately UNLAYERED: unlayered CSS outranks every cascade
+   layer, so they beat the utilities on the wrapper without `!important`.
+   Measured 2026-08-25 across 8 job-seeker routes at 360-1440px.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.job-seeker-route-content {
+  width: 100%;
+  max-width: 1400px;
+  margin-inline: auto;
+  padding: var(--page-gutter);
+}
+
+/* When the page already renders the shared container, that container owns the
+   gutter and the wrapper contributes nothing. */
+.job-seeker-route-content:has(> .page-container) {
+  max-width: none;
+  padding: 0;
 }
 
 @layer components {
@@ -1334,6 +1526,34 @@ body {
    after the base container layer so they also cover role-specific dashboards. */
 @media (max-width: 639px) {
 
+  /* Coarse and narrow layouts share a 44px interaction baseline. Small visual
+     icons can remain compact inside the control without shrinking its hit box.
+     Switches opt out: a Radix switch is a <button>, so this stretched its 20px
+     track to 44px and the pill radius rendered it as an oval. It gets the same
+     hit area from the centred overlay below instead. */
+  :where(button:not([role="switch"]), [role="button"]),
+  :where(
+    input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]),
+    select,
+    textarea
+  ) {
+    min-height: 44px;
+  }
+
+  [role="switch"] {
+    position: relative;
+  }
+
+  [role="switch"]::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+  }
+
   .dashboard-shell-workspace .page-header-title {
     font-size: 1.375rem;
     line-height: 1.2;
@@ -1341,11 +1561,9 @@ body {
 
   .dashboard-shell-workspace .page-header-root {
     gap: 0.625rem;
-    padding: 0.75rem;
   }
 
   .dashboard-shell-admin .page-header-root {
-    padding: 0.75rem;
     border-radius: 1rem;
   }
 
@@ -1368,7 +1586,7 @@ body {
   /* Mobile workspace controls follow the platform touch-target baseline.
      Explicit visual heights may remain compact, but the hit area never drops
      below 44px. Native checkboxes/radios stay inside their larger label rows. */
-  .dashboard-shell :where(button, [role="button"]),
+  .dashboard-shell :where(button:not([role="switch"]), [role="button"]),
   .dashboard-main :where(
     input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]),
     select,
@@ -1376,6 +1594,7 @@ body {
   ) {
     min-height: 44px;
   }
+
 
   .dashboard-shell :where(
     button[aria-label],
@@ -1403,10 +1622,90 @@ body {
 }
 }
 
+/* Named responsive containment for the audited Admin shortcut grid. */
+@media (max-width: 639px) {
+  .admin-quick-actions-grid,
+  .admin-quick-actions-grid > * {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .admin-quick-actions-grid > * {
+    overflow: hidden;
+  }
+}
+
+/* The Copilot occupies a predictable logical-edge dock above the workspace
+   navigation. Main-content scroll clearance is reserved by the shell tokens
+   above, so the final records and actions can always scroll clear of it. */
+.copilot-fab {
+  inset-inline-end: 1rem;
+  inset-block-end: calc(4rem + 0.75rem + env(safe-area-inset-bottom));
+}
+
+.copilot-panel {
+  inset-inline-end: 1rem;
+  inset-block-end: calc(4rem + 0.5rem + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 1024px) {
+  .copilot-fab,
+  .copilot-panel {
+    inset-inline-end: 1rem;
+    inset-block-end: 1rem;
+  }
+}
+
+/* Keep fixed consent content compact and give the document enough scrollable
+   clearance that it never permanently covers the final page controls. */
+:root[data-cookie-banner="visible"] body {
+  padding-bottom: calc(7rem + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 640px) {
+  :root[data-cookie-banner="visible"] body {
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+  }
+}
+
 /* Every semantic table is enhanced by ResponsiveTables with its actual column
    labels. On phones, rows become readable label/value cards instead of forcing
    horizontal scrolling. Set data-mobile-table="scroll" on a table only when
    its two-dimensional layout must be preserved (for example, a matrix). */
+table.workspace-list-table {
+  width: 100%;
+  font-variant-numeric: tabular-nums;
+}
+
+table.workspace-list-table :where(th, td) {
+  padding-block: 0.75rem;
+  padding-inline: 1rem;
+  vertical-align: middle;
+}
+
+table.workspace-list-table thead tr {
+  background: hsl(var(--secondary) / 0.55);
+}
+
+table.workspace-list-table thead th {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.015em;
+}
+
+table.workspace-list-table tbody tr {
+  border-color: hsl(var(--border) / 0.62);
+}
+
+table.workspace-list-table tbody tr:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: -2px;
+}
+
 @media (max-width: 639px) {
   table.responsive-card-table {
     display: block;
@@ -1440,7 +1739,7 @@ body {
     display: block;
     width: 100%;
     min-width: 0;
-    padding: 0.125rem 0.625rem;
+    padding: 0.375rem 0.75rem;
     overflow: hidden;
     border: 1px solid hsl(var(--border) / 0.65);
     border-radius: 0.75rem;
@@ -1461,8 +1760,9 @@ body {
     max-width: none !important;
     grid-template-columns: minmax(5rem, 34%) minmax(0, 1fr);
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.25rem 0 !important;
+    gap: 0.625rem;
+    min-height: 2.25rem;
+    padding: 0.375rem 0 !important;
     overflow-wrap: anywhere;
     font-size: 0.75rem;
     line-height: 1.05rem;
@@ -1496,6 +1796,22 @@ body {
     justify-self: end;
   }
 
+  table.responsive-card-table > tbody > tr > td[data-mobile-primary] {
+    min-height: 2.75rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.25rem;
+  }
+
+  table.responsive-card-table > tbody > tr > td[data-mobile-numeric] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  table.responsive-card-table > tbody > tr > td[data-mobile-actions] {
+    margin-top: 0.125rem;
+    padding-top: 0.5rem !important;
+  }
+
   table.responsive-card-table > tbody > tr > td :where(button, a),
   table.responsive-card-table > tfoot > tr > td :where(button, a) {
     max-width: 100%;
@@ -1509,6 +1825,14 @@ body {
     gap: 0.5rem;
   }
 
+  /* Row actions are the smallest things anyone taps on a phone, and pages ship
+     them as h-7 (28px) icon buttons sized for a desktop table. Floor them here
+     so the touch target is honest without every page restating it. */
+  table.responsive-card-table > tbody > tr > td[data-mobile-actions] :where(button, a),
+  table.responsive-card-table > tfoot > tr > td[data-mobile-actions] :where(button, a) {
+    min-height: 2.75rem;
+  }
+
   table.responsive-card-table > tbody > tr > td[data-mobile-actions] :where(button, a)[title]:not([data-table-action]),
   table.responsive-card-table > tfoot > tr > td[data-mobile-actions] :where(button, a)[title]:not([data-table-action]) {
     width: auto;
@@ -1520,13 +1844,15 @@ body {
   table.responsive-card-table > tbody > tr > td[data-mobile-actions] :where(button, a)[title]:not([data-table-action])::after,
   table.responsive-card-table > tfoot > tr > td[data-mobile-actions] :where(button, a)[title]:not([data-table-action])::after {
     content: attr(title);
-    max-width: 6.5rem;
-    overflow: hidden;
     color: currentColor;
     font-size: 0.75rem;
     line-height: 1rem;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    /* Wrap rather than clip. At 6.5rem with an ellipsis, "Manage permissions"
+       rendered as "Manage permissi…" — a primary action nobody can read. The
+       actions row is flex-wrap, so a longer label takes its own line instead. */
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   table.responsive-card-table > tbody > tr[data-mobile-spanning-row],
@@ -1612,7 +1938,7 @@ body {
      visible cells need the gutter or the first row collides with it. */
   table.responsive-card-table > tbody > tr[data-mobile-collapsible] > td:nth-child(1),
   table.responsive-card-table > tbody > tr[data-mobile-collapsible] > td:nth-child(2) {
-    padding-inline-end: 1.125rem !important;
+    padding-inline-end: 2.75rem !important;
   }
 
   /* ── Expanded detail rows ────────────────────────────────────────────────
@@ -1779,40 +2105,30 @@ body {
   }
 
   /* ── Control heights ──────────────────────────────────────────────────────
-     A control that declares its own height has opted out of the 44px baseline
-     set for undeclared controls further up. The whole row stays tappable, so
-     no real touch target is lost — this is the same trade the card tables make.
-     Square icon buttons are excluded so they cannot turn into rectangles. */
-  .dashboard-shell-admin .dashboard-main :is(button, [role="button"], input, select, textarea):is(
+     Admin is also used on touch devices. Visual controls may stay compact,
+     but their standalone hit area keeps the shared 44px floor. */
+  .dashboard-shell-admin .dashboard-main :is(button:not([role="switch"]), [role="button"], input, select, textarea):is(
       [class~="h-3"], [class~="h-3.5"], [class~="h-4"], [class~="h-5"], [class~="h-6"],
       [class~="h-7"], [class~="h-8"], [class~="h-9"], [class~="h-10"], [class~="h-11"], [class~="h-12"], [class~="h-14"]
     ) {
-    min-height: 0;
+    min-height: 44px;
   }
 
-  /* Tight vertical padding is the other way an author says "this is a compact
-     control": filter pills, segmented toggles and icon buttons all use it. The
-     baseline was inflating a 20px icon button and a 22px pill to 44px, which is
-     most of what makes admin lists feel twice as tall as they need to be. */
-  .dashboard-shell-admin .dashboard-main :is(button, [role="button"]):is(
+  /* Padding utilities affect the visual treatment, not the touch target. */
+  .dashboard-shell-admin .dashboard-main :is(button:not([role="switch"]), [role="button"]):is(
       [class~="py-0"], [class~="py-0.5"], [class~="py-1"], [class~="py-1.5"]
     ) {
-    min-height: 0;
+    min-height: 44px;
   }
 
-  /* Everything else keeps a floor, just a shorter one. 44px is the phone
-     touch-target guideline for a public site; these are dense internal consoles
-     where the surrounding row is tappable too, and the guideline was adding
-     ~8px to every button, tab and input on every page. 36px stays well above
-     the size where taps start missing, and matches the compact select height
-     already used across the admin filter bars. */
-  .dashboard-shell-admin .dashboard-main :where(button, [role="button"]),
+  /* Everything else uses the same touch-safe floor as the other roles. */
+  .dashboard-shell-admin .dashboard-main :where(button:not([role="switch"]), [role="button"]),
   .dashboard-shell-admin .dashboard-main :where(
     input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]),
     select,
     textarea
   ) {
-    min-height: 36px;
+    min-height: 44px;
   }
 
   /* Checkboxes and radios rendered as buttons are sized by their own utilities. */
@@ -1935,6 +2251,11 @@ body {
     align-items: center;
     gap: 0.125rem 0.375rem;
     text-align: start;
+    /* The generic label/value rule further down sets justify-content:flex-end on
+       every labelled cell. It does not lose to this block (which never set the
+       property), so the identity block still packed to the right edge while its
+       own text-align said start. State it here. */
+    justify-content: flex-start;
   }
 
   table.responsive-card-table > tbody > tr[data-mobile-collapsible] > td:first-child:not([data-label=""])::before,
@@ -1947,6 +2268,12 @@ body {
     justify-self: start;
   }
 
+  /* `div` and not `[class*="flex"]`: the name/email/status are usually wrapped in
+     an unclassed <div>, which the generic "plain div in a cell" rule above turns
+     into a flex row justified to the end. Matching on the element beats that rule
+     on specificity and keeps the identity block reading left-to-right. */
+  table.responsive-card-table > tbody > tr[data-mobile-collapsible] > td:first-child:not([data-label=""]) div,
+  table.responsive-card-table > tbody > tr[data-mobile-collapsible] > td[data-label=""]:first-child + td div,
   table.responsive-card-table > tbody > tr[data-mobile-collapsible] > td:first-child:not([data-label=""]) [class*="flex"],
   table.responsive-card-table > tbody > tr[data-mobile-collapsible] > td[data-label=""]:first-child + td [class*="flex"] {
     justify-content: flex-start;
@@ -1977,6 +2304,23 @@ body {
     align-items: center;
     justify-content: flex-end;
     gap: 0.125rem 0.375rem;
+  }
+
+  /* Identity cell, stated last so it wins the specificity tie with the rule
+     directly above. It deliberately matches that rule's weight rather than
+     exceeding it: a heavier selector would also outrank the collapse rule
+     (`td:nth-child(n + 3) { display: none }`) and re-expand every card. */
+  table.responsive-card-table > tbody > tr > td[data-mobile-primary] {
+    justify-content: flex-start;
+    text-align: start;
+  }
+
+  table.responsive-card-table > tbody > tr > td[data-mobile-primary]::before {
+    display: none;
+  }
+
+  table.responsive-card-table > tbody > tr > td[data-mobile-primary] div {
+    justify-content: flex-start;
   }
 
   table.responsive-card-table > tbody > tr > td:not([data-label=""])::before,
@@ -2471,28 +2815,7 @@ body {
   }
 }
 
-/* ── Marketing prose in workspace panels ──────────────────────────────────
-   Nearly every page repeats the same header shape: heading, then a sentence
-   restating it, then the data. "Review the hires that have already crossed
-   the line." followed by "Candidate identity, job context, placement type…"
-   is two paragraphs of prose the operator already knows. On a phone that is
-   the whole first viewport, so it is dropped there and kept on desktop.
-
-   Structural, not class-based: only a paragraph that IMMEDIATELY follows a
-   heading inside a workspace panel qualifies, so labels, values, empty-state
-   copy and error messages are never caught. */
 @media (max-width: 639px) {
-  .dashboard-main
-    :is(.workspace-panel-surface, .workspace-hero-surface, .page-header-root):not([class*="border-destructive"]):not([role="alert"])
-    :is(h1, h2)
-    + p:not([role="alert"]) {
-    display: none;
-  }
-
-  .dashboard-main .page-header-description {
-    display: none;
-  }
-
   /* Sentence-length headings are common here; keep them to a readable size
      instead of three lines of 20px type. */
   .dashboard-main :is(.workspace-panel-surface, .workspace-hero-surface) h2 {
@@ -2513,3 +2836,47 @@ body {
     margin-inline: auto;
   }
 }
+
+/* Audited Super Agent dashboard KPI band: the generic admin compaction rules
+   above are intentionally broad, so restore this named grid's readable phone
+   density after those legacy rules have run. */
+@media (max-width: 639px) {
+  [data-mobile-metric-grid="balanced"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.5rem;
+  }
+
+  [data-mobile-metric-grid="balanced"] > * {
+    padding: 0.75rem !important;
+  }
+
+  [data-mobile-metric-grid="balanced"] > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+
+  [data-mobile-metric-grid="balanced"] > * > div > p:first-child {
+    font-size: 0.75rem !important;
+    line-height: 1rem !important;
+    letter-spacing: 0.08em !important;
+  }
+
+  [data-mobile-metric-grid="balanced"] > * > p:first-of-type {
+    font-size: 1.25rem !important;
+    line-height: 1.5rem !important;
+  }
+
+  [data-mobile-metric-grid="balanced"] > * > p:last-child {
+    overflow: visible;
+    font-size: 0.75rem !important;
+    line-height: 1rem !important;
+    text-overflow: clip;
+    white-space: normal;
+  }
+}
+
+/* rhythm pass: 1787649926 */
+
+/* rebuild-nudge */
+
+
+

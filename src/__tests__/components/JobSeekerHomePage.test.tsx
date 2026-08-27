@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  */
-import React from "react";
+import type React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import { JobSeekerHomePage, type InitialHomeData } from "@/components/features/job-seeker/home/JobSeekerHomePage";
 
@@ -18,6 +18,13 @@ function getByPath(obj: Record<string, unknown>, path: string): string | undefin
 }
 
 const translations: Record<string, unknown> = {
+  taskFirst: {
+    recommendedNext: "الخطوة التالية المقترحة",
+    nextDescription: "ركّز على الخطوة الأكثر تأثيرًا في تقدّم بحثك عن عمل.",
+    atAGlance: "نظرة سريعة",
+    openAction: "فتح",
+    highImpact: "تأثير مرتفع",
+  },
   defaults: {
     jobSeekerName: "باحث عن عمل",
   },
@@ -159,14 +166,15 @@ describe("JobSeekerHomePage", () => {
   });
 
   it("renders Arabic home labels and suggestions when locale is ar", async () => {
-    const { container } = render(
+    render(
       <JobSeekerHomePage locale="ar" initialData={initialData} userName="Muhammed Ilyas MK" />
     );
 
     expect(await screen.findByText("تصفح الوظائف المطابقة")).toBeInTheDocument();
     expect(screen.getByText("اقتراحات الذكاء الاصطناعي")).toBeInTheDocument();
-    expect(screen.getByText("ارفع سيرتك الذاتية")).toBeInTheDocument();
-    expect(screen.getByText("نظرة سريعة على بحثك عن وظيفة")).toBeInTheDocument();
+    expect(screen.getAllByText("ارفع سيرتك الذاتية").length).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { name: "نظرة سريعة" })).toBeInTheDocument();
+    expect(screen.queryByText("نظرة سريعة على بحثك عن وظيفة")).not.toBeInTheDocument();
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith("/api/ai/daily-insights?locale=ar");

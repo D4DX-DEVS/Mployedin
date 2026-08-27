@@ -4,10 +4,11 @@ import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Eye, EyeOff, Mail, Send, Globe, Plus, Trash2, Percent } from "lucide-react";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CurrencySelect } from "@/components/ui/currency-select";
+import { Switch } from "@/components/ui/switch";
 import { TwoFactorCard } from "@/components/features/settings/TwoFactorCard";
 import { ChangeEmailCard } from "@/components/features/settings/ChangeEmailCard";
 
@@ -61,7 +62,7 @@ export default function AdminSettingsPage() {
     fetch("/api/admin/settings")
       .then((r) => {
         if (!r.ok) {
-          toast.error("Failed to load settings");
+          toast.error(t("failedToLoadSettings"));
           throw new Error("Failed to load settings");
         }
         return r.json();
@@ -98,14 +99,14 @@ export default function AdminSettingsPage() {
       });
       if (res.ok) {
         setSaved(true);
-        toast.success("Settings saved successfully");
+        toast.success(t("settingsSavedSuccessfully"));
         setTimeout(() => setSaved(false), 2500);
       } else {
         const err = await res.json().catch(() => ({}));
-        toast.error(err.error || "Failed to save settings");
+        toast.error(err.error || t("failedToSaveSettings"));
       }
     } catch (error) {
-      toast.error("Failed to save settings");
+      toast.error(t("failedToSaveSettings"));
     } finally {
       setSaving(false);
     }
@@ -137,7 +138,7 @@ export default function AdminSettingsPage() {
   if (loading) {
     return (
       <div className="page-container">
-        <PageHeader title={t("pageTitle")} description={t("pageDescription")} />
+        <DashboardPageHeader title={t("pageTitle")} description={t("pageDescription")} />
         <div className="bg-card rounded-xl border animate-pulse h-48" />
       </div>
     );
@@ -145,12 +146,12 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="page-container">
-      <PageHeader title={t("pageTitle")} description={t("pageDescription")} />
+      <DashboardPageHeader title={t("pageTitle")} description={t("pageDescription")} compactOnMobile />
 
-      <div className="bg-card rounded-xl shadow-sm border divide-y">
+      <section className="workspace-panel-surface rounded-3xl divide-y">
         {/* General */}
-        <div className="p-5 space-y-4">
-          <h3 className="font-semibold text-gray-800">{t("generalSectionTitle")}</h3>
+        <div className="panel-body space-y-4">
+          <h3 className="heading-section font-semibold text-foreground">{t("generalSectionTitle")}</h3>
           <div className="space-y-1">
             <label className="text-sm text-muted-foreground">{t("platformNameLabel")}</label>
             <Input
@@ -183,31 +184,24 @@ export default function AdminSettingsPage() {
         </div>
 
         {/* Maintenance */}
-        <div className="p-5 flex items-center justify-between">
+        <div className="panel-body flex items-center justify-between">
           <div>
-            <div className="font-medium text-gray-800">{t("maintenanceModeLabel")}</div>
+            <div className="font-medium text-foreground">{t("maintenanceModeLabel")}</div>
             <div className="text-sm text-muted-foreground">{t("maintenanceModeDescription")}</div>
           </div>
-          <button
-            onClick={() => setSettings((s) => ({ ...s, maintenanceMode: !s.maintenanceMode }))}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-              settings.maintenanceMode ? "bg-blue-600" : "bg-gray-300"
-            }`}
-          >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-                settings.maintenanceMode ? "translate-x-6" : "translate-x-1"
-              }`}
-            />
-          </button>
+          <Switch
+            checked={settings.maintenanceMode}
+            onCheckedChange={(checked) => setSettings((s) => ({ ...s, maintenanceMode: checked }))}
+            aria-label={t("maintenanceModeLabel")}
+          />
         </div>
 
         {/* Commission Overrides */}
-        <div className="p-5 space-y-4">
+        <div className="panel-body space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-                <Percent className="h-4 w-4 text-blue-600" />
+              <h3 className="heading-section font-semibold text-foreground flex items-center gap-2">
+                <Percent className="h-4 w-4 text-primary" />
                 {t("commissionOverridesTitle")}
               </h3>
               <p className="text-sm text-muted-foreground mt-0.5">
@@ -291,19 +285,19 @@ export default function AdminSettingsPage() {
         </div>
 
         {/* GDPR */}
-        <div className="p-5 space-y-2">
-          <h3 className="font-semibold text-gray-800">{t("gdprSectionTitle")}</h3>
+        <div className="panel-body space-y-2">
+          <h3 className="heading-section font-semibold text-foreground">{t("gdprSectionTitle")}</h3>
           <p className="text-sm text-muted-foreground">{t("gdprDescription")}</p>
-          <a href="/api/gdpr" target="_blank" className="text-sm text-blue-600 hover:underline">
+          <a href="/api/gdpr" target="_blank" className="text-sm text-primary hover:underline">
             {t("gdprLink")}
           </a>
         </div>
 
         {/* SMTP / Email Configuration */}
-        <div className="p-5 space-y-4">
+        <div className="panel-body space-y-4">
           <div className="flex items-center gap-2">
-            <Mail className="h-4 w-4 text-blue-600" />
-            <h3 className="font-semibold text-gray-800">{t("emailConfigTitle")}</h3>
+            <Mail className="h-4 w-4 text-primary" />
+            <h3 className="heading-section font-semibold text-foreground">{t("emailConfigTitle")}</h3>
           </div>
           <p className="text-sm text-muted-foreground">
             {t("emailConfigDescription")}
@@ -385,13 +379,13 @@ export default function AdminSettingsPage() {
               {testingEmail ? t("testEmailSending") : t("testEmailButton")}
             </Button>
             {testResult && (
-              <span className={`text-sm ${testResult.ok ? "text-green-600" : "text-red-600"}`}>
+              <span className={`text-sm ${testResult.ok ? "text-emerald-600" : "text-destructive"}`}>
                 {testResult.message}
               </span>
             )}
           </div>
         </div>
-      </div>
+      </section>
 
       <TwoFactorCard />
 

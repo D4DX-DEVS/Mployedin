@@ -58,8 +58,8 @@ export function CandidateQualityChart({
     avgMatchScore >= 50 ? "text-amber-600" : "text-red-500";
 
   const qualityBg =
-    avgMatchScore >= 70 ? "bg-emerald-50 dark:bg-emerald-950/20" :
-    avgMatchScore >= 50 ? "bg-amber-50 dark:bg-amber-950/20" : "bg-red-50 dark:bg-red-950/20";
+    avgMatchScore >= 70 ? "bg-emerald-50" :
+    avgMatchScore >= 50 ? "bg-amber-50" : "bg-red-50";
 
   const data = generateTrendData(avgMatchScore > 0 ? avgMatchScore : 60);
   const statCards = [
@@ -67,35 +67,35 @@ export function CandidateQualityChart({
       label: t("highMatch"),
       value: highMatchCount,
       detail: t("highMatchDetail"),
-      valueClass: "text-emerald-600 dark:text-emerald-400",
-      borderClass: "border-emerald-200 dark:border-emerald-800",
-      surfaceClass: "bg-emerald-50/60 dark:bg-emerald-950/30",
+      valueClass: "text-emerald-600",
+      borderClass: "border-emerald-200",
+      surfaceClass: "bg-emerald-50/60",
     },
     {
       label: t("applications"),
       value: totalApplications,
       detail: t("inThisWorkspace"),
       valueClass: "text-foreground",
-      borderClass: "border-slate-200 dark:border-slate-700",
-      surfaceClass: "bg-slate-50/80 dark:bg-slate-800/70",
+      borderClass: "border-slate-200",
+      surfaceClass: "bg-slate-50/80",
     },
     {
       label: t("lowMatch"),
       value: lowMatchCount,
       detail: t("lowMatchDetail"),
-      valueClass: "text-red-500 dark:text-red-400",
-      borderClass: "border-red-200 dark:border-red-800",
-      surfaceClass: "bg-red-50/60 dark:bg-red-950/30",
+      valueClass: "text-red-500",
+      borderClass: "border-red-200",
+      surfaceClass: "bg-red-50/60",
     },
   ];
 
   return (
-    <section className="workspace-panel-surface flex h-full flex-col overflow-hidden rounded-[28px]">
+    <section className="workspace-panel-surface flex h-full flex-col overflow-hidden rounded-3xl">
       <div className="border-b border-border/60 px-5 py-5 sm:px-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("qualitySignal")}</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground sm:text-2xl">{t("candidateQuality")}</h2>
+            <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("candidateQuality")}</h2>
             <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
               {t("matchTrendsDesc")}
             </p>
@@ -166,7 +166,7 @@ export function CandidateQualityChart({
           {statCards.map((stat) => (
             <div
               key={stat.label}
-              className={`overflow-hidden rounded-2xl border px-2.5 py-2.5 text-center sm:px-3 sm:py-3 ${stat.borderClass} ${stat.surfaceClass}`}
+              className={`overflow-hidden rounded-2xl border text-center ${stat.borderClass} ${stat.surfaceClass} chip-pad`}
             >
               <p className="truncate text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground sm:tracking-[0.18em]">{stat.label}</p>
               <p className={`mt-1.5 text-lg font-semibold tracking-tight sm:text-xl ${stat.valueClass}`}>{stat.value}</p>

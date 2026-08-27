@@ -18,6 +18,9 @@ import {
   DollarSign,
   Shield,
   ArrowLeft,
+  Download,
+  FileSpreadsheet,
+  FileDown,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -27,12 +30,20 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
 import { PageHero } from "@/components/shared/PageHero";
 import { PaginationControls } from "@/components/shared/PaginationControls";
-import { TableToolbar } from "@/components/shared/TableToolbar";
 import { usePagination } from "@/hooks/usePagination";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
+import { formatCount, formatDateTime } from "@/lib/ui/intlFormat";
 
 /* ─── Types ─── */
 interface TeamMember {
@@ -71,19 +82,19 @@ const ACTION_ICONS: Record<string, React.ReactNode> = {
 };
 
 const ACTION_COLORS: Record<string, string> = {
-  "login.success": "bg-status-selected-bg text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
-  "login.failed": "bg-status-rejected-bg text-status-rejected dark:bg-red-500/15 dark:text-red-300",
-  "job.create": "bg-status-applied-bg text-status-applied dark:bg-sky-500/15 dark:text-blue-300",
-  "job.update": "bg-status-shortlisted-bg text-status-shortlisted dark:bg-amber-500/15 dark:text-amber-300",
-  "job.delete": "bg-status-rejected-bg text-status-rejected dark:bg-red-500/15 dark:text-red-300",
-  "interview.create": "bg-status-interview-bg text-status-interview dark:bg-purple-500/15 dark:text-purple-300",
-  "interview.update": "bg-status-shortlisted-bg text-status-shortlisted dark:bg-amber-500/15 dark:text-amber-300",
-  "application.update": "bg-status-interview-bg text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300",
-  "offer.create": "bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300",
-  "team.invite": "bg-status-applied-bg text-status-applied dark:bg-sky-500/15 dark:text-sky-300",
-  "team.update_member": "bg-status-shortlisted-bg text-status-shortlisted dark:bg-amber-500/15 dark:text-amber-300",
-  "team.remove_member": "bg-status-rejected-bg text-status-rejected dark:bg-red-500/15 dark:text-red-300",
-  "scorecard.create": "bg-status-interview-bg text-status-interview dark:bg-indigo-500/15 dark:text-violet-300",
+  "login.success": "bg-status-selected-bg text-emerald-700",
+  "login.failed": "bg-status-rejected-bg text-status-rejected",
+  "job.create": "bg-status-applied-bg text-status-applied",
+  "job.update": "bg-status-shortlisted-bg text-status-shortlisted",
+  "job.delete": "bg-status-rejected-bg text-status-rejected",
+  "interview.create": "bg-status-interview-bg text-status-interview",
+  "interview.update": "bg-status-shortlisted-bg text-status-shortlisted",
+  "application.update": "bg-status-interview-bg text-indigo-700",
+  "offer.create": "bg-teal-100 text-teal-700",
+  "team.invite": "bg-status-applied-bg text-status-applied",
+  "team.update_member": "bg-status-shortlisted-bg text-status-shortlisted",
+  "team.remove_member": "bg-status-rejected-bg text-status-rejected",
+  "scorecard.create": "bg-status-interview-bg text-status-interview",
 };
 
 function getResourceOptions(t: ReturnType<typeof useTranslations>) {
@@ -143,7 +154,7 @@ export default function TeamActivityLogsPage() {
     usePagination(25);
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
-    { header: t("timestamp"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleString() : "\u2014" },
+    { header: t("timestamp"), key: "createdAt", formatter: (v) => v ? formatDateTime(new Date(String(v))) : "\u2014" },
     { header: t("actor"), key: "actorId", formatter: (_v, r) => (r as Record<string, any>).actorId?.name ?? "System" },
     { header: t("email"), key: "actorId", formatter: (_v, r) => (r as Record<string, any>).actorId?.email ?? "\u2014" },
     { header: t("action"), key: "action", formatter: (v) => String(v ?? "\u2014") },
@@ -210,7 +221,7 @@ export default function TeamActivityLogsPage() {
       {/* Header */}
       <PageHero
         title={t("title")}
-        description={t("description", { activities: total.toLocaleString(), members: members.length })}
+        description={t("description", { activities: formatCount(total), members: members.length })}
         icon={Activity}
         actions={
           <Link href={`/${locale}/employer/team`}>
@@ -224,21 +235,21 @@ export default function TeamActivityLogsPage() {
 
       {/* Stats Summary */}
       {!loading && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-4 gap-1.5 sm:gap-3">
           {[
             {
               label: t("teamMembers"),
               value: members.length,
               icon: Users,
               color: "text-primary",
-              bg: "bg-card border-border dark:bg-card dark:border-border",
+              bg: "bg-card border-border",
             },
             {
               label: t("totalActivities"),
               value: total,
               icon: Activity,
               color: "text-status-selected",
-              bg: "bg-card border-border dark:bg-card dark:border-border",
+              bg: "bg-card border-border",
             },
             {
               label: t("today"),
@@ -248,47 +259,40 @@ export default function TeamActivityLogsPage() {
               ).length,
               icon: Calendar,
               color: "text-status-applied",
-              bg: "bg-card border-border dark:bg-card dark:border-border",
+              bg: "bg-card border-border",
             },
             {
               label: t("loginEvents"),
               value: logs.filter((l) => l.action.startsWith("login")).length,
               icon: LogIn,
               color: "text-status-shortlisted",
-              bg: "bg-card border-border dark:bg-card dark:border-border",
+              bg: "bg-card border-border",
             },
           ].map((s) => (
             <div
               key={s.label}
-              className={`card-base p-4 flex sm:flex-col gap-3 sm:gap-2 border ${s.bg}`}
+              className={`card-base flex items-center gap-2.5 border p-2 sm:gap-3 sm:p-3 ${s.bg}`}
             >
-              <div
-                className="p-2 rounded-xl border bg-background/80 shrink-0 self-start sm:self-auto w-fit"
-                style={{ borderColor: "inherit" }}
-              >
+              {/* Icon beside the figure, not stacked above it. Hidden on phones
+                  so all four cards fit across a 390px row — at ~93px each there
+                  is only room for the label and the number. */}
+              <div className="hidden shrink-0 rounded-xl border border-border bg-background/80 chip-pad sm:block">
                 <s.icon className={`h-5 w-5 ${s.color}`} />
               </div>
-              <div className="flex sm:flex-col items-center sm:items-start justify-between sm:justify-start gap-1 flex-1 min-w-0">
-                <p className="text-xs font-medium text-muted-foreground truncate">
+              <div className="min-w-0 flex-1">
+                <p className="line-clamp-2 text-[11px] font-medium leading-tight text-muted-foreground sm:truncate sm:text-xs">
                   {s.label}
                 </p>
                 <p
-                  className={`text-xl font-bold ${s.color} leading-none tabular-nums shrink-0`}
+                  className={`mt-1 text-base font-bold sm:text-xl ${s.color} leading-none tabular-nums`}
                 >
-                  {typeof s.value === "number" ? s.value.toLocaleString() : s.value}
+                  {typeof s.value === "number" ? formatCount(s.value) : s.value}
                 </p>
               </div>
             </div>
           ))}
         </div>
       )}
-
-      {/* Export Toolbar */}
-      <TableToolbar
-        onExportCsv={handleExportCsv}
-        onExportExcel={handleExportExcel}
-        onExportPdf={handleExportPdf}
-      />
 
       {/* Filters */}
       <div className="flex gap-3 flex-wrap items-end">
@@ -321,10 +325,11 @@ export default function TeamActivityLogsPage() {
         </div>
 
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">{t("action")}</label>
+          <label htmlFor="action-search" className="text-xs font-medium text-muted-foreground">{t("action")}</label>
           <div className="relative">
             <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
+              id="action-search"
               placeholder="e.g. job.create"
               value={action}
               onChange={(e) => {
@@ -380,6 +385,33 @@ export default function TeamActivityLogsPage() {
             Clear
           </Button>
         )}
+
+        <div className="ms-auto flex items-end gap-3">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Download className="h-4 w-4 mr-1.5" />
+                {t("export")}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuLabel>{t("exportData")}</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleExportCsv}>
+                <FileDown className="h-4 w-4" />
+                CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportExcel}>
+                <FileSpreadsheet className="h-4 w-4" />
+                Excel
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportPdf}>
+                <FileText className="h-4 w-4" />
+                PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* Activity Log */}
@@ -407,7 +439,7 @@ export default function TeamActivityLogsPage() {
       ) : (
         <>
           {/* ── Desktop Table ── */}
-          <div className="hidden md:block rounded-xl border overflow-x-auto bg-background">
+          <div className="hidden md:block rounded-xl border overflow-x-auto bg-background" tabIndex={0}>
             <table className="w-full text-sm">
               <thead className="bg-muted/50 text-xs text-muted-foreground uppercase tracking-wide">
                 <tr>

@@ -32,6 +32,7 @@ import {
   SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -74,17 +75,17 @@ interface ExhibitionRequest {
 /* ------------------------------------------------------------------ */
 
 const STATUS_COLORS: Record<string, string> = {
-  draft: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
-  submitted: "bg-blue-100 text-blue-800 dark:bg-blue-950/30 dark:text-blue-400",
-  under_review: "bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-400",
-  approved: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400",
-  revision_requested: "bg-orange-100 text-orange-800 dark:bg-orange-950/30 dark:text-orange-400",
-  budget_approved: "bg-teal-100 text-teal-800 dark:bg-teal-950/30 dark:text-teal-400",
-  resources_assigned: "bg-indigo-100 text-indigo-800 dark:bg-indigo-950/30 dark:text-indigo-400",
-  active: "bg-purple-100 text-purple-800 dark:bg-purple-950/30 dark:text-purple-400",
-  completed: "bg-green-100 text-green-800 dark:bg-green-950/30 dark:text-green-400",
-  rejected: "bg-red-100 text-red-800 dark:bg-red-950/30 dark:text-red-400",
-  archived: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400",
+  draft: "bg-gray-100 text-gray-700",
+  submitted: "bg-blue-100 text-blue-800",
+  under_review: "bg-amber-100 text-amber-800",
+  approved: "bg-emerald-100 text-emerald-800",
+  revision_requested: "bg-orange-100 text-orange-800",
+  budget_approved: "bg-teal-100 text-teal-800",
+  resources_assigned: "bg-indigo-100 text-indigo-800",
+  active: "bg-purple-100 text-purple-800",
+  completed: "bg-green-100 text-green-800",
+  rejected: "bg-red-100 text-red-800",
+  archived: "bg-slate-100 text-slate-600",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -95,10 +96,10 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
-  low: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
-  medium: "bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400",
-  high: "bg-orange-100 text-orange-700 dark:bg-orange-950/30 dark:text-orange-400",
-  critical: "bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400",
+  low: "bg-gray-100 text-gray-600",
+  medium: "bg-blue-100 text-blue-700",
+  high: "bg-orange-100 text-orange-700",
+  critical: "bg-red-100 text-red-700",
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -159,6 +160,9 @@ export default function SuperAgentExhibitionsPage() {
   } = usePagination();
 
   const [items, setItems] = useState<ExhibitionRequest[]>([]);
+  // Queue depth comes from the API's scope-wide aggregate. Counting `items`
+  // only ever saw the current page, so the header under-reported past page 1.
+  const [pendingReview, setPendingReview] = useState(0);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
@@ -187,6 +191,7 @@ export default function SuperAgentExhibitionsPage() {
       if (res.ok) {
         const data = await res.json();
         setItems(data.items ?? []);
+        setPendingReview(data.summary?.pendingReview ?? 0);
         updateTotal(data.total ?? 0);
       }
     } catch { toast.error(t("fetchError")); } finally { setLoading(false); }
@@ -231,9 +236,6 @@ export default function SuperAgentExhibitionsPage() {
     return Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86400000) + 1);
   };
 
-  // Stats
-  const pendingCount = items.filter((i) => i.status === "submitted").length;
-  const reviewCount = items.filter((i) => i.status === "under_review").length;
   const hasActiveFilters = exhibitionFiltersAreActive(search, statusFilter, priorityFilter, categoryFilter);
   const clearFilters = () => {
     setSearch("");
@@ -245,10 +247,9 @@ export default function SuperAgentExhibitionsPage() {
     <div className="page-container">
       <DashboardPageHeader
         icon={CalendarDays}
-        eyebrow="Super agent workspace"
-        title="Exhibition Management"
-        description="Review and approve exhibition requests from your team. Use filters to narrow the queue, then act on submissions inline."
-        summary={{ label: "Queue health", value: `${pendingCount + reviewCount} requests`, note: "Awaiting your review" }}
+        title={t("exhibitionManagement")}
+        description={t("exhibitionManagementDesc")}
+        summary={{ label: t("queueHealth"), value: formatCount(pendingReview), note: t("queueHealthNote") }}
         actions={
           <div className="flex items-center gap-1">
             <ExhibitionFilterTrigger
@@ -273,14 +274,14 @@ export default function SuperAgentExhibitionsPage() {
           categoryFilter={categoryFilter}
           onCategoryChange={setCategoryFilter}
           categoryOptions={CATEGORY_OPTIONS}
-          searchPlaceholder="Search events, agents, locations…"
+          searchPlaceholder={t("searchPlaceholder")}
         />
       </DashboardPageHeader>
 
       <SuperAgentSection
-        eyebrow="Requests"
+        eyebrow={t("requests")}
         title={t("teamExhibitionRequests")}
-        description="Open details or run approval actions from the table below."
+        description={t("requestsDesc")}
       >
         {loading ? (
           <SuperAgentDataTableShell>
@@ -343,8 +344,8 @@ export default function SuperAgentExhibitionsPage() {
                             {(item.participationTypes?.length ?? 0) > 2 && <Badge variant="outline" className="rounded-md text-[11px]">+{item.participationTypes.length - 2}</Badge>}
                           </div>
                         </td>
-                        <td className="hidden whitespace-nowrap px-4 py-3.5 font-medium md:table-cell">{item.budgetCurrency} {item.estimatedBudget?.toLocaleString()}</td>
-                        <td className="hidden whitespace-nowrap px-4 py-3.5 md:table-cell lg:table-cell">{item.approvedBudget ? <span className="font-medium text-emerald-600">{item.budgetCurrency} {item.approvedBudget.toLocaleString()}</span> : <span className="text-muted-foreground">—</span>}</td>
+                        <td className="hidden whitespace-nowrap px-4 py-3.5 font-medium md:table-cell">{item.budgetCurrency} {formatCount(item.estimatedBudget)}</td>
+                        <td className="hidden whitespace-nowrap px-4 py-3.5 md:table-cell lg:table-cell">{item.approvedBudget ? <span className="font-medium text-emerald-600">{item.budgetCurrency} {formatCount(item.approvedBudget)}</span> : <span className="text-muted-foreground">—</span>}</td>
                         <td className="hidden px-4 py-3.5 xl:table-cell">
                           <div className="flex flex-wrap gap-1">
                             {(item.objectives ?? []).slice(0, 1).map((o) => (<Badge key={o} variant="outline" className="rounded-md text-[11px]">{OBJECTIVE_LABELS[o] ?? o}</Badge>))}
@@ -361,19 +362,19 @@ export default function SuperAgentExhibitionsPage() {
                           <div className="flex flex-wrap items-center justify-end gap-1">
                             <Button
                               variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 rounded-lg text-muted-foreground hover:text-primary"
+                              size="iconDense"
+                              className="rounded-lg text-muted-foreground hover:text-primary"
                               onClick={() => setDetailItem(item)}
                               title={t("viewDetails")}
                               aria-label={t("viewDetails")}
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
-                            {item.status === "submitted" && (<Button size="sm" variant="outline" onClick={() => openReview(item, "under_review")} className="h-8 rounded-lg border-amber-200 text-xs text-amber-700 hover:bg-amber-50 dark:border-amber-500/30 dark:text-amber-300 dark:hover:bg-amber-500/10"><Clock className="mr-1 h-3.5 w-3.5" /> Review</Button>)}
+                            {item.status === "submitted" && (<Button size="sm" variant="outline" onClick={() => openReview(item, "under_review")} className="h-8 rounded-lg border-amber-200 text-xs text-amber-700 hover:bg-amber-50"><Clock className="mr-1 h-3.5 w-3.5" /> Review</Button>)}
                             {item.status === "under_review" && (<>
                               <Button size="sm" onClick={() => openReview(item, "approved")} className="h-8 rounded-lg bg-emerald-600 text-xs text-white hover:bg-emerald-700"><ThumbsUp className="mr-1 h-3.5 w-3.5" /> Approve</Button>
-                              <Button size="sm" variant="outline" onClick={() => openReview(item, "revision_requested")} className="h-8 rounded-lg border-orange-200 text-xs text-orange-700 hover:bg-orange-50 dark:border-orange-500/30 dark:text-orange-300"><RotateCcw className="mr-1 h-3.5 w-3.5" /> Revise</Button>
-                              <Button size="sm" variant="destructive" className="h-8 rounded-lg text-xs" onClick={() => openReview(item, "rejected")}><ThumbsDown className="mr-1 h-3.5 w-3.5" /> Reject</Button>
+                              <Button size="sm" variant="outline" onClick={() => openReview(item, "revision_requested")} className="h-8 rounded-lg border-orange-200 text-xs text-orange-700 hover:bg-orange-50"><RotateCcw className="mr-1 h-3.5 w-3.5" /> Revise</Button>
+                              <Button size="dense" variant="destructive" className="rounded-lg text-xs" onClick={() => openReview(item, "rejected")}><ThumbsDown className="mr-1 h-3.5 w-3.5" /> Reject</Button>
                             </>)}
                           </div>
                         </td>
@@ -409,15 +410,15 @@ export default function SuperAgentExhibitionsPage() {
                 <div><span className="text-muted-foreground">Venue:</span> {detailItem.venue ?? "—"}</div>
               <div><span className="text-muted-foreground">Dates:</span> {fmtDate(detailItem.eventStartDate)}{detailItem.eventEndDate ? ` – ${fmtDate(detailItem.eventEndDate)}` : ""}{dayCount(detailItem.eventStartDate, detailItem.eventEndDate) ? ` (${dayCount(detailItem.eventStartDate, detailItem.eventEndDate)}d)` : ""}</div>
                 <div><span className="text-muted-foreground">Organizer:</span> {detailItem.organizerName ?? "—"}</div>
-                <div><span className="text-muted-foreground">Budget Requested:</span> {detailItem.budgetCurrency} {detailItem.estimatedBudget?.toLocaleString()}</div>
-                <div><span className="text-muted-foreground">Budget Approved:</span> {detailItem.approvedBudget ? `${detailItem.budgetCurrency} ${detailItem.approvedBudget.toLocaleString()}` : "—"}</div>
+                <div><span className="text-muted-foreground">Budget Requested:</span> {detailItem.budgetCurrency} {formatCount(detailItem.estimatedBudget)}</div>
+                <div><span className="text-muted-foreground">Budget Approved:</span> {detailItem.approvedBudget ? `${detailItem.budgetCurrency} ${formatCount(detailItem.approvedBudget)}` : "—"}</div>
                 <div><span className="text-muted-foreground">Expected Leads:</span> {detailItem.expectedLeads ?? "—"}</div>
               </div>
 
               {detailItem.participationTypes?.length > 0 && (<div><p className="text-muted-foreground mb-1">Participation:</p><div className="flex flex-wrap gap-1">{detailItem.participationTypes.map((pt) => (<Badge key={pt} variant="outline">{PARTICIPATION_LABELS[pt] ?? pt}</Badge>))}</div></div>)}
               {detailItem.objectives?.length > 0 && (<div><p className="text-muted-foreground mb-1">Objectives:</p><div className="flex flex-wrap gap-1">{detailItem.objectives.map((o) => (<Badge key={o} variant="outline">{OBJECTIVE_LABELS[o] ?? o}</Badge>))}</div></div>)}
               {detailItem.requiredResources?.length > 0 && (<div><p className="text-muted-foreground mb-1">Required Resources:</p><div className="flex flex-wrap gap-1">{detailItem.requiredResources.map((r) => (<Badge key={r} variant="outline">{RESOURCE_LABELS[r] ?? r}</Badge>))}</div></div>)}
-              {detailItem.budgetBreakdown && (<div><p className="text-muted-foreground mb-1">Budget Breakdown:</p><div className="grid grid-cols-3 gap-2">{Object.entries(detailItem.budgetBreakdown).map(([k, v]) => (<div key={k} className="rounded border p-2 text-center"><p className="text-xs text-muted-foreground capitalize">{k.replace(/([A-Z])/g, " $1")}</p><p className="font-semibold">{detailItem.budgetCurrency} {(v as number)?.toLocaleString()}</p></div>))}</div></div>)}
+              {detailItem.budgetBreakdown && (<div><p className="text-muted-foreground mb-1">Budget Breakdown:</p><div className="grid grid-cols-3 gap-2">{Object.entries(detailItem.budgetBreakdown).map(([k, v]) => (<div key={k} className="rounded border p-2 text-center"><p className="text-xs text-muted-foreground capitalize">{k.replace(/([A-Z])/g, " $1")}</p><p className="font-semibold">{detailItem.budgetCurrency} {formatCount(v as number)}</p></div>))}</div></div>)}
               {detailItem.description && <div><p className="text-muted-foreground">Description:</p><p>{detailItem.description}</p></div>}
               {detailItem.executionPlan && <div><p className="text-muted-foreground">Execution Plan:</p><p>{detailItem.executionPlan}</p></div>}
               {detailItem.expectedOutcome && <div><p className="text-muted-foreground">Expected Outcome:</p><p>{detailItem.expectedOutcome}</p></div>}
@@ -448,7 +449,7 @@ export default function SuperAgentExhibitionsPage() {
               <DialogDescription>
                 {reviewItem.eventName} — {reviewItem.agentId?.name}
                 {reviewAction === "approved" && (
-                  <span className="mt-1 block text-[11px] text-amber-600 dark:text-amber-400">
+                  <span className="mt-1 block text-[11px] text-amber-600">
                     Operational approval only — budget approval is handled by Admin.
                   </span>
                 )}
@@ -458,8 +459,8 @@ export default function SuperAgentExhibitionsPage() {
               {reviewAction === "approved" && (
                 <div>
                   <Label>Recommended Budget ({reviewItem.budgetCurrency})</Label>
-                  <Input type="number" value={approvedBudget} onChange={(e) => setApprovedBudget(e.target.value)} placeholder="Recommended budget amount" />
-                  <p className="text-xs text-muted-foreground mt-1">Requested: {reviewItem.budgetCurrency} {reviewItem.estimatedBudget?.toLocaleString()}</p>
+                  <Input type="number" value={approvedBudget} onChange={(e) => setApprovedBudget(e.target.value)} placeholder={t("recommendedBudget")} />
+                  <p className="text-xs text-muted-foreground mt-1">Requested: {reviewItem.budgetCurrency} {formatCount(reviewItem.estimatedBudget)}</p>
                 </div>
               )}
               <div>

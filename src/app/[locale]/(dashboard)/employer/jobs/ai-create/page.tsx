@@ -2,8 +2,9 @@
 
 import { Fragment, useState, useRef, useEffect, useCallback } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { Bot, Globe, Loader2, Mic, Send, Sparkles, Upload, WandSparkles, X } from "lucide-react";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import Link from "next/link";
+import { Bot, FileText, Globe, Loader2, Mic, Send, Sparkles, Upload, WandSparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
@@ -11,6 +12,7 @@ import type { JobFormValues } from "@/components/features/employer/job-form/jobF
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useTranslations, useLocale } from "next-intl";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 function hasMalayalam(text: string): boolean {
   return /[\u0D00-\u0D7F]/.test(text);
@@ -187,7 +189,7 @@ function renderInline(text: string) {
     if (part.startsWith("*") && part.endsWith("*"))
       return <em key={i}>{part.slice(1, -1)}</em>;
     if (part.startsWith("`") && part.endsWith("`"))
-      return <code key={i} className="rounded bg-black/10 px-1 font-mono text-[0.88em] dark:bg-white/10">{part.slice(1, -1)}</code>;
+      return <code key={i} className="rounded bg-black/10 px-1 font-mono text-[0.88em]">{part.slice(1, -1)}</code>;
     return part;
   });
 }
@@ -600,9 +602,22 @@ export default function EmployerAIJobCreatePage() {
 
   return (
     <div className="page-container">
-      <PageHeader
+      <DashboardPageHeader
+        icon={Sparkles}
+        eyebrow={t("jobCreator.eyebrow")}
         title={t("jobCreator.title")}
         description={t("jobCreator.description")}
+        actions={
+          <Link
+            href={`/${locale}/employer/jobs/new?mode=manual`}
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-background/80 px-3 text-sm font-semibold text-foreground transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:px-4"
+          >
+            <FileText className="h-4 w-4" aria-hidden="true" />
+            {t("jobCreator.manualJobForm")}
+          </Link>
+        }
+        inlineActions
+        compactOnMobile
       />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -631,7 +646,7 @@ export default function EmployerAIJobCreatePage() {
                         <div className="prose-sm prose-p:my-0 prose-li:my-0">
                           {renderMarkdown(displayText)}
                           {hasJobData && !isStreaming && (
-                            <div className="mt-3 flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-green-800 text-xs">
+                            <div className="mt-3 flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 text-green-800 text-xs chip-pad">
                               <Sparkles className="h-3.5 w-3.5 flex-shrink-0" />
                               <span className="font-medium">{t("jobCreator.draftReadyPanel")}</span>
                             </div>
@@ -660,6 +675,7 @@ export default function EmployerAIJobCreatePage() {
             <div className="space-y-3">
               <Textarea
                 ref={textareaRef}
+                aria-label={t("jobCreator.inputPlaceholder")}
                 value={input}
                 onChange={(e) => {
                   if (detectedLanguage) {
@@ -677,7 +693,7 @@ export default function EmployerAIJobCreatePage() {
                 placeholder={t("jobCreator.inputPlaceholder")}
                 disabled={isStreaming || isRecording || isVoiceProcessing}
                 rows={1}
-                className="min-h-[44px] max-h-[200px] flex-1 resize-none rounded-xl border-border/60 bg-muted/20 overflow-y-auto transition-[height] duration-100"
+                className="min-h-[4rem] max-h-[200px] flex-1 resize-none rounded-xl border-border/60 bg-muted/20 overflow-y-auto transition-[height] duration-100"
               />
               {voiceState === "recording" ? (
                 <div className="flex items-center gap-2">
@@ -685,7 +701,7 @@ export default function EmployerAIJobCreatePage() {
                     type="button"
                     variant="outline"
                     onClick={cancelRecording}
-                    className="h-10 rounded-xl border-border/60 px-3 text-muted-foreground hover:text-foreground"
+                    className="rounded-xl border-border/60 px-3 text-muted-foreground hover:text-foreground"
                     aria-label={t("cancelVoiceInput")}
                   >
                     <X className="mr-1.5 h-4 w-4" /> {t("cancel")}
@@ -727,7 +743,7 @@ export default function EmployerAIJobCreatePage() {
                   <Button
                     type="button"
                     onClick={submitRecording}
-                    className="h-10 rounded-xl px-4"
+                    className="rounded-xl px-4"
                     aria-label={t("sendVoiceInput")}
                   >
                     <Send className="mr-1.5 h-4 w-4" /> {t("send")}
@@ -845,19 +861,19 @@ export default function EmployerAIJobCreatePage() {
 
         {/* Extracted job preview */}
         <div className="space-y-3">
-          <div className={`card-base p-5 space-y-3 transition-all ${extractedJob ? "border-green-300 bg-green-50/30" : ""}`}>
+          <div className={`card-base space-y-3 transition-all ${extractedJob ? "border-green-300 bg-green-50/30" : ""} panel-body`}>
             <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-primary" />
-              <h3 className="text-sm font-semibold">{t("jobCreator.jobPreview")}</h3>
+              <h2 className="heading-label font-semibold">{t("jobCreator.jobPreview")}</h2>
             </div>
             {!extractedJob && extractedBulkJobs.length === 0 && (
               <div className="space-y-3 text-xs text-muted-foreground">
                 <p>{t("jobCreator.aiWillAsk")}</p>
                 <div className="grid gap-2">
-                  <div className="rounded-xl border border-dashed border-border px-3 py-2">{t("jobCreator.roleAndTeam")}</div>
-                  <div className="rounded-xl border border-dashed border-border px-3 py-2">{t("jobCreator.locationAndWork")}</div>
-                  <div className="rounded-xl border border-dashed border-border px-3 py-2">{t("jobCreator.keySkills")}</div>
-                  <div className="rounded-xl border border-dashed border-border px-3 py-2">{t("jobCreator.optionalSalary")}</div>
+                  <div className="rounded-xl border border-dashed border-border chip-pad">{t("jobCreator.roleAndTeam")}</div>
+                  <div className="rounded-xl border border-dashed border-border chip-pad">{t("jobCreator.locationAndWork")}</div>
+                  <div className="rounded-xl border border-dashed border-border chip-pad">{t("jobCreator.keySkills")}</div>
+                  <div className="rounded-xl border border-dashed border-border chip-pad">{t("jobCreator.optionalSalary")}</div>
                 </div>
               </div>
             )}
@@ -869,7 +885,7 @@ export default function EmployerAIJobCreatePage() {
                 <p><strong>{t("jobCreator.typeLabel")}</strong> {extractedJob.employmentType ? extractedJob.employmentType.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : "—"}</p>
                 <p><strong>{t("jobCreator.workModeLabel")}</strong> {extractedJob.workMode ? extractedJob.workMode.replace(/\b\w/g, (c) => c.toUpperCase()) : "—"}</p>
                 {extractedJob.salary && (extractedJob.salary.min || extractedJob.salary.max) ? (
-                  <p><strong>{t("jobCreator.salaryLabel")}</strong> {extractedJob.showSalary === false ? t("jobCreator.notDisclosed") : `${extractedJob.salary.currency ?? "USD"} ${extractedJob.salary.min?.toLocaleString() ?? 0} – ${extractedJob.salary.max?.toLocaleString() ?? 0}`}</p>
+                  <p><strong>{t("jobCreator.salaryLabel")}</strong> {extractedJob.showSalary === false ? t("jobCreator.notDisclosed") : `${extractedJob.salary.currency ?? "USD"} ${formatCount(extractedJob.salary.min) ?? 0} – ${formatCount(extractedJob.salary.max) ?? 0}`}</p>
                 ) : (
                   <p><strong>{t("jobCreator.salaryLabel")}</strong> <span className="text-muted-foreground italic">{t("jobCreator.notSpecified")}</span></p>
                 )}
@@ -916,7 +932,7 @@ export default function EmployerAIJobCreatePage() {
               <div className="space-y-3 text-xs">
                 <p className="font-medium text-sm">{t("bulkPreview", { count: extractedBulkJobs.length })}</p>
                 {extractedBulkJobs.map((job, idx) => (
-                  <div key={idx} className="rounded-lg border border-border/60 p-3 space-y-1">
+                  <div key={idx} className="rounded-lg border border-border/60 space-y-1 chip-pad">
                     <p className="font-semibold text-foreground">{job.title ?? "Untitled"}</p>
                     <p className="text-muted-foreground">{typeof job.location === "string" ? job.location : [job.location?.city, job.location?.country].filter(Boolean).join(", ") || "—"}</p>
                     <p className="text-muted-foreground">{job.employmentType ? job.employmentType.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : "—"} · {job.workMode ? job.workMode.replace(/\b\w/g, (c) => c.toUpperCase()) : "—"}</p>
@@ -945,13 +961,6 @@ export default function EmployerAIJobCreatePage() {
             )}
           </div>
 
-          <div className="card-base">
-            <p className="text-xs font-semibold mb-2 text-muted-foreground uppercase tracking-wide">{t("jobCreator.orManualForm")}</p>
-            <a href={`/${locale}/employer/jobs/new?mode=manual`}
-              className="btn-outline block w-full text-center text-xs">
-              {t("jobCreator.manualJobForm")}
-            </a>
-          </div>
         </div>
       </div>
     </div>

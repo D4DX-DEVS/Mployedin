@@ -11,6 +11,7 @@ import {
   Trash2,
   ChevronUp,
   ChevronDown,
+  ShieldAlert,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { checkWording, SCREENING_QUESTION_RULES } from "@/lib/compliance/inclusiveWording";
 import type { JobFormValues } from "./jobFormSchema";
 
 const QUESTION_TYPES = [
@@ -39,6 +41,9 @@ function generateId() {
 
 export function Step5ScreeningQuestions() {
   const t = useTranslations("employerJobForm.step5");
+  const tCompliance = useTranslations("employerCompliance.wording");
+  const tChar = useTranslations("employerCompliance.characteristics");
+  const tSuggest = useTranslations("employerCompliance.suggestions");
   const locale = useLocale();
   const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
   const maxQuestionsLabel = (20).toLocaleString(numberLocale);
@@ -120,9 +125,9 @@ export function Step5ScreeningQuestions() {
       className="space-y-3 sm:space-y-5"
     >
       {/* Header */}
-      <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-muted/20 p-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-muted/20 lg:flex-row lg:items-center lg:justify-between card-pad">
         <div className="space-y-1">
-          <h2 className="text-lg font-semibold text-foreground">
+          <h2 className="heading-section font-semibold text-foreground">
             {t("title")}
           </h2>
           <p className="text-sm text-muted-foreground">
@@ -149,6 +154,10 @@ export function Step5ScreeningQuestions() {
           const qType = questions[index]?.type ?? "text";
           const needsOptions = NEEDS_OPTIONS.has(qType);
           const fieldError = questionErrors[index];
+          const protectedFlags = checkWording(
+            questions[index]?.label ?? "",
+            SCREENING_QUESTION_RULES
+          );
 
           return (
             <div
@@ -205,25 +214,56 @@ export function Step5ScreeningQuestions() {
               </div>
 
               {/* Question Label */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">
+              <div className="field">
+                <Label htmlFor={`sq-label-${field.id}`} className="text-sm font-medium">
                   {t("questionText")}
                 </Label>
                 <Input
+                  id={`sq-label-${field.id}`}
                   {...register(`screeningQuestions.${index}.label`)}
                   placeholder={t("questionPlaceholder")}
                   className="rounded-xl"
+                  aria-invalid={fieldError?.label?.message ? true : undefined}
+                  aria-describedby={
+                    [
+                      fieldError?.label?.message ? `sq-error-${field.id}` : null,
+                      protectedFlags.length > 0 ? `sq-warning-${field.id}` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" ") || undefined
+                  }
                 />
                 {fieldError?.label?.message && (
-                  <p className="text-xs text-destructive">
+                  <p id={`sq-error-${field.id}`} className="text-xs text-destructive">
                     {t("questionRequired")}
                   </p>
+                )}
+                {/* Advisory only — asking for a protected characteristic is
+                    sometimes justified, so this warns and never blocks. */}
+                {protectedFlags.length > 0 && (
+                  <div
+                    id={`sq-warning-${field.id}`}
+                    role="status"
+                    className="flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 text-xs leading-5 text-amber-950 chip-pad"
+                  >
+                    <ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    <div className="min-w-0">
+                      <p className="font-semibold">
+                        {tCompliance("screeningWarning")}{" "}
+                        <span className="font-normal">
+                          ({protectedFlags.map((f) => tChar(f.characteristic)).join(", ")})
+                        </span>
+                      </p>
+                      <p className="mt-0.5">{tSuggest(protectedFlags[0].suggestionKey)}</p>
+                      <p className="mt-0.5">{tCompliance("screeningWarningAction")}</p>
+                    </div>
+                  </div>
                 )}
               </div>
 
               {/* Type + Required row */}
               <div className="mt-3 flex flex-wrap items-end gap-4">
-                <div className="space-y-2">
+                <div className="field">
                   <Label className="text-sm font-medium">{t("answerType")}</Label>
                   <Select
                     value={questions[index]?.type ?? "text"}
@@ -256,7 +296,7 @@ export function Step5ScreeningQuestions() {
                   </Select>
                 </div>
 
-                <div className="space-y-2">
+                <div className="field">
                   <Label className="text-sm font-medium">{t("placeholder")}</Label>
                   <Input
                     {...register(`screeningQuestions.${index}.placeholder`)}
@@ -284,7 +324,7 @@ export function Step5ScreeningQuestions() {
 
               {/* Options (for select/checkbox/radio) */}
               {needsOptions && (
-                <div className="mt-4 space-y-2 rounded-xl border border-dashed border-border/70 bg-muted/10 p-3">
+                <div className="mt-4 field rounded-xl border border-dashed border-border/70 bg-muted/10 chip-pad">
                   <Label className="text-xs font-medium text-muted-foreground">
                     {t("options")}
                   </Label>

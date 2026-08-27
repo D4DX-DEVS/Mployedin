@@ -32,18 +32,18 @@ import { useJobs } from "@/hooks/useJobs";
 import { FormMultiSelect } from "@/components/shared/AppForm";
 
 const ROLE_COLORS: Record<CompanyRole, string> = {
-  owner: "bg-status-interview-bg text-status-interview border-status-interview/20 dark:bg-purple-500/15 dark:text-purple-300 dark:border-purple-500/30",
-  admin: "bg-status-applied-bg text-status-applied border-status-applied/20 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-500/30",
-  hiring_manager: "bg-status-shortlisted-bg text-status-shortlisted border-status-shortlisted/20 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30",
-  accounting: "bg-status-selected-bg text-emerald-700 border-status-selected/20 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30",
-  finance_viewer: "bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-500/15 dark:text-teal-300 dark:border-teal-500/30",
-  viewer: "bg-secondary/75 text-muted-foreground border-border dark:bg-slate-500/80 dark:text-muted-foreground dark:border-slate-700",
+  owner: "bg-status-interview-bg text-status-interview border-status-interview/20",
+  admin: "bg-status-applied-bg text-status-applied border-status-applied/20",
+  hiring_manager: "bg-status-shortlisted-bg text-status-shortlisted border-status-shortlisted/20",
+  accounting: "bg-status-selected-bg text-emerald-700 border-status-selected/20",
+  finance_viewer: "bg-teal-100 text-teal-700 border-teal-200",
+  viewer: "bg-secondary/75 text-muted-foreground border-border",
 };
 
 const STATUS_COLORS: Record<MemberStatus, string> = {
-  active: "bg-status-selected-bg text-emerald-700 border-status-selected/20 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30",
-  pending: "bg-status-shortlisted-bg text-status-shortlisted border-status-shortlisted/20 dark:bg-amber-500/15 dark:text-yellow-300 dark:border-yellow-500/30",
-  deactivated: "bg-status-rejected-bg text-status-rejected border-status-rejected/20 dark:bg-red-500/15 dark:text-red-300 dark:border-red-500/30",
+  active: "bg-status-selected-bg text-emerald-700 border-status-selected/20",
+  pending: "bg-status-shortlisted-bg text-status-shortlisted border-status-shortlisted/20",
+  deactivated: "bg-status-rejected-bg text-status-rejected border-status-rejected/20",
 };
 
 const ROLE_ICONS: Record<CompanyRole, React.ReactNode> = {
@@ -124,7 +124,7 @@ export default function TeamManagementPage() {
       setShowInviteModal(false);
       setInviteData({ email: "", companyRoles: ["hiring_manager"], jobAccess: [] });
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t("failedToSendInvite"));
+      setError(t("failedToSendInvite"));
     } finally {
       setSaving(false);
     }
@@ -189,9 +189,9 @@ export default function TeamManagementPage() {
   });
 
   const stats = [
-    { label: t("activeMembers", { count: activeCount }), value: activeCount, icon: CheckCircle2, color: "text-status-selected", bg: "bg-background border-border/60 dark:bg-card" },
-    { label: t("pendingInvites"), value: pendingCount, icon: Clock, color: "text-status-shortlisted", bg: "bg-background border-border/60 dark:bg-card" },
-    { label: t("teamMembers"), value: totalCount, icon: Users, color: "text-primary", bg: "bg-background border-border/60 dark:bg-card" },
+    { label: t("activeMembers", { count: activeCount }), value: activeCount, icon: CheckCircle2, color: "text-status-selected", bg: "bg-background border-border/60" },
+    { label: t("pendingInvites"), value: pendingCount, icon: Clock, color: "text-status-shortlisted", bg: "bg-background border-border/60" },
+    { label: t("teamMembers"), value: totalCount, icon: Users, color: "text-primary", bg: "bg-background border-border/60" },
   ];
 
   return (
@@ -224,8 +224,8 @@ export default function TeamManagementPage() {
       {!loading && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {stats.map((s) => (
-            <div key={s.label} className={`card-base p-4 flex sm:flex-col gap-3 sm:gap-2 border ${s.bg}`}>
-              <div className={`p-2.5 rounded-xl border bg-background/80 shrink-0 self-start sm:self-auto w-fit`} style={{ borderColor: 'inherit' }}>
+              <div key={s.label} className="flex items-center gap-3 rounded-xl border border-border bg-background/80 p-2.5">
+              <div className="shrink-0 rounded-xl border border-border bg-background/80 chip-pad">
                 <s.icon className={`h-5 w-5 ${s.color}`} />
               </div>
               <div className="flex sm:flex-col items-center sm:items-start justify-between sm:justify-start gap-1 flex-1 min-w-0">
@@ -283,7 +283,7 @@ export default function TeamManagementPage() {
 
         <div className="card-base overflow-hidden">
           {/* ── Desktop Table ── */}
-          <div className="hidden md:block overflow-x-auto">
+          <div className="hidden md:block overflow-x-auto" tabIndex={0}>
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border/60 bg-muted/40">
@@ -367,7 +367,7 @@ export default function TeamManagementPage() {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleDeactivate(member._id)}
-                          className="text-red-500 hover:text-status-rejected hover:bg-red-500/10 h-8 w-8 p-0 dark:hover:text-red-300"
+                          className="text-red-500 hover:text-status-rejected hover:bg-red-500/10 h-8 w-8 p-0"
                           title={t("deactivateMember")}
                         >
                           <UserX className="h-4 w-4" />
@@ -404,7 +404,7 @@ export default function TeamManagementPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleDeactivate(member._id)}
-                      className="text-red-500 hover:text-status-rejected hover:bg-red-500/10 h-8 w-8 p-0 shrink-0 dark:hover:text-red-300"
+                      className="text-red-500 hover:text-status-rejected hover:bg-red-500/10 h-8 w-8 p-0 shrink-0"
                       title={t("deactivateMember")}
                     >
                       <UserX className="h-4 w-4" />
@@ -487,7 +487,7 @@ export default function TeamManagementPage() {
             <DialogDescription className="sr-only">{t("inviteModal.description")}</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleInvite} className="space-y-4 pt-1">
-            <div className="space-y-2">
+            <div className="field">
               <Label htmlFor="invite-email">{t("inviteModal.emailLabel")}</Label>
               <Input
                 id="invite-email"
@@ -531,7 +531,7 @@ export default function TeamManagementPage() {
             )}
 
             {error && (
-              <div className="text-sm text-status-rejected bg-status-rejected-bg border border-status-rejected/20 px-3 py-2 rounded-md dark:bg-red-500/10 dark:text-red-300 dark:border-red-500/30">
+              <div className="text-sm text-status-rejected bg-status-rejected-bg border border-status-rejected/20 px-3 py-2 rounded-md">
                 {error}
               </div>
             )}

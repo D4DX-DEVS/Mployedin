@@ -301,7 +301,6 @@ export default function AgentOffersPage() {
     <div className="page-container">
       <DashboardPageHeader
         icon={Gift}
-        eyebrow={t("header.title")}
         title={t("header.title")}
         description={t("header.description")}
         metrics={[
@@ -312,35 +311,34 @@ export default function AgentOffersPage() {
         ]}
       />
 
-      {/* Filters */}
-      <section className="workspace-panel-surface rounded-[28px] panel-body">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      {/* One panel: filters and export share the list header, table below.
+          The filter row was a card of its own stacked above the table. */}
+      <section className="workspace-panel-surface rounded-3xl panel-body">
+        <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3 sm:gap-3 sm:pb-4">
+          <div className="relative min-w-0 flex-1">
+            <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder={t("filters.searchPlaceholder")}
               value={filters.search}
               onChange={(e) => updateFilter("search", e.target.value)}
-              className="pl-9"
+              className="ps-9"
             />
           </div>
-          <SearchableSelect options={statusOptions} value={filters.status} onValueChange={(v) => updateFilter("status", v)} placeholder={t("filters.status")} className="w-36" />
-          <Button variant="ghost" size="sm" onClick={() => { setFilters(INITIAL_FILTERS); pagination.resetPage(); }}>
-            <RotateCcw className="mr-1 h-4 w-4" /> {t("actions.reset")}
+          <SearchableSelect options={statusOptions} value={filters.status} onValueChange={(v) => updateFilter("status", v)} placeholder={t("filters.status")} className="w-36 shrink-0" />
+          <Button variant="ghost" size="sm" className="shrink-0" onClick={() => { setFilters(INITIAL_FILTERS); pagination.resetPage(); }}>
+            <RotateCcw className="me-1 h-4 w-4" /> {t("actions.reset")}
           </Button>
+          {!loading && offers.length > 0 && (
+            <TableToolbar
+              onExportCsv={handleExportCsv}
+              onExportExcel={handleExportExcel}
+              onExportPdf={handleExportPdf}
+              className="shrink-0"
+            />
+          )}
         </div>
-      </section>
 
-      {/* Table */}
-      <section className="workspace-panel-surface rounded-[28px] panel-body">
-        {!loading && offers.length > 0 && (
-          <TableToolbar
-            onExportCsv={handleExportCsv}
-            onExportExcel={handleExportExcel}
-            onExportPdf={handleExportPdf}
-            className="mb-4"
-          />
-        )}
+        <div className="pt-4">
         {loading ? (
           <div className="overflow-x-auto">
             <Table>
@@ -408,14 +406,14 @@ export default function AgentOffersPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-end gap-1.5">
-                        <Button size="sm" variant="ghost" className="h-8 rounded-lg px-2.5 text-xs"
+                        <Button size="dense" variant="ghost" className="rounded-lg px-2.5 text-xs"
                           onClick={() => setDetailOffer(o)}>
                           <Eye className="me-1 h-3.5 w-3.5" />
                           {t("actions.view")}
                         </Button>
                         {(o.status === "pending" || o.status === "countered") && !isExpired(o) && (
-                          <Button size="sm" variant="ghost"
-                            className="h-8 rounded-lg px-2.5 text-xs"
+                          <Button size="dense" variant="ghost"
+                            className="rounded-lg px-2.5 text-xs"
                             onClick={() => openRevise(o)}>
                             {o.status === "countered"
                               ? <ArrowLeftRight className="me-1 h-3.5 w-3.5" />
@@ -424,8 +422,8 @@ export default function AgentOffersPage() {
                           </Button>
                         )}
                         {o.status === "pending" && !isExpired(o) && (
-                          <Button size="sm" variant="ghost"
-                            className="h-8 rounded-lg px-2.5 text-xs"
+                          <Button size="dense" variant="ghost"
+                            className="rounded-lg px-2.5 text-xs"
                             disabled={remindingId === o._id}
                             onClick={() => handleRemind(o._id)}>
                             <Send className="me-1 h-3.5 w-3.5" />
@@ -433,8 +431,8 @@ export default function AgentOffersPage() {
                           </Button>
                         )}
                         {(o.status === "pending" || o.status === "countered") && !isExpired(o) && (
-                          <Button size="sm" variant="ghost"
-                            className="h-8 rounded-lg px-2.5 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
+                          <Button size="dense" variant="ghost"
+                            className="rounded-lg px-2.5 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
                             onClick={() => setWithdrawingId(o._id)}>
                             <X className="me-1 h-3.5 w-3.5" />
                             {t("actions.withdraw")}
@@ -448,6 +446,7 @@ export default function AgentOffersPage() {
             </Table>
           </div>
         )}
+        </div>
       </section>
 
       <PaginationControls
@@ -462,9 +461,9 @@ export default function AgentOffersPage() {
       {/* Withdraw confirm */}
       {withdrawingId && typeof document !== "undefined" && createPortal(
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/45 px-4 py-6 backdrop-blur-sm">
-          <div className="w-full max-w-md overflow-hidden rounded-[28px] border border-border bg-background shadow-[0_30px_90px_-36px_rgba(15,23,42,0.5)]">
+          <div className="w-full max-w-md overflow-hidden rounded-3xl border border-border bg-background shadow-[0_30px_90px_-36px_rgba(15,23,42,0.5)]">
             <div className="border-b border-border/60 px-6 py-5">
-              <h2 className="text-xl font-semibold tracking-tight text-foreground">{t("withdrawDialog.title")}</h2>
+              <h2 className="heading-section font-semibold tracking-tight text-foreground">{t("withdrawDialog.title")}</h2>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">{t("withdrawDialog.description")}</p>
             </div>
             <div className="flex justify-end gap-2 px-6 py-5">
@@ -483,14 +482,14 @@ export default function AgentOffersPage() {
       {/* Detail modal */}
       {detailOffer && typeof document !== "undefined" && createPortal(
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/45 px-4 py-6 backdrop-blur-sm">
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[28px] border border-border bg-background shadow-[0_30px_90px_-36px_rgba(15,23,42,0.5)]">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-border bg-background shadow-[0_30px_90px_-36px_rgba(15,23,42,0.5)]">
             <div className="flex items-start justify-between gap-4 panel-head">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("detail.title")}</p>
-                <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{detailOffer.jobTitle}</h2>
+                <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{detailOffer.jobTitle}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">{t("detail.description")}</p>
               </div>
-              <Button size="sm" variant="ghost" className="h-9 w-9 rounded-full p-0" onClick={() => setDetailOffer(null)}>
+              <Button size="sm" variant="ghost" className="w-9 rounded-full p-0" onClick={() => setDetailOffer(null)}>
                 <X className="h-4 w-4" />
               </Button>
             </div>
@@ -525,13 +524,13 @@ export default function AgentOffersPage() {
                 </div>
               </div>
               {detailOffer.benefits && (
-                <div className="rounded-2xl border border-border bg-background/60 px-4 py-4">
+                <div className="rounded-2xl border border-border bg-background/60 card-pad">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("detail.benefits")}</p>
                   <p className="mt-2 text-sm leading-6 text-foreground/85">{detailOffer.benefits}</p>
                 </div>
               )}
               {detailOffer.notes && (
-                <div className="rounded-2xl border border-border bg-background/60 px-4 py-4">
+                <div className="rounded-2xl border border-border bg-background/60 card-pad">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("detail.notes")}</p>
                   <p className="mt-2 text-sm leading-6 text-foreground/85">{detailOffer.notes}</p>
                 </div>
@@ -543,13 +542,13 @@ export default function AgentOffersPage() {
                 </div>
               )}
               {detailOffer.declineReason && (
-                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-4">
+                <div className="rounded-2xl border border-red-200 bg-red-50 card-pad">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-red-600">{t("detail.declineReason")}</p>
                   <p className="mt-2 text-sm leading-6 text-red-700">{detailOffer.declineReason}</p>
                 </div>
               )}
               {detailOffer.counterOffer && (
-                <div className="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-4">
+                <div className="rounded-2xl border border-indigo-200 bg-indigo-50 card-pad">
                   <div className="flex items-center gap-2">
                     <ArrowLeftRight className="h-4 w-4 text-indigo-600" />
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-indigo-700">{t("detail.counterOffer")}</p>
@@ -563,7 +562,7 @@ export default function AgentOffersPage() {
                 </div>
               )}
               {detailOffer.events && detailOffer.events.length > 0 && (
-                <div className="rounded-2xl border border-border bg-background/60 px-4 py-4">
+                <div className="rounded-2xl border border-border bg-background/60 card-pad">
                   <div className="flex items-center gap-2">
                     <History className="h-4 w-4 text-muted-foreground" />
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("detail.timeline")}</p>
@@ -647,7 +646,7 @@ export default function AgentOffersPage() {
           </DialogHeader>
 
           {reviseOffer?.counterOffer && (
-            <div className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm text-indigo-900">
+            <div className="rounded-xl border border-indigo-200 bg-indigo-50 text-sm text-indigo-900 chip-pad">
               {t("reviseDialog.candidateAsked")}:{" "}
               <span className="font-semibold">
                 {reviseOffer.counterOffer.currency} {Number(reviseOffer.counterOffer.amount).toLocaleString(locale)} {reviseOffer.counterOffer.period === "annually" ? t("perYear") : t("perMonth")}

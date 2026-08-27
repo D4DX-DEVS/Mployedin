@@ -295,7 +295,7 @@ export default function OffersPage() {
             <div key={offer._id} className="card-base space-y-3 sm:space-y-4 panel-body">
               <div className="flex items-start justify-between gap-2 sm:gap-3">
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-base sm:text-lg truncate">{offer.jobId.title}</h3>
+                  <h3 className="heading-subsection font-semibold truncate">{offer.jobId.title}</h3>
                   <p className="text-sm text-muted-foreground">
                     {typeof offer.jobId.location === "object" && offer.jobId.location ? (offer.jobId.location.isRemote ? t("remote") : [offer.jobId.location.city, offer.jobId.location.country].filter(Boolean).join(", ") || "—") : (offer.jobId.location ?? "—")}
                   </p>
@@ -541,17 +541,17 @@ export default function OffersPage() {
               )}
 
               {offer.status === "countered" && offer.counterOffer && (
-                <div className="rounded border border-indigo-200 bg-indigo-50 p-3 text-sm dark:border-indigo-900/60 dark:bg-indigo-950/30">
-                  <p className="flex items-center gap-2 font-medium text-indigo-900 dark:text-indigo-300">
+                <div className="rounded border border-indigo-200 bg-indigo-50 p-3 text-sm">
+                  <p className="flex items-center gap-2 font-medium text-indigo-900">
                     <ArrowLeftRight className="h-4 w-4" />
                     {t("counter.pendingTitle")}
                   </p>
-                  <p className="mt-1 text-indigo-800 dark:text-indigo-200">
+                  <p className="mt-1 text-indigo-800">
                     {offer.counterOffer.currency} {offer.counterOffer.amount.toLocaleString(locale)} /{" "}
                     {periodLabel(offer.counterOffer.period)}
                   </p>
                   {offer.counterOffer.note && (
-                    <p className="mt-1 text-indigo-700/90 dark:text-indigo-300/80">{offer.counterOffer.note}</p>
+                    <p className="mt-1 text-indigo-700/90">{offer.counterOffer.note}</p>
                   )}
                 </div>
               )}

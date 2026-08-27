@@ -1,0 +1,142 @@
+[
+ {
+  "role": "employer",
+  "route": "/employer/jobs",
+  "mobile": {
+   "ovf": 0,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "hdr": "none"
+  },
+  "tablet": {
+   "ovf": 0,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "hdr": "none"
+  },
+  "desktop": {
+   "ovf": 0,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "hdr": "none"
+  }
+ },
+ {
+  "role": "employer",
+  "route": "/employer/interviews",
+  "mobile": {
+   "ovf": 0,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "hdr": "pad=0px bd=0px rad=0px"
+  },
+  "tablet": {
+   "ovf": 0,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "hdr": "pad=0px bd=0px rad=0px"
+  },
+  "desktop": {
+   "ovf": 0,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "hdr": "pad=0px bd=0px rad=0px"
+  }
+ },
+ {
+  "role": "employer",
+  "route": "/employer/candidates",
+  "mobile": {
+   "ovf": 0,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "hdr": "pad=0px bd=0px rad=0px"
+  },
+  "tablet": {
+   "ovf": 0,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "hdr": "pad=0px bd=0px rad=0px"
+  },
+  "desktop": {
+   "ovf": 0,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "hdr": "pad=0px bd=0px rad=0px"
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin",
+  "mobile": {
+   "ovf": 0,
+   "gap": "14px",
+   "uniqGaps": [
+    14
+   ],
+   "hdr": "pad=12px 16px bd=1px rad=14px"
+  },
+  "tablet": {
+   "ovf": 0,
+   "gap": "14px",
+   "uniqGaps": [
+    14
+   ],
+   "hdr": "pad=16px 20px bd=1px rad=16px"
+  },
+  "desktop": {
+   "ovf": 0,
+   "gap": "20px",
+   "uniqGaps": [
+    20
+   ],
+   "hdr": "pad=16px 20px bd=1px rad=16px"
+  }
+ },
+ {
+  "role": "admin",
+  "route": "/admin/employers",
+  "mobile": {
+   "ovf": 0,
+   "gap": "16px",
+   "uniqGaps": [
+    16
+   ],
+   "hdr": "pad=12px 16px bd=1px rad=14px"
+  },
+  "tablet": {
+   "ovf": 0,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "hdr": "pad=16px 20px bd=1px rad=16px"
+  },
+  "desktop": {
+   "ovf": 0,
+   "gap": "24px",
+   "uniqGaps": [
+    24
+   ],
+   "hdr": "pad=16px 20px bd=1px rad=16px"
+  }
+ }
+]

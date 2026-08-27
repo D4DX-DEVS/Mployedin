@@ -15,6 +15,7 @@ import {
   CircleDollarSign, Clock, CheckCircle2, Wallet,
   CalendarDays, RotateCcw, TrendingUp,
 } from "lucide-react";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -70,7 +71,7 @@ const TYPE_COLORS: Record<string, string> = {
 function fmt(value: number, currency = "AED"): string {
   if (value >= 1_000_000) return `${currency} ${(value / 1_000_000).toFixed(1)}M`;
   if (value >= 1_000) return `${currency} ${Math.round(value / 1_000)}K`;
-  return `${currency} ${value.toLocaleString()}`;
+  return `${currency} ${formatCount(value)}`;
 }
 
 /* ------------------------------------------------------------------ */
@@ -145,7 +146,7 @@ export default function AgentCommissionsReportPage() {
       </div>
 
       {/* ── Hero Total ── */}
-      <div className="rounded-xl border bg-gradient-to-br from-indigo-50 to-white p-6">
+      <div className="rounded-xl border bg-gradient-to-br from-indigo-50 to-white panel-body">
         <div className="flex items-start justify-between">
           <div>
             <p className="text-sm font-medium text-muted-foreground">{t("totalEarned", { year: yearFilter })}</p>
@@ -192,7 +193,7 @@ export default function AgentCommissionsReportPage() {
             color: "text-violet-600 bg-violet-50",
           },
         ].map(({ label, value, sub, icon: Icon, color }) => (
-          <div key={label} className="rounded-lg border bg-card p-4">
+          <div key={label} className="rounded-lg border bg-card card-pad">
             <div className="flex items-center justify-between">
               <p className="text-xs font-medium text-muted-foreground">{label}</p>
               <span className={`rounded-full p-1.5 ${color}`}>
@@ -209,8 +210,8 @@ export default function AgentCommissionsReportPage() {
 
       {/* ── Monthly Chart + Type Breakdown ── */}
       <div className="grid gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2 rounded-lg border bg-card p-4">
-          <h2 className="mb-3 text-sm font-semibold">{t("monthlyBreakdown")}</h2>
+        <div className="lg:col-span-2 rounded-lg border bg-card card-pad">
+          <h2 className="heading-label mb-3 font-semibold">{t("monthlyBreakdown")}</h2>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -225,8 +226,8 @@ export default function AgentCommissionsReportPage() {
           </ResponsiveContainer>
         </div>
 
-        <div className="rounded-lg border bg-card p-4">
-          <h2 className="mb-3 text-sm font-semibold">{t("byType")}</h2>
+        <div className="rounded-lg border bg-card card-pad">
+          <h2 className="heading-label mb-3 font-semibold">{t("byType")}</h2>
           {pieData.length > 0 ? (
             <ResponsiveContainer width="100%" height={180}>
               <PieChart>

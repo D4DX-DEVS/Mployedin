@@ -31,11 +31,7 @@ export function PosterTypeSelector({ selected, onSelect }: PosterTypeSelectorPro
             type="button"
             disabled={!isAvailable}
             onClick={() => isAvailable && onSelect(type.id as PosterType)}
-            className={`
-              relative flex flex-col items-center gap-2 rounded-xl border-2 p-3 sm:p-4 text-center transition-all
-              ${isSelected ? "border-primary bg-primary/5 shadow-sm" : "border-border hover:border-primary/40"}
-              ${!isAvailable ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
-            `}
+            className={`relative flex flex-col items-center gap-2 rounded-xl border-2 text-center transition-all ${isSelected ? "border-primary bg-primary/5 shadow-sm" : "border-border hover:border-primary/40"} ${!isAvailable ? "opacity-50 cursor-not-allowed" : "cursor-pointer"} card-pad`}
           >
             {isSelected && (
               <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-primary flex items-center justify-center">

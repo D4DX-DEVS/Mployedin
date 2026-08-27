@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { cn } from "@/lib/utils";
 import type { JobFormValues } from "@/components/features/employer/job-form/jobFormSchema";
+import { formatCount } from "@/lib/ui/intlFormat";
+import { WordingWarning } from "@/components/features/employer/job-form/WordingWarning";
 
 interface ExtractedJob {
   title: string;
@@ -440,7 +442,7 @@ export default function AIJobExtractPage() {
       />
 
       {/* Upload Section */}
-      <section className="overflow-hidden rounded-[28px] border border-border/70 bg-gradient-to-br from-background via-background to-primary/5 p-6 shadow-sm">
+      <section className="overflow-hidden rounded-3xl border border-border/70 bg-gradient-to-br from-background via-background to-primary/5 shadow-sm panel-body">
         <div className="flex items-center gap-2 text-sm font-medium text-primary">
           <Sparkles className="h-4 w-4" />
           {t("uploadTitle")}
@@ -457,7 +459,7 @@ export default function AIJobExtractPage() {
               dragActive
                 ? "border-primary bg-primary/5"
                 : file
-                  ? "border-green-400 bg-green-50/50 dark:bg-green-950/10"
+                  ? "border-green-400 bg-green-50/50"
                   : "border-border hover:border-primary/50 hover:bg-muted/30"
             )}
             onClick={() => fileInputRef.current?.click()}
@@ -486,7 +488,7 @@ export default function AIJobExtractPage() {
                     className="mx-auto max-h-32 rounded-xl object-contain shadow-sm"
                   />
                 ) : (
-                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-green-100 text-green-600 dark:bg-green-900/30">
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-green-100 text-green-600">
                     <FileText className="h-7 w-7" />
                   </div>
                 )}
@@ -517,8 +519,8 @@ export default function AIJobExtractPage() {
           {/* Info & Extract Button */}
           <div className="flex flex-col justify-between space-y-3 sm:space-y-4">
             <div className="space-y-3">
-              <div className="rounded-2xl border border-border/70 bg-background/85 p-4 space-y-3">
-                <h3 className="text-sm font-semibold text-foreground">{t("supports")}</h3>
+              <div className="rounded-2xl border border-border/70 bg-background/85 space-y-3 card-pad">
+                <h3 className="heading-label font-semibold text-foreground">{t("supports")}</h3>
                 <ul className="space-y-2 text-xs text-muted-foreground">
                   <li className="flex items-start gap-2">
                     <FileImage className="mt-0.5 h-3.5 w-3.5 text-primary flex-shrink-0" />
@@ -568,7 +570,7 @@ export default function AIJobExtractPage() {
           {/* Header with bulk actions */}
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
-              <h2 className="text-lg font-semibold text-foreground">
+              <h2 className="heading-section font-semibold text-foreground">
                 {t("extractedJobs", { count: extractedJobs.length })}
               </h2>
               <p className="text-sm text-muted-foreground">
@@ -628,7 +630,7 @@ export default function AIJobExtractPage() {
                   className={cn(
                     "relative rounded-2xl border p-5 transition-all",
                     status === "posted"
-                      ? "border-green-300 bg-green-50/50 dark:bg-green-950/10"
+                      ? "border-green-300 bg-green-50/50"
                       : status === "error"
                         ? "border-destructive/30 bg-destructive/5"
                         : isSelected
@@ -674,7 +676,7 @@ export default function AIJobExtractPage() {
                   <div className="ml-7 space-y-3">
                     {/* Title */}
                     <div>
-                      <h3 className="text-sm font-semibold text-foreground line-clamp-2">
+                      <h3 className="heading-label font-semibold text-foreground line-clamp-2">
                         {job.title}
                       </h3>
                       {job.category && (
@@ -699,7 +701,7 @@ export default function AIJobExtractPage() {
                         <div className="flex items-center gap-1.5">
                           <DollarSign className="h-3 w-3 flex-shrink-0" />
                           <span>
-                            {job.salary?.currency ?? "USD"} {job.salary?.min?.toLocaleString()}–{job.salary?.max?.toLocaleString()}/{job.salary?.period ?? "mo"}
+                            {job.salary?.currency ?? "USD"} {formatCount(job.salary?.min)}–{formatCount(job.salary?.max)}/{job.salary?.period ?? "mo"}
                           </span>
                         </div>
                       )}
@@ -737,6 +739,22 @@ export default function AIJobExtractPage() {
                       </div>
                     )}
 
+                    {/* An uploaded advert's own wording is reproduced verbatim, so it
+                        is checked here — Quick Post otherwise reaches publish
+                        without ever passing the wizard's wording panel. */}
+                    {status !== "posted" && (
+                      <WordingWarning
+                        advert={{
+                          title: job.title,
+                          description: job.description,
+                          responsibilities: job.responsibilities,
+                          qualifications: job.qualifications,
+                          benefits: job.benefits,
+                        }}
+                        className="mt-2"
+                      />
+                    )}
+
                     {/* Actions */}
                     {status !== "posted" && (
                       <div className="flex items-center gap-2 pt-2 border-t border-border/50">
@@ -768,8 +786,9 @@ export default function AIJobExtractPage() {
                           size="sm"
                           className="h-7 text-xs gap-1 text-destructive hover:text-destructive ml-auto"
                           onClick={() => removeJob(index)}
+                          aria-label={t("removeJobLabel", { job: job.title })}
                         >
-                          <Trash2 className="h-3 w-3" />
+                          <Trash2 className="h-3 w-3" aria-hidden="true" />
                         </Button>
                       </div>
                     )}

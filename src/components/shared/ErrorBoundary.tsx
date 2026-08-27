@@ -1,6 +1,7 @@
 "use client";
 
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { reportError } from "@/lib/observability/report-error";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -22,10 +23,11 @@ interface ErrorBoundaryState {
  *   <KanbanBoard />
  * </ErrorBoundary>
  *
- * @example with custom fallback
- * <ErrorBoundary fallback={({ error, reset }) => (
+ * @example with custom fallback. Log technical details privately and keep the
+ * visible message task-focused.
+ * <ErrorBoundary fallback={({ reset }) => (
  *   <div>
- *     <p>Failed: {error.message}</p>
+ *     <p>We could not load this section. Nothing was changed.</p>
  *     <button onClick={reset}>Retry</button>
  *   </div>
  * )}>
@@ -43,7 +45,10 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error("[ErrorBoundary] Caught error:", error, info.componentStack);
+    reportError(error, {
+      source: "component-error-boundary",
+      componentStack: info.componentStack ?? undefined,
+    });
   }
 
   handleReset = () => {
@@ -60,21 +65,32 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       }
 
       return (
-        <div className="flex flex-col items-center justify-center gap-4 p-8 rounded-lg border border-destructive/20 bg-destructive/5">
+        <div
+          role="alert"
+          className="flex flex-col items-center justify-center gap-4 rounded-lg border border-destructive/20 bg-destructive/5 p-8"
+        >
           <div className="text-center space-y-2">
-            <h3 className="text-lg font-semibold text-destructive">
-              Something went wrong
+            <h3 className="heading-subsection font-semibold text-destructive">
+              We couldn&apos;t load this section
             </h3>
             <p className="text-sm text-muted-foreground max-w-md">
-              {this.state.error.message || "An unexpected error occurred."}
+              Nothing was changed. Try again, or reload the page if the problem continues.
             </p>
           </div>
-          <button
-            onClick={this.handleReset}
-            className="px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-          >
-            Try Again
-          </button>
+          <div className="flex flex-wrap justify-center gap-2">
+            <button
+              onClick={this.handleReset}
+              className="min-h-11 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              Try again
+            </button>
+            <button
+              onClick={() => window.location.reload()}
+              className="min-h-11 rounded-md border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted"
+            >
+              Reload page
+            </button>
+          </div>
         </div>
       );
     }

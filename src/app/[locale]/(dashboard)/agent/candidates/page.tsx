@@ -20,8 +20,6 @@ import {
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
-  ArrowRight,
-  BriefcaseBusiness,
   CalendarCheck2,
   CalendarPlus,
   Check,
@@ -39,6 +37,7 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 interface ApplicationItem {
   _id: string;
@@ -300,7 +299,7 @@ export default function AgentCandidatesPage() {
     { header: t("tableHeaderJob"), key: "jobId", formatter: (_v, row) => (row.jobId as { title?: string })?.title ?? "" },
     { header: tc("status"), key: "status" },
     { header: t("tableHeaderAIMatch"), key: "aiMatchScore", formatter: (v) => v != null ? `${v}%` : "" },
-    { header: t("tableHeaderApplied"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: t("tableHeaderApplied"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
@@ -314,37 +313,46 @@ export default function AgentCandidatesPage() {
     <div className="page-container">
       <DashboardPageHeader
         icon={Users}
-        eyebrow={t("agentWorkspace")}
         title={t("candidatesPipeline")}
         description={t("pipelineDescription")}
-        summary={{ label: t("pipeline"), value: `${pagination.total} ${t("application", { count: pagination.total })}`, note: t("pipelineSubtext") }}
+        summary={{ label: t("pipeline"), value: `${pagination.total} ${t("application", { count: pagination.total })}` }}
         metrics={[
-          { label: t("shortlistedLabel"), value: shortlistedCount, note: t("shortlistedDesc"), icon: Users },
-          { label: t("interviewsLabel"), value: interviewCount, note: t("interviewsDesc"), icon: CalendarCheck2 },
-          { label: t("highMatchLabel"), value: highMatchCount, note: t("highMatchDesc"), icon: Star },
-          { label: t("jobFilterLabel"), value: jobIdFilter ? 1 : 0, note: t("jobFilterDesc"), icon: BriefcaseBusiness },
+          { label: t("shortlistedLabel"), value: shortlistedCount, icon: Users },
+          { label: t("interviewsLabel"), value: interviewCount, icon: CalendarCheck2 },
+          { label: t("highMatchLabel"), value: highMatchCount, icon: Star },
         ]}
+        compactOnMobile
       />
 
-      <section className="workspace-panel-surface rounded-[28px] panel-body">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("filterCandidatesLabel")}</p>
-          <h2 className="mt-2 text-lg sm:text-xl font-semibold tracking-tight text-foreground">{t("filterCandidatesTitle")}</h2>
-          <p className="mt-1 text-xs sm:text-sm text-muted-foreground">{t("filterCandidatesDesc")}</p>
-        </div>
-        <div className="relative mt-5 max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t("searchPlaceholder")}
-            className="h-10 w-full rounded-xl border border-border bg-background/70 pl-10 pr-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground/60 focus:border-ring focus:ring-2 focus:ring-ring/20"
+      {/* One panel: search + export inline, status pills below, table under
+          them. The old separate filter card restated the page title three
+          times before the first row was reachable. */}
+      <section className="workspace-panel-surface rounded-3xl panel-body">
+        <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3 sm:gap-3 sm:pb-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            {t("currentResultsLabel")}
+          </p>
+          <div className="relative min-w-0 flex-1 sm:ms-auto sm:w-64 sm:flex-none">
+            <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t("searchPlaceholder")}
+              className="h-10 w-full rounded-xl border border-border bg-background/70 ps-10 pe-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground/60 focus:border-ring focus:ring-2 focus:ring-ring/20"
+            />
+          </div>
+          <TableToolbar
+            onExportCsv={handleExportCsv}
+            onExportExcel={handleExportExcel}
+            onExportPdf={handleExportPdf}
+            className="shrink-0"
           />
         </div>
-        <div className="mt-5 flex flex-wrap gap-2">
+
+        <div className="flex flex-wrap gap-1.5 pt-3 sm:gap-2 sm:pt-4">
           {jobIdFilter && (
-            <Button variant="outline" size="sm" onClick={() => setJobIdFilter("")} className="workspace-tone-sky h-10 rounded-xl border-transparent px-4 hover:opacity-90">
+            <Button variant="outline" size="sm" onClick={() => setJobIdFilter("")} className="workspace-tone-sky h-9 rounded-xl border-transparent px-3 hover:opacity-90">
               {filteredJobTitle ? `✕ ${filteredJobTitle}` : t("clearJobFilter")}
             </Button>
           )}
@@ -359,8 +367,8 @@ export default function AgentCandidatesPage() {
                 variant="outline"
                 size="sm"
                 className={isSelected
-                  ? "workspace-tone-sky h-10 rounded-xl border-transparent px-4 capitalize hover:opacity-90"
-                  : "workspace-muted-pill h-10 rounded-xl px-4 capitalize hover:bg-card"
+                  ? "workspace-tone-sky h-9 rounded-xl border-transparent px-3 capitalize hover:opacity-90"
+                  : "workspace-muted-pill h-9 rounded-xl px-3 capitalize hover:bg-card"
                 }
               >
                 {status ? t(`status_${status}`) : tc("all")}
@@ -368,26 +376,8 @@ export default function AgentCandidatesPage() {
             );
           })}
         </div>
-      </section>
 
-      <section className="workspace-panel-surface rounded-[28px] panel-body">
-        <div className="flex flex-col gap-2 sm:gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("currentResultsLabel")}</p>
-            <h2 className="mt-2 text-lg sm:text-xl font-semibold tracking-tight text-foreground">{t("currentResultsTitle")}</h2>
-          </div>
-          <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">
-            <ArrowRight className="h-3.5 w-3.5 text-primary" />
-            {t("paginationSummary", { applications: pagination.total, pages: pagination.totalPages })}
-          </div>
-        </div>
-        <TableToolbar
-          onExportCsv={handleExportCsv}
-          onExportExcel={handleExportExcel}
-          onExportPdf={handleExportPdf}
-          className="mt-3 sm:mt-4"
-        />
-        <div className="workspace-subtle-surface mt-5 overflow-hidden rounded-[24px]">
+        <div className="workspace-subtle-surface mt-4 overflow-hidden rounded-3xl">
           {loading ? (
             <Table>
               <TableHeader>
@@ -412,7 +402,7 @@ export default function AgentCandidatesPage() {
               </TableBody>
             </Table>
           ) : applications.length === 0 ? (
-            <div className="workspace-empty-state m-4 rounded-[20px] py-12 text-center">
+            <div className="workspace-empty-state m-4 rounded-3xl py-12 text-center">
               <div className="flex flex-col items-center gap-2">
                 <Inbox className="h-8 w-8 text-muted-foreground" />
                 <p className="text-sm font-medium text-foreground">{t("noCandidatesFound")}</p>
@@ -449,7 +439,7 @@ export default function AgentCandidatesPage() {
                         {app.aiMatchScore != null ? `${app.aiMatchScore}%` : "—"}
                       </div>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{new Date(app.appliedAt ?? app.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{formatDate(new Date(app.appliedAt ?? app.createdAt))}</TableCell>
                     <TableCell>
                       <div className="flex items-center justify-end gap-1.5">
                         {updatingId === app._id ? (
@@ -460,9 +450,9 @@ export default function AgentCandidatesPage() {
                           <>
                             {NEXT_STAGE_KEYS[app.status] && (
                               <Button
-                                size="sm"
+                                size="dense"
                                 variant="outline"
-                                className="h-8 gap-1 rounded-lg px-2.5 text-xs"
+                                className="gap-1 rounded-lg px-2.5 text-xs"
                                 title={t(`actionLabel_${app.status}`)}
                                 onClick={() => handleStatusUpdate(app._id, NEXT_STAGE_KEYS[app.status])}
                               >
@@ -472,9 +462,9 @@ export default function AgentCandidatesPage() {
                             )}
                             {SCHEDULABLE_STATUSES.has(app.status) && (
                               <Button
-                                size="sm"
+                                size="dense"
                                 variant="ghost"
-                                className="h-8 w-8 rounded-lg p-0 text-status-applied hover:bg-status-applied-bg"
+                                className="w-8 rounded-lg p-0 text-status-applied hover:bg-status-applied-bg"
                                 title={t("scheduleInterviewTooltip")}
                                 aria-label={t("scheduleInterviewTooltip")}
                                 onClick={() => openSchedule(app)}
@@ -484,9 +474,9 @@ export default function AgentCandidatesPage() {
                             )}
                             {app.status === "selected" && (
                               <Button
-                                size="sm"
+                                size="dense"
                                 variant="outline"
-                                className="h-8 gap-1 rounded-lg px-2.5 text-xs text-emerald-700"
+                                className="gap-1 rounded-lg px-2.5 text-xs text-emerald-700"
                                 title={t("makeOfferTooltip")}
                                 onClick={() => openOffer(app)}
                               >
@@ -495,9 +485,9 @@ export default function AgentCandidatesPage() {
                               </Button>
                             )}
                             <Button
-                              size="sm"
+                              size="dense"
                               variant="ghost"
-                              className="h-8 w-8 rounded-lg p-0 text-destructive hover:bg-destructive/10"
+                              className="w-8 rounded-lg p-0 text-destructive hover:bg-destructive/10"
                               title={t("rejectCandidateTooltip")}
                               aria-label={t("rejectCandidateTooltip")}
                               onClick={() => { setRejectError(""); setRejectReason(""); setRejectApp(app); }}
@@ -536,9 +526,9 @@ export default function AgentCandidatesPage() {
           </DialogHeader>
           <div className="space-y-4">
             {scheduleError && (
-              <p className="rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">{scheduleError}</p>
+              <p className="rounded-lg border border-destructive/20 bg-destructive/5 text-sm text-destructive chip-pad">{scheduleError}</p>
             )}
-            <div className="space-y-2">
+            <div className="field">
               <Label htmlFor="iv-when">{t("dateTimeLabel")}</Label>
               <Input
                 id="iv-when"
@@ -548,7 +538,7 @@ export default function AgentCandidatesPage() {
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
+              <div className="field">
                 <Label htmlFor="iv-type">{t("interviewTypeLabel")}</Label>
                 <Select value={scheduleForm.type} onValueChange={(value) => setScheduleForm((f) => ({ ...f, type: value }))}>
                   <SelectTrigger id="iv-type">
@@ -561,7 +551,7 @@ export default function AgentCandidatesPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label htmlFor="iv-dur">{t("durationLabel")}</Label>
                 <Input
                   id="iv-dur"
@@ -573,7 +563,7 @@ export default function AgentCandidatesPage() {
                 />
               </div>
             </div>
-            <div className="space-y-2">
+            <div className="field">
               <Label htmlFor="iv-loc">{scheduleForm.type === "video" ? t("meetingLinkLabel") : t("locationLabel")}</Label>
               {scheduleForm.type === "video" ? (
                 <Input
@@ -613,9 +603,9 @@ export default function AgentCandidatesPage() {
           </DialogHeader>
           <div className="space-y-3">
             {rejectError && (
-              <p className="rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">{rejectError}</p>
+              <p className="rounded-lg border border-destructive/20 bg-destructive/5 text-sm text-destructive chip-pad">{rejectError}</p>
             )}
-            <div className="space-y-2">
+            <div className="field">
               <Label htmlFor="rej-reason">{t("reasonLabel")}</Label>
               <Textarea
                 id="rej-reason"
@@ -647,10 +637,10 @@ export default function AgentCandidatesPage() {
           </DialogHeader>
           <div className="space-y-4">
             {offerError && (
-              <p className="rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">{offerError}</p>
+              <p className="rounded-lg border border-destructive/20 bg-destructive/5 text-sm text-destructive chip-pad">{offerError}</p>
             )}
             <div className="grid grid-cols-3 gap-3">
-              <div className="col-span-2 space-y-2">
+              <div className="col-span-2 field">
                 <Label htmlFor="of-amount">{t("salaryAmountLabel")}</Label>
                 <Input
                   id="of-amount"
@@ -661,7 +651,7 @@ export default function AgentCandidatesPage() {
                   onChange={(e) => setOfferForm((f) => ({ ...f, amount: e.target.value }))}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label htmlFor="of-currency">{t("currencyLabel")}</Label>
                 <Input
                   id="of-currency"
@@ -672,7 +662,7 @@ export default function AgentCandidatesPage() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
+              <div className="field">
                 <Label htmlFor="of-period">{t("payPeriodLabel")}</Label>
                 <Select value={offerForm.period} onValueChange={(value) => setOfferForm((f) => ({ ...f, period: value }))}>
                   <SelectTrigger id="of-period">
@@ -693,7 +683,7 @@ export default function AgentCandidatesPage() {
                 />
               </div>
             </div>
-            <div className="space-y-2">
+            <div className="field">
               <Label htmlFor="of-expires">{t("offerExpiresLabel")}</Label>
               <DateTimePicker
                 mode="date"
@@ -701,7 +691,7 @@ export default function AgentCandidatesPage() {
                 onChange={(value) => setOfferForm((f) => ({ ...f, expiresAt: value }))}
               />
             </div>
-            <div className="space-y-2">
+            <div className="field">
               <Label htmlFor="of-benefits">{t("benefitsLabel")}</Label>
               <Textarea
                 id="of-benefits"
@@ -711,7 +701,7 @@ export default function AgentCandidatesPage() {
                 rows={2}
               />
             </div>
-            <div className="space-y-2">
+            <div className="field">
               <Label htmlFor="of-notes">{t("notesLabel")}</Label>
               <Textarea
                 id="of-notes"

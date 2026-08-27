@@ -11,7 +11,9 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import { useConfirm } from "@/hooks/useConfirm";
+import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
 type PlacementLocation = string | { country?: string; city?: string; isRemote?: boolean };
 
@@ -33,9 +35,9 @@ interface PlacementDetail {
 }
 
 const STATUS_BADGE: Record<string, string> = {
-  active: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300",
-  completed: "bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300",
-  terminated: "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300",
+  active: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  completed: "bg-sky-100 text-sky-700 border-sky-200",
+  terminated: "bg-rose-100 text-rose-700 border-rose-200",
 };
 
 function formatLocation(location?: PlacementLocation) {
@@ -93,7 +95,7 @@ export default function PlacementDetailPage() {
       toast.success(t("statusUpdated"));
       await load();
     } catch (e: unknown) {
-      toast.error(e instanceof Error && e.message ? e.message : t("statusUpdateFailed"));
+      toast.error(t("statusUpdateFailed"));
     } finally {
       setTransitioning(false);
     }
@@ -112,7 +114,7 @@ export default function PlacementDetailPage() {
     return (
       <div className="page-container">
         <div className="card-base min-w-0 p-5 py-10 text-center sm:p-8 sm:py-16">
-          <h2 className="text-lg font-semibold mb-4">{t("detailLoadError")}</h2>
+          <h2 className="heading-section font-semibold mb-4">{t("detailLoadError")}</h2>
           <div className="flex min-w-0 flex-col justify-center gap-3 sm:flex-row">
             <Button className="max-w-full" variant="outline" onClick={() => void load()}>{t("retry")}</Button>
             <Button className="max-w-full whitespace-normal" variant="outline" onClick={() => router.push(`/${locale}/employer/placements`)}>
@@ -150,6 +152,8 @@ export default function PlacementDetailPage() {
         </div>
       </div>
 
+      <CandidateDataNotice variant="candidateDetail" />
+
       <div className="card-base space-y-5 panel-body">
         <div>
           <h1 className="text-xl font-bold tracking-tight sm:text-2xl">{candidate?.name ?? t("candidate")}</h1>
@@ -162,23 +166,23 @@ export default function PlacementDetailPage() {
           <InfoItem
             icon={DollarSign}
             label={t("salaryCol")}
-            value={placement.salary != null ? `${placement.currency ?? "AED"} ${placement.salary.toLocaleString()}` : undefined}
+            value={placement.salary != null ? `${placement.currency ?? "AED"} ${formatCount(placement.salary)}` : undefined}
           />
           <InfoItem
             icon={Calendar}
             label={t("placedAtLabel")}
-            value={placement.placedAt ? new Date(placement.placedAt).toLocaleDateString() : undefined}
+            value={placement.placedAt ? formatDate(new Date(placement.placedAt)) : undefined}
           />
           <InfoItem
             icon={Calendar}
             label={t("startDateLabel")}
-            value={placement.startDate ? new Date(placement.startDate).toLocaleDateString() : undefined}
+            value={placement.startDate ? formatDate(new Date(placement.startDate)) : undefined}
           />
           <InfoItem icon={User} label={t("visaStatusLabel")} value={placement.visaStatus?.replace(/_/g, " ")} />
         </div>
 
         {placement.notes && (
-          <div className="rounded-xl border border-border/60 bg-muted/30 p-4">
+          <div className="rounded-xl border border-border/60 bg-muted/30 card-pad">
             <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               <StickyNote className="h-3.5 w-3.5" /> {t("notesLabel")}
             </p>

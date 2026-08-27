@@ -31,6 +31,7 @@ import {
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import type { UserRole, PermissionMode, CustomPermissions } from "@/types/user";
 import { AlertCircle, Loader2, Download, FileSpreadsheet, FileText } from "lucide-react";
+import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
 interface User {
   _id: string;
@@ -81,14 +82,14 @@ export default function AdminUsersPage() {
     { header: t("roleTableHeader"), key: "role" },
     { header: t("statusTableHeader"), key: "isActive", formatter: (v) => v ? t("active") : t("inactive") },
     { header: t("localeTableHeader"), key: "locale" },
-    { header: "Last Login", key: "lastLogin", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
-    { header: t("joinedTableHeader"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
+    { header: t("exportHeaderLastLogin"), key: "lastLogin", formatter: (v) => v ? formatDate(new Date(String(v))) : "—" },
+    { header: t("joinedTableHeader"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: users as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "users",
-    title: "Users",
+    title: t("exportTitle"),
   });
 
   const fetchUsers = useCallback(async () => {
@@ -105,7 +106,7 @@ export default function AdminUsersPage() {
         setUsers(data.users);
         updateTotal(data.pagination.total);
       } else {
-        toast.error("Failed to load users");
+        toast.error(t("toastFailedLoadUsers"));
       }
     } finally {
       setLoading(false);
@@ -127,7 +128,7 @@ export default function AdminUsersPage() {
       fetchUsers();
     } else {
       const err = await res.json().catch(() => ({}));
-      toast.error(err.error || "Failed to update user");
+      toast.error(err.error || t("toastFailedUpdateUser"));
     }
   }
 
@@ -153,13 +154,13 @@ export default function AdminUsersPage() {
       };
       const failed = data.results.filter((r) => r.status !== "updated");
       if (failed.length === 0) {
-        toast.success(`${data.affected}/${data.total} user(s) updated`);
+        toast.success(t("toastBulkUpdated", { affected: data.affected, total: data.total }));
       } else if (data.affected > 0) {
         const reasons = [...new Set(failed.map((r) => r.reason).filter(Boolean))].join("; ");
-        toast(`${data.affected}/${data.total} updated, ${failed.length} skipped: ${reasons}`);
+        toast(t("toastBulkPartialUpdated", { affected: data.affected, total: data.total, failed: failed.length, reasons }));
       } else {
         const reasons = [...new Set(failed.map((r) => r.reason).filter(Boolean))].join("; ");
-        toast.error(`No users updated: ${reasons}`);
+        toast.error(t("toastBulkNoUpdates", { reasons }));
       }
       setBulkAction("__none__"); setSelected([]);
       fetchUsers();
@@ -229,7 +230,7 @@ export default function AdminUsersPage() {
         toast.error(err.error || "Failed to save permissions");
         return;
       }
-      toast.success("Permissions updated");
+      toast.success(t("toastPermissionsUpdated"));
       setPermUser(null);
       fetchUsers();
     } finally {
@@ -252,12 +253,11 @@ export default function AdminUsersPage() {
     <div className="page-container">
       <PageHero
         icon={Users}
-        eyebrow={t("adminWorkspace")}
         title={t("userManagement")}
-        description={t("userManagementDesc", { total: total.toLocaleString() })}
+        description={t("userManagementDesc", { total: formatCount(total) })}
       />
 
-      <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
+      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
         {/* data-table-toolbar opts this hand-rolled header into the shared
             mobile toolbar rules, same as pages built on <TableToolbar>. */}
         <div data-table-toolbar="compact-admin" className="flex flex-wrap items-center gap-1.5 border-b border-border/80 sm:gap-2 panel-head">
@@ -296,7 +296,7 @@ export default function AdminUsersPage() {
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" aria-label={t("export")} className="h-8 shrink-0 rounded-lg border-border/80 px-2 text-xs sm:px-3 sm:text-sm">
+                <Button variant="outline" size="dense" aria-label={t("export")} className="shrink-0 rounded-lg border-border/80 px-2 text-xs sm:px-3 sm:text-sm">
                   <Download className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">{t("export")}</span>
                 </Button>
@@ -445,6 +445,7 @@ export default function AdminUsersPage() {
                         variant="ghost"
                         className="h-7 text-xs"
                         title={t("managePermissions")}
+                        aria-label={t("managePermissions")}
                         onClick={() => openPermissions(user)}
                       >
                         <Shield className="w-3.5 h-3.5 text-primary" />
@@ -454,6 +455,7 @@ export default function AdminUsersPage() {
                         variant="ghost"
                         className="h-7 text-xs"
                         title={user.isActive ? t("deactivate_user") : t("activate_user")}
+                        aria-label={user.isActive ? t("deactivate_user") : t("activate_user")}
                         onClick={() => updateUser(user._id, { isActive: !user.isActive })}
                       >
                         {user.isActive ? (
@@ -483,14 +485,14 @@ export default function AdminUsersPage() {
 
           <div className="space-y-4">
             {createError && (
-              <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
+              <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 text-sm text-destructive chip-pad">
                 <AlertCircle className="h-4 w-4 shrink-0" />
                 {createError}
               </div>
             )}
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
+              <div className="field">
                 <Label htmlFor="create-name">{t("fullName")} <span className="text-destructive">*</span></Label>
                 <Input
                   id="create-name"
@@ -499,7 +501,7 @@ export default function AdminUsersPage() {
                   placeholder={t("johnDoe")}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label htmlFor="create-email">{t("email")} <span className="text-destructive">*</span></Label>
                 <Input
                   id="create-email"
@@ -509,7 +511,7 @@ export default function AdminUsersPage() {
                   placeholder={t("johnAtExample")}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label htmlFor="create-password">{t("password")} <span className="text-destructive">*</span></Label>
                 <Input
                   id="create-password"

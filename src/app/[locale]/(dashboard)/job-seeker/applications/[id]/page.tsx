@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { cn } from "@/lib/utils";
+import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
 // ── Types ──────────────────────────────────────────────────────────
 interface ApplicationDetail {
@@ -171,7 +172,7 @@ export default function ApplicationDetailPage() {
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
             <Calendar className="h-3 w-3" />
-            {t("applied")} {new Date(app.appliedAt).toLocaleDateString()}
+            {t("applied")} {formatDate(new Date(app.appliedAt))}
           </span>
           {(() => {
             const loc = job?.location?.isRemote
@@ -187,8 +188,8 @@ export default function ApplicationDetailPage() {
             <span className="flex items-center gap-1">
               <span aria-hidden="true">💰</span>
               {job.salary.min && job.salary.max
-                ? `${job.salary.currency ?? "AED"} ${job.salary.min.toLocaleString()} – ${job.salary.max.toLocaleString()}`
-                : `From ${job.salary.currency ?? "AED"} ${(job.salary.min || job.salary.max).toLocaleString()}`}
+                ? `${job.salary.currency ?? "AED"} ${formatCount(job.salary.min)} – ${formatCount(job.salary.max)}`
+                : `From ${job.salary.currency ?? "AED"} ${formatCount((job.salary.min || job.salary.max))}`}
             </span>
           )}
           {app.aiMatchScore != null && app.aiMatchScore > 0 && (
@@ -228,7 +229,7 @@ export default function ApplicationDetailPage() {
       {/* ── Interviews Section ──────────────────────────────────── */}
       {app.interviews?.length > 0 && (
         <section className="space-y-3">
-          <h2 className="text-base font-semibold flex items-center gap-2">
+          <h2 className="heading-section font-semibold flex items-center gap-2">
             <Video className="h-4 w-4" /> {t("interviews")} ({app.interviews.length})
           </h2>
           {app.interviews.map((iv) => (
@@ -240,7 +241,7 @@ export default function ApplicationDetailPage() {
       {/* ── Offers Section ──────────────────────────────────────── */}
       {app.offers?.length > 0 && (
         <section className="space-y-3">
-          <h2 className="text-base font-semibold flex items-center gap-2">
+          <h2 className="heading-section font-semibold flex items-center gap-2">
             <ThumbsUp className="h-4 w-4" /> {t("offers")} ({app.offers.length})
           </h2>
           {app.offers.map((offer) => (
@@ -346,8 +347,8 @@ function InterviewActionCard({ interview: iv, onUpdated }: { interview: Intervie
       {canRespond && !showReschedule && (
         <div className="flex items-center gap-2 pt-1">
           <Button
-            size="sm"
-            className="gap-1.5 h-8"
+            size="dense"
+            className="gap-1.5"
             onClick={() => handleRespond("confirmed")}
             disabled={responding}
           >
@@ -355,18 +356,18 @@ function InterviewActionCard({ interview: iv, onUpdated }: { interview: Intervie
             {t("confirm")}
           </Button>
           <Button
-            size="sm"
+            size="dense"
             variant="outline"
-            className="gap-1.5 h-8"
+            className="gap-1.5"
             onClick={() => setShowReschedule(true)}
             disabled={responding}
           >
             <RotateCcw className="h-3.5 w-3.5" /> {t("reschedule")}
           </Button>
           <Button
-            size="sm"
+            size="dense"
             variant="ghost"
-            className="gap-1.5 h-8 text-destructive hover:text-destructive"
+            className="gap-1.5 text-destructive hover:text-destructive"
             onClick={() => handleRespond("declined")}
             disabled={responding}
           >
@@ -388,15 +389,15 @@ function InterviewActionCard({ interview: iv, onUpdated }: { interview: Intervie
           />
           <div className="flex gap-2">
             <Button
-              size="sm"
-              className="h-8"
+              size="dense"
+              className=""
               onClick={() => handleRespond("reschedule_requested")}
               disabled={!rescheduleNote.trim() || responding}
             >
               {responding && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}
               {t("requestReschedule")}
             </Button>
-            <Button size="sm" variant="ghost" className="h-8" onClick={() => setShowReschedule(false)}>
+            <Button size="dense" variant="ghost" className="" onClick={() => setShowReschedule(false)}>
               {t("cancel")}
             </Button>
           </div>
@@ -459,12 +460,12 @@ function OfferActionCard({ offer, onUpdated }: { offer: OfferItem; onUpdated: ()
         )}
         {offer.startDate && (
           <span className="flex items-center gap-1">
-            <Calendar className="h-3 w-3" /> {t("startDate")}: {new Date(offer.startDate).toLocaleDateString()}
+            <Calendar className="h-3 w-3" /> {t("startDate")}: {formatDate(new Date(offer.startDate))}
           </span>
         )}
         {offer.expiresAt && isPending && (
           <span className={cn("text-[11px]", isExpired ? "text-red-600" : "text-amber-600")}>
-            {isExpired ? t("expired") : `${t("expires")}: ${new Date(offer.expiresAt).toLocaleDateString()}`}
+            {isExpired ? t("expired") : `${t("expires")}: ${formatDate(new Date(offer.expiresAt))}`}
           </span>
         )}
       </div>
@@ -477,8 +478,8 @@ function OfferActionCard({ offer, onUpdated }: { offer: OfferItem; onUpdated: ()
       {isPending && !isExpired && !showDeclineForm && (
         <div className="flex items-center gap-2 pt-1">
           <Button
-            size="sm"
-            className="gap-1.5 h-8 bg-emerald-600 hover:bg-emerald-700"
+            size="dense"
+            className="gap-1.5 bg-emerald-600 hover:bg-emerald-700"
             onClick={() => handleRespond("accepted")}
             disabled={responding}
           >
@@ -486,9 +487,9 @@ function OfferActionCard({ offer, onUpdated }: { offer: OfferItem; onUpdated: ()
             {t("acceptOffer")}
           </Button>
           <Button
-            size="sm"
+            size="dense"
             variant="outline"
-            className="gap-1.5 h-8 text-red-600 hover:text-red-700 border-red-200"
+            className="gap-1.5 text-red-600 hover:text-red-700 border-red-200"
             onClick={() => setShowDeclineForm(true)}
             disabled={responding}
           >
@@ -509,16 +510,16 @@ function OfferActionCard({ offer, onUpdated }: { offer: OfferItem; onUpdated: ()
           />
           <div className="flex gap-2">
             <Button
-              size="sm"
+              size="dense"
               variant="destructive"
-              className="h-8"
+              className=""
               onClick={() => handleRespond("declined")}
               disabled={responding}
             >
               {responding && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}
               {t("confirmDecline")}
             </Button>
-            <Button size="sm" variant="ghost" className="h-8" onClick={() => setShowDeclineForm(false)}>
+            <Button size="dense" variant="ghost" className="" onClick={() => setShowDeclineForm(false)}>
               {t("cancel")}
             </Button>
           </div>
@@ -589,14 +590,14 @@ function DocumentsSection({
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-base font-semibold flex items-center gap-2">
+        <h2 className="heading-section font-semibold flex items-center gap-2">
           <Paperclip className="h-4 w-4" /> {t("documents")} ({documents.length})
         </h2>
         {isActive && (
           <Button
-            size="sm"
+            size="dense"
             variant="outline"
-            className="gap-1.5 h-8"
+            className="gap-1.5"
             onClick={() => setShowUpload(!showUpload)}
           >
             <Plus className="h-3.5 w-3.5" /> {t("addDocument")}
@@ -647,7 +648,7 @@ function DocumentsSection({
       {/* Add Document Form */}
       {showUpload && (
         <div className="card-base rounded-xl border space-y-3 panel-body">
-          <h3 className="text-sm font-medium">{t("addDocument")}</h3>
+          <h3 className="heading-label font-medium">{t("addDocument")}</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="text-xs font-medium">{t("documentName")}</label>
@@ -690,15 +691,15 @@ function DocumentsSection({
           </div>
           <div className="flex gap-2">
             <Button
-              size="sm"
-              className="gap-1.5 h-8"
+              size="dense"
+              className="gap-1.5"
               onClick={handleAdd}
               disabled={!docName.trim() || !docUrl.trim() || uploading}
             >
               {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
               {t("addDocument")}
             </Button>
-            <Button size="sm" variant="ghost" className="h-8" onClick={() => setShowUpload(false)}>
+            <Button size="dense" variant="ghost" className="" onClick={() => setShowUpload(false)}>
               {tc("cancel")}
             </Button>
           </div>

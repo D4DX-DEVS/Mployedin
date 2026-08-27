@@ -169,7 +169,7 @@ export function AvailabilityCalendar({
 
       {/* Summary badge */}
       {selectedDays.length > 0 && (
-        <div className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2">
+        <div className="rounded-xl border border-primary/20 bg-primary/5 chip-pad">
           <p className="text-xs text-primary font-medium">
             {t("availabilityActive")}
           </p>

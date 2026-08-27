@@ -22,8 +22,7 @@ import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CascadingLocationPicker } from "@/components/shared/CascadingLocationPicker";
 import { usePagination } from "@/hooks/usePagination";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import {
-  SuperAgentMetricsGrid,
+import {
   SuperAgentPageIntro,
   SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
@@ -132,6 +131,9 @@ export default function SuperAgentAgentsPage() {
   const tt = useTranslations("table");
   const tconf = useTranslations("confirm");
   const [agents, setAgents] = useState<AgentRow[]>([]);
+  // Aggregates across every agent assigned to this super agent, not just the
+  // page on screen. The API computes them before slicing.
+  const [totals, setTotals] = useState({ agents: 0, leads: 0, conversions: 0, placements: 0 });
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -162,6 +164,7 @@ export default function SuperAgentAgentsPage() {
       const data = await res.json();
       setAgents(data.items ?? []);
       updateTotal(data.total ?? data.items?.length ?? 0);
+      setTotals(data.totals ?? { agents: data.total ?? 0, leads: 0, conversions: 0, placements: 0 });
     }
     setLoading(false);
   }, [filters, page, limit, updateTotal]);
@@ -259,14 +262,14 @@ export default function SuperAgentAgentsPage() {
   function getPerformanceBadge(agent: AgentRow) {
     const badges: { label: string; className: string }[] = [];
     if (agent.leadsCount === 0) {
-      badges.push({ label: t("badgeNoActivity"), className: "bg-gray-100 text-gray-600 dark:bg-gray-500/20 dark:text-gray-300" });
+      badges.push({ label: t("badgeNoActivity"), className: "bg-gray-100 text-gray-600" });
     } else if (agent.conversionRate >= 50) {
-      badges.push({ label: t("badgeHighPerformer"), className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300" });
+      badges.push({ label: t("badgeHighPerformer"), className: "bg-emerald-100 text-emerald-700" });
     } else if (agent.conversionRate < 15 && agent.leadsCount > 0) {
-      badges.push({ label: t("badgeNeedsAttention"), className: "bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300" });
+      badges.push({ label: t("badgeNeedsAttention"), className: "bg-rose-100 text-rose-700" });
     }
     if (agent.avgResponseHours > 48 && agent.leadsCount > 0) {
-      badges.push({ label: t("badgeSlowResponse"), className: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300" });
+      badges.push({ label: t("badgeSlowResponse"), className: "bg-amber-100 text-amber-700" });
     }
     return badges;
   }
@@ -299,31 +302,34 @@ export default function SuperAgentAgentsPage() {
     ? (filters.convRateMax ? `${filters.convRateMin}-${filters.convRateMax}` : `${filters.convRateMin}+`)
     : "";
 
+  // These read from `totals`, not `agents`. Reducing over `agents` counted only
+  // the rows on the current page, so "Total agents" showed 10 next to a
+  // pagination footer reading "1–10 of 57".
   const kpis = [
     {
       label: t("totalAgents"),
-      value: agents.length,
+      value: totals.agents,
       helper: t("totalAgentsHelper"),
       icon: <Users2 className="h-5 w-5" />,
       toneClassName: "workspace-tone-sky",
     },
     {
       label: t("totalLeads"),
-      value: agents.reduce((a, b) => a + (b.leadsCount ?? 0), 0),
+      value: totals.leads,
       helper: t("totalLeadsHelper"),
       icon: <Target className="h-5 w-5" />,
       toneClassName: "workspace-tone-emerald",
     },
     {
       label: t("conversions"),
-      value: agents.reduce((a, b) => a + (b.conversions ?? 0), 0),
+      value: totals.conversions,
       helper: t("conversionsHelper"),
       icon: <Activity className="h-5 w-5" />,
       toneClassName: "workspace-tone-indigo",
     },
     {
       label: t("placements"),
-      value: agents.reduce((a, b) => a + (b.placements ?? 0), 0),
+      value: totals.placements,
       helper: t("placementsHelper"),
       icon: <BriefcaseBusiness className="h-5 w-5" />,
       toneClassName: "workspace-tone-amber",
@@ -353,35 +359,39 @@ export default function SuperAgentAgentsPage() {
 
   return (
     <div className="page-container">
+      {/* The "Roster / N visible rows / stays in sync with pagination" box is
+          gone: the pagination footer already states the count, and explaining
+          that pagination works is not information. */}
       <SuperAgentPageIntro
         title={t("pageTitle")}
         description={t("pageDescription")}
       >
-        <div className="flex flex-col gap-3 sm:min-w-[160px] xl:min-w-[180px]">
-          <div className="hidden workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:block">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("roster")}</p>
-            <p className="mt-1 text-lg font-semibold text-foreground">{total} {t("visibleRows")}</p>
-            <p className="text-xs text-muted-foreground">{t("paginationSync")}</p>
-          </div>
-          <Button
-            onClick={() => { setCreateError(""); setShowCreate(true); }}
-            className="gap-2 w-full"
-          >
-            <Plus className="h-4 w-4" />
-            {t("addAgent")}
-          </Button>
-        </div>
+        {/* Insights live here as one button that opens a dialog. As four cards
+            they sat between the heading and the table on every visit. */}
+        <SuperAgentInsightsPanel asDialog />
+        <Button
+          onClick={() => { setCreateError(""); setShowCreate(true); }}
+          className="gap-2"
+        >
+          <Plus className="h-4 w-4" />
+          {t("addAgent")}
+        </Button>
       </SuperAgentPageIntro>
 
-      <SuperAgentInsightsPanel />
+      {/* One compact line instead of four large tiles. These are context for the
+          table below, not the reason anyone opens this page — as cards they
+          pushed the first agent row off the first screen. */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-muted-foreground">
+        {kpis.map((k, i) => (
+          <span key={k.label} className="flex items-center gap-1.5">
+            {i > 0 && <span className="text-border">·</span>}
+            <span className="font-semibold tabular-nums text-foreground">{k.value}</span>
+            {k.label}
+          </span>
+        ))}
+      </div>
 
-      <SuperAgentMetricsGrid items={kpis} />
-
-      <SuperAgentSection
-        eyebrow={t("teamReviewEyebrow")}
-        title={t("teamReviewTitle")}
-        description={t("teamReviewDescription")}
-      >
+      <SuperAgentSection title={t("teamReviewTitle")} className="[&>div:first-child]:sr-only">
         {/* ── Search Row + Advanced Toggle ── */}
         <TableToolbar
           search={filters.search}
@@ -486,7 +496,7 @@ export default function SuperAgentAgentsPage() {
                     key={chip.label}
                     type="button"
                     onClick={chip.action}
-                    className="rounded-lg border border-border/60 bg-secondary/50 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-all"
+                    className="rounded-lg border border-border/60 bg-secondary/50 text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-all chip-pad"
                   >
                     {chip.label}
                   </button>
@@ -608,13 +618,13 @@ export default function SuperAgentAgentsPage() {
 
           <div className="space-y-4">
             {createError && (
-              <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
+              <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 text-sm text-destructive chip-pad">
                 <AlertCircle className="h-4 w-4 shrink-0" />{createError}
               </div>
             )}
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{t("formLabelFullName")} <span className="text-destructive">*</span></Label>
                 <Input
                   value={createForm.name}
@@ -622,7 +632,7 @@ export default function SuperAgentAgentsPage() {
                   placeholder={t("formPlaceholderAgentFullName")}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{tc("email")} <span className="text-destructive">*</span></Label>
                 <Input
                   type="email"
@@ -631,7 +641,7 @@ export default function SuperAgentAgentsPage() {
                   placeholder={t("formPlaceholderEmail")}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{t("formLabelPassword")} <span className="text-destructive">*</span></Label>
                 <Input
                   type="password"
@@ -640,7 +650,7 @@ export default function SuperAgentAgentsPage() {
                   placeholder={t("formPlaceholderPassword")}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{t("formLabelCommissionRate")}</Label>
                 <Input
                   type="number"

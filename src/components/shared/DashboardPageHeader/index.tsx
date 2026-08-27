@@ -82,7 +82,7 @@ export function DashboardPageHeader({
           </Heading>
           {description && (
             <p className={cn(
-              "mt-1 line-clamp-2 max-w-2xl text-xs leading-4 text-muted-foreground sm:line-clamp-1 sm:text-sm sm:leading-5",
+              "mt-1 max-w-2xl text-xs leading-5 text-muted-foreground sm:text-sm",
               compactOnMobile && "hidden sm:block"
             )}>
               {description}
@@ -100,16 +100,14 @@ export function DashboardPageHeader({
                 <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                   {summary.label}
                 </p>
-                <p className="mt-0.5 text-sm font-semibold leading-5 text-foreground sm:text-lg sm:leading-6">{summary.value}</p>
+                <div className="mt-0.5 text-sm font-semibold leading-5 text-foreground sm:text-lg sm:leading-6">{summary.value}</div>
                 {summary.note && (
-                  <p className="hidden truncate text-xs text-muted-foreground sm:block">{summary.note}</p>
+                  <div className="hidden truncate text-xs text-muted-foreground sm:block">{summary.note}</div>
                 )}
               </div>
             )}
             {actions && (
-              /* One horizontally scrollable row on phones. Wrapping turned 3
-                 actions into 3 stacked rows and pushed the list below the fold. */
-              <div className="flex min-w-0 max-w-full items-center gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>*]:shrink-0 sm:flex-wrap sm:overflow-visible">
+              <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2 [&>*]:shrink-0">
                 {actions}
               </div>
             )}
@@ -121,13 +119,11 @@ export function DashboardPageHeader({
         <div
           className={cn(
             "mt-3 grid border-y border-border/60 sm:mt-4",
-            // Always one row, even on phones — value/label text shrinks instead,
-            // so 4-5 stats don't stack into a tall multi-row block.
             metrics.length === 1 && "grid-cols-1",
             metrics.length === 2 && "grid-cols-2",
-            metrics.length === 3 && "grid-cols-3",
-            metrics.length === 4 && "grid-cols-4",
-            metrics.length >= 5 && "grid-cols-5",
+            metrics.length === 3 && "grid-cols-2 sm:grid-cols-3",
+            metrics.length === 4 && "grid-cols-2 md:grid-cols-4",
+            metrics.length >= 5 && "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5",
             metricsClassName
           )}
         >
@@ -152,13 +148,16 @@ export function DashboardPageHeader({
                     {metric.label}
                   </p>
                   <div className="mt-1 flex min-w-0 items-baseline gap-2">
-                    <p className="line-clamp-2 text-sm font-semibold leading-tight tracking-tight text-foreground sm:text-2xl sm:leading-none">
+                    {/* The value is a number — it must never wrap. line-clamp-2 here
+                        broke "10" into "1" / "0" once the note squeezed the cell.
+                        The note absorbs the squeeze by truncating instead. */}
+                    <div className="shrink-0 whitespace-nowrap text-sm font-semibold leading-tight tracking-tight text-foreground sm:text-2xl sm:leading-none">
                       {metric.value}
-                    </p>
+                    </div>
                     {metric.note && (
-                      <p className="hidden truncate text-xs text-muted-foreground sm:block">
+                      <div className="hidden min-w-0 truncate text-xs text-muted-foreground sm:block">
                         {metric.note}
-                      </p>
+                      </div>
                     )}
                   </div>
                 </div>

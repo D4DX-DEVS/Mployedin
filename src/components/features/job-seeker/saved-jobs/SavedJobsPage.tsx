@@ -96,7 +96,7 @@ export function SavedJobsPage({ locale }: { locale: string }) {
         {[...Array(5)].map((_, i) => (
           <div
             key={i}
-            className="h-24 animate-pulse rounded-[24px] bg-muted/60"
+            className="h-24 animate-pulse rounded-3xl bg-muted/60"
           />
         ))}
       </div>
@@ -105,7 +105,7 @@ export function SavedJobsPage({ locale }: { locale: string }) {
 
   if (isError) {
     return (
-      <div className="rounded-xl sm:rounded-[26px] border border-dashed border-border bg-muted/20 px-4 py-12 sm:px-6 text-center">
+      <div className="rounded-xl sm:rounded-3xl border border-dashed border-border bg-muted/20 px-4 py-12 sm:px-6 text-center">
         <Bookmark className="mx-auto h-8 w-8 text-muted-foreground/50 mb-3" />
         <div className="text-lg font-semibold">{t("errorTitle")}</div>
         <p className="mt-2 text-sm text-muted-foreground">
@@ -122,7 +122,7 @@ export function SavedJobsPage({ locale }: { locale: string }) {
     <div className="space-y-4">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground">
+        <h1 className="heading-page text-foreground">
           {t("title")}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -131,7 +131,7 @@ export function SavedJobsPage({ locale }: { locale: string }) {
       </div>
 
       {!hasItems ? (
-        <div className="rounded-xl sm:rounded-[26px] border border-dashed border-border bg-muted/20 px-4 py-12 sm:px-6 text-center">
+        <div className="rounded-xl sm:rounded-3xl border border-dashed border-border bg-muted/20 px-4 py-12 sm:px-6 text-center">
           <Bookmark className="mx-auto h-8 w-8 text-muted-foreground/50 mb-3" />
           <div className="text-lg font-semibold">{t("emptyTitle")}</div>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -157,7 +157,7 @@ export function SavedJobsPage({ locale }: { locale: string }) {
             return (
               <div
                 key={savedJob._id}
-                className="group flex flex-col gap-3 sm:gap-4 rounded-lg sm:rounded-[20px] border border-border/60 bg-background px-3 py-3 sm:px-4 sm:py-4 transition-all hover:border-primary/25 hover:shadow-sm"
+                className="group flex flex-col gap-3 sm:gap-4 rounded-lg sm:rounded-3xl border border-border/60 bg-background transition-all hover:border-primary/25 hover:shadow-sm card-pad"
               >
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0 flex-1">

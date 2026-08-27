@@ -4,7 +4,8 @@ import { useEffect, useState, useRef } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
-import { DollarSign, CalendarDays, Clock3, CircleCheckBig, Eye, X, FileText, FileDown, ChevronDown } from "lucide-react";
+import { DollarSign, Eye, X, FileDown, ChevronDown } from "lucide-react";
+import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,15 +19,16 @@ import { useOffers, useWithdrawOffer } from "@/hooks/useOffers";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { Offer, OfferStatus } from "@/hooks/useOffers";
 import type { ExportColumn } from "@/lib/export";
+import { formatCount, formatDate as formatIntlDate } from "@/lib/ui/intlFormat";
 
 function getStatusColor(status: OfferStatus): string {
   switch (status) {
-    case "pending": return "bg-status-shortlisted-bg text-status-shortlisted border-status-shortlisted/20 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30";
-    case "accepted": return "bg-status-selected-bg text-emerald-700 border-status-selected/20 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30";
-    case "declined": return "bg-status-rejected-bg text-status-rejected border-status-rejected/20 dark:bg-red-500/15 dark:text-red-300 dark:border-red-500/30";
-    case "expired": return "bg-secondary/75 text-muted-foreground border-border dark:bg-slate-500/80 dark:text-muted-foreground dark:border-slate-700";
-    case "withdrawn": return "bg-status-shortlisted-bg text-status-shortlisted border-status-shortlisted/20 dark:bg-amber-500/15 dark:text-orange-300 dark:border-orange-500/30";
-    default: return "bg-secondary/75 text-muted-foreground border-border dark:bg-slate-500/80 dark:text-muted-foreground dark:border-slate-700";
+    case "pending": return "bg-status-shortlisted-bg text-status-shortlisted border-status-shortlisted/20";
+    case "accepted": return "bg-status-selected-bg text-emerald-700 border-status-selected/20";
+    case "declined": return "bg-status-rejected-bg text-status-rejected border-status-rejected/20";
+    case "expired": return "bg-secondary/75 text-muted-foreground border-border";
+    case "withdrawn": return "bg-status-shortlisted-bg text-status-shortlisted border-status-shortlisted/20";
+    default: return "bg-secondary/75 text-muted-foreground border-border";
   }
 }
 
@@ -91,7 +93,7 @@ export default function EmployerOffersPage() {
   useEffect(() => {
     if (skipFilterResetRef.current) { skipFilterResetRef.current = false; return; }
     setPage(1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [statusFilter, jobFilter]);
 
   async function handleWithdraw(offerId: string) {
@@ -112,19 +114,14 @@ export default function EmployerOffersPage() {
   const isExpired = (offer: Offer) =>
     new Date(offer.expiresAt) < new Date() && offer.status === "pending";
 
-  const pendingCount = offers.filter((o) => o.status === "pending").length;
-  const acceptedCount = offers.filter((o) => o.status === "accepted").length;
-  const expiringSoonCount = offers.filter((offer) => isExpiring(offer)).length;
-  const respondedCount = offers.filter((offer) => offer.respondedAt).length;
-
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
     { header: t("candidate"), key: "jobSeekerId", formatter: (_v, r) => { const o = r as unknown as Offer; return candidateName(o); } },
     { header: t("role"), key: "jobId", formatter: (_v, r) => (r as Record<string, any>).jobId?.title || t("untitledRole") },
-    { header: t("salary"), key: "salary", formatter: (_v, r) => { const o = r as Record<string, any>; return `${o.salary?.currency} ${o.salary?.amount?.toLocaleString()}`; } },
-    { header: t("startDate"), key: "startDate", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : t("notSet") },
+    { header: t("salary"), key: "salary", formatter: (_v, r) => { const o = r as Record<string, any>; return `${o.salary?.currency} ${formatCount(o.salary?.amount)}`; } },
+    { header: t("startDate"), key: "startDate", formatter: (v) => v ? formatIntlDate(new Date(String(v))) : t("notSet") },
     { header: t("status"), key: "status", formatter: (v) => String(v ?? "—") },
-    { header: t("expired"), key: "expiresAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : t("notSet") },
-    { header: t("createdAt"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
+    { header: t("expired"), key: "expiresAt", formatter: (v) => v ? formatIntlDate(new Date(String(v))) : t("notSet") },
+    { header: t("createdAt"), key: "createdAt", formatter: (v) => v ? formatIntlDate(new Date(String(v))) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: offers as unknown as Record<string, unknown>[],
@@ -135,7 +132,7 @@ export default function EmployerOffersPage() {
 
   function formatDate(value?: string): string {
     if (!value) return t("notSet");
-    return new Date(value).toLocaleDateString(undefined, {
+    return formatIntlDate(new Date(value), {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -144,7 +141,7 @@ export default function EmployerOffersPage() {
 
   function formatSalary(offer: Offer): string {
     if (!offer.salary?.amount) return t("notDisclosed");
-    return `${offer.salary.currency ?? "AED"} ${offer.salary.amount.toLocaleString()}`;
+    return `${offer.salary.currency ?? "AED"} ${formatCount(offer.salary.amount)}`;
   }
 
   function candidateName(offer: Offer): string {
@@ -154,113 +151,82 @@ export default function EmployerOffersPage() {
   return (
     <div className="page-container">
       <DashboardPageHeader
-        icon={DollarSign}
-        eyebrow={t("pending")}
-        title={t("pending")}
-        metrics={[
-          { label: t("pending"), value: pendingCount, note: t("pendingNote"), icon: Clock3 },
-          { label: t("accepted"), value: acceptedCount, note: t("acceptedNote"), icon: CircleCheckBig },
-          { label: t("expired"), value: expiringSoonCount, note: t("expiringNote"), icon: CalendarDays },
-          { label: t("responded"), value: respondedCount, note: t("respondedNote"), icon: FileText },
-        ]}
+        title={t("title")}
+        description={t("subtitle")}
+        compactOnMobile
       />
 
-      <section className="workspace-panel-surface rounded-[28px] panel-body">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("filterDecisions")}</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("filterTitle")}</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-              {t("filterDescription")}
+      {/* One panel: filters + export in the list header, states swap below.
+          The old separate filter card and metric tiles duplicated this info. */}
+      <section className="workspace-panel-surface rounded-3xl panel-body">
+        {/* Single toolbar row: label, filters and export inline. Offer count
+            lives in the pagination footer, not repeated here. */}
+        <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3 sm:gap-3 sm:pb-4">
+          <div className="flex w-full items-center gap-1.5 sm:me-auto sm:w-auto">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              {t("offerList")}
             </p>
+            {/* Privacy info at the point candidate data is shown, compacted to
+                an icon + popover to keep the list above the fold. */}
+            <CandidateDataNotice variant="candidateList" compact />
           </div>
-
-          {/* Both selects share one row — full-width stacking pushed the offer
-              list a whole screen down on phones. */}
-          <div className="grid grid-cols-2 items-center gap-2 sm:flex sm:flex-wrap sm:gap-3">
-            <SearchableSelect
-              className="w-full min-w-0 sm:w-60"
-              options={jobOptions}
-              value={jobFilter}
-              onValueChange={setJobFilter}
-              placeholder={t("allJobs")}
-            />
-            <SearchableSelect
-              className="w-full min-w-0 sm:w-60"
-              options={STATUS_OPTIONS}
-              value={statusFilter}
-              onValueChange={setStatusFilter}
-              placeholder={t("allStatuses")}
-            />
-          </div>
-        </div>
-      </section>
-
-      {error ? (
-        <section className="workspace-panel-surface rounded-[28px] border border-red-500/20 panel-body">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-rejected">{t("offerList")}</p>
-              <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{tc("somethingWentWrong")}</h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                {error instanceof Error ? error.message : t("offerListDesc")}
-              </p>
-            </div>
-            <Button className="h-11 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90" onClick={() => void refetch()}>
-              {tc("tryAgain")}
-            </Button>
-          </div>
-        </section>
-      ) : loading ? (
-        <section className="workspace-panel-surface rounded-[28px] panel-body">
-          <div className="mb-5 flex items-center justify-between gap-4">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("offerList")}</p>
-              <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{tc("loading")}</h2>
-            </div>
-          </div>
-          <div className="space-y-3">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-24 animate-pulse rounded-2xl border border-border bg-background/60" />
-            ))}
-          </div>
-        </section>
-      ) : offers.length === 0 ? (
-        <section className="workspace-panel-surface rounded-[28px] panel-body">
-          <div className="flex flex-col items-center py-14 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-status-applied-bg text-status-applied">
-              <DollarSign className="h-7 w-7" />
-            </div>
-            <h2 className="mt-5 text-2xl font-semibold tracking-tight text-foreground">{t("noOffers")}</h2>
-            <p className="mt-3 max-w-md text-sm leading-6 text-muted-foreground">
-              {t("noOffersDesc")}
-            </p>
-            <Button asChild className="mt-6 h-11 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
-              <Link href={`/${locale}/employer/applications`}>{t("openPipeline")}</Link>
-            </Button>
-          </div>
-        </section>
-      ) : (
-        <section className="workspace-panel-surface rounded-[28px] panel-body">
-          {/* Export sits on the heading row and the filter blurb (already shown
-              verbatim in the filter card above) is desktop-only — together they
-              cost ~120px of phone height for nothing. */}
-          <div className="flex flex-row items-start justify-between gap-3 border-b border-border pb-3 sm:items-end sm:pb-5">
-            <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("offerList")}</p>
-              <h2 className="mt-1 text-base font-semibold tracking-tight text-foreground sm:mt-2 sm:text-xl">{t("offerListDesc")}</h2>
-              <p className="mt-2 hidden text-sm leading-6 text-muted-foreground sm:block">
-                {t("filterDescription")}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground sm:mt-2 sm:text-sm">{offers.length} {t("offersCount")}</p>
-            </div>
+          <SearchableSelect
+            className="min-w-0 flex-1 sm:w-52 sm:flex-none"
+            options={jobOptions}
+            value={jobFilter}
+            onValueChange={setJobFilter}
+            placeholder={t("allJobs")}
+          />
+          <SearchableSelect
+            className="min-w-0 flex-1 sm:w-44 sm:flex-none"
+            options={STATUS_OPTIONS}
+            value={statusFilter}
+            onValueChange={setStatusFilter}
+            placeholder={t("allStatuses")}
+          />
+          {offers.length > 0 && (
             <TableToolbar
               onExportCsv={handleExportCsv}
               onExportExcel={handleExportExcel}
               onExportPdf={handleExportPdf}
               className="shrink-0"
             />
+          )}
+        </div>
+
+        {error ? (
+          <div className="flex flex-col gap-4 pt-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="heading-section font-semibold tracking-tight text-foreground">{tc("somethingWentWrong")}</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                {t("loadError")}
+              </p>
+            </div>
+            <Button size="lg" className="rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90" onClick={() => void refetch()}>
+              {tc("tryAgain")}
+            </Button>
           </div>
+        ) : loading ? (
+          <div className="space-y-3 pt-5">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-24 animate-pulse rounded-2xl border border-border bg-background/60" />
+            ))}
+          </div>
+        ) : offers.length === 0 ? (
+          <div className="flex flex-col items-center py-8 text-center sm:py-14">
+            <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-status-applied-bg text-status-applied">
+              <DollarSign className="h-7 w-7" />
+            </div>
+            <h2 className="heading-section mt-5 font-semibold tracking-tight text-foreground">{t("noOffers")}</h2>
+            <p className="mt-3 max-w-md text-sm leading-6 text-muted-foreground">
+              {t("noOffersDesc")}
+            </p>
+            <Button size="lg" asChild className="mt-6 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
+              <Link href={`/${locale}/employer/applications`}>{t("openPipeline")}</Link>
+            </Button>
+          </div>
+        ) : (
+          <>
 
           {/* Phones get compact expandable rows. The shared <Table> stacks every
               cell into a labelled block, which turned one offer into a screenful. */}
@@ -303,14 +269,14 @@ export default function EmployerOffersPage() {
                         <dd className="text-end text-foreground">{formatDate(offer.createdAt)}</dd>
                       </dl>
                       <div className="mt-2 flex gap-2">
-                        <Button size="sm" variant="outline" className="h-8 flex-1 rounded-lg text-[11px] font-semibold"
+                        <Button size="dense" variant="outline" className="flex-1 rounded-lg text-[11px] font-semibold"
                           onClick={() => setDetailOffer(offer)}>
                           <Eye className="me-1 h-3.5 w-3.5" />
                           {tc("view")}
                         </Button>
                         {offer.status === "pending" && !isExpired(offer) ? (
-                          <Button size="sm" variant="outline"
-                            className="h-8 flex-1 rounded-lg text-[11px] font-semibold text-status-rejected"
+                          <Button size="dense" variant="outline"
+                            className="flex-1 rounded-lg text-[11px] font-semibold text-status-rejected"
                             onClick={() => setWithdrawingId(offer._id)}>
                             <X className="me-1 h-3.5 w-3.5" />
                             {t("withdraw")}
@@ -380,14 +346,14 @@ export default function EmployerOffersPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-2">
-                        <Button size="sm" variant="ghost" className="h-8 rounded-xl px-3 text-xs font-semibold"
+                        <Button size="dense" variant="ghost" className="rounded-xl px-3 text-xs font-semibold"
                           onClick={() => setDetailOffer(offer)}>
                           <Eye className="me-1 h-3.5 w-3.5" />
                           {tc("view")}
                         </Button>
                         {offer.status === "pending" && !isExpired(offer) ? (
-                          <Button size="sm" variant="ghost"
-                            className="h-8 rounded-xl px-3 text-xs font-semibold text-status-rejected hover:bg-status-rejected-bg hover:text-status-rejected"
+                          <Button size="dense" variant="ghost"
+                            className="rounded-xl px-3 text-xs font-semibold text-status-rejected hover:bg-status-rejected-bg hover:text-status-rejected"
                             onClick={() => setWithdrawingId(offer._id)}>
                             <X className="me-1 h-3.5 w-3.5" />
                             {t("withdraw")}
@@ -400,9 +366,11 @@ export default function EmployerOffersPage() {
               </TableBody>
             </Table>
           </div>
-        </section>
-      )}
+          </>
+        )}
+      </section>
 
+      {total > 0 && (
       <PaginationControls
         page={page}
         totalPages={totalPages}
@@ -411,13 +379,14 @@ export default function EmployerOffersPage() {
         onPageChange={setPage}
         onLimitChange={(l) => { setLimit(l); setPage(1); }}
       />
+      )}
 
       {withdrawingId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-6 backdrop-blur-sm">
-          <div className="w-full max-w-md overflow-hidden rounded-[28px] border border-border bg-background shadow-[0_30px_90px_-36px_rgba(15,23,42,0.5)]">
+          <div className="w-full max-w-md overflow-hidden rounded-3xl border border-border bg-background shadow-[0_30px_90px_-36px_rgba(15,23,42,0.5)]">
             <div className="border-b border-border/60 px-6 py-5">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("offerAction")}</p>
-              <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("withdrawConfirm")}</h2>
+              <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("withdrawConfirm")}</h2>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 {t("withdrawConfirmDesc")}
               </p>
@@ -434,14 +403,14 @@ export default function EmployerOffersPage() {
 
       {detailOffer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-6 backdrop-blur-sm">
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[28px] border border-border bg-background shadow-[0_30px_90px_-36px_rgba(15,23,42,0.5)]">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-border bg-background shadow-[0_30px_90px_-36px_rgba(15,23,42,0.5)]">
             <div className="flex items-start justify-between gap-4 panel-head">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("offerDetail")}</p>
-                <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{detailOffer.jobId?.title}</h2>
+                <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{detailOffer.jobId?.title}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">{t("offerDetailDesc")}</p>
               </div>
-              <Button size="sm" variant="ghost" className="h-9 w-9 rounded-full p-0" onClick={() => setDetailOffer(null)}>
+              <Button size="sm" variant="ghost" className="w-9 rounded-full p-0" onClick={() => setDetailOffer(null)}>
                 <X className="w-4 h-4" />
               </Button>
             </div>
@@ -462,7 +431,7 @@ export default function EmployerOffersPage() {
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("salary")}</p>
                   <p className="mt-2 text-sm font-semibold text-foreground">
-                    {detailOffer.salary.currency} {detailOffer.salary.amount.toLocaleString()} / {detailOffer.salary.period}
+                    {detailOffer.salary.currency} {formatCount(detailOffer.salary.amount)} / {detailOffer.salary.period}
                   </p>
                 </div>
                 <div>
@@ -479,13 +448,13 @@ export default function EmployerOffersPage() {
                 </div>
               </div>
               {detailOffer.benefits && (
-                <div className="rounded-2xl border border-border bg-background/60 px-4 py-4">
+                <div className="rounded-2xl border border-border bg-background/60 card-pad">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("benefitsLabel")}</p>
                   <p className="mt-2 text-sm leading-6 text-foreground/85">{detailOffer.benefits}</p>
                 </div>
               )}
               {detailOffer.notes && (
-                <div className="rounded-2xl border border-border bg-background/60 px-4 py-4">
+                <div className="rounded-2xl border border-border bg-background/60 card-pad">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("notesLabel")}</p>
                   <p className="mt-2 text-sm leading-6 text-foreground/85">{detailOffer.notes}</p>
                 </div>
@@ -497,7 +466,7 @@ export default function EmployerOffersPage() {
                 </div>
               )}
               {detailOffer.declineReason && (
-                <div className="rounded-2xl border border-status-rejected/20 bg-status-rejected-bg px-4 py-4">
+                <div className="rounded-2xl border border-status-rejected/20 bg-status-rejected-bg card-pad">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-status-rejected">{t("declineReason")}</p>
                   <p className="mt-2 text-sm leading-6 text-status-rejected">{detailOffer.declineReason}</p>
                 </div>

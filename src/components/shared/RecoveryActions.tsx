@@ -14,18 +14,13 @@ export function RecoveryActions({ reset }: RecoveryActionsProps) {
   const { locale = "en" } = useParams<{ locale?: string }>();
   const pathname = usePathname();
   const t = useTranslations("errorBoundary");
-  const isEmployer = pathname.includes("/employer");
-  const isJobSeeker = pathname.includes("/job-seeker");
-  const homeHref = isEmployer
-    ? `/${locale}/employer`
-    : isJobSeeker
-      ? `/${locale}/job-seeker`
-      : `/${locale}`;
-  const supportHref = isEmployer
-    ? `/${locale}/employer/messages`
-    : isJobSeeker
-      ? `/${locale}/job-seeker/messages`
-      : `/${locale}/contact`;
+  const role = ["super-agent", "job-seeker", "employer", "agent", "admin"]
+    .find((candidate) => pathname.includes(`/${candidate}`));
+  const homeHref = role ? `/${locale}/${role}` : `/${locale}`;
+  const roleHasMessages = role && ["super-agent", "job-seeker", "employer", "agent", "admin"].includes(role);
+  const supportHref = roleHasMessages
+    ? `/${locale}/${role}/messages`
+    : `/${locale}/contact`;
 
   return (
     <div className="grid w-full grid-cols-2 gap-2 pt-2">

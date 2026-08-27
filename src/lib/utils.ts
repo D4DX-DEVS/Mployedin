@@ -67,11 +67,13 @@ export function getInitials(name: string): string {
 export function formatCurrency(
   amount: number,
   currency = "USD",
-  locale = "en"
+  locale = "en",
+  currencyDisplay: "symbol" | "narrowSymbol" | "code" | "name" = "symbol",
 ): string {
   return new Intl.NumberFormat(locale === "ar" ? "ar-SA" : "en-US", {
     style: "currency",
     currency,
+    currencyDisplay,
     minimumFractionDigits: 0,
   }).format(amount);
 }

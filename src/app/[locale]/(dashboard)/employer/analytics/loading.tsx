@@ -11,7 +11,7 @@ export default function AnalyticsLoading() {
       {/* KPI cards skeleton */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="rounded-lg border border-border bg-card p-4 h-24 animate-pulse" />
+          <div key={i} className="rounded-lg border border-border bg-card h-24 animate-pulse card-pad" />
         ))}
       </div>
       {/* Tab bar skeleton */}
@@ -21,7 +21,7 @@ export default function AnalyticsLoading() {
         ))}
       </div>
       {/* Chart area skeleton */}
-      <div className="rounded-lg border border-border bg-card p-6 h-80 animate-pulse" />
+      <div className="rounded-lg border border-border bg-card h-80 animate-pulse panel-body" />
     </div>
   );
 }

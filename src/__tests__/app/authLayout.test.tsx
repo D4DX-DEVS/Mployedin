@@ -12,10 +12,6 @@ jest.mock("next-auth/react", () => ({
   signOut: jest.fn(),
 }));
 
-jest.mock("@/components/shared/ThemeToggle", () => ({
-  ThemeToggle: () => <button aria-label="theme-toggle">Theme</button>,
-}));
-
 jest.mock("next-intl/server", () => ({
   getTranslations: async () => (key: string, values?: Record<string, string | number>) => {
     const messages: Record<string, string> = {
@@ -29,7 +25,7 @@ jest.mock("next-intl/server", () => ({
 }));
 
 describe("AuthLayout", () => {
-  it("renders the shared theme toggle above auth pages", async () => {
+  it("renders auth page children", async () => {
     render(
       await AuthLayout({
         children: <div>Login form</div>,

@@ -30,6 +30,7 @@ import { Progress } from "@/components/ui/progress";
 import { formatLocalizedLocation, getLocalizedCountryName } from "@/lib/i18n/locations";
 import { cn } from "@/lib/utils";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { DashboardNextAction, DashboardSignalStrip } from "@/components/shared/DashboardOverview";
 
 type FeedJob = {
   _id: string;
@@ -510,9 +511,7 @@ export function JobSeekerHomePage({
     return items.slice(0, 5);
   }, [profile, t]);
   const applicationCount = stats?.applicationsSent?.count ?? 0;
-  const savedJobsCount = stats?.savedJobs?.count ?? 0;
   const interviewCount = stats?.upcomingInterviews?.count ?? 0;
-  const profileViewCount = stats?.recruiterViews?.total ?? 0;
   const quickLinks = [
     {
       label: t("quickAccess.applications"),
@@ -551,15 +550,54 @@ export function JobSeekerHomePage({
     count: suggestions.length,
     countLabel: formatNumber(suggestions.length),
   });
+  const firstSuggestion = suggestions[0];
+  const nextAction = interviewCount > 0
+    ? {
+        title: t("taskFirst.interviewTitle", { count: formatNumber(interviewCount) }),
+        description: t("taskFirst.interviewDescription"),
+        href: `/${locale}/job-seeker/interviews`,
+        icon: CalendarDays,
+        badge: t("taskFirst.timeSensitive"),
+      }
+    : firstSuggestion
+      ? {
+          title: firstSuggestion.title,
+          description: firstSuggestion.body,
+          href: `/${locale}/job-seeker/${firstSuggestion.href}`,
+          icon: Sparkles,
+          badge: t("taskFirst.highImpact"),
+        }
+      : applicationCount > 0
+        ? {
+            title: t("taskFirst.trackApplicationsTitle"),
+            description: t("taskFirst.trackApplicationsDescription"),
+            href: `/${locale}/job-seeker/applications`,
+            icon: FileText,
+            badge: t("taskFirst.keepMoving"),
+          }
+        : {
+            title: t("hero.browseMatchingJobs"),
+            description: t("taskFirst.browseDescription"),
+            href: `/${locale}/job-seeker/jobs`,
+            icon: Search,
+            badge: t("taskFirst.startHere"),
+          };
+
+  const signals = quickLinks.map((item) => ({
+    label: item.label,
+    value: item.value,
+    href: item.href,
+    icon: item.icon,
+  }));
 
   return (
     <>
-      <div className="space-y-4">
-        <section className="overflow-hidden rounded-xl sm:rounded-[28px] border border-border/70 bg-background px-3 py-4 shadow-[0_8px_24px_rgba(15,23,42,0.04)] sm:px-6 sm:py-5">
+      <div className="page-container dashboard-overview-page">
+        <section className="overflow-hidden rounded-xl sm:rounded-3xl border border-border/70 bg-background shadow-[0_8px_24px_rgba(15,23,42,0.04)] panel-body">
           <div className="space-y-4">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
               <div className="min-w-0">
-                <h1 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl md:text-2xl lg:text-[2rem]">{primaryRole}</h1>
+                <h1 className="heading-page text-foreground">{primaryRole}</h1>
                 {otherRolesLabel && (
                   <p className="mt-0.5 text-sm text-muted-foreground/80">{otherRolesLabel}</p>
                 )}
@@ -597,37 +635,34 @@ export function JobSeekerHomePage({
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border/60 pt-3 text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">{activeMatchesCountLabel}</span>
-              <span>
-                <span className="font-semibold text-foreground">{formatNumber(applicationCount)}</span> {t("summary.applications")}
-              </span>
-              <span>
-                <span className="font-semibold text-foreground">{formatNumber(savedJobsCount)}</span> {t("summary.savedJobs")}
-              </span>
-              <span>
-                <span className="font-semibold text-foreground">{formatNumber(interviewCount)}</span> {t("summary.interviews")}
-              </span>
-              <span>
-                <span className="font-semibold text-foreground">{formatNumber(profileViewCount)}</span> {t("summary.profileViews")}
-              </span>
-              {suggestions.length > 0 && (
-                <button type="button" onClick={openGuide} className="inline-flex items-center gap-1 font-medium text-primary transition-colors hover:text-primary/80">
-                  {nextStepsLabel}
-                  <ArrowRight className="h-4 w-4" />
-                </button>
-              )}
-            </div>
+            <p className="border-t border-border/60 pt-3 text-sm font-medium text-foreground">
+              {activeMatchesCountLabel}
+              {suggestions.length > 0 && <span className="ms-2 text-muted-foreground">· {nextStepsLabel}</span>}
+            </p>
           </div>
         </section>
 
+        <DashboardNextAction
+          headingId="job-seeker-next-action"
+          title={t("taskFirst.recommendedNext")}
+          description={t("taskFirst.nextDescription")}
+          actionTitle={nextAction.title}
+          actionDescription={nextAction.description}
+          actionLabel={t("taskFirst.openAction")}
+          href={nextAction.href}
+          icon={nextAction.icon}
+          badge={nextAction.badge}
+        />
+
+        <DashboardSignalStrip headingId="job-seeker-signals" title={t("taskFirst.atAGlance")} signals={signals} />
+
         <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.72fr)_340px] xl:items-start">
           <div className="min-w-0 space-y-5">
-            <section className="card-base overflow-hidden rounded-xl max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:p-0 max-sm:shadow-none sm:rounded-[28px] panel-body">
+            <section className="card-base overflow-hidden rounded-xl max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:p-0 max-sm:shadow-none sm:rounded-3xl panel-body">
               <div className="mb-3 flex flex-col gap-3 sm:mb-4 lg:flex-row lg:items-end lg:justify-between">
                 <div className="min-w-0">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("recommendedJobs.eyebrow")}</div>
-                  <h2 className="mt-1 text-lg font-semibold tracking-tight sm:text-2xl">{t("recommendedJobs.title")}</h2>
+                  <h2 className="heading-section mt-1 font-semibold tracking-tight">{t("recommendedJobs.title")}</h2>
                 </div>
                 <Link href={`/${locale}/job-seeker/jobs`} className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline">
                   {t("recommendedJobs.viewAll")}
@@ -636,7 +671,7 @@ export function JobSeekerHomePage({
               </div>
 
               {homeDataError && (
-                <div className="mb-4 rounded-[20px] border border-[hsl(var(--status-shortlisted)/0.18)] bg-[hsl(var(--status-shortlisted-bg))] px-4 py-3 text-sm text-foreground">
+                <div className="mb-4 rounded-3xl border border-[hsl(var(--status-shortlisted)/0.18)] bg-[hsl(var(--status-shortlisted-bg))] px-4 py-3 text-sm text-foreground">
                   {homeDataError}
                 </div>
               )}
@@ -644,7 +679,7 @@ export function JobSeekerHomePage({
               {loading ? (
                 <div className="space-y-3">
                   {[...Array(4)].map((_, index) => (
-                    <div key={index} className="h-36 animate-pulse rounded-[24px] bg-muted/60" />
+                    <div key={index} className="h-36 animate-pulse rounded-3xl bg-muted/60" />
                   ))}
                 </div>
               ) : jobs.length > 0 ? (
@@ -669,7 +704,7 @@ export function JobSeekerHomePage({
                       <Link
                         key={job._id}
                         href={`/${locale}/job-seeker/jobs/${job._id}`}
-                        className="group block overflow-hidden rounded-[18px] border border-border/60 bg-background px-3 py-3 transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_16px_32px_rgba(15,23,42,0.06)] sm:rounded-[22px] sm:px-5 sm:py-4"
+                        className="group block overflow-hidden rounded-2xl border border-border/60 bg-background px-3 py-3 transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_16px_32px_rgba(15,23,42,0.06)] sm:rounded-3xl sm:px-5 sm:py-4"
                       >
                         <div className="flex flex-col gap-2.5 sm:gap-4 lg:flex-row lg:items-start lg:justify-between">
                           <div className="flex min-w-0 gap-3 sm:gap-4">
@@ -696,7 +731,7 @@ export function JobSeekerHomePage({
                               </div>
 
                               <div className="mt-2 sm:mt-3">
-                                <h3 className="text-base font-semibold leading-5 text-foreground transition-colors group-hover:text-primary sm:text-lg sm:leading-6">
+                                <h3 className="heading-subsection font-semibold leading-5 text-foreground transition-colors group-hover:text-primary sm:leading-6">
                                   {job.title}
                                 </h3>
                                 <p className="mt-0.5 text-sm font-medium text-muted-foreground sm:mt-1">{companyName}</p>
@@ -724,7 +759,7 @@ export function JobSeekerHomePage({
                           {/* Phones get a single inline row (label · score · CTA); the
                               stacked bordered score box is kept from sm up. */}
                           <div className="flex items-center justify-between gap-2 border-t border-border/50 pt-2.5 sm:gap-4 sm:pt-4 lg:min-w-[156px] lg:flex-col lg:items-stretch lg:border-s lg:border-t-0 lg:ps-5 lg:pt-0">
-                            <div className="flex items-baseline gap-2 rounded-xl border-border/60 bg-muted/20 px-2.5 py-1.5 text-start sm:block sm:rounded-[18px] sm:border sm:px-4 sm:py-3" aria-label={t("recommendedJobs.matchScoreAria", { score: formatNumber(job.matchScore) })}>
+                            <div className="flex items-baseline gap-2 rounded-xl border-border/60 bg-muted/20 px-2.5 py-1.5 text-start sm:block sm:rounded-2xl sm:border sm:px-4 sm:py-3" aria-label={t("recommendedJobs.matchScoreAria", { score: formatNumber(job.matchScore) })}>
                               <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground sm:text-[11px]">{t("recommendedJobs.matchScore")}</div>
                               <div className="text-base font-semibold tracking-tight text-foreground sm:mt-1 sm:text-2xl">{formatNumber(job.matchScore)}%</div>
                             </div>
@@ -739,7 +774,7 @@ export function JobSeekerHomePage({
                   })}
                 </div>
               ) : (
-                <div className="rounded-xl sm:rounded-[26px] border border-dashed border-border bg-muted/20 px-4 py-8 sm:px-6 sm:py-12 text-center">
+                <div className="rounded-xl sm:rounded-3xl border border-dashed border-border bg-muted/20 px-4 py-8 sm:px-6 sm:py-12 text-center">
                   <div className="text-lg font-semibold">{t("recommendedJobs.emptyTitle")}</div>
                   <p className="mt-2 text-sm text-muted-foreground">
                     {t("recommendedJobs.emptyBody")}
@@ -753,7 +788,7 @@ export function JobSeekerHomePage({
 
               {/* Already applied — shown below recommendations so the user understands why they may see fewer suggestions */}
               {appliedJobs.length > 0 && (
-                <div className="mt-4 rounded-lg border border-border/50 bg-muted/20 px-3 py-3 sm:mt-5 sm:rounded-[22px] sm:px-4 sm:py-4">
+                <div className="mt-4 rounded-lg border border-border/50 bg-muted/20 sm:mt-5 sm:rounded-3xl card-pad">
                   <div className="mb-3 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                       <CheckCircle2 className="h-3.5 w-3.5 text-[hsl(var(--status-selected))]" />
@@ -793,7 +828,7 @@ export function JobSeekerHomePage({
                         <Link
                           key={app._id}
                           href={`/${locale}/job-seeker/jobs/${app._id}`}
-                          className="flex items-center gap-2 rounded-[16px] border border-border/50 bg-background px-2 py-2.5 transition-colors hover:border-primary/20 hover:bg-muted/30 sm:gap-3 sm:px-3"
+                          className="flex items-center gap-2 rounded-2xl border border-border/50 bg-background transition-colors hover:border-primary/20 hover:bg-muted/30 sm:gap-3 chip-pad"
                         >
                           <Avatar className="h-8 w-8 rounded-xl border border-border/60 bg-muted/20 shrink-0">
                             <AvatarImage src={app.companyLogo ?? ""} alt={app.companyName ?? app.title} />
@@ -818,11 +853,11 @@ export function JobSeekerHomePage({
               )}
             </section>
 
-            <section className="card-base overflow-hidden rounded-xl max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:p-0 max-sm:shadow-none sm:rounded-[28px] panel-body">
+            <section className="card-base overflow-hidden rounded-xl max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:p-0 max-sm:shadow-none sm:rounded-3xl panel-body">
               <div className="mb-3 flex flex-col gap-3 sm:mb-5 sm:gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("priorityActions.eyebrow")}</div>
-                  <h2 className="mt-1 text-lg font-semibold tracking-tight sm:text-2xl">{t("priorityActions.title")}</h2>
+                  <h2 className="heading-section mt-1 font-semibold tracking-tight">{t("priorityActions.title")}</h2>
                   {/* Three lines of copy above the fold on a phone — kept from sm up. */}
                   <p className="mt-1 hidden text-sm leading-6 text-muted-foreground sm:block">
                     {t("priorityActions.description")}
@@ -840,10 +875,10 @@ export function JobSeekerHomePage({
                     <Link
                       key={item.id}
                       href={`/${locale}/job-seeker/${item.href}`}
-                      className="flex flex-col gap-3 sm:gap-4 rounded-lg sm:rounded-[20px] border border-border/60 bg-background px-3 py-3 sm:px-4 sm:py-4 transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-sm sm:flex-row sm:items-center sm:justify-between"
+                      className="flex flex-col gap-3 sm:gap-4 rounded-lg sm:rounded-3xl border border-border/60 bg-background transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-sm sm:flex-row sm:items-center sm:justify-between card-pad"
                     >
                       <div className="flex items-start gap-3 sm:gap-4">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg sm:rounded-[16px] bg-primary/[0.08] text-sm font-semibold text-primary">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg sm:rounded-2xl bg-primary/[0.08] text-sm font-semibold text-primary">
                           {formatNumber(index + 1)}
                         </div>
                         <div className="min-w-0">
@@ -864,7 +899,7 @@ export function JobSeekerHomePage({
                   ))}
                 </div>
               ) : (
-                <div className="dashboard-surface-success rounded-[18px] border px-4 py-4 text-foreground sm:rounded-[24px] sm:px-5 sm:py-5">
+                <div className="dashboard-surface-success rounded-2xl border text-foreground sm:rounded-3xl panel-body">
                   <div className="flex items-start gap-3">
                     <CheckCircle2 className="mt-0.5 h-5 w-5 text-[hsl(var(--status-selected))]" />
                     <div>
@@ -880,7 +915,7 @@ export function JobSeekerHomePage({
           </div>
 
           <aside className="min-w-0 space-y-5 xl:sticky xl:top-24">
-            <section className="card-base overflow-hidden rounded-xl sm:rounded-[28px] panel-body">
+            <section className="card-base overflow-hidden rounded-xl sm:rounded-3xl panel-body">
               <div className="flex items-start gap-3 sm:gap-4">
                 <Avatar className="h-12 w-12 shrink-0 ring-4 ring-background shadow-sm sm:h-16 sm:w-16">
                   <AvatarImage src={image} alt={name} />
@@ -891,7 +926,7 @@ export function JobSeekerHomePage({
 
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <h2 className="truncate text-base font-semibold sm:text-lg">{name}</h2>
+                    <h2 className="heading-section truncate font-semibold">{name}</h2>
                     {completion >= 80 && <CheckCircle2 className="h-4 w-4 text-[hsl(var(--status-selected))]" />}
                   </div>
                   <p className="mt-1 line-clamp-3 text-sm leading-6 text-muted-foreground">
@@ -922,14 +957,14 @@ export function JobSeekerHomePage({
               )}
 
               <div className="mt-5 space-y-2">
-                <Link href={`/${locale}/job-seeker/profile`} className="flex items-center justify-between rounded-[20px] border border-border/60 px-4 py-3 text-sm font-medium transition-colors hover:bg-muted/40">
+                <Link href={`/${locale}/job-seeker/profile`} className="flex items-center justify-between rounded-3xl border border-border/60 px-4 py-3 text-sm font-medium transition-colors hover:bg-muted/40">
                   <span className="flex items-center gap-2">
                     <UserCircle className="h-4 w-4 text-primary" />
                     {t("profileCard.updateProfile")}
                   </span>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </Link>
-                <Link href={`/${locale}/job-seeker/preferences`} className="flex items-center justify-between rounded-[20px] border border-border/60 px-4 py-3 text-sm font-medium transition-colors hover:bg-muted/40">
+                <Link href={`/${locale}/job-seeker/preferences`} className="flex items-center justify-between rounded-3xl border border-border/60 px-4 py-3 text-sm font-medium transition-colors hover:bg-muted/40">
                   <span className="flex items-center gap-2">
                     <Target className="h-4 w-4 text-primary" />
                     {t("profileCard.updatePreferences")}
@@ -939,48 +974,7 @@ export function JobSeekerHomePage({
               </div>
             </section>
 
-            <section className="card-base overflow-hidden rounded-xl sm:rounded-[28px] panel-body">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("quickAccess.eyebrow")}</div>
-                  <h3 className="mt-1 text-lg font-semibold tracking-tight">{t("quickAccess.title")}</h3>
-                </div>
-                <CalendarDays className="h-4 w-4 text-primary" />
-              </div>
-              {/* Phones get one compact row per stat (icon · label · value) instead of
-                  four tall 2-up tiles; the tile grid returns from sm up. */}
-              <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 sm:gap-2.5">
-                {quickLinks.map((item) => {
-                  const Icon = item.icon;
-
-                  return (
-                    <Link
-                      key={item.label}
-                      href={item.href}
-                      className="group flex flex-row items-center gap-2.5 rounded-xl border border-border/60 bg-background/80 px-3 py-2 transition-colors hover:border-primary/40 hover:bg-muted/30 sm:flex-col sm:items-start sm:gap-2 sm:rounded-[20px] sm:p-3.5"
-                    >
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary sm:h-9 sm:w-9">
-                        <Icon className="h-4 w-4" />
-                      </span>
-                      <span className="order-3 text-base font-semibold leading-none tracking-tight text-foreground sm:order-none sm:text-2xl">{item.value}</span>
-                      <span className="min-w-0 flex-1 truncate text-xs font-medium text-muted-foreground sm:flex-none">{item.label}</span>
-                    </Link>
-                  );
-                })}
-              </div>
-              <Link
-                href={`/${locale}/job-seeker/preferences`}
-                className="mt-3 flex items-center justify-between rounded-[18px] border border-border/60 px-3.5 py-3 text-sm font-medium transition-colors hover:bg-muted/40"
-              >
-                <span className="flex items-center gap-2">
-                  <Target className="h-4 w-4 text-primary" />
-                  {t("quickAccess.managePreferences")}
-                </span>
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              </Link>
-            </section>
-
-            <section className="card-base overflow-hidden rounded-xl sm:rounded-[28px] panel-body">
+            <section className="card-base overflow-hidden rounded-xl sm:rounded-3xl panel-body">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2 text-primary">
@@ -1021,7 +1015,7 @@ export function JobSeekerHomePage({
               )}
 
               {aiInsightsError && !aiInsightsLoading && (
-                <p className="rounded-[18px] border border-[hsl(var(--status-shortlisted)/0.18)] bg-[hsl(var(--status-shortlisted-bg))] px-3 py-2 text-xs leading-5 text-foreground">
+                <p className="rounded-2xl border border-[hsl(var(--status-shortlisted)/0.18)] bg-[hsl(var(--status-shortlisted-bg))] text-xs leading-5 text-foreground chip-pad">
                   {aiInsightsError}
                 </p>
               )}
@@ -1029,7 +1023,7 @@ export function JobSeekerHomePage({
               {!aiInsightsLoading && aiInsights.length > 0 && (
                 <ul className="space-y-3">
                   {aiInsights.slice(0, 3).map((insight, idx) => (
-                    <li key={`${insight.type}-${insight.title}-${idx}`} className="rounded-[18px] border border-border/60 bg-background/80 px-4 py-3">
+                    <li key={`${insight.type}-${insight.title}-${idx}`} className="rounded-2xl border border-border/60 bg-background/80 px-4 py-3">
                       <div className="text-xs font-semibold text-foreground">{insight.title}</div>
                       <p className="mt-1 text-xs leading-5 text-muted-foreground">{insight.message}</p>
                     </li>
@@ -1071,7 +1065,7 @@ export function JobSeekerHomePage({
             <div className="flex items-center justify-between panel-head">
               <div>
                 <div className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">{t("drawer.eyebrow")}</div>
-                <h2 id="ai-guide-title" className="mt-1 text-2xl font-semibold tracking-tight">{t("drawer.title")}</h2>
+                <h2 id="ai-guide-title" className="heading-section mt-1 font-semibold tracking-tight">{t("drawer.title")}</h2>
               </div>
               <button
                 onClick={closeGuide}
@@ -1100,7 +1094,7 @@ export function JobSeekerHomePage({
 
               <div className="space-y-3">
                 {suggestions.length > 0 ? suggestions.map((item) => (
-                  <div key={item.id} className="rounded-3xl border border-border/60 px-5 py-4 transition-all hover:border-primary/30">
+                  <div key={item.id} className="rounded-3xl border border-border/60 transition-all hover:border-primary/30 panel-body">
                     <div className="text-base font-semibold">{item.title}</div>
                     <p className="mt-1 text-sm leading-6 text-muted-foreground">{item.body}</p>
 
@@ -1166,7 +1160,7 @@ export function JobSeekerHomePage({
                     </div>
                   </div>
                 )) : (
-                  <div className="dashboard-surface-success rounded-3xl border px-5 py-4 text-sm text-foreground">
+                  <div className="dashboard-surface-success rounded-3xl border text-sm text-foreground panel-body">
                     {t("drawer.completeState")}
                   </div>
                 )}
@@ -1180,7 +1174,7 @@ export function JobSeekerHomePage({
                     <span className="text-sm font-semibold">{t("drawer.personalizedInsights")}</span>
                   </div>
                   {aiInsights.map((insight, idx) => (
-                    <div key={`${insight.type}-${insight.title}-${idx}`} className="rounded-3xl border border-border/60 px-5 py-4">
+                    <div key={`${insight.type}-${insight.title}-${idx}`} className="rounded-3xl border border-border/60 panel-body">
                       <div className="text-sm font-semibold">{insight.title}</div>
                       <p className="mt-1 text-sm leading-6 text-muted-foreground">{insight.message}</p>
                       {insight.action && (
@@ -1191,7 +1185,7 @@ export function JobSeekerHomePage({
                 </div>
               )}
 
-              <div className="rounded-3xl border border-border/60 bg-muted/20 p-5">
+              <div className="rounded-3xl border border-border/60 bg-muted/20 panel-body">
                 <div className="text-sm font-semibold">{t("drawer.howThisHelpsTitle")}</div>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
                   {t("drawer.howThisHelpsBody")}
@@ -1199,12 +1193,12 @@ export function JobSeekerHomePage({
               </div>
 
               <div className="flex gap-3 pt-2">
-                <Button asChild className="h-11 rounded-full px-5">
+                <Button size="lg" asChild className="rounded-full px-5">
                   <Link href={`/${locale}/job-seeker/jobs`} onClick={closeGuide}>
                     {t("drawer.browseJobs")}
                   </Link>
                 </Button>
-                <Button type="button" variant="outline" className="h-11 rounded-full px-5" onClick={closeGuide}>
+                <Button size="lg" type="button" variant="outline" className="rounded-full px-5" onClick={closeGuide}>
                   {t("drawer.notNow")}
                 </Button>
               </div>

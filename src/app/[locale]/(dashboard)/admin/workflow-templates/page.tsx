@@ -32,6 +32,21 @@ const DEFAULT_STAGES: WorkflowStage[] = [
   { id: "rejected", label: "Rejected", enabled: true, autoProgress: false, order: 8 },
 ];
 
+/* The `label` on a stage is persisted with the template, so DEFAULT_STAGES keeps its
+   English strings — writing the admin's own locale into stored data would make the
+   record locale-dependent. Display is translated by id instead; a stage id that isn't
+   one of these built-ins falls back to whatever label was stored. */
+const DEFAULT_STAGE_LABEL_KEYS: Record<string, string> = {
+  new: "stageNewApplication",
+  screening: "stageAiScreening",
+  shortlisted: "stageShortlisted",
+  interview_scheduled: "stageInterviewScheduled",
+  interview_completed: "stageInterviewCompleted",
+  offer_extended: "stageOfferExtended",
+  accepted: "stageOfferAccepted",
+  rejected: "stageRejected",
+};
+
 const DEFAULT_SETTINGS: WorkflowSettings = {
   aiAutoScreen: true,
   notifyOnStageChange: true,
@@ -71,6 +86,8 @@ function templateToForm(t: WorkflowTemplateItem): TemplateFormState {
 
 export default function AdminWorkflowTemplatesPage() {
   const tr = useTranslations("adminWorkflowTemplates");
+  const stageLabel = (stage: WorkflowStage) =>
+    DEFAULT_STAGE_LABEL_KEYS[stage.id] ? tr(DEFAULT_STAGE_LABEL_KEYS[stage.id]) : stage.label;
   const { data: templates, isLoading } = useAdminWorkflowTemplates();
   const createMut = useCreateAdminWorkflowTemplate();
   const updateMut = useUpdateAdminWorkflowTemplate();
@@ -156,7 +173,6 @@ export default function AdminWorkflowTemplatesPage() {
       <div className="page-container">
         <PageHero
           icon={GitBranch}
-          eyebrow={tr("adminWorkspaceLabel")}
           title={tr("pageTitle")}
           description={tr("pageDescription")}
         />
@@ -171,7 +187,6 @@ export default function AdminWorkflowTemplatesPage() {
     <div className="page-container">
       <PageHero
         icon={GitBranch}
-        eyebrow={tr("adminWorkspaceLabel")}
         title={tr("pageTitle")}
         description={tr("pageDescription")}
         actions={
@@ -183,9 +198,9 @@ export default function AdminWorkflowTemplatesPage() {
 
       {/* ─── Create / Edit Form ─── */}
       {showForm && (
-        <section className="rounded-2xl border border-sky-500/30 bg-sky-500/5 p-4 sm:p-6 space-y-5">
+        <section className="rounded-2xl border border-sky-500/30 bg-sky-500/5 space-y-5 panel-body">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-foreground">
+            <h3 className="heading-subsection font-semibold text-foreground">
               {editId ? tr("editTemplateHeading") : tr("createNewTemplateHeading")}
             </h3>
             <button onClick={closeForm} className="text-muted-foreground hover:text-foreground">
@@ -235,7 +250,7 @@ export default function AdminWorkflowTemplatesPage() {
                   className="h-8 w-32"
                   maxLength={50}
                 />
-                <Button size="sm" variant="ghost" onClick={addTag} className="h-8">
+                <Button size="dense" variant="ghost" onClick={addTag} className="">
                   <Plus className="h-3 w-3" />
                 </Button>
               </div>
@@ -250,21 +265,21 @@ export default function AdminWorkflowTemplatesPage() {
 
           {/* Settings */}
           <div className="grid gap-4 sm:grid-cols-3">
-            <div className="flex items-center gap-3 rounded-xl border border-border bg-background/80 p-3">
+            <div className="flex items-center gap-3 rounded-xl border border-border bg-background/80 chip-pad">
               <Switch
                 checked={form.settings.aiAutoScreen}
                 onCheckedChange={(v) => setForm((f) => ({ ...f, settings: { ...f.settings, aiAutoScreen: v } }))}
               />
               <span className="text-sm">{tr("aiAutoScreenLabel")}</span>
             </div>
-            <div className="flex items-center gap-3 rounded-xl border border-border bg-background/80 p-3">
+            <div className="flex items-center gap-3 rounded-xl border border-border bg-background/80 chip-pad">
               <Switch
                 checked={form.settings.notifyOnStageChange}
                 onCheckedChange={(v) => setForm((f) => ({ ...f, settings: { ...f.settings, notifyOnStageChange: v } }))}
               />
               <span className="text-sm">{tr("stageNotificationsLabel")}</span>
             </div>
-            <div className="rounded-xl border border-border bg-background/80 p-3">
+            <div className="rounded-xl border border-border bg-background/80 chip-pad">
               <label className="text-xs text-muted-foreground">{tr("autoRejectBelowLabel")}</label>
               <Input
                 type="number"
@@ -286,7 +301,7 @@ export default function AdminWorkflowTemplatesPage() {
           <div className="space-y-3">
             <p className="text-sm font-medium text-muted-foreground">{tr("pipelineStagesLabel")}</p>
             {[...form.stages].sort((a, b) => a.order - b.order).map((stage, i) => (
-              <div key={stage.id} className="flex items-center gap-3 rounded-xl border border-border bg-background/80 p-3">
+              <div key={stage.id} className="flex items-center gap-3 rounded-xl border border-border bg-background/80 chip-pad">
                 <div className="flex flex-col gap-0.5 text-muted-foreground">
                   <button onClick={() => moveStage(i, "up")} disabled={i === 0}>
                     <ChevronUp className="h-3.5 w-3.5" />
@@ -295,7 +310,7 @@ export default function AdminWorkflowTemplatesPage() {
                     <ChevronDown className="h-3.5 w-3.5" />
                   </button>
                 </div>
-                <span className="min-w-[6rem] text-sm font-medium">{stage.label}</span>
+                <span className="min-w-[6rem] text-sm font-medium">{stageLabel(stage)}</span>
                 <div className="ml-auto flex items-center gap-4">
                   <label className="flex items-center gap-1.5 text-xs">
                     <Switch
@@ -353,7 +368,7 @@ export default function AdminWorkflowTemplatesPage() {
             return (
               <div
                 key={t._id}
-                className="rounded-2xl border border-border bg-background/80 p-5 transition-all hover:border-sky-500/25"
+                className="rounded-2xl border border-border bg-background/80 transition-all hover:border-sky-500/25 panel-body"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0 flex-1">
@@ -414,7 +429,7 @@ export default function AdminWorkflowTemplatesPage() {
 
                 {/* Expanded: show pipeline preview */}
                 {isExpanded && (
-                  <div className="mt-4 rounded-xl border border-border bg-background/60 p-4">
+                  <div className="mt-4 rounded-xl border border-border bg-background/60 card-pad">
                     <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       {tr("pipelinePreviewHeading")}
                     </p>
@@ -423,7 +438,7 @@ export default function AdminWorkflowTemplatesPage() {
                         <div key={stage.id} className="flex items-center gap-1.5">
                           <div className="flex items-center gap-1.5 rounded-full border border-border bg-background/70 px-3 py-1.5 text-xs font-medium">
                             <span className="h-2 w-2 rounded-full bg-sky-500" />
-                            {stage.label}
+                            {stageLabel(stage)}
                             {stage.autoProgress && (
                               <Sparkles className="h-3 w-3 text-amber-500" />
                             )}

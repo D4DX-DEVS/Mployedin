@@ -151,7 +151,7 @@ function ActiveView({
   return (
     <div className="space-y-6">
       {/* ── 1. Current Plan ── */}
-      <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-5">
+      <section className="rounded-2xl border border-border/60 bg-card space-y-5 panel-body">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3 flex-1 min-w-0">
             <div className="h-12 w-12 rounded-2xl bg-sky-500/10 flex items-center justify-center shrink-0">
@@ -159,7 +159,7 @@ function ActiveView({
             </div>
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <h3 className="text-xl font-bold">{snap?.name ?? t("unknown")}</h3>
+                <h3 className="heading-subsection font-bold">{snap?.name ?? t("unknown")}</h3>
                 <Badge className={subscription.status === "active" ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/30" : "bg-amber-500/10 text-amber-600 border border-amber-500/30"}>
                   {subscription.status === "active" ? "Active" : subscription.status}
                 </Badge>
@@ -208,7 +208,7 @@ function ActiveView({
 
       {/* ── 3. Upgrade banner ── */}
       {nearLimit ? (
-        <div className="flex items-center gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4">
+        <div className="flex items-center gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/5 card-pad">
           <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
           <p className="text-sm text-muted-foreground flex-1">You are nearing your application limit. Upgrade for more applications.</p>
           <Button asChild size="sm" variant="outline" className="shrink-0 border-amber-500/40 text-amber-600 hover:bg-amber-500/10">
@@ -216,7 +216,7 @@ function ActiveView({
           </Button>
         </div>
       ) : isFreeTier && (
-        <div className="rounded-2xl border border-sky-500/30 bg-gradient-to-br from-sky-500/5 to-transparent p-5 flex items-center gap-4">
+        <div className="rounded-2xl border border-sky-500/30 bg-gradient-to-br from-sky-500/5 to-transparent flex items-center gap-4 panel-body">
           <div className="h-11 w-11 rounded-2xl bg-sky-500/10 flex items-center justify-center shrink-0">
             <Rocket className="h-5 w-5 text-sky-500" />
           </div>
@@ -234,7 +234,7 @@ function ActiveView({
       {plans.length > 0 && (
         <section id="plans" className="space-y-4 scroll-mt-6">
           <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><Crown className="h-4 w-4" /> Available Plans</h4>
-          <PricingGrid plans={plans} currentTier={currentTier} displayCurrency={displayCurrency} rates={rates} />
+          <PricingGrid plans={plans} currentPlanId={subscription.planId} displayCurrency={displayCurrency} rates={rates} />
         </section>
       )}
 
@@ -243,7 +243,7 @@ function ActiveView({
 
       {/* ── 6. Included / Locked Features ── */}
       <div className="grid gap-4 lg:grid-cols-2">
-        <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-3">
+        <section className="rounded-2xl border border-border/60 bg-card space-y-3 panel-body">
           <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><Check className="h-4 w-4 text-emerald-500" /> Included</h4>
           <ul className="space-y-2.5">
             {included.map((f) => (
@@ -258,7 +258,7 @@ function ActiveView({
           </ul>
         </section>
         {locked.length > 0 && (
-          <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-3">
+          <section className="rounded-2xl border border-border/60 bg-card space-y-3 panel-body">
             <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><X className="h-4 w-4 text-muted-foreground/50" /> Not included</h4>
             <ul className="space-y-2.5">
               {locked.map((f) => (
@@ -283,7 +283,7 @@ function ActiveView({
 
       {/* ── 9. Payment trust + Payment Method ── */}
       <PaymentTrustStrip />
-      <section className="rounded-2xl border border-border/60 bg-card p-6">
+      <section className="rounded-2xl border border-border/60 bg-card panel-body">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <CreditCard className="h-5 w-5 text-muted-foreground" />
@@ -305,10 +305,10 @@ function NoPlanView({ plans, displayCurrency, rates }: { plans: AvailablePlan[];
   const { mutate: selfAssign, isPending } = useSelfAssignFreePlan();
   return (
     <div className="space-y-6">
-      <section className="rounded-2xl border border-sky-500/30 bg-gradient-to-br from-sky-500/5 to-transparent p-6 flex items-start gap-4">
+      <section className="rounded-2xl border border-sky-500/30 bg-gradient-to-br from-sky-500/5 to-transparent flex items-start gap-4 panel-body">
         <div className="h-12 w-12 rounded-2xl bg-sky-500/10 flex items-center justify-center shrink-0"><Crown className="h-6 w-6 text-sky-500" /></div>
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-lg">Get Started</h3>
+          <h3 className="heading-subsection font-semibold">Get Started</h3>
           <p className="text-sm text-muted-foreground mt-1">Activate your free plan to start applying for jobs and track your applications.</p>
         </div>
         <Button onClick={() => selfAssign()} disabled={isPending} className="shrink-0">{isPending ? "Activating…" : "Activate Free Plan"}</Button>
@@ -334,7 +334,7 @@ function InvoiceSection({ invoices, displayCurrency, rates, locale }: { invoices
   const visible = expanded ? invoices : invoices.slice(0, 3);
 
   return (
-    <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-4">
+    <section className="rounded-2xl border border-border/60 bg-card space-y-4 panel-body">
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><FileText className="h-4 w-4" /> Invoices</h4>
         <span className="text-xs text-muted-foreground">{invoices.length} invoice{invoices.length !== 1 ? "s" : ""}</span>

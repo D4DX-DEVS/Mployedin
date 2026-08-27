@@ -119,22 +119,21 @@ export default function EmployerJobTemplatesPage() {
       {/* Hero */}
       <DashboardPageHeader
         icon={FileText}
-        eyebrow={t("title")}
         title={t("title")}
         description={t("description")}
         summary={{ label: t("totalTemplates"), value: total }}
       />
 
       {/* Search */}
-      <section className="workspace-panel-surface rounded-[28px] panel-body">
+      <section className="workspace-panel-surface rounded-3xl panel-body">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder={t("search")} value={search} onChange={(e) => handleSearchChange(e.target.value)} className="pl-9" />
+          <Input placeholder={t("search")} value={search} onChange={(e) => handleSearchChange(e.target.value)} className="pl-9" aria-label={t("search")} />
         </div>
       </section>
 
       {/* Template Grid */}
-      <section className="workspace-panel-surface rounded-[28px] panel-body">
+      <section className="workspace-panel-surface rounded-3xl panel-body">
         {isError ? (
           <div className="flex flex-col items-center justify-center gap-4 py-12 text-center">
             <p className="text-sm font-semibold text-destructive">{t("loadError")}</p>
@@ -143,7 +142,7 @@ export default function EmployerJobTemplatesPage() {
         ) : loading ? (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="workspace-glass-panel rounded-2xl p-5 space-y-3">
+              <div key={i} className="workspace-glass-panel rounded-2xl space-y-3 panel-body">
                 <div className="flex items-start justify-between">
                   <div className="space-y-2">
                     <Skeleton className="h-4 w-32" />
@@ -164,7 +163,7 @@ export default function EmployerJobTemplatesPage() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {templates.map((tmpl) => (
-              <div key={tmpl._id} className="workspace-glass-panel rounded-2xl p-5 space-y-3">
+              <div key={tmpl._id} className="workspace-glass-panel rounded-2xl space-y-3 panel-body">
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-sm font-semibold text-foreground">{tmpl.name}</p>

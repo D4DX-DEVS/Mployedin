@@ -15,7 +15,7 @@ export default function OffersLoading() {
         {Array.from({ length: 5 }).map((_, i) => (
           <div
             key={i}
-            className="rounded-lg border border-border bg-card p-4 sm:p-5 h-24 animate-pulse"
+            className="rounded-lg border border-border bg-card h-24 animate-pulse panel-body"
             style={{ opacity: 1 - i * 0.15 }}
           />
         ))}

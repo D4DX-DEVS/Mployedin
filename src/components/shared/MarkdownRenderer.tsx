@@ -65,7 +65,7 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
     if (/^## /.test(line)) {
       flushList();
       elements.push(
-        <h2 key={key++} className="mt-4 mb-1 text-sm font-bold text-foreground">
+        <h2 key={key++} className="heading-label mt-4 mb-1 font-bold text-foreground">
           {renderInline(line.replace(/^## /, ""))}
         </h2>
       );
@@ -76,7 +76,7 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
     if (/^### /.test(line)) {
       flushList();
       elements.push(
-        <h3 key={key++} className="mt-3 mb-1 text-sm font-semibold text-foreground">
+        <h3 key={key++} className="heading-label mt-3 mb-1 font-semibold text-foreground">
           {renderInline(line.replace(/^### /, ""))}
         </h3>
       );

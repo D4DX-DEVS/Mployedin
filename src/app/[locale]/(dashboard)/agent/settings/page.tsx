@@ -106,7 +106,7 @@ function SectionHeader({ icon: Icon, title, description }: { icon: typeof Globe;
           <Icon className="w-4 h-4 text-primary" />
         </div>
         <div>
-          <h3 className="text-sm font-semibold tracking-tight">{title}</h3>
+          <h3 className="heading-label font-semibold tracking-tight">{title}</h3>
           {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
         </div>
       </div>
@@ -325,7 +325,7 @@ function ProfileTab() {
           {/* Name + Agent badge */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2.5 flex-wrap">
-              <h3 className="text-lg font-semibold tracking-tight truncate">{name || userName}</h3>
+              <h3 className="heading-subsection font-semibold tracking-tight truncate">{name || userName}</h3>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-primary">
                 <Shield className="w-3 h-3" />
                 {t("role.agent")}
@@ -372,7 +372,7 @@ function ProfileTab() {
           ) : (
             <>
               <div className="grid gap-5 sm:grid-cols-2">
-                <div className="space-y-2">
+                <div className="field">
                   <Label htmlFor="agent-name" className="text-sm font-medium text-foreground">
                     {t("profile.fullName")} <span className="text-destructive">*</span>
                   </Label>
@@ -387,7 +387,7 @@ function ProfileTab() {
                     {t("profile.fullNameHelp")}
                   </p>
                 </div>
-                <div className="space-y-2">
+                <div className="field">
                   <Label htmlFor="agent-phone" className="text-sm font-medium text-foreground">
                     {t("profile.phone")}
                   </Label>
@@ -492,7 +492,7 @@ function RegionTab() {
         <SectionHeader icon={Globe} title={t("region.title")} description={t("region.description")} />
         <div className="p-6 space-y-6">
           <div className="grid gap-6 sm:grid-cols-2">
-            <div className="space-y-2">
+            <div className="field">
               <Label htmlFor="country" className="flex items-center gap-2 text-sm font-medium text-foreground">
                 <Globe className="h-4 w-4 text-muted-foreground" />
                 {t("region.country")}
@@ -518,7 +518,7 @@ function RegionTab() {
               </p>
             </div>
 
-            <div className="space-y-2">
+            <div className="field">
               <Label htmlFor="currency" className="flex items-center gap-2 text-sm font-medium text-foreground">
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
                 {t("region.displayCurrency")}
@@ -554,7 +554,7 @@ function RegionTab() {
               const info = SUPPORTED_CURRENCIES.find((c) => c.code === currencyCode);
               const symbol = info?.symbol ?? currencyCode;
               return (
-                <div key={amount} className="rounded-xl border border-border/50 bg-muted/20 p-4">
+                <div key={amount} className="rounded-xl border border-border/50 bg-muted/20 card-pad">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("region.sample")}</p>
                   <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
                     {symbol} {amount.toLocaleString(numberLocale)}
@@ -623,7 +623,7 @@ function CommissionTab() {
                   const info = SUPPORTED_CURRENCIES.find((c) => c.code === currencyCode);
                   const symbol = info?.symbol ?? currencyCode;
                   return (
-                    <div key={salary} className="rounded-xl border border-border/50 bg-muted/20 p-4">
+                    <div key={salary} className="rounded-xl border border-border/50 bg-muted/20 card-pad">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                         {t("commission.onPlacement", { amount: `${symbol} ${salary.toLocaleString(numberLocale)}` })}
                       </p>
@@ -720,13 +720,13 @@ function NotificationsTab() {
     <>
       {/* Global kill switch */}
       {prefs.unsubscribedAll && (
-        <div className="rounded-xl border border-amber-200/60 bg-amber-50/50 dark:border-amber-800/40 dark:bg-amber-950/20 p-4">
+        <div className="rounded-xl border border-amber-200/60 bg-amber-50/50 card-pad">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="w-4 h-4 text-status-shortlisted dark:text-amber-400 mt-0.5 shrink-0" />
+              <AlertTriangle className="w-4 h-4 text-status-shortlisted mt-0.5 shrink-0" />
               <div>
-                <p className="text-sm font-medium text-status-shortlisted dark:text-amber-300">{t("notifications.pausedTitle")}</p>
-                <p className="text-xs text-status-shortlisted dark:text-amber-400 mt-1">
+                <p className="text-sm font-medium text-status-shortlisted">{t("notifications.pausedTitle")}</p>
+                <p className="text-xs text-status-shortlisted mt-1">
                   {t("notifications.pausedDescription")}
                 </p>
               </div>
@@ -748,11 +748,7 @@ function NotificationsTab() {
               key={opt.value}
               type="button"
               onClick={() => setPrefs((p) => ({ ...p, emailFrequency: opt.value }))}
-              className={`p-3 rounded-lg border-2 text-left transition-all ${
-                prefs.emailFrequency === opt.value
-                  ? "border-primary bg-primary/5"
-                  : "border-border/50 hover:border-border"
-              }`}
+              className={`rounded-lg border-2 text-left transition-all ${ prefs.emailFrequency === opt.value ? "border-primary bg-primary/5" : "border-border/50 hover:border-border" } chip-pad`}
             >
               <div className="text-sm font-medium">{t(`notifications.frequency.${opt.value}.label`)}</div>
               <div className="text-[11px] text-muted-foreground mt-1">{t(`notifications.frequency.${opt.value}.description`)}</div>
@@ -766,7 +762,7 @@ function NotificationsTab() {
         <SectionCard>
           <SectionHeader icon={Clock} title={t("notifications.digestTitle")} description={t("notifications.digestDescription")} />
           <div className="p-6 grid gap-6 sm:grid-cols-2">
-            <div className="space-y-2">
+            <div className="field">
               <Label className="text-sm font-medium text-foreground">{t("notifications.digestTime")}</Label>
               <DateTimePicker
                 mode="time"
@@ -775,7 +771,7 @@ function NotificationsTab() {
               />
               <p className="text-xs text-muted-foreground">{t("notifications.digestTimeHelp")}</p>
             </div>
-            <div className="space-y-2">
+            <div className="field">
               <Label className="text-sm font-medium text-foreground">{t("notifications.timezone")}</Label>
               <Select
                 value={prefs.timezone}
@@ -1187,7 +1183,7 @@ function InvoiceDefaultsTab({ apiBase = "/api/agent/settings/invoice-defaults" }
   return (
     <>
       {/* Info Banner */}
-      <div className="rounded-xl border border-primary/20 bg-primary/[0.04] p-4">
+      <div className="rounded-xl border border-primary/20 bg-primary/[0.04] card-pad">
         <div className="flex items-start gap-3">
           <Receipt className="h-5 w-5 text-primary mt-0.5 shrink-0" />
           <div>
@@ -1204,29 +1200,29 @@ function InvoiceDefaultsTab({ apiBase = "/api/agent/settings/invoice-defaults" }
         <SectionHeader icon={FileText} title={t("invoice.billingTitle")} description={t("invoice.billingDescription")} />
         <div className="p-6 space-y-5">
           <div className="grid gap-5 sm:grid-cols-2">
-            <div className="space-y-2">
+            <div className="field">
               <Label htmlFor="inv-company" className="text-sm font-medium">{t("invoice.companyName")}</Label>
               <Input id="inv-company" placeholder={t("invoice.companyNamePlaceholder")} value={form.billingCompanyName} onChange={(e) => update("billingCompanyName", e.target.value)} maxLength={200} />
             </div>
-            <div className="space-y-2">
+            <div className="field">
               <Label htmlFor="inv-contact" className="text-sm font-medium">{t("invoice.contactPerson")}</Label>
               <Input id="inv-contact" placeholder={t("invoice.contactPersonPlaceholder")} value={form.billingContactPerson} onChange={(e) => update("billingContactPerson", e.target.value)} maxLength={200} />
             </div>
-            <div className="space-y-2">
+            <div className="field">
               <Label htmlFor="inv-email" className="text-sm font-medium">{t("invoice.billingEmail")}</Label>
               <Input id="inv-email" type="email" placeholder={t("invoice.billingEmailPlaceholder")} value={form.billingEmail} onChange={(e) => update("billingEmail", e.target.value)} maxLength={200} />
             </div>
-            <div className="space-y-2">
+            <div className="field">
               <Label htmlFor="inv-phone" className="text-sm font-medium">{t("invoice.billingPhone")}</Label>
               <Input id="inv-phone" type="tel" placeholder={t("invoice.billingPhonePlaceholder")} value={form.billingPhone} onChange={(e) => update("billingPhone", e.target.value)} maxLength={50} />
             </div>
           </div>
-          <div className="space-y-2">
+          <div className="field">
             <Label htmlFor="inv-address" className="text-sm font-medium">{t("invoice.billingAddress")}</Label>
             <Textarea id="inv-address" placeholder={t("invoice.billingAddressPlaceholder")} value={form.billingAddress} onChange={(e) => update("billingAddress", e.target.value)} maxLength={500} rows={2} className="resize-none" />
           </div>
           <div className="grid gap-5 sm:grid-cols-2">
-            <div className="space-y-2">
+            <div className="field">
               <Label htmlFor="inv-country" className="text-sm font-medium">{t("invoice.billingCountry")}</Label>
               <Select
                 value={form.billingCountry || "none"}
@@ -1241,7 +1237,7 @@ function InvoiceDefaultsTab({ apiBase = "/api/agent/settings/invoice-defaults" }
               </Select>
               <p className="text-[11px] text-muted-foreground">{t("invoice.countryHelp")}</p>
             </div>
-            <div className="space-y-2">
+            <div className="field">
               <Label htmlFor="inv-taxid" className="text-sm font-medium">{t("invoice.taxId")}</Label>
               <Input id="inv-taxid" placeholder={t("invoice.taxIdPlaceholder")} value={form.billingTaxId} onChange={(e) => update("billingTaxId", e.target.value)} maxLength={50} />
             </div>
@@ -1254,7 +1250,7 @@ function InvoiceDefaultsTab({ apiBase = "/api/agent/settings/invoice-defaults" }
         <SectionHeader icon={Receipt} title={t("invoice.preferencesTitle")} description={t("invoice.preferencesDescription")} />
         <div className="p-6 space-y-5">
           <div className="grid gap-5 sm:grid-cols-2">
-            <div className="space-y-2">
+            <div className="field">
               <Label htmlFor="inv-category" className="text-sm font-medium">{t("invoice.defaultType")}</Label>
               <Select value={form.defaultCategory} onValueChange={(value) => update("defaultCategory", value)}>
                 <SelectTrigger id="inv-category" className="h-11">
@@ -1265,7 +1261,7 @@ function InvoiceDefaultsTab({ apiBase = "/api/agent/settings/invoice-defaults" }
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
+            <div className="field">
               <Label htmlFor="inv-currency" className="text-sm font-medium">{t("invoice.defaultCurrency")}</Label>
               <Select value={form.defaultCurrency} onValueChange={(value) => update("defaultCurrency", value)}>
                 <SelectTrigger id="inv-currency" className="h-11">
@@ -1279,10 +1275,10 @@ function InvoiceDefaultsTab({ apiBase = "/api/agent/settings/invoice-defaults" }
           </div>
 
           {/* Tax Configuration */}
-          <div className="rounded-xl border border-border/50 bg-muted/10 p-4 space-y-4">
+          <div className="rounded-xl border border-border/50 bg-muted/10 space-y-4 card-pad">
             <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("invoice.taxConfiguration")}</p>
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
+              <div className="field">
                 <Label htmlFor="inv-taxtype" className="text-sm font-medium">{t("invoice.taxType")}</Label>
                 <Select value={form.defaultTaxType} onValueChange={(value) => update("defaultTaxType", value)}>
                   <SelectTrigger id="inv-taxtype" className="h-11">
@@ -1293,7 +1289,7 @@ function InvoiceDefaultsTab({ apiBase = "/api/agent/settings/invoice-defaults" }
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label htmlFor="inv-taxpct" className="text-sm font-medium">{t("invoice.taxRate")}</Label>
                 <Input id="inv-taxpct" type="number" min={0} max={100} step={0.5} value={form.defaultTaxPercent} onChange={(e) => update("defaultTaxPercent", parseFloat(e.target.value) || 0)} />
               </div>
@@ -1301,10 +1297,10 @@ function InvoiceDefaultsTab({ apiBase = "/api/agent/settings/invoice-defaults" }
           </div>
 
           {/* Payment Terms */}
-          <div className="rounded-xl border border-border/50 bg-muted/10 p-4 space-y-4">
+          <div className="rounded-xl border border-border/50 bg-muted/10 space-y-4 card-pad">
             <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("invoice.paymentTerms")}</p>
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
+              <div className="field">
                 <Label htmlFor="inv-terms" className="text-sm font-medium">{t("invoice.defaultTerms")}</Label>
                 <Select value={form.defaultPaymentTerms} onValueChange={(value) => update("defaultPaymentTerms", value)}>
                   <SelectTrigger id="inv-terms" className="h-11">
@@ -1316,7 +1312,7 @@ function InvoiceDefaultsTab({ apiBase = "/api/agent/settings/invoice-defaults" }
                 </Select>
               </div>
               {form.defaultPaymentTerms === "custom" && (
-                <div className="space-y-2">
+                <div className="field">
                   <Label htmlFor="inv-custom-days" className="text-sm font-medium">{t("invoice.customDays")}</Label>
                   <Input id="inv-custom-days" type="number" min={1} max={365} value={form.customPaymentDays} onChange={(e) => update("customPaymentDays", parseInt(e.target.value) || 30)} />
                 </div>
@@ -1325,7 +1321,7 @@ function InvoiceDefaultsTab({ apiBase = "/api/agent/settings/invoice-defaults" }
           </div>
 
           {/* Default Notes */}
-          <div className="space-y-2">
+          <div className="field">
             <Label htmlFor="inv-notes" className="text-sm font-medium">{t("invoice.defaultNotes")}</Label>
             <Textarea
               id="inv-notes"
@@ -1367,7 +1363,7 @@ function SecurityTab() {
               <Shield className="w-4 h-4 text-muted-foreground" />
               <div>
                 <p className="text-[11px] text-muted-foreground">{t("security.accountStatus")}</p>
-                <p className="text-sm font-medium text-status-selected dark:text-emerald-400">{t("security.active")}</p>
+                <p className="text-sm font-medium text-status-selected">{t("security.active")}</p>
               </div>
             </div>
           </div>
@@ -1377,7 +1373,7 @@ function SecurityTab() {
       <SectionCard>
         <SectionHeader icon={Shield} title={t("security.title")} description={t("security.description")} />
         <div className="p-6 space-y-4">
-          <div className="flex items-center justify-between p-4 rounded-xl border border-border/50 bg-muted/20">
+          <div className="flex items-center justify-between rounded-xl border border-border/50 bg-muted/20 card-pad">
             <div className="flex items-start gap-3">
               <Mail className="w-4 h-4 text-muted-foreground mt-0.5" />
               <div>
@@ -1388,7 +1384,7 @@ function SecurityTab() {
             <Switch defaultChecked />
           </div>
 
-          <div className="flex items-center justify-between p-4 rounded-xl border border-border/50 bg-muted/20">
+          <div className="flex items-center justify-between rounded-xl border border-border/50 bg-muted/20 card-pad">
             <div className="flex items-start gap-3">
               <Shield className="w-4 h-4 text-muted-foreground mt-0.5" />
               <div>
@@ -1407,7 +1403,7 @@ function SecurityTab() {
       <SectionCard>
         <SectionHeader icon={AlertTriangle} title={t("security.dangerTitle")} description={t("security.dangerDescription")} />
         <div className="p-6">
-          <div className="flex items-center justify-between p-4 rounded-xl border border-destructive/20 bg-destructive/5">
+          <div className="flex items-center justify-between rounded-xl border border-destructive/20 bg-destructive/5 card-pad">
             <div>
               <p className="text-sm font-medium text-destructive">{t("security.deactivateTitle")}</p>
               <p className="text-xs text-muted-foreground mt-0.5">{t("security.deactivateDescription")}</p>
@@ -1433,7 +1429,6 @@ export default function AgentSettingsPage() {
     <div className="page-container">
       <PageHero
         icon={Settings}
-        eyebrow={common("workspace")}
         title={t("hero.title")}
         description={t("hero.description")}
       />

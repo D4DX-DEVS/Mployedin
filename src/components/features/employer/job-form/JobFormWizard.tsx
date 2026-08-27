@@ -24,6 +24,7 @@ import { Step4SalarySettings } from "./Step4SalarySettings";
 import { Step5ScreeningQuestions } from "./Step5ScreeningQuestions";
 import { AdvancedSettingsSection } from "./AdvancedSettingsSection";
 import { JobQualityScore } from "./JobQualityScore";
+import { InclusiveWordingPanel } from "./InclusiveWordingPanel";
 import { MatchPreviewPanel } from "./MatchPreviewPanel";
 import { StickyActionBar } from "./StickyActionBar";
 
@@ -516,7 +517,7 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
     <div className="flex h-full flex-col">
     <div className="flex-1 overflow-y-auto">
     <div className="page-container">
-      <section className="rounded-2xl border border-border/70 bg-gradient-to-br from-background via-background to-primary/5 p-4 shadow-sm">
+      <section className="rounded-2xl border border-border/70 bg-gradient-to-br from-background via-background to-primary/5 shadow-sm card-pad">
         <PageHeader
           title={t("title")}
           description={t("description")}
@@ -545,7 +546,7 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
         />
 
         {isAdmin && (
-          <div className="mt-3 rounded-xl border border-border/70 bg-background/85 p-2.5 shadow-sm sm:p-3">
+          <div className="mt-3 rounded-xl border border-border/70 bg-background/85 shadow-sm chip-pad">
             <label htmlFor="job-form-employer" className="mb-1.5 block text-xs font-medium text-muted-foreground sm:text-sm">
               {t("employerLabel")} <span className="text-destructive">*</span>
             </label>
@@ -565,7 +566,7 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
           </div>
         )}
 
-        <div className="mt-3 rounded-xl border border-border/70 bg-background/85 p-2.5 shadow-sm sm:p-3">
+        <div className="mt-3 rounded-xl border border-border/70 bg-background/85 shadow-sm chip-pad">
           <StepIndicator
             steps={localizedSteps}
             currentStep={currentStep}
@@ -607,7 +608,7 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
               </div>
               <div className="flex items-start gap-2">
                 {!loadingTemplates && templates.length > 0 && (
-                  <div className="rounded-2xl border border-border/70 bg-background/85 px-3 py-2 text-right">
+                  <div className="rounded-2xl border border-border/70 bg-background/85 text-right chip-pad">
                     <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{t("available")}</p>
                     <p className="text-lg font-semibold text-foreground">{templates.length}</p>
                   </div>
@@ -617,7 +618,7 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="h-9 w-9 rounded-full p-0"
+                    className="w-9 rounded-full p-0"
                     aria-label={t("closeTemplateModal")}
                   >
                     <X className="h-4 w-4" />
@@ -631,7 +632,7 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
             {loadingTemplates ? (
               <div className="space-y-3 py-1">
                 {[1, 2, 3].map((item) => (
-                  <div key={item} className="rounded-2xl border border-border/70 bg-muted/30 p-4">
+                  <div key={item} className="rounded-2xl border border-border/70 bg-muted/30 card-pad">
                     <div className="h-3 w-32 animate-pulse rounded bg-muted" />
                     <div className="mt-3 h-2.5 w-48 animate-pulse rounded bg-muted" />
                     <div className="mt-2 h-2.5 w-24 animate-pulse rounded bg-muted" />
@@ -668,7 +669,7 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
                     key={tpl._id}
                     type="button"
                     onClick={() => applyTemplate(tpl)}
-                    className="group w-full rounded-2xl border border-border/70 bg-background p-4 text-start transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/[0.03] hover:shadow-sm"
+                    className="group w-full rounded-2xl border border-border/70 bg-background text-start transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/[0.03] hover:shadow-sm card-pad"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="space-y-2">
@@ -724,7 +725,7 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_18.5rem]">
             {/* Main content */}
             <div className="min-w-0">
-              <div className="rounded-2xl border border-border bg-background p-4 shadow-sm sm:p-5">
+              <div className="rounded-2xl border border-border bg-background shadow-sm panel-body">
                 <AnimatePresence mode="wait" initial={false}>
                   {renderCurrentStep()}
                 </AnimatePresence>
@@ -738,7 +739,7 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
               )}
 
               {submitError && (
-                <div className="mt-3 rounded-xl border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">
+                <div className="mt-3 rounded-xl border border-destructive/20 bg-destructive/10 text-sm text-destructive card-pad">
                   {submitError}
                 </div>
               )}
@@ -747,6 +748,7 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
             {/* Right sidebar — smart panels */}
             <div className="w-full space-y-3 xl:sticky xl:top-4 xl:self-start">
               <JobQualityScore values={formValues} />
+              <InclusiveWordingPanel values={formValues} />
               <MatchPreviewPanel
                 skills={skills}
                 country={country}

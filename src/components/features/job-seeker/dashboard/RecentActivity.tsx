@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { FileText, Calendar, CheckCircle2, Star, Clock } from "lucide-react";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 interface ActivityItem {
   type: "application" | "notification";
@@ -44,7 +45,7 @@ function timeAgo(dateStr: string): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}d ago`;
-  return new Date(dateStr).toLocaleDateString();
+  return formatDate(new Date(dateStr));
 }
 
 export async function RecentActivity({ items }: RecentActivityProps) {
@@ -66,7 +67,7 @@ export async function RecentActivity({ items }: RecentActivityProps) {
 
   return (
     <div className="card-base panel-body">
-      <h3 className="mb-3 sm:mb-4 text-sm font-semibold">{t("recentActivity")}</h3>
+      <h3 className="heading-label mb-3 sm:mb-4 font-semibold">{t("recentActivity")}</h3>
       <div className="space-y-2 sm:space-y-3">
         {items.map((item, i) => {
           if (item.type === "application") {

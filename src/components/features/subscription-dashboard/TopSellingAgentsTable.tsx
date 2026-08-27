@@ -16,7 +16,7 @@ export function TopSellingAgentsTable({ data }: TopSellingAgentsTableProps) {
   const t = useTranslations("topSellingAgentsTable");
 
   return (
-    <section className="rounded-2xl border border-border/60 bg-card p-6">
+    <section className="rounded-2xl border border-border/60 bg-card panel-body">
       <div className="flex items-center justify-between mb-5">
         <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
           <Award className="h-4 w-4" /> {t("topSellingAgents")}
@@ -39,7 +39,7 @@ export function TopSellingAgentsTable({ data }: TopSellingAgentsTableProps) {
           {data.map((a) => (
             <div
               key={a.agentId}
-              className="flex items-center gap-3 rounded-xl border border-border/40 p-3"
+              className="flex items-center gap-3 rounded-xl border border-border/40 chip-pad"
             >
               <div className="h-9 w-9 rounded-full bg-amber-500/10 flex items-center justify-center text-sm font-bold text-amber-600 shrink-0">
                 {a.name.charAt(0).toUpperCase()}

@@ -1,7 +1,6 @@
 /**
  * @jest-environment jsdom
  */
-import React from "react";
 import { render, screen } from "@testing-library/react";
 
 import AgentDashboard from "@/app/[locale]/(dashboard)/agent/page";
@@ -106,6 +105,8 @@ describe("AgentDashboard", () => {
     expect(screen.getByText("2 active accounts").closest("div")).toHaveClass("workspace-glass-panel");
     expect(screen.getByRole("heading", { name: /track which parts of the desk need attention/i }).closest("section")).toHaveClass("workspace-panel-surface");
     expect(screen.getByRole("heading", { name: /jump into the work most agents do every day/i }).closest("section")).toHaveClass("workspace-panel-surface");
+    expect(screen.getByRole("heading", { name: /recommended next/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /desk at a glance/i })).toBeInTheDocument();
 
     expect(view.container.innerHTML).not.toContain("bg-white/80");
     expect(view.container.innerHTML).not.toContain("bg-white/95");

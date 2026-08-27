@@ -23,6 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { ApplyWithCvDialog } from "@/components/features/job-seeker/feed/ApplyWithCvDialog";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 interface JobPage {
   jobs: RecommendedJob[];
@@ -45,7 +46,7 @@ type SortMode = "match" | "latest" | "salary";
 
 function JobCardSkeleton() {
   return (
-    <div className="animate-pulse rounded-lg border border-border p-3 sm:p-4">
+    <div className="animate-pulse rounded-lg border border-border card-pad">
       <div className="flex items-start justify-between gap-3 sm:gap-4">
         <div className="flex-1 space-y-2">
           <div className="h-4 w-48 rounded bg-muted" />
@@ -212,7 +213,7 @@ export function RecommendedJobs({ locale }: { locale: string }) {
       <div className="mb-3 sm:mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-semibold">
+          <h3 className="heading-label font-semibold">
             Recommended for You
             {total > 0 && (
               <span className="ml-1.5 text-xs font-normal text-muted-foreground">
@@ -247,7 +248,7 @@ export function RecommendedJobs({ locale }: { locale: string }) {
           return (
             <div
               key={job._id}
-              className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4 rounded-lg border border-border p-3 sm:p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md hover:bg-accent/30"
+              className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4 rounded-lg border border-border transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md hover:bg-accent/30 card-pad"
             >
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
@@ -283,7 +284,7 @@ export function RecommendedJobs({ locale }: { locale: string }) {
                   {job.salary?.min > 0 && (
                     <span className="flex items-center gap-1">
                       <DollarSign className="h-3 w-3" />
-                      {job.salary.min.toLocaleString()}â€“{job.salary.max.toLocaleString()}{" "}
+                      {formatCount(job.salary.min)}â€“{formatCount(job.salary.max)}{" "}
                       {job.salary.currency}
                     </span>
                   )}

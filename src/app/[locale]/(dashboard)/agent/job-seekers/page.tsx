@@ -20,6 +20,8 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { formatDate } from "@/lib/ui/intlFormat";
+import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 
 interface JobSeeker {
   _id: string;
@@ -133,7 +135,7 @@ export default function AgentJobSeekersPage() {
       pagination.updateTotal(data.total ?? data.items?.length ?? 0);
     }
     setLoading(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [search, availability, minProfile, maxProfile, skillsFilter, locationFilter, hasCV, jobType, sortBy, pagination.page, pagination.limit]);
 
   useEffect(() => { fetchSeekers(); }, [fetchSeekers]);
@@ -169,7 +171,7 @@ export default function AgentJobSeekersPage() {
     { header: t("tableHeaderTopSkills"), key: "skills", formatter: (v) => Array.isArray(v) ? (v as string[]).join(", ") : "" },
     { header: t("tableHeaderAvailability"), key: "availabilityStatus" },
     { header: t("tableHeaderProfile"), key: "profileCompleteness" },
-    { header: t("tableHeaderJoined"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: t("tableHeaderJoined"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
@@ -194,29 +196,28 @@ export default function AgentJobSeekersPage() {
       {/* Hero */}
       <DashboardPageHeader
         icon={UserRoundSearch}
-        eyebrow={t("heroAgentWorkspace")}
         title={t("heroTitle")}
         description={t("heroDescription")}
-        summary={{ label: t("talentPoolLabel"), value: `${pagination.total} ${t("talentPoolProfiles")}`, note: t("talentPoolDescription") }}
+        summary={{ label: t("talentPoolLabel"), value: `${pagination.total} ${t("talentPoolProfiles")}` }}
         metrics={[
-          { label: t("cardCompleteLabel"), value: completeProfiles, note: t("cardCompleteDescription"), icon: UserRoundSearch },
-          { label: t("cardAvgProfileLabel"), value: `${averageCompleteness}%`, note: t("cardAvgProfileDescription"), icon: ArrowRight },
-          { label: t("cardWithTitlesLabel"), value: withTitles, note: t("cardWithTitlesDescription"), icon: BriefcaseBusiness },
-          { label: t("cardActiveFiltersLabel"), value: activeFilterCount, note: t("cardActiveFiltersDescription"), icon: Filter },
+          { label: t("cardCompleteLabel"), value: completeProfiles, icon: UserRoundSearch },
+          { label: t("cardAvgProfileLabel"), value: `${averageCompleteness}%`, icon: ArrowRight },
+          { label: t("cardWithTitlesLabel"), value: withTitles, icon: BriefcaseBusiness },
         ]}
+        compactOnMobile
       />
 
-      {/* Search and Filters */}
-      <section className="workspace-panel-surface rounded-[28px] panel-body">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("browseProfilesLabel")}</p>
-          <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("searchTitle")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("searchDescription")}</p>
-        </div>
-
-        {/* Wraps instead of stacking, so Filter shares the line with the
-            search box rather than becoming a full-width band on phones. */}
-        <div className="mt-5 flex flex-wrap items-center gap-2 sm:gap-3">
+      {/* One panel: privacy notice, search, filters and the table together.
+          The notice was a full-width text banner and the filters had their own
+          card — three stacked blocks before the first profile row. */}
+      <section className="workspace-panel-surface rounded-3xl panel-body">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-1.5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("resultsLabel")}</p>
+            {/* Privacy detail at the point candidate data is shown, as an icon +
+                popover instead of a banner that pushed the list off-screen. */}
+            <CandidateDataNotice variant="candidateList" compact />
+          </div>
           <TableToolbar
             search={search}
             onSearchChange={setSearch}
@@ -252,7 +253,7 @@ export default function AgentJobSeekersPage() {
         {/* data-table-toolbar opts this panel into the shared mobile filter
             rules (globals.css): two-up instead of seven full-width rows. */}
         {showFilters && (
-          <div data-table-toolbar="simple" className="mt-4 grid gap-3 rounded-2xl border border-border/50 bg-background/50 p-3 sm:p-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div data-table-toolbar="simple" className="mt-4 grid gap-3 rounded-2xl border border-border/50 bg-background/50 sm:grid-cols-2 lg:grid-cols-4 card-pad">
             {/* Availability */}
             <div className="space-y-1.5">
               <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("filterAvailabilityLabel")}</label>
@@ -343,7 +344,7 @@ export default function AgentJobSeekersPage() {
               <Button
                 variant={hasCV ? "default" : "outline"}
                 size="sm"
-                className="h-9 gap-2 rounded-xl px-4 text-sm"
+                className="gap-2 rounded-xl px-4 text-sm"
                 onClick={() => setHasCV((v) => !v)}
               >
                 <FileText className="h-3.5 w-3.5" />
@@ -367,19 +368,8 @@ export default function AgentJobSeekersPage() {
             </div>
           </div>
         )}
-      </section>
 
-      {/* Results table */}
-      <section className="workspace-panel-surface rounded-[28px] panel-body">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("resultsLabel")}</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("resultsTitle")}</h2>
-          </div>
-          <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium"><ArrowRight className="h-3.5 w-3.5 text-primary" />{t("resultsPagination", { total: pagination.total, pages: pagination.totalPages })}</div>
-        </div>
-
-        <div className="workspace-subtle-surface mt-5 overflow-hidden rounded-[24px]">
+        <div className="workspace-subtle-surface mt-4 overflow-hidden rounded-3xl">
         <Table>
           <TableHeader>
             <TableRow className="workspace-subtle-surface hover:bg-secondary/70">
@@ -419,9 +409,9 @@ export default function AgentJobSeekersPage() {
                   <span className="block font-medium text-foreground">{s.userId?.name ?? "\u2014"}</span>
                   <span className="block text-xs text-muted-foreground">{s.userId?.email ?? "\u2014"}</span>
                   <span className={`mt-1 inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium leading-none ${
-                    s.availabilityStatus === "immediately" ? "bg-status-selected-bg text-status-selected dark:bg-green-950 dark:text-green-400"
-                    : s.availabilityStatus === "not_available" ? "bg-status-rejected-bg text-status-rejected dark:bg-red-950 dark:text-red-400"
-                    : "bg-status-shortlisted-bg text-status-shortlisted dark:bg-amber-950 dark:text-amber-400"
+                    s.availabilityStatus === "immediately" ? "bg-status-selected-bg text-status-selected"
+                    : s.availabilityStatus === "not_available" ? "bg-status-rejected-bg text-status-rejected"
+                    : "bg-status-shortlisted-bg text-status-shortlisted"
                   }`}>
                     {availabilityLabel(s.availabilityStatus)}
                   </span>
@@ -453,7 +443,7 @@ export default function AgentJobSeekersPage() {
                     </div>
                     <span className="text-xs text-muted-foreground">{s.profileCompleteness ?? 0}%</span>
                   </div>
-                  <span className="mt-1 block text-xs text-muted-foreground">{new Date(s.createdAt).toLocaleDateString()}</span>
+                  <span className="mt-1 block text-xs text-muted-foreground">{formatDate(new Date(s.createdAt))}</span>
                 </TableCell>
                 {can("job_seekers", "update") && (
                   <TableCell>

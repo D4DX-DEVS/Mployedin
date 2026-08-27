@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { formatCount } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -186,7 +187,7 @@ export default function AgentTargetManagementPage() {
           </Button>
         </div>
         {myRank && (
-          <div className="ml-auto workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold">
+          <div className="ml-auto workspace-glass-panel inline-flex items-center gap-2 rounded-full text-xs font-semibold chip-pad">
             <Trophy className="h-3.5 w-3.5 text-primary" />
             Rank #{myRank.rank} of {totalParticipants}
           </div>
@@ -194,13 +195,13 @@ export default function AgentTargetManagementPage() {
       </div>
 
       {tab === "leaderboard" && (
-        <div className="grid gap-3 rounded-2xl border border-border/60 bg-card p-4 lg:grid-cols-[minmax(0,1.2fr)_repeat(2,minmax(0,0.8fr))]">
+        <div className="grid gap-3 rounded-2xl border border-border/60 bg-card lg:grid-cols-[minmax(0,1.2fr)_repeat(2,minmax(0,0.8fr))] card-pad">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={leaderboardSearch}
               onChange={(e) => setLeaderboardSearch(e.target.value)}
-              placeholder="Search agents"
+              placeholder={t("searchAgents")}
               className="h-11 rounded-xl border-border bg-background pl-9 text-sm"
             />
           </div>
@@ -213,7 +214,7 @@ export default function AgentTargetManagementPage() {
             ]}
             value={leaderboardCompletionFilter}
             onValueChange={(value) => setLeaderboardCompletionFilter(value as "all" | CompletionStage)}
-            placeholder="Stage"
+            placeholder={t("stage")}
             className="h-11 rounded-xl"
           />
           <SearchableSelect
@@ -225,7 +226,7 @@ export default function AgentTargetManagementPage() {
             ]}
             value={leaderboardRiskFilter}
             onValueChange={(value) => setLeaderboardRiskFilter(value as "all" | "high" | "medium" | "low")}
-            placeholder="Risk"
+            placeholder={t("risk")}
             className="h-11 rounded-xl"
           />
         </div>
@@ -274,8 +275,8 @@ export default function AgentTargetManagementPage() {
                 />
                 <KpiCard
                   label={t("financeTarget")}
-                  value={<>{profile.currency} {profile.financeAchieved.toLocaleString()}<span className="text-lg text-muted-foreground">/{profile.financeTarget.toLocaleString()}</span></>}
-                  subtext={`Assigned ${profile.currency} ${profile.financeTarget.toLocaleString()} · Balance ${profile.currency} ${profile.financePending.toLocaleString()}`}
+                  value={<>{profile.currency} {formatCount(profile.financeAchieved)}<span className="text-lg text-muted-foreground">/{formatCount(profile.financeTarget)}</span></>}
+                  subtext={`Assigned ${profile.currency} ${formatCount(profile.financeTarget)} · Balance ${profile.currency} ${formatCount(profile.financePending)}`}
                   icon={<DollarSign className="h-5 w-5" />}
                   toneClassName="workspace-tone-amber"
                 />
@@ -289,7 +290,7 @@ export default function AgentTargetManagementPage() {
               </section>
 
               <section className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                <Link href={`/${locale}/agent/employers`} className="workspace-glass-panel group rounded-2xl p-3 sm:p-4 transition hover:-translate-y-0.5 hover:shadow-lg">
+                <Link href={`/${locale}/agent/employers`} className="workspace-glass-panel card-pad group rounded-2xl transition hover:-translate-y-0.5 hover:shadow-lg">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Next employer work</p>
@@ -302,7 +303,7 @@ export default function AgentTargetManagementPage() {
                     Add employers <ArrowRight className="h-3.5 w-3.5" />
                   </div>
                 </Link>
-                <Link href={`/${locale}/agent/placements`} className="workspace-glass-panel group rounded-2xl p-3 sm:p-4 transition hover:-translate-y-0.5 hover:shadow-lg">
+                <Link href={`/${locale}/agent/placements`} className="workspace-glass-panel card-pad group rounded-2xl transition hover:-translate-y-0.5 hover:shadow-lg">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Next employee work</p>
@@ -315,11 +316,11 @@ export default function AgentTargetManagementPage() {
                     Close placements <ArrowRight className="h-3.5 w-3.5" />
                   </div>
                 </Link>
-                <Link href={`/${locale}/agent/commissions`} className="workspace-glass-panel group rounded-2xl p-3 sm:p-4 transition hover:-translate-y-0.5 hover:shadow-lg">
+                <Link href={`/${locale}/agent/commissions`} className="workspace-glass-panel card-pad group rounded-2xl transition hover:-translate-y-0.5 hover:shadow-lg">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Next finance work</p>
-                      <p className="mt-2 text-2xl font-semibold tabular-nums text-foreground">{profile.currency} {profile.financePending.toLocaleString()}</p>
+                      <p className="mt-2 text-2xl font-semibold tabular-nums text-foreground">{profile.currency} {formatCount(profile.financePending)}</p>
                       <p className="mt-1 text-xs text-muted-foreground">Revenue balance remaining</p>
                     </div>
                     <div className="workspace-tone-amber rounded-2xl p-2.5"><DollarSign className="h-5 w-5" /></div>
@@ -333,7 +334,7 @@ export default function AgentTargetManagementPage() {
               {/* Daily / Weekly Goals */}
               {dailyGoals && weeklyGoals && (
                 <section className="grid gap-3 sm:grid-cols-2">
-                  <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
+                  <div className="workspace-glass-panel card-pad rounded-2xl">
                     <div className="flex items-center gap-2 mb-3">
                       <div className="rounded-xl bg-primary/10 p-2"><Zap className="h-4 w-4 text-primary" /></div>
                       <span className="text-sm font-semibold">Daily Goals ({MONTHS_SHORT[currentMonth - 1]})</span>
@@ -348,12 +349,12 @@ export default function AgentTargetManagementPage() {
                         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Employees</p>
                       </div>
                       <div>
-                        <p className="text-2xl font-bold tabular-nums text-primary">{profile.currency} {dailyGoals.finance.toLocaleString()}</p>
+                        <p className="text-2xl font-bold tabular-nums text-primary">{profile.currency} {formatCount(dailyGoals.finance)}</p>
                         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Finance</p>
                       </div>
                     </div>
                   </div>
-                  <div className="workspace-glass-panel rounded-2xl p-3 sm:p-4">
+                  <div className="workspace-glass-panel card-pad rounded-2xl">
                     <div className="flex items-center gap-2 mb-3">
                       <div className="rounded-xl bg-primary/10 p-2"><Clock className="h-4 w-4 text-primary" /></div>
                       <span className="text-sm font-semibold">Weekly Goals ({MONTHS_SHORT[currentMonth - 1]})</span>
@@ -368,7 +369,7 @@ export default function AgentTargetManagementPage() {
                         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Employees</p>
                       </div>
                       <div>
-                        <p className="text-2xl font-bold tabular-nums text-primary">{profile.currency} {weeklyGoals.finance.toLocaleString()}</p>
+                        <p className="text-2xl font-bold tabular-nums text-primary">{profile.currency} {formatCount(weeklyGoals.finance)}</p>
                         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Finance</p>
                       </div>
                     </div>
@@ -389,12 +390,12 @@ export default function AgentTargetManagementPage() {
             <TargetEmptyState title={t("noTargetsAssigned")} description={t("contactSupervisor")} />
           ) : (
             <div className="space-y-4">
-              <div className="workspace-glass-panel rounded-2xl p-6">
+              <div className="workspace-glass-panel rounded-2xl panel-body">
                 <div className="flex flex-wrap items-center justify-center gap-8">
-                  <ProgressRing value={profile.employerProgress} label="Employer" sublabel={`${profile.employerAchieved}/${profile.employerTarget}`} />
-                  <ProgressRing value={profile.employeeProgress} label="Employee" sublabel={`${profile.employeeAchieved}/${profile.employeeTarget}`} />
-                  <ProgressRing value={profile.financeProgress} label="Finance" sublabel={`${profile.currency} ${profile.financeAchieved.toLocaleString()}`} />
-                  <ProgressRing value={profile.overallProgress} label="Overall" sublabel="Annual" color="#3b82f6" />
+                  <ProgressRing value={profile.employerProgress} label={t("labelEmployer")} sublabel={`${profile.employerAchieved}/${profile.employerTarget}`} />
+                  <ProgressRing value={profile.employeeProgress} label={t("labelEmployee")} sublabel={`${profile.employeeAchieved}/${profile.employeeTarget}`} />
+                  <ProgressRing value={profile.financeProgress} label={t("labelFinance")} sublabel={`${profile.currency} ${formatCount(profile.financeAchieved)}`} />
+                  <ProgressRing value={profile.overallProgress} label={t("labelOverall")} sublabel={t("sublabelAnnual")} color="#3b82f6" />
                 </div>
               </div>
 
@@ -411,7 +412,7 @@ export default function AgentTargetManagementPage() {
               {profile.monthlyAchievements.length > 0 && (
                 <section className="space-y-4">
                   <div>
-                    <h2 className="text-lg font-semibold tracking-tight">{t("monthlyBreakdown")}</h2>
+                    <h2 className="heading-section font-semibold tracking-tight">{t("monthlyBreakdown")}</h2>
                     <p className="text-sm text-muted-foreground">{t("monthlyBreakdownDescription")}</p>
                   </div>
                   <MonthlyDistributionGrid months={profile.monthlyAchievements} currency={profile.currency} />
@@ -426,7 +427,7 @@ export default function AgentTargetManagementPage() {
       {tab === "leaderboard" && (
         <div className="space-y-4">
           {myRank && (
-            <div className="workspace-glass-panel rounded-2xl p-6 flex items-center gap-6">
+            <div className="workspace-glass-panel rounded-2xl flex items-center gap-6 panel-body">
               <RankBadge rank={myRank.rank} />
               <div className="flex-1">
                 <p className="text-lg font-semibold">Your Position</p>
@@ -474,7 +475,7 @@ export default function AgentTargetManagementPage() {
                     <TableCell colSpan={8} className="py-16 text-center">
                       <TargetEmptyState
                         title={t("noAgentsMatchFilters")}
-                        description="Try a different search, risk level, or completion stage."
+                        description={t("noMatchHint")}
                         action={
                           <Button
                             size="sm"

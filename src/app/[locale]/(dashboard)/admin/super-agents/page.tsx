@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { apiErrorMessage } from "@/lib/utils";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CascadingLocationPicker } from "@/components/shared/CascadingLocationPicker";
@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Search, Inbox, AlertCircle, Loader2, Download, FileSpreadsheet, FileText } from "lucide-react";
+import { formatDate } from "@/lib/ui/intlFormat";
 
 interface AgentRef {
   _id: string;
@@ -102,7 +103,7 @@ export default function AdminSuperAgentsPage() {
       try {
         const res = await fetch("/api/admin/agents?limit=200");
         if (!res.ok) {
-          toast.error("Failed to load available agents");
+          toast.error(t("toastFailedLoadAgents"));
           return;
         }
         const data = await res.json();
@@ -113,7 +114,7 @@ export default function AdminSuperAgentsPage() {
         }));
         setAvailableAgents(agents);
       } catch (e) {
-        toast.error("Failed to load available agents");
+        toast.error(t("toastFailedLoadAgents"));
       }
     })();
   }, []);
@@ -132,10 +133,10 @@ export default function AdminSuperAgentsPage() {
         setSuperAgents(data.superAgents ?? []);
         updateTotal(data.pagination?.total ?? 0);
       } else {
-        toast.error("Failed to load super agents");
+        toast.error(t("toastFailedLoadSuperAgents"));
       }
     } catch (error) {
-      toast.error("Failed to load super agents");
+      toast.error(t("toastFailedLoadSuperAgents"));
     } finally {
       setLoading(false);
     }
@@ -158,13 +159,13 @@ export default function AdminSuperAgentsPage() {
     { header: t("exportHeaderAgents"), key: "superAgentProfile" as keyof SuperAgent, formatter: (_v, r) => String((r as unknown as SuperAgent).superAgentProfile?.agentCount ?? 0) },
     { header: t("exportHeaderOverridePercent"), key: "superAgentProfile" as keyof SuperAgent, formatter: (_v, r) => String((r as unknown as SuperAgent).superAgentProfile?.overrideCommissionRate ?? 0) },
     { header: t("exportHeaderStatus"), key: "isActive", formatter: (v) => v !== false ? t("exportStatusActive") : t("exportStatusInactive") },
-    { header: t("exportHeaderJoined"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : t("exportDashCharacter") },
+    { header: t("exportHeaderJoined"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v))) : t("exportDashCharacter") },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: superAgents as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "super-agents",
-    title: "Super Agents",
+    title: t("exportTitle"),
   });
 
   const handleCreate = async () => {
@@ -203,10 +204,10 @@ export default function AdminSuperAgentsPage() {
       setAddCityIds([]);
       setAddStateIds([]);
       setAddAgentIds([]);
-      toast.success("Super agent created successfully");
+      toast.success(t("toastSuperAgentCreated"));
       fetchSuperAgents();
     } catch (error) {
-      const msg = "Failed to create super agent";
+      const msg = t("toastFailedCreateSuperAgent");
       setAddError(msg);
       toast.error(msg);
     } finally {
@@ -257,10 +258,10 @@ export default function AdminSuperAgentsPage() {
         return;
       }
       setEditSA(null);
-      toast.success("Super agent updated successfully");
+      toast.success(t("toastSuperAgentUpdated"));
       fetchSuperAgents();
     } catch (error) {
-      const msg = "Failed to update super agent";
+      const msg = t("toastFailedUpdateSuperAgent");
       setEditError(msg);
       toast.error(msg);
     } finally {
@@ -278,14 +279,14 @@ export default function AdminSuperAgentsPage() {
         body: JSON.stringify({ userId: id }),
       });
       if (res.ok) {
-        toast.success("Super agent deactivated successfully");
+        toast.success(t("toastSuperAgentDeactivated"));
         fetchSuperAgents();
       } else {
         const err = await res.json().catch(() => ({}));
-        toast.error(err.error || "Failed to deactivate super agent");
+        toast.error(err.error || t("toastFailedDeactivateSuperAgent"));
       }
     } catch (error) {
-      toast.error("Failed to deactivate super agent");
+      toast.error(t("toastFailedDeactivateSuperAgent"));
     }
   };
 
@@ -297,14 +298,14 @@ export default function AdminSuperAgentsPage() {
         body: JSON.stringify({ userId: id, isActive: true }),
       });
       if (res.ok) {
-        toast.success("Super agent activated successfully");
+        toast.success(t("toastSuperAgentActivated"));
         fetchSuperAgents();
       } else {
         const err = await res.json().catch(() => ({}));
-        toast.error(err.error || "Failed to activate super agent");
+        toast.error(err.error || t("toastFailedActivateSuperAgent"));
       }
     } catch (error) {
-      toast.error("Failed to activate super agent");
+      toast.error(t("toastFailedActivateSuperAgent"));
     }
   };
 
@@ -318,14 +319,14 @@ export default function AdminSuperAgentsPage() {
         body: JSON.stringify({ userId: id, permanent: true }),
       });
       if (res.ok) {
-        toast.success("Super agent deleted permanently");
+        toast.success(t("toastSuperAgentDeletedPermanently"));
         fetchSuperAgents();
       } else {
         const err = await res.json().catch(() => ({}));
-        toast.error(err.error || "Failed to delete super agent");
+        toast.error(err.error || t("toastFailedDeleteSuperAgent"));
       }
     } catch (error) {
-      toast.error("Failed to delete super agent");
+      toast.error(t("toastFailedDeleteSuperAgent"));
     }
   };
 
@@ -351,7 +352,7 @@ export default function AdminSuperAgentsPage() {
   };
 
   const AgentCheckboxList = ({ selected, onToggle }: { selected: string[]; onToggle: (id: string) => void }) => (
-    <div className="border rounded-lg max-h-48 overflow-y-auto p-2 space-y-1">
+    <div className="border rounded-lg max-h-48 overflow-y-auto space-y-1 chip-pad">
       {availableAgents.length === 0 ? (
         <p className="text-sm text-muted-foreground py-2 text-center">{t("noAgentsAvailable")}</p>
       ) : availableAgents.map((agent) => (
@@ -369,9 +370,16 @@ export default function AdminSuperAgentsPage() {
   return (
     <div className="page-container">
       {ConfirmDialogNode}
-      <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
+
+      {/* Page Header */}
+      <DashboardPageHeader
+        title={t("pageTitle")}
+        description={t("pageSubtitle")}
+        compactOnMobile
+      />
+
+      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
         <div className="flex flex-col gap-3 border-b border-border/80 sm:flex-row sm:items-center sm:justify-between panel-head">
-          <PageHeader title={t("pageTitle")} description={t("pageSubtitle")} />
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -396,7 +404,7 @@ export default function AdminSuperAgentsPage() {
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 rounded-lg border-border/80">
+                <Button variant="outline" size="dense" className="rounded-lg border-border/80">
                   <Download className="h-3.5 w-3.5" /> {t("exportLabel")}
                 </Button>
               </DropdownMenuTrigger>
@@ -489,7 +497,7 @@ export default function AdminSuperAgentsPage() {
                     ? `${sa.superAgentProfile.overrideCommissionRate}%`
                     : t("exportDashCharacter")}
                 </TableCell>
-                <TableCell className="text-muted-foreground text-sm">{new Date(sa.createdAt).toLocaleDateString()}</TableCell>
+                <TableCell className="text-muted-foreground text-sm">{formatDate(new Date(sa.createdAt))}</TableCell>
                 {(can("super_agents", "update") || can("super_agents", "delete")) && (
                   <TableCell>
                     <div className="flex items-center gap-1">
@@ -533,7 +541,7 @@ export default function AdminSuperAgentsPage() {
 
           <div className="space-y-4">
             {addError && (
-              <div className="flex items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
+              <div className="flex items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/5 text-sm text-destructive chip-pad">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                 <div className="flex flex-col gap-0.5">
                   {addError.split("; ").map((line, i) => <span key={i}>{line}</span>)}
@@ -542,24 +550,24 @@ export default function AdminSuperAgentsPage() {
             )}
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{t("fullNameLabel")} <span className="text-destructive">{t("requiredField")}</span></Label>
                 <Input value={addForm.name} onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))} />
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{t("emailLabel")} <span className="text-destructive">{t("requiredField")}</span></Label>
                 <Input type="email" value={addForm.email} onChange={(e) => setAddForm((f) => ({ ...f, email: e.target.value }))} />
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{t("passwordLabel")} <span className="text-destructive">{t("requiredField")}</span></Label>
                 <Input type="password" value={addForm.password} onChange={(e) => setAddForm((f) => ({ ...f, password: e.target.value }))} placeholder={t("passwordPlaceholder")} />
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{t("overrideCommissionRateLabel")}</Label>
                 <Input type="number" min="0" max="100" value={addForm.overrideCommissionRate} onChange={(e) => setAddForm((f) => ({ ...f, overrideCommissionRate: e.target.value }))} />
                 <p className="text-xs text-muted-foreground">{t("overrideCommissionRateHint")}</p>
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{t("defaultAgentCommissionRateLabel")}</Label>
                 <Input type="number" min="0" max="100" value={addForm.defaultAgentCommissionRate} onChange={(e) => setAddForm((f) => ({ ...f, defaultAgentCommissionRate: e.target.value }))} />
                 <p className="text-xs text-muted-foreground">{t("defaultAgentCommissionRateHint")}</p>
@@ -602,7 +610,7 @@ export default function AdminSuperAgentsPage() {
 
           <div className="space-y-4">
             {editError && (
-              <div className="flex items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
+              <div className="flex items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/5 text-sm text-destructive chip-pad">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                 <div className="flex flex-col gap-0.5">
                   {editError.split("; ").map((line, i) => <span key={i}>{line}</span>)}
@@ -611,15 +619,15 @@ export default function AdminSuperAgentsPage() {
             )}
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{t("fullNameLabel")}</Label>
                 <Input value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} />
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{t("emailLabel")}</Label>
                 <Input type="email" value={editForm.email} onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))} />
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{t("statusLabel")}</Label>
                 <Select value={editForm.isActive} onValueChange={(v) => setEditForm((f) => ({ ...f, isActive: v }))}>
                   <SelectTrigger className="h-10 w-full rounded-md">
@@ -631,12 +639,12 @@ export default function AdminSuperAgentsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{t("overrideCommissionRateLabel")}</Label>
                 <Input type="number" min="0" max="100" value={editForm.overrideCommissionRate} onChange={(e) => setEditForm((f) => ({ ...f, overrideCommissionRate: e.target.value }))} />
                 <p className="text-xs text-muted-foreground">{t("overrideCommissionRateHint")}</p>
               </div>
-              <div className="space-y-2">
+              <div className="field">
                 <Label>{t("defaultAgentCommissionRateLabel")}</Label>
                 <Input type="number" min="0" max="100" value={editForm.defaultAgentCommissionRate} onChange={(e) => setEditForm((f) => ({ ...f, defaultAgentCommissionRate: e.target.value }))} />
                 <p className="text-xs text-muted-foreground">{t("defaultAgentCommissionRateHintEdit")}</p>

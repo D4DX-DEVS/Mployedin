@@ -41,11 +41,11 @@ describe("AdminReportsPage", () => {
         ],
         alerts: [
           {
+            // The API sends an id plus the numbers behind it; the page owns the
+            // copy so an Arabic admin doesn't get an English sentence.
             id: "jobs-without-applications",
             level: "critical",
-            title: "Jobs without demand",
-            description: "4 published roles still have no applications and need stronger sourcing or distribution.",
-            metric: "4 roles",
+            values: { count: 4 },
           },
         ],
         recentJobs: [
@@ -108,16 +108,19 @@ describe("AdminReportsPage", () => {
     const criticalAlertCard = alertsSection?.querySelector('[data-alert-level="critical"]');
 
     expect(criticalAlertCard).not.toBeNull();
-    expect(criticalAlertCard?.className).toContain("bg-white");
-    expect(criticalAlertCard?.className).toContain("border-red-200");
-    expect(criticalAlertCard?.className).toContain("border-l-red-500");
+    // Theme-aware surface tokens, not the light-only `bg-white` literal this
+    // assertion used to pin — the card has to stay readable in dark mode. The
+    // severity now reads from the border accent rather than the background.
+    expect(criticalAlertCard?.className).toContain("bg-card");
+    expect(criticalAlertCard?.className).toContain("border-status-rejected/25");
+    expect(criticalAlertCard?.className).toContain("border-l-status-rejected");
     const criticalAlertTitle = within(criticalAlertCard as HTMLElement).getByText("Jobs without demand");
     const criticalAlertDescription = within(criticalAlertCard as HTMLElement).getByText(/need stronger sourcing or distribution/i);
     const criticalAlertMetric = within(criticalAlertCard as HTMLElement).getByText("4 roles");
 
-    expect(criticalAlertTitle.className).toContain("text-gray-900");
-    expect(criticalAlertDescription.className).toContain("text-gray-600");
-    expect(criticalAlertMetric.className).toContain("bg-red-600");
+    expect(criticalAlertTitle.className).toContain("text-foreground");
+    expect(criticalAlertDescription.className).toContain("text-muted-foreground");
+    expect(criticalAlertMetric.className).toContain("bg-status-rejected");
     expect(screen.getAllByText("11").some((element) => element.className.includes("text-foreground"))).toBe(true);
     expect(screen.getAllByText("18").some((element) => element.className.includes("text-foreground"))).toBe(true);
     expect(screen.getAllByText("Jobs without demand").length).toBeGreaterThan(0);

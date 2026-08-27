@@ -1,3 +1,4 @@
+import { formatCount } from "@/lib/ui/intlFormat";
 /**
  * Client-side export utilities: CSV, Excel-compatible HTML, PDF (jspdf).
  */
@@ -266,5 +267,5 @@ export function fmtDate(val: unknown): string {
 
 export function fmtCurrency(val: unknown, currency = "AED"): string {
   if (!val) return "—";
-  return `${Number(val).toLocaleString()} ${currency}`;
+  return `${formatCount(Number(val))} ${currency}`;
 }
