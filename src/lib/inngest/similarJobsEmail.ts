@@ -23,7 +23,8 @@ export const similarJobsAfterApply = inngest.createFunction(
     id: "similar-jobs-after-apply",
     name: "Similar Jobs After Application",
     retries: 2,
-    concurrency: { limit: 10 },
+    // Inngest free plan caps concurrency at 5 (sync is rejected above that).
+    concurrency: { limit: 5 },
     triggers: [{ event: "jobs/similar-after-apply" }],
   },
   async ({ event, step }: { event: { data: { userId: string; jobId: string; jobTitle: string; companyName: string } }; step: any }) => {

@@ -23,7 +23,8 @@ export const autoApplyFunction = inngest.createFunction(
       { event: "job-seeker/auto-apply.triggered" },
       { event: "job-seeker/auto-apply.cron" },
     ],
-    concurrency: { limit: 10 },
+    // Inngest free plan caps concurrency at 5 (sync is rejected above that).
+    concurrency: { limit: 5 },
     retries: 2,
   },
   async ({ event, step }) => {
