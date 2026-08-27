@@ -18,7 +18,8 @@ export const dailyDigestWorker = inngest.createFunction(
     id: "daily-digest-worker",
     name: "Daily Digest Email Worker",
     retries: 3,
-    concurrency: { limit: 15 },
+    // Inngest free plan caps concurrency at 5 (sync is rejected above that).
+    concurrency: { limit: 5 },
     triggers: [{ event: "notification/daily-digest" }],
   },
   async ({ event, step }: { event: { data: NotificationDailyDigestEvent["data"] }; step: any }) => {

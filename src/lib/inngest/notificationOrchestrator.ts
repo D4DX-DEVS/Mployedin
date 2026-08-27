@@ -32,7 +32,9 @@ export const notificationOrchestrator = inngest.createFunction(
     id: "notification-orchestrator",
     name: "Notification Orchestrator",
     retries: 3,
-    concurrency: { limit: 20 },
+    // Inngest free plan caps account concurrency at 5; higher limits are
+    // rejected at sync time ("higher concurrency limits than your plan").
+    concurrency: { limit: 5 },
     triggers: [{ event: "notification/instant" }],
   },
   async ({ event, step }: { event: { data: NotificationInstantEvent["data"] }; step: any }) => {
